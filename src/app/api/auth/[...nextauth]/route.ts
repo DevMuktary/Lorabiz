@@ -1,5 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -11,64 +12,46 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        // 1. Check if email and password are provided
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing email or password");
+          return null;
         }
 
-        // TODO: Replace this block with your actual Database call
-        // Example: const user = await prisma.user.findUnique({ where: { email: credentials.email } })
-        const user = { 
-          id: "1", 
-          name: "Admin User", 
-          email: "test@lumebiz.com", 
-          passwordHash: "$2a$10$YourHashedPasswordStringHere..." // bcrypt hash
-        };
+        // 2. Find the user in the database
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
+        });
 
-        if (!user) {
-          throw new Error("No user found with that email");
+        // 3. If no user exists, or they don't have a password, reject
+        if (!user || !user.passwordHash) {
+          return null;
         }
 
-        // Securely compare the plaintext password with the hashed database password
-        const isValidPassword = await bcrypt.compare(credentials.password, user.passwordHash);
+        // 4. Compare the typed password with the hashed password in the DB
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
 
-        if (!isValidPassword) {
-          throw new Error("Invalid password");
+        if (!isPasswordValid) {
+          return null; // This triggers the "Invalid email or password" error
         }
 
-        // Any object returned here is saved in the secure JSON Web Token
+        // 5. Success! Return the user object to NextAuth
         return {
           id: user.id,
-          name: user.name,
           email: user.email,
+          name: `${user.firstName} ${user.lastName}`, 
         };
       }
     })
   ],
-  session: {
-    strategy: "jwt", // Use highly secure JSON Web Tokens
-    maxAge: 30 * 24 * 60 * 60, // 30 Days
-  },
   pages: {
-    signIn: "/auth/login", // Redirects here if they try to access a protected page
-    newUser: "/auth/register" 
+    signIn: "/auth/login", // Ensures redirects go to our new beautiful page
+    newUser: "/auth/register",
   },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        // @ts-ignore - attaching custom ID to the session object
-        session.user.id = token.id;
-      }
-      return session;
-    }
-  }
+  session: {
+    strategy: "jwt",
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };
