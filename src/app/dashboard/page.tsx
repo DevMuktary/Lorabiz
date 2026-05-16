@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   Files, HourglassHigh, CheckCircle, Wallet, Plus, MagnifyingGlass,
-  WarningCircle, PencilSimpleLine, ArchiveTray, Funnel, CaretLeft, CaretRight,
+  WarningCircle, PencilSimpleLine, Archive, Funnel, CaretLeft, CaretRight,
   DotsThreeVertical, Trash, Play, Eye, ArrowsClockwise, FileText, Warning
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -112,7 +112,7 @@ export default function DashboardOverview() {
   return (
     <div className="space-y-8 pb-12">
       
-      {/* 1. THE WALLET BANNER (Moved to top) */}
+      {/* 1. THE WALLET BANNER */}
       <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl shadow-gray-900/10">
         <div>
           <p className="text-gray-400 font-medium tracking-wide text-sm uppercase mb-1">Available Wallet Balance</p>
@@ -173,7 +173,7 @@ export default function DashboardOverview() {
         {/* Post-Inc */}
         <button onClick={() => setTypeFilter("POST_INC")} className="bg-white p-5 rounded-xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a]">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><ArchiveTray className="h-5 w-5" weight="fill" /></div>
+            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Archive className="h-5 w-5" weight="fill" /></div>
           </div>
           <p className="text-2xl font-bold text-gray-900">{data?.stats.postInc || 0}</p>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-1">Post-Inc</p>
@@ -236,7 +236,7 @@ export default function DashboardOverview() {
               {data?.tableData.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-16 text-center text-gray-500">
-                    <ArchiveTray className="h-10 w-10 mx-auto text-gray-300 mb-3" />
+                    <Archive className="h-10 w-10 mx-auto text-gray-300 mb-3" />
                     <p className="font-medium">No registrations found matching your filters.</p>
                   </td>
                 </tr>
@@ -309,7 +309,7 @@ export default function DashboardOverview() {
 
                           {reg.status === 'APPROVED' && (
                             <button onClick={() => executeAction("VIEW", reg.id)} className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                              <ArchiveTray className="h-4 w-4 text-emerald-500" weight="fill" /> View Documents
+                              <Archive className="h-4 w-4 text-emerald-500" weight="fill" /> View Documents
                             </button>
                           )}
 
