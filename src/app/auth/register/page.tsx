@@ -197,7 +197,7 @@ export default function RegisterPage() {
       });
 
       if (res.ok) {
-        router.push("/login?registered=true");
+        router.push("/auth/login?registered=true");
       } else {
         const data = await res.json();
         setErrors({ form: data.message || "Registration failed." });
@@ -210,12 +210,12 @@ export default function RegisterPage() {
   };
 
   return (
-    // THE CSS FIX: h-[100dvh] and completely disabling overflow stops all horizontal drag
-    <div className="h-[100dvh] w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
+    // THE CSS FIX: We use a native scroll wrapper. 
+    // On mobile, the entire body scrolls. On desktop, the flex container holds the fixed sidebar.
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white font-sans selection:bg-[#ff3f7a] selection:text-white">
       
-      {/* LEFT PANEL - Hard Width, No Scrolling Allowed */}
-      <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden">
-        {/* Subtle glowing orbs safely tucked inside overflow-hidden */}
+      {/* LEFT PANEL - Fixed purely on Desktop, hidden on mobile */}
+      <div className="hidden lg:flex w-[45%] fixed top-0 left-0 h-screen bg-[#ff3f7a] p-12 flex-col justify-center overflow-hidden">
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
 
@@ -250,9 +250,9 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - Flex-1 Handles Remaining Space, Scrolls Internally Only */}
-      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden p-6 sm:p-12 flex items-start justify-center relative">
-        <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+      {/* RIGHT PANEL - Takes full width on mobile, 55% offset margin on desktop. Native scrolling! */}
+      <div className="w-full lg:w-[55%] lg:ml-[45%] min-h-screen flex flex-col justify-center p-6 sm:p-12 py-12 lg:py-16">
+        <div className="w-full max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
           
           <div className="mb-8 flex justify-center lg:justify-start">
             <Image 
@@ -492,7 +492,7 @@ export default function RegisterPage() {
 
             <p className="text-center text-gray-500 mt-6 pb-8">
               Already have an account?{" "}
-              <Link href="/login" className="font-semibold text-[#ff3f7a] hover:underline transition-all">
+              <Link href="/auth/login" className="font-semibold text-[#ff3f7a] hover:underline transition-all">
                 Sign in
               </Link>
             </p>
