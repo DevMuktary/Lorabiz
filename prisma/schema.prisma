@@ -24,17 +24,17 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // A user can have multiple business registrations
   registrations BusinessRegistration[]
+  wallet        Wallet?  // NEW: 1-to-1 connection to the user's wallet
 }
 
 model BusinessRegistration {
   id              String   @id @default(cuid())
   userId          String
   proposedName    String
-  businessType    String   // e.g., "Business Name", "LLC"
-  status          String   @default("PENDING") // PENDING, PROCESSING, APPROVED, REJECTED
-  similarityScore String?  // To store the result from the BN COMPLIANCE check
+  businessType    String   
+  status          String   @default("PENDING") 
+  similarityScore String?  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -43,8 +43,34 @@ model BusinessRegistration {
 
 model OtpCode {
   id        String   @id @default(cuid())
-  email     String   @unique // Prevents race conditions: only 1 active OTP per email
+  email     String   @unique 
   code      String
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// --- NEW FINANCIAL LEDGER SYSTEM ---
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Float    @default(0.00) // Stored as a float to handle Kobo if necessary
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  walletId    String
+  amount      Float
+  type        String   // "CREDIT" (Funding) or "DEBIT" (Payment for services)
+  status      String   @default("PENDING") // "PENDING", "SUCCESS", "FAILED"
+  reference   String   @unique // To store Paystack/Flutterwave transaction references
+  description String   // e.g., "Wallet Funding via Paystack" or "Payment for BN Registration"
+  createdAt   DateTime @default(now())
+
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }
