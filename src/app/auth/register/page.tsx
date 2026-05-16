@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
   User, EnvelopeSimple, Phone, LockKey, Spinner, CheckCircle, ShieldCheck, 
-  RocketLaunch, GenderIntersex, MapPin, Buildings, WhatsappLogo
+  RocketLaunch, GenderIntersex, MapPin, Buildings, WhatsappLogo, CalendarBlank
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,21 +140,41 @@ export default function RegisterPage() {
     return () => clearInterval(interval);
   }, [otpTimer, otpStep]);
 
-  const handleSendOTP = () => {
+  // Real API Call for OTP
+  const handleSendOTP = async () => {
     if (!formData.email || !formData.email.includes("@")) {
       setErrors({ email: "Please enter a valid email address first." });
       return;
     }
-    setOtpStep("sent");
-    setOtpTimer(60);
     setErrors({ email: "" });
+    setOtpStep("idle");
+
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      if (res.ok) {
+        setOtpStep("sent");
+        setOtpTimer(60);
+      } else {
+        const data = await res.json();
+        setErrors({ email: data.message || "Failed to send code." });
+      }
+    } catch (err) {
+      setErrors({ email: "Network error. Try again." });
+    }
   };
 
+  // Frontend Verification (Backend validates it again)
   const handleVerifyOTP = () => {
-    if (otpCode.length === 6) { // Simulating correct OTP
+    if (otpCode.length === 6) { 
       setOtpStep("verified");
+      setErrors({ email: "" });
     } else {
-      setErrors({ email: "Invalid OTP Code. Please check your email." });
+      setErrors({ email: "Code must be exactly 6 digits." });
     }
   };
 
@@ -166,6 +186,7 @@ export default function RegisterPage() {
 
     if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
+    if (!otpCode) newErrors.email = "OTP code is required for registration.";
     
     if (formData.phone.startsWith("0")) {
       if (formData.phone.length !== 11) newErrors.phone = "Phone numbers starting with 0 must be 11 digits.";
@@ -195,10 +216,9 @@ export default function RegisterPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Safely construct the full name, omitting middle name if blank
         body: JSON.stringify({
           ...formData,
-          fullName: [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(" ")
+          otpCode, // Include OTP Code for backend verification
         }),
       });
 
@@ -206,7 +226,14 @@ export default function RegisterPage() {
         router.push("/auth/login?registered=true");
       } else {
         const data = await res.json();
-        setErrors({ form: data.message || "Registration failed." });
+        
+        // Handle OTP specifically 
+        if (data.message?.toLowerCase().includes("code") || data.message?.toLowerCase().includes("verification")) {
+          setOtpStep("sent");
+          setErrors({ email: data.message });
+        } else {
+          setErrors({ form: data.message || "Registration failed." });
+        }
       }
     } catch (err) {
       setErrors({ form: "An unexpected error occurred. Please try again." });
