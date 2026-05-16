@@ -97,9 +97,15 @@ export default function RegisterPage() {
   };
   const passScore = getPasswordStrength();
 
-  // Handle Input Changes
+  // Handle Input Changes with Real-time Masking
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { id, value } = e.target;
+    let { id, value } = e.target;
+    
+    // Strict Input Masking: Prevent non-numeric characters completely as they type
+    if (id === "nin" || id === "phone") {
+      value = value.replace(/\D/g, ""); 
+    }
+
     setFormData(prev => ({ ...prev, [id]: value }));
     
     // Clear specific error when user starts typing again
@@ -145,7 +151,19 @@ export default function RegisterPage() {
 
     // 1. Strict Validation Checks
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
-    if (formData.nin.length !== 11 || isNaN(Number(formData.nin))) newErrors.nin = "NIN must be exactly 11 digits.";
+    
+    // NIN Validation: Must be exactly 11 digits
+    if (!/^\d{11}$/.test(formData.nin)) {
+      newErrors.nin = "NIN must be exactly 11 numeric digits.";
+    }
+
+    // Phone Validation: Handle with or without leading zero
+    if (formData.phone.startsWith("0")) {
+      if (formData.phone.length !== 11) newErrors.phone = "Phone numbers starting with 0 must be 11 digits.";
+    } else {
+      if (formData.phone.length !== 10) newErrors.phone = "Phone numbers without a leading 0 must be 10 digits.";
+    }
+
     if (passScore < 3) newErrors.password = "Password is too weak. Add numbers or symbols.";
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match.";
     if (!formData.state) newErrors.state = "Please select a state.";
@@ -183,7 +201,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white">
+    <div className="min-h-screen w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-x-hidden">
       
       {/* LEFT PANEL - Fixed Branding */}
       <div className="hidden lg:flex w-[45%] bg-[#ff3f7a] p-12 flex-col justify-center fixed h-screen overflow-hidden">
@@ -321,7 +339,7 @@ export default function RegisterPage() {
                     <Input id="email" type="email" disabled={otpStep === "verified"} value={formData.email} onChange={handleChange} required placeholder="you@example.com" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
                   </div>
                   {otpStep === "idle" && (
-                    <Button type="button" onClick={handleSendOTP} className="h-12 bg-gray-900 text-white px-6">Verify</Button>
+                    <Button type="button" onClick={handleSendOTP} className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white px-6 transition-all">Verify</Button>
                   )}
                   {otpStep === "verified" && (
                     <Button type="button" disabled className="h-12 bg-green-100 text-green-700 border border-green-200 px-6">Verified ✓</Button>
@@ -346,12 +364,12 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-gray-700 font-medium">Phone Number</Label>
                 <div className="flex items-center">
-                  {/* Custom +234 Flag Prefix */}
                   <div className="flex items-center justify-center h-12 px-3 border border-r-0 border-gray-200 bg-gray-100 rounded-l-md text-[16px] font-medium text-gray-700">
                     <span className="mr-2 text-lg">🇳🇬</span> +234
                   </div>
-                  <Input id="phone" type="tel" value={formData.phone} onChange={handleChange} required placeholder="800 000 0000" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 rounded-l-none focus-visible:ring-[#ff3f7a]" />
+                  <Input id="phone" type="tel" maxLength={11} value={formData.phone} onChange={handleChange} required placeholder="800 000 0000" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 rounded-l-none focus-visible:ring-[#ff3f7a]" />
                 </div>
+                {errors.phone && <p className="text-sm text-red-500 font-medium mt-1">{errors.phone}</p>}
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -443,7 +461,7 @@ export default function RegisterPage() {
                 {loading ? (
                   <Spinner className="animate-spin h-6 w-6" weight="bold" />
                 ) : (
-                  <>Create Secure Account</>
+                  <>Create Account</>
                 )}
               </Button>
             </div>
