@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  Files, HourglassHigh, CheckCircle, Wallet, Plus, MagnifyingGlass,
+  Files, HourglassHigh, Wallet, Plus, MagnifyingGlass,
   WarningCircle, PencilSimpleLine, Archive, Funnel, CaretLeft, CaretRight,
-  DotsThreeVertical, Trash, Play, Eye, ArrowsClockwise, FileText, Warning
+  DotsThreeVertical, Trash, Play, Eye, FileText, Warning
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
@@ -43,7 +43,6 @@ export default function DashboardOverview() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Build query string
       const query = new URLSearchParams({
         page: page.toString(),
         search,
@@ -63,16 +62,13 @@ export default function DashboardOverview() {
     }
   };
 
-  // Re-fetch when filters or page changes
   useEffect(() => {
-    // Add a small debounce for typing in the search bar
     const timeout = setTimeout(() => {
       fetchDashboardData();
     }, 300);
     return () => clearTimeout(timeout);
   }, [page, search, statusFilter, typeFilter]);
 
-  // Click outside to close kebab menu
   useEffect(() => {
     const handleClickOutside = () => setActiveMenuId(null);
     document.addEventListener("click", handleClickOutside);
@@ -90,7 +86,6 @@ export default function DashboardOverview() {
     if (actionType === "DELETE" || actionType === "SUBMIT") {
       setModal({ type: actionType, regId: id });
     } else {
-      // Direct navigation for safe actions
       if (actionType === "CONTINUE") router.push(`/dashboard/register/continue?id=${id}`);
       if (actionType === "VIEW") router.push(`/dashboard/businesses/${id}`);
       if (actionType === "FIX_QUERIES") router.push(`/dashboard/businesses/${id}/queries`);
@@ -98,89 +93,105 @@ export default function DashboardOverview() {
   };
 
   const confirmRiskAction = async () => {
-    // Here you would fire the API to delete or submit
     console.log(`Executing ${modal?.type} on ${modal?.regId}`);
     setModal(null);
-    fetchDashboardData(); // Refresh table
+    fetchDashboardData(); 
   };
 
-  // --- LOADING SKELETON ---
   if (loading && !data) {
-    return <div className="animate-pulse space-y-8"><div className="h-32 bg-gray-200 rounded-2xl w-full"></div><div className="grid grid-cols-4 gap-4"><div className="h-24 bg-gray-200 rounded-xl"></div><div className="h-24 bg-gray-200 rounded-xl"></div><div className="h-24 bg-gray-200 rounded-xl"></div><div className="h-24 bg-gray-200 rounded-xl"></div></div></div>;
+    return <div className="animate-pulse space-y-8"><div className="grid grid-cols-2 lg:grid-cols-3 gap-6"><div className="h-32 bg-gray-200 rounded-2xl"></div><div className="h-32 bg-gray-200 rounded-2xl"></div><div className="h-32 bg-gray-200 rounded-2xl"></div></div></div>;
   }
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12 max-w-full overflow-x-hidden">
       
-      {/* 1. THE WALLET BANNER */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl shadow-gray-900/10">
+      {/* PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-gray-400 font-medium tracking-wide text-sm uppercase mb-1">Available Wallet Balance</p>
-          <div className="flex items-center gap-3">
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
-              ₦{data?.walletBalance.toLocaleString() || "0"}
-            </h2>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Overview</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage your business registrations and wallet balance.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/wallet">
-            <Button className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white font-bold px-8 text-base rounded-xl transition-all shadow-lg shadow-[#ff3f7a]/30 flex items-center gap-2">
-              <Plus className="h-5 w-5" weight="bold" />
-              Fund Wallet
-            </Button>
-          </Link>
-        </div>
+        
+        <Link href="/dashboard/new">
+          <Button className="h-11 bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 font-medium px-6 flex items-center gap-2">
+            <Plus className="h-5 w-5" weight="bold" />
+            New Registration
+          </Button>
+        </Link>
       </div>
 
-      {/* 2. CLICKABLE METRIC CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Total */}
-        <button onClick={() => setStatusFilter("ALL")} className="bg-white p-5 rounded-xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a]">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Files className="h-5 w-5" weight="fill" /></div>
+      {/* CLICKABLE METRIC CARDS (Uniform Grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+        
+        {/* Wallet Balance (Matches other cards now) */}
+        <button onClick={() => router.push("/dashboard/wallet")} className="bg-white p-6 rounded-2xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] group flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Wallet Balance</p>
+            <div className="p-2 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-xl"><Wallet className="h-6 w-6" weight="fill" /></div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{data?.stats.total || 0}</p>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-1">Total Apps</p>
+          <div className="mt-4 flex items-end justify-between w-full">
+            <h3 className="text-3xl font-bold text-gray-900 tracking-tight">₦{data?.walletBalance.toLocaleString() || "0"}</h3>
+            <span className="text-sm font-semibold text-[#ff3f7a] group-hover:underline">Fund</span>
+          </div>
         </button>
 
-        {/* Unsubmitted (Drafts) */}
-        <button onClick={() => setStatusFilter("UNSUBMITTED")} className="bg-white p-5 rounded-xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a]">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-gray-100 text-gray-600 rounded-lg"><PencilSimpleLine className="h-5 w-5" weight="fill" /></div>
+        {/* Total Applications */}
+        <button onClick={() => setStatusFilter("ALL")} className="bg-white p-6 rounded-2xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Applications</p>
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><Files className="h-6 w-6" weight="fill" /></div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{data?.stats.unsubmitted || 0}</p>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-1">Drafts</p>
+          <div className="mt-4">
+            <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{data?.stats.total || 0}</h3>
+          </div>
+        </button>
+
+        {/* Not Submitted */}
+        <button onClick={() => setStatusFilter("UNSUBMITTED")} className="bg-white p-6 rounded-2xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Not Submitted</p>
+            <div className="p-2 bg-gray-100 text-gray-600 rounded-xl"><PencilSimpleLine className="h-6 w-6" weight="fill" /></div>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{data?.stats.unsubmitted || 0}</h3>
+          </div>
         </button>
 
         {/* Pending */}
-        <button onClick={() => setStatusFilter("PENDING")} className="bg-white p-5 rounded-xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a]">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><HourglassHigh className="h-5 w-5" weight="fill" /></div>
+        <button onClick={() => setStatusFilter("PENDING")} className="bg-white p-6 rounded-2xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Pending</p>
+            <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><HourglassHigh className="h-6 w-6" weight="fill" /></div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{data?.stats.pending || 0}</p>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-1">Pending</p>
+          <div className="mt-4">
+            <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{data?.stats.pending || 0}</h3>
+          </div>
         </button>
 
         {/* Queried */}
-        <button onClick={() => setStatusFilter("QUERIED")} className="bg-white p-5 rounded-xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a]">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-red-50 text-red-600 rounded-lg"><WarningCircle className="h-5 w-5" weight="fill" /></div>
+        <button onClick={() => setStatusFilter("QUERIED")} className="bg-white p-6 rounded-2xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Queried</p>
+            <div className="p-2 bg-red-50 text-red-600 rounded-xl"><WarningCircle className="h-6 w-6" weight="fill" /></div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{data?.stats.queried || 0}</p>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-1">Queried</p>
+          <div className="mt-4">
+            <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{data?.stats.queried || 0}</h3>
+          </div>
         </button>
 
         {/* Post-Inc */}
-        <button onClick={() => setTypeFilter("POST_INC")} className="bg-white p-5 rounded-xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a]">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Archive className="h-5 w-5" weight="fill" /></div>
+        <button onClick={() => setTypeFilter("POST_INC")} className="bg-white p-6 rounded-2xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Post-Incorporation</p>
+            <div className="p-2 bg-purple-50 text-purple-600 rounded-xl"><Archive className="h-6 w-6" weight="fill" /></div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{data?.stats.postInc || 0}</p>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-1">Post-Inc</p>
+          <div className="mt-4">
+            <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{data?.stats.postInc || 0}</h3>
+          </div>
         </button>
       </div>
 
-      {/* 3. THE DATA TABLE WITH FILTERS & PAGINATION */}
+      {/* THE DATA TABLE WITH FILTERS & PAGINATION */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-visible">
         
         {/* Table Filters */}
@@ -203,7 +214,7 @@ export default function DashboardOverview() {
               <Funnel className="h-4 w-4 text-gray-400" />
               <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="bg-transparent focus:outline-none font-medium cursor-pointer">
                 <option value="ALL">All Statuses</option>
-                <option value="UNSUBMITTED">Drafts</option>
+                <option value="UNSUBMITTED">Not Submitted</option>
                 <option value="PENDING">Pending</option>
                 <option value="QUERIED">Queried</option>
                 <option value="APPROVED">Approved</option>
@@ -220,9 +231,9 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Table Body */}
-        <div className="overflow-x-auto min-h-[300px]">
-          <table className="w-full text-left border-collapse text-sm whitespace-nowrap">
+        {/* Table Body - Wrapped in overflow-x-auto to prevent Safari horizontal scrolling */}
+        <div className="w-full overflow-x-auto min-h-[300px]">
+          <table className="w-full text-left border-collapse text-sm whitespace-nowrap min-w-[800px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500 border-b border-gray-200">
                 <th className="px-6 py-3.5 font-semibold text-xs tracking-wider uppercase">Business / Proposed Name</th>
@@ -244,7 +255,7 @@ export default function DashboardOverview() {
                 data?.tableData.map((reg) => (
                   <tr key={reg.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
-                      <p className="font-bold text-gray-900">{reg.proposedName || "Untitled Draft"}</p>
+                      <p className="font-bold text-gray-900">{reg.proposedName || "Untitled Application"}</p>
                       <p className="text-xs text-gray-500 mt-0.5">{reg.id}</p>
                     </td>
                     <td className="px-6 py-4 font-medium text-gray-600">{reg.businessType}</td>
@@ -259,7 +270,7 @@ export default function DashboardOverview() {
                         ${reg.status === 'QUERIED' ? 'bg-red-100 text-red-700 animate-pulse' : ''}
                         ${reg.status === 'UNSUBMITTED' ? 'bg-gray-100 text-gray-600' : ''}
                       `}>
-                        {reg.status}
+                        {reg.status === 'UNSUBMITTED' ? 'NOT SUBMITTED' : reg.status}
                       </span>
                     </td>
                     
@@ -338,7 +349,6 @@ export default function DashboardOverview() {
                 <CaretLeft className="h-4 w-4" weight="bold" />
               </button>
               
-              {/* Generate Page Numbers */}
               {[...Array(data.totalPages)].map((_, i) => (
                 <button 
                   key={i}
@@ -377,11 +387,11 @@ export default function DashboardOverview() {
               )}
               
               <h3 className="text-xl font-bold text-gray-900">
-                {modal.type === 'DELETE' ? 'Delete Draft?' : 'Submit Application?'}
+                {modal.type === 'DELETE' ? 'Delete Application?' : 'Submit Application?'}
               </h3>
               <p className="text-gray-500 text-sm mt-2 leading-relaxed">
                 {modal.type === 'DELETE' 
-                  ? 'Are you sure you want to delete this draft? All saved progress will be permanently lost and cannot be recovered.' 
+                  ? 'Are you sure you want to delete this application? All saved progress will be permanently lost and cannot be recovered.' 
                   : 'Are you ready to submit this application for processing? Ensure all details are correct.'}
               </p>
             </div>
