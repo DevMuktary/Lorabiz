@@ -60,7 +60,7 @@ export default function RegisterPage() {
   // UI States
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   // Form Data States
   const [formData, setFormData] = useState({
@@ -115,6 +115,13 @@ export default function RegisterPage() {
     }
   };
 
+  // Clear terms error on check
+  useEffect(() => {
+    if (termsAccepted && errors.terms) {
+      setErrors(prev => ({ ...prev, terms: "" }));
+    }
+  }, [termsAccepted, errors.terms]);
+
   // OTP Timer Logic
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -151,6 +158,7 @@ export default function RegisterPage() {
     let newErrors: Record<string, string> = {};
 
     // 1. Strict Validation Checks
+    if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
     
     // NIN Validation: Must be exactly 11 digits
@@ -169,7 +177,6 @@ export default function RegisterPage() {
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match.";
     if (!formData.state) newErrors.state = "Please select a state.";
     if (!formData.lga) newErrors.lga = "Please select an LGA.";
-    if (!agreedToTerms) newErrors.terms = "You must agree to the Terms & Conditions to proceed.";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -203,11 +210,12 @@ export default function RegisterPage() {
   };
 
   return (
-    // Outer Wrapper: Completely locked view to prevent Safari drag/bounce
-    <div className="h-dvh w-full flex overflow-hidden bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overscroll-none">
+    // THE CSS FIX: h-[100dvh] and completely disabling overflow stops all horizontal drag
+    <div className="h-[100dvh] w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
       
-      {/* LEFT PANEL - Fixed Branding. No scroll. */}
-      <div className="hidden lg:flex w-[45%] h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden shrink-0">
+      {/* LEFT PANEL - Hard Width, No Scrolling Allowed */}
+      <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden">
+        {/* Subtle glowing orbs safely tucked inside overflow-hidden */}
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
 
@@ -242,8 +250,8 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - This is the only part that scrolls vertically. */}
-      <div className="w-full lg:w-[55%] h-full flex items-start justify-center p-6 sm:p-12 overflow-y-auto overscroll-y-none">
+      {/* RIGHT PANEL - Flex-1 Handles Remaining Space, Scrolls Internally Only */}
+      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden p-6 sm:p-12 flex items-start justify-center relative">
         <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
           
           <div className="mb-8 flex justify-center lg:justify-start">
@@ -324,7 +332,7 @@ export default function RegisterPage() {
                 {errors.nin && <p className="text-sm text-red-500 font-medium mt-1">{errors.nin}</p>}
                 <div className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-500 font-medium">
                   <ShieldCheck className="h-4 w-4 text-green-600" />
-                  <span>Used securely for instant identity verification. We do not store your NIN.</span>
+                  <span>Used securely for instant identity verification. We do not store your NIN on our servers.</span>
                 </div>
               </div>
             </div>
@@ -411,7 +419,7 @@ export default function RegisterPage() {
                   <Label htmlFor="state" className="text-gray-700 font-medium">State</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <select id="state" value={formData.state} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] appearance-none">
+                    <select id="state" value={formData.state} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a]">
                       <option value="" disabled>Select State</option>
                       {NIGERIA_DATA.map((s) => (
                         <option key={s.state} value={s.state}>{s.state} State</option>
@@ -425,7 +433,7 @@ export default function RegisterPage() {
                   <Label htmlFor="lga" className="text-gray-700 font-medium">Local Government (LGA)</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <select id="lga" value={formData.lga} onChange={handleChange} required disabled={!formData.state} className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed appearance-none">
+                    <select id="lga" value={formData.lga} onChange={handleChange} required disabled={!formData.state} className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed">
                       <option value="" disabled>Select LGA</option>
                       {availableLgas.map((lga) => (
                         <option key={lga} value={lga}>{lga}</option>
@@ -452,25 +460,22 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Checkbox and Submit Area */}
-            <div className="pt-6 border-t space-y-6">
+            {/* CHECKBOX & SUBMIT CONTAINER */}
+            <div className="pt-6 border-t space-y-4">
               
-              <div className="flex items-start gap-3">
-                <div className="flex items-center h-6 mt-0.5">
-                  <input
-                    id="terms"
-                    type="checkbox"
-                    required
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="h-5 w-5 rounded border-gray-300 text-[#ff3f7a] focus:ring-[#ff3f7a] cursor-pointer"
-                  />
-                </div>
-                <Label htmlFor="terms" className="text-[15px] text-gray-600 leading-relaxed cursor-pointer font-normal">
-                  I agree to LumeBiz's <Link href="/terms" className="text-[#ff3f7a] hover:underline font-medium">Terms & Conditions</Link>, <Link href="/acceptable-use" className="text-[#ff3f7a] hover:underline font-medium">Acceptable Use</Link> and <Link href="/privacy" className="text-[#ff3f7a] hover:underline font-medium">Privacy Policy</Link>.
-                </Label>
-              </div>
-              {errors.terms && <p className="text-sm text-red-500 font-medium mt-[-10px]">{errors.terms}</p>}
+              <label className="flex items-start gap-3 p-4 border border-gray-200 bg-gray-50/50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={termsAccepted} 
+                  onChange={(e) => setTermsAccepted(e.target.checked)} 
+                  className="mt-0.5 h-5 w-5 accent-[#ff3f7a] rounded border-gray-300 cursor-pointer shrink-0" 
+                />
+                <span className="text-sm text-gray-600 leading-relaxed">
+                  I agree to LumeBiz's <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Terms & Conditions</Link>, <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Acceptable Use</Link> and <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Privacy Policy</Link>.
+                </span>
+              </label>
+              
+              {errors.terms && <p className="text-sm text-red-500 font-medium pl-1">{errors.terms}</p>}
 
               <Button 
                 type="submit" 
