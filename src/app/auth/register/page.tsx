@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
   User, EnvelopeSimple, Phone, LockKey, Spinner, CheckCircle, ShieldCheck, 
-  RocketLaunch, IdentificationCard, GenderIntersex, MapPin, Buildings, WhatsappLogo
+  RocketLaunch, GenderIntersex, MapPin, Buildings, WhatsappLogo
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,12 +66,11 @@ export default function RegisterPage() {
   // Form Data States
   const [formData, setFormData] = useState({
     firstName: "",
-    middleName: "",
+    middleName: "", // NEW
     lastName: "",
     email: "",
     phone: "",
     whatsapp: "",
-    nin: "",
     password: "",
     confirmPassword: "",
     gender: "",
@@ -112,7 +111,7 @@ export default function RegisterPage() {
     let { id, value } = e.target;
     
     // Strict Input Masking: Prevent non-numeric characters completely as they type
-    if (id === "whatsapp" || id === "phone" || id === "nin") {
+    if (id === "whatsapp" || id === "phone") {
       value = value.replace(/\D/g, ""); 
     }
 
@@ -168,11 +167,6 @@ export default function RegisterPage() {
     if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
     
-    // NIN Validation
-    if (!/^\d{11}$/.test(formData.nin)) {
-      newErrors.nin = "NIN must be exactly 11 numeric digits.";
-    }
-
     if (formData.phone.startsWith("0")) {
       if (formData.phone.length !== 11) newErrors.phone = "Phone numbers starting with 0 must be 11 digits.";
     } else {
@@ -197,18 +191,14 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    // Smartly merge names without creating double spaces if middleName is empty
-    const fullMergedName = [formData.firstName, formData.middleName, formData.lastName]
-      .filter(Boolean)
-      .join(" ");
-
     try {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // Safely construct the full name, omitting middle name if blank
         body: JSON.stringify({
           ...formData,
-          fullName: fullMergedName
+          fullName: [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(" ")
         }),
       });
 
@@ -297,7 +287,6 @@ export default function RegisterPage() {
             <div className="space-y-5">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">1. Personal Identity</h3>
               
-              {/* Row 1: First & Last Name */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <Label htmlFor="firstName" className="text-gray-700 font-medium">First Name</Label>
@@ -316,11 +305,10 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Row 2: Middle Name & Gender */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="middleName" className="text-gray-700 font-medium flex items-center gap-1">
-                    Middle Name <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                  <Label htmlFor="middleName" className="text-gray-700 font-medium">
+                    Middle Name <span className="text-gray-400 font-normal">(Optional)</span>
                   </Label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
@@ -339,20 +327,6 @@ export default function RegisterPage() {
                       <option value="Prefer not to say">Prefer not to say</option>
                     </select>
                   </div>
-                </div>
-              </div>
-
-              {/* Row 3: NIN */}
-              <div className="space-y-2">
-                <Label htmlFor="nin" className="text-gray-700 font-medium">National Identity Number (NIN)</Label>
-                <div className="relative">
-                  <IdentificationCard className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                  <Input id="nin" type="text" maxLength={11} value={formData.nin} onChange={handleChange} required placeholder="11-digit NIN" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
-                </div>
-                {errors.nin && <p className="text-sm text-red-500 font-medium mt-1">{errors.nin}</p>}
-                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-500 font-medium">
-                  <ShieldCheck className="h-4 w-4 text-green-600" />
-                  <span>Used securely for instant identity verification. We do not store your NIN on our servers.</span>
                 </div>
               </div>
             </div>
@@ -508,10 +482,8 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="buildingNo" className="text-gray-700 font-medium flex items-center gap-1">
-                    Building No. <span className="text-gray-400 font-normal text-xs">(Optional)</span>
-                  </Label>
-                  <Input id="buildingNo" value={formData.buildingNo} onChange={handleChange} placeholder="e.g. 4B" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                  <Label htmlFor="buildingNo" className="text-gray-700 font-medium">Building No.</Label>
+                  <Input id="buildingNo" value={formData.buildingNo} onChange={handleChange} placeholder="Optional" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
                 </div>
               </div>
             </div>
