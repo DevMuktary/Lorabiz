@@ -62,27 +62,13 @@ export default function RegisterPage() {
     <div className="min-h-screen w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white">
       
       {/* LEFT PANEL - The Brand Experience */}
-      <div className="hidden lg:flex w-1/2 bg-[#ff3f7a] p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden">
         {/* Subtle glowing orbs for texture */}
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
 
-        {/* Expanded Logo Area */}
-        <div className="relative z-10 flex items-start">
-          <div className="bg-white px-6 py-4 rounded-xl shadow-lg flex items-center justify-center min-w-[200px]">
-            <Image 
-              src="/logo.png" 
-              alt="Lumebiz Logo" 
-              width={200} 
-              height={60} 
-              className="object-contain h-12 w-auto"
-              priority
-            />
-          </div>
-        </div>
-
         {/* Hero Copy */}
-        <div className="relative z-10 text-white space-y-6 max-w-lg">
+        <div className="relative z-10 text-white space-y-6 max-w-lg mx-auto">
           <h1 className="text-5xl font-bold leading-[1.1] tracking-tight">
             Launch your dream business today.
           </h1>
@@ -107,7 +93,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Footer Area */}
-        <div className="relative z-10">
+        <div className="absolute bottom-12 left-12 z-10">
           <p className="text-sm font-semibold tracking-widest text-white/70 uppercase">
             Powered by Quadrox Technologies Limited
           </p>
@@ -118,22 +104,21 @@ export default function RegisterPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-700">
           
-          {/* Expanded Mobile Logo */}
-          <div className="lg:hidden flex justify-center mb-10">
-            <div className="bg-white px-6 py-3 rounded-xl shadow-md border border-gray-100 flex items-center justify-center min-w-[180px]">
-              <Image 
-                src="/logo.png" 
-                alt="Lumebiz Logo" 
-                width={180} 
-                height={50} 
-                className="object-contain h-10 w-auto"
-              />
-            </div>
+          {/* Enlarged Logo Sitting Beautifully on the White Background */}
+          <div className="mb-6 flex justify-center lg:justify-start">
+            <Image 
+              src="/logo.png" 
+              alt="Lumebiz Logo" 
+              width={240} 
+              height={80} 
+              className="object-contain h-16 w-auto"
+              priority
+            />
           </div>
 
           <div className="mb-10 text-center lg:text-left">
             <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Create an account</h2>
-            <p className="text-gray-500 mt-2 text-sm">Enter your details to access the dashboard.</p>
+            <p className="text-gray-500 mt-2 text-[16px]">Enter your details to create your account.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -156,7 +141,7 @@ export default function RegisterPage() {
                     onChange={handleChange} 
                     required 
                     placeholder="e.g. John Doe" 
-                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
+                    className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
                   />
                 </div>
               </div>
@@ -172,7 +157,7 @@ export default function RegisterPage() {
                     onChange={handleChange} 
                     required 
                     placeholder="you@example.com" 
-                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
+                    className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
                   />
                 </div>
               </div>
@@ -187,7 +172,7 @@ export default function RegisterPage() {
                     value={formData.phone} 
                     onChange={handleChange} 
                     placeholder="0800 000 0000" 
-                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
+                    className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
                   />
                 </div>
               </div>
@@ -203,7 +188,7 @@ export default function RegisterPage() {
                     onChange={handleChange} 
                     required 
                     placeholder="••••••••" 
-                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
+                    className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
                   />
                 </div>
               </div>
