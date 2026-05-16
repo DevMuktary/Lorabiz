@@ -9,10 +9,18 @@ datasource db {
 
 model User {
   id            String   @id @default(cuid())
-  fullName      String
+  firstName     String
+  middleName    String?
+  lastName      String
   email         String   @unique
-  phone         String?
+  phone         String
+  whatsapp      String
   passwordHash  String
+  gender        String
+  state         String
+  lga           String
+  street        String
+  buildingNo    String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
