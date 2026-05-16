@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// --- START: FULL NIGERIA STATE & LGA DATA ---
+// --- NIGERIA DATA ---
 const NIGERIA_DATA = [
   { state: "Abia", lgas: ["Aba North", "Aba South", "Arochukwu", "Bende", "Ikwuano", "Isiala Ngwa North", "Isiala Ngwa South", "Isuikwuato", "Obi Ngwa", "Ohafia", "Osisioma", "Ugwunagbo", "Ukwa East", "Ukwa West", "Umuahia North", "Umuahia South", "Umunneochi"] },
   { state: "Adamawa", lgas: ["Demsa", "Fufure", "Ganye", "Gayuk", "Gombi", "Grie", "Hong", "Jada", "Lamurde", "Madagali", "Maiha", "Mayo Belwa", "Michika", "Mubi North", "Mubi South", "Numan", "Shelleng", "Song", "Toungo", "Yola North", "Yola South"] },
@@ -53,7 +53,6 @@ const NIGERIA_DATA = [
   { state: "Yobe", lgas: ["Bade", "Bursari", "Damaturu", "Fika", "Fune", "Geidam", "Gujba", "Gulani", "Jakusko", "Karasuwa", "Machina", "Nangere", "Nguru", "Potiskum", "Tarmuwa", "Yunusari", "Yusufari"] },
   { state: "Zamfara", lgas: ["Anka", "Bakura", "Birnin Magaji/Kiyaw", "Bukkuyum", "Bungudu", "Gummi", "Gusau", "Kaura Namoda", "Maradun", "Maru", "Shinkafi", "Talata Mafara", "Chafe", "Zurmi"] }
 ];
-// --- END: NIGERIA DATA ---
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -65,11 +64,12 @@ export default function RegisterPage() {
   const [sameAsPhone, setSameAsPhone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false); // LIVE VERIFICATION STATE
   
   // Form Data States
   const [formData, setFormData] = useState({
     firstName: "",
-    middleName: "", // NEW
+    middleName: "",
     lastName: "",
     email: "",
     phone: "",
@@ -83,14 +83,13 @@ export default function RegisterPage() {
     buildingNo: "",
   });
 
-  // OTP Flow States
   const [otpStep, setOtpStep] = useState<"idle" | "sent" | "verified">("idle");
   const [otpCode, setOtpCode] = useState("");
   const [otpTimer, setOtpTimer] = useState(0);
 
   const availableLgas = NIGERIA_DATA.find(s => s.state === formData.state)?.lgas || [];
 
-  // Password Strength Calculator
+  // Password Strength
   const getPasswordStrength = () => {
     let score = 0;
     if (!formData.password) return score;
@@ -102,7 +101,7 @@ export default function RegisterPage() {
   };
   const passScore = getPasswordStrength();
 
-  // Smart Sync: Mirror phone to whatsapp if checkbox is checked
+  // Smart Sync
   useEffect(() => {
     if (sameAsPhone) {
       setFormData((prev) => ({ ...prev, whatsapp: prev.phone }));
@@ -112,20 +111,13 @@ export default function RegisterPage() {
   // Handle Input Changes with Real-time Masking
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { id, value } = e.target;
-    
-    // Strict Input Masking: Prevent non-numeric characters completely as they type
     if (id === "whatsapp" || id === "phone") {
       value = value.replace(/\D/g, ""); 
     }
-
     setFormData(prev => ({ ...prev, [id]: value }));
-    
-    if (errors[id]) {
-      setErrors(prev => ({ ...prev, [id]: "" }));
-    }
+    if (errors[id]) setErrors(prev => ({ ...prev, [id]: "" }));
   };
 
-  // Clear terms error on check
   useEffect(() => {
     if (termsAccepted && errors.terms) {
       setErrors(prev => ({ ...prev, terms: "" }));
@@ -143,7 +135,7 @@ export default function RegisterPage() {
     return () => clearInterval(interval);
   }, [otpTimer, otpStep]);
 
-  // --- SECURE: Trigger API to send actual ZeptoMail email ---
+  // TRIGGERS ZEPTOMAIL & STARTS 30 SEC TIMER
   const handleSendOTP = async () => {
     if (!formData.email || !formData.email.includes("@")) {
       setErrors({ email: "Please enter a valid email address first." });
@@ -161,7 +153,7 @@ export default function RegisterPage() {
 
       if (res.ok) {
         setOtpStep("sent");
-        setOtpTimer(60);
+        setOtpTimer(30); // Changed to 30 seconds
       } else {
         const data = await res.json();
         setErrors({ email: data.message || "Failed to send code." });
@@ -171,16 +163,37 @@ export default function RegisterPage() {
     }
   };
 
-  // UI Verification 
-  const handleVerifyOTP = () => {
-    if (otpCode.length === 6) { 
-      setOtpStep("verified");
-    } else {
+  // LIVE DATABASE OTP VERIFICATION
+  const handleVerifyOTP = async () => {
+    if (otpCode.length !== 6) { 
       setErrors({ email: "Invalid OTP Code. Must be 6 digits." });
+      return;
+    }
+
+    setIsVerifying(true);
+    setErrors({ email: "" });
+
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, otpCode }),
+      });
+
+      if (res.ok) {
+        setOtpStep("verified");
+      } else {
+        const data = await res.json();
+        setErrors({ email: data.message || "Invalid OTP code." });
+      }
+    } catch (err) {
+      setErrors({ email: "Verification failed. Check your network." });
+    } finally {
+      setIsVerifying(false);
     }
   };
 
-  // Form Submission & Validation
+  // Final Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -219,7 +232,7 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          otpCode, // SECURE: Includes the OTP to verify in the database transaction
+          otpCode, // Still sending to backend for the final atomic transaction
           fullName: [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(" ")
         }),
       });
@@ -228,8 +241,6 @@ export default function RegisterPage() {
         router.push("/auth/login?registered=true");
       } else {
         const data = await res.json();
-        
-        // Revert OTP state if the backend rejects the code
         if (data.message?.toLowerCase().includes("code") || data.message?.toLowerCase().includes("verification")) {
           setOtpStep("sent");
           setErrors({ email: data.message });
@@ -247,7 +258,7 @@ export default function RegisterPage() {
   return (
     <div className="fixed inset-0 w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
       
-      {/* LEFT PANEL - Hard Width, No Scrolling Allowed */}
+      {/* LEFT PANEL */}
       <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden">
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
@@ -382,7 +393,9 @@ export default function RegisterPage() {
                 {otpStep === "sent" && (
                   <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 mt-2 flex gap-2 animate-in fade-in zoom-in-95">
                     <Input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} maxLength={6} placeholder="Enter 6-digit OTP" className="h-12 text-center text-lg tracking-widest bg-white" />
-                    <Button type="button" onClick={handleVerifyOTP} className="h-12 bg-[#ff3f7a] text-white">Confirm</Button>
+                    <Button type="button" onClick={handleVerifyOTP} disabled={isVerifying} className="h-12 bg-[#ff3f7a] text-white min-w-[100px]">
+                      {isVerifying ? <Spinner className="animate-spin h-5 w-5 mx-auto" /> : "Confirm"}
+                    </Button>
                     {otpTimer > 0 ? (
                       <div className="h-12 px-4 flex items-center justify-center bg-gray-200 rounded-md text-gray-600 font-mono font-medium">{otpTimer}s</div>
                     ) : (
@@ -456,7 +469,6 @@ export default function RegisterPage() {
                       type="button" 
                       onClick={() => setShowPassword(!showPassword)} 
                       className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
@@ -489,7 +501,6 @@ export default function RegisterPage() {
                       type="button" 
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
                       className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                     >
                       {showConfirmPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
