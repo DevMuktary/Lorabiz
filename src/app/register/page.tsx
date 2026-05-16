@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { 
@@ -8,10 +9,10 @@ import {
   EnvelopeSimple, 
   Phone, 
   LockKey, 
-  RocketLaunch, 
   Spinner, 
   CheckCircle, 
-  ShieldCheck 
+  ShieldCheck,
+  RocketLaunch
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,18 +59,28 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-white font-sans selection:bg-[#c72d76] selection:text-white">
+    <div className="min-h-screen w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white">
       
       {/* LEFT PANEL - The Brand Experience */}
-      <div className="hidden lg:flex w-1/2 bg-[#c72d76] p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-[#ff3f7a] p-12 flex-col justify-between relative overflow-hidden">
         {/* Subtle glowing orbs for texture */}
-        <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/10 rounded-full blur-[80px] pointer-events-none"></div>
+        <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
 
-        {/* Logo Area */}
-        <div className="relative z-10 text-white flex items-center gap-2">
-          <RocketLaunch weight="fill" className="h-8 w-8" />
-          <span className="text-3xl font-extrabold tracking-tight">Lumebiz</span>
+        {/* Logo Area - Now with a White Background Container */}
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="bg-white p-2.5 rounded-xl shadow-lg flex items-center justify-center h-14 w-14">
+            {/* The Next.js Image component pulling from your public folder */}
+            <Image 
+              src="/logo.png" 
+              alt="Lumebiz Logo" 
+              width={40} 
+              height={40} 
+              className="object-contain"
+              priority
+            />
+          </div>
+          <span className="text-3xl font-extrabold tracking-tight text-white">Lumebiz</span>
         </div>
 
         {/* Hero Copy */}
@@ -77,21 +88,21 @@ export default function RegisterPage() {
           <h1 className="text-5xl font-bold leading-[1.1] tracking-tight">
             Launch your dream business today.
           </h1>
-          <p className="text-lg text-white/85 leading-relaxed">
+          <p className="text-lg text-white/90 leading-relaxed">
             Skip the legal jargon and the expensive agents. Register your business instantly with our seamless, automated CAC platform.
           </p>
           
           <div className="pt-8 space-y-4">
-            <div className="flex items-center gap-3 text-white/95 font-medium">
-              <CheckCircle weight="fill" className="h-6 w-6 text-[#ff8ac2]" />
+            <div className="flex items-center gap-3 text-white font-medium">
+              <CheckCircle weight="fill" className="h-6 w-6 text-white/80" />
               <span>100% Agent-Free Process</span>
             </div>
-            <div className="flex items-center gap-3 text-white/95 font-medium">
-              <ShieldCheck weight="fill" className="h-6 w-6 text-[#ff8ac2]" />
+            <div className="flex items-center gap-3 text-white font-medium">
+              <ShieldCheck weight="fill" className="h-6 w-6 text-white/80" />
               <span>Bank-Grade Data Security</span>
             </div>
-            <div className="flex items-center gap-3 text-white/95 font-medium">
-              <RocketLaunch weight="fill" className="h-6 w-6 text-[#ff8ac2]" />
+            <div className="flex items-center gap-3 text-white font-medium">
+              <RocketLaunch weight="fill" className="h-6 w-6 text-white/80" />
               <span>Fast-Tracked Approvals</span>
             </div>
           </div>
@@ -99,7 +110,7 @@ export default function RegisterPage() {
 
         {/* Footer Area */}
         <div className="relative z-10">
-          <p className="text-sm font-semibold tracking-widest text-white/60 uppercase">
+          <p className="text-sm font-semibold tracking-widest text-white/70 uppercase">
             Powered by Quadrox Technologies Limited
           </p>
         </div>
@@ -110,8 +121,16 @@ export default function RegisterPage() {
         <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-700">
           
           {/* Mobile Logo (Only shows on small screens) */}
-          <div className="lg:hidden flex items-center justify-center gap-2 mb-10 text-[#c72d76]">
-            <RocketLaunch weight="fill" className="h-8 w-8" />
+          <div className="lg:hidden flex flex-col items-center justify-center gap-3 mb-10">
+            <div className="bg-white p-2 rounded-xl shadow-md border border-gray-100 flex items-center justify-center h-16 w-16">
+              <Image 
+                src="/logo.png" 
+                alt="Lumebiz Logo" 
+                width={48} 
+                height={48} 
+                className="object-contain"
+              />
+            </div>
             <span className="text-3xl font-extrabold tracking-tight text-gray-900">Lumebiz</span>
           </div>
 
@@ -140,7 +159,7 @@ export default function RegisterPage() {
                     onChange={handleChange} 
                     required 
                     placeholder="e.g. John Doe" 
-                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#c72d76] focus-visible:border-[#c72d76] transition-all" 
+                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
                   />
                 </div>
               </div>
@@ -156,7 +175,7 @@ export default function RegisterPage() {
                     onChange={handleChange} 
                     required 
                     placeholder="you@example.com" 
-                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#c72d76] focus-visible:border-[#c72d76] transition-all" 
+                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
                   />
                 </div>
               </div>
@@ -171,7 +190,7 @@ export default function RegisterPage() {
                     value={formData.phone} 
                     onChange={handleChange} 
                     placeholder="0800 000 0000" 
-                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#c72d76] focus-visible:border-[#c72d76] transition-all" 
+                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
                   />
                 </div>
               </div>
@@ -187,7 +206,7 @@ export default function RegisterPage() {
                     onChange={handleChange} 
                     required 
                     placeholder="••••••••" 
-                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#c72d76] focus-visible:border-[#c72d76] transition-all" 
+                    className="pl-11 h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] transition-all" 
                   />
                 </div>
               </div>
@@ -197,7 +216,7 @@ export default function RegisterPage() {
               <Button 
                 type="submit" 
                 disabled={loading} 
-                className="w-full h-12 text-base font-semibold bg-[#c72d76] hover:bg-[#a5215f] text-white shadow-lg shadow-[#c72d76]/25 transition-all"
+                className="w-full h-12 text-base font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/25 transition-all"
               >
                 {loading ? (
                   <Spinner className="animate-spin h-5 w-5" weight="bold" />
@@ -209,7 +228,7 @@ export default function RegisterPage() {
 
             <p className="text-center text-gray-500 mt-6">
               Already have an account?{" "}
-              <Link href="/login" className="font-semibold text-[#c72d76] hover:underline transition-all">
+              <Link href="/login" className="font-semibold text-[#ff3f7a] hover:underline transition-all">
                 Sign in
               </Link>
             </p>
