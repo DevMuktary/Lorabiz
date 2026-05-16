@@ -104,14 +104,26 @@ export default function RegisterPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-700">
           
-          {/* Enlarged Logo Sitting Beautifully on the White Background */}
-          <div className="mb-6 flex justify-center lg:justify-start">
+          {/* Massive Mobile Logo (Pushed Down) */}
+          <div className="lg:hidden flex justify-center mt-10 mb-8">
             <Image 
               src="/logo.png" 
               alt="Lumebiz Logo" 
-              width={240} 
-              height={80} 
-              className="object-contain h-16 w-auto"
+              width={280} 
+              height={100} 
+              className="object-contain h-20 w-auto"
+              priority
+            />
+          </div>
+
+          {/* Massive Desktop Logo (Pushed Down) */}
+          <div className="hidden lg:flex mt-12 mb-10 justify-start">
+            <Image 
+              src="/logo.png" 
+              alt="Lumebiz Logo" 
+              width={380} 
+              height={120} 
+              className="object-contain h-28 w-auto"
               priority
             />
           </div>
