@@ -60,6 +60,7 @@ export default function RegisterPage() {
   // UI States
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   
   // Form Data States
   const [formData, setFormData] = useState({
@@ -168,6 +169,7 @@ export default function RegisterPage() {
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match.";
     if (!formData.state) newErrors.state = "Please select a state.";
     if (!formData.lga) newErrors.lga = "Please select an LGA.";
+    if (!agreedToTerms) newErrors.terms = "You must agree to the Terms & Conditions to proceed.";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -201,10 +203,11 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-x-hidden">
+    // Outer Wrapper: Completely locked view to prevent Safari drag/bounce
+    <div className="h-dvh w-full flex overflow-hidden bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overscroll-none">
       
-      {/* LEFT PANEL - Fixed Branding */}
-      <div className="hidden lg:flex w-[45%] bg-[#ff3f7a] p-12 flex-col justify-center fixed h-screen overflow-hidden">
+      {/* LEFT PANEL - Fixed Branding. No scroll. */}
+      <div className="hidden lg:flex w-[45%] h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden shrink-0">
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
 
@@ -239,11 +242,10 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - Scrollable Form */}
-      <div className="w-full lg:w-[55%] lg:ml-[45%] flex items-start justify-center p-6 sm:p-12 overflow-y-auto">
+      {/* RIGHT PANEL - This is the only part that scrolls vertically. */}
+      <div className="w-full lg:w-[55%] h-full flex items-start justify-center p-6 sm:p-12 overflow-y-auto overscroll-y-none">
         <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
           
-          {/* Logo Sitting Above Heading */}
           <div className="mb-8 flex justify-center lg:justify-start">
             <Image 
               src="/logo.png" 
@@ -322,7 +324,7 @@ export default function RegisterPage() {
                 {errors.nin && <p className="text-sm text-red-500 font-medium mt-1">{errors.nin}</p>}
                 <div className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-500 font-medium">
                   <ShieldCheck className="h-4 w-4 text-green-600" />
-                  <span>Used securely for instant identity verification. We do not store your NIN on our servers.</span>
+                  <span>Used securely for instant identity verification. We do not store your NIN.</span>
                 </div>
               </div>
             </div>
@@ -346,7 +348,6 @@ export default function RegisterPage() {
                   )}
                 </div>
                 
-                {/* OTP Dropdown Area */}
                 {otpStep === "sent" && (
                   <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 mt-2 flex gap-2 animate-in fade-in zoom-in-95">
                     <Input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} maxLength={6} placeholder="Enter 6-digit OTP" className="h-12 text-center text-lg tracking-widest bg-white" />
@@ -380,7 +381,6 @@ export default function RegisterPage() {
                     <Input id="password" type="password" value={formData.password} onChange={handleChange} required placeholder="••••••••" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
                   </div>
                   
-                  {/* Password Strength Meter */}
                   {formData.password && (
                     <div className="flex gap-1 mt-2">
                       {[1, 2, 3, 4].map((level) => (
@@ -411,7 +411,7 @@ export default function RegisterPage() {
                   <Label htmlFor="state" className="text-gray-700 font-medium">State</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <select id="state" value={formData.state} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a]">
+                    <select id="state" value={formData.state} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] appearance-none">
                       <option value="" disabled>Select State</option>
                       {NIGERIA_DATA.map((s) => (
                         <option key={s.state} value={s.state}>{s.state} State</option>
@@ -425,7 +425,7 @@ export default function RegisterPage() {
                   <Label htmlFor="lga" className="text-gray-700 font-medium">Local Government (LGA)</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <select id="lga" value={formData.lga} onChange={handleChange} required disabled={!formData.state} className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed">
+                    <select id="lga" value={formData.lga} onChange={handleChange} required disabled={!formData.state} className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed appearance-none">
                       <option value="" disabled>Select LGA</option>
                       {availableLgas.map((lga) => (
                         <option key={lga} value={lga}>{lga}</option>
@@ -452,7 +452,26 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="pt-6 border-t">
+            {/* Checkbox and Submit Area */}
+            <div className="pt-6 border-t space-y-6">
+              
+              <div className="flex items-start gap-3">
+                <div className="flex items-center h-6 mt-0.5">
+                  <input
+                    id="terms"
+                    type="checkbox"
+                    required
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="h-5 w-5 rounded border-gray-300 text-[#ff3f7a] focus:ring-[#ff3f7a] cursor-pointer"
+                  />
+                </div>
+                <Label htmlFor="terms" className="text-[15px] text-gray-600 leading-relaxed cursor-pointer font-normal">
+                  I agree to LumeBiz's <Link href="/terms" className="text-[#ff3f7a] hover:underline font-medium">Terms & Conditions</Link>, <Link href="/acceptable-use" className="text-[#ff3f7a] hover:underline font-medium">Acceptable Use</Link> and <Link href="/privacy" className="text-[#ff3f7a] hover:underline font-medium">Privacy Policy</Link>.
+                </Label>
+              </div>
+              {errors.terms && <p className="text-sm text-red-500 font-medium mt-[-10px]">{errors.terms}</p>}
+
               <Button 
                 type="submit" 
                 disabled={loading} 
