@@ -71,6 +71,7 @@ export default function RegisterPage() {
     email: "",
     phone: "",
     whatsapp: "",
+    nin: "",
     password: "",
     confirmPassword: "",
     gender: "",
@@ -111,7 +112,7 @@ export default function RegisterPage() {
     let { id, value } = e.target;
     
     // Strict Input Masking: Prevent non-numeric characters completely as they type
-    if (id === "whatsapp" || id === "phone") {
+    if (id === "whatsapp" || id === "phone" || id === "nin") {
       value = value.replace(/\D/g, ""); 
     }
 
@@ -167,6 +168,11 @@ export default function RegisterPage() {
     if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
     
+    // NIN Validation
+    if (!/^\d{11}$/.test(formData.nin)) {
+      newErrors.nin = "NIN must be exactly 11 numeric digits.";
+    }
+
     if (formData.phone.startsWith("0")) {
       if (formData.phone.length !== 11) newErrors.phone = "Phone numbers starting with 0 must be 11 digits.";
     } else {
@@ -191,18 +197,18 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    try {
-      // Intelligently combine names based on whether the middle name was provided
-      const finalFullName = formData.middleName 
-        ? `${formData.firstName} ${formData.middleName} ${formData.lastName}`
-        : `${formData.firstName} ${formData.lastName}`;
+    // Smartly merge names without creating double spaces if middleName is empty
+    const fullMergedName = [formData.firstName, formData.middleName, formData.lastName]
+      .filter(Boolean)
+      .join(" ");
 
+    try {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          fullName: finalFullName
+          fullName: fullMergedName
         }),
       });
 
@@ -258,7 +264,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - 'block' layout directly manages its own internal overflow */}
+      {/* RIGHT PANEL */}
       <div className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-white">
         <div className="w-full max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           
@@ -291,6 +297,7 @@ export default function RegisterPage() {
             <div className="space-y-5">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">1. Personal Identity</h3>
               
+              {/* Row 1: First & Last Name */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <Label htmlFor="firstName" className="text-gray-700 font-medium">First Name</Label>
@@ -309,12 +316,15 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {/* Row 2: Middle Name & Gender */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="middleName" className="text-gray-700 font-medium">Middle Name (Optional)</Label>
+                  <Label htmlFor="middleName" className="text-gray-700 font-medium flex items-center gap-1">
+                    Middle Name <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                  </Label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <Input id="middleName" value={formData.middleName} onChange={handleChange} placeholder="e.g. Smith" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                    <Input id="middleName" value={formData.middleName} onChange={handleChange} placeholder="Smith" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
                   </div>
                 </div>
 
@@ -332,6 +342,7 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {/* Row 3: NIN */}
               <div className="space-y-2">
                 <Label htmlFor="nin" className="text-gray-700 font-medium">National Identity Number (NIN)</Label>
                 <div className="relative">
@@ -497,8 +508,10 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="buildingNo" className="text-gray-700 font-medium">Building No.</Label>
-                  <Input id="buildingNo" value={formData.buildingNo} onChange={handleChange} placeholder="Optional" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                  <Label htmlFor="buildingNo" className="text-gray-700 font-medium flex items-center gap-1">
+                    Building No. <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                  </Label>
+                  <Input id="buildingNo" value={formData.buildingNo} onChange={handleChange} placeholder="e.g. 4B" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
                 </div>
               </div>
             </div>
