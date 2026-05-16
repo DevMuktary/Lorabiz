@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
   User, EnvelopeSimple, Phone, LockKey, Spinner, CheckCircle, ShieldCheck, 
-  RocketLaunch, CalendarBlank, GenderIntersex, MapPin, Buildings, WhatsappLogo
+  RocketLaunch, IdentificationCard, GenderIntersex, MapPin, Buildings, WhatsappLogo
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,13 +66,13 @@ export default function RegisterPage() {
   // Form Data States
   const [formData, setFormData] = useState({
     firstName: "",
+    middleName: "",
     lastName: "",
     email: "",
     phone: "",
     whatsapp: "",
     password: "",
     confirmPassword: "",
-    dob: "",
     gender: "",
     state: "",
     lga: "",
@@ -192,12 +192,17 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
+      // Intelligently combine names based on whether the middle name was provided
+      const finalFullName = formData.middleName 
+        ? `${formData.firstName} ${formData.middleName} ${formData.lastName}`
+        : `${formData.firstName} ${formData.lastName}`;
+
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          fullName: `${formData.firstName} ${formData.lastName}`
+          fullName: finalFullName
         }),
       });
 
@@ -215,7 +220,6 @@ export default function RegisterPage() {
   };
 
   return (
-    // THE ULTIMATE FIX: 'fixed inset-0' perfectly glues the entire app to the exact screen edges, eliminating body overscroll
     <div className="fixed inset-0 w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
       
       {/* LEFT PANEL - Hard Width, No Scrolling Allowed */}
@@ -254,9 +258,8 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - 'block' layout directly manages its own internal overflow without Flex stretching bugs */}
+      {/* RIGHT PANEL - 'block' layout directly manages its own internal overflow */}
       <div className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-white">
-        {/* We use 'mx-auto' and standard padding to structure the content inside the scroller safely */}
         <div className="w-full max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           
           <div className="mb-8 flex justify-center lg:justify-start mt-2 sm:mt-0">
@@ -308,10 +311,10 @@ export default function RegisterPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="dob" className="text-gray-700 font-medium">Date of Birth</Label>
+                  <Label htmlFor="middleName" className="text-gray-700 font-medium">Middle Name (Optional)</Label>
                   <div className="relative">
-                    <CalendarBlank className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <Input id="dob" type="date" value={formData.dob} onChange={handleChange} required className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                    <User className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
+                    <Input id="middleName" value={formData.middleName} onChange={handleChange} placeholder="e.g. Smith" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
                   </div>
                 </div>
 
@@ -323,8 +326,22 @@ export default function RegisterPage() {
                       <option value="" disabled>Select Gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
                     </select>
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nin" className="text-gray-700 font-medium">National Identity Number (NIN)</Label>
+                <div className="relative">
+                  <IdentificationCard className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
+                  <Input id="nin" type="text" maxLength={11} value={formData.nin} onChange={handleChange} required placeholder="11-digit NIN" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                </div>
+                {errors.nin && <p className="text-sm text-red-500 font-medium mt-1">{errors.nin}</p>}
+                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-500 font-medium">
+                  <ShieldCheck className="h-4 w-4 text-green-600" />
+                  <span>Used securely for instant identity verification. We do not store your NIN on our servers.</span>
                 </div>
               </div>
             </div>
@@ -436,9 +453,9 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* SECTION 3: Residential Address */}
+            {/* SECTION 3: Office Address */}
             <div className="space-y-5">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">3. Residential Address</h3>
+              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">3. Office Address</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
@@ -523,7 +540,6 @@ export default function RegisterPage() {
               </Link>
             </div>
             
-            {/* Added standard bottom margin so it doesn't rub against the phone screen edge, but doesn't over-stretch the scroll area either */}
             <div className="h-8 w-full"></div>
           </form>
 
