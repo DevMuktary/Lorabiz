@@ -49,8 +49,8 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 Days
   },
   pages: {
-    signIn: "/login", // Redirects here if they try to access a protected page
-    newUser: "/register" 
+    signIn: "/auth/login", // Redirects here if they try to access a protected page
+    newUser: "/auth/register" 
   },
   callbacks: {
     async jwt({ token, user }) {
