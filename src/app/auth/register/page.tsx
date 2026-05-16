@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
   User, EnvelopeSimple, Phone, LockKey, Spinner, CheckCircle, ShieldCheck, 
-  RocketLaunch, GenderIntersex, MapPin, Buildings, WhatsappLogo, CalendarBlank
+  RocketLaunch, CalendarBlank, GenderIntersex, MapPin, Buildings, WhatsappLogo,
+  Eye, EyeSlash
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,8 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [sameAsPhone, setSameAsPhone] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Form Data States
   const [formData, setFormData] = useState({
@@ -140,7 +143,7 @@ export default function RegisterPage() {
     return () => clearInterval(interval);
   }, [otpTimer, otpStep]);
 
-  // Real API Call for OTP
+  // --- SECURE: Trigger API to send actual ZeptoMail email ---
   const handleSendOTP = async () => {
     if (!formData.email || !formData.email.includes("@")) {
       setErrors({ email: "Please enter a valid email address first." });
@@ -168,13 +171,12 @@ export default function RegisterPage() {
     }
   };
 
-  // Frontend Verification (Backend validates it again)
+  // UI Verification 
   const handleVerifyOTP = () => {
     if (otpCode.length === 6) { 
       setOtpStep("verified");
-      setErrors({ email: "" });
     } else {
-      setErrors({ email: "Code must be exactly 6 digits." });
+      setErrors({ email: "Invalid OTP Code. Must be 6 digits." });
     }
   };
 
@@ -186,7 +188,6 @@ export default function RegisterPage() {
 
     if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
-    if (!otpCode) newErrors.email = "OTP code is required for registration.";
     
     if (formData.phone.startsWith("0")) {
       if (formData.phone.length !== 11) newErrors.phone = "Phone numbers starting with 0 must be 11 digits.";
@@ -218,7 +219,8 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          otpCode, // Include OTP Code for backend verification
+          otpCode, // SECURE: Includes the OTP to verify in the database transaction
+          fullName: [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(" ")
         }),
       });
 
@@ -227,7 +229,7 @@ export default function RegisterPage() {
       } else {
         const data = await res.json();
         
-        // Handle OTP specifically 
+        // Revert OTP state if the backend rejects the code
         if (data.message?.toLowerCase().includes("code") || data.message?.toLowerCase().includes("verification")) {
           setOtpStep("sent");
           setErrors({ email: data.message });
@@ -441,7 +443,23 @@ export default function RegisterPage() {
                   <Label htmlFor="password" className="text-gray-700 font-medium">Create Password</Label>
                   <div className="relative">
                     <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <Input id="password" type="password" value={formData.password} onChange={handleChange} required placeholder="••••••••" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                    <Input 
+                      id="password" 
+                      type={showPassword ? "text" : "password"} 
+                      value={formData.password} 
+                      onChange={handleChange} 
+                      required 
+                      placeholder="••••••••" 
+                      className="pl-11 pr-10 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)} 
+                      className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
                   </div>
                   
                   {formData.password && (
@@ -458,7 +476,23 @@ export default function RegisterPage() {
                   <Label htmlFor="confirmPassword" className="text-gray-700 font-medium">Confirm Password</Label>
                   <div className="relative">
                     <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <Input id="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleChange} required placeholder="••••••••" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                    <Input 
+                      id="confirmPassword" 
+                      type={showConfirmPassword ? "text" : "password"} 
+                      value={formData.confirmPassword} 
+                      onChange={handleChange} 
+                      required 
+                      placeholder="••••••••" 
+                      className="pl-11 pr-10 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                      className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    >
+                      {showConfirmPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
                   </div>
                   {errors.confirmPassword && <p className="text-sm text-red-500 font-medium mt-1">{errors.confirmPassword}</p>}
                 </div>
