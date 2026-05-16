@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
   User, EnvelopeSimple, Phone, LockKey, Spinner, CheckCircle, ShieldCheck, 
-  RocketLaunch, IdentificationCard, CalendarBlank, GenderIntersex, MapPin, Buildings
+  RocketLaunch, CalendarBlank, GenderIntersex, MapPin, Buildings, WhatsappLogo
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [sameAsPhone, setSameAsPhone] = useState(false);
   
   // Form Data States
   const [formData, setFormData] = useState({
@@ -68,7 +69,7 @@ export default function RegisterPage() {
     lastName: "",
     email: "",
     phone: "",
-    nin: "",
+    whatsapp: "",
     password: "",
     confirmPassword: "",
     dob: "",
@@ -98,12 +99,19 @@ export default function RegisterPage() {
   };
   const passScore = getPasswordStrength();
 
+  // Smart Sync: Mirror phone to whatsapp if checkbox is checked
+  useEffect(() => {
+    if (sameAsPhone) {
+      setFormData((prev) => ({ ...prev, whatsapp: prev.phone }));
+    }
+  }, [formData.phone, sameAsPhone]);
+
   // Handle Input Changes with Real-time Masking
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { id, value } = e.target;
     
     // Strict Input Masking: Prevent non-numeric characters completely as they type
-    if (id === "nin" || id === "phone") {
+    if (id === "whatsapp" || id === "phone") {
       value = value.replace(/\D/g, ""); 
     }
 
@@ -161,16 +169,18 @@ export default function RegisterPage() {
     if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
     
-    // NIN Validation: Must be exactly 11 digits
-    if (!/^\d{11}$/.test(formData.nin)) {
-      newErrors.nin = "NIN must be exactly 11 numeric digits.";
-    }
-
     // Phone Validation: Handle with or without leading zero
     if (formData.phone.startsWith("0")) {
       if (formData.phone.length !== 11) newErrors.phone = "Phone numbers starting with 0 must be 11 digits.";
     } else {
       if (formData.phone.length !== 10) newErrors.phone = "Phone numbers without a leading 0 must be 10 digits.";
+    }
+
+    // WhatsApp Validation: Same logic as phone
+    if (formData.whatsapp.startsWith("0")) {
+      if (formData.whatsapp.length !== 11) newErrors.whatsapp = "WhatsApp numbers starting with 0 must be 11 digits.";
+    } else {
+      if (formData.whatsapp.length !== 10) newErrors.whatsapp = "WhatsApp numbers without a leading 0 must be 10 digits.";
     }
 
     if (passScore < 3) newErrors.password = "Password is too weak. Add numbers or symbols.";
@@ -210,12 +220,11 @@ export default function RegisterPage() {
   };
 
   return (
-    // THE CSS FIX: We use a native scroll wrapper. 
-    // On mobile, the entire body scrolls. On desktop, the flex container holds the fixed sidebar.
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white font-sans selection:bg-[#ff3f7a] selection:text-white">
+    <div className="h-[100dvh] w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
       
-      {/* LEFT PANEL - Fixed purely on Desktop, hidden on mobile */}
-      <div className="hidden lg:flex w-[45%] fixed top-0 left-0 h-screen bg-[#ff3f7a] p-12 flex-col justify-center overflow-hidden">
+      {/* LEFT PANEL - Hard Width, No Scrolling Allowed */}
+      <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden">
+        {/* Subtle glowing orbs safely tucked inside overflow-hidden */}
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
 
@@ -250,9 +259,9 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - Takes full width on mobile, 55% offset margin on desktop. Native scrolling! */}
-      <div className="w-full lg:w-[55%] lg:ml-[45%] min-h-screen flex flex-col justify-center p-6 sm:p-12 py-12 lg:py-16">
-        <div className="w-full max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* RIGHT PANEL - Flex-1 Handles Remaining Space, Scrolls Internally Only */}
+      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden p-6 sm:p-12 flex items-start justify-center relative">
+        <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
           
           <div className="mb-8 flex justify-center lg:justify-start">
             <Image 
@@ -322,19 +331,6 @@ export default function RegisterPage() {
                   </div>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="nin" className="text-gray-700 font-medium">National Identity Number (NIN)</Label>
-                <div className="relative">
-                  <IdentificationCard className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                  <Input id="nin" type="text" maxLength={11} value={formData.nin} onChange={handleChange} required placeholder="11-digit NIN" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
-                </div>
-                {errors.nin && <p className="text-sm text-red-500 font-medium mt-1">{errors.nin}</p>}
-                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-500 font-medium">
-                  <ShieldCheck className="h-4 w-4 text-green-600" />
-                  <span>Used securely for instant identity verification. We do not store your NIN on our servers.</span>
-                </div>
-              </div>
             </div>
 
             {/* SECTION 2: Contact & Security */}
@@ -370,15 +366,49 @@ export default function RegisterPage() {
                 {errors.email && <p className="text-sm text-red-500 font-medium mt-1">{errors.email}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-gray-700 font-medium">Phone Number</Label>
-                <div className="flex items-center">
-                  <div className="flex items-center justify-center h-12 px-3 border border-r-0 border-gray-200 bg-gray-100 rounded-l-md text-[16px] font-medium text-gray-700">
-                    <span className="mr-2 text-lg">🇳🇬</span> +234
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-gray-700 font-medium">Phone Number</Label>
+                  <div className="flex items-center">
+                    <div className="flex items-center justify-center h-12 px-3 border border-r-0 border-gray-200 bg-gray-100 rounded-l-md text-[16px] font-medium text-gray-700">
+                      <span className="mr-2 text-lg">🇳🇬</span> +234
+                    </div>
+                    <Input id="phone" type="tel" maxLength={11} value={formData.phone} onChange={handleChange} required placeholder="800 000 0000" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 rounded-l-none focus-visible:ring-[#ff3f7a]" />
                   </div>
-                  <Input id="phone" type="tel" maxLength={11} value={formData.phone} onChange={handleChange} required placeholder="800 000 0000" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 rounded-l-none focus-visible:ring-[#ff3f7a]" />
+                  {errors.phone && <p className="text-sm text-red-500 font-medium mt-1">{errors.phone}</p>}
                 </div>
-                {errors.phone && <p className="text-sm text-red-500 font-medium mt-1">{errors.phone}</p>}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="whatsapp" className="text-gray-700 font-medium">WhatsApp Number</Label>
+                    <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer font-medium hover:text-[#ff3f7a] transition-colors">
+                      <input 
+                        type="checkbox" 
+                        checked={sameAsPhone}
+                        onChange={(e) => setSameAsPhone(e.target.checked)}
+                        className="h-3.5 w-3.5 accent-[#ff3f7a] rounded border-gray-300 cursor-pointer"
+                      />
+                      Same as Phone
+                    </label>
+                  </div>
+                  <div className="flex items-center relative">
+                    <div className="flex items-center justify-center h-12 px-3 border border-r-0 border-gray-200 bg-gray-100 rounded-l-md text-[16px] font-medium text-gray-700">
+                      <WhatsappLogo className="h-5 w-5 text-green-500 mr-2" weight="fill" /> +234
+                    </div>
+                    <Input 
+                      id="whatsapp" 
+                      type="tel" 
+                      maxLength={11} 
+                      value={formData.whatsapp} 
+                      onChange={handleChange} 
+                      required 
+                      disabled={sameAsPhone}
+                      placeholder="800 000 0000" 
+                      className="h-12 text-[16px] bg-gray-50/50 border-gray-200 rounded-l-none focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed" 
+                    />
+                  </div>
+                  {errors.whatsapp && <p className="text-sm text-red-500 font-medium mt-1">{errors.whatsapp}</p>}
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -490,15 +520,15 @@ export default function RegisterPage() {
               </Button>
             </div>
 
-            <p className="text-center text-gray-500 mt-6 pb-8">
+            <div className="text-center text-gray-500 mt-6">
               Already have an account?{" "}
               <Link href="/auth/login" className="font-semibold text-[#ff3f7a] hover:underline transition-all">
                 Sign in
               </Link>
-            </p>
+            </div>
           </form>
           
-          <div className="lg:hidden mt-4 text-center pb-8">
+          <div className="lg:hidden mt-8 text-center">
              <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
               Powered by Quadrox Technologies Ltd
             </p>
