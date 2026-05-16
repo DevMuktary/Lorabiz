@@ -117,7 +117,6 @@ export default function RegisterPage() {
 
     setFormData(prev => ({ ...prev, [id]: value }));
     
-    // Clear specific error when user starts typing again
     if (errors[id]) {
       setErrors(prev => ({ ...prev, [id]: "" }));
     }
@@ -165,18 +164,15 @@ export default function RegisterPage() {
     setErrors({});
     let newErrors: Record<string, string> = {};
 
-    // 1. Strict Validation Checks
     if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
     
-    // Phone Validation: Handle with or without leading zero
     if (formData.phone.startsWith("0")) {
       if (formData.phone.length !== 11) newErrors.phone = "Phone numbers starting with 0 must be 11 digits.";
     } else {
       if (formData.phone.length !== 10) newErrors.phone = "Phone numbers without a leading 0 must be 10 digits.";
     }
 
-    // WhatsApp Validation: Same logic as phone
     if (formData.whatsapp.startsWith("0")) {
       if (formData.whatsapp.length !== 11) newErrors.whatsapp = "WhatsApp numbers starting with 0 must be 11 digits.";
     } else {
@@ -190,7 +186,7 @@ export default function RegisterPage() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      return; // Stop submission
+      return;
     }
 
     setLoading(true);
@@ -199,7 +195,6 @@ export default function RegisterPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Combine names back into fullName for the DB
         body: JSON.stringify({
           ...formData,
           fullName: `${formData.firstName} ${formData.lastName}`
@@ -220,11 +215,11 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="h-[100dvh] w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
+    // THE ULTIMATE FIX: 'fixed inset-0' perfectly glues the entire app to the exact screen edges, eliminating body overscroll
+    <div className="fixed inset-0 w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
       
       {/* LEFT PANEL - Hard Width, No Scrolling Allowed */}
       <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden">
-        {/* Subtle glowing orbs safely tucked inside overflow-hidden */}
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
 
@@ -259,17 +254,18 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - Flex-1 Handles Remaining Space, Scrolls Internally Only */}
-      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden p-6 sm:p-12 flex items-start justify-center relative">
-        <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* RIGHT PANEL - 'block' layout directly manages its own internal overflow without Flex stretching bugs */}
+      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-white">
+        {/* We use 'mx-auto' and standard padding to structure the content inside the scroller safely */}
+        <div className="w-full max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           
-          <div className="mb-8 flex justify-center lg:justify-start">
+          <div className="mb-8 flex justify-center lg:justify-start mt-2 sm:mt-0">
             <Image 
               src="/logo.png" 
               alt="Lumebiz Logo" 
               width={340} 
               height={120} 
-              className="object-contain h-24 lg:h-28 w-auto"
+              className="object-contain h-20 lg:h-24 w-auto"
               priority
             />
           </div>
@@ -526,13 +522,10 @@ export default function RegisterPage() {
                 Sign in
               </Link>
             </div>
+            
+            {/* Added standard bottom margin so it doesn't rub against the phone screen edge, but doesn't over-stretch the scroll area either */}
+            <div className="h-8 w-full"></div>
           </form>
-          
-          <div className="lg:hidden mt-8 text-center">
-             <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
-              Powered by Quadrox Technologies Ltd
-            </p>
-          </div>
 
         </div>
       </div>
