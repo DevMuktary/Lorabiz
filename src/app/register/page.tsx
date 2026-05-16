@@ -67,20 +67,18 @@ export default function RegisterPage() {
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
 
-        {/* Logo Area - Now with a White Background Container */}
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="bg-white p-2.5 rounded-xl shadow-lg flex items-center justify-center h-14 w-14">
-            {/* The Next.js Image component pulling from your public folder */}
+        {/* Expanded Logo Area */}
+        <div className="relative z-10 flex items-start">
+          <div className="bg-white px-6 py-4 rounded-xl shadow-lg flex items-center justify-center min-w-[200px]">
             <Image 
               src="/logo.png" 
               alt="Lumebiz Logo" 
-              width={40} 
-              height={40} 
-              className="object-contain"
+              width={200} 
+              height={60} 
+              className="object-contain h-12 w-auto"
               priority
             />
           </div>
-          <span className="text-3xl font-extrabold tracking-tight text-white">Lumebiz</span>
         </div>
 
         {/* Hero Copy */}
@@ -120,18 +118,17 @@ export default function RegisterPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-700">
           
-          {/* Mobile Logo (Only shows on small screens) */}
-          <div className="lg:hidden flex flex-col items-center justify-center gap-3 mb-10">
-            <div className="bg-white p-2 rounded-xl shadow-md border border-gray-100 flex items-center justify-center h-16 w-16">
+          {/* Expanded Mobile Logo */}
+          <div className="lg:hidden flex justify-center mb-10">
+            <div className="bg-white px-6 py-3 rounded-xl shadow-md border border-gray-100 flex items-center justify-center min-w-[180px]">
               <Image 
                 src="/logo.png" 
                 alt="Lumebiz Logo" 
-                width={48} 
-                height={48} 
-                className="object-contain"
+                width={180} 
+                height={50} 
+                className="object-contain h-10 w-auto"
               />
             </div>
-            <span className="text-3xl font-extrabold tracking-tight text-gray-900">Lumebiz</span>
           </div>
 
           <div className="mb-10 text-center lg:text-left">
