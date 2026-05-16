@@ -5,17 +5,17 @@ import {
   HandHeart, 
   ArrowRight, 
   CheckCircle 
-} from "@phosphor-icons/react/dist/ssr"; // Use SSR imports for Server Components
+} from "@phosphor-icons/react/dist/ssr";
 
 const REGISTRATION_TYPES = [
   {
     id: "business-name",
     title: "Business Name",
-    description: "The simplest, fastest, and most affordable way to register a small business. You and your business are treated as the same entity.",
+    description: "The fastest and most affordable way to register a small business. You can register as a sole proprietor or as a partnership with multiple proprietors.",
     idealFor: [
       "Freelancers & Artisans",
-      "Small shop owners",
-      "Sole proprietors",
+      "Sole Proprietors",
+      "Partnerships",
     ],
     icon: Storefront,
     href: "/dashboard/register/business-name",
@@ -27,11 +27,11 @@ const REGISTRATION_TYPES = [
   {
     id: "llc",
     title: "Limited Liability Company (LTD)",
-    description: "A separate legal entity from its owners. It protects your personal assets and allows you to issue shares or secure corporate loans.",
+    description: "A separate legal entity from its owners. It protects your personal assets and allows you to issue shares, bid for major contracts, or secure corporate loans.",
     idealFor: [
-      "Startups & Agencies",
+      "Startups & Tech Agencies",
       "Businesses seeking investors",
-      "Partnerships with multiple owners",
+      "Companies bidding for contracts",
     ],
     icon: Buildings,
     href: "/dashboard/register/llc",
@@ -43,7 +43,7 @@ const REGISTRATION_TYPES = [
   {
     id: "ngo",
     title: "Incorporated Trustees (NGO)",
-    description: "Strictly for non-profit organizations. This registers a board of trustees to manage the organization's assets and operations.",
+    description: "Strictly for non-profit organizations. This registers a board of trustees to manage the organization's assets, operations, and charitable goals.",
     idealFor: [
       "Churches & Mosques",
       "Foundations & Charities",
@@ -60,14 +60,14 @@ const REGISTRATION_TYPES = [
 
 export default function NewRegistrationPage() {
   return (
-    <div className="max-w-5xl mx-auto pb-12">
+    <div className="max-w-6xl mx-auto pb-12 antialiased">
       
       {/* PAGE HEADER */}
-      <div className="text-center max-w-2xl mx-auto mb-12">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-3">
+      <div className="text-center max-w-2xl mx-auto mb-14">
+        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
           What would you like to register?
         </h1>
-        <p className="text-lg text-gray-500">
+        <p className="text-lg text-slate-500 leading-relaxed font-medium">
           Select the type of entity that best fits your needs. Don't worry if you aren't a legal expert, we've made it simple to understand.
         </p>
       </div>
@@ -79,15 +79,15 @@ export default function NewRegistrationPage() {
             key={type.id} 
             href={type.href}
             className={`
-              relative flex flex-col h-full bg-white p-8 rounded-3xl border border-gray-200 
-              transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2
+              relative flex flex-col h-full bg-white p-8 sm:p-10 rounded-3xl border border-slate-200 
+              transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2
               group ${type.border}
             `}
           >
             {/* BADGE */}
             {type.badge && (
               <div className="absolute -top-3.5 inset-x-0 flex justify-center">
-                <span className="bg-[#ff3f7a] text-white text-xs font-bold uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md">
+                <span className="bg-[#ff3f7a] text-white text-[11px] font-bold uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md">
                   {type.badge}
                 </span>
               </div>
@@ -98,34 +98,34 @@ export default function NewRegistrationPage() {
               <div className={`h-16 w-16 rounded-2xl ${type.bg} ${type.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
                 <type.icon className="h-8 w-8" weight="fill" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 tracking-tight mb-2">
+              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mb-3">
                 {type.title}
               </h2>
-              <p className="text-sm text-gray-600 leading-relaxed min-h-[80px]">
+              <p className="text-sm text-slate-600 leading-relaxed min-h-[85px] font-medium">
                 {type.description}
               </p>
             </div>
 
             {/* IDEAL FOR LIST */}
-            <div className="mt-auto pt-6 border-t border-gray-100 flex-1 flex flex-col">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+            <div className="mt-auto pt-6 border-t border-slate-100 flex-1 flex flex-col">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
                 Perfect for:
               </p>
-              <ul className="space-y-3 mb-8 flex-1">
+              <ul className="space-y-3.5 mb-10 flex-1">
                 {type.idealFor.map((item, index) => (
-                  <li key={index} className="flex items-start gap-2.5 text-sm text-gray-700 font-medium">
+                  <li key={index} className="flex items-start gap-3 text-sm text-slate-700 font-semibold">
                     <CheckCircle className={`h-5 w-5 shrink-0 ${type.color}`} weight="fill" />
-                    <span className="leading-tight">{item}</span>
+                    <span className="leading-snug pt-0.5">{item}</span>
                   </li>
                 ))}
               </ul>
 
               {/* ACTION BUTTON */}
               <div className={`
-                w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all
+                w-full py-4 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all
                 ${type.id === 'llc' 
-                  ? 'bg-[#ff3f7a] text-white shadow-lg shadow-[#ff3f7a]/20 group-hover:bg-[#e02b62]' 
-                  : 'bg-gray-50 text-gray-900 group-hover:bg-gray-100'
+                  ? 'bg-[#ff3f7a] text-white shadow-lg shadow-[#ff3f7a]/25 group-hover:bg-[#e02b62] group-hover:shadow-[#ff3f7a]/40' 
+                  : 'bg-slate-50 text-slate-900 group-hover:bg-slate-100'
                 }
               `}>
                 Start Application
