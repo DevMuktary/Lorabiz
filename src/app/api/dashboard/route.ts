@@ -2,17 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 
-// If you moved your auth options to a separate file, import it here. 
-// Otherwise, NextAuth can sometimes grab the session natively if configured globally.
-
 export async function GET(req: Request) {
   try {
-    // 1. Authenticate the User
-    // const session = await getServerSession();
-    // if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    
     // FOR NOW: We will use a dummy user ID for testing until your NextAuth session is fully wired.
-    // Replace this with: const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    // Replace this with: const session = await getServerSession(); const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     const user = await prisma.user.findFirst(); 
     if (!user) return NextResponse.json({ message: "No user found" }, { status: 404 });
 
@@ -24,7 +17,6 @@ export async function GET(req: Request) {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    // 2. Build the dynamic database query
     let whereClause: any = { userId: user.id };
     
     if (search) {
@@ -34,7 +26,6 @@ export async function GET(req: Request) {
       whereClause.status = status;
     }
     if (type !== "ALL") {
-      // Assuming Post-Inc services have a specific keyword in their businessType
       if (type === "POST_INC") {
         whereClause.businessType = { in: ["Annual Returns", "Change of Name", "CTC"] };
       } else {
@@ -42,7 +33,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // 3. Fetch Data & Calculate Stats (Atomic Promise.all for speed)
+    // Atomic Promise.all for absolute maximum speed. Now querying the Wallet too.
     const [
       registrations, 
       totalRecords,
@@ -51,7 +42,8 @@ export async function GET(req: Request) {
       approvedCount,
       queriedCount,
       unsubmittedCount,
-      postIncCount
+      postIncCount,
+      wallet // <-- FETCHING THE REAL WALLET
     ] = await Promise.all([
       prisma.businessRegistration.findMany({
         where: whereClause,
@@ -59,8 +51,8 @@ export async function GET(req: Request) {
         skip,
         take: limit,
       }),
-      prisma.businessRegistration.count({ where: whereClause }), // For pagination
-      prisma.businessRegistration.count({ where: { userId: user.id } }), // Total
+      prisma.businessRegistration.count({ where: whereClause }), 
+      prisma.businessRegistration.count({ where: { userId: user.id } }), 
       prisma.businessRegistration.count({ where: { userId: user.id, status: "PENDING" } }),
       prisma.businessRegistration.count({ where: { userId: user.id, status: "APPROVED" } }),
       prisma.businessRegistration.count({ where: { userId: user.id, status: "QUERIED" } }),
@@ -68,11 +60,11 @@ export async function GET(req: Request) {
       prisma.businessRegistration.count({ 
         where: { userId: user.id, businessType: { in: ["Annual Returns", "Change of Name", "CTC"] } } 
       }),
+      prisma.wallet.findUnique({ where: { userId: user.id } }) // <-- REAL DB CALL
     ]);
 
-    // 4. Return the calculated dashboard state
     return NextResponse.json({
-      walletBalance: 45000, // Hardcoded for now until we build the Wallet table
+      walletBalance: wallet?.balance || 0, // <-- REAL DATA INJECTED HERE
       stats: {
         total: totalCount,
         pending: pendingCount,
