@@ -16,15 +16,15 @@ export default function BusinessNameSearchPage() {
   const [specificNature, setSpecificNature] = useState("");
   const [proposedName, setProposedName] = useState("");
   
-  // Results State
+  // Results State updated to include similarNames array
   const [searchResult, setResult] = useState<{
     similarityScore: string;
     complianceScore: string;
     mostSimilarName: string;
+    similarNames: string[];
     message: string;
   } | null>(null);
 
-  // Derive the specific natures based on the selected category
   const availableNatures = selectedCategory ? CAC_CATEGORIES[selectedCategory] : [];
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -35,7 +35,6 @@ export default function BusinessNameSearchPage() {
     setResult(null);
 
     try {
-      // We will create this secure API route in the next step to talk to the CAC VAS endpoint
       const res = await fetch("/api/cac/name-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -49,17 +48,18 @@ export default function BusinessNameSearchPage() {
       
       if (res.ok && data.success) {
         setResult({
-          similarityScore: data.data.similarityScore,
-          complianceScore: data.data.complianceScore,
-          mostSimilarName: data.data.mostSimilarName,
+          similarityScore: data.data.similarityScore || "0%",
+          complianceScore: data.data.complianceScore || "0%",
+          mostSimilarName: data.data.mostSimilarName || "",
+          similarNames: data.data.similarNames || [], // Capture the array
           message: data.message
         });
       } else {
-        // Handle API rejection or error gracefully
         setResult({
           similarityScore: "100%",
           complianceScore: "0%",
           mostSimilarName: "Error or Conflict",
+          similarNames: [],
           message: data.message || "Failed to check name availability."
         });
       }
@@ -154,7 +154,7 @@ export default function BusinessNameSearchPage() {
                 value={selectedCategory} 
                 onChange={(e) => {
                   setSelectedCategory(e.target.value);
-                  setSpecificNature(""); // Reset sub-category when parent changes
+                  setSpecificNature(""); 
                 }}
                 required 
                 className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-[15px] font-medium text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a]"
@@ -260,9 +260,17 @@ export default function BusinessNameSearchPage() {
                     </div>
                   </div>
 
-                  {searchResult.mostSimilarName && parseFloat(searchResult.similarityScore) > 0 && (
-                    <div className="mt-4 bg-white px-4 py-3 rounded-xl border border-slate-100 text-sm font-medium text-slate-600 shadow-sm">
-                      Most similar registered name: <span className="font-bold text-slate-900">{searchResult.mostSimilarName}</span>
+                  {/* DISPLAY SIMILAR NAMES */}
+                  {searchResult.similarNames && searchResult.similarNames.length > 0 && parseFloat(searchResult.similarityScore) > 0 && (
+                    <div className="mt-4 bg-white px-4 py-3 rounded-xl border border-slate-100 text-sm shadow-sm">
+                      <p className="font-bold text-slate-900 mb-2">Similar Registered Names:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {searchResult.similarNames.map((name, idx) => (
+                          <span key={idx} className="bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-md text-xs font-bold tracking-wide border border-slate-200">
+                            {name}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
 
