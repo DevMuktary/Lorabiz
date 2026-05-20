@@ -2,72 +2,93 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Make sure to add this to Railway
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function POST(req: Request) {
   try {
-    const { proposedName, lineOfBusiness, entityType } = await req.json();
+    const { proposedName, lineOfBusiness, entityType, mode } = await req.json();
 
-    if (!proposedName || !lineOfBusiness || !entityType) {
-      return NextResponse.json({ success: false, message: "Missing required fields." }, { status: 400 });
+    if (!lineOfBusiness || !entityType) {
+      return NextResponse.json({ success: false, message: "Missing required meta parameters." }, { status: 400 });
     }
 
     const cacApiKey = process.env.CAC_API_KEY;
     if (!cacApiKey) throw new Error("Missing CAC API Key");
 
-    // --- PHASE 1: OPENAI CLEANSING & SUGGESTIONS ---
-    // Using gpt-4o-mini for instant speed and fractions-of-a-cent pricing
-    const aiResponse = await openai.chat.completions.create({
+    // --- MODE: SUGGEST (The Smart Checked Loop) ---
+    if (mode === "SUGGEST") {
+      let attempts = 0;
+      let validAlternative = "";
+      
+      while (attempts < 3) {
+        attempts++;
+        // Ask AI for a single clever variant based on their input text
+        const aiSuggestion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: `You are a strict legal name generator for the Nigerian Corporate Affairs Commission (CAC).
+              Generate exactly ONE highly creative, unique alternative name for a ${entityType} based on the base theme: "${proposedName}".
+              Industry sector context: "${lineOfBusiness}".
+              Do not append any conversational filler, quotes, or punctuation. Return ONLY the string name.`
+            }
+          ],
+          temperature: 0.8,
+        });
+
+        const testName = (aiSuggestion.choices[0].message.content || "").trim().toUpperCase();
+
+        // Cross-verify this suggestion live against CAC servers
+        const cacVerify = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X_API_KEY": cacApiKey,
+          },
+          body: JSON.stringify({ proposedName: testName, lineOfBusiness }),
+        });
+
+        if (cacVerify.ok) {
+          const verifyJson = await cacVerify.json();
+          const score = parseFloat(verifyJson.data?.similarityScore || "0");
+          const compliance = parseFloat(verifyJson.data?.complianceScore || "100");
+
+          // Ensure it passes your exact thresholds natively before returning
+          if (score < 70 && compliance >= 50 && verifyJson.message !== "Name exist") {
+            validAlternative = testName;
+            break;
+          }
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        alternativeName: validAlternative || `${proposedName.toUpperCase()} GLOBAL`
+      });
+    }
+
+    // --- MODE: STANDARD CHECK ---
+    // AI Cleansing block runs first to remove bad suffixes (LTD on business names etc.)
+    const aiCleanse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: `You are an expert Nigerian Corporate Affairs Commission (CAC) legal parser. 
-          The user wants to register a ${entityType === 'llc' ? 'Limited Liability Company' : entityType === 'ngo' ? 'Incorporated Trustee (NGO)' : 'Business Name'}.
-          
-          RULES:
-          1. If entity is 'Business Name', REMOVE 'LTD', 'LIMITED', 'PLC', 'INC', 'FOUNDATION', 'INITIATIVE' or related CAC unacceptable word for business name. Keep 'VENTURES', 'ENTERPRISES', 'CONCEPTS', etc.
-          2. If entity is 'Limited Liability Company', it MUST end in 'LTD' or 'LIMITED'.
-          3. If entity is 'NGO', it MUST end in 'FOUNDATION', 'INITIATIVE', 'MINISTRY', etc.
-          4. Generate 5 highly unique, professional alternative names based on the root word and line of business.`
+          content: `Clean the company name for a Nigerian CAC "${entityType}". 
+          If Business Name, drop LTD, LIMITED, PLC, INC, FOUNDATION. 
+          If LLC, force it to end with LTD. 
+          Return ONLY the final string name with no extra characters.`
         },
-        {
-          role: "user",
-          content: `Proposed Name: "${proposedName}". Line of Business: "${lineOfBusiness}".`
-        }
+        { role: "user", content: proposedName }
       ],
-      // This forces OpenAI to strictly output the exact JSON format we need
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "cac_name_parser",
-          schema: {
-            type: "object",
-            properties: {
-              cleansedName: {
-                type: "string",
-                description: "The legally cleansed name ready for CAC."
-              },
-              suggestedNames: {
-                type: "array",
-                items: { type: "string" },
-                description: "5 professional alternative names."
-              }
-            },
-            required: ["cleansedName", "suggestedNames"],
-            additionalProperties: false
-          },
-          strict: true
-        }
-      },
-      temperature: 0.2, // Keeps the AI highly deterministic and logical
+      temperature: 0.1,
     });
 
-    const parsedAiResult = JSON.parse(aiResponse.choices[0].message.content || "{}");
-    const safeName = (parsedAiResult.cleansedName || proposedName).toUpperCase();
+    const safeName = (aiCleanse.choices[0].message.content || proposedName).trim().toUpperCase();
 
-    // --- PHASE 2: CAC VALIDATION ---
     const cacResponse = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
       method: "POST",
       headers: {
@@ -79,29 +100,39 @@ export async function POST(req: Request) {
     });
 
     if (!cacResponse.ok) {
-        return NextResponse.json({
-            success: false,
-            message: "CAC Gateway Error",
-            data: { similarityScore: "100%", complianceScore: "0%", aiSuggestedNames: parsedAiResult.suggestedNames, cleansedNameUsed: safeName }
-        }, { status: cacResponse.status });
+      return NextResponse.json({
+        success: true,
+        isBlocked: true,
+        message: "Name validation check returned structural conflicts.",
+        data: { similarityScore: "100%", complianceScore: "0%", mostSimilarName: "CONFLICT DETECTED", cleansedNameUsed: safeName }
+      });
     }
 
     const cacJson = await cacResponse.json();
     
-    // Inject the AI suggestions and the exact cleansed name we used into the payload
-    cacJson.data = cacJson.data || {};
-    cacJson.data.aiSuggestedNames = parsedAiResult.suggestedNames || [];
-    cacJson.data.cleansedNameUsed = safeName;
+    // Setup clean fallbacks
+    const scoreStr = cacJson.data?.similarityScore || "0%";
+    const complianceStr = cacJson.data?.complianceScore || "100%";
+    const scoreVal = parseFloat(scoreStr);
+    const complianceVal = parseFloat(complianceStr);
+    
+    // Explicit condition matching user rules: Score >= 70% OR Compliance < 50% OR explicit existence flag
+    const isBlocked = scoreVal >= 70 || complianceVal < 50 || cacJson.message === "Name exist";
 
-    // Handle CAC's 403 "Name Exist" embedded inside a 200/403 response
-    if (cacJson.message === "Name exist" || cacJson.error === "permission denied") {
-        cacJson.data.similarityScore = "100%";
-    }
-
-    return NextResponse.json(cacJson, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      isBlocked,
+      message: cacJson.message,
+      data: {
+        similarityScore: scoreStr,
+        complianceScore: complianceStr,
+        mostSimilarName: cacJson.data?.mostSimilarName || "N/A",
+        cleansedNameUsed: safeName
+      }
+    });
 
   } catch (error) {
-    console.error("API Error:", error);
-    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
+    console.error("Gateway Error Instance:", error);
+    return NextResponse.json({ success: false, message: "Internal application engine failure." }, { status: 500 });
   }
 }
