@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { 
-  Info, CheckCircle, Warning, MagnifyingGlass, Spinner, ArrowRight, X, ArrowsClockwise
+  Info, CheckCircle, Warning, MagnifyingGlass, Spinner, ArrowRight, X, Sparkle, Pencil
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,21 +11,22 @@ import { CAC_CATEGORIES } from "@/lib/cac-categories";
 
 export default function BusinessNameSearchPage() {
   const [loading, setLoading] = useState(false);
+  const [suggestLoading, setSuggestLoading] = useState(false);
   const [entityType, setEntityType] = useState<"sole" | "partnership" | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [specificNature, setSpecificNature] = useState("");
   const [proposedName, setProposedName] = useState("");
   
+  // Modal layout structural state controls
   const [showModal, setShowModal] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [certifiedPassed, setCertifiedPassed] = useState(false);
   const [searchResult, setResult] = useState<{
-    similarityScore: string;
-    complianceScore: string;
     mostSimilarName: string;
-    similarNames: string[];
-    aiSuggestedNames: string[];
     cleansedNameUsed: string;
-    message: string;
   } | null>(null);
+
+  const [aiVerifiedAlternative, setAiVerifiedAlternative] = useState("");
 
   const availableNatures = selectedCategory ? CAC_CATEGORIES[selectedCategory] : [];
 
@@ -33,7 +34,10 @@ export default function BusinessNameSearchPage() {
     if (!entityType || !selectedCategory || !specificNature || !nameToSearch) return;
 
     setLoading(true);
-    setShowModal(true); // Open modal immediately in loading state
+    setResult(null);
+    setAiVerifiedAlternative("");
+    setCertifiedPassed(false);
+    setShowModal(true); 
 
     try {
       const res = await fetch("/api/cac/name-check", {
@@ -42,34 +46,22 @@ export default function BusinessNameSearchPage() {
         body: JSON.stringify({
           proposedName: nameToSearch,
           lineOfBusiness: specificNature,
-          entityType: "business-name" // Hardcoded for this specific page route
+          entityType: "Business Name"
         })
       });
 
-      const data = await res.json();
+      const json = await res.json();
       
-      if (res.ok && data.success) {
+      if (res.ok && json.success) {
+        setIsBlocked(json.isBlocked);
         setResult({
-          similarityScore: data.data.similarityScore || "0%",
-          complianceScore: data.data.complianceScore || "0%",
-          mostSimilarName: data.data.mostSimilarName || "",
-          similarNames: data.data.similarNames || [],
-          aiSuggestedNames: data.data.aiSuggestedNames || [],
-          cleansedNameUsed: data.data.cleansedNameUsed || nameToSearch,
-          message: data.message
+          mostSimilarName: json.data.mostSimilarName,
+          cleansedNameUsed: json.data.cleansedNameUsed
         });
-      } else {
-        // Handle 403 or API failures gracefully
-        const score = data.message === "Name exist" ? "100%" : "0%";
-        setResult({
-          similarityScore: score,
-          complianceScore: "0%",
-          mostSimilarName: data.error || "Conflict Detected",
-          similarNames: data.errors || [],
-          aiSuggestedNames: data.data?.suggestedNames || [],
-          cleansedNameUsed: nameToSearch.toUpperCase(),
-          message: data.message || "Name unavailable or check failed."
-        });
+        // If the backend states it is not blocked, it means it passed criteria limits smoothly
+        if (!json.isBlocked) {
+          setCertifiedPassed(true);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -79,34 +71,66 @@ export default function BusinessNameSearchPage() {
     }
   };
 
-  const scoreValue = searchResult ? parseFloat(searchResult.similarityScore) : 0;
-  const isRedZone = scoreValue > 60;
-  const isYellowZone = scoreValue > 40 && scoreValue <= 60;
+  const generateLiveSafeSuggestion = async () => {
+    if (!resultName) return;
+    setSuggestLoading(true);
+    try {
+      const res = await fetch("/api/cac/name-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proposedName: resultName,
+          lineOfBusiness: specificNature,
+          entityType: "Business Name",
+          mode: "SUGGEST"
+        })
+      });
+      const json = await res.json();
+      if (json.success && json.alternativeName) {
+        setAiVerifiedAlternative(json.alternativeName);
+      }
+    } catch (err) {
+      console.error(err);
+    } filter: {
+      setSuggestLoading(false);
+    }
+  };
+
+  const applySuggestedName = (name: string) => {
+    setProposedName(name);
+    setShowModal(false);
+    // Re-trigger verification instantly for flawless state sync
+    setTimeout(() => {
+      handleSearch(name);
+    }, 100);
+  };
+
+  const resultName = searchResult?.cleansedNameUsed || proposedName;
 
   return (
-    <div className="max-w-3xl mx-auto pb-12 relative">
+    <div className="max-w-3xl mx-auto pb-12 antialiased selection:bg-[#ff3f7a] selection:text-white">
       
-      {/* HEADER */}
+      {/* HEADER SECTION */}
       <div className="mb-10">
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
           Step 1: Name Availability Search
         </h1>
-        <p className="text-slate-500 mt-2 text-[16px]">
-          Let’s ensure your proposed business name is available and legally compliant before we proceed with the registration.
+        <p className="text-slate-500 mt-2 text-[16px] font-medium leading-relaxed">
+          Ensure your proposed business name is valid, compliant, and completely free of registry conflicts before filing.
         </p>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-10">
         <div className="space-y-8">
           
-          {/* ENTITY TYPE SELECTION */}
+          {/* ENTITY SELECTOR GRID layout structure context layout */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Label className="text-base font-bold text-slate-900">Entity Type</Label>
+              <Label className="text-[15px] font-bold text-slate-900">Proprietorship Structure</Label>
               <div className="group relative flex items-center">
                 <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-10 text-center pointer-events-none">
-                  Select whether you are the sole owner or registering with partners.
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium leading-normal">
+                  Business names can belong to a single owner (Sole Proprietor) or multiple owners (Partnership).
                 </div>
               </div>
             </div>
@@ -115,38 +139,38 @@ export default function BusinessNameSearchPage() {
               <button
                 type="button"
                 onClick={() => setEntityType("sole")}
-                className={`relative flex flex-col p-4 rounded-2xl border-2 text-left transition-all ${
+                className={`relative flex flex-col p-5 rounded-2xl border-2 text-left transition-all outline-none ${
                   entityType === "sole" ? "border-[#ff3f7a] bg-[#ff3f7a]/5" : "border-slate-200 hover:border-slate-300"
                 }`}
               >
-                <h3 className={`font-bold ${entityType === "sole" ? "text-[#ff3f7a]" : "text-slate-900"}`}>Sole Proprietor</h3>
-                <p className="text-xs text-slate-500 mt-1">Single owner, full control.</p>
+                <h3 className={`font-bold text-base ${entityType === "sole" ? "text-[#ff3f7a]" : "text-slate-900"}`}>Sole Proprietorship</h3>
+                <p className="text-xs text-slate-500 font-medium mt-1">Owned by a single independent individual entity.</p>
               </button>
 
               <button
                 type="button"
                 onClick={() => setEntityType("partnership")}
-                className={`relative flex flex-col p-4 rounded-2xl border-2 text-left transition-all ${
+                className={`relative flex flex-col p-5 rounded-2xl border-2 text-left transition-all outline-none ${
                   entityType === "partnership" ? "border-[#ff3f7a] bg-[#ff3f7a]/5" : "border-slate-200 hover:border-slate-300"
                 }`}
               >
-                <h3 className={`font-bold ${entityType === "partnership" ? "text-[#ff3f7a]" : "text-slate-900"}`}>Partnership</h3>
-                <p className="text-xs text-slate-500 mt-1">2-20 owners sharing control.</p>
+                <h3 className={`font-bold text-base ${entityType === "partnership" ? "text-[#ff3f7a]" : "text-slate-900"}`}>Partnership Joint Vault</h3>
+                <p className="text-xs text-slate-500 font-medium mt-1">Shared corporate structure among 2 to 20 partners.</p>
               </button>
             </div>
           </div>
 
           <div className="border-t border-slate-100"></div>
 
-          {/* BUSINESS NATURE DROPDOWNS */}
+          {/* DUAL DROPDOWN FIELDS CONTEXT DESIGN SETUP */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
-                <Label htmlFor="category" className="text-[15px] font-semibold text-slate-900">Broad Category</Label>
+                <Label htmlFor="category" className="text-[15px] font-bold text-slate-900">Line of Business Category</Label>
                 <div className="group relative flex items-center">
                   <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-10 text-center pointer-events-none">
-                    The general industry your business operates in.
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium">
+                    Select the broad economic sector for registration.
                   </div>
                 </div>
               </div>
@@ -154,9 +178,9 @@ export default function BusinessNameSearchPage() {
                 id="category" 
                 value={selectedCategory} 
                 onChange={(e) => { setSelectedCategory(e.target.value); setSpecificNature(""); }}
-                className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-[15px] font-medium text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a]"
+                className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-[15px] font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] focus:border-[#ff3f7a] cursor-pointer"
               >
-                <option value="" disabled>Select a broad category...</option>
+                <option value="" disabled>Select category umbrella...</option>
                 {Object.keys(CAC_CATEGORIES).map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -165,11 +189,11 @@ export default function BusinessNameSearchPage() {
 
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
-                <Label htmlFor="specificNature" className="text-[15px] font-semibold text-slate-900">Specific Nature</Label>
+                <Label htmlFor="specificNature" className="text-[15px] font-bold text-slate-900">Specific Corporate Nature</Label>
                 <div className="group relative flex items-center">
                   <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-10 text-center pointer-events-none">
-                    The exact daily activities your business will perform.
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium">
+                    The explicit matching term catalogued by CAC database.
                   </div>
                 </div>
               </div>
@@ -178,9 +202,9 @@ export default function BusinessNameSearchPage() {
                 value={specificNature} 
                 onChange={(e) => setSpecificNature(e.target.value)}
                 disabled={!selectedCategory}
-                className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-[15px] font-medium text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-[15px] font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] focus:border-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                <option value="" disabled>Select specific nature...</option>
+                <option value="" disabled>Select specific line...</option>
                 {availableNatures.map((nature) => (
                   <option key={nature} value={nature}>{nature}</option>
                 ))}
@@ -190,14 +214,14 @@ export default function BusinessNameSearchPage() {
 
           <div className="border-t border-slate-100"></div>
 
-          {/* THE NAME SEARCH */}
+          {/* DYNAMIC TEXT INPUT FIELD LAYOUT CONTEXT BLOCK */}
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
-              <Label htmlFor="proposedName" className="text-base font-bold text-slate-900">Proposed Business Name</Label>
+              <Label htmlFor="proposedName" className="text-[15px] font-bold text-slate-900">Proposed Corporate Title</Label>
               <div className="group relative flex items-center">
                 <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-10 text-center pointer-events-none">
-                  Enter your desired name. Our AI will automatically correct illegal words (like LTD) before checking.
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium leading-normal">
+                  Type your desired name. Suffix terms like 'LTD' or 'PLC' are blocked natively for business names.
                 </div>
               </div>
             </div>
@@ -209,7 +233,7 @@ export default function BusinessNameSearchPage() {
                 id="proposedName" 
                 value={proposedName}
                 onChange={(e) => setProposedName(e.target.value)}
-                placeholder="e.g. Chukz Ventures" 
+                placeholder="e.g. MUKHTAR FOODS" 
                 className="pl-14 h-16 text-lg font-bold bg-white border-2 border-slate-200 focus-visible:ring-0 focus-visible:border-[#ff3f7a] transition-all rounded-2xl uppercase placeholder:normal-case placeholder:font-medium placeholder:text-slate-400" 
               />
             </div>
@@ -218,113 +242,126 @@ export default function BusinessNameSearchPage() {
           <Button 
             onClick={() => handleSearch(proposedName)}
             disabled={!entityType || !selectedCategory || !specificNature || !proposedName} 
-            className="w-full h-14 text-lg font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all rounded-xl"
+            className="w-full h-14 text-lg font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all rounded-xl cursor-pointer"
           >
-            Check Availability
+            Check Name Availability
           </Button>
         </div>
       </div>
 
-      {/* --- CENTERED OVERLAY MODAL FOR RESULTS --- */}
+      {/* --- REARCHITECTED SCREEN MIDDLE INTERACTIVE OVERLAY MODAL --- */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 relative">
+        <div className="fixed inset-0进 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200 relative">
             
-            {/* Close Button */}
+            {/* ABSOLUTE X CLOSING UTILITY ANCHOR */}
             <button 
               onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition-colors z-10"
+              className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-full transition-colors z-50 cursor-pointer"
+              aria-label="Close Modal"
             >
-              <X className="h-5 w-5" weight="bold" />
+              <X className="h-4 w-4" weight="bold" />
             </button>
 
+            {/* LOADING ENGINE TRANSITION DISPLAY VIEWPORT */}
             {loading ? (
-              <div className="p-12 flex flex-col items-center justify-center space-y-4">
+              <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
                 <Spinner className="animate-spin h-12 w-12 text-[#ff3f7a]" weight="bold" />
-                <p className="text-slate-600 font-medium">Running AI Cleansing & CAC Search...</p>
+                <h3 className="font-bold text-lg text-slate-900">Verifying Registries</h3>
+                <p className="text-slate-500 text-sm font-semibold max-w-xs">Cleansing suffixes and cross-matching compliance rules live...</p>
               </div>
-            ) : searchResult && (
-              <div className="p-8">
+            ) : (
+              <div className="p-6 sm:p-8">
                 
-                {/* Traffic Light Header */}
-                <div className="flex flex-col items-center text-center border-b border-slate-100 pb-6 mb-6">
-                  {isRedZone ? (
-                     <div className="h-16 w-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
-                       <Warning className="h-8 w-8" weight="fill" />
-                     </div>
-                  ) : isYellowZone ? (
-                     <div className="h-16 w-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
-                       <Warning className="h-8 w-8" weight="fill" />
-                     </div>
-                  ) : (
-                     <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
-                       <CheckCircle className="h-8 w-8" weight="fill" />
-                     </div>
-                  )}
-
-                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                    {searchResult.cleansedNameUsed}
-                  </h2>
-                  <p className={`mt-2 font-bold ${isRedZone ? 'text-red-600' : isYellowZone ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    {isRedZone ? 'HIGH RISK OF REJECTION' : isYellowZone ? 'MODERATE RISK' : 'AVAILABLE & SAFE'}
-                  </p>
-                  
-                  <div className="flex items-center gap-4 mt-4 w-full">
-                    <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-200">
-                      <p className="text-xs font-bold text-slate-400 uppercase">Similarity</p>
-                      <p className="text-lg font-black text-slate-900">{searchResult.similarityScore}</p>
+                {/* STATE CONDITION A: NAME REJECTED / BLOCKED FLOW */}
+                {isBlocked ? (
+                  <div className="space-y-6 text-center">
+                    <div className="h-16 w-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                      <Warning className="h-8 w-8" weight="fill" />
                     </div>
-                    <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-200">
-                      <p className="text-xs font-bold text-slate-400 uppercase">Compliance</p>
-                      <p className="text-lg font-black text-slate-900">{searchResult.complianceScore}</p>
+                    
+                    <div className="space-y-1">
+                      <p className="text-xs font-black uppercase tracking-widest text-red-500">Name Unavailable</p>
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight break-words px-2">{resultName}</h2>
                     </div>
-                  </div>
-                </div>
 
-                {/* Conflict List */}
-                {searchResult.similarNames.length > 0 && (
-                  <div className="mb-6">
-                    <p className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
-                      <Warning className="text-amber-500" weight="fill" /> Known Conflicts:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {searchResult.similarNames.map((name, idx) => (
-                        <span key={idx} className="bg-red-50 text-red-700 px-2.5 py-1 rounded-md text-xs font-bold border border-red-200">
-                          {name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                    {searchResult && searchResult.mostSimilarName !== "N/A" && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 text-left">
+                        Direct Conflict Target: <span className="text-slate-900 font-bold block mt-0.5 uppercase">{searchResult.mostSimilarName}</span>
+                      </div>
+                    )}
 
-                {/* AI Suggestions Engine (Shows on Red/Yellow) */}
-                {(isRedZone || isYellowZone) && searchResult.aiSuggestedNames.length > 0 && (
-                  <div className="mb-6 bg-[#ff3f7a]/5 p-4 rounded-2xl border border-[#ff3f7a]/20">
-                    <p className="text-sm font-bold text-[#ff3f7a] mb-3">AI Guaranteed Safe Alternatives:</p>
-                    <div className="flex flex-col gap-2">
-                      {searchResult.aiSuggestedNames.map((suggestion, idx) => (
-                        <button 
-                          key={idx} 
-                          onClick={() => {
-                            setProposedName(suggestion);
-                            handleSearch(suggestion);
-                          }}
-                          className="w-full text-left bg-white px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:border-[#ff3f7a] hover:text-[#ff3f7a] transition-all flex items-center justify-between group"
+                    {/* DYNAMIC VERIFIED SUGGESTION SECTION BLOCK LAYOUT ANCHOR */}
+                    <div className="border-t border-slate-100 pt-5 space-y-3">
+                      {aiVerifiedAlternative ? (
+                        <div className="space-y-2 animate-in slide-in-from-bottom-2 duration-300">
+                          <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider text-left">Pre-Checked & Certified Variant Available:</p>
+                          <button
+                            type="button"
+                            onClick={() => applySuggestedName(aiVerifiedAlternative)}
+                            className="w-full bg-emerald-50 border-2 border-emerald-300 hover:border-emerald-500 p-4 rounded-xl text-left font-black text-emerald-900 flex items-center justify-between group transition-all"
+                          >
+                            <span>{aiVerifiedAlternative}</span>
+                            <CheckCircle className="h-5 w-5 text-emerald-600" weight="fill" />
+                          </button>
+                        </div>
+                      ) : (
+                        <Button 
+                          onClick={generateLiveSafeSuggestion}
+                          disabled={suggestLoading}
+                          className="w-full h-12 bg-[#ff3f7a]/10 hover:bg-[#ff3f7a]/20 text-[#ff3f7a] font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-none"
                         >
-                          {suggestion}
-                          <ArrowsClockwise className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" weight="bold" />
-                        </button>
-                      ))}
+                          {suggestLoading ? (
+                            <Spinner className="animate-spin h-5 w-5" weight="bold" />
+                          ) : (
+                            <>
+                              <Sparkle className="h-5 w-5" weight="fill" />
+                              Generate Certified Variant
+                            </>
+                          )}
+                        </Button>
+                      )}
+
+                      {/* EDIT NAME BUTTON TO RETURN ACTIONS IMMEDIATELY */}
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="w-full h-12 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl flex items-center justify-center gap-2 text-sm transition-colors cursor-pointer"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit Name & Try Again
+                      </button>
                     </div>
                   </div>
-                )}
+                ) : (
+                  /* STATE CONDITION B: PASSED AND COMPLIANT FLOW */
+                  <div className="space-y-6 text-center">
+                    <div className="h-16 w-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                      <CheckCircle className="h-8 w-8" weight="fill" />
+                    </div>
 
-                {/* PROCEED BUTTON (Only for Green/Yellow) */}
-                {!isRedZone && (
-                  <Button className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-slate-900/20">
-                    Proceed to Registration Details
-                    <ArrowRight className="h-5 w-5" weight="bold" />
-                  </Button>
+                    <div className="space-y-1">
+                      <p className="text-xs font-black uppercase tracking-widest text-emerald-600">Name Available</p>
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight break-words px-2">{resultName}</h2>
+                      <p className="text-sm text-slate-500 font-semibold pt-1">This layout title meets all regulatory compliance metrics safely.</p>
+                    </div>
+
+                    {/* HUGE RESILIENT PROCEED BLOCK ANCHOR BUTTON */}
+                    <div className="border-t border-slate-100 pt-5 flex flex-col gap-3">
+                      <Button className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 cursor-pointer">
+                        Proceed to Registration Details
+                        <ArrowRight className="h-5 w-5" weight="bold" />
+                      </Button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                      >
+                        Go Back & Modify
+                      </button>
+                    </div>
+                  </div>
                 )}
 
               </div>
