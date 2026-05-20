@@ -58,7 +58,6 @@ export default function BusinessNameSearchPage() {
           mostSimilarName: json.data.mostSimilarName,
           cleansedNameUsed: json.data.cleansedNameUsed
         });
-        // If the backend states it is not blocked, it means it passed criteria limits smoothly
         if (!json.isBlocked) {
           setCertifiedPassed(true);
         }
@@ -66,7 +65,7 @@ export default function BusinessNameSearchPage() {
     } catch (error) {
       console.error(error);
       setShowModal(false);
-    } finally {
+    } file: {
       setLoading(false);
     }
   };
@@ -91,7 +90,7 @@ export default function BusinessNameSearchPage() {
       }
     } catch (err) {
       console.error(err);
-    } filter: {
+    } finally {
       setSuggestLoading(false);
     }
   };
@@ -99,7 +98,6 @@ export default function BusinessNameSearchPage() {
   const applySuggestedName = (name: string) => {
     setProposedName(name);
     setShowModal(false);
-    // Re-trigger verification instantly for flawless state sync
     setTimeout(() => {
       handleSearch(name);
     }, 100);
@@ -123,7 +121,7 @@ export default function BusinessNameSearchPage() {
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-10">
         <div className="space-y-8">
           
-          {/* ENTITY SELECTOR GRID layout structure context layout */}
+          {/* ENTITY SELECTOR GRID */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Label className="text-[15px] font-bold text-slate-900">Proprietorship Structure</Label>
@@ -139,7 +137,7 @@ export default function BusinessNameSearchPage() {
               <button
                 type="button"
                 onClick={() => setEntityType("sole")}
-                className={`relative flex flex-col p-5 rounded-2xl border-2 text-left transition-all outline-none ${
+                className={`relative flex flex-col p-5 rounded-2xl border-2 text-left transition-all outline-none cursor-pointer ${
                   entityType === "sole" ? "border-[#ff3f7a] bg-[#ff3f7a]/5" : "border-slate-200 hover:border-slate-300"
                 }`}
               >
@@ -150,7 +148,7 @@ export default function BusinessNameSearchPage() {
               <button
                 type="button"
                 onClick={() => setEntityType("partnership")}
-                className={`relative flex flex-col p-5 rounded-2xl border-2 text-left transition-all outline-none ${
+                className={`relative flex flex-col p-5 rounded-2xl border-2 text-left transition-all outline-none cursor-pointer ${
                   entityType === "partnership" ? "border-[#ff3f7a] bg-[#ff3f7a]/5" : "border-slate-200 hover:border-slate-300"
                 }`}
               >
@@ -162,7 +160,7 @@ export default function BusinessNameSearchPage() {
 
           <div className="border-t border-slate-100"></div>
 
-          {/* DUAL DROPDOWN FIELDS CONTEXT DESIGN SETUP */}
+          {/* DUAL DROPDOWN FIELDS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
@@ -193,7 +191,7 @@ export default function BusinessNameSearchPage() {
                 <div className="group relative flex items-center">
                   <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium">
-                    The explicit matching term catalogued by CAC database.
+                    The explicit matching term catalogue by CAC database.
                   </div>
                 </div>
               </div>
@@ -214,7 +212,7 @@ export default function BusinessNameSearchPage() {
 
           <div className="border-t border-slate-100"></div>
 
-          {/* DYNAMIC TEXT INPUT FIELD LAYOUT CONTEXT BLOCK */}
+          {/* DYNAMIC TEXT INPUT FIELD */}
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
               <Label htmlFor="proposedName" className="text-[15px] font-bold text-slate-900">Proposed Corporate Title</Label>
@@ -242,16 +240,16 @@ export default function BusinessNameSearchPage() {
           <Button 
             onClick={() => handleSearch(proposedName)}
             disabled={!entityType || !selectedCategory || !specificNature || !proposedName} 
-            className="w-full h-14 text-lg font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all rounded-xl cursor-pointer"
+            className="w-full h-14 text-lg font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Check Name Availability
           </Button>
         </div>
       </div>
 
-      {/* --- REARCHITECTED SCREEN MIDDLE INTERACTIVE OVERLAY MODAL --- */}
+      {/* --- OVERLAY MODAL FOR RESULTS --- */}
       {showModal && (
-        <div className="fixed inset-0进 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200 relative">
             
             {/* ABSOLUTE X CLOSING UTILITY ANCHOR */}
@@ -263,7 +261,6 @@ export default function BusinessNameSearchPage() {
               <X className="h-4 w-4" weight="bold" />
             </button>
 
-            {/* LOADING ENGINE TRANSITION DISPLAY VIEWPORT */}
             {loading ? (
               <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
                 <Spinner className="animate-spin h-12 w-12 text-[#ff3f7a]" weight="bold" />
@@ -291,7 +288,7 @@ export default function BusinessNameSearchPage() {
                       </div>
                     )}
 
-                    {/* DYNAMIC VERIFIED SUGGESTION SECTION BLOCK LAYOUT ANCHOR */}
+                    {/* DYNAMIC VERIFIED SUGGESTION SECTION BLOCK */}
                     <div className="border-t border-slate-100 pt-5 space-y-3">
                       {aiVerifiedAlternative ? (
                         <div className="space-y-2 animate-in slide-in-from-bottom-2 duration-300">
@@ -299,7 +296,7 @@ export default function BusinessNameSearchPage() {
                           <button
                             type="button"
                             onClick={() => applySuggestedName(aiVerifiedAlternative)}
-                            className="w-full bg-emerald-50 border-2 border-emerald-300 hover:border-emerald-500 p-4 rounded-xl text-left font-black text-emerald-900 flex items-center justify-between group transition-all"
+                            className="w-full bg-emerald-50 border-2 border-emerald-300 hover:border-emerald-500 p-4 rounded-xl text-left font-black text-emerald-900 flex items-center justify-between group transition-all cursor-pointer"
                           >
                             <span>{aiVerifiedAlternative}</span>
                             <CheckCircle className="h-5 w-5 text-emerald-600" weight="fill" />
@@ -343,10 +340,10 @@ export default function BusinessNameSearchPage() {
                     <div className="space-y-1">
                       <p className="text-xs font-black uppercase tracking-widest text-emerald-600">Name Available</p>
                       <h2 className="text-2xl font-black text-slate-900 tracking-tight break-words px-2">{resultName}</h2>
-                      <p className="text-sm text-slate-500 font-semibold pt-1">This layout title meets all regulatory compliance metrics safely.</p>
+                      <p className="text-sm text-slate-500 font-semibold pt-1">This business name layout meets all regulatory compliance metrics safely.</p>
                     </div>
 
-                    {/* HUGE RESILIENT PROCEED BLOCK ANCHOR BUTTON */}
+                    {/* PROCEED BLOCK ANCHOR BUTTON */}
                     <div className="border-t border-slate-100 pt-5 flex flex-col gap-3">
                       <Button className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 cursor-pointer">
                         Proceed to Registration Details
