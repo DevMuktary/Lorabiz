@@ -112,7 +112,6 @@ export async function POST(req: Request) {
     });
 
     if (!cacResponse.ok) {
-      // Graceful fallback for API outages
       return NextResponse.json({
         success: true,
         isBlocked: false,
@@ -128,18 +127,26 @@ export async function POST(req: Request) {
     const similarityVal = parseFloat(similarityStr);
     const complianceVal = parseFloat(complianceStr);
 
-    // Block if similarity is >= 80%, compliance is < 80%, or CAC says it strictly exists
-    const isBlocked = similarityVal >= 80 || complianceVal < 80 || cacJson.message === "Name exist";
+    // EXACT THRESHOLDS: Block if similarity >= 80%, compliance <= 20%, or Name explicitly exists
+    const isBlocked = similarityVal >= 80 || complianceVal <= 20 || cacJson.message === "Name exist";
     
-    const failureReason = cacJson.message === "Name exist" 
-      ? "This exact name is already registered by another business." 
-      : "This name is too similar to an existing registered business.";
+    // Give accurate reasons based on what actually triggered the block
+    let failureReason = "Name is available and ready for registration.";
+    if (isBlocked) {
+      if (cacJson.message === "Name exist") {
+        failureReason = "This exact name is already registered by another business.";
+      } else if (similarityVal >= 80) {
+        failureReason = "This name is too similar to an existing registered business.";
+      } else if (complianceVal <= 20) {
+        failureReason = "This name does not meet CAC's structural compliance rules.";
+      }
+    }
 
     return NextResponse.json({
       success: true,
       isBlocked,
       rejectionType: isBlocked ? "REGISTRY_CONFLICT" : "PASSED",
-      reasonMessage: isBlocked ? failureReason : "Name is available and ready for registration.",
+      reasonMessage: failureReason,
       data: {
         mostSimilarName: cacJson.data?.mostSimilarName || "N/A",
         cleansedNameUsed: uppercaseName
