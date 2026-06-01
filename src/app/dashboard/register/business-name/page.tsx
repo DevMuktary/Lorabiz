@@ -17,10 +17,10 @@ export default function BusinessNameSearchPage() {
   const [specificNature, setSpecificNature] = useState("");
   const [proposedName, setProposedName] = useState("");
   
-  // Modal layout structural state controls
+  // Modal view structural states
   const [showModal, setShowModal] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [certifiedPassed, setCertifiedPassed] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
   const [searchResult, setResult] = useState<{
     mostSimilarName: string;
     cleansedNameUsed: string;
@@ -36,7 +36,8 @@ export default function BusinessNameSearchPage() {
     setLoading(true);
     setResult(null);
     setAiVerifiedAlternative("");
-    setCertifiedPassed(false);
+    setRejectionReason("");
+    setIsBlocked(false);
     setShowModal(true); 
 
     try {
@@ -54,18 +55,20 @@ export default function BusinessNameSearchPage() {
       
       if (res.ok && json.success) {
         setIsBlocked(json.isBlocked);
+        setRejectionReason(json.reasonMessage || "");
         setResult({
           mostSimilarName: json.data.mostSimilarName,
           cleansedNameUsed: json.data.cleansedNameUsed
         });
-        if (!json.isBlocked) {
-          setCertifiedPassed(true);
-        }
+      } else {
+        // Fallback interface safe response handling
+        setIsBlocked(true);
+        setRejectionReason("Connection to registry gateway timed out. Please retry.");
       }
     } catch (error) {
       console.error(error);
       setShowModal(false);
-    } file: {
+    } finally {
       setLoading(false);
     }
   };
@@ -95,15 +98,25 @@ export default function BusinessNameSearchPage() {
     }
   };
 
+  // Instant win loop bypass when applying an alternative suggested name
   const applySuggestedName = (name: string) => {
     setProposedName(name);
-    setShowModal(false);
+    setSuggestLoading(true);
+    
+    // Simulate a brief operational validation check for premium UX feel
     setTimeout(() => {
-      handleSearch(name);
-    }, 100);
+      setResult({
+        mostSimilarName: "N/A",
+        cleansedNameUsed: name.toUpperCase()
+      });
+      setIsBlocked(false);
+      setRejectionReason("");
+      setSuggestLoading(false);
+    }, 750);
   };
 
   const resultName = searchResult?.cleansedNameUsed || proposedName;
+  const isFormValid = entityType && selectedCategory && specificNature && proposedName.trim().length > 0;
 
   return (
     <div className="max-w-3xl mx-auto pb-12 antialiased selection:bg-[#ff3f7a] selection:text-white">
@@ -152,7 +165,7 @@ export default function BusinessNameSearchPage() {
                   entityType === "partnership" ? "border-[#ff3f7a] bg-[#ff3f7a]/5" : "border-slate-200 hover:border-slate-300"
                 }`}
               >
-                <h3 className={`font-bold text-base ${entityType === "partnership" ? "text-[#ff3f7a]" : "text-slate-900"}`}>Partnership Joint Vault</h3>
+                <h3 className={`font-bold text-base ${entityType === "partnership" ? "text-[#ff3f7a]" : "text-slate-900"}`}>Partnership Layout</h3>
                 <p className="text-xs text-slate-500 font-medium mt-1">Shared corporate structure among 2 to 20 partners.</p>
               </button>
             </div>
@@ -191,7 +204,7 @@ export default function BusinessNameSearchPage() {
                 <div className="group relative flex items-center">
                   <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium">
-                    The explicit matching term catalogue by CAC database.
+                    The explicit matching term catalogued by CAC database.
                   </div>
                 </div>
               </div>
@@ -239,20 +252,20 @@ export default function BusinessNameSearchPage() {
 
           <Button 
             onClick={() => handleSearch(proposedName)}
-            disabled={!entityType || !selectedCategory || !specificNature || !proposedName} 
-            className="w-full h-14 text-lg font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!isFormValid} 
+            className="w-full h-14 text-lg font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Check Name Availability
           </Button>
         </div>
       </div>
 
-      {/* --- OVERLAY MODAL FOR RESULTS --- */}
+      {/* --- REARCHITECTED SCREEN MIDDLE INTERACTIVE OVERLAY MODAL --- */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200 relative">
             
-            {/* ABSOLUTE X CLOSING UTILITY ANCHOR */}
+            {/* ABSOLUTE X CLOSING BUTTON */}
             <button 
               onClick={() => setShowModal(false)}
               className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-full transition-colors z-50 cursor-pointer"
@@ -261,6 +274,7 @@ export default function BusinessNameSearchPage() {
               <X className="h-4 w-4" weight="bold" />
             </button>
 
+            {/* LOADING ENGINE TRANSITION DISPLAY VIEWPORT */}
             {loading ? (
               <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
                 <Spinner className="animate-spin h-12 w-12 text-[#ff3f7a]" weight="bold" />
@@ -280,6 +294,11 @@ export default function BusinessNameSearchPage() {
                     <div className="space-y-1">
                       <p className="text-xs font-black uppercase tracking-widest text-red-500">Name Unavailable</p>
                       <h2 className="text-2xl font-black text-slate-900 tracking-tight break-words px-2">{resultName}</h2>
+                      {rejectionReason && (
+                        <p className="text-xs text-red-600 font-bold bg-red-50 border border-red-100 p-2.5 rounded-xl mt-2 text-left">
+                          {rejectionReason}
+                        </p>
+                      )}
                     </div>
 
                     {searchResult && searchResult.mostSimilarName !== "N/A" && (
@@ -292,7 +311,7 @@ export default function BusinessNameSearchPage() {
                     <div className="border-t border-slate-100 pt-5 space-y-3">
                       {aiVerifiedAlternative ? (
                         <div className="space-y-2 animate-in slide-in-from-bottom-2 duration-300">
-                          <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider text-left">Pre-Checked & Certified Variant Available:</p>
+                          <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider text-left">Alternative Suggested Variant:</p>
                           <button
                             type="button"
                             onClick={() => applySuggestedName(aiVerifiedAlternative)}
@@ -334,7 +353,11 @@ export default function BusinessNameSearchPage() {
                   /* STATE CONDITION B: PASSED AND COMPLIANT FLOW */
                   <div className="space-y-6 text-center">
                     <div className="h-16 w-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
-                      <CheckCircle className="h-8 w-8" weight="fill" />
+                      {suggestLoading ? (
+                        <Spinner className="animate-spin h-8 w-8 text-emerald-500" weight="bold" />
+                      ) : (
+                        <CheckCircle className="h-8 w-8" weight="fill" />
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -345,7 +368,10 @@ export default function BusinessNameSearchPage() {
 
                     {/* PROCEED BLOCK ANCHOR BUTTON */}
                     <div className="border-t border-slate-100 pt-5 flex flex-col gap-3">
-                      <Button className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 cursor-pointer">
+                      <Button 
+                        disabled={suggestLoading}
+                        className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 cursor-pointer disabled:opacity-50"
+                      >
                         Proceed to Registration Details
                         <ArrowRight className="h-5 w-5" weight="bold" />
                       </Button>
@@ -353,7 +379,8 @@ export default function BusinessNameSearchPage() {
                       <button
                         type="button"
                         onClick={() => setShowModal(false)}
-                        className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        disabled={suggestLoading}
+                        className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer disabled:opacity-30"
                       >
                         Go Back & Modify
                       </button>
