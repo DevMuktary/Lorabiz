@@ -29,7 +29,7 @@ export async function POST(req: Request) {
             
             CRITICAL CAC RULE:
             - The name MUST end with a strong business qualifier or industry descriptor. Acceptable examples: VENTURES, CONCEPTS, ENTERPRISES, SERVICES, HUB, BIZ, GLOBAL, TECH, MEDIA, FARMS, LOGISTICS, STUDIO, CONSULTING.
-            - Do NOT use weak descriptors at the end (e.g., do not end with 'STAYS', 'HOMES').
+            - Do NOT use weak descriptors at the end (e.g., do not end with 'STAYS', 'OUTS').
             - DO NOT use restricted words like FEDERAL, NATIONAL, GOVERNMENT, HOLDINGS, PLC, LTD, or LIMITED.
             - Output ONLY the raw name string. Do not use quotes, punctuation, or explanations.`
           }
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
           4. WARNING - MISSING QUALIFIER: CAC requires business names to end with a business identifier. 
              - YOU MUST ACCEPT traditional qualifiers (e.g., 'VENTURES', 'CONCEPTS', 'ENTERPRISES', 'SERVICES', 'HUB', 'BIZ', 'GLOBAL', 'SYNERGY').
              - YOU MUST ACCEPT industry descriptors (e.g., 'TECH', 'MEDIA', 'FARMS', 'LOGISTICS', 'MOTORS', 'STUDIO', 'CLINIC', 'CONSULTING', 'APPAREL').
-             - ONLY flag as "MISSING_SUFFIX" if the name ends in a non-business word (like 'STAYS', 'HOMES', 'STUFF') or if it is a completely naked personal name/invented word with no descriptor at all.
+             - ONLY flag as "MISSING_SUFFIX" if the name ends in a non-business word (like 'STAYS', 'OUTS', 'STUFF') or if it is a completely naked personal name/invented word with no descriptor at all.
           5. If it passes all rules, flag as "PASSED".`
         },
         { role: "user", content: `Name: "${uppercaseName}"` }
