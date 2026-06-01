@@ -118,7 +118,6 @@ export async function POST(req: Request) {
 
     const cacJson = await cacResponse.json();
     
-    // Explicit 100% exact match rejection directly from CAC
     if (cacJson.message === "Name exist") {
       return NextResponse.json({
         success: true,
@@ -146,11 +145,12 @@ export async function POST(req: Request) {
           {
             role: "system",
             content: `You are a Senior Examiner at the Nigerian Corporate Affairs Commission (CAC). A basic text-matching algorithm flagged these two names as highly similar. 
-            Your job is to determine if a human CAC examiner would actually REJECT the proposed name for being too similar to the existing one under the Companies and Allied Matters Act (CAMA).
+            Your job is to determine if a human CAC examiner would actually REJECT the proposed name for being confusingly similar to the existing one under the Companies and Allied Matters Act (CAMA).
             
-            GUIDELINES:
-            - If they share generic words (like SERVICES, CONCEPTS, VENTURES, NIGERIA, HUB) or share a common first name but the core brand identity/other names are distinctly different, the CAC will approve it. Return isConflict: false.
-            - If the core distinct words are phonetically identical, pluralized/singular versions of the same word, or clearly deceptive copycats, the CAC WILL reject it. Return isConflict: true.`
+            CRITICAL GUIDELINES:
+            - DISTINCT PREFIXES SAVE NAMES: If the proposed name has a strong, distinct prefix or acronym (e.g., 'NMY') that separates it from the existing name (e.g., 'HOMES'), the CAC WILL approve it. Distinct prefixes are strong differentiators. Return isConflict: false.
+            - SHARED GENERIC WORDS: Sharing words like SERVICES, CONCEPTS, VENTURES, NIGERIA, HUB, FARMS does NOT cause a conflict if the leading names are different. Return isConflict: false.
+            - THE ONLY REJECTIONS: If the core leading identifiers are phonetically identical (with no distinct prefix to save it), pluralized/singular versions of the same word, or clearly deceptive copycats, ONLY THEN will CAC reject it. Return isConflict: true.`
           },
           { role: "user", content: `Proposed Name: "${uppercaseName}"\nExisting Conflict: "${mostSimilarName}"` }
         ],
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
               type: "object",
               properties: {
                 isConflict: { type: "boolean" },
-                reason: { type: "string", description: "Explain why CAC would accept or reject this based on CAMA similarity rules." }
+                reason: { type: "string", description: "Briefly explain why CAC would accept or reject this based on the distinct prefixes or lack thereof." }
               },
               required: ["isConflict", "reason"],
               additionalProperties: false
