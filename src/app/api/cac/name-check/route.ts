@@ -26,7 +26,7 @@ export async function POST(req: Request) {
             Industry vertical: "${lineOfBusiness}".
             
             CRITICAL RULES:
-            - Must end with a valid business name suffix (e.g., VENTURES, ENTERPRISES, GLOBAL, NIGERIA, STORES, SERVICES, concepts).
+            - Must end with a valid business name suffix (e.g., VENTURES, ENTERPRISES, GLOBAL, NIGERIA, STORES, SERVICES, CONCEPTS).
             - DO NOT use restricted words like FEDERAL, NATIONAL, GOVERNMENT, HOLDINGS, PLC, LTD, or LIMITED.
             - Output ONLY the raw name string. Do not use quotes, punctuation, or explanations.`
           }
@@ -55,9 +55,10 @@ export async function POST(req: Request) {
           Analyze the user's proposed company name for a "${entityType}" based on these strict guidelines:
           
           1. REJECTION - ILLEGAL SUFFIX: If entityType is 'Business Name' and the name contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC', flag as "ILLEGAL_SUFFIX".
-          2. REJECTION - RESTRICTED WORD: If the name contains prohibited terms without special permission (e.g., 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE', 'AMBASSADOR'), flag as "RESTRICTED_WORD".
-          3. WARNING - MISSING SUFFIX: If entityType is 'Business Name' and the name does NOT end with a structure indicator word like 'VENTURES', 'ENTERPRISES', 'GLOBAL', 'SERVICES', 'STORES', 'CONCEPTS', 'INDUSTRIES', 'AGRO', etc., flag as "MISSING_SUFFIX".
-          4. If none of these match, flag as "PASSED".`
+          2. REJECTION - RESTRICTED WORD: If the name contains prohibited terms (e.g., 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE', 'AMBASSADOR'), flag as "RESTRICTED_WORD".
+          3. REJECTION - DANGEROUS WORD: If the name contains offensive, illicit, or globally sanctioned/terrorist-related terminology, flag as "DANGEROUS_WORD".
+          4. WARNING - MISSING SUFFIX: If entityType is 'Business Name' and the name does NOT end with a structure indicator word like 'VENTURES', 'ENTERPRISES', 'GLOBAL', 'SERVICES', 'STORES', 'CONCEPTS', 'INDUSTRIES', 'AGRO', etc., flag as "MISSING_SUFFIX".
+          5. If none of these match, flag as "PASSED".`
         },
         {
           role: "user",
@@ -71,8 +72,8 @@ export async function POST(req: Request) {
           schema: {
             type: "object",
             properties: {
-              status: { type: "string", enum: ["ILLEGAL_SUFFIX", "RESTRICTED_WORD", "MISSING_SUFFIX", "PASSED"] },
-              reason: { type: "string", description: "Clear, customer-friendly explanation of why it failed or what is missing." }
+              status: { type: "string", enum: ["ILLEGAL_SUFFIX", "RESTRICTED_WORD", "DANGEROUS_WORD", "MISSING_SUFFIX", "PASSED"] },
+              reason: { type: "string", description: "Clear, customer-friendly plain English explanation of why it failed or what is missing." }
             },
             required: ["status", "reason"],
             additionalProperties: false
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
     const preFlightResult = JSON.parse(preFlightCheck.choices[0].message.content || "{}");
 
     // Intercept upfront rejections immediately before hitting CAC API
-    if (preFlightResult.status === "ILLEGAL_SUFFIX" || preFlightResult.status === "RESTRICTED_WORD" || preFlightResult.status === "MISSING_SUFFIX") {
+    if (preFlightResult.status === "ILLEGAL_SUFFIX" || preFlightResult.status === "RESTRICTED_WORD" || preFlightResult.status === "MISSING_SUFFIX" || preFlightResult.status === "DANGEROUS_WORD") {
       return NextResponse.json({
         success: true,
         isBlocked: true,
@@ -111,11 +112,11 @@ export async function POST(req: Request) {
     });
 
     if (!cacResponse.ok) {
-      // Graceful fallback for API outages or credential changes
+      // Graceful fallback for API outages
       return NextResponse.json({
         success: true,
-        isBlocked: false, // Let them proceed to you manually if the government server drops
-        reasonMessage: "CAC portal timeout. Proceeding with offline queue verification.",
+        isBlocked: false,
+        reasonMessage: "Registry connection is slow. You can proceed, and our team will verify this manually.",
         data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
       });
     }
@@ -127,17 +128,18 @@ export async function POST(req: Request) {
     const similarityVal = parseFloat(similarityStr);
     const complianceVal = parseFloat(complianceStr);
 
-    // Apply strict business rule parameters set by the system
-    const isBlocked = similarityVal >= 70 || complianceVal < 50 || cacJson.message === "Name exist";
+    // Block if similarity is >= 80%, compliance is < 80%, or CAC says it strictly exists
+    const isBlocked = similarityVal >= 80 || complianceVal < 80 || cacJson.message === "Name exist";
+    
     const failureReason = cacJson.message === "Name exist" 
-      ? "This exact name is already registered on the CAC index registry." 
-      : `High conflict matching parameters discovered in the index database registry.`;
+      ? "This exact name is already registered by another business." 
+      : "This name is too similar to an existing registered business.";
 
     return NextResponse.json({
       success: true,
       isBlocked,
       rejectionType: isBlocked ? "REGISTRY_CONFLICT" : "PASSED",
-      reasonMessage: isBlocked ? failureReason : "Name is fully available and legally unique.",
+      reasonMessage: isBlocked ? failureReason : "Name is available and ready for registration.",
       data: {
         mostSimilarName: cacJson.data?.mostSimilarName || "N/A",
         cleansedNameUsed: uppercaseName
@@ -146,6 +148,6 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error("Critical Gateway Crash:", error);
-    return NextResponse.json({ success: false, message: "Internal server infrastructure failure." }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Server connection failed. Please try again." }, { status: 500 });
   }
 }
