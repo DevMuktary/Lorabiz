@@ -86,7 +86,6 @@ export async function POST(req: Request) {
 
     const preFlightResult = JSON.parse(preFlightCheck.choices[0].message.content || "{}");
 
-    // Intercept upfront rejections immediately before hitting CAC API
     if (preFlightResult.status === "ILLEGAL_SUFFIX" || preFlightResult.status === "RESTRICTED_WORD" || preFlightResult.status === "MISSING_SUFFIX" || preFlightResult.status === "DANGEROUS_WORD") {
       return NextResponse.json({
         success: true,
@@ -121,24 +120,34 @@ export async function POST(req: Request) {
     }
 
     const cacJson = await cacResponse.json();
+
+    // ==========================================
+    // 🛑 LOGGING BLOCK FOR RAILWAY DEBUGGING 🛑
+    // ==========================================
+    console.log("\n====== CAC API RAW RESPONSE START ======");
+    console.log(`PROPOSED NAME: ${uppercaseName}`);
+    console.log("FULL PAYLOAD:", JSON.stringify(cacJson, null, 2));
+    console.log("====== CAC API RAW RESPONSE END ======\n");
+    // ==========================================
     
     const similarityStr = cacJson.data?.similarityScore || "0%";
     const complianceStr = cacJson.data?.complianceScore || "100%";
-    const similarityVal = parseFloat(similarityStr);
-    const complianceVal = parseFloat(complianceStr);
+    
+    // Using parseInt safely removes the "%" sign before evaluating
+    const similarityVal = parseInt(similarityStr); 
+    const complianceVal = parseInt(complianceStr);
 
     // EXACT THRESHOLDS: Block if similarity >= 80%, compliance <= 20%, or Name explicitly exists
     const isBlocked = similarityVal >= 80 || complianceVal <= 20 || cacJson.message === "Name exist";
     
-    // Give accurate reasons based on what actually triggered the block
     let failureReason = "Name is available and ready for registration.";
     if (isBlocked) {
       if (cacJson.message === "Name exist") {
         failureReason = "This exact name is already registered by another business.";
       } else if (similarityVal >= 80) {
-        failureReason = "This name is too similar to an existing registered business.";
+        failureReason = `This name is too similar to an existing registered business (${similarityStr} match).`;
       } else if (complianceVal <= 20) {
-        failureReason = "This name does not meet CAC's structural compliance rules.";
+        failureReason = `This name does not meet CAC's structural compliance rules (${complianceStr} compliance).`;
       }
     }
 
