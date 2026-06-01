@@ -61,7 +61,7 @@ export async function POST(req: Request) {
           1. REJECTION - ILLEGAL SUFFIX: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC'.
           2. REJECTION - RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE'.
           3. REJECTION - DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
-          4. WARNING - MISSING QUALIFIER: CAC requires business names to end with a strong qualifier. If the name ends with a weak descriptor (like 'STAYS', 'HOMES', 'STUFF') or has NO descriptor, flag as "MISSING_SUFFIX". It MUST end with recognized words like 'VENTURES', 'CONCEPTS', 'ENTERPRISES', 'SERVICES', 'HUB', 'BIZ', 'GLOBAL', 'SYNERGY', 'FASHION', 'BEAUTY', or 'CLINIC'.
+          4. WARNING - MISSING QUALIFIER: CAC requires business names to end with a strong qualifier. If the name ends with a weak descriptor (like 'STAYS', 'EATS', 'STUFF') or has NO descriptor, flag as "MISSING_SUFFIX". It MUST end with recognized words like 'VENTURES', 'CONCEPTS', 'ENTERPRISES', 'SERVICES', 'HUB', 'BIZ', 'GLOBAL', 'SYNERGY', 'FASHION', 'BEAUTY', or 'CLINIC'.
           5. If it passes all rules, flag as "PASSED".`
         },
         { role: "user", content: `Name: "${uppercaseName}"` }
