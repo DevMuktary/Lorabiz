@@ -28,10 +28,9 @@ export async function POST(req: Request) {
             Industry vertical: "${lineOfBusiness}".
             
             CRITICAL CAC RULE:
-            - The name MUST end with a strong business qualifier or industry descriptor. Acceptable examples: VENTURES, CONCEPTS, ENTERPRISES, SERVICES, HUB, BIZ, GLOBAL, TECH, MEDIA, FARMS, LOGISTICS, STUDIO, CONSULTING.
-            - Do NOT use weak descriptors at the end (e.g., do not end with 'STAYS', 'OUTS').
-            - DO NOT use restricted words like FEDERAL, NATIONAL, GOVERNMENT, HOLDINGS, PLC, LTD, or LIMITED.
-            - Output ONLY the raw name string. Do not use quotes, punctuation, or explanations.`
+            - The name MUST end with one of these STRICTLY VERIFIED qualifiers. Choose the one that fits best: VENTURES, CONCEPTS, ENTERPRISES, SERVICES, HUB, BIZ, GLOBAL, TECH, FARMS, HOMES, STUDIOS, CLINIC, SYNERGY, DYNAMICS, LOGISTICS, SOLUTIONS.
+            - DO NOT invent your own ending words (e.g., never use STAYS, ACCOMMODATIONS, MOTORS).
+            - Output ONLY the raw name string. Do not use quotes.`
           }
         ],
         temperature: 0.85,
@@ -42,7 +41,7 @@ export async function POST(req: Request) {
     }
 
     // ==========================================
-    // MODE: STANDARD CHECK (Pre-Flight Gatekeeper)
+    // MODE: STANDARD CHECK (Zero-Cost & AI Pre-Flight)
     // ==========================================
     if (!proposedName) {
       return NextResponse.json({ success: false, message: "Proposed name is required." }, { status: 400 });
@@ -50,6 +49,19 @@ export async function POST(req: Request) {
 
     const uppercaseName = proposedName.trim().toUpperCase();
 
+    // 1. ZERO-COST NATIVE GATEKEEPER: Instantly block single-word names
+    const wordCount = uppercaseName.split(/\s+/).length;
+    if (entityType === "Business Name" && wordCount < 2) {
+      return NextResponse.json({
+        success: true,
+        isBlocked: true,
+        rejectionType: "MISSING_SUFFIX",
+        reasonMessage: "Proposed name must contain at least two words. Please add a business qualifier like 'Ventures', 'Concepts', 'Enterprises', 'Homes', or 'Hub'.",
+        data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
+      });
+    }
+
+    // 2. AI PRE-FLIGHT (Only checks for Legal/Dangerous words now to save tokens and prevent false positives)
     const preFlightCheck = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -61,11 +73,7 @@ export async function POST(req: Request) {
           1. REJECTION - ILLEGAL SUFFIX: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC'.
           2. REJECTION - RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE'.
           3. REJECTION - DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
-          4. WARNING - MISSING QUALIFIER: CAC requires business names to end with a business identifier. 
-             - YOU MUST ACCEPT traditional qualifiers (e.g., 'VENTURES', 'CONCEPTS', 'ENTERPRISES', 'SERVICES', 'HUB', 'BIZ', 'GLOBAL', 'SYNERGY').
-             - YOU MUST ACCEPT industry descriptors (e.g., 'TECH', 'MEDIA', 'FARMS', 'LOGISTICS', 'MOTORS', 'STUDIO', 'CLINIC', 'CONSULTING', 'APPAREL').
-             - ONLY flag as "MISSING_SUFFIX" if the name ends in a non-business word (like 'STAYS', 'OUTS', 'STUFF') or if it is a completely naked personal name/invented word with no descriptor at all.
-          5. If it passes all rules, flag as "PASSED".`
+          4. If none of the above violations occur, flag as "PASSED". DO NOT check for valid suffixes, the CAC registry will handle that.`
         },
         { role: "user", content: `Name: "${uppercaseName}"` }
       ],
@@ -76,7 +84,7 @@ export async function POST(req: Request) {
           schema: {
             type: "object",
             properties: {
-              status: { type: "string", enum: ["ILLEGAL_SUFFIX", "RESTRICTED_WORD", "DANGEROUS_WORD", "MISSING_SUFFIX", "PASSED"] },
+              status: { type: "string", enum: ["ILLEGAL_SUFFIX", "RESTRICTED_WORD", "DANGEROUS_WORD", "PASSED"] },
               reason: { type: "string" }
             },
             required: ["status", "reason"],
@@ -90,11 +98,6 @@ export async function POST(req: Request) {
 
     const preFlightResult = JSON.parse(preFlightCheck.choices[0].message.content || "{}");
 
-    // Rewrite the reason for MISSING_SUFFIX to match the exact CAC error format
-    if (preFlightResult.status === "MISSING_SUFFIX") {
-      preFlightResult.reason = "Proposed name does not include a valid qualifier. Please add a business identifier like 'Tech', 'Ventures', 'Concepts', 'Services', or 'Hub' to the end of the name.";
-    }
-
     if (preFlightResult.status !== "PASSED") {
       return NextResponse.json({
         success: true,
@@ -106,7 +109,7 @@ export async function POST(req: Request) {
     }
 
     // ==========================================
-    // PHASE 2: CAC LIVE REGISTRY FETCH
+    // PHASE 3: CAC LIVE REGISTRY FETCH (Definitive Check)
     // ==========================================
     const cacApiKey = process.env.CAC_API_KEY;
     if (!cacApiKey) throw new Error("Missing CAC API Key.");
@@ -127,8 +130,18 @@ export async function POST(req: Request) {
     }
 
     const cacJson = await cacResponse.json();
+
+    // Catch CAC's explicit Qualifier or Generic Errors Native Rejections
+    if (cacJson.success === false || cacJson.message?.includes("QUALIFIER") || cacJson.error?.includes("QUALIFIER")) {
+      return NextResponse.json({
+        success: true,
+        isBlocked: true,
+        rejectionType: "QUALIFIER_NOT_FOUND",
+        reasonMessage: cacJson.message || "Proposed name does not include a valid qualifier. Please add a recognized qualifier (e.g., Ventures, Concepts, Enterprises, Homes, Services).",
+        data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
+      });
+    }
     
-    // Explicit Exact Match
     if (cacJson.message === "Name exist") {
       return NextResponse.json({
         success: true,
@@ -144,7 +157,7 @@ export async function POST(req: Request) {
     const mostSimilarName = cacJson.data?.mostSimilarName || "N/A";
 
     // ==========================================
-    // PHASE 3: THE AI SEMANTIC ARBITER
+    // PHASE 4: THE AI SEMANTIC ARBITER
     // ==========================================
     let finalIsBlocked = false;
     let finalReasonMessage = "Name is available and ready for registration.";
