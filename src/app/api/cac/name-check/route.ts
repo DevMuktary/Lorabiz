@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, 
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function POST(req: Request) {
@@ -13,7 +13,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Missing required metadata parameters." }, { status: 400 });
     }
 
-    // --- MODE: INSTANT SUGGESTION GENERATOR ---
+    // ==========================================
+    // MODE: INSTANT SUGGESTION GENERATOR
+    // ==========================================
     if (mode === "SUGGEST") {
       const aiSuggestion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -21,12 +23,13 @@ export async function POST(req: Request) {
           {
             role: "system",
             content: `You are a Senior Corporate Naming Specialist under the Nigerian Companies and Allied Matters Act (CAMA).
-            Generate exactly ONE highly professional, creative, and completely unique alternative name for a "${entityType}".
+            Generate exactly ONE highly professional, creative, and unique alternative name for a "${entityType}".
             Base theme to modify: "${proposedName}".
             Industry vertical: "${lineOfBusiness}".
             
-            CRITICAL RULES:
-            - Must end with a descriptive business name suffix (e.g., VENTURES, ENTERPRISES, GLOBAL, NIGERIA, STORES, SERVICES, CONCEPTS, HUB, TECH, FARMS, STUDIOS).
+            CRITICAL CAC RULE:
+            - The name MUST end with a strong, recognized "Qualifier" from this whitelist: VENTURES, CONCEPTS, ENTERPRISES, SERVICES, HUB, BIZ, GLOBAL, SYNERGY, DYNAMICS.
+            - Do NOT use weak descriptors at the end (e.g., do not end with 'STAYS', 'HOMES', or 'TECH' unless followed by a qualifier like 'STAYS CONCEPTS').
             - DO NOT use restricted words like FEDERAL, NATIONAL, GOVERNMENT, HOLDINGS, PLC, LTD, or LIMITED.
             - Output ONLY the raw name string. Do not use quotes, punctuation, or explanations.`
           }
@@ -38,16 +41,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, alternativeName: generatedName });
     }
 
-    // --- MODE: STANDARD CHECK ---
+    // ==========================================
+    // MODE: STANDARD CHECK (Pre-Flight Gatekeeper)
+    // ==========================================
     if (!proposedName) {
       return NextResponse.json({ success: false, message: "Proposed name is required." }, { status: 400 });
     }
 
     const uppercaseName = proposedName.trim().toUpperCase();
 
-    // ==========================================
-    // PHASE 1: PRE-FLIGHT GATEKEEPER
-    // ==========================================
     const preFlightCheck = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -59,8 +61,8 @@ export async function POST(req: Request) {
           1. REJECTION - ILLEGAL SUFFIX: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC'.
           2. REJECTION - RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE'.
           3. REJECTION - DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
-          4. WARNING - MISSING SUFFIX: If entityType is 'Business Name', it MUST have a descriptive ending word. Reject ONLY IF the name is completely naked (e.g., just "JOHN"). ACCEPT ANY reasonable descriptive word at the end (e.g., 'VENTURES', 'ENTERPRISES', 'SERVICES', 'HUB', 'TECH', 'CONCEPTS', 'GLOBAL', 'FARMS', 'AGRO', 'STUDIOS'). Do NOT be overly strict here.
-          5. If none of the above violations occur, flag as "PASSED".`
+          4. WARNING - MISSING QUALIFIER: CAC requires business names to end with a strong qualifier. If the name ends with a weak descriptor (like 'STAYS', 'HOMES', 'STUFF') or has NO descriptor, flag as "MISSING_SUFFIX". It MUST end with recognized words like 'VENTURES', 'CONCEPTS', 'ENTERPRISES', 'SERVICES', 'HUB', 'BIZ', 'GLOBAL', 'SYNERGY', 'FASHION', 'BEAUTY', or 'CLINIC'.
+          5. If it passes all rules, flag as "PASSED".`
         },
         { role: "user", content: `Name: "${uppercaseName}"` }
       ],
@@ -84,6 +86,11 @@ export async function POST(req: Request) {
     });
 
     const preFlightResult = JSON.parse(preFlightCheck.choices[0].message.content || "{}");
+
+    // Rewrite the reason for MISSING_SUFFIX to match the exact CAC error format
+    if (preFlightResult.status === "MISSING_SUFFIX") {
+      preFlightResult.reason = "Proposed name does not include a valid qualifier. Please add a qualifier like 'Ventures', 'Concepts', 'Enterprises', 'Services', or 'Hub' to the end of the name.";
+    }
 
     if (preFlightResult.status !== "PASSED") {
       return NextResponse.json({
@@ -118,6 +125,7 @@ export async function POST(req: Request) {
 
     const cacJson = await cacResponse.json();
     
+    // Explicit Exact Match
     if (cacJson.message === "Name exist") {
       return NextResponse.json({
         success: true,
@@ -133,7 +141,7 @@ export async function POST(req: Request) {
     const mostSimilarName = cacJson.data?.mostSimilarName || "N/A";
 
     // ==========================================
-    // PHASE 3: THE AI SEMANTIC ARBITER (CAC EXAMINER MODE)
+    // PHASE 3: THE AI SEMANTIC ARBITER
     // ==========================================
     let finalIsBlocked = false;
     let finalReasonMessage = "Name is available and ready for registration.";
@@ -145,12 +153,12 @@ export async function POST(req: Request) {
           {
             role: "system",
             content: `You are a Senior Examiner at the Nigerian Corporate Affairs Commission (CAC). A basic text-matching algorithm flagged these two names as highly similar. 
-            Your job is to determine if a human CAC examiner would actually REJECT the proposed name for being confusingly similar to the existing one under the Companies and Allied Matters Act (CAMA).
+            Determine if a human examiner would REJECT the proposed name for being confusingly similar to the existing one.
             
-            CRITICAL GUIDELINES:
-            - DISTINCT PREFIXES SAVE NAMES: If the proposed name has a strong, distinct prefix or acronym (e.g., 'NMY') that separates it from the existing name (e.g., 'HOMES'), the CAC WILL approve it. Distinct prefixes are strong differentiators. Return isConflict: false.
-            - SHARED GENERIC WORDS: Sharing words like SERVICES, CONCEPTS, VENTURES, NIGERIA, HUB, FARMS does NOT cause a conflict if the leading names are different. Return isConflict: false.
-            - THE ONLY REJECTIONS: If the core leading identifiers are phonetically identical (with no distinct prefix to save it), pluralized/singular versions of the same word, or clearly deceptive copycats, ONLY THEN will CAC reject it. Return isConflict: true.`
+            CRITICAL CAC GUIDELINES:
+            1. UNIQUE ROOT COLLISION (REJECT): If both names share a highly unique, invented, or distinct root word (e.g., 'QUADROX', 'ZINOX', 'XELLER') and only differ by a generic secondary word (e.g., 'HOMES' vs 'TECHNOLOGIES LIMITED'), the CAC WILL REJECT IT. Return isConflict: true.
+            2. GENERIC WORD SHARING (APPROVE): If they share generic everyday words, Islamic/Christian names, or standard nouns (e.g., 'HALAL', 'MUKHTAR', 'OLIVIA', 'SERVICES', 'NIGERIA') but the distinct prefixes or accompanying words differ (e.g., 'NMY HALAH HUB' vs 'HALAL HOMES HUB'), the CAC will APPROVE it. Return isConflict: false.
+            3. EXACT PHONETIC COPY (REJECT): If they are phonetically identical or pluralized versions of the exact same full name, REJECT IT.`
           },
           { role: "user", content: `Proposed Name: "${uppercaseName}"\nExisting Conflict: "${mostSimilarName}"` }
         ],
@@ -162,7 +170,7 @@ export async function POST(req: Request) {
               type: "object",
               properties: {
                 isConflict: { type: "boolean" },
-                reason: { type: "string", description: "Briefly explain why CAC would accept or reject this based on the distinct prefixes or lack thereof." }
+                reason: { type: "string" }
               },
               required: ["isConflict", "reason"],
               additionalProperties: false
@@ -174,7 +182,6 @@ export async function POST(req: Request) {
       });
 
       const semanticResult = JSON.parse(semanticCheck.choices[0].message.content || "{}");
-      
       finalIsBlocked = semanticResult.isConflict;
       
       if (finalIsBlocked) {
