@@ -26,7 +26,7 @@ export async function POST(req: Request) {
             Industry vertical: "${lineOfBusiness}".
             
             CRITICAL RULES:
-            - Must end with a valid business name suffix (e.g., VENTURES, ENTERPRISES, GLOBAL, NIGERIA, STORES, SERVICES, CONCEPTS).
+            - Must end with a descriptive business name suffix (e.g., VENTURES, ENTERPRISES, GLOBAL, NIGERIA, STORES, SERVICES, CONCEPTS, HUB, TECH, FARMS, STUDIOS).
             - DO NOT use restricted words like FEDERAL, NATIONAL, GOVERNMENT, HOLDINGS, PLC, LTD, or LIMITED.
             - Output ONLY the raw name string. Do not use quotes, punctuation, or explanations.`
           }
@@ -53,14 +53,14 @@ export async function POST(req: Request) {
       messages: [
         {
           role: "system",
-          content: `You are a strict legal compliance gatekeeper for the Nigerian Corporate Affairs Commission (CAC).
+          content: `You are a legal compliance gatekeeper for the Nigerian Corporate Affairs Commission (CAC).
           Analyze the user's proposed company name for a "${entityType}":
           
           1. REJECTION - ILLEGAL SUFFIX: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC'.
           2. REJECTION - RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE'.
           3. REJECTION - DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
-          4. WARNING - MISSING SUFFIX: If entityType is 'Business Name' and does NOT end with a standard structural indicator (e.g., 'VENTURES', 'ENTERPRISES', 'GLOBAL', 'SERVICES', 'STORES', 'CONCEPTS', 'INDUSTRIES', 'AGRO', 'SYNERGY').
-          5. If none match, flag as "PASSED".`
+          4. WARNING - MISSING SUFFIX: If entityType is 'Business Name', it MUST have a descriptive ending word. Reject ONLY IF the name is completely naked (e.g., just "JOHN"). ACCEPT ANY reasonable descriptive word at the end (e.g., 'VENTURES', 'ENTERPRISES', 'SERVICES', 'HUB', 'TECH', 'CONCEPTS', 'GLOBAL', 'FARMS', 'AGRO', 'STUDIOS'). Do NOT be overly strict here.
+          5. If none of the above violations occur, flag as "PASSED".`
         },
         { role: "user", content: `Name: "${uppercaseName}"` }
       ],
@@ -139,7 +139,6 @@ export async function POST(req: Request) {
     let finalIsBlocked = false;
     let finalReasonMessage = "Name is available and ready for registration.";
 
-    // If CAC's basic text-matching algorithm flags it as highly similar (> 75%), we ask our AI "Examiner" to judge it
     if (similarityVal >= 75 && mostSimilarName !== "N/A") {
       const semanticCheck = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -150,8 +149,8 @@ export async function POST(req: Request) {
             Your job is to determine if a human CAC examiner would actually REJECT the proposed name for being too similar to the existing one under the Companies and Allied Matters Act (CAMA).
             
             GUIDELINES:
-            - If they share generic words (like SERVICES, CONCEPTS, VENTURES, NIGERIA) or share a common first name but the core brand identity/other names are distinctly different (e.g., 'OLIVIA REED SERVICES' vs 'REEN OLIVIA CHARLES VENTURES'), the CAC will approve it. Return isConflict: false.
-            - If the core distinct words are phonetically identical, pluralized/singular versions of the same word, or clearly deceptive copycats (e.g., 'NMY HALA HL' vs 'NMY HALAH'), the CAC WILL reject it. Return isConflict: true.`
+            - If they share generic words (like SERVICES, CONCEPTS, VENTURES, NIGERIA, HUB) or share a common first name but the core brand identity/other names are distinctly different, the CAC will approve it. Return isConflict: false.
+            - If the core distinct words are phonetically identical, pluralized/singular versions of the same word, or clearly deceptive copycats, the CAC WILL reject it. Return isConflict: true.`
           },
           { role: "user", content: `Proposed Name: "${uppercaseName}"\nExisting Conflict: "${mostSimilarName}"` }
         ],
