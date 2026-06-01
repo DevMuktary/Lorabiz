@@ -13,32 +13,94 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Missing required metadata parameters." }, { status: 400 });
     }
 
+    const cacApiKey = process.env.CAC_API_KEY;
+    if (!cacApiKey) throw new Error("Missing CAC API Key.");
+
     // ==========================================
-    // MODE: INSTANT SUGGESTION GENERATOR
+    // MODE: INSTANT SUGGESTION GENERATOR (PRE-VERIFIED LOOP)
     // ==========================================
     if (mode === "SUGGEST") {
-      const aiSuggestion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are a Senior Corporate Naming Specialist under the Nigerian Companies and Allied Matters Act (CAMA).
-            Generate exactly ONE highly professional, creative, and unique alternative name for a "${entityType}".
-            Base theme to modify: "${proposedName}".
-            Industry vertical: "${lineOfBusiness}".
-            
-            CRITICAL CAC RULE:
-            - The name MUST end with a strong, recognized "Qualifier" from this whitelist: VENTURES, CONCEPTS, ENTERPRISES, SERVICES, HUB, BIZ, GLOBAL, SYNERGY, DYNAMICS.
-            - Do NOT use weak descriptors at the end (e.g., do not end with 'STAYS', 'HOMES', or 'TECH' unless followed by a qualifier like 'STAYS CONCEPTS').
-            - DO NOT use restricted words like FEDERAL, NATIONAL, GOVERNMENT, HOLDINGS, PLC, LTD, or LIMITED.
-            - Output ONLY the raw name string. Do not use quotes, punctuation, or explanations.`
-          }
-        ],
-        temperature: 0.85,
-      });
+      let attempts = 0;
+      let validAlternative = "";
 
-      const generatedName = (aiSuggestion.choices[0].message.content || "").trim().toUpperCase();
-      return NextResponse.json({ success: true, alternativeName: generatedName });
+      // Loop up to 3 times to find a name that absolutely passes CAC
+      while (attempts < 3) {
+        attempts++;
+        
+        const aiSuggestion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: `You are a Senior Corporate Naming Specialist under the Nigerian Companies and Allied Matters Act (CAMA).
+              Generate exactly ONE highly professional, creative, and unique alternative name for a "${entityType}".
+              Base theme to modify: "${proposedName}". 
+              Industry vertical: "${lineOfBusiness}".
+              
+              CRITICAL CAC RULES:
+              - DO NOT just append a word to the exact same highly unique root (e.g., if QUADROX failed, change the root word to something like QUADRA, NEXUS, or VORTEX).
+              - Must end with a strong qualifier (e.g., VENTURES, CONCEPTS, ENTERPRISES, SERVICES, HUB, BIZ, GLOBAL).
+              - Output ONLY the raw name string. Do not use quotes.`
+            }
+          ],
+          temperature: 0.9, // Higher temp for more creative variations
+        });
+
+        const generatedName = (aiSuggestion.choices[0].message.content || "").trim().toUpperCase();
+
+        // SILENTLY VERIFY THE GENERATED NAME AGAINST CAC
+        const cacVerify = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json", "X_API_KEY": cacApiKey },
+          body: JSON.stringify({ proposedName: generatedName, lineOfBusiness }),
+        });
+
+        if (cacVerify.ok) {
+          const verifyJson = await cacVerify.json();
+          
+          if (verifyJson.message !== "Name exist") {
+            const simStr = verifyJson.data?.similarityScore || "0%";
+            const simVal = parseInt(simStr);
+            const mostSim = verifyJson.data?.mostSimilarName || "N/A";
+
+            // If it passes cleanly (< 75%), we found our winner
+            if (simVal < 75) {
+              validAlternative = generatedName;
+              break;
+            } else {
+              // If it's border-line, run it through the Semantic Arbiter to make sure it's safe
+              const semanticCheck = await openai.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [
+                  {
+                    role: "system",
+                    content: `You are a CAC Examiner. Are these names confusingly similar based on unique root word collision?
+                    - If they share a highly unique root, return isConflict: true.
+                    - If they only share generic words/prefixes, return isConflict: false.`
+                  },
+                  { role: "user", content: `Proposed: "${generatedName}"\nConflict: "${mostSim}"` }
+                ],
+                response_format: { type: "json_schema", json_schema: { name: "check", schema: { type: "object", properties: { isConflict: { type: "boolean" } }, required: ["isConflict"], additionalProperties: false }, strict: true } },
+                temperature: 0.1,
+              });
+
+              const semanticResult = JSON.parse(semanticCheck.choices[0].message.content || "{}");
+              if (!semanticResult.isConflict) {
+                validAlternative = generatedName;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // If we couldn't find a perfect name after 3 tries, generate a highly randomized fallback
+      if (!validAlternative) {
+         const fallbackRoot = proposedName.split(" ")[0].substring(0, 5);
+         validAlternative = `${fallbackRoot} ${Math.floor(Math.random() * 900 + 100)} CONCEPTS`.toUpperCase();
+      }
+
+      return NextResponse.json({ success: true, alternativeName: validAlternative });
     }
 
     // ==========================================
@@ -61,7 +123,7 @@ export async function POST(req: Request) {
           1. REJECTION - ILLEGAL SUFFIX: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC'.
           2. REJECTION - RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE'.
           3. REJECTION - DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
-          4. WARNING - MISSING QUALIFIER: CAC requires business names to end with a strong qualifier. If the name ends with a weak descriptor (like 'STAYS', 'EATS', 'STUFF') or has NO descriptor, flag as "MISSING_SUFFIX". It MUST end with recognized words like 'VENTURES', 'CONCEPTS', 'ENTERPRISES', 'SERVICES', 'HUB', 'BIZ', 'GLOBAL', 'SYNERGY', 'FASHION', 'BEAUTY', or 'CLINIC'.
+          4. WARNING - MISSING QUALIFIER: CAC requires business names to end with a strong qualifier. If the name ends with a weak descriptor (like 'STAYS', 'HOMES', 'STUFF') or has NO descriptor, flag as "MISSING_SUFFIX". It MUST end with recognized words like 'VENTURES', 'CONCEPTS', 'ENTERPRISES', 'SERVICES', 'HUB', 'BIZ', 'GLOBAL', 'SYNERGY', 'FASHION', 'BEAUTY', or 'CLINIC'.
           5. If it passes all rules, flag as "PASSED".`
         },
         { role: "user", content: `Name: "${uppercaseName}"` }
@@ -87,7 +149,6 @@ export async function POST(req: Request) {
 
     const preFlightResult = JSON.parse(preFlightCheck.choices[0].message.content || "{}");
 
-    // Rewrite the reason for MISSING_SUFFIX to match the exact CAC error format
     if (preFlightResult.status === "MISSING_SUFFIX") {
       preFlightResult.reason = "Proposed name does not include a valid qualifier. Please add a qualifier like 'Ventures', 'Concepts', 'Enterprises', 'Services', or 'Hub' to the end of the name.";
     }
@@ -105,9 +166,6 @@ export async function POST(req: Request) {
     // ==========================================
     // PHASE 2: CAC LIVE REGISTRY FETCH
     // ==========================================
-    const cacApiKey = process.env.CAC_API_KEY;
-    if (!cacApiKey) throw new Error("Missing CAC API Key.");
-
     const cacResponse = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
       method: "POST",
       headers: { "Accept": "application/json", "Content-Type": "application/json", "X_API_KEY": cacApiKey },
@@ -125,7 +183,6 @@ export async function POST(req: Request) {
 
     const cacJson = await cacResponse.json();
     
-    // Explicit Exact Match
     if (cacJson.message === "Name exist") {
       return NextResponse.json({
         success: true,
