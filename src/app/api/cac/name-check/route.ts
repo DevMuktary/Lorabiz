@@ -116,7 +116,7 @@ export async function POST(req: Request) {
           Analyze the user's proposed company name for a "${entityType}":
           
           1. REJECTION - ILLEGAL SUFFIX: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC'.
-          2. REJECTION - RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE'.
+          2. REJECTION - RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE', or 'NIGERIAN'. NOTE: The word 'NIGERIA' is completely ALLOWED as a geographic indicator. Only block 'NIGERIAN'.
           3. REJECTION - DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
           4. WARNING - MISSING QUALIFIER: If the name lacks a standard Nigerian business descriptor at the end, flag as "MISSING_SUFFIX".
           5. If it passes all rules, flag as "PASSED".`
@@ -145,11 +145,9 @@ export async function POST(req: Request) {
     const preFlightResult = JSON.parse(preFlightCheck.choices[0].message.content || "{}");
     let uiWarningMessage = "";
 
-    // DO NOT BLOCK ON MISSING SUFFIX! Just attach the warning string and let it proceed.
     if (preFlightResult.status === "MISSING_SUFFIX") {
       uiWarningMessage = "This name might not have a good suffix to be acceptable by CAC. While we keep on working to improve on our name search engine, if the name is queried by CAC, you will receive an SMS/email to update the name.";
     } 
-    // Only block if it is an illegal, restricted, or dangerous word.
     else if (preFlightResult.status !== "PASSED") {
       return NextResponse.json({
         success: true,
@@ -174,18 +172,17 @@ export async function POST(req: Request) {
         success: true,
         isBlocked: false,
         reasonMessage: "Registry connection is slow. Proceed, and we will verify manually.",
-        warningMessage: uiWarningMessage, // Pass warning even on timeout
+        warningMessage: uiWarningMessage, 
         data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
       });
     }
 
     const cacJson = await cacResponse.json();
 
-    // If CAC's algorithm complains about the Qualifier, OVERRIDE IT, set to passed, and attach the warning.
     if (cacJson.success === false || cacJson.message?.includes("QUALIFIER") || cacJson.error?.includes("QUALIFIER")) {
         return NextResponse.json({
           success: true,
-          isBlocked: false, // Force it to pass
+          isBlocked: false, 
           rejectionType: "PASSED_WITH_WARNING",
           reasonMessage: "Name is available and ready for registration.",
           warningMessage: "This name might not have a good suffix to be acceptable by CAC. While we keep on working to improve on our name search engine, if the name is queried by CAC, you will receive an SMS/email to update the name.",
@@ -261,7 +258,7 @@ export async function POST(req: Request) {
       isBlocked: finalIsBlocked,
       rejectionType: finalIsBlocked ? "SEMANTIC_CONFLICT" : "PASSED",
       reasonMessage: finalReasonMessage,
-      warningMessage: uiWarningMessage, // Inject the warning message into the final payload
+      warningMessage: uiWarningMessage, 
       data: {
         mostSimilarName: mostSimilarName,
         cleansedNameUsed: uppercaseName
