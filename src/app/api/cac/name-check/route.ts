@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2. AI PRE-FLIGHT (Only checks for Legal/Dangerous words now to save tokens and prevent false positives)
+    // 2. AI PRE-FLIGHT (Only checks for Legal/Dangerous words)
     const preFlightCheck = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -130,6 +130,15 @@ export async function POST(req: Request) {
     }
 
     const cacJson = await cacResponse.json();
+
+    // ==========================================
+    // 🛑 LOGGING BLOCK FOR RAILWAY DEBUGGING 🛑
+    // ==========================================
+    console.log("\n====== CAC API RAW RESPONSE START ======");
+    console.log(`PROPOSED NAME: ${uppercaseName}`);
+    console.log("FULL PAYLOAD:", JSON.stringify(cacJson, null, 2));
+    console.log("====== CAC API RAW RESPONSE END ======\n");
+    // ==========================================
 
     // Catch CAC's explicit Qualifier or Generic Errors Native Rejections
     if (cacJson.success === false || cacJson.message?.includes("QUALIFIER") || cacJson.error?.includes("QUALIFIER")) {
