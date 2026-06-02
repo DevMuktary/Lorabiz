@@ -24,6 +24,7 @@ export default function BusinessNameSearchPage() {
   const [searchResult, setResult] = useState<{
     mostSimilarName: string;
     cleansedNameUsed: string;
+    warningMessage?: string;
   } | null>(null);
 
   const [aiVerifiedAlternative, setAiVerifiedAlternative] = useState("");
@@ -58,7 +59,8 @@ export default function BusinessNameSearchPage() {
         setRejectionReason(json.reasonMessage || "");
         setResult({
           mostSimilarName: json.data.mostSimilarName,
-          cleansedNameUsed: json.data.cleansedNameUsed
+          cleansedNameUsed: json.data.cleansedNameUsed,
+          warningMessage: json.warningMessage
         });
       } else {
         // Fallback interface safe response handling
@@ -244,7 +246,7 @@ export default function BusinessNameSearchPage() {
                 id="proposedName" 
                 value={proposedName}
                 onChange={(e) => setProposedName(e.target.value)}
-                placeholder="e.g. MUKHTAR FOODS" 
+                placeholder="e.g. HORIZON CONCEPTS" 
                 className="pl-14 h-16 text-lg font-bold bg-white border-2 border-slate-200 focus-visible:ring-0 focus-visible:border-[#ff3f7a] transition-all rounded-2xl uppercase placeholder:normal-case placeholder:font-medium placeholder:text-slate-400" 
               />
             </div>
@@ -278,8 +280,8 @@ export default function BusinessNameSearchPage() {
             {loading ? (
               <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
                 <Spinner className="animate-spin h-12 w-12 text-[#ff3f7a]" weight="bold" />
-                <h3 className="font-bold text-lg text-slate-900">Verifying Registries</h3>
-                <p className="text-slate-500 text-sm font-semibold max-w-xs">Cleansing suffixes and cross-matching compliance rules live...</p>
+                <h3 className="font-bold text-lg text-slate-900">Analyzing Registry</h3>
+                <p className="text-slate-500 text-sm font-semibold max-w-xs">Verifying database compliance and checking name availability...</p>
               </div>
             ) : (
               <div className="p-6 sm:p-8">
@@ -311,14 +313,14 @@ export default function BusinessNameSearchPage() {
                     <div className="border-t border-slate-100 pt-5 space-y-3">
                       {aiVerifiedAlternative ? (
                         <div className="space-y-2 animate-in slide-in-from-bottom-2 duration-300">
-                          <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider text-left">Alternative Suggested Variant:</p>
+                          <p className="text-xs font-bold text-[#ff3f7a] uppercase tracking-wider text-left">Alternative Suggested Variant:</p>
                           <button
                             type="button"
                             onClick={() => applySuggestedName(aiVerifiedAlternative)}
-                            className="w-full bg-emerald-50 border-2 border-emerald-300 hover:border-emerald-500 p-4 rounded-xl text-left font-black text-emerald-900 flex items-center justify-between group transition-all cursor-pointer"
+                            className="w-full bg-[#ff3f7a]/5 border-2 border-[#ff3f7a]/20 hover:border-[#ff3f7a] p-4 rounded-xl text-left font-black text-[#ff3f7a] flex items-center justify-between group transition-all cursor-pointer"
                           >
                             <span>{aiVerifiedAlternative}</span>
-                            <CheckCircle className="h-5 w-5 text-emerald-600" weight="fill" />
+                            <CheckCircle className="h-5 w-5 text-[#ff3f7a]" weight="fill" />
                           </button>
                         </div>
                       ) : (
@@ -352,19 +354,26 @@ export default function BusinessNameSearchPage() {
                 ) : (
                   /* STATE CONDITION B: PASSED AND COMPLIANT FLOW */
                   <div className="space-y-6 text-center">
-                    <div className="h-16 w-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                    <div className="h-16 w-16 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mx-auto shadow-sm">
                       {suggestLoading ? (
-                        <Spinner className="animate-spin h-8 w-8 text-emerald-500" weight="bold" />
+                        <Spinner className="animate-spin h-8 w-8 text-[#ff3f7a]" weight="bold" />
                       ) : (
                         <CheckCircle className="h-8 w-8" weight="fill" />
                       )}
                     </div>
 
                     <div className="space-y-1">
-                      <p className="text-xs font-black uppercase tracking-widest text-emerald-600">Name Available</p>
+                      <p className="text-xs font-black uppercase tracking-widest text-[#ff3f7a]">Congratulations!</p>
                       <h2 className="text-2xl font-black text-slate-900 tracking-tight break-words px-2">{resultName}</h2>
-                      <p className="text-sm text-slate-500 font-semibold pt-1">This business name layout meets all regulatory compliance metrics safely.</p>
+                      <p className="text-sm text-slate-500 font-semibold pt-1">The proposed name is available for registration.</p>
                     </div>
+
+                    {searchResult?.warningMessage && (
+                      <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold p-3.5 rounded-xl mt-4 text-left flex items-start gap-2 shadow-sm">
+                        <Warning className="h-5 w-5 text-amber-500 shrink-0" weight="fill" />
+                        <p className="leading-relaxed">{searchResult.warningMessage}</p>
+                      </div>
+                    )}
 
                     {/* PROCEED BLOCK ANCHOR BUTTON */}
                     <div className="border-t border-slate-100 pt-5 flex flex-col gap-3">
