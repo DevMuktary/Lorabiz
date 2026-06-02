@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { 
-  Info, CheckCircle, Warning, MagnifyingGlass, Spinner, ArrowRight, X, Sparkle, Pencil
+  Info, CheckCircle, Warning, MagnifyingGlass, Spinner, ArrowRight, X, Sparkle, Pencil, ShieldWarning
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +63,6 @@ export default function BusinessNameSearchPage() {
           warningMessage: json.warningMessage
         });
       } else {
-        // Fallback interface safe response handling
         setIsBlocked(true);
         setRejectionReason("Connection to registry gateway timed out. Please retry.");
       }
@@ -100,12 +99,10 @@ export default function BusinessNameSearchPage() {
     }
   };
 
-  // Instant win loop bypass when applying an alternative suggested name
   const applySuggestedName = (name: string) => {
     setProposedName(name);
     setSuggestLoading(true);
     
-    // Simulate a brief operational validation check for premium UX feel
     setTimeout(() => {
       setResult({
         mostSimilarName: "N/A",
@@ -115,6 +112,15 @@ export default function BusinessNameSearchPage() {
       setRejectionReason("");
       setSuggestLoading(false);
     }, 750);
+  };
+
+  // Function to override a block and proceed anyways
+  const handleForceProceed = () => {
+    setIsBlocked(false);
+    setResult((prev) => prev ? {
+      ...prev,
+      warningMessage: "You bypassed our safety checks. If this name violates CAMA rules, CAC will query it and you will receive an SMS/email to update it."
+    } : null);
   };
 
   const resultName = searchResult?.cleansedNameUsed || proposedName;
@@ -350,6 +356,22 @@ export default function BusinessNameSearchPage() {
                         Edit Name & Try Again
                       </button>
                     </div>
+
+                    {/* THE "USE ANYWAYS" OVERRIDE BUTTON */}
+                    <div className="mt-6 pt-6 border-t border-red-100">
+                      <p className="text-xs text-slate-500 font-medium mb-3 text-left">
+                        Are you certain this name is valid? If you have special consent or believe our system made a mistake, you can bypass this block.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleForceProceed}
+                        className="w-full h-12 bg-transparent hover:bg-red-50 text-slate-500 hover:text-red-600 font-bold rounded-xl border border-slate-200 hover:border-red-200 flex items-center justify-center gap-2 text-sm transition-all cursor-pointer"
+                      >
+                        <ShieldWarning className="h-5 w-5" weight="fill" />
+                        Force Proceed (Use Anyways)
+                      </button>
+                    </div>
+
                   </div>
                 ) : (
                   /* STATE CONDITION B: PASSED AND COMPLIANT FLOW */
