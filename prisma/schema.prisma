@@ -8,7 +8,7 @@ datasource db {
 }
 
 // ==========================================
-// ENUMS (Industry Standard Data Integrity)
+// ENUMS
 // ==========================================
 
 enum Role {
@@ -23,12 +23,10 @@ enum Gender {
 }
 
 enum RegistrationStatus {
-  UNSUBMITTED // When they pass the name check but haven't paid/finished details
-  PENDING_PAYMENT
-  PROCESSING  // You are actively working on it with CAC
-  QUERY       // CAC flagged it, user needs to take action
-  COMPLETED
-  REJECTED
+  UNSUBMITTED 
+  PENDING
+  QUERIED
+  APPROVED
 }
 
 enum TransactionType {
@@ -73,9 +71,9 @@ model BusinessRegistration {
   id              String             @id @default(cuid())
   userId          String
   proposedName    String
-  entityType      String             // e.g., "Sole Proprietorship", "Partnership"
-  category        String             // Added from frontend flow
-  specificNature  String             // Added from frontend flow
+  entityType      String             
+  category        String             
+  specificNature  String             
   status          RegistrationStatus @default(UNSUBMITTED) 
   similarityScore String?  
   createdAt       DateTime           @default(now())
@@ -99,7 +97,7 @@ model OtpCode {
 model Wallet {
   id        String   @id @default(cuid())
   userId    String   @unique
-  balance   Decimal  @default(0.00) // Decimal prevents floating point math errors
+  balance   Decimal  @default(0.00) 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -111,8 +109,8 @@ model Transaction {
   id            String            @id @default(cuid())
   walletId      String
   amount        Decimal
-  balanceBefore Decimal           // Crucial for audit trails
-  balanceAfter  Decimal           // Crucial for audit trails
+  balanceBefore Decimal           
+  balanceAfter  Decimal           
   type          TransactionType   
   status        TransactionStatus @default(PENDING) 
   reference     String            @unique 
