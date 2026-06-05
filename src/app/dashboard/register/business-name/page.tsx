@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { 
-  Info, CheckCircle, Warning, MagnifyingGlass, Spinner, ArrowRight, X, Sparkle, Pencil, ShieldWarning
+  Info, CheckCircle, Warning, MagnifyingGlass, Spinner, ArrowRight, X, Pencil, Wallet
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,33 +11,58 @@ import { Label } from "@/components/ui/label";
 import { CAC_CATEGORIES } from "@/lib/cac-categories";
 
 export default function BusinessNameSearchPage() {
+  const router = useRouter();
+
+  // Core Form State
   const [loading, setLoading] = useState(false);
-  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [isProceeding, setIsProceeding] = useState(false);
   const [entityType, setEntityType] = useState<"sole" | "partnership" | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [specificNature, setSpecificNature] = useState("");
   const [proposedName, setProposedName] = useState("");
   
-  // Modal view structural states
+  // Wallet State
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [walletBalance, setWalletBalance] = useState(0); 
+  const CHECK_COST = 100;
+  
+  // Modal & Results State
   const [showModal, setShowModal] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [searchResult, setResult] = useState<{
     mostSimilarName: string;
     cleansedNameUsed: string;
-    warningMessage?: string;
+    suggestedNames: string[];
+    similarityScore?: number;
   } | null>(null);
-
-  const [aiVerifiedAlternative, setAiVerifiedAlternative] = useState("");
 
   const availableNatures = selectedCategory ? CAC_CATEGORIES[selectedCategory] : [];
 
+  // 1. Fetch real wallet balance on component mount
+  useEffect(() => {
+    const fetchWallet = async () => {
+      try {
+        const res = await fetch("/api/user/wallet");
+        const data = await res.json();
+        if (data.success) {
+          setWalletBalance(data.balance);
+        }
+      } catch (error) {
+        console.error("Failed to fetch wallet");
+      } finally {
+        setWalletLoading(false);
+      }
+    };
+    fetchWallet();
+  }, []);
+
+  // 2. Perform Advanced Name Check & Deduct Funds
   const handleSearch = async (nameToSearch: string = proposedName) => {
     if (!entityType || !selectedCategory || !specificNature || !nameToSearch) return;
 
     setLoading(true);
     setResult(null);
-    setAiVerifiedAlternative("");
     setRejectionReason("");
     setIsBlocked(false);
     setShowModal(true); 
@@ -48,95 +74,117 @@ export default function BusinessNameSearchPage() {
         body: JSON.stringify({
           proposedName: nameToSearch,
           lineOfBusiness: specificNature,
-          entityType: "Business Name"
+          entityType: entityType === "sole" ? "Sole Proprietorship" : "Partnership"
         })
       });
 
       const json = await res.json();
       
-      if (res.ok && json.success) {
+      if (res.ok && json.success !== false) {
         setIsBlocked(json.isBlocked);
         setRejectionReason(json.reasonMessage || "");
         setResult({
-          mostSimilarName: json.data.mostSimilarName,
-          cleansedNameUsed: json.data.cleansedNameUsed,
-          warningMessage: json.warningMessage
+          mostSimilarName: json.data?.mostSimilarName || "N/A",
+          cleansedNameUsed: json.data?.cleansedNameUsed || nameToSearch.toUpperCase(),
+          suggestedNames: json.data?.suggestedNames || [],
+          similarityScore: json.data?.similarityScore || 0
         });
+        
+        // Sync the UI wallet balance with the database's new balance
+        if (json.newWalletBalance !== undefined) {
+          setWalletBalance(json.newWalletBalance);
+        }
       } else {
         setIsBlocked(true);
-        setRejectionReason("Connection to registry gateway timed out. Please retry.");
+        setRejectionReason(json.reasonMessage || "Gateway connection failed. Please retry.");
+        if (json.rejectionType === "INSUFFICIENT_FUNDS") {
+           setShowModal(false);
+           alert(json.reasonMessage); // Future enhancement: Trigger a Top Up modal here
+        }
       }
     } catch (error) {
       console.error(error);
-      setShowModal(false);
+      setIsBlocked(true);
+      setRejectionReason("A network error occurred.");
     } finally {
       setLoading(false);
     }
   };
 
-  const generateLiveSafeSuggestion = async () => {
-    if (!resultName) return;
-    setSuggestLoading(true);
+  // 3. Save as Draft and Route to Step 2
+  const handleProceed = async () => {
+    setIsProceeding(true);
     try {
-      const res = await fetch("/api/cac/name-check", {
+      const res = await fetch("/api/register/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           proposedName: resultName,
-          lineOfBusiness: specificNature,
-          entityType: "Business Name",
-          mode: "SUGGEST"
+          entityType: entityType === "sole" ? "Sole Proprietorship" : "Partnership",
+          category: selectedCategory,
+          specificNature,
+          similarityScore: searchResult?.similarityScore
         })
       });
+      
       const json = await res.json();
-      if (json.success && json.alternativeName) {
-        setAiVerifiedAlternative(json.alternativeName);
+      if (json.success) {
+        // Route them to Step 2 with their newly saved Draft ID
+        router.push(`/dashboard/register/details/${json.draftId}`);
+      } else {
+        alert(json.message || "Failed to save progress. Please try again.");
+        setIsProceeding(false);
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setSuggestLoading(false);
+      alert("A network error occurred while saving.");
+      setIsProceeding(false);
     }
   };
 
+  // 4. Quick-apply a CAC suggested name
   const applySuggestedName = (name: string) => {
     setProposedName(name);
-    setSuggestLoading(true);
-    
+    setShowModal(false);
     setTimeout(() => {
-      setResult({
-        mostSimilarName: "N/A",
-        cleansedNameUsed: name.toUpperCase()
-      });
-      setIsBlocked(false);
-      setRejectionReason("");
-      setSuggestLoading(false);
-    }, 750);
-  };
-
-  // Function to override a block and proceed anyways
-  const handleForceProceed = () => {
-    setIsBlocked(false);
-    setResult((prev) => prev ? {
-      ...prev,
-      warningMessage: "You bypassed our safety checks. If this name violates CAMA rules, CAC will query it and you will receive an SMS/email to update it."
-    } : null);
+      handleSearch(name);
+    }, 300);
   };
 
   const resultName = searchResult?.cleansedNameUsed || proposedName;
   const isFormValid = entityType && selectedCategory && specificNature && proposedName.trim().length > 0;
+  const hasFunds = walletBalance >= CHECK_COST;
 
   return (
     <div className="max-w-3xl mx-auto pb-12 antialiased selection:bg-[#ff3f7a] selection:text-white">
       
-      {/* HEADER SECTION */}
-      <div className="mb-10">
-        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-          Step 1: Name Availability Search
-        </h1>
-        <p className="text-slate-500 mt-2 text-[16px] font-medium leading-relaxed">
-          Ensure your proposed business name is valid, compliant, and completely free of registry conflicts before filing.
-        </p>
+      {/* HEADER SECTION WITH WALLET */}
+      <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
+            Step 1: Advanced Registry Scan
+          </h1>
+          <p className="text-slate-500 mt-2 text-[16px] font-medium leading-relaxed max-w-lg">
+            We query the official CAC registry using an advanced compliance scan. Each search deducts ₦{CHECK_COST} from your balance.
+          </p>
+        </div>
+
+        {/* WALLET DISPLAY */}
+        <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4 flex items-center gap-4 shrink-0">
+          <div className={`p-3 rounded-xl ${hasFunds ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+            <Wallet className="h-6 w-6" weight="fill" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Wallet Balance</p>
+            {walletLoading ? (
+               <Spinner className="animate-spin h-5 w-5 text-slate-400 mt-1" />
+            ) : (
+               <p className={`text-xl font-black ${hasFunds ? 'text-slate-900' : 'text-red-600'}`}>
+                 ₦{Number(walletBalance).toLocaleString()}
+               </p>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-10">
@@ -144,16 +192,7 @@ export default function BusinessNameSearchPage() {
           
           {/* ENTITY SELECTOR GRID */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Label className="text-[15px] font-bold text-slate-900">Proprietorship Structure</Label>
-              <div className="group relative flex items-center">
-                <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium leading-normal">
-                  Business names can belong to a single owner (Sole Proprietor) or multiple owners (Partnership).
-                </div>
-              </div>
-            </div>
-            
+            <Label className="text-[15px] font-bold text-slate-900">Proprietorship Structure</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 type="button"
@@ -184,15 +223,7 @@ export default function BusinessNameSearchPage() {
           {/* DUAL DROPDOWN FIELDS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2.5">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="category" className="text-[15px] font-bold text-slate-900">Line of Business Category</Label>
-                <div className="group relative flex items-center">
-                  <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium">
-                    Select the broad economic sector for registration.
-                  </div>
-                </div>
-              </div>
+              <Label htmlFor="category" className="text-[15px] font-bold text-slate-900">Line of Business Category</Label>
               <select 
                 id="category" 
                 value={selectedCategory} 
@@ -207,15 +238,7 @@ export default function BusinessNameSearchPage() {
             </div>
 
             <div className="space-y-2.5">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="specificNature" className="text-[15px] font-bold text-slate-900">Specific Corporate Nature</Label>
-                <div className="group relative flex items-center">
-                  <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium">
-                    The explicit matching term catalogued by CAC database.
-                  </div>
-                </div>
-              </div>
+              <Label htmlFor="specificNature" className="text-[15px] font-bold text-slate-900">Specific Corporate Nature</Label>
               <select 
                 id="specificNature" 
                 value={specificNature} 
@@ -235,15 +258,7 @@ export default function BusinessNameSearchPage() {
 
           {/* DYNAMIC TEXT INPUT FIELD */}
           <div className="space-y-2.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="proposedName" className="text-[15px] font-bold text-slate-900">Proposed Corporate Title</Label>
-              <div className="group relative flex items-center">
-                <Info className="h-4 w-4 text-slate-400 cursor-help" weight="fill" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50 text-center pointer-events-none font-medium leading-normal">
-                  Type your desired name. Suffix terms like 'LTD' or 'PLC' are blocked natively for business names.
-                </div>
-              </div>
-            </div>
+            <Label htmlFor="proposedName" className="text-[15px] font-bold text-slate-900">Proposed Corporate Title</Label>
             <div className="relative flex items-center">
               <div className="absolute left-4 bg-[#ff3f7a]/10 p-1.5 rounded-lg">
                 <MagnifyingGlass className="h-5 w-5 text-[#ff3f7a]" weight="bold" />
@@ -256,14 +271,21 @@ export default function BusinessNameSearchPage() {
                 className="pl-14 h-16 text-lg font-bold bg-white border-2 border-slate-200 focus-visible:ring-0 focus-visible:border-[#ff3f7a] transition-all rounded-2xl uppercase placeholder:normal-case placeholder:font-medium placeholder:text-slate-400" 
               />
             </div>
+            {isFormValid && (
+              <p className="text-xs font-bold text-slate-500 text-right mt-2">
+                Cost: <span className="text-[#ff3f7a]">₦{CHECK_COST}</span>
+              </p>
+            )}
           </div>
 
           <Button 
             onClick={() => handleSearch(proposedName)}
-            disabled={!isFormValid} 
-            className="w-full h-14 text-lg font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={!isFormValid || !hasFunds} 
+            className={`w-full h-14 text-lg font-bold shadow-xl transition-all rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+              hasFunds ? "bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-[#ff3f7a]/25" : "bg-slate-800 text-white shadow-slate-900/25"
+            }`}
           >
-            Check Name Availability
+            {hasFunds ? "Run Advanced Registry Check" : "Insufficient Funds - Top Up Required"}
           </Button>
         </div>
       </div>
@@ -273,21 +295,18 @@ export default function BusinessNameSearchPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200 relative">
             
-            {/* ABSOLUTE X CLOSING BUTTON */}
             <button 
               onClick={() => setShowModal(false)}
               className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-full transition-colors z-50 cursor-pointer"
-              aria-label="Close Modal"
             >
               <X className="h-4 w-4" weight="bold" />
             </button>
 
-            {/* LOADING ENGINE TRANSITION DISPLAY VIEWPORT */}
             {loading ? (
               <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
                 <Spinner className="animate-spin h-12 w-12 text-[#ff3f7a]" weight="bold" />
-                <h3 className="font-bold text-lg text-slate-900">Analyzing Registry</h3>
-                <p className="text-slate-500 text-sm font-semibold max-w-xs">Verifying database compliance and checking name availability...</p>
+                <h3 className="font-bold text-lg text-slate-900">Querying CAC Advanced Registry</h3>
+                <p className="text-slate-500 text-sm font-semibold max-w-xs">Running rigorous compliance algorithms natively on government servers...</p>
               </div>
             ) : (
               <div className="p-6 sm:p-8">
@@ -303,7 +322,7 @@ export default function BusinessNameSearchPage() {
                       <p className="text-xs font-black uppercase tracking-widest text-red-500">Name Unavailable</p>
                       <h2 className="text-2xl font-black text-slate-900 tracking-tight break-words px-2">{resultName}</h2>
                       {rejectionReason && (
-                        <p className="text-xs text-red-600 font-bold bg-red-50 border border-red-100 p-2.5 rounded-xl mt-2 text-left">
+                        <p className="text-xs text-red-600 font-bold bg-red-50 border border-red-100 p-3 rounded-xl mt-2 text-left leading-relaxed">
                           {rejectionReason}
                         </p>
                       )}
@@ -315,60 +334,33 @@ export default function BusinessNameSearchPage() {
                       </div>
                     )}
 
-                    {/* DYNAMIC VERIFIED SUGGESTION SECTION BLOCK */}
-                    <div className="border-t border-slate-100 pt-5 space-y-3">
-                      {aiVerifiedAlternative ? (
-                        <div className="space-y-2 animate-in slide-in-from-bottom-2 duration-300">
-                          <p className="text-xs font-bold text-[#ff3f7a] uppercase tracking-wider text-left">Alternative Suggested Variant:</p>
-                          <button
-                            type="button"
-                            onClick={() => applySuggestedName(aiVerifiedAlternative)}
-                            className="w-full bg-[#ff3f7a]/5 border-2 border-[#ff3f7a]/20 hover:border-[#ff3f7a] p-4 rounded-xl text-left font-black text-[#ff3f7a] flex items-center justify-between group transition-all cursor-pointer"
-                          >
-                            <span>{aiVerifiedAlternative}</span>
-                            <CheckCircle className="h-5 w-5 text-[#ff3f7a]" weight="fill" />
-                          </button>
+                    {/* CAC PROVIDED SUGGESTIONS (IF ANY) */}
+                    {searchResult && searchResult.suggestedNames && searchResult.suggestedNames.length > 0 && (
+                      <div className="border-t border-slate-100 pt-5 space-y-3">
+                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider text-left">CAC Suggested Alternatives:</p>
+                        <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
+                          {searchResult.suggestedNames.map((name, idx) => (
+                             <button
+                               key={idx}
+                               type="button"
+                               onClick={() => applySuggestedName(name)}
+                               className="w-full bg-slate-50 border border-slate-200 hover:border-emerald-400 p-3 rounded-xl text-left font-bold text-slate-700 hover:text-emerald-700 transition-all cursor-pointer text-sm"
+                             >
+                               {name}
+                             </button>
+                          ))}
                         </div>
-                      ) : (
-                        <Button 
-                          onClick={generateLiveSafeSuggestion}
-                          disabled={suggestLoading}
-                          className="w-full h-12 bg-[#ff3f7a]/10 hover:bg-[#ff3f7a]/20 text-[#ff3f7a] font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-none"
-                        >
-                          {suggestLoading ? (
-                            <Spinner className="animate-spin h-5 w-5" weight="bold" />
-                          ) : (
-                            <>
-                              <Sparkle className="h-5 w-5" weight="fill" />
-                              Generate Certified Variant
-                            </>
-                          )}
-                        </Button>
-                      )}
+                      </div>
+                    )}
 
-                      {/* EDIT NAME BUTTON TO RETURN ACTIONS IMMEDIATELY */}
+                    <div className="border-t border-slate-100 pt-5 mt-4">
                       <button
                         type="button"
                         onClick={() => setShowModal(false)}
                         className="w-full h-12 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl flex items-center justify-center gap-2 text-sm transition-colors cursor-pointer"
                       >
                         <Pencil className="h-4 w-4" />
-                        Edit Name & Try Again
-                      </button>
-                    </div>
-
-                    {/* THE "USE ANYWAYS" OVERRIDE BUTTON */}
-                    <div className="mt-6 pt-6 border-t border-red-100">
-                      <p className="text-xs text-slate-500 font-medium mb-3 text-left">
-                        Are you certain this name is valid? If you have special consent or believe our system made a mistake, you can bypass this block.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleForceProceed}
-                        className="w-full h-12 bg-transparent hover:bg-red-50 text-slate-500 hover:text-red-600 font-bold rounded-xl border border-slate-200 hover:border-red-200 flex items-center justify-center gap-2 text-sm transition-all cursor-pointer"
-                      >
-                        <ShieldWarning className="h-5 w-5" weight="fill" />
-                        Force Proceed (Use Anyways)
+                        Modify Name (Cost: ₦{CHECK_COST})
                       </button>
                     </div>
 
@@ -377,43 +369,42 @@ export default function BusinessNameSearchPage() {
                   /* STATE CONDITION B: PASSED AND COMPLIANT FLOW */
                   <div className="space-y-6 text-center">
                     <div className="h-16 w-16 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mx-auto shadow-sm">
-                      {suggestLoading ? (
-                        <Spinner className="animate-spin h-8 w-8 text-[#ff3f7a]" weight="bold" />
-                      ) : (
-                        <CheckCircle className="h-8 w-8" weight="fill" />
-                      )}
+                      <CheckCircle className="h-8 w-8" weight="fill" />
                     </div>
 
                     <div className="space-y-1">
                       <p className="text-xs font-black uppercase tracking-widest text-[#ff3f7a]">Congratulations!</p>
                       <h2 className="text-2xl font-black text-slate-900 tracking-tight break-words px-2">{resultName}</h2>
-                      <p className="text-sm text-slate-500 font-semibold pt-1">The proposed name is available for registration.</p>
+                      <p className="text-sm text-slate-500 font-semibold pt-1">The proposed name passed the Advanced Compliance Scan and is available for registration.</p>
                     </div>
-
-                    {searchResult?.warningMessage && (
-                      <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold p-3.5 rounded-xl mt-4 text-left flex items-start gap-2 shadow-sm">
-                        <Warning className="h-5 w-5 text-amber-500 shrink-0" weight="fill" />
-                        <p className="leading-relaxed">{searchResult.warningMessage}</p>
-                      </div>
-                    )}
 
                     {/* PROCEED BLOCK ANCHOR BUTTON */}
                     <div className="border-t border-slate-100 pt-5 flex flex-col gap-3">
                       <Button 
-                        disabled={suggestLoading}
+                        onClick={handleProceed}
+                        disabled={isProceeding}
                         className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 cursor-pointer disabled:opacity-50"
                       >
-                        Proceed to Registration Details
-                        <ArrowRight className="h-5 w-5" weight="bold" />
+                        {isProceeding ? (
+                          <>
+                            <Spinner className="animate-spin h-5 w-5" weight="bold" />
+                            Saving Progress...
+                          </>
+                        ) : (
+                          <>
+                            Proceed to Registration Details
+                            <ArrowRight className="h-5 w-5" weight="bold" />
+                          </>
+                        )}
                       </Button>
                       
                       <button
                         type="button"
                         onClick={() => setShowModal(false)}
-                        disabled={suggestLoading}
+                        disabled={isProceeding}
                         className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer disabled:opacity-30"
                       >
-                        Go Back & Modify
+                        Close
                       </button>
                     </div>
                   </div>
