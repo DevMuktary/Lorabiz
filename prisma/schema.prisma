@@ -73,6 +73,7 @@ model BusinessRegistration {
   proposedName    String
   entityType      String             
   category        String             
+  businessType    String?
   specificNature  String             
   status          RegistrationStatus @default(UNSUBMITTED) 
   similarityScore String?  
