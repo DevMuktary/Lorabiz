@@ -1,267 +1,138 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust path if needed
+import prisma from "@/lib/prisma"; // Adjust path if needed
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const CHECK_COST = 100;
 
 export async function POST(req: Request) {
   try {
-    const { proposedName, lineOfBusiness, entityType, mode } = await req.json();
+    // Authenticate the user
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ success: false, message: "Unauthorized. Please log in." }, { status: 401 });
+    }
 
-    if (!lineOfBusiness || !entityType) {
+    const { proposedName, lineOfBusiness, entityType } = await req.json();
+
+    if (!lineOfBusiness || !entityType || !proposedName) {
       return NextResponse.json({ success: false, message: "Missing required metadata parameters." }, { status: 400 });
-    }
-
-    const cacApiKey = process.env.CAC_API_KEY;
-    if (!cacApiKey) throw new Error("Missing CAC API Key.");
-
-    // ==========================================
-    // MODE: INSTANT SUGGESTION GENERATOR (PRE-VERIFIED LOOP)
-    // ==========================================
-    if (mode === "SUGGEST") {
-      let attempts = 0;
-      let validAlternative = "";
-
-      while (attempts < 3) {
-        attempts++;
-        
-        const aiSuggestion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: `You are a Senior Corporate Naming Specialist under the Nigerian Companies and Allied Matters Act (CAMA).
-              Generate exactly ONE highly professional, creative, and unique alternative name for a "${entityType}".
-              Base theme to modify: "${proposedName}". 
-              Industry vertical: "${lineOfBusiness}".
-              
-              CRITICAL CAC RULES:
-              - DO NOT just append a word to the exact same highly unique root (e.g., if QUADROX failed, change the root word to something like QUADRA, NEXUS, or VORTEX).
-              - Must end with a strong qualifier (e.g., VENTURES, CONCEPTS, ENTERPRISES, SERVICES, HUB, BIZ, GLOBAL).
-              - Output ONLY the raw name string. Do not use quotes.`
-            }
-          ],
-          temperature: 0.9, 
-        });
-
-        const generatedName = (aiSuggestion.choices[0].message.content || "").trim().toUpperCase();
-
-        const cacVerify = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
-          method: "POST",
-          headers: { "Accept": "application/json", "Content-Type": "application/json", "X_API_KEY": cacApiKey },
-          body: JSON.stringify({ proposedName: generatedName, lineOfBusiness }),
-        });
-
-        if (cacVerify.ok) {
-          const verifyJson = await cacVerify.json();
-          
-          if (verifyJson.message !== "Name exist") {
-            const simStr = verifyJson.data?.similarityScore || "0%";
-            const simVal = parseInt(simStr);
-            const mostSim = verifyJson.data?.mostSimilarName || "N/A";
-
-            if (simVal < 75) {
-              validAlternative = generatedName;
-              break;
-            } else {
-              const semanticCheck = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [
-                  {
-                    role: "system",
-                    content: `You are a CAC Examiner. Are these names confusingly similar based on unique root word collision?
-                    - If they share a highly unique root, return isConflict: true.
-                    - If they only share generic words/prefixes, return isConflict: false.`
-                  },
-                  { role: "user", content: `Proposed: "${generatedName}"\nConflict: "${mostSim}"` }
-                ],
-                response_format: { type: "json_schema", json_schema: { name: "check", schema: { type: "object", properties: { isConflict: { type: "boolean" } }, required: ["isConflict"], additionalProperties: false }, strict: true } },
-                temperature: 0.1,
-              });
-
-              const semanticResult = JSON.parse(semanticCheck.choices[0].message.content || "{}");
-              if (!semanticResult.isConflict) {
-                validAlternative = generatedName;
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      if (!validAlternative) {
-         const fallbackRoot = proposedName.split(" ")[0].substring(0, 5);
-         validAlternative = `${fallbackRoot} ${Math.floor(Math.random() * 900 + 100)} CONCEPTS`.toUpperCase();
-      }
-
-      return NextResponse.json({ success: true, alternativeName: validAlternative });
-    }
-
-    // ==========================================
-    // MODE: STANDARD CHECK (Pre-Flight Gatekeeper)
-    // ==========================================
-    if (!proposedName) {
-      return NextResponse.json({ success: false, message: "Proposed name is required." }, { status: 400 });
     }
 
     const uppercaseName = proposedName.trim().toUpperCase();
 
-    const preFlightCheck = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a legal compliance gatekeeper for the Nigerian Corporate Affairs Commission (CAC).
-          Analyze the user's proposed company name for a "${entityType}":
-          
-          1. REJECTION - ILLEGAL SUFFIX: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC'.
-          2. REJECTION - RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE', or 'NIGERIAN'. NOTE: The word 'NIGERIA' is completely ALLOWED as a geographic indicator. Only block 'NIGERIAN'.
-          3. REJECTION - DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
-          4. WARNING - MISSING QUALIFIER: If the name lacks a standard Nigerian business descriptor at the end, flag as "MISSING_SUFFIX".
-          5. If it passes all rules, flag as "PASSED".`
-        },
-        { role: "user", content: `Name: "${uppercaseName}"` }
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "pre_flight_assessment",
-          schema: {
-            type: "object",
-            properties: {
-              status: { type: "string", enum: ["ILLEGAL_SUFFIX", "RESTRICTED_WORD", "DANGEROUS_WORD", "MISSING_SUFFIX", "PASSED"] },
-              reason: { type: "string" }
-            },
-            required: ["status", "reason"],
-            additionalProperties: false
-          },
-          strict: true
-        }
-      },
-      temperature: 0.1,
+    // ==========================================
+    // 1. REAL WALLET BALANCE CHECK
+    // ==========================================
+    // Include the connected Wallet from the new schema
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { wallet: true }
     });
 
-    const preFlightResult = JSON.parse(preFlightCheck.choices[0].message.content || "{}");
-    let uiWarningMessage = "";
+    if (!user || !user.wallet) {
+      return NextResponse.json({ success: false, message: "User account or wallet not found." }, { status: 404 });
+    }
 
-    if (preFlightResult.status === "MISSING_SUFFIX") {
-      uiWarningMessage = "This name might not have a good suffix to be acceptable by CAC. While we keep on working to improve on our name search engine, if the name is queried by CAC, you will receive an SMS/email to update the name.";
-    } 
-    else if (preFlightResult.status !== "PASSED") {
+    // Prisma returns Decimal types as objects, so we convert to a JavaScript Number
+    const currentBalance = Number(user.wallet.balance);
+
+    if (currentBalance < CHECK_COST) {
       return NextResponse.json({
-        success: true,
+        success: false,
         isBlocked: true,
-        rejectionType: preFlightResult.status,
-        reasonMessage: preFlightResult.reason,
-        data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
+        rejectionType: "INSUFFICIENT_FUNDS",
+        reasonMessage: `You need at least ₦${CHECK_COST} in your wallet to perform an Advanced Name Search.`,
+        data: null
       });
     }
 
     // ==========================================
-    // PHASE 2: CAC LIVE REGISTRY FETCH
+    // 2. CAC ADVANCED LIVE REGISTRY FETCH
     // ==========================================
+    const cacApiKey = process.env.CAC_API_KEY;
+    if (!cacApiKey) throw new Error("Missing CAC API Key.");
+
     const cacResponse = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
       method: "POST",
       headers: { "Accept": "application/json", "Content-Type": "application/json", "X_API_KEY": cacApiKey },
-      body: JSON.stringify({ proposedName: uppercaseName, lineOfBusiness }),
+      body: JSON.stringify({ 
+        proposedName: uppercaseName, 
+        lineOfBusiness: lineOfBusiness,
+        advanceCheck: true 
+      }),
     });
 
     if (!cacResponse.ok) {
       return NextResponse.json({
-        success: true,
-        isBlocked: false,
-        reasonMessage: "Registry connection is slow. Proceed, and we will verify manually.",
-        warningMessage: uiWarningMessage, 
-        data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
+        success: false,
+        isBlocked: true,
+        rejectionType: "GATEWAY_TIMEOUT",
+        reasonMessage: "Registry connection failed. No funds were deducted. Please try again.",
       });
     }
 
     const cacJson = await cacResponse.json();
 
-    if (cacJson.success === false || cacJson.message?.includes("QUALIFIER") || cacJson.error?.includes("QUALIFIER")) {
-        return NextResponse.json({
-          success: true,
-          isBlocked: false, 
-          rejectionType: "PASSED_WITH_WARNING",
-          reasonMessage: "Name is available and ready for registration.",
-          warningMessage: "This name might not have a good suffix to be acceptable by CAC. While we keep on working to improve on our name search engine, if the name is queried by CAC, you will receive an SMS/email to update the name.",
-          data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
-        });
-    }
+    // ==========================================
+    // 🛑 LOGGING BLOCK FOR RAILWAY DEBUGGING 🛑
+    // ==========================================
+    console.log("\n====== CAC ADVANCED API RESPONSE ======");
+    console.log(`PROPOSED NAME: ${uppercaseName}`);
+    console.log("PAYLOAD:", JSON.stringify(cacJson, null, 2));
+    console.log("=======================================\n");
+
+    // ==========================================
+    // 3. SECURE DATABASE DEDUCTION (Ledger Sync)
+    // ==========================================
+    const newBalance = currentBalance - CHECK_COST;
+    // Generate a unique reference for the ledger
+    const transactionRef = `CAC-CHK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+    // Use a transaction block to ensure both the wallet decrement and the ledger entry succeed or fail together
+    const [updatedWallet, ledgerEntry] = await prisma.$transaction([
+      prisma.wallet.update({
+        where: { id: user.wallet.id },
+        data: { balance: newBalance }
+      }),
+      prisma.transaction.create({
+        data: {
+          walletId: user.wallet.id,
+          amount: CHECK_COST,
+          balanceBefore: currentBalance,
+          balanceAfter: newBalance,
+          type: "DEBIT",
+          status: "SUCCESS",
+          reference: transactionRef,
+          description: `CAC Advanced Name Search: ${uppercaseName}`
+        }
+      })
+    ]);
+
+    // ==========================================
+    // 4. PARSE CAC ADVANCED RESPONSE
+    // ==========================================
+    const isSuccess = cacJson.data?.success ?? true;
+    const recommendations = cacJson.data?.recommendedActions?.map((action: any) => action.message).join(" ") || "";
+    const suggestedNames = cacJson.data?.suggestedNames || [];
     
-    if (cacJson.message === "Name exist") {
-      return NextResponse.json({
-        success: true,
-        isBlocked: true,
-        rejectionType: "EXACT_MATCH",
-        reasonMessage: "This exact name is already registered by another business.",
-        data: { mostSimilarName: uppercaseName, cleansedNameUsed: uppercaseName }
-      });
-    }
-
-    const similarityStr = cacJson.data?.similarityScore || "0%";
-    const similarityVal = parseInt(similarityStr);
-    const mostSimilarName = cacJson.data?.mostSimilarName || "N/A";
-
-    // ==========================================
-    // PHASE 3: THE AI SEMANTIC ARBITER
-    // ==========================================
-    let finalIsBlocked = false;
-    let finalReasonMessage = "Name is available and ready for registration.";
-
-    if (similarityVal >= 75 && mostSimilarName !== "N/A") {
-      const semanticCheck = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are a Senior Examiner at the Nigerian Corporate Affairs Commission (CAC). A basic text-matching algorithm flagged these two names as highly similar. 
-            Determine if a human examiner would REJECT the proposed name for being confusingly similar to the existing one.
-            
-            CRITICAL CAC GUIDELINES:
-            1. UNIQUE ROOT COLLISION (REJECT): If both names share a highly unique, invented, or distinct root word (e.g., 'QUADROX', 'ZINOX', 'XELLER') and only differ by a generic secondary word (e.g., 'HOMES' vs 'TECHNOLOGIES LIMITED'), the CAC WILL REJECT IT. Return isConflict: true.
-            2. GENERIC WORD SHARING (APPROVE): If they share generic everyday words, Islamic/Christian names, or standard nouns (e.g., 'HALAL', 'MUKHTAR', 'OLIVIA', 'SERVICES', 'NIGERIA') but the distinct prefixes or accompanying words differ (e.g., 'NMY HALAH HUB' vs 'HALAL HOMES HUB'), the CAC will APPROVE it. Return isConflict: false.
-            3. EXACT PHONETIC COPY (REJECT): If they are phonetically identical or pluralized versions of the exact same full name, REJECT IT.`
-          },
-          { role: "user", content: `Proposed Name: "${uppercaseName}"\nExisting Conflict: "${mostSimilarName}"` }
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "semantic_conflict_check",
-            schema: {
-              type: "object",
-              properties: {
-                isConflict: { type: "boolean" },
-                reason: { type: "string" }
-              },
-              required: ["isConflict", "reason"],
-              additionalProperties: false
-            },
-            strict: true
-          }
-        },
-        temperature: 0.1,
-      });
-
-      const semanticResult = JSON.parse(semanticCheck.choices[0].message.content || "{}");
-      finalIsBlocked = semanticResult.isConflict;
-      
-      if (finalIsBlocked) {
-        finalReasonMessage = `This name is too similar to an existing business. ${semanticResult.reason}`;
-      }
+    let rejectionReason = cacJson.message;
+    if (recommendations) {
+      rejectionReason = `${cacJson.message}. ${recommendations}`;
     }
 
     return NextResponse.json({
       success: true,
-      isBlocked: finalIsBlocked,
-      rejectionType: finalIsBlocked ? "SEMANTIC_CONFLICT" : "PASSED",
-      reasonMessage: finalReasonMessage,
-      warningMessage: uiWarningMessage, 
+      isBlocked: !isSuccess,
+      rejectionType: !isSuccess ? "CAC_REJECTION" : "PASSED",
+      reasonMessage: !isSuccess ? rejectionReason : "Name is available and ready for registration.",
+      newWalletBalance: Number(updatedWallet.balance), // Pass the freshly updated balance back to UI
       data: {
-        mostSimilarName: mostSimilarName,
-        cleansedNameUsed: uppercaseName
+        mostSimilarName: cacJson.data?.similarNames?.[0] || "N/A",
+        cleansedNameUsed: uppercaseName,
+        similarityScore: cacJson.data?.similarityScorePercentage || 0,
+        complianceScore: cacJson.data?.complianceScorePercentage || 0,
+        suggestedNames: suggestedNames
       }
     });
 
