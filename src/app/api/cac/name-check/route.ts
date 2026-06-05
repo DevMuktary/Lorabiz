@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust path if needed
-import prisma from "@/lib/prisma"; // Adjust path if needed
+import { prisma } from "@/lib/prisma"; // Adjust path if needed
 
 const CHECK_COST = 100;
 
