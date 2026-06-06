@@ -72,23 +72,26 @@ export async function POST(req: Request) {
     // 4. Hash the password securely
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 5. ATOMIC TRANSACTION: Create User AND Delete OTP simultaneously
+    // 5. ATOMIC TRANSACTION: Create User, Initialize Wallet, AND Delete OTP simultaneously
     // This guarantees a single OTP can never be used twice (Zero Race Condition)
     const [newUser] = await prisma.$transaction([
       prisma.user.create({
         data: {
           firstName,
-          middleName: middleName || null, // Handles optional field
+          middleName: middleName || null, 
           lastName,
           email,
           phone,
           whatsapp,
           passwordHash: hashedPassword,
-          gender: gender.toUpperCase(), // <--- THIS IS WHERE THE FIX BELONGS!
+          gender: gender.toUpperCase(), 
           state,
           lga,
           street,
-          buildingNo: buildingNo || null, // Handles optional field
+          buildingNo: buildingNo || null, 
+          wallet: {
+            create: { balance: 0.00 } // Initialize the wallet balance on account creation
+          }
         },
       }),
       prisma.otpCode.delete({
