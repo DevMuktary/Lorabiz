@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       phone, 
       whatsapp,
       password,
-      gender: gender.toUpperCase(), // <--- THE FIX
+      gender,
       state,
       lga,
       street,
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
           phone,
           whatsapp,
           passwordHash: hashedPassword,
-          gender,
+          gender: gender.toUpperCase(), // <--- THIS IS WHERE THE FIX BELONGS!
           state,
           lga,
           street,
