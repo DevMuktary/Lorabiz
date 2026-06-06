@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; 
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function GET(req: Request) {
   try {
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // Atomic Promise.all for absolute maximum speed. Now querying the Wallet too.
+    // Atomic Promise.all for absolute maximum speed.
     const [
       registrations, 
       totalRecords,
@@ -47,7 +47,7 @@ export async function GET(req: Request) {
       queriedCount,
       unsubmittedCount,
       postIncCount,
-      wallet // <-- FETCHING THE REAL WALLET
+      wallet
     ] = await Promise.all([
       prisma.businessRegistration.findMany({
         where: whereClause,
@@ -59,16 +59,16 @@ export async function GET(req: Request) {
       prisma.businessRegistration.count({ where: { userId: user.id } }), 
       prisma.businessRegistration.count({ where: { userId: user.id, status: "PENDING" } }),
       prisma.businessRegistration.count({ where: { userId: user.id, status: "APPROVED" } }),
-      prisma.businessRegistration.count({ where: { userId: user.id, status: "QURIED" } }), 
+      prisma.businessRegistration.count({ where: { userId: user.id, status: "QUERIED" } }), // <-- Fixed typo here
       prisma.businessRegistration.count({ where: { userId: user.id, status: "UNSUBMITTED" } }),
       prisma.businessRegistration.count({ 
         where: { userId: user.id, businessType: { in: ["Annual Returns", "Change of Name", "CTC"] } } 
       }),
-      prisma.wallet.findUnique({ where: { userId: user.id } }) // <-- REAL DB CALL
+      prisma.wallet.findUnique({ where: { userId: user.id } })
     ]);
 
     return NextResponse.json({
-      walletBalance: wallet?.balance || 0, // <-- REAL DATA INJECTED HERE
+      walletBalance: wallet?.balance || 0,
       stats: {
         total: totalCount,
         pending: pendingCount,
