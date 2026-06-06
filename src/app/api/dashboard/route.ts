@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; 
 
 export async function GET(req: Request) {
   try {
-    // FOR NOW: We will use a dummy user ID for testing until your NextAuth session is fully wired.
-    // Replace this with: const session = await getServerSession(); const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    const user = await prisma.user.findFirst(); 
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) return NextResponse.json({ message: "No user found" }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
@@ -55,7 +59,7 @@ export async function GET(req: Request) {
       prisma.businessRegistration.count({ where: { userId: user.id } }), 
       prisma.businessRegistration.count({ where: { userId: user.id, status: "PENDING" } }),
       prisma.businessRegistration.count({ where: { userId: user.id, status: "APPROVED" } }),
-      prisma.businessRegistration.count({ where: { userId: user.id, status: "QUERIED" } }),
+      prisma.businessRegistration.count({ where: { userId: user.id, status: "QURIED" } }), 
       prisma.businessRegistration.count({ where: { userId: user.id, status: "UNSUBMITTED" } }),
       prisma.businessRegistration.count({ 
         where: { userId: user.id, businessType: { in: ["Annual Returns", "Change of Name", "CTC"] } } 
