@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       phone, 
       whatsapp,
       password,
-      gender,
+      gender: gender.toUpperCase(), // <--- THE FIX
       state,
       lga,
       street,
