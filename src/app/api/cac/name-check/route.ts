@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust path if needed
-import { prisma } from "@/lib/prisma"; // Adjust path if needed
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; 
+import { prisma } from "@/lib/prisma"; 
 
 const CHECK_COST = 100;
 
@@ -24,7 +24,6 @@ export async function POST(req: Request) {
     // ==========================================
     // 1. REAL WALLET BALANCE CHECK
     // ==========================================
-    // Include the connected Wallet from the new schema
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: { wallet: true }
@@ -34,7 +33,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "User account or wallet not found." }, { status: 404 });
     }
 
-    // Prisma returns Decimal types as objects, so we convert to a JavaScript Number
     const currentBalance = Number(user.wallet.balance);
 
     if (currentBalance < CHECK_COST) {
@@ -59,7 +57,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({ 
         proposedName: uppercaseName, 
         lineOfBusiness: lineOfBusiness,
-        advanceCheck: true 
+        advanceCheck: true  // <-- Yes, this is correctly set to true here
       }),
     });
 
@@ -74,9 +72,6 @@ export async function POST(req: Request) {
 
     const cacJson = await cacResponse.json();
 
-    // ==========================================
-    // 🛑 LOGGING BLOCK FOR RAILWAY DEBUGGING 🛑
-    // ==========================================
     console.log("\n====== CAC ADVANCED API RESPONSE ======");
     console.log(`PROPOSED NAME: ${uppercaseName}`);
     console.log("PAYLOAD:", JSON.stringify(cacJson, null, 2));
@@ -86,11 +81,9 @@ export async function POST(req: Request) {
     // 3. SECURE DATABASE DEDUCTION (Ledger Sync)
     // ==========================================
     const newBalance = currentBalance - CHECK_COST;
-    // Generate a unique reference for the ledger
     const transactionRef = `CAC-CHK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
-    // Use a transaction block to ensure both the wallet decrement and the ledger entry succeed or fail together
-    const [updatedWallet, ledgerEntry] = await prisma.$transaction([
+    const [updatedWallet] = await prisma.$transaction([
       prisma.wallet.update({
         where: { id: user.wallet.id },
         data: { balance: newBalance }
@@ -110,28 +103,41 @@ export async function POST(req: Request) {
     ]);
 
     // ==========================================
-    // 4. PARSE CAC ADVANCED RESPONSE
+    // 4. PARSE CAC ADVANCED RESPONSE (FIXED BUG)
     // ==========================================
-    const isSuccess = cacJson.data?.success ?? true;
-    const recommendations = cacJson.data?.recommendedActions?.map((action: any) => action.message).join(" ") || "";
-    const suggestedNames = cacJson.data?.suggestedNames || [];
+    const apiMessage = cacJson.message || "";
     
-    let rejectionReason = cacJson.message;
+    // Determine Availability: The API returns success: true because the HTTP connection worked.
+    // We MUST parse the message string to see if the name actually exists or conflicts.
+    const isNameTaken = apiMessage.toLowerCase().includes("exist") || apiMessage.toLowerCase().includes("conflict");
+    const isAvailable = cacJson.success && !isNameTaken;
+
+    const recommendations = cacJson.data?.recommendedActions?.map((action: any) => action.message).join(" ") || "";
+    
+    // Safely extract suggested names (CAC sometimes returns it as a string, sometimes an array, sometimes null)
+    let suggestedNames = [];
+    if (Array.isArray(cacJson.data?.suggestedNames)) {
+      suggestedNames = cacJson.data.suggestedNames;
+    } else if (typeof cacJson.data?.suggestedName === "string") {
+      suggestedNames = [cacJson.data.suggestedName];
+    }
+    
+    let rejectionReason = apiMessage;
     if (recommendations) {
-      rejectionReason = `${cacJson.message}. ${recommendations}`;
+      rejectionReason = `${apiMessage}. ${recommendations}`;
     }
 
     return NextResponse.json({
-      success: true,
-      isBlocked: !isSuccess,
-      rejectionType: !isSuccess ? "CAC_REJECTION" : "PASSED",
-      reasonMessage: !isSuccess ? rejectionReason : "Name is available and ready for registration.",
-      newWalletBalance: Number(updatedWallet.balance), // Pass the freshly updated balance back to UI
+      success: true, // The internal route worked successfully
+      isBlocked: !isAvailable, // Tell frontend to show the RED rejection screen
+      rejectionType: !isAvailable ? "CAC_REJECTION" : "PASSED",
+      reasonMessage: !isAvailable ? rejectionReason : "Name is available and ready for registration.",
+      newWalletBalance: Number(updatedWallet.balance),
       data: {
-        mostSimilarName: cacJson.data?.similarNames?.[0] || "N/A",
+        mostSimilarName: cacJson.data?.mostSimilarName || "N/A",
         cleansedNameUsed: uppercaseName,
-        similarityScore: cacJson.data?.similarityScorePercentage || 0,
-        complianceScore: cacJson.data?.complianceScorePercentage || 0,
+        similarityScore: cacJson.data?.similarityScore || "0%", 
+        complianceScore: cacJson.data?.complianceScore || "0%",
         suggestedNames: suggestedNames
       }
     });
