@@ -3,7 +3,6 @@ import { JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-// Configure the JetBrains Mono font from your Lyra preset
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
@@ -18,12 +17,11 @@ export const metadata: Metadata = {
   },
 };
 
-// THIS FIXES THE SAFARI URL BAR BUG
 export const viewport: Viewport = {
-  themeColor: "#f8fafc", // Hex code for slate-50
+  themeColor: "#f8fafc",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1, // Prevents auto-zooming on inputs in Safari
+  maximumScale: 1, 
 };
 
 export default function RootLayout({
@@ -32,9 +30,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    {/* ADDED: bg-slate-50 and overscroll-none to the html tag */}
+    <html lang="en" className="bg-slate-50 overscroll-none" suppressHydrationWarning>
       <body 
-        className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-slate-50 text-slate-900 min-h-screen flex flex-col`}
+        {/* ADDED: overscroll-none to the body tag */}
+        className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-slate-50 text-slate-900 min-h-screen flex flex-col overscroll-none`}
       >
         <Providers>
           {children}
