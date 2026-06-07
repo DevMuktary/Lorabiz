@@ -9,7 +9,8 @@ import {
   CaretLeft,
   Clock,
   Wallet,
-  Info
+  Info,
+  CaretDown
 } from "@phosphor-icons/react/dist/ssr";
 
 const REGISTRATION_TYPES = [
@@ -79,27 +80,38 @@ export default async function NewRegistrationPage() {
   }, {} as Record<string, number>);
 
   return (
-    <div className="max-w-6xl mx-auto pb-12 antialiased animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pb-12 antialiased animate-in fade-in duration-500">
       
-      <div className="mb-8">
+      {/* Back Button */}
+      <div className="mb-8 pt-2">
         <Link 
           href="/dashboard" 
-          className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm hover:shadow-md"
+          className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:shadow-md"
         >
           <CaretLeft className="h-4 w-4" weight="bold" />
           Back to Dashboard
         </Link>
       </div>
 
-      <div className="text-center max-w-2xl mx-auto mb-14">
+      {/* Page Header */}
+      <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
         <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
-          What are we building today?
+          What would you like to register?
         </h1>
-        <p className="text-lg text-slate-500 leading-relaxed font-medium">
+        <p className="text-lg text-slate-500 leading-relaxed font-medium px-4">
           Select the entity type that fits your goals. Don't worry about legal jargon—we've simplified everything for you.
         </p>
+
+        {/* Mobile Scroll Animation */}
+        <div className="md:hidden flex flex-col items-center justify-center mt-10 text-slate-400 animate-bounce">
+          <span className="text-[10px] font-black uppercase tracking-widest mb-1.5 text-slate-500">
+            Scroll down to read & select
+          </span>
+          <CaretDown className="h-5 w-5 text-slate-400" weight="bold" />
+        </div>
       </div>
 
+      {/* Registration Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
         {REGISTRATION_TYPES.map((type) => {
           const livePrice = priceMap[type.dbKey];
