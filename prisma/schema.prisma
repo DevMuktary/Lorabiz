@@ -64,23 +64,58 @@ model User {
   updatedAt     DateTime @updatedAt
 
   registrations BusinessRegistration[]
-  wallet        Wallet?  
+  wallet        Wallet?
 }
 
 model BusinessRegistration {
-  id              String             @id @default(cuid())
-  userId          String
-  proposedName    String
-  entityType      String             
-  category        String             
-  businessType    String?
-  specificNature  String             
-  status          RegistrationStatus @default(UNSUBMITTED) 
-  similarityScore String?  
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  id                String             @id @default(cuid())
+  userId            String
+  proposedName      String
+  entityType        String             
+  category          String             
+  businessType      String?
+  specificNature    String             
+  status            RegistrationStatus @default(UNSUBMITTED) 
+  similarityScore   String?
 
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // --- NEW: COMPANY INFORMATION ---
+  companyEmail      String?
+  companyState      String?
+  companyCity       String?
+  companyStreetNo   String?
+  companyAddress    String?
+  commencementDate  String?
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proprietors       Proprietor[]       // Relation to Proprietors
+}
+
+// --- NEW: PROPRIETOR MODEL ---
+model Proprietor {
+  id              String   @id @default(cuid())
+  registrationId  String
+  surname         String
+  firstName       String
+  otherName       String?
+  email           String?
+  phone           String
+  gender          Gender
+  dob             String
+  state           String
+  lga             String
+  city            String
+  streetNo        String?
+  serviceAddress  String
+
+  // Embedded Document Cloudinary URLs
+  ninUrl          String?
+  passportUrl     String?
+  signatureUrl    String?
+
+  registration    BusinessRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 }
 
 model OtpCode {
