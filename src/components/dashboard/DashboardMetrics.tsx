@@ -19,18 +19,21 @@ export default function DashboardMetrics({ walletBalance, stats, currentStatus, 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-6">
       
-      {/* Wallet Card */}
-      <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col justify-between">
-        <div className="flex justify-between items-start w-full">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Wallet Balance</p>
-          <div className="p-2.5 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-xl">
+      {/* Wallet Card - Centered & Aligned */}
+      <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col justify-center gap-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-xl shadow-inner">
             <Wallet className="h-6 w-6" weight="fill" />
           </div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Available Balance</p>
         </div>
-        <div className="mt-6 flex items-center justify-between w-full">
-          <h3 className="text-4xl font-black text-slate-900 tracking-tight">₦{walletBalance.toLocaleString()}</h3>
-          <button onClick={onFundClick} className="px-5 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 shadow-md transition-transform active:scale-95">
-            Top Up
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+            ₦{walletBalance.toLocaleString()}
+          </h3>
+          <button onClick={onFundClick} className="px-6 py-3.5 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 shadow-[0_4px_14px_0_rgb(0,0,0,0.1)] transition-transform active:scale-95 whitespace-nowrap">
+            Top Up Wallet
           </button>
         </div>
       </div>
