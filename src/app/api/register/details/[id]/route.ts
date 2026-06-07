@@ -3,7 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
+// ==========================================
 // FETCH DRAFT DETAILS
+// ==========================================
 export async function GET(
   req: Request, 
   props: { params: Promise<{ id: string }> }
@@ -26,11 +28,14 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: registration });
   } catch (error) {
+    console.error("Fetch Details Error:", error);
     return NextResponse.json({ message: "Error fetching details" }, { status: 500 });
   }
 }
 
+// ==========================================
 // SAVE FULL REGISTRATION PROGRESS
+// ==========================================
 export async function PUT(
   req: Request, 
   props: { params: Promise<{ id: string }> }
@@ -94,5 +99,45 @@ export async function PUT(
   } catch (error) {
     console.error("Save Details Error:", error);
     return NextResponse.json({ message: "Failed to save registration details" }, { status: 500 });
+  }
+}
+
+// ==========================================
+// DELETE DRAFT
+// ==========================================
+export async function DELETE(
+  req: Request, 
+  props: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Next.js 15+ requires params to be awaited
+    const { id } = await props.params;
+    
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+    // Validate user identity securely
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
+
+    // Verify ownership of the draft before deletion
+    const registration = await prisma.businessRegistration.findUnique({
+      where: { id }
+    });
+
+    if (!registration || registration.userId !== user.id) {
+      return NextResponse.json({ message: "Unauthorized action. You do not own this application." }, { status: 403 });
+    }
+
+    // Prisma's "onDelete: Cascade" rule from our schema will automatically delete all 
+    // linked Proprietors and Documents attached to this registration when it is dropped.
+    await prisma.businessRegistration.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ success: true, message: "Application successfully deleted." });
+  } catch (error) {
+    console.error("Delete Draft Error:", error);
+    return NextResponse.json({ message: "Failed to delete the application." }, { status: 500 });
   }
 }
