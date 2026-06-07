@@ -20,11 +20,7 @@ const REGISTRATION_TYPES = [
     title: "Business Name",
     description: "The fastest and most affordable way to register a small business. Register as a sole proprietor or as a partnership.",
     estimatedTime: "30 Mins - 1 Hour",
-    idealFor: [
-      "Freelancers & Artisans",
-      "Sole Proprietors",
-      "Partnerships",
-    ],
+    idealFor: ["Freelancers & Artisans", "Sole Proprietors", "Partnerships"],
     icon: Storefront,
     href: "/dashboard/register/business-name",
     color: "text-blue-600",
@@ -36,13 +32,9 @@ const REGISTRATION_TYPES = [
     id: "llc",
     dbKey: "LLC",
     title: "Limited Liability (LTD)",
-    description: "A separate legal entity from its owners. Protects personal assets, allows you to issue shares, and bid for major contracts.",
+    description: "A separate legal entity from its owners. Protects personal assets, allows you to issue shares, and bid for contracts.",
     estimatedTime: "24 - 72 Working Hours",
-    idealFor: [
-      "Startups & Tech Agencies",
-      "Businesses seeking investors",
-      "Companies bidding for contracts",
-    ],
+    idealFor: ["Startups & Tech Agencies", "Businesses seeking investors", "Contract Bidding"],
     icon: Buildings,
     href: "/dashboard/register/llc",
     color: "text-[#ff3f7a]",
@@ -57,11 +49,7 @@ const REGISTRATION_TYPES = [
     description: "Strictly for non-profit organizations. Registers a board of trustees to manage assets, operations, and charitable goals.",
     estimatedTime: "Name Approval: < 1 Week",
     secondaryTime: "Final Approval: 30+ Days",
-    idealFor: [
-      "Churches & Mosques",
-      "Foundations & Charities",
-      "Clubs & Associations",
-    ],
+    idealFor: ["Churches & Mosques", "Foundations & Charities", "Clubs & Associations"],
     icon: HandHeart,
     href: "/dashboard/register/ngo",
     color: "text-emerald-600",
@@ -82,33 +70,29 @@ export default async function NewRegistrationPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pb-12 antialiased animate-in fade-in duration-500">
       
-      {/* Back Button */}
-      <div className="mb-8 pt-2">
+      {/* COMPACT HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pt-2">
         <Link 
           href="/dashboard" 
-          className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:shadow-md"
+          className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors w-fit"
         >
           <CaretLeft className="h-4 w-4" weight="bold" />
           Back to Dashboard
         </Link>
+        
+        <div className="text-left md:text-right">
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+            What would you like to register?
+          </h1>
+          <p className="text-sm text-slate-500 font-medium mt-1">
+            Select the entity type below. We've simplified the legal jargon.
+          </p>
+        </div>
       </div>
 
-      {/* Page Header */}
-      <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
-        <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
-          What would you like to register?
-        </h1>
-        <p className="text-lg text-slate-500 leading-relaxed font-medium px-4">
-          Select the entity type that fits your goals. Don't worry about legal jargon—we've simplified everything for you.
-        </p>
-
-        {/* Mobile Scroll Animation */}
-        <div className="md:hidden flex flex-col items-center justify-center mt-10 text-slate-400 animate-bounce">
-          <span className="text-[10px] font-black uppercase tracking-widest mb-1.5 text-slate-500">
-            Scroll down to read & select
-          </span>
-          <CaretDown className="h-5 w-5 text-slate-400" weight="bold" />
-        </div>
+      {/* Subtle Mobile Scroll Prompt (Takes almost no space) */}
+      <div className="md:hidden flex justify-center mb-6 text-slate-300 animate-bounce">
+        <CaretDown className="h-5 w-5" weight="bold" />
       </div>
 
       {/* Registration Cards Grid */}
@@ -122,7 +106,7 @@ export default async function NewRegistrationPage() {
               key={type.id} 
               href={type.href}
               className={`
-                relative flex flex-col h-full bg-white p-8 rounded-3xl border transition-all duration-300 
+                relative flex flex-col h-full bg-white p-6 sm:p-8 rounded-3xl border transition-all duration-300 
                 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] shadow-[0_8px_30px_rgb(0,0,0,0.04)]
                 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2
                 group ${type.border}
@@ -136,14 +120,14 @@ export default async function NewRegistrationPage() {
                 </div>
               )}
 
-              <div className="mb-6">
-                <div className={`h-16 w-16 rounded-2xl ${type.bg} ${type.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
-                  <type.icon className="h-8 w-8" weight="fill" />
+              <div className="mb-5">
+                <div className={`h-14 w-14 rounded-2xl ${type.bg} ${type.color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
+                  <type.icon className="h-7 w-7" weight="fill" />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-3">
+                <h2 className="text-xl font-black text-slate-900 tracking-tight mb-2">
                   {type.title}
                 </h2>
-                <p className="text-sm text-slate-500 leading-relaxed min-h-[85px] font-medium">
+                <p className="text-sm text-slate-500 leading-relaxed min-h-[60px] font-medium">
                   {type.description}
                 </p>
               </div>
@@ -172,12 +156,12 @@ export default async function NewRegistrationPage() {
               </div>
 
               <div className="mt-auto pt-4 flex-1 flex flex-col">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">
                   Perfect for:
                 </p>
-                <ul className="space-y-3.5 mb-8 flex-1">
+                <ul className="space-y-3 mb-6 flex-1">
                   {type.idealFor.map((item, index) => (
-                    <li key={index} className="flex items-start gap-3 text-sm text-slate-700 font-bold">
+                    <li key={index} className="flex items-start gap-2.5 text-sm text-slate-700 font-bold">
                       <CheckCircle className={`h-5 w-5 shrink-0 ${type.color}`} weight="fill" />
                       <span className="leading-snug pt-0.5">{item}</span>
                     </li>
@@ -185,7 +169,7 @@ export default async function NewRegistrationPage() {
                 </ul>
 
                 <div className={`
-                  w-full py-4 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all
+                  w-full py-3.5 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all
                   ${type.id === 'llc' 
                     ? 'bg-[#ff3f7a] text-white shadow-lg shadow-[#ff3f7a]/25 group-hover:bg-[#e02b62] group-hover:shadow-[#ff3f7a]/40' 
                     : 'bg-slate-900 text-white shadow-md group-hover:bg-slate-800'
