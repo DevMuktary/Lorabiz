@@ -141,6 +141,18 @@ model Wallet {
   transactions Transaction[]
 }
 
+// ==========================================
+// SYSTEM SETTINGS & PRICING
+// ==========================================
+
+model ServicePricing {
+  id          String   @id @default(cuid())
+  serviceKey  String   @unique // e.g., "BUSINESS_NAME", "LLC", "NGO"
+  title       String   // e.g., "Business Name Registration"
+  price       Decimal  @default(0.00)
+  
+  updatedAt   DateTime @updatedAt
+}
 model Transaction {
   id            String            @id @default(cuid())
   walletId      String
