@@ -30,12 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    {/* ADDED: bg-slate-50 and overscroll-none to the html tag */}
     <html lang="en" className="bg-slate-50 overscroll-none" suppressHydrationWarning>
-      <body 
-        {/* ADDED: overscroll-none to the body tag */}
-        className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-slate-50 text-slate-900 min-h-screen flex flex-col overscroll-none`}
-      >
+      <body className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-slate-50 text-slate-900 min-h-screen flex flex-col overscroll-none`}>
         <Providers>
           {children}
         </Providers>
