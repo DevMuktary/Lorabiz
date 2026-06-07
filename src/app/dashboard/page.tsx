@@ -64,10 +64,18 @@ export default function DashboardOverview() {
   return (
     <div className="pb-12 max-w-full overflow-x-hidden">
       
-      {/* Top Action Bar (Cleaned up as requested) */}
-      <div className="flex justify-end mb-6">
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 mt-2">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 18 ? "Good afternoon" : "Good evening"}, Chief 👋
+          </h1>
+          <p className="text-sm font-medium text-slate-500 mt-1">
+            {new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
+        </div>
         <Link href="/dashboard/new">
-          <Button className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 font-bold px-6 flex items-center gap-2 rounded-xl active:scale-95 transition-transform">
+          <Button className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 font-bold px-6 flex items-center gap-2 rounded-xl active:scale-95 transition-transform shrink-0">
             <Plus className="h-5 w-5" weight="bold" /> New Application
           </Button>
         </Link>
