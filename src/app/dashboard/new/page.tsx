@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma"; // Adjust this import based on your exact Prisma client location
+import { prisma } from "@/lib/prisma";
 import { 
   Storefront, 
   Buildings, 
@@ -12,11 +12,10 @@ import {
   Info
 } from "@phosphor-icons/react/dist/ssr";
 
-// We keep the static UI data here, but omit the prices.
 const REGISTRATION_TYPES = [
   {
     id: "business-name",
-    dbKey: "BUSINESS_NAME", // Matches the serviceKey in Prisma
+    dbKey: "BUSINESS_NAME",
     title: "Business Name",
     description: "The fastest and most affordable way to register a small business. Register as a sole proprietor or as a partnership.",
     estimatedTime: "30 Mins - 1 Hour",
@@ -56,7 +55,7 @@ const REGISTRATION_TYPES = [
     title: "Incorporated Trustees",
     description: "Strictly for non-profit organizations. Registers a board of trustees to manage assets, operations, and charitable goals.",
     estimatedTime: "Name Approval: < 1 Week",
-    secondaryTime: "Final Approval: 30+ Days", // Split to show the 28-day gap
+    secondaryTime: "Final Approval: 30+ Days",
     idealFor: [
       "Churches & Mosques",
       "Foundations & Charities",
@@ -72,10 +71,8 @@ const REGISTRATION_TYPES = [
 ];
 
 export default async function NewRegistrationPage() {
-  // Fetch live prices securely on the server
   const pricingData = await prisma.servicePricing.findMany();
   
-  // Create a fast lookup map: { "BUSINESS_NAME": 20000, "LLC": 55000 }
   const priceMap = pricingData.reduce((acc, item) => {
     acc[item.serviceKey] = Number(item.price);
     return acc;
@@ -84,7 +81,6 @@ export default async function NewRegistrationPage() {
   return (
     <div className="max-w-6xl mx-auto pb-12 antialiased animate-in fade-in duration-500">
       
-      {/* EXIT STRATEGY - Back Button */}
       <div className="mb-8">
         <Link 
           href="/dashboard" 
@@ -95,7 +91,6 @@ export default async function NewRegistrationPage() {
         </Link>
       </div>
 
-      {/* PAGE HEADER */}
       <div className="text-center max-w-2xl mx-auto mb-14">
         <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
           What are we building today?
@@ -105,10 +100,8 @@ export default async function NewRegistrationPage() {
         </p>
       </div>
 
-      {/* SELECTION GRID */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
         {REGISTRATION_TYPES.map((type) => {
-          // Fetch live price or fallback to "TBD" if DB is missing data
           const livePrice = priceMap[type.dbKey];
           const formattedPrice = livePrice ? `₦${livePrice.toLocaleString()}` : "Pricing via Admin";
 
@@ -123,7 +116,6 @@ export default async function NewRegistrationPage() {
                 group ${type.border}
               `}
             >
-              {/* BADGE */}
               {type.badge && (
                 <div className="absolute -top-3.5 inset-x-0 flex justify-center z-10">
                   <span className={`text-white text-[10px] font-black uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md ${type.id === 'ngo' ? 'bg-slate-800' : 'bg-[#ff3f7a] shadow-[#ff3f7a]/20'}`}>
@@ -132,7 +124,6 @@ export default async function NewRegistrationPage() {
                 </div>
               )}
 
-              {/* ICON & TITLE */}
               <div className="mb-6">
                 <div className={`h-16 w-16 rounded-2xl ${type.bg} ${type.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
                   <type.icon className="h-8 w-8" weight="fill" />
@@ -145,7 +136,6 @@ export default async function NewRegistrationPage() {
                 </p>
               </div>
 
-              {/* LIVE PRICING & TIMELINE SECTION */}
               <div className="flex flex-col gap-2 py-4 mb-2 border-y border-slate-100">
                  <div className="flex items-center gap-2 text-sm font-black text-slate-900">
                     <Wallet className="h-4 w-4 text-slate-400" weight="fill" />
@@ -157,16 +147,18 @@ export default async function NewRegistrationPage() {
                     <div className="flex flex-col">
                       <span>{type.estimatedTime}</span>
                       {type.secondaryTime && (
-                        <span className="text-slate-400 font-medium mt-0.5 flex items-center gap-1">
+                        <span 
+                          className="text-slate-400 font-medium mt-0.5 flex items-center gap-1"
+                          title="Requires a 28-day public newspaper publication before final approval."
+                        >
                            {type.secondaryTime}
-                           <Info className="h-3.5 w-3.5" title="Requires a 28-day public newspaper publication before final approval." />
+                           <Info className="h-3.5 w-3.5" />
                         </span>
                       )}
                     </div>
                  </div>
               </div>
 
-              {/* IDEAL FOR LIST */}
               <div className="mt-auto pt-4 flex-1 flex flex-col">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
                   Perfect for:
@@ -180,7 +172,6 @@ export default async function NewRegistrationPage() {
                   ))}
                 </ul>
 
-                {/* ACTION BUTTON */}
                 <div className={`
                   w-full py-4 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all
                   ${type.id === 'llc' 
