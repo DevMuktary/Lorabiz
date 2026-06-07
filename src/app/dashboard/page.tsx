@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { 
   Files, HourglassHigh, Wallet, Plus, MagnifyingGlass,
   WarningCircle, PencilSimpleLine, Archive, Funnel, CaretLeft, CaretRight,
-  DotsThreeVertical, Trash, Play, Eye, FileText, Warning
+  DotsThreeVertical, Trash, Play, Eye, FileText, Warning, Spinner
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
@@ -38,6 +38,7 @@ export default function DashboardOverview() {
   // UI States
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [modal, setModal] = useState<{ type: string; regId: string } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false); // Modal Loading State
 
   // --- DATA FETCHING ---
   const fetchDashboardData = async () => {
@@ -86,16 +87,37 @@ export default function DashboardOverview() {
     if (actionType === "DELETE" || actionType === "SUBMIT") {
       setModal({ type: actionType, regId: id });
     } else {
-      if (actionType === "CONTINUE") router.push(`/dashboard/register/continue?id=${id}`);
+      // FIX: Route specifically to the massive interactive wizard we built
+      if (actionType === "CONTINUE") router.push(`/dashboard/register/details/${id}`);
       if (actionType === "VIEW") router.push(`/dashboard/businesses/${id}`);
       if (actionType === "FIX_QUERIES") router.push(`/dashboard/businesses/${id}/queries`);
     }
   };
 
+  // REAL API EXECUTION
   const confirmRiskAction = async () => {
-    console.log(`Executing ${modal?.type} on ${modal?.regId}`);
-    setModal(null);
-    fetchDashboardData(); 
+    if (!modal) return;
+    setIsProcessing(true);
+
+    try {
+      if (modal.type === 'DELETE') {
+        const res = await fetch(`/api/register/details/${modal.regId}`, {
+          method: "DELETE",
+        });
+
+        if (res.ok) {
+          // Refresh the table to show the deletion immediately
+          await fetchDashboardData();
+        } else {
+          alert("Failed to delete the draft. Please try again.");
+        }
+      }
+    } catch (error) {
+      alert("A network error occurred.");
+    } finally {
+      setIsProcessing(false);
+      setModal(null);
+    }
   };
 
   if (loading && !data) {
@@ -112,7 +134,7 @@ export default function DashboardOverview() {
           <p className="text-sm text-gray-500 mt-1">Manage your business registrations and wallet balance.</p>
         </div>
         
-        <Link href="/dashboard/new">
+        <Link href="/dashboard/register/business-name">
           <Button className="h-11 bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 font-medium px-6 flex items-center gap-2">
             <Plus className="h-5 w-5" weight="bold" />
             New Registration
@@ -120,10 +142,9 @@ export default function DashboardOverview() {
         </Link>
       </div>
 
-      {/* CLICKABLE METRIC CARDS (Uniform Grid) */}
+      {/* CLICKABLE METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-        
-        {/* Wallet Balance (Matches other cards now) */}
+        {/* Wallet Balance */}
         <button onClick={() => router.push("/dashboard/wallet")} className="bg-white p-6 rounded-2xl border border-gray-200 text-left hover:border-gray-300 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] group flex flex-col justify-between">
           <div className="flex justify-between items-start w-full">
             <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Wallet Balance</p>
@@ -231,7 +252,7 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Table Body - Wrapped in overflow-x-auto to prevent Safari horizontal scrolling */}
+        {/* Table Body */}
         <div className="w-full overflow-x-auto min-h-[300px]">
           <table className="w-full text-left border-collapse text-sm whitespace-nowrap min-w-[800px]">
             <thead>
@@ -258,7 +279,7 @@ export default function DashboardOverview() {
                       <p className="font-bold text-gray-900">{reg.proposedName || "Untitled Application"}</p>
                       <p className="text-xs text-gray-500 mt-0.5">{reg.id}</p>
                     </td>
-                    <td className="px-6 py-4 font-medium text-gray-600">{reg.businessType}</td>
+                    <td className="px-6 py-4 font-medium text-gray-600">{reg.businessType || reg.entityType || "N/A"}</td>
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(reg.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
@@ -399,17 +420,24 @@ export default function DashboardOverview() {
             <div className="flex gap-3 mt-8">
               <button 
                 onClick={() => setModal(null)}
-                className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
+                disabled={isProcessing}
+                className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button 
                 onClick={confirmRiskAction}
-                className={`flex-1 py-3 px-4 font-semibold rounded-xl text-white shadow-lg transition-colors
+                disabled={isProcessing}
+                className={`flex-1 py-3 px-4 font-semibold rounded-xl text-white shadow-lg transition-colors flex items-center justify-center
                   ${modal.type === 'DELETE' ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20' : 'bg-[#ff3f7a] hover:bg-[#e02b62] shadow-[#ff3f7a]/20'}
+                  disabled:opacity-70 disabled:cursor-not-allowed
                 `}
               >
-                {modal.type === 'DELETE' ? 'Yes, Delete' : 'Yes, Submit'}
+                {isProcessing ? (
+                   <Spinner className="animate-spin h-5 w-5" weight="bold" />
+                ) : (
+                   modal.type === 'DELETE' ? 'Yes, Delete' : 'Yes, Submit'
+                )}
               </button>
             </div>
           </div>
