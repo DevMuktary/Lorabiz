@@ -4,13 +4,19 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
 // FETCH DRAFT DETAILS
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  req: Request, 
+  props: { params: Promise<{ id: string }> }
+) {
   try {
+    // Next.js 15+ requires params to be awaited
+    const { id } = await props.params;
+    
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const registration = await prisma.businessRegistration.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { proprietors: true } // Pull existing proprietors if any
     });
 
@@ -25,8 +31,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // SAVE FULL REGISTRATION PROGRESS
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: Request, 
+  props: { params: Promise<{ id: string }> }
+) {
   try {
+    // Next.js 15+ requires params to be awaited
+    const { id } = await props.params;
+    
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
@@ -35,7 +47,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     // 1. Update the base registration with Company Info
     await prisma.businessRegistration.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         companyEmail: companyInfo.email,
         companyState: companyInfo.state,
@@ -50,18 +62,18 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     // 2. Sync Proprietors (Delete old ones and insert new ones to avoid complex updates)
     await prisma.proprietor.deleteMany({
-      where: { registrationId: params.id }
+      where: { registrationId: id }
     });
 
     if (proprietors && proprietors.length > 0) {
       const proprietorData = proprietors.map((p: any) => ({
-        registrationId: params.id,
+        registrationId: id,
         surname: p.surname,
         firstName: p.firstName,
         otherName: p.otherName || null,
         email: p.email || null,
         phone: p.phone,
-        gender: p.gender, // Assuming this aligns with Prisma Enum (MALE/FEMALE/OTHER)
+        gender: p.gender, 
         dob: p.dob,
         state: p.state,
         lga: p.lga,
