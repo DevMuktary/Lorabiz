@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -18,6 +18,14 @@ export const metadata: Metadata = {
   },
 };
 
+// THIS FIXES THE SAFARI URL BAR BUG
+export const viewport: Viewport = {
+  themeColor: "#f8fafc", // Hex code for slate-50
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1, // Prevents auto-zooming on inputs in Safari
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body 
-        className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-background text-foreground min-h-screen flex flex-col`}
+        className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-slate-50 text-slate-900 min-h-screen flex flex-col`}
       >
         <Providers>
           {children}
