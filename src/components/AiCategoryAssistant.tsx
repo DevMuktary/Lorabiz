@@ -25,15 +25,11 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   
-  // NEW: We target the entire scrollable container instead of the bottom div
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // AUTO-SCROLL FIX
   useEffect(() => {
     if (isOpen && scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      // We only scroll down IF the chat is actually overflowing the screen.
-      // This stops it from pushing the first few messages up into the white void.
       if (container.scrollHeight > container.clientHeight) {
         container.scrollTo({
           top: container.scrollHeight,
@@ -74,11 +70,16 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
   };
 
   return (
-    <div className={`fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-6 ${isOpen ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"} transition-opacity duration-200`}>
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
+    // CHANGED: Removed items-end on mobile.
+    <div className={`fixed inset-0 z-[100] flex sm:items-center justify-center sm:p-6 ${isOpen ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"} transition-opacity duration-200`}>
       
-      <div className={`relative w-full sm:max-w-md bg-white sm:rounded-3xl shadow-2xl flex flex-col h-[100dvh] sm:h-[600px] sm:max-h-[85vh] transition-transform duration-300 ${isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"}`}>
+      {/* CHANGED: Backdrop is completely hidden on mobile screens, only shows on desktop (sm:block) */}
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm hidden sm:block" onClick={onClose}></div>
+      
+      {/* CHANGED: Full 100dvh takeover on mobile, absolutely zero margins or rounded corners until desktop breakpoints */}
+      <div className={`relative w-full h-[100dvh] sm:max-w-md bg-white sm:rounded-3xl shadow-2xl flex flex-col sm:h-[600px] sm:max-h-[85vh] transition-transform duration-300 ${isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"}`}>
         
+        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50 sm:rounded-t-3xl pt-[env(safe-area-inset-top)] shrink-0">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#ff3f7a] to-orange-400 flex items-center justify-center text-white shadow-sm">
@@ -91,10 +92,10 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
           </button>
         </div>
 
-        {/* NEW: Attached the ref to the main container */}
+        {/* CHANGED: Added min-h-0. This CSS trick stops Safari from overflowing flex children when the keyboard opens */}
         <div 
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 overscroll-contain"
+          className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 overscroll-contain"
         >
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -125,6 +126,7 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
           )}
         </div>
 
+        {/* Input Area */}
         <div className="p-4 bg-white border-t border-slate-100 sm:rounded-b-3xl shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <form onSubmit={handleSend} className="relative flex items-center">
             <input 
