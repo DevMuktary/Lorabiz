@@ -8,6 +8,17 @@ interface Message {
   content: string;
 }
 
+// Quick helper to render **bold** text as actual <strong> HTML elements
+const parseMarkdown = (text: string) => {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
 export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hi! Tell me what your business does, and I'll tell you exactly which category to select." }
@@ -53,17 +64,20 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
     }
   };
 
-  // We use CSS to hide it instead of returning null, so the state (memory) is preserved
   return (
-    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 ${isOpen ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"} transition-opacity duration-200`}>
+    <div className={`fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-6 ${isOpen ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"} transition-opacity duration-200`}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
       
-      {/* Modal */}
-      <div className={`relative w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col h-[600px] max-h-[85vh] transition-transform duration-300 ${isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"}`}>
+      {/* 
+        MODAL FIX: 
+        On mobile, it is h-[100dvh], w-full, rounded-none so it doesn't get pushed weirdly by the keyboard.
+        On desktop (sm), it is a rounded max-w-md modal.
+      */}
+      <div className={`relative w-full sm:max-w-md bg-white sm:rounded-3xl shadow-2xl flex flex-col h-[100dvh] sm:h-[600px] sm:max-h-[85vh] transition-transform duration-300 ${isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"}`}>
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50 sm:rounded-t-3xl pt-[env(safe-area-inset-top)]">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#ff3f7a] to-orange-400 flex items-center justify-center text-white">
               <Sparkle className="h-4 w-4" weight="fill" />
@@ -76,18 +90,19 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 overscroll-contain">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
               <div className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center ${msg.role === "user" ? "bg-slate-100 text-slate-500" : "bg-[#ff3f7a]/10 text-[#ff3f7a]"}`}>
                 {msg.role === "user" ? <User weight="fill" /> : <Robot weight="fill" />}
               </div>
-              <div className={`px-4 py-3 rounded-2xl max-w-[80%] text-sm ${
+              <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm ${
                 msg.role === "user" 
                   ? "bg-slate-900 text-white rounded-tr-sm" 
                   : "bg-slate-50 border border-slate-100 text-slate-700 rounded-tl-sm whitespace-pre-wrap leading-relaxed"
               }`}>
-                {msg.content}
+                {/* Parse the Markdown Bold here! */}
+                {parseMarkdown(msg.content)}
               </div>
             </div>
           ))}
@@ -109,7 +124,7 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
         </div>
 
         {/* Input Area */}
-        <div className="p-4 bg-white border-t border-slate-100 rounded-b-3xl">
+        <div className="p-4 bg-white border-t border-slate-100 sm:rounded-b-3xl pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <form onSubmit={handleSend} className="relative flex items-center">
             <input 
               type="text" 
