@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 
-// Configure Cloudinary with your env variables
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -17,14 +16,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Convert the file to a buffer for Cloudinary SDK
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Upload stream wrapper
     const secureUrl = await new Promise<string>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: "lumebiz_documents" },
+        // Added resource_type: "auto" so it correctly handles both Images and PDFs
+        { folder: "lumebiz_documents", resource_type: "auto" }, 
         (error, result) => {
           if (error || !result) return reject(error);
           resolve(result.secure_url);
