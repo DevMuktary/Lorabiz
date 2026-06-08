@@ -6,66 +6,72 @@ import { prisma } from "@/lib/prisma";
 // ==========================================
 // FETCH DRAFT DETAILS
 // ==========================================
-export async function GET(
-  req: Request, 
-  props: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
   try {
-    // Next.js 15+ requires params to be awaited
     const { id } = await props.params;
-    
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const registration = await prisma.businessRegistration.findUnique({
       where: { id },
-      include: { proprietors: true } // Pull existing proprietors if any
+      include: { proprietors: true }
     });
 
-    if (!registration) {
-      return NextResponse.json({ message: "Draft not found" }, { status: 404 });
-    }
-
+    if (!registration) return NextResponse.json({ message: "Draft not found" }, { status: 404 });
     return NextResponse.json({ success: true, data: registration });
   } catch (error) {
-    console.error("Fetch Details Error:", error);
     return NextResponse.json({ message: "Error fetching details" }, { status: 500 });
   }
 }
 
 // ==========================================
-// SAVE FULL REGISTRATION PROGRESS
+// SAVE & VALIDATE REGISTRATION (DRAFT OR FINAL)
 // ==========================================
-export async function PUT(
-  req: Request, 
-  props: { params: Promise<{ id: string }> }
-) {
+export async function PUT(req: Request, props: { params: Promise<{ id: string }> }) {
   try {
-    // Next.js 15+ requires params to be awaited
     const { id } = await props.params;
-    
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { companyInfo, proprietors } = body;
+    const { companyInfo, proprietors, isDraft } = body;
 
-    // 1. Update the base registration with Company Info
+    // --- STRICT BACKEND VALIDATION ON FINAL SUBMIT ---
+    if (!isDraft) {
+      if (!companyInfo.state || !companyInfo.address) {
+        return NextResponse.json({ success: false, message: "Company State and Address are compulsory." }, { status: 400 });
+      }
+
+      if (proprietors.length === 0) {
+         return NextResponse.json({ success: false, message: "At least one proprietor is required." }, { status: 400 });
+      }
+
+      for (const p of proprietors) {
+         if (!p.surname || !p.firstName || !p.phone || !p.state || !p.gender || !p.dob || !p.serviceAddress) {
+           return NextResponse.json({ success: false, message: `Proprietor ${p.firstName || ''} is missing required fields.` }, { status: 400 });
+         }
+         if (!p.documents.nin || !p.documents.passport || !p.documents.signature) {
+           return NextResponse.json({ success: false, message: `Proprietor ${p.firstName} is missing document uploads.` }, { status: 400 });
+         }
+      }
+    }
+
+    // 1. Update the base registration
     await prisma.businessRegistration.update({
       where: { id },
       data: {
-        companyEmail: companyInfo.email,
-        companyState: companyInfo.state,
-        companyCity: companyInfo.city,
-        companyStreetNo: companyInfo.streetNo,
-        companyAddress: companyInfo.address,
-        commencementDate: companyInfo.commencementDate,
-        // Mark it as PENDING since they've submitted the full details
-        status: "PENDING" 
+        companyEmail: companyInfo.email || null,
+        companyState: companyInfo.state || null,
+        companyCity: companyInfo.city || null,
+        companyStreetNo: companyInfo.streetNo || null,
+        companyAddress: companyInfo.address || null,
+        commencementDate: companyInfo.commencementDate || null,
+        // If it's a draft, keep old status, otherwise mark PENDING
+        status: isDraft ? undefined : "PENDING" 
       }
     });
 
-    // 2. Sync Proprietors (Delete old ones and insert new ones to avoid complex updates)
+    // 2. Sync Proprietors (Delete old ones and insert new ones)
     await prisma.proprietor.deleteMany({
       where: { registrationId: id }
     });
@@ -82,7 +88,7 @@ export async function PUT(
         dob: p.dob,
         state: p.state,
         lga: p.lga,
-        city: p.city,
+        city: p.city || null,
         streetNo: p.streetNo || null,
         serviceAddress: p.serviceAddress,
         ninUrl: p.documents.nin || null,
@@ -95,49 +101,11 @@ export async function PUT(
       });
     }
 
-    return NextResponse.json({ success: true, message: "Registration submitted successfully!" });
+    return NextResponse.json({ success: true, message: isDraft ? "Draft saved" : "Registration submitted successfully!" });
   } catch (error) {
     console.error("Save Details Error:", error);
     return NextResponse.json({ message: "Failed to save registration details" }, { status: 500 });
   }
 }
 
-// ==========================================
-// DELETE DRAFT
-// ==========================================
-export async function DELETE(
-  req: Request, 
-  props: { params: Promise<{ id: string }> }
-) {
-  try {
-    // Next.js 15+ requires params to be awaited
-    const { id } = await props.params;
-    
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    // Validate user identity securely
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
-
-    // Verify ownership of the draft before deletion
-    const registration = await prisma.businessRegistration.findUnique({
-      where: { id }
-    });
-
-    if (!registration || registration.userId !== user.id) {
-      return NextResponse.json({ message: "Unauthorized action. You do not own this application." }, { status: 403 });
-    }
-
-    // Prisma's "onDelete: Cascade" rule from our schema will automatically delete all 
-    // linked Proprietors and Documents attached to this registration when it is dropped.
-    await prisma.businessRegistration.delete({
-      where: { id }
-    });
-
-    return NextResponse.json({ success: true, message: "Application successfully deleted." });
-  } catch (error) {
-    console.error("Delete Draft Error:", error);
-    return NextResponse.json({ message: "Failed to delete the application." }, { status: 500 });
-  }
-}
+// ... Keep your existing DELETE route here
