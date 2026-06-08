@@ -10,9 +10,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    const { proposedName, entityType, category, specificNature, similarityScore } = await req.json();
+    // ADDED: ownershipType, altName1, altName2
+    const { 
+      proposedName, altName1, altName2, 
+      entityType, category, specificNature, 
+      similarityScore, ownershipType 
+    } = await req.json();
 
-    if (!proposedName || !entityType || !category || !specificNature) {
+    if (!proposedName || !entityType || !category || !specificNature || !ownershipType) {
       return NextResponse.json({ success: false, message: "Missing required fields." }, { status: 400 });
     }
 
@@ -24,7 +29,10 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         proposedName: proposedName.toUpperCase(),
+        altName1: altName1 ? altName1.toUpperCase() : null,
+        altName2: altName2 ? altName2.toUpperCase() : null,
         entityType,
+        ownershipType, // This is what Step 3 relies on!
         category,
         specificNature,
         status: "UNSUBMITTED",
