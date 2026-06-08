@@ -59,18 +59,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    // Removed fixed heights. The page now controls its own natural height.
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-[#ff3f7a] selection:text-white">
       
       {/* MOBILE OVERLAY */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {/* SIDEBAR - Now fixed permanently to the left side */}
+      {/* SIDEBAR */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none
@@ -133,7 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="p-4 border-t border-slate-100 shrink-0">
           <button 
             onClick={() => signOut({ callbackUrl: "/auth/login" })}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group cursor-pointer"
           >
             <SignOut className="h-5 w-5 text-slate-400 group-hover:text-red-500 transition-transform group-hover:-translate-x-1" />
             Log Out
@@ -141,15 +140,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA - Native Window Scrolling! */}
-      {/* Note the lg:pl-72 here. This pushes the content past the fixed sidebar on desktop. */}
+      {/* MAIN CONTENT AREA */}
       <div className="lg:pl-72 flex flex-col min-h-screen">
         
-        {/* TOP HEADER - Sticky to the top of the native window */}
+        {/* TOP HEADER */}
         <header className="sticky top-0 z-30 h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6 lg:px-10 shrink-0">
           <div className="flex items-center gap-4">
             <button 
-              className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <List className="h-6 w-6" />
@@ -160,7 +158,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-5">
-            <button className="relative p-2 text-slate-500 hover:text-[#ff3f7a] transition-colors rounded-full hover:bg-[#ff3f7a]/10">
+            <button className="relative p-2 text-slate-500 hover:text-[#ff3f7a] transition-colors rounded-full hover:bg-[#ff3f7a]/10 cursor-pointer">
               <Bell className="h-6 w-6" />
               <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-[#ff3f7a] rounded-full border-2 border-white"></span>
             </button>
@@ -171,8 +169,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* DYNAMIC PAGE CONTENT - No overflow restrictions! Safari will scroll naturally. */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-10 relative">
+        {/* FIX: Added z-10 to force the main content above the invisible background layer */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-10 relative z-10">
           <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
           </div>
