@@ -18,10 +18,10 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
 
   // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
-
-  if (!isOpen) return null;
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isTyping, isOpen]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,13 +53,14 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
     }
   };
 
+  // We use CSS to hide it instead of returning null, so the state (memory) is preserved
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 ${isOpen ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"} transition-opacity duration-200`}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
       
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col h-[600px] max-h-[85vh] animate-in zoom-in-95 duration-200">
+      <div className={`relative w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col h-[600px] max-h-[85vh] transition-transform duration-300 ${isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl">
@@ -67,7 +68,7 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#ff3f7a] to-orange-400 flex items-center justify-center text-white">
               <Sparkle className="h-4 w-4" weight="fill" />
             </div>
-            <h3 className="font-bold text-slate-900">Category Assistant</h3>
+            <h3 className="font-bold text-slate-900">LumeBizAi</h3>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors">
             <X className="h-5 w-5" weight="bold" />
