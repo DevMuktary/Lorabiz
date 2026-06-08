@@ -312,7 +312,7 @@ export default function BusinessNameRegistration() {
       {/* THE AVAILABILITY RESULT MODAL              */}
       {/* ========================================== */}
       <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${resultModal.isOpen ? "visible" : "invisible pointer-events-none"}`}>
-        <div className={`absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 ${resultModal.isOpen ? "opacity-100" : "opacity-0"}`} onClick={() => resultModal.status !== "LOADING" && setResultModal({ ...resultModal, isOpen: false })} />
+        <div className={`absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 ${resultModal.isOpen ? "opacity-100" : "opacity-0"}`} onClick={() => setResultModal({ ...resultModal, isOpen: false })} />
         
         <div className={`relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center transition-all duration-300 ${resultModal.isOpen ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"}`}>
           
