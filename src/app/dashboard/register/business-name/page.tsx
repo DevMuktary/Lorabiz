@@ -1,13 +1,112 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { 
   Storefront, CaretLeft, MagnifyingGlass, CheckCircle, 
-  WarningCircle, XCircle, ArrowRight, User, Users
+  WarningCircle, XCircle, ArrowRight, User, Users, CaretDown, Check
 } from "@phosphor-icons/react";
 import { CAC_CATEGORIES } from "@/lib/cac-categories";
 
+// ==========================================
+// REUSABLE SEARCHABLE DROPDOWN COMPONENT
+// ==========================================
+function SearchableDropdown({ 
+  label, value, onChange, options, disabled, placeholder 
+}: { 
+  label: string; value: string; onChange: (val: string) => void; options: string[]; disabled?: boolean; placeholder: string; 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setQuery(value);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value]);
+
+  const filteredOptions = options.filter(opt => opt.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div className="space-y-2 relative" ref={dropdownRef}>
+      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</label>
+      <div 
+        className={`flex items-center w-full h-14 px-4 border-2 rounded-xl transition-colors cursor-text ${
+          disabled 
+            ? "bg-slate-50 border-slate-200 opacity-60" 
+            : isOpen 
+              ? "bg-white border-[#ff3f7a] ring-2 ring-[#ff3f7a]/10" 
+              : "bg-white border-slate-200 hover:border-slate-300"
+        }`}
+        onClick={() => !disabled && setIsOpen(true)}
+      >
+        <input
+          type="text"
+          value={isOpen ? query : value}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsOpen(true);
+            if (e.target.value !== value) onChange("");
+          }}
+          onFocus={() => !disabled && setIsOpen(true)}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="w-full h-full font-bold text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-medium bg-transparent disabled:cursor-not-allowed truncate pr-2"
+        />
+        <CaretDown className={`h-5 w-5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} weight="bold" />
+      </div>
+      
+      {isOpen && !disabled && (
+        <div className="absolute z-50 top-[76px] left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-[0_10px_40px_rgb(0,0,0,0.1)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <ul className="max-h-60 overflow-y-auto overscroll-contain py-2 scrollbar-thin scrollbar-thumb-slate-200">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((opt, idx) => {
+                const isSelected = value === opt;
+                return (
+                  <li 
+                    key={idx}
+                    onClick={() => {
+                      onChange(opt);
+                      setQuery(opt);
+                      setIsOpen(false);
+                    }}
+                    className={`px-4 py-3 cursor-pointer transition-colors flex items-center justify-between group ${
+                      isSelected ? "bg-[#ff3f7a]/10" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className={`text-sm font-bold ${isSelected ? "text-[#ff3f7a]" : "text-slate-900 group-hover:text-[#ff3f7a]"}`}>
+                      {opt}
+                    </span>
+                    {isSelected && <Check className="h-4 w-4 text-[#ff3f7a] shrink-0" weight="bold" />}
+                  </li>
+                )
+              })
+            ) : (
+              <li className="px-4 py-6 text-center text-sm font-medium text-slate-500">
+                No results found.
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ==========================================
+// MAIN PAGE COMPONENT
+// ==========================================
 export default function BusinessNameRegistration() {
   const [step, setStep] = useState(1);
 
@@ -16,18 +115,17 @@ export default function BusinessNameRegistration() {
   const [altName1, setAltName1] = useState("");
   const [altName2, setAltName2] = useState("");
   
-  // The Two-Box Approach
+  // Dual Boxes
   const [selectedCategory, setSelectedCategory] = useState("");
   const [specificNature, setSpecificNature] = useState("");
   
-  // Search Status: 'IDLE' | 'LOADING' | 'PASSED' | 'WARNING' | 'BLOCKED'
+  // Search Status
   const [searchStatus, setSearchStatus] = useState("IDLE");
   const [searchMessage, setSearchMessage] = useState("");
 
-  // Step 2 State: Ownership Structure
+  // Step 2 State
   const [ownershipType, setOwnershipType] = useState<"SOLE" | "PARTNERSHIP" | null>(null);
 
-  // Derived lists for the dropdowns
   const categories = Object.keys(CAC_CATEGORIES).sort();
   const specificNatures = selectedCategory ? CAC_CATEGORIES[selectedCategory].sort() : [];
 
@@ -43,7 +141,7 @@ export default function BusinessNameRegistration() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           proposedName, 
-          lineOfBusiness: specificNature, // We send the specific nature to the API
+          lineOfBusiness: specificNature, 
           entityType: "Business Name", 
           mode: "CHECK" 
         }),
@@ -92,18 +190,18 @@ export default function BusinessNameRegistration() {
         ></div>
       </div>
 
-      {/* ========================================== */}
-      {/* STEP 1: NAME SEARCH & ALTERNATIVES           */}
-      {/* ========================================== */}
+      {/* STEP 1 */}
       {step === 1 && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="h-12 w-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+          
+          <div className="flex items-center gap-3 sm:gap-4 mb-6">
+            <div className="h-12 w-12 shrink-0 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
               <Storefront className="h-6 w-6" weight="fill" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900">Name Availability</h2>
-              <p className="text-sm text-slate-500 font-medium">Let's ensure your dream name isn't taken.</p>
+              <h2 className="text-xl font-black text-slate-900 leading-tight">Name Availability</h2>
+              {/* Added shrink-0 above and adjusted text-xs sm:text-sm here to prevent awkward wrapping */}
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">Let's ensure your dream name isn't taken.</p>
             </div>
           </div>
 
@@ -121,46 +219,30 @@ export default function BusinessNameRegistration() {
               />
             </div>
 
-            {/* Side-by-Side Dual Boxes for Desktop, Stacked on Mobile */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Business Category</label>
-                <select 
-                  value={selectedCategory}
-                  onChange={(e) => { 
-                    setSelectedCategory(e.target.value); 
-                    setSpecificNature(""); // Reset specific nature when category changes
-                    setSearchStatus("IDLE"); 
-                  }}
-                  className="w-full h-14 px-4 border-2 border-slate-200 rounded-xl font-bold text-slate-900 focus:border-[#ff3f7a] outline-none bg-white transition-colors truncate"
-                  required
-                >
-                  <option value="" disabled>Select a category...</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
+              <SearchableDropdown 
+                label="Business Category"
+                placeholder="Search category..."
+                value={selectedCategory}
+                options={categories}
+                onChange={(val) => {
+                  setSelectedCategory(val);
+                  setSpecificNature(""); // Reset nature when category changes
+                  setSearchStatus("IDLE");
+                }}
+              />
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Specific Nature</label>
-                <select 
-                  value={specificNature}
-                  onChange={(e) => { setSpecificNature(e.target.value); setSearchStatus("IDLE"); }}
-                  disabled={!selectedCategory}
-                  className="w-full h-14 px-4 border-2 border-slate-200 rounded-xl font-bold text-slate-900 focus:border-[#ff3f7a] outline-none bg-white transition-colors disabled:bg-slate-50 disabled:text-slate-400 truncate"
-                  required
-                >
-                  <option value="" disabled>
-                    {!selectedCategory ? "Select a category first..." : "Select specific nature..."}
-                  </option>
-                  {specificNatures.map((nature) => (
-                    <option key={nature} value={nature}>{nature}</option>
-                  ))}
-                </select>
-              </div>
-              
+              <SearchableDropdown 
+                label="Specific Nature"
+                placeholder={selectedCategory ? "Search nature..." : "Select category first"}
+                value={specificNature}
+                options={specificNatures}
+                disabled={!selectedCategory}
+                onChange={(val) => {
+                  setSpecificNature(val);
+                  setSearchStatus("IDLE");
+                }}
+              />
             </div>
 
             <button 
@@ -171,7 +253,7 @@ export default function BusinessNameRegistration() {
               {searchStatus === "LOADING" ? (
                 <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
-                <><MagnifyingGlass className="h-5 w-5" weight="bold" /> Search Name for Free</>
+                <><MagnifyingGlass className="h-5 w-5" weight="bold" /> Check Availability</>
               )}
             </button>
           </form>
@@ -216,12 +298,12 @@ export default function BusinessNameRegistration() {
                 <input 
                   type="text" value={altName1} onChange={(e) => setAltName1(e.target.value)}
                   placeholder="Alternative Name 1 (Optional)"
-                  className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-slate-400 outline-none"
+                  className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] focus:ring-[#ff3f7a] outline-none transition-colors"
                 />
                 <input 
                   type="text" value={altName2} onChange={(e) => setAltName2(e.target.value)}
                   placeholder="Alternative Name 2 (Optional)"
-                  className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-slate-400 outline-none"
+                  className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] focus:ring-[#ff3f7a] outline-none transition-colors"
                 />
               </div>
 
@@ -236,9 +318,7 @@ export default function BusinessNameRegistration() {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* STEP 2: OWNERSHIP STRUCTURE DYNAMIC TOGGLE   */}
-      {/* ========================================== */}
+      {/* STEP 2 */}
       {step === 2 && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm animate-in slide-in-from-right-8">
           <div className="mb-8">
