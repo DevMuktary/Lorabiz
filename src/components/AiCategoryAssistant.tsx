@@ -70,16 +70,15 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
   };
 
   return (
-    // Changed: Added universal padding (p-4) and centered it so it always floats
-    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 ${isOpen ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"} transition-opacity duration-200`}>
+    // FIX 1: Changed to items-end on mobile, sm:items-center on desktop. 
+    // This docks the modal to the very bottom edge of the phone.
+    <div className={`fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-6 ${isOpen ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"} transition-opacity duration-200`}>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
       
-      {/* 
-        Changed: Removed h-[100dvh]. 
-        Added max-h-[75vh] so it never stretches to the top/bottom edges of the screen.
-        Ensured rounded-3xl applies to mobile as well.
+      {/* FIX 2: rounded-t-3xl on mobile so the bottom is flush with the screen edge/keyboard.
+        h-[85vh] on mobile ensures it takes up most of the screen but cleanly resizes when the keyboard pops up.
       */}
-      <div className={`relative w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col h-[550px] max-h-[75vh] transition-transform duration-300 ${isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"}`}>
+      <div className={`relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col h-[85vh] sm:h-[550px] transition-transform duration-300 ${isOpen ? "scale-100 translate-y-0" : "translate-y-full sm:translate-y-4 sm:scale-95"} pb-[env(safe-area-inset-bottom)] sm:pb-0`}>
         
         <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl shrink-0">
           <div className="flex items-center gap-2">
@@ -93,6 +92,7 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
           </button>
         </div>
 
+        {/* The chat box itself remains structurally identical, just letting native scrolling handle it */}
         <div 
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 overscroll-contain"
@@ -126,7 +126,7 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
           )}
         </div>
 
-        <div className="p-4 bg-white border-t border-slate-100 rounded-b-3xl shrink-0">
+        <div className="p-4 bg-white border-t border-slate-100 sm:rounded-b-3xl shrink-0">
           <form onSubmit={handleSend} className="relative flex items-center">
             <input 
               type="text" 
@@ -144,7 +144,7 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
             </button>
           </form>
           <div className="text-center mt-2">
-             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Powered by AI</span>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">POWERED BY LUMEBIZ</span>
           </div>
         </div>
 
