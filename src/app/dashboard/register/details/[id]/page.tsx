@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { CircleNotch } from "@phosphor-icons/react";
 import CompanyStep from "@/components/dashboard/register/biz-name/CompanyStep";
 import ProprietorStep from "@/components/dashboard/register/biz-name/ProprietorStep";
 import DocumentStep from "@/components/dashboard/register/biz-name/DocumentStep";
@@ -125,7 +126,14 @@ export default function RegistrationDetailsPage() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">Loading details...</div>;
+  // RESTORED THE SPINNING LOADER HERE
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <CircleNotch className="animate-spin h-10 w-10 text-[#ff3f7a]" weight="bold" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto pb-16 pt-8 px-4 font-sans relative">
@@ -173,8 +181,8 @@ export default function RegistrationDetailsPage() {
                Continue
              </Button>
           ) : (
-             <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg">
-               {isSubmitting ? "Submitting..." : "Submit Application"}
+             <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center">
+               {isSubmitting ? <><CircleNotch className="animate-spin h-5 w-5 mr-2" weight="bold" /> Submitting...</> : "Submit Application"}
              </Button>
           )}
         </div>
