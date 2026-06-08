@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Cropper, { ReactCropperElement } from "react-cropper";
 import "cropperjs/dist/cropper.css";
 import { CircleNotch, X, CheckCircle, FilePdf, Image as ImageIcon } from "@phosphor-icons/react";
@@ -21,6 +22,12 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cropperRef = useRef<ReactCropperElement>(null);
+
+  // We need to check if the component is mounted to safely use createPortal in Next.js
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Raw File & Preview State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -109,7 +116,7 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
 
   return (
     <>
-      {/* --- COMPACT ROW UI (No Placards) --- */}
+      {/* --- COMPACT ROW UI --- */}
       <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-xl transition-all ${value ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 bg-slate-50'}`}>
         
         <div className="flex items-center gap-3 mb-4 sm:mb-0">
@@ -150,9 +157,9 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
         </div>
       </div>
 
-      {/* --- DRAGGABLE CROP MODAL (React-Cropper) --- */}
-      {imageToCrop && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      {/* --- DRAGGABLE CROP MODAL (Teleported to body via React Portal) --- */}
+      {mounted && imageToCrop && createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="font-black text-lg text-slate-900">Crop Document ({label})</h3>
@@ -188,16 +195,16 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* --- MIDDLE OF SCREEN LIGHTBOX (View Document) --- */}
-      {viewFullScale && (
+      {/* --- LIGHTBOX PREVIEW (Teleported to body via React Portal) --- */}
+      {mounted && viewFullScale && createPortal(
         <div 
           className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
-          onClick={() => setViewFullScale(null)} // Click outside to close
+          onClick={() => setViewFullScale(null)} 
         >
-           {/* PINNED CLOSE BUTTON (Always visible at top right) */}
            <button 
              onClick={(e) => { e.stopPropagation(); setViewFullScale(null); }} 
              className="absolute top-4 right-4 md:top-8 md:right-8 flex items-center gap-2 text-white bg-white/10 hover:bg-red-500 px-4 py-2 rounded-full font-bold transition-colors z-50 shadow-lg border border-white/20"
@@ -207,7 +214,7 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
 
            <div 
              className="relative w-full max-w-4xl flex flex-col items-center"
-             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the image itself
+             onClick={(e) => e.stopPropagation()}
            >
               {viewFullScale.toLowerCase().endsWith('.pdf') ? (
                  <iframe src={viewFullScale} className="w-full h-[80vh] rounded-2xl bg-white shadow-2xl border-4 border-slate-800" />
@@ -215,7 +222,8 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
                  <img src={viewFullScale} alt="Full Scale Preview" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-4 border-slate-800 bg-black" />
               )}
            </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
