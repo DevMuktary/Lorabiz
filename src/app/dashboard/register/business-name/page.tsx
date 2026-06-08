@@ -4,9 +4,10 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { 
   Storefront, CaretLeft, MagnifyingGlass, CheckCircle, 
-  WarningCircle, XCircle, ArrowRight, User, Users, CaretDown, Check
+  WarningCircle, XCircle, ArrowRight, User, Users, CaretDown, Check, Sparkle
 } from "@phosphor-icons/react";
 import { CAC_CATEGORIES } from "@/lib/cac-categories";
+import { AiCategoryAssistant } from "@/components/AiCategoryAssistant";
 
 // ==========================================
 // REUSABLE SEARCHABLE DROPDOWN COMPONENT
@@ -119,9 +120,10 @@ export default function BusinessNameRegistration() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [specificNature, setSpecificNature] = useState("");
   
-  // Search Status
+  // Search Status & AI Assistant
   const [searchStatus, setSearchStatus] = useState("IDLE");
   const [searchMessage, setSearchMessage] = useState("");
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
 
   // Step 2 State
   const [ownershipType, setOwnershipType] = useState<"SOLE" | "PARTNERSHIP" | null>(null);
@@ -200,7 +202,6 @@ export default function BusinessNameRegistration() {
             </div>
             <div>
               <h2 className="text-xl font-black text-slate-900 leading-tight">Name Availability</h2>
-              {/* Added shrink-0 above and adjusted text-xs sm:text-sm here to prevent awkward wrapping */}
               <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">Let's ensure your dream name isn't taken.</p>
             </div>
           </div>
@@ -219,6 +220,18 @@ export default function BusinessNameRegistration() {
               />
             </div>
 
+            {/* AI Assistant Trigger Button */}
+            <div className="flex justify-end -mt-2 mb-1">
+              <button 
+                type="button" 
+                onClick={() => setIsAiAssistantOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#ff3f7a]/10 to-orange-400/10 text-[#ff3f7a] text-xs font-bold hover:from-[#ff3f7a]/20 hover:to-orange-400/20 transition-all border border-[#ff3f7a]/20 shadow-sm"
+              >
+                <Sparkle className="h-3.5 w-3.5" weight="fill" />
+                Ask LumeBizAi
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <SearchableDropdown 
                 label="Business Category"
@@ -227,7 +240,7 @@ export default function BusinessNameRegistration() {
                 options={categories}
                 onChange={(val) => {
                   setSelectedCategory(val);
-                  setSpecificNature(""); // Reset nature when category changes
+                  setSpecificNature(""); 
                   setSearchStatus("IDLE");
                 }}
               />
@@ -369,6 +382,8 @@ export default function BusinessNameRegistration() {
         </div>
       )}
 
+      {/* Render the LumeBizAi modal here. It will remain hidden when not open, saving the chat memory. */}
+      <AiCategoryAssistant isOpen={isAiAssistantOpen} onClose={() => setIsAiAssistantOpen(false)} />
     </div>
   );
 }
