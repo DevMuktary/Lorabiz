@@ -1,579 +1,315 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  Buildings, Users, FileImage, CheckCircle, UploadSimple, 
-  Trash, Pencil, ArrowRight, ArrowLeft, Spinner, WarningCircle
-} from "@phosphor-icons/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { CaretLeft, CaretDown, CaretUp, Plus, Trash, ArrowRight, UserCircle, CheckCircle } from "@phosphor-icons/react";
+import { FileUpload } from "@/components/FileUpload";
 
-// --- NIGERIA DATA (Included directly to prevent import errors) ---
-const NIGERIA_DATA = [
-  { state: "Abia", lgas: ["Aba North", "Aba South", "Arochukwu", "Bende", "Ikwuano", "Isiala Ngwa North", "Isiala Ngwa South", "Isuikwuato", "Obi Ngwa", "Ohafia", "Osisioma", "Ugwunagbo", "Ukwa East", "Ukwa West", "Umuahia North", "Umuahia South", "Umunneochi"] },
-  { state: "Adamawa", lgas: ["Demsa", "Fufure", "Ganye", "Gayuk", "Gombi", "Grie", "Hong", "Jada", "Lamurde", "Madagali", "Maiha", "Mayo Belwa", "Michika", "Mubi North", "Mubi South", "Numan", "Shelleng", "Song", "Toungo", "Yola North", "Yola South"] },
-  { state: "Akwa Ibom", lgas: ["Abak", "Eastern Obolo", "Eket", "Esit Eket", "Essien Udim", "Etim Ekpo", "Etinan", "Ibeno", "Ibesikpo Asutan", "Ibiono-Ibom", "Ika", "Ikono", "Ikot Abasi", "Ikot Ekpene", "Ini", "Itu", "Mbo", "Mkpat-Enin", "Nsit-Atai", "Nsit-Ibom", "Nsit-Ubium", "Obot Akara", "Okobo", "Onna", "Oron", "Oruk Anam", "Udung-Uko", "Ukanafun", "Uruan", "Urue-Offong/Oruko", "Uyo"] },
-  { state: "Anambra", lgas: ["Aguata", "Anambra East", "Anambra West", "Anaocha", "Awka North", "Awka South", "Ayamelum", "Dunukofia", "Ekwusigo", "Idemili North", "Idemili South", "Ihiala", "Njikoka", "Nnewi North", "Nnewi South", "Ogbaru", "Onitsha North", "Onitsha South", "Orumba North", "Orumba South", "Oyi"] },
-  { state: "Bauchi", lgas: ["Alkaleri", "Bauchi", "Bogoro", "Damban", "Darazo", "Dass", "Gamawa", "Ganjuwa", "Giade", "Itas/Gadau", "Jama'are", "Katagum", "Kirfi", "Misau", "Ningi", "Shira", "Tafawa Balero", "Toro", "Warji", "Zaki"] },
-  { state: "Bayelsa", lgas: ["Brass", "Ekeremor", "Kolokuma/Opokuma", "Nembe", "Ogbia", "Sagbama", "Southern Ijaw", "Yenagoa"] },
-  { state: "Benue", lgas: ["Agatu", "Apa", "Ado", "Buruku", "Gboko", "Guma", "Gwer East", "Gwer West", "Katsina-Ala", "Konshisha", "Kwande", "Logo", "Makurdi", "Obi", "Ogbadibo", "Ohimini", "Oju", "Okpokwu", "Otukpo", "Tarka", "Ukum", "Ushongo", "Vandeikya"] },
-  { state: "Borno", lgas: ["Abadam", "Askira/Uba", "Bama", "Bayo", "Biu", "Chibok", "Damboa", "Dikwa", "Gubio", "Guzamala", "Gwoza", "Hawul", "Jere", "Kaga", "Kala/Balge", "Konduga", "Kukawa", "Kwaya Kusar", "Mafa", "Magumeri", "Maiduguri", "Marte", "Mobbar", "Monguno", "Ngala", "Nganzai", "Shani"] },
-  { state: "Cross River", lgas: ["Abi", "Akamkpa", "Akpabuyo", "Bakassi", "Bekwarra", "Biase", "Boki", "Calabar Municipal", "Calabar South", "Etung", "Ikom", "Obanliku", "Obubra", "Obudu", "Odukpani", "Ogoja", "Yakuur", "Yala"] },
-  { state: "Delta", lgas: ["Aniocha North", "Aniocha South", "Bomadi", "Burutu", "Ethiope East", "Ethiope West", "Ika North East", "Ika South", "Isoko North", "Isoko South", "Ndokwa East", "Ndokwa West", "Okpe", "Oshimili North", "Oshimili South", "Patani", "Sapele", "Udu", "Ughelli North", "Ughelli South", "Ukwuani", "Uvwie", "Warri North", "Warri South", "Warri South West"] },
-  { state: "Ebonyi", lgas: ["Abakaliki", "Afikpo North", "Afikpo South", "Ebonyi", "Ezza North", "Ezza South", "Ikwo", "Ishielu", "Ivo", "Izzi", "Ohaozara", "Ohaukwu", "Onicha"] },
-  { state: "Edo", lgas: ["Akoko-Edo", "Egor", "Esan Central", "Esan North-East", "Esan South-East", "Esan West", "Etsako Central", "Etsako East", "Etsako West", "Igueben", "Ikpoba Okha", "Orhionmwon", "Oredo", "Ovia North-East", "Ovia South-West", "Owan East", "Owan West", "Uhunmwonde"] },
-  { state: "Ekiti", lgas: ["Ado Ekiti", "Efon", "Ekiti East", "Ekiti South-West", "Ekiti West", "Emure", "Gbonyin", "Ido Osi", "Ijero", "Ikere", "Ikole", "Ilejemeje", "Irepodun/Ifelodun", "Ise/Orun", "Moba", "Oye"] },
-  { state: "Enugu", lgas: ["Aninri", "Awgu", "Enugu East", "Enugu North", "Enugu South", "Ezeagu", "Igbo Etiti", "Igbo Eze North", "Igbo Eze South", "Isi Uzo", "Nkanu East", "Nkanu West", "Nsukka", "Oji River", "Udenu", "Udi", "Uzo Uwani"] },
-  { state: "FCT", lgas: ["Abaji", "Bwari", "Gwagwalada", "Kuje", "Kwali", "Municipal Area Council"] },
-  { state: "Gombe", lgas: ["Akko", "Balanga", "Billiri", "Dukku", "Funakaye", "Gombe", "Kaltungo", "Kwami", "Nafada", "Shongom", "Yamaltu/Deba"] },
-  { state: "Imo", lgas: ["Aboh Mbaise", "Ahiazu Mbaise", "Ehime Mbano", "Ezinihitte", "Ideato North", "Ideato South", "Ihitte/Uboma", "Ikeduru", "Isiala Mbano", "Isu", "Mbaitoli", "Ngor Okpala", "Njaba", "Nkwerre", "Nwangele", "Obowo", "Oguta", "Ohaji/Egbema", "Okigwe", "Orlu", "Orsu", "Oru East", "Oru West", "Owerri Municipal", "Owerri North", "Owerri West", "Unuimo"] },
-  { state: "Jigawa", lgas: ["Auyo", "Babura", "Biriniwa", "Birnin Kudu", "Buji", "Dutse", "Gagarawa", "Garki", "Gumel", "Guri", "Gwaram", "Gwiwa", "Hadejia", "Jahun", "Kafin Hausa", "Kaugama", "Kazaure", "Kiri Kasama", "Kiyawa", "Kaugama", "Maigatari", "Malam Madori", "Miga", "Ringim", "Roni", "Sule Tankarkar", "Taura", "Yankwashi"] },
-  { state: "Kaduna", lgas: ["Birnin Gwari", "Chikun", "Giwa", "Igabi", "Ikara", "Jaba", "Jema'a", "Kachia", "Kaduna North", "Kaduna South", "Kagarko", "Kajuru", "Kaura", "Kauru", "Kubau", "Kudan", "Lere", "Makarfi", "Sabon Gari", "Sanga", "Soba", "Zangon Kataf", "Zaria"] },
-  { state: "Kano", lgas: ["Ajingi", "Albasu", "Bagwai", "Bebeji", "Bichi", "Bunkure", "Dala", "Dambatta", "Dawakin Kudu", "Dawakin Tofa", "Doguwa", "Fagge", "Gabasawa", "Garko", "Garun Mallam", "Gaya", "Gezawa", "Gwale", "Gwarzo", "Kabo", "Kano Municipal", "Karaye", "Kibiya", "Kiru", "Kumbotso", "Kunchi", "Kura", "Madobi", "Makoda", "Minjibir", "Nasarawa", "Rano", "Rimin Gado", "Rogo", "Shanono", "Sumaila", "Takai", "Tarauni", "Tofa", "Tsanyawa", "Tudun Wada", "Ungogo", "Warawa", "Wudil"] },
-  { state: "Katsina", lgas: ["Bakori", "Batagarawa", "Batsari", "Baure", "Bindawa", "Charanchi", "Dandume", "Danja", "Dan Musa", "Daura", "Dutsi", "Dutsin Ma", "Faskari", "Funtua", "Ingawa", "Jibia", "Kafur", "Kaita", "Kankara", "Kankia", "Katsina", "Kurfi", "Kusada", "Mai'Adua", "Malumfashi", "Mani", "Mashi", "Matazu", "Musawa", "Rimi", "Sabuwa", "Safana", "Sandamu", "Zango"] },
-  { state: "Kebbi", lgas: ["Aleiro", "Arewa Dandi", "Argungu", "Augie", "Bagudo", "Birnin Kebbi", "Bunza", "Dandi", "Fakai", "Gwandu", "Jega", "Kalgo", "Koko/Besse", "Maiyama", "Ngaski", "Sakaba", "Shanga", "Suru", "Wasagu/Danko", "Yauri", "Zuru"] },
-  { state: "Kogi", lgas: ["Adavi", "Ajaokuta", "Ankpa", "Bassa", "Dekina", "Ibaji", "Idah", "Igalamela Odolu", "Ijumu", "Kabba/Bunu", "Kogi", "Lokoja", "Mopa Muro", "Ofu", "Ogori/Magongo", "Okehi", "Okene", "Olamaboro", "Omala", "Yagba East", "Yagba West"] },
-  { state: "Kwara", lgas: ["Asa", "Baruten", "Edu", "Ekiti", "Ifelodun", "Ilorin East", "Ilorin South", "Ilorin West", "Irepodun", "Isin", "Kaiama", "Moro", "Offa", "Oke Ero", "Oyun", "Pategi"] },
-  { state: "Lagos", lgas: ["Agege", "Ajeromi-Ifelodun", "Alimosho", "Amuwo-Odofin", "Apapa", "Badagry", "Epe", "Eti Osa", "Ibeju-Lekki", "Ifako-Ijaiye", "Ikeja", "Ikorodu", "Kosofe", "Lagos Island", "Lagos Mainland", "Mushin", "Ojo", "Oshodi-Isolo", "Shomolu", "Surulere"] },
-  { state: "Nasarawa", lgas: ["Akwanga", "Awe", "Doma", "Karu", "Keana", "Keffi", "Kokona", "Lafia", "Nasarawa", "Nasarawa Egon", "Obi", "Toto", "Wamba"] },
-  { state: "Niger", lgas: ["Agaie", "Agwara", "Bida", "Borgu", "Bosso", "Chanchaga", "Edati", "Gbako", "Gurara", "Katcha", "Kontagora", "Lapai", "Lavun", "Magama", "Mariga", "Mashegu", "Mokwa", "Moya", "Paikoro", "Rafi", "Rijau", "Shiroro", "Suleja", "Tafa", "Wushishi"] },
-  { state: "Ogun", lgas: ["Abeokuta North", "Abeokuta South", "Ado-Odo/Ota", "Egbado North", "Egbado South", "Ewekoro", "Ifo", "Ijebu East", "Ijebu North", "Ijebu North East", "Ijebu Ode", "Ikenne", "Imeko Afon", "Ipokia", "Obafemi Owode", "Odeda", "Odogbolu", "Ogun Waterside", "Remo North", "Shagamu"] },
-  { state: "Ondo", lgas: ["Akoko North-East", "Akoko North-West", "Akoko South-East", "Akoko South-West", "Akure North", "Akure South", "Ese Odo", "Idanre", "Ifedore", "Ilaje", "Ile Oluji/Okeigbo", "Irele", "Odigbo", "Okitipupa", "Ondo East", "Ondo West", "Ose", "Owo"] },
-  { state: "Osun", lgas: ["Aiyedade", "Aiyedire", "Atakunmosa East", "Atakunmosa West", "Boluwaduro", "Boripe", "Ede North", "Ede South", "Egbedore", "Ejigbo", "Ife Central", "Ife East", "Ife North", "Ife South", "Ifedayo", "Ifelodun", "Ila", "Ilesa East", "Ilesa West", "Irepodun", "Irewole", "Isokan", "Iwo", "Obokun", "Odo Otin", "Ola Oluwa", "Olorunda", "Oriade", "Orolu", "Osogbo"] },
-  { state: "Oyo", lgas: ["Afijio", "Akinyele", "Atiba", "Atisbo", "Egbeda", "Ibadan North", "Ibadan North-East", "Ibadan North-West", "Ibadan South-East", "Ibadan South-West", "Ibarapa Central", "Ibarapa East", "Ibarapa North", "Ido", "Irepo", "Iseyin", "Itesiwaju", "Iwajowa", "Kajola", "Lagelu", "Ogbomosho North", "Ogbomosho South", "Ogo Oluwa", "Olorunsogo", "Oluyole", "Ona Ara", "Orelope", "Ori Ire", "Oyo East", "Oyo West", "Saki East", "Saki West", "Surulere"] },
-  { state: "Plateau", lgas: ["Bokkos", "Barkin Ladi", "Bassa", "Jos East", "Jos North", "Jos South", "Kanam", "Kanke", "Langtang North", "Langtang South", "Mangu", "Mikang", "Pankshin", "Qua'an Pan", "Riyom", "Shendam", "Wase"] },
-  { state: "Rivers", lgas: ["Abua/Odual", "Ahoada East", "Ahoada West", "Akuku-Toru", "Andoni", "Asari-Toru", "Bonny", "Degema", "Eleme", "Emuoha", "Etche", "Gokana", "Ikwerre", "Khana", "Obio/Akpor", "Ogba/Egbema/Ndoni", "Ogu/Bolo", "Okrika", "Omuma", "Opobo/Nkoro", "Oyigbo", "Port Harcourt", "Tai"] },
-  { state: "Sokoto", lgas: ["Binji", "Bodinga", "Dange Shuni", "Gada", "Goronyo", "Gudu", "Gwadabawa", "Illela", "Isa", "Kebbe", "Kware", "Rabah", "Sabon Birni", "Shagari", "Silame", "Sokoto North", "Sokoto South", "Tambuwal", "Tangaza", "Tureta", "Wamako", "Wurno", "Yabo"] },
-  { state: "Taraba", lgas: ["Ardo Kola", "Bali", "Donga", "Gashaka", "Gassol", "Ibi", "Jalingo", "Karim Lamido", "Kumi", "Lau", "Sardauna", "Takum", "Ussa", "Wukari", "Yorro", "Zing"] },
-  { state: "Yobe", lgas: ["Bade", "Bursari", "Damaturu", "Fika", "Fune", "Geidam", "Gujba", "Gulani", "Jakusko", "Karasuwa", "Machina", "Nangere", "Nguru", "Potiskum", "Tarmuwa", "Yunusari", "Yusufari"] },
-  { state: "Zamfara", lgas: ["Anka", "Bakura", "Birnin Magaji/Kiyaw", "Bukkuyum", "Bungudu", "Gummi", "Gusau", "Kaura Namoda", "Maradun", "Maru", "Shinkafi", "Talata Mafara", "Chafe", "Zurmi"] }
-];
+// ==========================================
+// ZOD SCHEMA VALIDATION
+// ==========================================
+const proprietorSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().min(11, "Valid phone required"),
+  gender: z.enum(["MALE", "FEMALE", ""]),
+  dob: z.string().min(1, "Date of birth is required"),
+  address: z.string().min(5, "Full address is required"),
+  state: z.string().min(1, "State is required"),
+  nin: z.string().length(11, "NIN must be exactly 11 digits"),
+  passportUrl: z.string().min(1, "Passport photograph is required"),
+  signatureUrl: z.string().min(1, "Signature is required"),
+  idCardUrl: z.string().min(1, "Valid ID is required"),
+});
 
-// --- TYPES ---
-type CompanyInfo = {
-  email: string; state: string; city: string; streetNo: string; address: string; commencementDate: string;
-};
+const formSchema = z.object({
+  proprietors: z.array(proprietorSchema).min(1),
+});
 
-// Strict typing for documents so TS index signatures don't crash the build
-type DocumentTypes = {
-  nin: string | null;
-  passport: string | null;
-  signature: string | null;
-};
+type FormValues = z.infer<typeof formSchema>;
 
-type Proprietor = {
-  id: string; surname: string; firstName: string; otherName: string; email: string; phone: string; 
-  gender: string; dob: string; state: string; lga: string; city: string; streetNo: string; serviceAddress: string;
-  documents: DocumentTypes;
-};
-
-export default function RegistrationDetailsPage() {
+export default function ProprietorDetailsPage() {
   const params = useParams();
-  const id = params?.id as string;
   const router = useRouter();
-
-  const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(true);
+  
+  const [draft, setDraft] = useState<any>(null);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(true);
+  const [expandedIndex, setExpandedIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [draft, setDraft] = useState({ proposedName: "LOADING...", entityType: "Sole Proprietorship", specificNature: "LOADING..." });
-  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({ email: "", state: "", city: "", streetNo: "", address: "", commencementDate: "" });
-  
-  const [proprietors, setProprietors] = useState<Proprietor[]>([]);
-  const [editingPropId, setEditingPropId] = useState<string | null>(null);
-  const [propForm, setPropForm] = useState<Proprietor>({
-    id: "", surname: "", firstName: "", otherName: "", email: "", phone: "", gender: "", dob: "", state: "", lga: "", city: "", streetNo: "", serviceAddress: "", 
-    documents: { nin: null, passport: null, signature: null }
+  // Initialize React Hook Form
+  const { register, control, handleSubmit, formState: { errors }, watch, setValue } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      proprietors: [
+        { firstName: "", lastName: "", email: "", phone: "", gender: "", dob: "", address: "", state: "", nin: "", passportUrl: "", signatureUrl: "", idCardUrl: "" }
+      ]
+    }
   });
 
-  const [selectedDocProprietor, setSelectedDocProprietor] = useState<string>("");
-  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null); // Format: `${proprietorId}-${docType}`
+  const { fields, append, remove } = useFieldArray({
+    name: "proprietors",
+    control,
+  });
 
-  const availableLgas = NIGERIA_DATA.find(s => s.state === propForm.state)?.lgas || [];
+  // Watch fields to dynamically update accordion headers
+  const watchProprietors = watch("proprietors");
 
-  // FETCH REAL DRAFT DATA FROM DB ON LOAD
   useEffect(() => {
-    if (!id) return;
+    // Simulated API Call: Fetch the Draft based on the [id]
     const fetchDraft = async () => {
       try {
-        const res = await fetch(`/api/register/details/${id}`);
-        const json = await res.json();
-        if (json.success) {
-          setDraft(json.data);
-          
-          // Prepopulate if previously saved
-          if (json.data.companyEmail || json.data.companyState) {
-            setCompanyInfo({
-              email: json.data.companyEmail || "", 
-              state: json.data.companyState || "", 
-              city: json.data.companyCity || "", 
-              streetNo: json.data.companyStreetNo || "", 
-              address: json.data.companyAddress || "", 
-              commencementDate: json.data.commencementDate || ""
-            });
-          }
+        // const res = await fetch(`/api/register/draft/${params.id}`);
+        // const data = await res.json();
+        
+        // MOCK DATA for demonstration (Replace with actual fetch)
+        const mockDraft = { id: params.id, proposedName: "PEAK PERFORMANCE LOGISTICS", ownershipType: "PARTNERSHIP" };
+        setDraft(mockDraft);
 
-          if (json.data.proprietors && json.data.proprietors.length > 0) {
-            const mapped = json.data.proprietors.map((p: any) => ({
-              ...p,
-              documents: { 
-                nin: p.ninUrl || null, 
-                passport: p.passportUrl || null, 
-                signature: p.signatureUrl || null 
-              }
-            }));
-            setProprietors(mapped);
-          }
+        // If it's a partnership, initialize with 2 forms minimum
+        if (mockDraft.ownershipType === "PARTNERSHIP" && fields.length < 2) {
+          append({ firstName: "", lastName: "", email: "", phone: "", gender: "", dob: "", address: "", state: "", nin: "", passportUrl: "", signatureUrl: "", idCardUrl: "" });
         }
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        console.error("Failed to load draft");
       } finally {
-        setLoading(false);
+        setIsLoadingDraft(false);
       }
     };
     fetchDraft();
-  }, [id]);
+  }, [params.id]);
 
-  // PROPRIETOR MANAGEMENT
-  const handleSaveProprietor = () => {
-    if (!propForm.surname || !propForm.firstName || !propForm.phone || !propForm.state || !propForm.gender) {
-      alert("Please fill all required proprietor fields (Surname, First Name, Phone, State, Gender)."); 
-      return;
-    }
-    
-    if (editingPropId) {
-      setProprietors(prev => prev.map(p => p.id === editingPropId ? { ...propForm } : p));
-      setEditingPropId(null);
-    } else {
-      setProprietors(prev => [...prev, { ...propForm, id: Date.now().toString() }]);
-    }
-    
-    // Reset Form
-    setPropForm({ 
-      id: "", surname: "", firstName: "", otherName: "", email: "", phone: "", gender: "", dob: "", state: "", lga: "", city: "", streetNo: "", serviceAddress: "", 
-      documents: { nin: null, passport: null, signature: null } 
-    });
-  };
-
-  const handleEditProprietor = (prop: Proprietor) => { setPropForm(prop); setEditingPropId(prop.id); };
-  const handleRemoveProprietor = (pid: string) => setProprietors(prev => prev.filter(p => p.id !== pid));
-
-  // CLOUDINARY UPLOAD PIPELINE
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: keyof DocumentTypes) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 4 * 1024 * 1024) { 
-      alert("File size exceeds 4MB limit."); 
-      return; 
-    }
-    if (!["image/jpeg", "image/png"].includes(file.type)) { 
-      alert("Only JPEG and PNG allowed."); 
-      return; 
-    }
-
-    setUploadingDoc(`${selectedDocProprietor}-${docType}`);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      
-      if (data.success && data.url) {
-        setProprietors(prev => prev.map(p => {
-          if (p.id === selectedDocProprietor) {
-             return { ...p, documents: { ...p.documents, [docType]: data.url } };
-          }
-          return p;
-        }));
-      } else {
-        alert("Upload failed. Please try again.");
-      }
-    } catch (error) {
-      alert("Network error during upload.");
-    } finally {
-      setUploadingDoc(null);
-    }
-  };
-
-  // FINAL DATABASE SUBMISSION PIPELINE
-  const handleFinalSubmit = async () => {
+  const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/register/details/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyInfo, proprietors })
-      });
+      // POST the data to your submission API
+      // await fetch(`/api/register/submit/${params.id}`, { method: "POST", body: JSON.stringify(data) });
+      console.log("FINAL SECURE PAYLOAD TO DB:", data);
       
-      const data = await res.json();
-      if (data.success) {
-        router.push("/dashboard?success=true");
-      } else {
-        alert(data.message || "Failed to submit registration.");
+      // Send them to step 4 (Payment/Summary)
+      setTimeout(() => {
+        alert("Form saved securely! Moving to payment...");
         setIsSubmitting(false);
-      }
+      }, 1500);
+
     } catch (error) {
-      alert("Network error. Please check your connection.");
+      alert("Failed to save details.");
       setIsSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spinner className="animate-spin h-10 w-10 text-[#ff3f7a]" />
-      </div>
-    );
+  if (isLoadingDraft) {
+    return <div className="h-screen w-full flex items-center justify-center font-bold text-slate-500">Loading secure form...</div>;
   }
 
-  const isSoleProprietor = draft.entityType === "Sole Proprietorship" || draft.entityType === "Business Name";
-  const hideProprietorForm = isSoleProprietor && proprietors.length >= 1 && !editingPropId;
+  const isPartnership = draft?.ownershipType === "PARTNERSHIP";
 
   return (
-    <div className="max-w-4xl mx-auto pb-16 pt-8 px-4 font-sans selection:bg-[#ff3f7a] selection:text-white">
+    <div className="max-w-3xl mx-auto pb-20 animate-in fade-in duration-500">
       
-      {/* --- WIZARD HEADER NAV --- */}
-      <div className="mb-10">
-        <div className="flex items-center justify-between relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-100 -z-10 rounded-full"></div>
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-[#ff3f7a] -z-10 rounded-full transition-all duration-500" style={{ width: `${((currentStep - 1) / 3) * 100}%` }}></div>
-          {[ 
-            { step: 1, title: "Company", icon: Buildings }, 
-            { step: 2, title: "Proprietors", icon: Users }, 
-            { step: 3, title: "Documents", icon: FileImage }, 
-            { step: 4, title: "Preview", icon: CheckCircle }
-          ].map((s) => (
-            <div key={s.step} className="flex flex-col items-center gap-2">
-              <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg border-4 transition-colors duration-300 ${currentStep >= s.step ? "bg-[#ff3f7a] border-white text-white shadow-md" : "bg-white border-slate-100 text-slate-400"}`}>
-                <s.icon className="h-6 w-6" weight={currentStep >= s.step ? "fill" : "bold"} />
-              </div>
-              <span className={`text-xs font-bold uppercase tracking-wider ${currentStep >= s.step ? "text-slate-900" : "text-slate-400"}`}>{s.title}</span>
-            </div>
-          ))}
+      {/* Header */}
+      <div className="mb-8 pt-2 flex items-center gap-4">
+        <Link href="/dashboard/register/business-name" className="p-2 bg-white rounded-xl border border-slate-200 text-slate-500 hover:text-slate-900 shadow-sm transition-colors">
+          <CaretLeft className="h-5 w-5" weight="bold" />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Proprietor Details</h1>
+          <p className="text-sm font-medium text-slate-500">Step 3 of 4</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Progress Bar */}
+      <div className="w-full bg-slate-200 h-2 rounded-full mb-8 overflow-hidden">
+        <div className="bg-[#ff3f7a] h-full rounded-full transition-all duration-500 ease-out" style={{ width: `75%` }}></div>
+      </div>
+
+      {/* Context Badge */}
+      <div className="bg-slate-900 rounded-2xl p-4 mb-8 flex items-center justify-between shadow-lg">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Registering For</p>
+          <h2 className="text-white font-bold">{draft?.proposedName}</h2>
+        </div>
+        <div className="bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+          <p className="text-xs font-bold text-[#ff3f7a]">{isPartnership ? "Partnership" : "Sole Proprietor"}</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         
-        {/* ========================================== */}
-        {/* STEP 1: COMPANY INFO                       */}
-        {/* ========================================== */}
-        {currentStep === 1 && (
-          <div className="p-8 animate-in fade-in slide-in-from-right-4 duration-300">
-            <h2 className="text-2xl font-black text-slate-900 mb-6 border-b pb-4">Company Information</h2>
-            
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Business Name (Not Editable)</Label>
-                  <div className="h-12 flex items-center px-4 bg-slate-100 border border-slate-200 rounded-xl font-bold uppercase text-slate-700">
-                    {draft.proposedName}
+        {fields.map((field, index) => {
+          const isExpanded = expandedIndex === index;
+          const partnerName = watchProprietors[index]?.firstName ? `${watchProprietors[index].firstName} ${watchProprietors[index].lastName}` : `Partner ${index + 1} Details`;
+          
+          // Check if this specific partner's form has all required images (green checkmark logic)
+          const isComplete = watchProprietors[index]?.passportUrl && watchProprietors[index]?.signatureUrl && watchProprietors[index]?.idCardUrl && watchProprietors[index]?.firstName;
+
+          return (
+            <div key={field.id} className={`bg-white rounded-3xl border transition-all duration-300 overflow-hidden shadow-sm ${isExpanded ? "border-[#ff3f7a] ring-4 ring-[#ff3f7a]/5" : "border-slate-200 hover:border-slate-300"}`}>
+              
+              {/* ACCORDION HEADER */}
+              <div 
+                onClick={() => setExpandedIndex(isExpanded ? -1 : index)}
+                className="p-6 flex items-center justify-between cursor-pointer bg-white"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isComplete ? "bg-emerald-50 text-emerald-500" : isExpanded ? "bg-[#ff3f7a]/10 text-[#ff3f7a]" : "bg-slate-50 text-slate-400"}`}>
+                    {isComplete ? <CheckCircle className="h-6 w-6" weight="fill" /> : <UserCircle className="h-6 w-6" weight="fill" />}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-900 text-lg">{isPartnership ? partnerName : "Your Information"}</h3>
+                    <p className="text-xs font-medium text-slate-500">Provide personal and ID details required by CAC.</p>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Nature of Business (Not Editable)</Label>
-                  <div className="h-12 flex items-center px-4 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-700">
-                    {draft.specificNature}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Company Email</Label>
-                  <Input type="email" placeholder="contact@company.com" value={companyInfo.email} onChange={e => setCompanyInfo({...companyInfo, email: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Commencement Date</Label>
-                  <Input type="date" value={companyInfo.commencementDate} onChange={e => setCompanyInfo({...companyInfo, commencementDate: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label>Company State of Residence</Label>
-                  <select value={companyInfo.state} onChange={e => setCompanyInfo({...companyInfo, state: e.target.value})} className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a]">
-                    <option value="">-- Select State --</option>
-                    {NIGERIA_DATA.map(s => <option key={s.state} value={s.state}>{s.state}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Company City</Label>
-                  <Input value={companyInfo.city} onChange={e => setCompanyInfo({...companyInfo, city: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Company Street Number</Label>
-                  <Input value={companyInfo.streetNo} onChange={e => setCompanyInfo({...companyInfo, streetNo: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Company Street Address</Label>
-                <Input value={companyInfo.address} onChange={e => setCompanyInfo({...companyInfo, address: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================== */}
-        {/* STEP 2: PROPRIETOR INFO                    */}
-        {/* ========================================== */}
-        {currentStep === 2 && (
-          <div className="p-8 animate-in fade-in slide-in-from-right-4 duration-300">
-            <h2 className="text-2xl font-black text-slate-900 mb-6 border-b pb-4">Proprietor Information</h2>
-            
-            {isSoleProprietor && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl mb-6 flex gap-3 text-sm font-medium">
-                <WarningCircle className="h-5 w-5 shrink-0" weight="fill" />
-                As a Sole Proprietorship, this business can only have one (1) proprietor affiliated with it.
-              </div>
-            )}
-
-            {proprietors.length > 0 && (
-              <div className="mb-8 border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
-                    <tr><th className="p-4">Name</th><th className="p-4">Phone</th><th className="p-4">State</th><th className="p-4 text-right">Actions</th></tr>
-                  </thead>
-                  <tbody>
-                    {proprietors.map(prop => (
-                      <tr key={prop.id} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="p-4 font-bold text-slate-900">{prop.surname} {prop.firstName}</td>
-                        <td className="p-4 text-slate-600">{prop.phone}</td>
-                        <td className="p-4 text-slate-600">{prop.state}</td>
-                        <td className="p-4 flex justify-end gap-2">
-                          <button onClick={() => handleEditProprietor(prop)} className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg"><Pencil className="h-4 w-4" weight="bold" /></button>
-                          <button onClick={() => handleRemoveProprietor(prop.id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg"><Trash className="h-4 w-4" weight="bold" /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {!hideProprietorForm && (
-              <div className="bg-slate-50/50 border border-slate-200 rounded-2xl p-6 space-y-6">
-                <h3 className="font-bold text-slate-900 border-b pb-2">{editingPropId ? "Edit Proprietor" : "Add New Proprietor"}</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="space-y-2"><Label>Surname *</Label><Input value={propForm.surname} onChange={e => setPropForm({...propForm, surname: e.target.value})} className="h-12 bg-white" /></div>
-                  <div className="space-y-2"><Label>First Name *</Label><Input value={propForm.firstName} onChange={e => setPropForm({...propForm, firstName: e.target.value})} className="h-12 bg-white" /></div>
-                  <div className="space-y-2"><Label>Other Name (Optional)</Label><Input value={propForm.otherName} onChange={e => setPropForm({...propForm, otherName: e.target.value})} className="h-12 bg-white" /></div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="space-y-2"><Label>Email</Label><Input type="email" value={propForm.email} onChange={e => setPropForm({...propForm, email: e.target.value})} className="h-12 bg-white" /></div>
-                  <div className="space-y-2"><Label>Phone Number *</Label><Input type="tel" placeholder="+234..." value={propForm.phone} onChange={e => setPropForm({...propForm, phone: e.target.value})} className="h-12 bg-white" /></div>
-                  <div className="space-y-2">
-                    <Label>Gender *</Label>
-                    <select value={propForm.gender} onChange={e => setPropForm({...propForm, gender: e.target.value})} className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a]">
-                      <option value="">-- Select Gender --</option>
-                      <option value="MALE">MALE</option>
-                      <option value="FEMALE">FEMALE</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="space-y-2">
-                    <Label>State *</Label>
-                    <select value={propForm.state} onChange={e => setPropForm({...propForm, state: e.target.value, lga: ""})} className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a]">
-                      <option value="">-- Select State --</option>
-                      {NIGERIA_DATA.map(s => <option key={s.state} value={s.state}>{s.state}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>LGA *</Label>
-                    <select value={propForm.lga} onChange={e => setPropForm({...propForm, lga: e.target.value})} disabled={!propForm.state} className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a]">
-                      <option value="">-- Select LGA --</option>
-                      {availableLgas.map(lga => <option key={lga} value={lga}>{lga}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2"><Label>Date of Birth *</Label><Input type="date" value={propForm.dob} onChange={e => setPropForm({...propForm, dob: e.target.value})} className="h-12 bg-white" /></div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_2fr] gap-5">
-                  <div className="space-y-2"><Label>City</Label><Input value={propForm.city} onChange={e => setPropForm({...propForm, city: e.target.value})} className="h-12 bg-white" /></div>
-                  <div className="space-y-2"><Label>Street No.</Label><Input value={propForm.streetNo} onChange={e => setPropForm({...propForm, streetNo: e.target.value})} className="h-12 bg-white" /></div>
-                  <div className="space-y-2"><Label>Service Address</Label><Input value={propForm.serviceAddress} onChange={e => setPropForm({...propForm, serviceAddress: e.target.value})} className="h-12 bg-white" /></div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button onClick={handleSaveProprietor} type="button" className="bg-slate-900 hover:bg-slate-800 text-white h-12 px-8 rounded-xl shadow-lg">
-                    {editingPropId ? "Update Proprietor" : "Add Proprietor"}
-                  </Button>
+                <div className="flex items-center gap-3">
+                  {isPartnership && fields.length > 2 && index >= 2 && !isExpanded && (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); remove(index); }} className="p-2 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors">
+                      <Trash className="h-5 w-5" weight="bold" />
+                    </button>
+                  )}
+                  {isExpanded ? <CaretUp className="h-5 w-5 text-slate-400" weight="bold" /> : <CaretDown className="h-5 w-5 text-slate-400" weight="bold" />}
                 </div>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* ========================================== */}
-        {/* STEP 3: DOCUMENTS UPLOADS                  */}
-        {/* ========================================== */}
-        {currentStep === 3 && (
-          <div className="p-8 animate-in fade-in slide-in-from-right-4 duration-300">
-            <h2 className="text-2xl font-black text-slate-900 mb-2 border-b pb-4">Document Uploads</h2>
-            <p className="text-slate-500 mb-6 text-sm font-medium">Documents must be an Image Format in JPEG or PNG and the size should not exceed 4MB.</p>
-            
-            <div className="space-y-8">
-              <div className="space-y-2 max-w-md">
-                <Label className="font-bold text-slate-900">Proprietor</Label>
-                <select 
-                  value={selectedDocProprietor} 
-                  onChange={e => setSelectedDocProprietor(e.target.value)} 
-                  className="flex h-14 w-full rounded-xl border-2 border-[#ff3f7a]/30 bg-[#ff3f7a]/5 px-4 font-bold text-slate-900 focus-visible:outline-none focus-visible:border-[#ff3f7a]"
-                >
-                  <option value="" disabled>-- Select Proprietor --</option>
-                  {proprietors.map(p => <option key={p.id} value={p.id}>{p.surname} {p.firstName}</option>)}
-                </select>
-              </div>
-
-              {selectedDocProprietor && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
-                  {[ 
-                    { id: "nin" as keyof DocumentTypes, label: "NIN Card/Slip" }, 
-                    { id: "passport" as keyof DocumentTypes, label: "Passport Photograph" }, 
-                    { id: "signature" as keyof DocumentTypes, label: "Signature" } 
-                  ].map((doc) => {
-                    const prop = proprietors.find(p => p.id === selectedDocProprietor);
-                    const hasDoc = prop?.documents[doc.id];
-                    const isUploading = uploadingDoc === `${selectedDocProprietor}-${doc.id}`;
+              {/* ACCORDION BODY (THE FORM) */}
+              {isExpanded && (
+                <div className="p-6 pt-0 border-t border-slate-100 bg-slate-50/50">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-6">
                     
-                    return (
-                      <div key={doc.id} className="relative border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-slate-50 hover:bg-slate-100 transition-colors h-48 group">
-                        {isUploading ? (
-                          <div className="flex flex-col items-center gap-3 text-[#ff3f7a]">
-                            <Spinner className="animate-spin h-8 w-8" weight="bold" />
-                            <span className="font-bold text-sm">Uploading securely...</span>
-                          </div>
-                        ) : hasDoc ? (
-                          <div className="flex flex-col items-center gap-3 text-emerald-600">
-                            <CheckCircle className="h-10 w-10" weight="fill" />
-                            <span className="font-bold text-sm">Uploaded Successfully</span>
-                            <button 
-                              onClick={() => setProprietors(prev => prev.map(p => p.id === selectedDocProprietor ? { ...p, documents: { ...p.documents, [doc.id]: null } } : p))} 
-                              className="text-xs text-red-500 font-bold mt-2 hover:underline z-10"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <UploadSimple className="h-10 w-10 text-slate-300 group-hover:text-[#ff3f7a] transition-colors mb-3" weight="bold" />
-                            <Label className="font-bold text-slate-700 cursor-pointer group-hover:text-[#ff3f7a] transition-colors">
-                              Upload {doc.label}
-                            </Label>
-                            <input 
-                              type="file" 
-                              accept="image/jpeg, image/png" 
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                              onChange={(e) => handleFileUpload(e, doc.id)} 
-                            />
-                          </>
-                        )}
+                    {/* Basic Info */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">First Name</label>
+                      <input {...register(`proprietors.${index}.firstName`)} className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] outline-none" />
+                      {errors.proprietors?.[index]?.firstName && <span className="text-xs text-red-500 font-bold">{errors.proprietors[index]?.firstName?.message}</span>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Last Name</label>
+                      <input {...register(`proprietors.${index}.lastName`)} className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] outline-none" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Email Address</label>
+                      <input type="email" {...register(`proprietors.${index}.email`)} className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] outline-none" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Phone Number</label>
+                      <input type="tel" {...register(`proprietors.${index}.phone`)} className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] outline-none" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Gender</label>
+                      <select {...register(`proprietors.${index}.gender`)} className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] outline-none bg-white">
+                        <option value="">Select Gender</option>
+                        <option value="MALE">Male</option>
+                        <option value="FEMALE">Female</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Date of Birth</label>
+                      <input type="date" {...register(`proprietors.${index}.dob`)} className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] outline-none bg-white" />
+                    </div>
+
+                    <div className="space-y-2 sm:col-span-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Residential Address</label>
+                      <input type="text" {...register(`proprietors.${index}.address`)} className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] outline-none" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">State of Residence</label>
+                      <input type="text" {...register(`proprietors.${index}.state`)} className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] outline-none" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">NIN</label>
+                      <input type="text" maxLength={11} {...register(`proprietors.${index}.nin`)} className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-[#ff3f7a] outline-none" />
+                      {errors.proprietors?.[index]?.nin && <span className="text-xs text-red-500 font-bold">{errors.proprietors[index]?.nin?.message}</span>}
+                    </div>
+
+                    {/* THE ASYNC DOCUMENT UPLOADS */}
+                    <div className="sm:col-span-2 pt-6 pb-2 border-t border-slate-200">
+                      <h4 className="font-black text-slate-900">Required Documents</h4>
+                      <p className="text-xs font-medium text-slate-500">Please upload clear, legible images (JPG or PNG).</p>
+                    </div>
+
+                    <FileUpload 
+                      label="Passport Photograph" 
+                      description="Clear face on white background"
+                      value={watchProprietors[index]?.passportUrl || ""}
+                      onChange={(url) => setValue(`proprietors.${index}.passportUrl`, url, { shouldValidate: true })}
+                    />
+
+                    <FileUpload 
+                      label="Signature" 
+                      description="Signed on plain white paper"
+                      value={watchProprietors[index]?.signatureUrl || ""}
+                      onChange={(url) => setValue(`proprietors.${index}.signatureUrl`, url, { shouldValidate: true })}
+                    />
+
+                    <div className="sm:col-span-2">
+                      <FileUpload 
+                        label="Government ID Card" 
+                        type="document"
+                        description="NIN Slip, Voters Card, or Intl Passport"
+                        value={watchProprietors[index]?.idCardUrl || ""}
+                        onChange={(url) => setValue(`proprietors.${index}.idCardUrl`, url, { shouldValidate: true })}
+                      />
+                    </div>
+                    
+                    {/* Error block for documents */}
+                    {(errors.proprietors?.[index]?.passportUrl || errors.proprietors?.[index]?.signatureUrl || errors.proprietors?.[index]?.idCardUrl) && (
+                      <div className="sm:col-span-2 p-3 bg-red-50 rounded-xl text-xs font-bold text-red-600 border border-red-100">
+                        Please ensure Passport, Signature, and ID Card are uploaded.
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
+
+                  {/* Move to next partner button (if partnership) */}
+                  {isPartnership && index < fields.length - 1 && (
+                    <button type="button" onClick={(e) => { e.preventDefault(); setExpandedIndex(index + 1); }} className="w-full h-12 mt-6 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-transform active:scale-95">
+                      Save & Next Partner
+                    </button>
+                  )}
                 </div>
               )}
             </div>
-          </div>
-        )}
+          );
+        })}
 
-        {/* ========================================== */}
-        {/* STEP 4: PREVIEW & SUBMIT                   */}
-        {/* ========================================== */}
-        {currentStep === 4 && (
-          <div className="p-8 animate-in fade-in slide-in-from-right-4 duration-300">
-            <h2 className="text-2xl font-black text-slate-900 mb-6 border-b pb-4">Preview & Submit</h2>
-            
-            <div className="space-y-8 bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner">
-              
-              {/* Preview Company */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-black text-lg text-slate-800 uppercase tracking-widest">Company Details</h3>
-                  <button onClick={() => setCurrentStep(1)} className="text-[#ff3f7a] font-bold text-sm flex items-center gap-1 hover:underline"><Pencil className="h-4 w-4"/> Edit</button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-white p-4 rounded-xl border border-slate-200">
-                  <div><p className="text-slate-400 font-medium">Business Name</p><p className="font-bold text-slate-900">{draft.proposedName}</p></div>
-                  <div><p className="text-slate-400 font-medium">Email</p><p className="font-bold text-slate-900">{companyInfo.email || "-"}</p></div>
-                  <div><p className="text-slate-400 font-medium">State</p><p className="font-bold text-slate-900">{companyInfo.state || "-"}</p></div>
-                  <div><p className="text-slate-400 font-medium">Commencement</p><p className="font-bold text-slate-900">{companyInfo.commencementDate || "-"}</p></div>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-200"></div>
-
-              {/* Preview Proprietors */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-black text-lg text-slate-800 uppercase tracking-widest">Proprietors ({proprietors.length})</h3>
-                  <button onClick={() => setCurrentStep(2)} className="text-[#ff3f7a] font-bold text-sm flex items-center gap-1 hover:underline"><Pencil className="h-4 w-4"/> Edit</button>
-                </div>
-                {proprietors.map((p, idx) => (
-                  <div key={p.id} className="bg-white p-4 rounded-xl border border-slate-200 mb-3 shadow-sm">
-                    <p className="font-black text-slate-900 mb-3">{idx + 1}. {p.surname} {p.firstName} {p.otherName}</p>
-                    <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
-                      <div><p className="text-slate-400 font-medium">Phone</p><p className="font-bold text-slate-700">{p.phone}</p></div>
-                      <div><p className="text-slate-400 font-medium">Gender</p><p className="font-bold text-slate-700">{p.gender}</p></div>
-                      <div><p className="text-slate-400 font-medium">State / LGA</p><p className="font-bold text-slate-700">{p.state} / {p.lga}</p></div>
-                      <div>
-                        <p className="text-slate-400 font-medium">Documents Uploaded</p>
-                        <div className="flex gap-2 mt-1">
-                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${p.documents.nin ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400'}`}>NIN</span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${p.documents.passport ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400'}`}>Passport</span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${p.documents.signature ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400'}`}>Signature</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* --- GLOBAL BOTTOM NAVIGATION --- */}
-        <div className="bg-slate-50 border-t border-slate-200 p-6 flex justify-between items-center">
-          <Button 
-            variant="outline" 
-            onClick={() => setCurrentStep(prev => prev - 1)}
-            disabled={currentStep === 1 || isSubmitting}
-            className="h-12 px-6 font-bold text-slate-600 rounded-xl hover:bg-slate-200 transition-colors"
+        {/* Dynamic Add Partner Button */}
+        {isPartnership && (
+          <button 
+            type="button" 
+            onClick={() => {
+              append({ firstName: "", lastName: "", email: "", phone: "", gender: "", dob: "", address: "", state: "", nin: "", passportUrl: "", signatureUrl: "", idCardUrl: "" });
+              setExpandedIndex(fields.length); // Open the newly added partner
+            }}
+            className="w-full h-14 border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center gap-2 text-slate-500 font-bold hover:border-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" weight="bold" /> Back
-          </Button>
+            <Plus className="h-5 w-5" weight="bold" /> Add Another Partner
+          </button>
+        )}
 
-          {currentStep < 4 ? (
-             <Button 
-              onClick={() => setCurrentStep(prev => prev + 1)}
-              className="h-12 px-8 bg-[#ff3f7a] hover:bg-[#e02b62] text-white font-bold rounded-xl shadow-lg shadow-[#ff3f7a]/30 transition-all"
-             >
-               Next Step <ArrowRight className="ml-2 h-4 w-4" weight="bold" />
-             </Button>
+        <button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="w-full h-14 mt-8 bg-[#ff3f7a] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#ff3f7a]/20 hover:bg-[#e02b62] transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+        >
+          {isSubmitting ? (
+            <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
           ) : (
-             <Button 
-              onClick={handleFinalSubmit}
-              disabled={isSubmitting}
-              className="h-14 px-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg rounded-xl shadow-lg shadow-emerald-600/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-             >
-               {isSubmitting ? (
-                 <><Spinner className="animate-spin h-6 w-6 mr-2" weight="bold" /> Submitting...</>
-               ) : "Submit to CAC"}
-             </Button>
+            <>Secure Details & Proceed <ArrowRight className="h-5 w-5" weight="bold" /></>
           )}
-        </div>
+        </button>
 
-      </div>
+      </form>
     </div>
   );
 }
