@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Proprietor, NIGERIA_DATA, isValidEmail, isValidPhone, calculateAge, defaultPropForm } from "./schema";
+import { Proprietor, NIGERIA_DATA, COUNTRY_CODES, isValidEmail, isValidPhone, calculateAge, defaultPropForm } from "./schema";
 
 export default function ProprietorStep({ 
   proprietors, setProprietors, isSoleProprietor 
@@ -12,8 +12,8 @@ export default function ProprietorStep({
   proprietors: Proprietor[], setProprietors: (p: Proprietor[]) => void, isSoleProprietor: boolean 
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Auto-create and open first proprietor if empty
   useEffect(() => {
     if (proprietors.length === 0) {
       const newId = Date.now().toString();
@@ -25,13 +25,39 @@ export default function ProprietorStep({
   }, []);
 
   const updateProprietor = (id: string, field: keyof Proprietor, value: any) => {
+    setValidationError(null); // Clear errors when typing
     setProprietors(proprietors.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
 
   const handleAddPartner = () => {
+    // Only allow adding a new partner if the current expanded one is fully valid
+    if (expandedId) {
+      const currentProp = proprietors.find(p => p.id === expandedId);
+      if (currentProp && !isProprietorValid(currentProp)) {
+        setValidationError("Please complete this proprietor's required fields before adding another.");
+        return;
+      }
+    }
     const newId = Date.now().toString();
     setProprietors([...proprietors, { ...defaultPropForm, id: newId }]);
     setExpandedId(newId);
+    setValidationError(null);
+  };
+
+  const isProprietorValid = (prop: Proprietor) => {
+    return prop.surname && prop.firstName && prop.email && prop.phone && 
+           prop.gender && prop.dob && prop.state && prop.lga && 
+           prop.city && prop.streetNo && prop.serviceAddress && 
+           isValidEmail(prop.email) && isValidPhone(prop.phone);
+  };
+
+  const handleSaveAndCollapse = (prop: Proprietor) => {
+    if (!isProprietorValid(prop)) {
+      setValidationError("Please fill all required fields correctly to save and collapse.");
+      return;
+    }
+    setValidationError(null);
+    setExpandedId(null);
   };
 
   const removeProprietor = (id: string) => {
@@ -58,35 +84,45 @@ export default function ProprietorStep({
           const age = calculateAge(prop.dob);
 
           return (
-            <div key={prop.id} className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm">
+            <div key={prop.id} className="border border-slate-200 rounded-xl bg-white overflow-hidden">
               
-              {/* COLLAPSED HEADER / SIDE-BY-SIDE VIEW */}
-              <div 
-                className={`p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center cursor-pointer transition-colors ${isOpen ? 'bg-slate-50 border-b border-slate-200' : 'hover:bg-slate-50'}`}
-                onClick={() => setExpandedId(isOpen ? null : prop.id)}
-              >
-                <div className="flex items-center gap-4 w-full md:w-auto mb-3 md:mb-0">
-                  <div className="h-10 w-10 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center font-black">{idx + 1}</div>
-                  {!isOpen ? (
-                    <div className="grid grid-cols-2 md:flex md:gap-8 w-full">
-                      <div><p className="text-xs text-slate-400 font-bold uppercase">Name</p><p className="font-bold text-slate-900">{prop.surname || "Pending"} {prop.firstName}</p></div>
-                      <div><p className="text-xs text-slate-400 font-bold uppercase">Phone</p><p className="font-bold text-slate-700">{prop.phone || "-"}</p></div>
-                      <div className="hidden md:block"><p className="text-xs text-slate-400 font-bold uppercase">State</p><p className="font-bold text-slate-700">{prop.state || "-"}</p></div>
-                    </div>
-                  ) : (
-                    <h3 className="font-black text-lg text-slate-900">Editing Proprietor {idx + 1}</h3>
-                  )}
+              {/* --- THE SHARP LINE-BY-LINE VIEW (COLLAPSED) --- */}
+              {!isOpen && (
+                <div className="bg-slate-50 relative">
+                  <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+                     <span className="font-bold text-slate-900">{idx + 1} | Proprietor ({prop.surname || "Pending"} {prop.firstName})</span>
+                     <div className="flex gap-4">
+                        <button onClick={() => setExpandedId(prop.id)} className="text-blue-600 font-bold text-sm">Edit</button>
+                        <button onClick={() => removeProprietor(prop.id)} className="text-red-500 font-bold text-sm">Remove</button>
+                     </div>
+                  </div>
+                  
+                  <div className="p-4 text-sm font-medium text-slate-700">
+                     <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">last name</span><span>{prop.surname}</span></div>
+                     <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">first name</span><span>{prop.firstName}</span></div>
+                     {prop.otherName && <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">other name</span><span>{prop.otherName}</span></div>}
+                     <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">email</span><span>{prop.email}</span></div>
+                     <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">phone number</span><span>{prop.phoneCode} {prop.phone}</span></div>
+                     <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">gender</span><span>{prop.gender}</span></div>
+                     <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">date of birth</span><span>{prop.dob}</span></div>
+                     <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">proprietor service address</span><span>{prop.serviceAddress}</span></div>
+                     <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">proprietor state</span><span>{prop.state}</span></div>
+                     <div className="grid grid-cols-[200px_1fr] border-b border-slate-200 py-2"><span className="text-slate-500 lowercase">proprietor lga</span><span>{prop.lga}</span></div>
+                     <div className="grid grid-cols-[200px_1fr] py-2"><span className="text-slate-500 lowercase">proprietor city</span><span>{prop.city}</span></div>
+                  </div>
                 </div>
+              )}
 
-                <div className="flex gap-4 self-end md:self-auto">
-                  <button onClick={(e) => { e.stopPropagation(); setExpandedId(prop.id); }} className="text-blue-600 font-bold text-sm hover:underline">Edit</button>
-                  <button onClick={(e) => { e.stopPropagation(); removeProprietor(prop.id); }} className="text-red-500 font-bold text-sm hover:underline">Remove</button>
-                </div>
-              </div>
-
-              {/* EXPANDED FORM */}
+              {/* --- EXPANDED EDIT FORM --- */}
               {isOpen && (
-                <div className="p-4 md:p-6 space-y-5 bg-white" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 md:p-6 space-y-5 bg-white">
+                  <div className="flex justify-between items-center pb-2 border-b">
+                    <h3 className="font-black text-lg text-slate-900">Editing Proprietor {idx + 1}</h3>
+                    {proprietors.length > 1 && (
+                      <button onClick={() => removeProprietor(prop.id)} className="text-red-500 font-bold text-sm">Remove</button>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1"><Label>Surname <span className="text-red-500">*</span></Label><Input value={prop.surname} onChange={e=>updateProprietor(prop.id, 'surname', e.target.value)} className="h-11"/>{!prop.surname && <p className="text-red-500 text-xs font-bold">Required</p>}</div>
                     <div className="space-y-1"><Label>First Name <span className="text-red-500">*</span></Label><Input value={prop.firstName} onChange={e=>updateProprietor(prop.id, 'firstName', e.target.value)} className="h-11"/>{!prop.firstName && <p className="text-red-500 text-xs font-bold">Required</p>}</div>
@@ -104,9 +140,15 @@ export default function ProprietorStep({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div className="space-y-1">
                       <Label>Phone <span className="text-red-500">*</span></Label>
-                      <div className="flex">
-                        <div className="flex items-center px-3 bg-slate-100 border border-slate-200 border-r-0 rounded-l-xl text-xs font-bold">🇳🇬 +234</div>
-                        <Input type="tel" value={prop.phone} onChange={e=>updateProprietor(prop.id, 'phone', e.target.value)} className="h-11 rounded-l-none"/>
+                      <div className="flex border border-slate-200 rounded-xl overflow-hidden focus-within:border-[#ff3f7a] focus-within:ring-1 focus-within:ring-[#ff3f7a]">
+                        <select 
+                          value={prop.phoneCode} 
+                          onChange={e=>updateProprietor(prop.id, 'phoneCode', e.target.value)}
+                          className="bg-slate-100 border-r border-slate-200 px-2 outline-none text-sm w-28 truncate"
+                        >
+                          {COUNTRY_CODES.map(c => <option key={c.name} value={c.code}>{c.flag} {c.code}</option>)}
+                        </select>
+                        <Input type="tel" value={prop.phone} onChange={e=>updateProprietor(prop.id, 'phone', e.target.value)} className="h-11 border-0 rounded-none focus-visible:ring-0 shadow-none"/>
                       </div>
                       {prop.phone.length > 0 && !isValidPhone(prop.phone) && <p className="text-red-500 text-xs font-bold">Invalid phone</p>}
                     </div>
@@ -120,7 +162,7 @@ export default function ProprietorStep({
                     <div className="space-y-1">
                       <Label>Date of Birth <span className="text-red-500">*</span></Label>
                       <Input type="date" value={prop.dob} onChange={e=>updateProprietor(prop.id, 'dob', e.target.value)} className="h-11"/>
-                      {prop.dob && age < 18 && <p className="text-amber-500 text-xs font-bold">Under 18 detected.</p>}
+                      {prop.dob && age < 18 && <p className="text-amber-600 text-xs font-bold">Under 18 detected. CAC requires at least 2 adult partners for a minor to be a proprietor.</p>}
                     </div>
                   </div>
 
@@ -134,7 +176,7 @@ export default function ProprietorStep({
                     </div>
                     <div className="space-y-1">
                       <Label>LGA <span className="text-red-500">*</span></Label>
-                      <select value={prop.lga} onChange={e=>updateProprietor(prop.id, 'lga', e.target.value)} disabled={!prop.state} className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-[#ff3f7a] outline-none">
+                      <select value={prop.lga} onChange={e=>updateProprietor(prop.id, 'lga', e.target.value)} disabled={!prop.state} className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-[#ff3f7a] disabled:opacity-50 outline-none">
                         <option value="">Select</option>{availableLgas.map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                       {!prop.lga && <p className="text-red-500 text-xs font-bold">Required</p>}
@@ -147,8 +189,14 @@ export default function ProprietorStep({
                     <div className="space-y-1"><Label>Service Address <span className="text-red-500">*</span></Label><Input value={prop.serviceAddress} onChange={e=>updateProprietor(prop.id, 'serviceAddress', e.target.value)} className="h-11"/>{!prop.serviceAddress && <p className="text-red-500 text-xs font-bold">Required</p>}</div>
                   </div>
                   
+                  {validationError && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg text-sm font-bold">
+                      {validationError}
+                    </div>
+                  )}
+
                   <div className="pt-4 flex justify-end">
-                    <Button onClick={() => setExpandedId(null)} className="bg-[#ff3f7a] text-white">Save & Collapse</Button>
+                    <Button onClick={() => handleSaveAndCollapse(prop)} className="bg-[#ff3f7a] hover:bg-[#e02b62] text-white">Save & Collapse</Button>
                   </div>
                 </div>
               )}
