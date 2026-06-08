@@ -220,8 +220,9 @@ export default function BusinessNameRegistration() {
               />
             </div>
 
-            {/* AI Assistant Trigger Button */}
-            <div className="flex justify-end -mt-2 mb-1">
+            {/* AI Assistant Trigger Area */}
+            <div className="flex justify-end items-center gap-2 -mt-2 mb-1">
+              <span className="text-xs font-medium text-slate-500">Unsure what to pick?</span>
               <button 
                 type="button" 
                 onClick={() => setIsAiAssistantOpen(true)}
