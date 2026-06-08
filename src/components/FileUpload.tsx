@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { UploadSimple, CheckCircle, Image as ImageIcon, FileText, CircleNotch } from "@phosphor-icons/react";
-import { Label } from "@/components/ui/label";
+import { UploadSimple, CheckCircle, Image as ImageIcon, CircleNotch } from "@phosphor-icons/react";
 
 interface FileUploadProps {
   label: string;
@@ -10,11 +9,9 @@ interface FileUploadProps {
   value: string | null;
   onUploadSuccess: (url: string) => void;
   onRemove: () => void;
-  accept?: string;
-  type?: "image" | "document";
 }
 
-export function FileUpload({ label, description, value, onUploadSuccess, onRemove, accept = "image/jpeg, image/png", type = "image" }: FileUploadProps) {
+export function FileUpload({ label, description, value, onUploadSuccess, onRemove }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,38 +46,30 @@ export function FileUpload({ label, description, value, onUploadSuccess, onRemov
   };
 
   return (
-    <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-slate-50 hover:bg-slate-100 transition-colors h-48 group">
+    <div className={`relative border-2 rounded-xl p-4 flex flex-col items-center justify-center text-center transition-all h-40 group ${value ? 'border-emerald-200 bg-emerald-50' : 'border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-[#ff3f7a]/40 cursor-pointer'}`} onClick={() => !value && !isUploading && fileInputRef.current?.click()}>
       {isUploading ? (
-        <div className="flex flex-col items-center gap-3 text-[#ff3f7a]">
-          <CircleNotch className="animate-spin h-8 w-8" weight="bold" />
-          <span className="font-bold text-sm">Uploading securely...</span>
+        <div className="flex flex-col items-center gap-2 text-[#ff3f7a]">
+          <CircleNotch className="animate-spin h-6 w-6" weight="bold" />
+          <span className="font-bold text-xs">Uploading...</span>
         </div>
       ) : value ? (
-        <div className="flex flex-col items-center gap-3 text-emerald-600">
-          <CheckCircle className="h-10 w-10" weight="fill" />
-          <span className="font-bold text-sm">Uploaded Successfully</span>
+        <div className="flex flex-col items-center gap-2 text-emerald-600">
+          <CheckCircle className="h-8 w-8" weight="fill" />
+          <span className="font-bold text-xs">Uploaded</span>
           <button 
             type="button"
             onClick={(e) => { e.stopPropagation(); onRemove(); }} 
-            className="text-xs text-red-500 font-bold mt-2 hover:underline z-10"
+            className="text-[10px] uppercase tracking-widest text-red-500 font-bold mt-1 hover:underline z-10 bg-white px-2 py-1 rounded shadow-sm"
           >
             Remove
           </button>
         </div>
       ) : (
         <>
-          <UploadSimple className="h-10 w-10 text-slate-300 group-hover:text-[#ff3f7a] transition-colors mb-3" weight="bold" />
-          <Label className="font-bold text-slate-700 cursor-pointer group-hover:text-[#ff3f7a] transition-colors">
-            Upload {label}
-          </Label>
-          {description && <span className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-widest">{description}</span>}
-          <input 
-            type="file" 
-            ref={fileInputRef}
-            accept={accept} 
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-            onChange={handleFileChange} 
-          />
+          <UploadSimple className="h-8 w-8 text-slate-300 group-hover:text-[#ff3f7a] transition-colors mb-2" weight="bold" />
+          <span className="font-bold text-sm text-slate-700 group-hover:text-[#ff3f7a] transition-colors">{label}</span>
+          {description && <span className="text-[10px] font-medium text-slate-400 mt-1">{description}</span>}
+          <input type="file" ref={fileInputRef} accept="image/jpeg, image/png" className="hidden" onChange={handleFileChange} />
         </>
       )}
     </div>
