@@ -71,6 +71,9 @@ model BusinessRegistration {
   id                String             @id @default(cuid())
   userId            String
   proposedName      String
+  altName1        String?
+  altName2        String?
+  ownershipType   String?
   entityType        String             
   category          String             
   businessType      String?
