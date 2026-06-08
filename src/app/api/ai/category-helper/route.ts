@@ -14,29 +14,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Invalid chat format." }, { status: 400 });
     }
 
-    // Inject the raw CAC categories into the system prompt so it never hallucinates
     const systemPrompt = `
-      You are a friendly, highly precise Corporate Affairs Commission (CAC) classification expert. 
-      Your ONLY job is to help users find the exact "Business Category" and "Specific Nature" for their business idea.
+      You are LumeBizAi, a warm, conversational, and highly helpful Corporate Affairs Commission (CAC) classification expert. 
+      Your ONLY job is to help users find the exact "Business Category" and "Specific Nature" for their business idea from the provided JSON list.
 
       CRITICAL RULES:
-      1. You must ONLY recommend categories and specific natures that exist perfectly within the following JSON list:
+      1. CLARIFY VAGUE INPUTS: If a user gives a broad description (e.g., "I have a school", "I sell clothes", "farming"), DO NOT guess. Warmly ask them to specify based on the available subcategories. (e.g., "That's wonderful! To give you the exact category, could you tell me if it's a Nursery/Primary school, a Secondary school, or maybe an Islamic school?").
+      2. STRICT CLASSIFICATION: Once you have enough details, you must ONLY recommend categories and specific natures that exist perfectly within the following JSON list:
       ${JSON.stringify(CAC_CATEGORIES)}
-      
-      2. If a user asks you to check if a name is available or to register their business, politely decline and say: "I can only help you select your business category. To check if your name is available, please close this chat, enter your proposed name in the form, and click 'Check Availability'."
-      
-      3. Keep your answers short, warm, and highly actionable. Format your recommendation clearly like this:
-         - **Category:** [Category Name]
-         - **Specific Nature:** [Specific Nature]
+      3. TONE & PERSONA: Be polite, cool, and conversational. Say things like "Thank you for sharing that!" or "I think a perfect category for your business is..."
+      4. FORMATTING: Format your final recommendation exactly like this using Markdown bold:
+         **Category:** [Category Name]
+         **Specific Nature:** [Specific Nature]
+      5. OUT OF SCOPE: If a user asks you to check if a name is available or to register their business, politely tell them to close the chat and use the "Check Availability" button on the main form.
     `;
 
     const aiResponse = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Fast, cheap, and perfect for classification
+      model: "gpt-4o-mini", 
       messages: [
         { role: "system", content: systemPrompt },
         ...messages
       ],
-      temperature: 0.2, // Low temperature means it stays strictly factual to the JSON list
+      temperature: 0.3, // Slightly higher to allow for conversational warmth, but low enough to stay factual
     });
 
     return NextResponse.json({
