@@ -11,7 +11,7 @@ export default function DocumentStep({
   return (
     <div className="p-6 md:p-8 animate-in fade-in slide-in-from-right-4 duration-300">
        <h2 className="text-2xl font-black text-slate-900 mb-2 border-b pb-4">Document Uploads</h2>
-       <p className="text-slate-500 mb-6 text-sm font-medium">Please upload valid IDs and signatures matching the required formats.</p>
+       <p className="text-slate-500 mb-6 text-sm font-medium">Please upload valid IDs and signatures. Ensure documents are clear and readable.</p>
 
        <div className="space-y-6">
          {proprietors.map((p, idx) => (
