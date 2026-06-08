@@ -19,7 +19,6 @@ export default function RegistrationDetailsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   
-  // Toast positioned Bottom-Right with high z-index to avoid Header overlaps
   const [toast, setToast] = useState<{show: boolean, msg: string, type: "error" | "success"}>({ show: false, msg: "", type: "success" });
   const showToast = (msg: string, type: "error" | "success" = "error") => {
     setToast({ show: true, msg, type });
@@ -95,7 +94,7 @@ export default function RegistrationDetailsPage() {
         
         if (calculateAge(p.dob) < 18) {
           const adults = proprietors.filter(adult => calculateAge(adult.dob) >= 18);
-          if (adults.length < 2) { showToast(`Under 18 detected. Needs at least 2 adult partners.`, "error"); return; }
+          if (adults.length < 2) { showToast(`Under 18 detected. CAC requires at least 2 adult partners for a minor.`, "error"); return; }
         }
       }
     }
@@ -131,23 +130,30 @@ export default function RegistrationDetailsPage() {
   return (
     <div className="max-w-4xl mx-auto pb-16 pt-8 px-4 font-sans relative">
       
-      {/* TOAST FIXED TO BOTTOM RIGHT TO AVOID HEADER */}
       {toast.show && (
         <div className={`fixed bottom-10 right-4 z-[9999] animate-in slide-in-from-right flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-bold ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
           {toast.msg}
         </div>
       )}
 
-      {/* HEADER TABS & AUTOSAVE */}
-      <div className="flex justify-between items-end mb-8">
-        <div className="flex gap-2">
-          {[1, 2, 3, 4].map(step => (
-            <div key={step} className={`h-2 w-12 md:w-20 rounded-full transition-colors ${currentStep >= step ? "bg-[#ff3f7a]" : "bg-slate-200"}`}></div>
+      {/* TEXT-BASED STEPPER & SIMPLE AUTOSAVE */}
+      <div className="flex justify-between items-end mb-8 border-b border-slate-200 pb-4">
+        <div className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full md:w-auto">
+          {[ 
+            { step: 1, title: "Company Information" }, 
+            { step: 2, title: "Proprietor Information" }, 
+            { step: 3, title: "Document Uploads" }, 
+            { step: 4, title: "Preview" }
+          ].map((s) => (
+            <div key={s.step} className={`flex items-center gap-2 whitespace-nowrap text-sm ${currentStep === s.step ? "text-[#ff3f7a] font-black" : currentStep > s.step ? "text-slate-800 font-bold" : "text-slate-400 font-medium"}`}>
+              <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold ${currentStep === s.step ? "bg-[#ff3f7a] text-white" : currentStep > s.step ? "bg-slate-200 text-slate-800" : "bg-slate-100"}`}>{s.step}</span>
+              {s.title}
+            </div>
           ))}
         </div>
-        <div className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full">
+        <div className="hidden md:block text-xs font-bold text-slate-400">
           {saveStatus === "saving" && "Saving draft..."}
-          {saveStatus === "saved" && <span className="text-emerald-500">Saved</span>}
+          {saveStatus === "saved" && "Saved"}
           {saveStatus === "error" && <span className="text-red-500">Save failed</span>}
         </div>
       </div>
@@ -159,15 +165,15 @@ export default function RegistrationDetailsPage() {
         {currentStep === 4 && <PreviewStep draft={draft} companyInfo={companyInfo} proprietors={proprietors} setCurrentStep={setCurrentStep} />}
 
         <div className="bg-slate-50 border-t border-slate-200 p-6 flex justify-between">
-          <Button variant="outline" onClick={() => setCurrentStep(p => p - 1)} disabled={currentStep === 1 || isSubmitting} className="h-12 px-6 rounded-xl font-bold">
+          <Button variant="outline" onClick={() => setCurrentStep(p => p - 1)} disabled={currentStep === 1 || isSubmitting} className="h-12 px-6 rounded-xl font-bold bg-white">
             Back
           </Button>
           {currentStep < 4 ? (
-             <Button onClick={handleNextStep} className="h-12 px-8 bg-[#ff3f7a] text-white font-bold rounded-xl shadow-md">
+             <Button onClick={handleNextStep} className="h-12 px-8 bg-[#ff3f7a] text-white font-bold rounded-xl shadow-md hover:bg-[#e02b62]">
                Continue
              </Button>
           ) : (
-             <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="h-12 px-8 bg-emerald-600 text-white font-black rounded-xl">
+             <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg">
                {isSubmitting ? "Submitting..." : "Submit Application"}
              </Button>
           )}
