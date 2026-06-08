@@ -62,8 +62,7 @@ export default function DashboardOverview() {
   }
 
   return (
-    // FIX: Removed the buggy 'overflow-x-hidden' that was trapping clicks
-    <div className="pb-12 w-full">
+    <div className="pb-12 max-w-full overflow-x-hidden">
       
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 mt-2">
@@ -75,13 +74,11 @@ export default function DashboardOverview() {
             {new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
-        
-        {/* FIX: Use asChild so the button properly inherits the <a> tag properties without eating clicks */}
-        <Button asChild className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 font-bold px-6 flex items-center gap-2 rounded-xl active:scale-95 transition-transform shrink-0 cursor-pointer">
-          <Link href="/dashboard/new">
+        <Link href="/dashboard/new">
+          <Button className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 font-bold px-6 flex items-center gap-2 rounded-xl active:scale-95 transition-transform shrink-0">
             <Plus className="h-5 w-5" weight="bold" /> New Application
-          </Link>
-        </Button>
+          </Button>
+        </Link>
       </div>
 
       <DashboardMetrics 
