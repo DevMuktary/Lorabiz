@@ -25,15 +25,12 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   
-  // The strictly isolated scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // ULTIMATE SCROLL FIX: No 'scrollIntoView'. We manually set the scroll position 
-  // to prevent Safari from shifting the whole webpage up.
+  // Smooth scroll to bottom whenever messages change
   useEffect(() => {
     if (isOpen && scrollContainerRef.current) {
       const el = scrollContainerRef.current;
-      // requestAnimationFrame ensures the browser has rendered the new text before scrolling
       requestAnimationFrame(() => {
         el.scrollTo({
           top: el.scrollHeight,
@@ -74,40 +71,41 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
   };
 
   return (
-    // FIX 1: The absolute wrapper. h-[100dvh] forces it to perfectly resize when the keyboard opens.
-    <div className={`fixed inset-0 z-[100] h-[100dvh] w-full ${isOpen ? "visible" : "invisible pointer-events-none"}`}>
+    // Backdrop wrapper - completely separate from the modal's positioning
+    <div className={`fixed inset-0 z-[100] ${isOpen ? "visible" : "invisible pointer-events-none"}`}>
       
-      {/* Backdrop */}
       <div 
         className={`absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"}`} 
         onClick={onClose}
       />
       
-      {/* FIX 2: 'absolute bottom-0' on mobile. 
-        This means the chat box is glued to the bottom of the screen. When the keyboard opens, 
-        100dvh shrinks, and the chat box perfectly rides up with the keyboard without breaking the layout.
+      {/* THE FIX: 
+        1. 'fixed bottom-0' on mobile.
+        2. Hardcoded 'h-[450px]'. It will NEVER shrink or squish when the keyboard opens.
+        3. On desktop (sm), it perfectly centers itself as a 400x550 modal.
       */}
       <div className={`
-        absolute bottom-0 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 
-        w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col 
-        h-[85dvh] sm:h-[550px] transition-transform duration-300 ease-out
-        ${isOpen ? "translate-y-0" : "translate-y-full sm:translate-y-[150%]"}
+        fixed bottom-0 left-0 w-full h-[480px]
+        sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[400px] sm:h-[550px] sm:bottom-auto
+        bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col 
+        transition-transform duration-300 ease-out
+        ${isOpen ? "translate-y-0 sm:scale-100" : "translate-y-full sm:translate-y-[150%] sm:scale-95"}
       `}>
         
-        {/* Header - shrink-0 guarantees it never gets squished */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl shrink-0 pt-[env(safe-area-inset-top)] sm:pt-4">
-          <div className="flex items-center gap-2">
+        {/* HEADER: min-h-[72px] guarantees Safari cannot squish it */}
+        <div className="min-h-[72px] shrink-0 flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl">
+          <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#ff3f7a] to-orange-400 flex items-center justify-center text-white shadow-sm">
               <Sparkle className="h-4 w-4" weight="fill" />
             </div>
-            <h3 className="font-bold text-slate-900">LumeBizAi</h3>
+            <h3 className="font-bold text-slate-900 text-base">LumeBizAi</h3>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors">
+          <button onClick={onClose} className="p-2 -mr-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors">
             <X className="h-5 w-5" weight="bold" />
           </button>
         </div>
 
-        {/* Chat Area - flex-1 allows it to take up remaining space, overflow-y-auto makes it scrollable */}
+        {/* CHAT AREA: flex-1 ensures it takes the remaining space of the 450px box */}
         <div 
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 overscroll-contain bg-white"
@@ -141,8 +139,8 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
           )}
         </div>
 
-        {/* Input Area - shrink-0 guarantees it stays exactly this size at the bottom */}
-        <div className="p-4 bg-white border-t border-slate-100 sm:rounded-b-3xl shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        {/* INPUT AREA: min-h-[85px] guarantees it never gets squished */}
+        <div className="min-h-[85px] shrink-0 p-4 bg-white border-t border-slate-100 sm:rounded-b-3xl">
           <form onSubmit={handleSend} className="relative flex items-center">
             <input 
               type="text" 
@@ -159,8 +157,8 @@ export function AiCategoryAssistant({ isOpen, onClose }: { isOpen: boolean; onCl
               <PaperPlaneRight className="h-4 w-4" weight="fill" />
             </button>
           </form>
-          <div className="text-center mt-2">
-             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">POWERED BY LUMEBIZ</span>
+          <div className="text-center mt-2.5">
+             <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">POWERED BY LUMEBIZ</span>
           </div>
         </div>
 
