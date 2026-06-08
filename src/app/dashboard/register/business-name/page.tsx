@@ -1,20 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { 
   Storefront, CaretLeft, MagnifyingGlass, CheckCircle, 
-  WarningCircle, XCircle, ArrowRight, User, Users
+  WarningCircle, XCircle, ArrowRight, User, Users, CaretDown, Check
 } from "@phosphor-icons/react";
+import { CAC_CATEGORIES } from "@/lib/cac-categories"; // Make sure this path matches where you saved the file
 
 export default function BusinessNameRegistration() {
   const [step, setStep] = useState(1);
 
   // Step 1 State: Name Search
   const [proposedName, setProposedName] = useState("");
-  const [lineOfBusiness, setLineOfBusiness] = useState("");
   const [altName1, setAltName1] = useState("");
   const [altName2, setAltName2] = useState("");
+  
+  // Custom Combobox State for Line of Business
+  const [lineOfBusiness, setLineOfBusiness] = useState("");
+  const [businessSearchQuery, setBusinessSearchQuery] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
   // Search Status: 'IDLE' | 'LOADING' | 'PASSED' | 'WARNING' | 'BLOCKED'
   const [searchStatus, setSearchStatus] = useState("IDLE");
@@ -23,6 +29,40 @@ export default function BusinessNameRegistration() {
   // Step 2 State: Ownership Structure
   const [ownershipType, setOwnershipType] = useState<"SOLE" | "PARTNERSHIP" | null>(null);
 
+  // Flatten the CAC Categories into a highly searchable array
+  const flatCategories = useMemo(() => {
+    return Object.entries(CAC_CATEGORIES).flatMap(([category, subcategories]) =>
+      subcategories.map(subcategory => ({ category, subcategory }))
+    );
+  }, []);
+
+  // Filter based on user input
+  const filteredCategories = useMemo(() => {
+    const query = businessSearchQuery.toLowerCase().trim();
+    if (!query) return flatCategories;
+    return flatCategories.filter(item => 
+      item.subcategory.toLowerCase().includes(query) || 
+      item.category.toLowerCase().includes(query)
+    );
+  }, [businessSearchQuery, flatCategories]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+        // Reset search query to the selected item if they click away
+        if (lineOfBusiness) {
+          setBusinessSearchQuery(lineOfBusiness);
+        } else {
+          setBusinessSearchQuery("");
+        }
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [lineOfBusiness]);
+
   const handleNameSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!proposedName || !lineOfBusiness) return;
@@ -30,7 +70,6 @@ export default function BusinessNameRegistration() {
     setSearchStatus("LOADING");
 
     try {
-      // Calls the exact backend API you provided earlier
       const res = await fetch("/api/cac/name-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -55,7 +94,6 @@ export default function BusinessNameRegistration() {
         setSearchMessage("Great news! This name is available and ready for registration.");
       }
     } catch (error) {
-      // Graceful Degradation: If the API crashes, let them proceed with a warning.
       setSearchStatus("WARNING");
       setSearchMessage("Registry connection is currently slow. You may proceed, and our team will verify the name manually before final submission.");
     }
@@ -101,7 +139,9 @@ export default function BusinessNameRegistration() {
             </div>
           </div>
 
-          <form onSubmit={handleNameSearch} className="space-y-5">
+          <form onSubmit={handleNameSearch} className="space-y-6">
+            
+            {/* Business Name Input */}
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Proposed Business Name</label>
               <input 
@@ -114,27 +154,77 @@ export default function BusinessNameRegistration() {
               />
             </div>
 
-            <div className="space-y-2">
+            {/* Custom Searchable Combobox for Line of Business */}
+            <div className="space-y-2 relative" ref={dropdownRef}>
               <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Nature of Business</label>
-              <select 
-                value={lineOfBusiness}
-                onChange={(e) => { setLineOfBusiness(e.target.value); setSearchStatus("IDLE"); }}
-                className="w-full h-14 px-4 border-2 border-slate-200 rounded-xl font-bold text-slate-900 focus:border-[#ff3f7a] outline-none bg-white transition-colors"
-                required
+              
+              <div 
+                className={`flex items-center w-full h-14 px-4 border-2 rounded-xl bg-white transition-colors cursor-text ${
+                  isDropdownOpen ? "border-[#ff3f7a] ring-2 ring-[#ff3f7a]/10" : "border-slate-200"
+                }`}
+                onClick={() => setIsDropdownOpen(true)}
               >
-                <option value="" disabled>Select the closest industry...</option>
-                <option value="Information Technology">Information Technology</option>
-                <option value="General Contracts">General Contracts & Merchandise</option>
-                <option value="Agriculture">Agriculture & Farming</option>
-                <option value="Fashion">Fashion & Tailoring</option>
-                <option value="Consulting">Consulting Services</option>
-              </select>
+                <input
+                  type="text"
+                  value={businessSearchQuery}
+                  onChange={(e) => {
+                    setBusinessSearchQuery(e.target.value);
+                    setIsDropdownOpen(true);
+                    setSearchStatus("IDLE");
+                    if (e.target.value !== lineOfBusiness) setLineOfBusiness(""); // Clear exact selection if they start typing again
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  placeholder="Search industry or category..."
+                  className="w-full h-full font-bold text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-medium bg-transparent"
+                />
+                <CaretDown className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`} weight="bold" />
+              </div>
+
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute z-50 top-[76px] left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-[0_10px_40px_rgb(0,0,0,0.1)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <ul className="max-h-72 overflow-y-auto overscroll-contain py-2 scrollbar-thin scrollbar-thumb-slate-200">
+                    {filteredCategories.length > 0 ? (
+                      filteredCategories.map((item, idx) => {
+                        const isSelected = lineOfBusiness === item.subcategory;
+                        return (
+                          <li 
+                            key={idx}
+                            onClick={() => {
+                              setLineOfBusiness(item.subcategory);
+                              setBusinessSearchQuery(item.subcategory);
+                              setIsDropdownOpen(false);
+                            }}
+                            className={`px-4 py-3 cursor-pointer transition-colors flex items-center justify-between group ${
+                              isSelected ? "bg-[#ff3f7a]/10" : "hover:bg-slate-50"
+                            }`}
+                          >
+                            <div>
+                              <p className={`text-sm font-bold ${isSelected ? "text-[#ff3f7a]" : "text-slate-900 group-hover:text-[#ff3f7a]"}`}>
+                                {item.subcategory}
+                              </p>
+                              <p className="text-xs font-medium text-slate-400 mt-0.5">
+                                {item.category}
+                              </p>
+                            </div>
+                            {isSelected && <Check className="h-4 w-4 text-[#ff3f7a]" weight="bold" />}
+                          </li>
+                        )
+                      })
+                    ) : (
+                      <li className="px-4 py-8 text-center text-sm font-medium text-slate-500">
+                        No matching categories found.<br/>Try a different keyword.
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <button 
               type="submit" 
               disabled={searchStatus === "LOADING" || !proposedName || !lineOfBusiness}
-              className="w-full h-14 bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              className="w-full h-14 bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 mt-2"
             >
               {searchStatus === "LOADING" ? (
                 <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -172,7 +262,7 @@ export default function BusinessNameRegistration() {
             </div>
           )}
 
-          {/* ALTERNATIVE NAMES (Only shows if PASSED or WARNING) */}
+          {/* ALTERNATIVE NAMES */}
           {(searchStatus === "PASSED" || searchStatus === "WARNING") && (
             <div className="mt-8 pt-8 border-t border-slate-100 animate-in fade-in">
               <div className="mb-5">
@@ -215,7 +305,6 @@ export default function BusinessNameRegistration() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            {/* Sole Proprietor Card */}
             <button 
               onClick={() => setOwnershipType("SOLE")}
               className={`p-6 rounded-2xl border-2 text-left transition-all ${
@@ -229,7 +318,6 @@ export default function BusinessNameRegistration() {
               <p className="text-xs text-slate-500 font-medium">I am the single, 100% owner of this business.</p>
             </button>
 
-            {/* Partnership Card */}
             <button 
               onClick={() => setOwnershipType("PARTNERSHIP")}
               className={`p-6 rounded-2xl border-2 text-left transition-all ${
@@ -250,7 +338,7 @@ export default function BusinessNameRegistration() {
              </button>
              <button 
                disabled={!ownershipType}
-               onClick={() => setStep(3)} // This will go to the dynamic form
+               onClick={() => setStep(3)}
                className="flex-1 h-14 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
              >
                Proceed to Details <ArrowRight className="h-5 w-5" weight="bold" />
