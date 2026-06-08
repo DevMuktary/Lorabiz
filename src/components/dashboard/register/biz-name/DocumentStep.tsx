@@ -15,10 +15,10 @@ export default function DocumentStep({
 
        <div className="space-y-6">
          {proprietors.map((p, idx) => (
-           <div key={p.id} className="bg-slate-50 rounded-2xl p-4 md:p-6 border border-slate-200 shadow-sm">
-              <h3 className="font-black text-lg text-slate-800 mb-4">{p.surname} {p.firstName}'s Documents</h3>
+           <div key={p.id} className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-sm">
+              <h3 className="font-black text-lg text-slate-800 mb-5 border-b border-slate-100 pb-3">{p.surname} {p.firstName}'s Documents</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="flex flex-col gap-3">
                 <FileUpload 
                   label="NIN Card/Slip"
                   description="PDF, JPG, or PNG"
@@ -30,7 +30,7 @@ export default function DocumentStep({
                 />
                 <FileUpload 
                   label="Passport Photo"
-                  description="JPG or PNG ONLY"
+                  description="JPG or PNG ONLY (Square)"
                   accept="image/jpeg, image/png"
                   aspectRatio={1} // Perfect Square shape
                   value={p.documents.passport}
@@ -39,7 +39,7 @@ export default function DocumentStep({
                 />
                 <FileUpload 
                   label="Signature"
-                  description="JPG or PNG ONLY"
+                  description="JPG or PNG ONLY (Plain white paper)"
                   accept="image/jpeg, image/png"
                   aspectRatio={2.5} // Wide rectangle for signatures
                   value={p.documents.signature}
