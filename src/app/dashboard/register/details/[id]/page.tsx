@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   Buildings, Users, FileImage, CheckCircle, CaretDown, Check,
-  Trash, ArrowRight, ArrowLeft, CircleNotch, WarningCircle, Plus, handleFinalSubmit, CloudCheck, Pencil, CloudArrowUp, XCircle, Info
+  Trash, ArrowRight, ArrowLeft, CircleNotch, WarningCircle, Plus, CloudCheck, Pencil, CloudArrowUp, XCircle, Info
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -209,6 +209,28 @@ export default function RegistrationDetailsPage() {
 
   const removeProprietor = (propId: string) => {
     setProprietors(prev => prev.filter(p => p.id !== propId));
+  };
+
+  const handleFinalSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/register/details/${id}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyInfo, proprietors }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("Registration submitted successfully!", "success");
+        router.push("/dashboard/register");
+      } else {
+        showToast(json.message || "Submission failed. Please try again.");
+      }
+    } catch (e) {
+      showToast("An error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // VALIDATION & AGE CALCULATOR
