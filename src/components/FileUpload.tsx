@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Cropper from "react-easy-crop";
-import { UploadSimple, FilePdf, CircleNotch, X, MagnifyingGlassPlus, MagnifyingGlassMinus, CheckCircle } from "@phosphor-icons/react";
+import { UploadSimple, FilePdf, CircleNotch, X, MagnifyingGlassPlus, MagnifyingGlassMinus, CheckCircle, Eye, Trash } from "@phosphor-icons/react";
 
 interface FileUploadProps {
   label: string;
@@ -15,7 +15,7 @@ interface FileUploadProps {
   onError?: (msg: string) => void;
 }
 
-// --- HELPER TO EXTRACT CROPPED IMAGE AS BLOB ---
+// --- HELPER: EXTRACT CROPPED IMAGE AS BLOB ---
 const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<Blob> => {
   const image = new Image();
   image.src = imageSrc;
@@ -46,6 +46,10 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Raw File & Preview State
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [viewFullScale, setViewFullScale] = useState<string | null>(null); // For post-upload viewing
+
   // Cropper State
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -67,11 +71,13 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
       return; 
     }
 
+    setSelectedFile(file);
+
     // If PDF, skip cropper and upload directly
     if (file.type === "application/pdf") {
       await uploadFileToServer(file);
     } else {
-      // If Image, open Crop Modal
+      // If Image, open Crop Modal to give them the choice
       const reader = new FileReader();
       reader.onload = () => setImageToCrop(reader.result as string);
       reader.readAsDataURL(file);
@@ -81,6 +87,12 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
   const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
+
+  const handleUploadOriginal = async () => {
+    if (!selectedFile) return;
+    setImageToCrop(null); // Close modal
+    await uploadFileToServer(selectedFile);
+  };
 
   const handleCropAndUpload = async () => {
     if (!imageToCrop || !croppedAreaPixels) return;
@@ -115,6 +127,7 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
       showError("Network error during upload.");
     } finally {
       setIsUploading(false);
+      setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -123,6 +136,7 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
 
   return (
     <>
+      {/* --- UPLOAD BOX --- */}
       <div 
         className={`relative border-2 rounded-xl flex flex-col items-center justify-center text-center transition-all h-44 group overflow-hidden ${value ? 'border-emerald-200 bg-white' : 'border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-[#ff3f7a]/40 cursor-pointer'}`} 
         onClick={() => !value && !isUploading && fileInputRef.current?.click()}
@@ -134,6 +148,7 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
           </div>
         ) : value ? (
           <div className="relative w-full h-full group">
+            {/* Thumbnail Display */}
             {isPdfPreview ? (
               <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-50 text-emerald-600 gap-2">
                 <FilePdf className="h-10 w-10" weight="fill" />
@@ -143,18 +158,28 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
               <img src={value} alt="Preview" className="w-full h-full object-cover" />
             )}
             
-            {/* OVERLAY ON HOVER TO REMOVE */}
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* HOVER ACTIONS (PREVIEW & REMOVE) */}
+            <div className="absolute inset-0 bg-slate-900/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 gap-4 backdrop-blur-sm">
+               <button 
+                 type="button"
+                 onClick={(e) => { e.stopPropagation(); setViewFullScale(value); }} 
+                 className="flex flex-col items-center justify-center text-white hover:text-emerald-400 transition-colors"
+               >
+                  <div className="bg-white/20 p-2.5 rounded-full mb-1"><Eye size={20} weight="bold" /></div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Preview</span>
+               </button>
                <button 
                  type="button"
                  onClick={(e) => { e.stopPropagation(); onRemove(); }} 
-                 className="flex items-center gap-1 bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+                 className="flex flex-col items-center justify-center text-white hover:text-red-400 transition-colors"
                >
-                 <X weight="bold" /> Remove
+                  <div className="bg-white/20 p-2.5 rounded-full mb-1"><Trash size={20} weight="bold" /></div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Remove</span>
                </button>
             </div>
             
-            <div className="absolute top-2 left-2 bg-emerald-500 text-white rounded-full p-1 shadow-md">
+            {/* Success Indicator (Bottom Right) */}
+            <div className="absolute bottom-2 right-2 bg-emerald-500 text-white rounded-full p-1 shadow-md group-hover:opacity-0 transition-opacity">
               <CheckCircle weight="fill" className="h-4 w-4" />
             </div>
           </div>
@@ -164,26 +189,28 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
               <UploadSimple className="h-6 w-6" weight="bold" />
             </div>
             <span className="font-black text-sm text-slate-800">{label}</span>
-            {description && <span className="text-xs font-bold text-slate-400 mt-1">{description}</span>}
+            {description && <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{description}</span>}
             <input type="file" ref={fileInputRef} accept={accept} className="hidden" onChange={handleFileChange} />
           </div>
         )}
       </div>
 
-      {/* --- CROP MODAL --- */}
+      {/* --- PRE-UPLOAD CROP MODAL (Provides choice to crop or skip) --- */}
       {imageToCrop && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-black text-lg text-slate-900">Adjust Image</h3>
-              <button onClick={() => { setImageToCrop(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+              <h3 className="font-black text-lg text-slate-900">Adjust Document</h3>
+              <button onClick={() => { setImageToCrop(null); setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
                 <X weight="bold" />
               </button>
             </div>
             
             <div className="p-6">
+              <p className="text-sm font-medium text-slate-500 mb-4 text-center">Drag the image and use the zoom slider to fit your document inside the highlighted crop box.</p>
+              
               {/* Cropper Area */}
-              <div className="relative w-full h-72 bg-slate-900 rounded-2xl overflow-hidden mb-6">
+              <div className="relative w-full h-72 bg-slate-900 rounded-2xl overflow-hidden mb-6 border-2 border-slate-200">
                 <Cropper
                   image={imageToCrop}
                   crop={crop}
@@ -192,12 +219,12 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
                   onCropChange={setCrop}
                   onCropComplete={onCropComplete}
                   onZoomChange={setZoom}
-                  showGrid={false}
+                  showGrid={true} // Enabled Grid so they know it's a crop area
                 />
               </div>
 
               {/* Zoom Slider */}
-              <div className="flex items-center gap-4 mb-8 bg-slate-50 p-4 rounded-xl">
+              <div className="flex items-center gap-4 mb-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <MagnifyingGlassMinus className="text-slate-400 h-5 w-5 shrink-0" weight="bold"/>
                 <input 
                   type="range" min={1} max={3} step={0.1} value={zoom} 
@@ -207,17 +234,40 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
                 <MagnifyingGlassPlus className="text-slate-400 h-5 w-5 shrink-0" weight="bold"/>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-4">
-                <button onClick={() => { setImageToCrop(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="flex-1 h-12 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
-                  Cancel
-                </button>
-                <button onClick={handleCropAndUpload} className="flex-1 h-12 rounded-xl font-bold text-white bg-[#ff3f7a] hover:bg-[#e02b62] shadow-md shadow-[#ff3f7a]/30 transition-colors">
+              {/* Action Buttons (Not by force to crop!) */}
+              <div className="flex flex-col gap-3">
+                <button onClick={handleCropAndUpload} className="w-full h-12 rounded-xl font-bold text-white bg-[#ff3f7a] hover:bg-[#e02b62] shadow-md shadow-[#ff3f7a]/30 transition-colors">
                   Crop & Upload
+                </button>
+                <button onClick={handleUploadOriginal} className="w-full h-12 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors">
+                  Upload Original (Skip Cropping)
                 </button>
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* --- POST-UPLOAD FULL SCALE LIGHTBOX --- */}
+      {viewFullScale && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md" onClick={() => setViewFullScale(null)}>
+           <div className="relative w-full max-w-5xl h-full flex flex-col items-center justify-center pointer-events-none">
+              
+              {/* Close Button */}
+              <button 
+                onClick={(e) => { e.stopPropagation(); setViewFullScale(null); }} 
+                className="absolute top-4 right-4 text-white bg-white/10 hover:bg-red-500 p-3 rounded-full pointer-events-auto transition-colors z-10"
+              >
+                <X weight="bold" size={24} />
+              </button>
+
+              {/* Display Logic */}
+              {viewFullScale.toLowerCase().endsWith('.pdf') ? (
+                 <iframe src={viewFullScale} className="w-full h-[85vh] rounded-2xl bg-white pointer-events-auto shadow-2xl" />
+              ) : (
+                 <img src={viewFullScale} alt="Full Scale Preview" className="max-w-full max-h-[85vh] object-contain rounded-xl pointer-events-auto shadow-2xl border border-white/10" />
+              )}
+           </div>
         </div>
       )}
     </>
