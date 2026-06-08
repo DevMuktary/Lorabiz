@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { UploadSimple, CheckCircle, Image as ImageIcon, CircleNotch } from "@phosphor-icons/react";
+import { UploadSimple, CheckCircle, CircleNotch } from "@phosphor-icons/react";
 
 interface FileUploadProps {
   label: string;
@@ -9,18 +9,24 @@ interface FileUploadProps {
   value: string | null;
   onUploadSuccess: (url: string) => void;
   onRemove: () => void;
+  onError?: (msg: string) => void; // Added custom error handler
 }
 
-export function FileUpload({ label, description, value, onUploadSuccess, onRemove }: FileUploadProps) {
+export function FileUpload({ label, description, value, onUploadSuccess, onRemove, onError }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showError = (msg: string) => {
+    if (onError) onError(msg);
+    else alert(msg); // Fallback just in case
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 4 * 1024 * 1024) { 
-      alert("File size exceeds 4MB limit."); 
+      showError("File size exceeds 4MB limit."); 
       return; 
     }
 
@@ -36,12 +42,14 @@ export function FileUpload({ label, description, value, onUploadSuccess, onRemov
       if (data.success && data.url) {
         onUploadSuccess(data.url);
       } else {
-        alert("Upload failed. Please try again.");
+        showError("Upload failed. Please try again.");
       }
     } catch (error) {
-      alert("Network error during upload.");
+      showError("Network error during upload.");
     } finally {
       setIsUploading(false);
+      // Reset input so the same file can be selected again if it failed
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
