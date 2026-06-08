@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Proprietor, NIGERIA_DATA, COUNTRY_CODES, isValidEmail, isValidPhone, calculateAge, defaultPropForm } from "./schema";
 
 // --- HELPER COMPONENTS & FUNCTIONS ---
-const getFlag = (code: string) => {
-  const country = COUNTRY_CODES.find(c => c.code === code);
+const getFlag = (code: string | undefined) => {
+  const safeCode = code || "+234"; // Fallback for older database drafts
+  const country = COUNTRY_CODES.find(c => c.code === safeCode);
   return country ? country.flag : "🇳🇬";
 };
 
@@ -28,14 +29,22 @@ export default function ProprietorStep({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // --- AUTO-OPEN LOGIC FIX ---
   useEffect(() => {
     if (proprietors.length === 0) {
+      // If totally empty, create one and open it
       const newId = Date.now().toString();
       setProprietors([{ ...defaultPropForm, id: newId }]);
       setExpandedId(newId);
-    } else if (!expandedId) {
-      setExpandedId(proprietors[0].id);
+    } else {
+      // Only auto-open if there is an INCOMPLETE proprietor. 
+      // If all are completed (e.g. loaded from draft), leave them collapsed for a clean view.
+      const incompleteProp = proprietors.find(p => !isProprietorValid(p));
+      if (incompleteProp && !expandedId) {
+        setExpandedId(incompleteProp.id);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateProprietor = (id: string, field: keyof Proprietor, value: any) => {
@@ -71,13 +80,17 @@ export default function ProprietorStep({
       return;
     }
     setValidationError(null);
-    setExpandedId(null);
+    setExpandedId(null); // Close the form
   };
 
   const removeProprietor = (id: string) => {
     const filtered = proprietors.filter(p => p.id !== id);
     setProprietors(filtered);
-    if (expandedId === id) setExpandedId(filtered.length > 0 ? filtered[0].id : null);
+    if (expandedId === id) {
+       // If they removed the one they were editing, open the next incomplete one or close.
+       const nextIncomplete = filtered.find(p => !isProprietorValid(p));
+       setExpandedId(nextIncomplete ? nextIncomplete.id : null);
+    }
   };
 
   return (
@@ -96,6 +109,9 @@ export default function ProprietorStep({
           const isOpen = expandedId === prop.id;
           const availableLgas = NIGERIA_DATA.find(s => s.state === prop.state)?.lgas || [];
           const age = calculateAge(prop.dob);
+          
+          // Secure the phone code fallback for old drafts
+          const pCode = prop.phoneCode || "+234"; 
 
           return (
             <div key={prop.id} className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm">
@@ -118,7 +134,8 @@ export default function ProprietorStep({
                      <FieldRow label="First Name" value={prop.firstName} />
                      {prop.otherName && <FieldRow label="Other Name" value={prop.otherName} />}
                      <FieldRow label="Email" value={prop.email} />
-                     <FieldRow label="Phone Number" value={`${getFlag(prop.phoneCode)} ${prop.phoneCode} ${prop.phone}`} />
+                     {/* FIXED THE UNDEFINED COUNTRY CODE HERE */}
+                     <FieldRow label="Phone Number" value={`${getFlag(pCode)} ${pCode} ${prop.phone || ""}`} />
                      <FieldRow label="Gender" value={prop.gender} />
                      <FieldRow label="Date of Birth" value={prop.dob} />
                      <FieldRow label="Service Address" value={prop.serviceAddress} />
@@ -158,8 +175,9 @@ export default function ProprietorStep({
                     <div className="space-y-1.5">
                       <Label className="font-bold text-slate-700">Phone <span className="text-red-500">*</span></Label>
                       <div className="flex border border-slate-200 rounded-xl overflow-hidden focus-within:border-[#ff3f7a] focus-within:ring-1 focus-within:ring-[#ff3f7a] bg-slate-50">
+                        {/* FALLBACK VALUE IMPLEMENTED HERE AS WELL */}
                         <select 
-                          value={prop.phoneCode} 
+                          value={pCode} 
                           onChange={e=>updateProprietor(prop.id, 'phoneCode', e.target.value)}
                           className="bg-slate-100 border-r border-slate-200 px-2 outline-none text-sm w-28 shrink-0 font-medium cursor-pointer hover:bg-slate-200 transition-colors"
                         >
