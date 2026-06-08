@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { 
-  Buildings, Users, FileImage, CheckCircle, CaretDown, Check,
-  Trash, ArrowRight, ArrowLeft, CircleNotch, WarningCircle, Plus, CloudCheck, Pencil, CloudArrowUp, XCircle, Info
+  Buildings, Users, FileImage, CheckCircle, 
+  Trash, Pencil, ArrowRight, ArrowLeft, CircleNotch, WarningCircle, Plus
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,64 +52,22 @@ const NIGERIA_DATA = [
   { state: "Zamfara", lgas: ["Anka", "Bakura", "Birnin Magaji/Kiyaw", "Bukkuyum", "Bungudu", "Gummi", "Gusau", "Kaura Namoda", "Maradun", "Maru", "Shinkafi", "Talata Mafara", "Chafe", "Zurmi"] }
 ];
 
-// --- CUSTOM SEARCHABLE DROPDOWN ---
-function SearchableDropdown({ label, value, onChange, options, placeholder, required }: any) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { setQuery(value); }, [value]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setQuery(value);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [value]);
-
-  const filteredOptions = options.filter((opt: string) => opt.toLowerCase().includes(query.toLowerCase()));
-
-  return (
-    <div className="space-y-2 relative" ref={dropdownRef}>
-      <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">{label} {required && <span className="text-red-500">*</span>}</Label>
-      <div 
-        className={`flex items-center w-full h-12 px-4 border-2 rounded-xl transition-colors cursor-text ${isOpen ? "bg-white border-[#ff3f7a] ring-2 ring-[#ff3f7a]/10" : "bg-slate-50 border-slate-200 hover:border-slate-300"}`}
-        onClick={() => setIsOpen(true)}
-      >
-        <input
-          type="text" value={isOpen ? query : value}
-          onChange={(e) => { setQuery(e.target.value); setIsOpen(true); if (e.target.value !== value) onChange(""); }}
-          onFocus={() => setIsOpen(true)} placeholder={placeholder}
-          className="w-full h-full font-bold text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-medium bg-transparent truncate pr-2"
-        />
-        <CaretDown className={`h-4 w-4 text-slate-400 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} weight="bold" />
-      </div>
-      
-      {isOpen && (
-        <div className="absolute z-50 top-[70px] left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
-          <ul className="max-h-60 overflow-y-auto py-2 scrollbar-thin scrollbar-thumb-slate-200">
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((opt: string) => (
-                <li key={opt} onClick={() => { onChange(opt); setQuery(opt); setIsOpen(false); }} className={`px-4 py-3 cursor-pointer flex items-center justify-between group ${value === opt ? "bg-[#ff3f7a]/10" : "hover:bg-slate-50"}`}>
-                  <span className={`text-sm font-bold ${value === opt ? "text-[#ff3f7a]" : "text-slate-900"}`}>{opt}</span>
-                  {value === opt && <Check className="h-4 w-4 text-[#ff3f7a]" weight="bold" />}
-                </li>
-              ))
-            ) : <li className="px-4 py-4 text-center text-sm font-medium text-slate-500">No results found.</li>}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // --- TYPES ---
-type DocumentTypes = { nin: string | null; passport: string | null; signature: string | null; };
-type Proprietor = { id: string; surname: string; firstName: string; otherName: string; email: string; phone: string; gender: string; dob: string; state: string; lga: string; city: string; streetNo: string; serviceAddress: string; documents: DocumentTypes; };
+type CompanyInfo = {
+  email: string; state: string; city: string; streetNo: string; address: string; commencementDate: string;
+};
+
+type DocumentTypes = {
+  nin: string | null;
+  passport: string | null;
+  signature: string | null;
+};
+
+type Proprietor = {
+  id: string; surname: string; firstName: string; otherName: string; email: string; phone: string; 
+  gender: string; dob: string; state: string; lga: string; city: string; streetNo: string; serviceAddress: string;
+  documents: DocumentTypes;
+};
 
 export default function RegistrationDetailsPage() {
   const params = useParams();
@@ -120,24 +77,23 @@ export default function RegistrationDetailsPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<"IDLE" | "SAVING" | "SAVED" | "ERROR">("IDLE");
-
-  // Custom Toast State
-  const [toast, setToast] = useState<{ show: boolean, message: string, type: "error" | "success" }>({ show: false, message: "", type: "error" });
-
-  const showToast = (message: string, type: "error" | "success" = "error") => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4500);
-  };
 
   const [draft, setDraft] = useState({ proposedName: "LOADING...", ownershipType: "SOLE", specificNature: "LOADING..." });
-  const [companyInfo, setCompanyInfo] = useState({ email: "", state: "", city: "", streetNo: "", address: "", commencementDate: "" });
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({ email: "", state: "", city: "", streetNo: "", address: "", commencementDate: "" });
+  
   const [proprietors, setProprietors] = useState<Proprietor[]>([]);
-  const [expandedPropId, setExpandedPropId] = useState<string | null>(null);
+  const [editingPropId, setEditingPropId] = useState<string | null>(null);
+  const [propForm, setPropForm] = useState<Proprietor>({
+    id: "", surname: "", firstName: "", otherName: "", email: "", phone: "", gender: "", dob: "", state: "", lga: "", city: "", streetNo: "", serviceAddress: "", 
+    documents: { nin: null, passport: null, signature: null }
+  });
 
+  const [selectedDocProprietor, setSelectedDocProprietor] = useState<string>("");
+
+  const availableLgas = NIGERIA_DATA.find(s => s.state === propForm.state)?.lgas || [];
   const isSoleProprietor = draft.ownershipType === "SOLE";
 
-  // FETCH DRAFT
+  // FETCH REAL DRAFT DATA FROM DB ON LOAD
   useEffect(() => {
     if (!id) return;
     const fetchDraft = async () => {
@@ -146,21 +102,28 @@ export default function RegistrationDetailsPage() {
         const json = await res.json();
         if (json.success) {
           setDraft(json.data);
+          
           if (json.data.companyEmail || json.data.companyState) {
             setCompanyInfo({
-              email: json.data.companyEmail || "", state: json.data.companyState || "", city: json.data.companyCity || "", 
-              streetNo: json.data.companyStreetNo || "", address: json.data.companyAddress || "", commencementDate: json.data.commencementDate || ""
+              email: json.data.companyEmail || "", 
+              state: json.data.companyState || "", 
+              city: json.data.companyCity || "", 
+              streetNo: json.data.companyStreetNo || "", 
+              address: json.data.companyAddress || "", 
+              commencementDate: json.data.commencementDate || ""
             });
           }
+
           if (json.data.proprietors && json.data.proprietors.length > 0) {
-            setProprietors(json.data.proprietors.map((p: any) => ({
-              ...p, documents: { nin: p.ninUrl || null, passport: p.passportUrl || null, signature: p.signatureUrl || null }
-            })));
-          } else {
-            // Auto-add first empty proprietor block
-            const initialId = Date.now().toString();
-            setProprietors([{ id: initialId, surname: "", firstName: "", otherName: "", email: "", phone: "", gender: "", dob: "", state: "", lga: "", city: "", streetNo: "", serviceAddress: "", documents: { nin: null, passport: null, signature: null } }]);
-            setExpandedPropId(initialId);
+            const mapped = json.data.proprietors.map((p: any) => ({
+              ...p,
+              documents: { 
+                nin: p.ninUrl || null, 
+                passport: p.passportUrl || null, 
+                signature: p.signatureUrl || null 
+              }
+            }));
+            setProprietors(mapped);
           }
         }
       } catch (err) {
@@ -172,219 +135,176 @@ export default function RegistrationDetailsPage() {
     fetchDraft();
   }, [id]);
 
-  // CLOUD AUTO-SAVE (Debounced)
-  useEffect(() => {
-    if (loading || !draft.proposedName || proprietors.length === 0) return;
+  // PROPRIETOR MANAGEMENT
+  const handleSaveProprietor = () => {
+    if (!propForm.surname || !propForm.firstName || !propForm.phone || !propForm.state || !propForm.gender) {
+      alert("Please fill all required proprietor fields (Surname, First Name, Phone, State, Gender)."); 
+      return;
+    }
     
-    setAutoSaveStatus("SAVING");
-    const timer = setTimeout(async () => {
-      try {
-        await fetch(`/api/register/details/${id}`, {
-          method: "PUT", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ companyInfo, proprietors })
-        });
-        setAutoSaveStatus("SAVED");
-      } catch (e) {
-        setAutoSaveStatus("ERROR");
+    if (editingPropId) {
+      setProprietors(prev => prev.map(p => p.id === editingPropId ? { ...propForm } : p));
+      setEditingPropId(null);
+    } else {
+      setProprietors(prev => [...prev, { ...propForm, id: Date.now().toString() }]);
+    }
+    
+    setPropForm({ 
+      id: "", surname: "", firstName: "", otherName: "", email: "", phone: "", gender: "", dob: "", state: "", lga: "", city: "", streetNo: "", serviceAddress: "", 
+      documents: { nin: null, passport: null, signature: null } 
+    });
+  };
+
+  const handleEditProprietor = (prop: Proprietor) => { setPropForm(prop); setEditingPropId(prop.id); };
+  const handleRemoveProprietor = (pid: string) => {
+    if (selectedDocProprietor === pid) setSelectedDocProprietor("");
+    setProprietors(prev => prev.filter(p => p.id !== pid));
+  };
+
+  // VALIDATION & PROGRESSION PIPELINE
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      if (!companyInfo.state || !companyInfo.address) {
+        alert("Please provide the Company State and Address to proceed.");
+        return;
       }
-    }, 1500);
+    }
+    
+    if (currentStep === 2) {
+      if (isSoleProprietor && proprietors.length !== 1) {
+        alert("A Sole Proprietorship requires exactly 1 proprietor. Please add your details.");
+        return;
+      }
+      if (!isSoleProprietor && proprietors.length < 2) {
+        alert("A Partnership requires at least 2 proprietors. Please add all partners.");
+        return;
+      }
+    }
 
-    return () => clearTimeout(timer);
-  }, [companyInfo, proprietors, id, loading]);
+    if (currentStep === 3) {
+      const missingDocs = proprietors.some(p => !p.documents.nin || !p.documents.passport || !p.documents.signature);
+      if (missingDocs) {
+        alert("Missing Documents! Please ensure NIN, Passport, and Signature are uploaded for ALL proprietors.");
+        return;
+      }
+    }
 
-  // PROPRIETOR LOGIC
-  const handleUpdateProprietor = (propId: string, field: keyof Proprietor, value: any) => {
-    setProprietors(prev => prev.map(p => p.id === propId ? { ...p, [field]: value } : p));
-  };
-
-  const handleUpdateDoc = (propId: string, docType: keyof DocumentTypes, url: string | null) => {
-    setProprietors(prev => prev.map(p => p.id === propId ? { ...p, documents: { ...p.documents, [docType]: url } } : p));
-  };
-
-  const addNewProprietor = () => {
-    const newId = Date.now().toString();
-    setProprietors(prev => [...prev, { id: newId, surname: "", firstName: "", otherName: "", email: "", phone: "", gender: "", dob: "", state: "", lga: "", city: "", streetNo: "", serviceAddress: "", documents: { nin: null, passport: null, signature: null } }]);
-    setExpandedPropId(newId);
-  };
-
-  const removeProprietor = (propId: string) => {
-    setProprietors(prev => prev.filter(p => p.id !== propId));
+    setCurrentStep(prev => prev + 1);
   };
 
   const handleFinalSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/register/details/${id}/submit`, {
-        method: "POST",
+      const res = await fetch(`/api/register/details/${id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyInfo, proprietors }),
+        body: JSON.stringify({ companyInfo, proprietors })
       });
-      const json = await res.json();
-      if (json.success) {
-        showToast("Registration submitted successfully!", "success");
-        router.push("/dashboard/register");
+      
+      const data = await res.json();
+      if (data.success) {
+        router.push("/dashboard?success=true");
       } else {
-        showToast(json.message || "Submission failed. Please try again.");
+        alert(data.message || "Failed to submit registration.");
+        setIsSubmitting(false);
       }
-    } catch (e) {
-      showToast("An error occurred. Please try again.");
-    } finally {
+    } catch (error) {
+      alert("Network error. Please check your connection.");
       setIsSubmitting(false);
     }
   };
 
-  // VALIDATION & AGE CALCULATOR
-  const calculateAge = (dobString: string) => {
-    const birthDate = new Date(dobString);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-    return age;
-  };
-
-  const validateStep = () => {
-    if (currentStep === 1) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!companyInfo.email || !emailRegex.test(companyInfo.email)) return showToast("Please provide a valid Company Email.");
-      if (!companyInfo.state) return showToast("Company State of Residence is required.");
-      if (!companyInfo.address) return showToast("Company Street Address is required.");
-      if (!companyInfo.commencementDate) return showToast("Commencement Date is required.");
-    }
-
-    if (currentStep === 2) {
-      if (isSoleProprietor && proprietors.length > 1) return showToast("Sole Proprietorships can only have 1 proprietor.");
-      if (!isSoleProprietor && proprietors.length < 2) return showToast("Partnerships require at least 2 proprietors.");
-
-      let adultCount = 0;
-      let hasMinor = false;
-      let minorName = "";
-
-      for (let i = 0; i < proprietors.length; i++) {
-        const p = proprietors[i];
-        if (!p.surname || !p.firstName || !p.phone || !p.gender || !p.dob || !p.state || !p.lga || !p.serviceAddress) {
-          setExpandedPropId(p.id);
-          return showToast(`Please fill all required (*) fields for ${p.firstName || `Proprietor ${i+1}`}.`);
-        }
-        if (p.phone.length < 10) {
-          setExpandedPropId(p.id);
-          return showToast("Please enter a valid 10 or 11 digit phone number.");
-        }
-        
-        const age = calculateAge(p.dob);
-        if (age >= 18) adultCount++;
-        else {
-          hasMinor = true;
-          minorName = `${p.firstName} ${p.surname}`;
-        }
-      }
-
-      if (isSoleProprietor && hasMinor) return showToast("A Sole Proprietor must be at least 18 years old.");
-      if (!isSoleProprietor && hasMinor && adultCount < 2) return showToast(`${minorName} is under 18. CAC requires at least two (2) adult partners (18+) before a minor can be added.`);
-      
-      setExpandedPropId(null); // Collapse all on success
-    }
-
-    if (currentStep === 3) {
-      for (const p of proprietors) {
-        if (!p.documents.nin || !p.documents.passport || !p.documents.signature) {
-          return showToast(`Please upload all 3 required documents for ${p.firstName} ${p.surname}.`);
-        }
-      }
-    }
-
-    setCurrentStep(prev => prev + 1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><CircleNotch className="animate-spin h-10 w-10 text-[#ff3f7a]" /></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <CircleNotch className="animate-spin h-10 w-10 text-[#ff3f7a]" />
+      </div>
+    );
   }
 
+  const hideProprietorForm = isSoleProprietor && proprietors.length >= 1 && !editingPropId;
+
   return (
-    <div className="max-w-4xl mx-auto pb-24 pt-8 px-4 font-sans selection:bg-[#ff3f7a] selection:text-white relative">
+    <div className="max-w-4xl mx-auto pb-16 pt-8 px-4 font-sans selection:bg-[#ff3f7a] selection:text-white">
       
-      {/* --- CUSTOM TOAST NOTIFICATION --- */}
-      <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 ${toast.show ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0 pointer-events-none'}`}>
-        <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-sm border-2 ${toast.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-          {toast.type === 'error' ? <XCircle className="h-6 w-6" weight="fill" /> : <CheckCircle className="h-6 w-6" weight="fill" />}
-          {toast.message}
+      {/* --- WIZARD HEADER NAV --- */}
+      <div className="mb-10">
+        <div className="flex items-center justify-between relative">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-100 -z-10 rounded-full"></div>
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-[#ff3f7a] -z-10 rounded-full transition-all duration-500" style={{ width: `${((currentStep - 1) / 3) * 100}%` }}></div>
+          {[ 
+            { step: 1, title: "Company", icon: Buildings }, 
+            { step: 2, title: "Proprietors", icon: Users }, 
+            { step: 3, title: "Documents", icon: FileImage }, 
+            { step: 4, title: "Preview", icon: CheckCircle }
+          ].map((s) => (
+            <div key={s.step} className="flex flex-col items-center gap-2">
+              <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg border-4 transition-colors duration-300 ${currentStep >= s.step ? "bg-[#ff3f7a] border-white text-white shadow-md" : "bg-white border-slate-100 text-slate-400"}`}>
+                <s.icon className="h-6 w-6" weight={currentStep >= s.step ? "fill" : "bold"} />
+              </div>
+              <span className={`text-xs font-bold uppercase tracking-wider hidden sm:block ${currentStep >= s.step ? "text-slate-900" : "text-slate-400"}`}>{s.title}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Header & Auto-save */}
-      <div className="mb-8 pt-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/register/business-name" className="p-2 bg-white rounded-xl border border-slate-200 text-slate-500 hover:text-slate-900 shadow-sm transition-colors">
-            <ArrowLeft className="h-5 w-5" weight="bold" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Proprietor Details</h1>
-            <p className="text-sm font-medium text-slate-500">Step {currentStep} of 4</p>
-          </div>
-        </div>
-        
-        {/* Auto-save Indicator */}
-        <div className="hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
-          {autoSaveStatus === "SAVING" && <><CloudArrowUp className="h-4 w-4 animate-bounce text-[#ff3f7a]" weight="fill" /> Saving to cloud...</>}
-          {autoSaveStatus === "SAVED" && <><CloudCheck className="h-4 w-4 text-emerald-500" weight="fill" /> Saved to draft</>}
-          {autoSaveStatus === "ERROR" && <><WarningCircle className="h-4 w-4 text-red-500" weight="fill" /> Save failed</>}
-          {autoSaveStatus === "IDLE" && <><CloudCheck className="h-4 w-4 text-slate-400" weight="fill" /> Up to date</>}
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="w-full bg-slate-200 h-2 rounded-full mb-8 overflow-hidden">
-        <div className="bg-[#ff3f7a] h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${(currentStep / 4) * 100}%` }}></div>
-      </div>
-
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-20">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         
         {/* ========================================== */}
         {/* STEP 1: COMPANY INFO                       */}
         {/* ========================================== */}
         {currentStep === 1 && (
-          <div className="p-6 sm:p-8 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="p-8 animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-2xl font-black text-slate-900 mb-6 border-b pb-4">Company Information</h2>
             
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Business Name (Locked)</Label>
-                  <div className="h-12 flex items-center px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold uppercase text-slate-700 select-none">{draft.proposedName}</div>
+                  <Label>Business Name (Not Editable)</Label>
+                  <div className="h-12 flex items-center px-4 bg-slate-100 border border-slate-200 rounded-xl font-bold uppercase text-slate-700">
+                    {draft.proposedName}
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Nature of Business (Locked)</Label>
-                  <div className="h-12 flex items-center px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 select-none">{draft.specificNature}</div>
+                  <Label>Nature of Business (Not Editable)</Label>
+                  <div className="h-12 flex items-center px-4 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-700">
+                    {draft.specificNature}
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Company Email <span className="text-red-500">*</span></Label>
-                  <Input type="email" placeholder="contact@company.com" value={companyInfo.email} onChange={e => setCompanyInfo({...companyInfo, email: e.target.value})} className="h-12 bg-white focus-visible:ring-[#ff3f7a] border-2" />
+                  <Label>Company Email</Label>
+                  <Input type="email" placeholder="contact@company.com" value={companyInfo.email} onChange={e => setCompanyInfo({...companyInfo, email: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Commencement Date <span className="text-red-500">*</span></Label>
-                  <Input type="date" value={companyInfo.commencementDate} onChange={e => setCompanyInfo({...companyInfo, commencementDate: e.target.value})} className="h-12 bg-white focus-visible:ring-[#ff3f7a] border-2" />
+                  <Label>Commencement Date</Label>
+                  <Input type="date" value={companyInfo.commencementDate} onChange={e => setCompanyInfo({...companyInfo, commencementDate: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <SearchableDropdown label="State of Residence" required placeholder="Search state..." value={companyInfo.state} options={NIGERIA_DATA.map(s => s.state)} onChange={(val: string) => setCompanyInfo({...companyInfo, state: val})} />
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">City</Label>
-                  <Input value={companyInfo.city} onChange={e => setCompanyInfo({...companyInfo, city: e.target.value})} className="h-12 bg-white focus-visible:ring-[#ff3f7a] border-2" />
+                  <Label>Company State of Residence *</Label>
+                  <select value={companyInfo.state} onChange={e => setCompanyInfo({...companyInfo, state: e.target.value})} className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a]">
+                    <option value="">-- Select State --</option>
+                    {NIGERIA_DATA.map(s => <option key={s.state} value={s.state}>{s.state}</option>)}
+                  </select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Street Number</Label>
-                  <Input value={companyInfo.streetNo} onChange={e => setCompanyInfo({...companyInfo, streetNo: e.target.value})} className="h-12 bg-white focus-visible:ring-[#ff3f7a] border-2" />
+                  <Label>Company City</Label>
+                  <Input value={companyInfo.city} onChange={e => setCompanyInfo({...companyInfo, city: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Company Street Number</Label>
+                  <Input value={companyInfo.streetNo} onChange={e => setCompanyInfo({...companyInfo, streetNo: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Company Street Address <span className="text-red-500">*</span></Label>
-                <Input value={companyInfo.address} onChange={e => setCompanyInfo({...companyInfo, address: e.target.value})} className="h-12 bg-white focus-visible:ring-[#ff3f7a] border-2" />
+                <Label>Company Street Address *</Label>
+                <Input value={companyInfo.address} onChange={e => setCompanyInfo({...companyInfo, address: e.target.value})} className="h-12 bg-slate-50 focus-visible:ring-[#ff3f7a]" />
               </div>
             </div>
           </div>
@@ -394,95 +314,109 @@ export default function RegistrationDetailsPage() {
         {/* STEP 2: PROPRIETOR INFO                    */}
         {/* ========================================== */}
         {currentStep === 2 && (
-          <div className="p-6 sm:p-8 animate-in fade-in slide-in-from-right-4 duration-300 bg-slate-50/30">
+          <div className="p-8 animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-2xl font-black text-slate-900 mb-6 border-b pb-4">Proprietor Information</h2>
             
-            {proprietors.map((prop, index) => {
-              const isExpanded = expandedPropId === prop.id;
-              const title = prop.firstName ? `${prop.firstName} ${prop.surname}` : `Proprietor ${index + 1}`;
-              const availableLgas = NIGERIA_DATA.find(s => s.state === prop.state)?.lgas || [];
-
-              return (
-                <div key={prop.id} className={`mb-4 border-2 rounded-2xl bg-white overflow-hidden transition-all duration-300 ${isExpanded ? 'border-[#ff3f7a] shadow-md' : 'border-slate-200'}`}>
-                  
-                  {/* Accordion Header */}
-                  <div 
-                    onClick={() => setExpandedPropId(isExpanded ? null : prop.id)}
-                    className={`flex justify-between items-center p-5 cursor-pointer transition-colors ${isExpanded ? 'bg-[#ff3f7a]/5' : 'hover:bg-slate-50'}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center font-black ${isExpanded ? 'bg-[#ff3f7a] text-white' : 'bg-slate-100 text-slate-500'}`}>{index + 1}</div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-lg">{title}</h3>
-                        <p className="text-xs font-medium text-slate-400">Click to {isExpanded ? 'collapse' : 'expand'} details</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      {!isSoleProprietor && index > 0 && !isExpanded && (
-                        <button onClick={(e) => { e.stopPropagation(); removeProprietor(prop.id); }} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"><Trash weight="bold"/></button>
-                      )}
-                      <CaretDown className={`h-5 w-5 text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-[#ff3f7a]' : ''}`} weight="bold" />
-                    </div>
-                  </div>
-
-                  {/* Accordion Body */}
-                  <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                    <div className="overflow-hidden">
-                      <div className="p-6 border-t border-slate-100 space-y-6">
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                          <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Surname <span className="text-red-500">*</span></Label><Input value={prop.surname} onChange={e => handleUpdateProprietor(prop.id, 'surname', e.target.value)} className="h-12 border-2 focus-visible:ring-[#ff3f7a]" /></div>
-                          <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">First Name <span className="text-red-500">*</span></Label><Input value={prop.firstName} onChange={e => handleUpdateProprietor(prop.id, 'firstName', e.target.value)} className="h-12 border-2 focus-visible:ring-[#ff3f7a]" /></div>
-                          <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Other Name</Label><Input value={prop.otherName} onChange={e => handleUpdateProprietor(prop.id, 'otherName', e.target.value)} className="h-12 border-2 focus-visible:ring-[#ff3f7a]" /></div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                          <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Email Address <span className="text-red-500">*</span></Label><Input type="email" value={prop.email} onChange={e => handleUpdateProprietor(prop.id, 'email', e.target.value)} className="h-12 border-2 focus-visible:ring-[#ff3f7a]" /></div>
-                          
-                          {/* Custom Phone Input UI */}
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-slate-500">Phone Number <span className="text-red-500">*</span></Label>
-                            <div className="flex">
-                              <div className="flex items-center justify-center bg-slate-100 border-2 border-r-0 border-slate-200 px-3 rounded-l-xl text-sm font-bold text-slate-600 select-none">
-                                🇳🇬 +234
-                              </div>
-                              <Input type="tel" placeholder="801 234 5678" value={prop.phone} onChange={e => handleUpdateProprietor(prop.id, 'phone', e.target.value)} className="h-12 border-2 rounded-l-none focus-visible:ring-[#ff3f7a]" />
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-slate-500">Gender <span className="text-red-500">*</span></Label>
-                            <select value={prop.gender} onChange={e => handleUpdateProprietor(prop.id, 'gender', e.target.value)} className="flex h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-bold text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a]">
-                              <option value="">-- Select --</option>
-                              <option value="MALE">MALE</option>
-                              <option value="FEMALE">FEMALE</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                          <SearchableDropdown label="State" required placeholder="Search state..." value={prop.state} options={NIGERIA_DATA.map(s => s.state)} onChange={(val: string) => handleUpdateProprietor(prop.id, 'state', val)} />
-                          <SearchableDropdown label="L.G.A" required placeholder="Search LGA..." value={prop.lga} options={availableLgas} disabled={!prop.state} onChange={(val: string) => handleUpdateProprietor(prop.id, 'lga', val)} />
-                          <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Date of Birth <span className="text-red-500">*</span></Label><Input type="date" value={prop.dob} onChange={e => handleUpdateProprietor(prop.id, 'dob', e.target.value)} className="h-12 border-2 focus-visible:ring-[#ff3f7a] font-bold" /></div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_2fr] gap-5">
-                          <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">City</Label><Input value={prop.city} onChange={e => handleUpdateProprietor(prop.id, 'city', e.target.value)} className="h-12 border-2 focus-visible:ring-[#ff3f7a]" /></div>
-                          <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Street No.</Label><Input value={prop.streetNo} onChange={e => handleUpdateProprietor(prop.id, 'streetNo', e.target.value)} className="h-12 border-2 focus-visible:ring-[#ff3f7a]" /></div>
-                          <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Service Address <span className="text-red-500">*</span></Label><Input value={prop.serviceAddress} onChange={e => handleUpdateProprietor(prop.id, 'serviceAddress', e.target.value)} className="h-12 border-2 focus-visible:ring-[#ff3f7a]" /></div>
-                        </div>
-
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {isSoleProprietor && (
+              <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl mb-6 flex gap-3 text-sm font-medium">
+                <WarningCircle className="h-5 w-5 shrink-0" weight="fill" />
+                As a Sole Proprietorship, this business requires exactly one (1) proprietor.
+              </div>
+            )}
 
             {!isSoleProprietor && (
-              <button onClick={addNewProprietor} className="w-full h-14 border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center gap-2 text-slate-500 font-bold hover:border-[#ff3f7a] hover:text-[#ff3f7a] hover:bg-[#ff3f7a]/5 transition-colors mt-2">
-                <Plus className="h-5 w-5" weight="bold" /> Add Another Partner
-              </button>
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl mb-6 flex gap-3 text-sm font-medium">
+                <Users className="h-5 w-5 shrink-0" weight="fill" />
+                Partnerships require a minimum of two (2) proprietors.
+              </div>
+            )}
+
+            {proprietors.length > 0 && (
+              <div className="mb-8 border border-slate-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-[500px]">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
+                    <tr><th className="p-4">Name</th><th className="p-4">Phone</th><th className="p-4">State</th><th className="p-4 text-right">Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {proprietors.map(prop => (
+                      <tr key={prop.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="p-4 font-bold text-slate-900">{prop.surname} {prop.firstName}</td>
+                        <td className="p-4 text-slate-600">{prop.phone}</td>
+                        <td className="p-4 text-slate-600">{prop.state}</td>
+                        <td className="p-4 flex justify-end gap-2">
+                          <button onClick={() => handleEditProprietor(prop)} className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg"><Pencil className="h-4 w-4" weight="bold" /></button>
+                          <button onClick={() => handleRemoveProprietor(prop.id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg"><Trash className="h-4 w-4" weight="bold" /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!hideProprietorForm && (
+              <div className="bg-slate-50/50 border border-slate-200 rounded-2xl p-6 space-y-6">
+                <h3 className="font-bold text-slate-900 border-b pb-2 flex items-center gap-2">
+                  {editingPropId ? <Pencil weight="bold"/> : <Plus weight="bold"/>} 
+                  {editingPropId ? "Edit Proprietor" : "Add New Proprietor"}
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="space-y-2"><Label>Surname *</Label><Input value={propForm.surname} onChange={e => setPropForm({...propForm, surname: e.target.value})} className="h-12 bg-white" /></div>
+                  <div className="space-y-2"><Label>First Name *</Label><Input value={propForm.firstName} onChange={e => setPropForm({...propForm, firstName: e.target.value})} className="h-12 bg-white" /></div>
+                  <div className="space-y-2"><Label>Other Name</Label><Input value={propForm.otherName} onChange={e => setPropForm({...propForm, otherName: e.target.value})} className="h-12 bg-white" /></div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="space-y-2"><Label>Email</Label><Input type="email" value={propForm.email} onChange={e => setPropForm({...propForm, email: e.target.value})} className="h-12 bg-white" /></div>
+                  <div className="space-y-2"><Label>Phone Number *</Label><Input type="tel" placeholder="+234..." value={propForm.phone} onChange={e => setPropForm({...propForm, phone: e.target.value})} className="h-12 bg-white" /></div>
+                  <div className="space-y-2">
+                    <Label>Gender *</Label>
+                    <select value={propForm.gender} onChange={e => setPropForm({...propForm, gender: e.target.value})} className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a]">
+                      <option value="">-- Select Gender --</option>
+                      <option value="MALE">MALE</option>
+                      <option value="FEMALE">FEMALE</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="space-y-2">
+                    <Label>State *</Label>
+                    <select value={propForm.state} onChange={e => setPropForm({...propForm, state: e.target.value, lga: ""})} className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a]">
+                      <option value="">-- Select State --</option>
+                      {NIGERIA_DATA.map(s => <option key={s.state} value={s.state}>{s.state}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>LGA *</Label>
+                    <select value={propForm.lga} onChange={e => setPropForm({...propForm, lga: e.target.value})} disabled={!propForm.state} className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3f7a]">
+                      <option value="">-- Select LGA --</option>
+                      {availableLgas.map(lga => <option key={lga} value={lga}>{lga}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2"><Label>Date of Birth *</Label><Input type="date" value={propForm.dob} onChange={e => setPropForm({...propForm, dob: e.target.value})} className="h-12 bg-white" /></div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_2fr] gap-5">
+                  <div className="space-y-2"><Label>City</Label><Input value={propForm.city} onChange={e => setPropForm({...propForm, city: e.target.value})} className="h-12 bg-white" /></div>
+                  <div className="space-y-2"><Label>Street No.</Label><Input value={propForm.streetNo} onChange={e => setPropForm({...propForm, streetNo: e.target.value})} className="h-12 bg-white" /></div>
+                  <div className="space-y-2"><Label>Service Address</Label><Input value={propForm.serviceAddress} onChange={e => setPropForm({...propForm, serviceAddress: e.target.value})} className="h-12 bg-white" /></div>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <Button onClick={handleSaveProprietor} type="button" className="bg-slate-900 hover:bg-slate-800 text-white h-12 px-8 rounded-xl shadow-lg">
+                    {editingPropId ? "Update Proprietor" : "Save Proprietor to List"}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Show an explicit button to open form again for Partnerships */}
+            {hideProprietorForm && !isSoleProprietor && (
+               <Button onClick={() => setEditingPropId(null)} variant="outline" className="w-full mt-4 h-14 border-dashed border-2 hover:bg-slate-50">
+                 <Plus className="mr-2" /> Add Another Partner
+               </Button>
             )}
           </div>
         )}
@@ -491,117 +425,138 @@ export default function RegistrationDetailsPage() {
         {/* STEP 3: DOCUMENTS UPLOADS                  */}
         {/* ========================================== */}
         {currentStep === 3 && (
-          <div className="p-6 sm:p-8 animate-in fade-in slide-in-from-right-4 duration-300 bg-slate-50/30">
-            <div className="mb-8 border-b pb-4">
-              <h2 className="text-2xl font-black text-slate-900 mb-2">Required Documents</h2>
-              <div className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-3 rounded-xl text-sm font-medium border border-amber-200">
-                <Info className="h-5 w-5 shrink-0" weight="fill" />
-                Upload valid IDs and signatures for each proprietor. Max size: 4MB (JPEG/PNG).
-              </div>
-            </div>
+          <div className="p-8 animate-in fade-in slide-in-from-right-4 duration-300">
+            <h2 className="text-2xl font-black text-slate-900 mb-2 border-b pb-4">Document Uploads</h2>
+            <p className="text-slate-500 mb-6 text-sm font-medium">Please upload valid IDs and signatures for each proprietor. Max size: 4MB (JPEG/PNG).</p>
             
             <div className="space-y-8">
-              {proprietors.map((p, idx) => (
-                <div key={p.id} className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                  <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-3">
-                    <div className="h-8 w-8 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center font-bold">{idx + 1}</div>
-                    <h3 className="font-bold text-slate-900 text-lg">Documents for {p.firstName || "Proprietor"}</h3>
-                  </div>
-                  
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <FileUpload 
-                      label="NIN Card/Slip"
-                      value={p.documents.nin}
-                      onUploadSuccess={(url) => handleUpdateDoc(p.id, "nin", url)}
-                      onRemove={() => handleUpdateDoc(p.id, "nin", null)}
-                    />
-                    <FileUpload 
-                      label="Passport Photo"
-                      description="Clear face on white background"
-                      value={p.documents.passport}
-                      onUploadSuccess={(url) => handleUpdateDoc(p.id, "passport", url)}
-                      onRemove={() => handleUpdateDoc(p.id, "passport", null)}
-                    />
-                    <FileUpload 
-                      label="Signature"
-                      description="Signed on plain white paper"
-                      value={p.documents.signature}
-                      onUploadSuccess={(url) => handleUpdateDoc(p.id, "signature", url)}
-                      onRemove={() => handleUpdateDoc(p.id, "signature", null)}
-                    />
-                  </div>
+              <div className="space-y-2 max-w-md">
+                <Label className="font-bold text-slate-900">Select Proprietor to Upload For</Label>
+                <select 
+                  value={selectedDocProprietor} 
+                  onChange={e => setSelectedDocProprietor(e.target.value)} 
+                  className="flex h-14 w-full rounded-xl border-2 border-[#ff3f7a]/30 bg-[#ff3f7a]/5 px-4 font-bold text-slate-900 focus-visible:outline-none focus-visible:border-[#ff3f7a]"
+                >
+                  <option value="" disabled>-- Select a Proprietor --</option>
+                  {proprietors.map(p => <option key={p.id} value={p.id}>{p.surname} {p.firstName}</option>)}
+                </select>
+              </div>
+
+              {selectedDocProprietor ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
+                  <FileUpload 
+                    label="NIN Card/Slip"
+                    value={proprietors.find(p => p.id === selectedDocProprietor)?.documents.nin || null}
+                    onUploadSuccess={(url) => setProprietors(prev => prev.map(p => p.id === selectedDocProprietor ? { ...p, documents: { ...p.documents, nin: url } } : p))}
+                    onRemove={() => setProprietors(prev => prev.map(p => p.id === selectedDocProprietor ? { ...p, documents: { ...p.documents, nin: null } } : p))}
+                  />
+                  <FileUpload 
+                    label="Passport Photograph"
+                    value={proprietors.find(p => p.id === selectedDocProprietor)?.documents.passport || null}
+                    onUploadSuccess={(url) => setProprietors(prev => prev.map(p => p.id === selectedDocProprietor ? { ...p, documents: { ...p.documents, passport: url } } : p))}
+                    onRemove={() => setProprietors(prev => prev.map(p => p.id === selectedDocProprietor ? { ...p, documents: { ...p.documents, passport: null } } : p))}
+                  />
+                  <FileUpload 
+                    label="Signature"
+                    description="Signed on plain white paper"
+                    value={proprietors.find(p => p.id === selectedDocProprietor)?.documents.signature || null}
+                    onUploadSuccess={(url) => setProprietors(prev => prev.map(p => p.id === selectedDocProprietor ? { ...p, documents: { ...p.documents, signature: url } } : p))}
+                    onRemove={() => setProprietors(prev => prev.map(p => p.id === selectedDocProprietor ? { ...p, documents: { ...p.documents, signature: null } } : p))}
+                  />
                 </div>
-              ))}
+              ) : (
+                <div className="h-48 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center bg-slate-50 text-slate-400 font-bold">
+                  Select a proprietor above to reveal upload fields.
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* ========================================== */}
-        {/* STEP 4: PREVIEW                            */}
+        {/* STEP 4: PREVIEW & SUBMIT                   */}
         {/* ========================================== */}
         {currentStep === 4 && (
-          <div className="p-6 sm:p-8 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="p-8 animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-2xl font-black text-slate-900 mb-6 border-b pb-4">Preview & Submit</h2>
             
-            <div className="space-y-8">
+            <div className="space-y-8 bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner">
+              
               {/* Preview Company */}
-              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-2">
+              <div>
+                <div className="flex justify-between items-center mb-4">
                   <h3 className="font-black text-lg text-slate-800 uppercase tracking-widest">Company Details</h3>
                   <button onClick={() => setCurrentStep(1)} className="text-[#ff3f7a] font-bold text-sm flex items-center gap-1 hover:underline"><Pencil className="h-4 w-4"/> Edit</button>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4 text-sm bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                  <div className="col-span-2"><p className="text-slate-400 font-medium text-xs uppercase tracking-widest mb-1">Business Name</p><p className="font-bold text-slate-900">{draft.proposedName}</p></div>
-                  <div className="col-span-2"><p className="text-slate-400 font-medium text-xs uppercase tracking-widest mb-1">Nature</p><p className="font-bold text-slate-900">{draft.specificNature}</p></div>
-                  <div><p className="text-slate-400 font-medium text-xs uppercase tracking-widest mb-1">Email</p><p className="font-bold text-slate-900 truncate">{companyInfo.email}</p></div>
-                  <div><p className="text-slate-400 font-medium text-xs uppercase tracking-widest mb-1">State</p><p className="font-bold text-slate-900">{companyInfo.state}</p></div>
-                  <div className="col-span-2"><p className="text-slate-400 font-medium text-xs uppercase tracking-widest mb-1">Address</p><p className="font-bold text-slate-900">{companyInfo.address}</p></div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-white p-4 rounded-xl border border-slate-200">
+                  <div className="col-span-2"><p className="text-slate-400 font-medium">Business Name</p><p className="font-bold text-slate-900">{draft.proposedName}</p></div>
+                  <div className="col-span-2"><p className="text-slate-400 font-medium">Nature</p><p className="font-bold text-slate-900">{draft.specificNature}</p></div>
+                  <div><p className="text-slate-400 font-medium">Email</p><p className="font-bold text-slate-900">{companyInfo.email || "-"}</p></div>
+                  <div><p className="text-slate-400 font-medium">State</p><p className="font-bold text-slate-900">{companyInfo.state || "-"}</p></div>
+                  <div><p className="text-slate-400 font-medium">Address</p><p className="font-bold text-slate-900">{companyInfo.address || "-"}</p></div>
+                  <div><p className="text-slate-400 font-medium">Commencement</p><p className="font-bold text-slate-900">{companyInfo.commencementDate || "-"}</p></div>
                 </div>
               </div>
 
+              <div className="border-t border-slate-200"></div>
+
               {/* Preview Proprietors */}
-              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-2">
+              <div>
+                <div className="flex justify-between items-center mb-4">
                   <h3 className="font-black text-lg text-slate-800 uppercase tracking-widest">Proprietors ({proprietors.length})</h3>
                   <button onClick={() => setCurrentStep(2)} className="text-[#ff3f7a] font-bold text-sm flex items-center gap-1 hover:underline"><Pencil className="h-4 w-4"/> Edit</button>
                 </div>
                 {proprietors.map((p, idx) => (
-                  <div key={p.id} className="bg-white p-5 rounded-xl border border-slate-200 mb-4 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-[#ff3f7a]"></div>
-                    <p className="font-black text-slate-900 mb-4 text-lg">{idx + 1}. {p.surname} {p.firstName} {p.otherName}</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-4 text-sm">
-                      <div><p className="text-slate-400 font-medium text-xs uppercase tracking-widest mb-1">Phone</p><p className="font-bold text-slate-700">{p.phone}</p></div>
-                      <div><p className="text-slate-400 font-medium text-xs uppercase tracking-widest mb-1">Gender</p><p className="font-bold text-slate-700">{p.gender}</p></div>
-                      <div><p className="text-slate-400 font-medium text-xs uppercase tracking-widest mb-1">State / LGA</p><p className="font-bold text-slate-700">{p.state} / {p.lga}</p></div>
+                  <div key={p.id} className="bg-white p-4 rounded-xl border border-slate-200 mb-3 shadow-sm">
+                    <p className="font-black text-slate-900 mb-3">{idx + 1}. {p.surname} {p.firstName} {p.otherName}</p>
+                    <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
+                      <div><p className="text-slate-400 font-medium">Phone</p><p className="font-bold text-slate-700">{p.phone}</p></div>
+                      <div><p className="text-slate-400 font-medium">Gender</p><p className="font-bold text-slate-700">{p.gender}</p></div>
+                      <div><p className="text-slate-400 font-medium">State / LGA</p><p className="font-bold text-slate-700">{p.state} / {p.lga}</p></div>
                       <div>
-                        <p className="text-slate-400 font-medium text-xs uppercase tracking-widest mb-1">Documents Uploaded</p>
-                        <div className="flex gap-1.5 mt-1">
-                          <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black ${p.documents.nin ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-400 border border-red-100'}`}>NIN</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black ${p.documents.passport ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-400 border border-red-100'}`}>Photo</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black ${p.documents.signature ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-400 border border-red-100'}`}>Sign</span>
+                        <p className="text-slate-400 font-medium">Documents Uploaded</p>
+                        <div className="flex gap-2 mt-1">
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${p.documents.nin ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400'}`}>NIN</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${p.documents.passport ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400'}`}>Passport</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${p.documents.signature ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400'}`}>Signature</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+
             </div>
           </div>
         )}
 
         {/* --- GLOBAL BOTTOM NAVIGATION --- */}
-        <div className="fixed bottom-0 left-0 lg:left-72 right-0 bg-white border-t border-slate-200 p-4 sm:p-6 flex justify-between items-center z-40 shadow-[0_-10px_40px_rgb(0,0,0,0.05)]">
-          <Button variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} disabled={currentStep === 1 || isSubmitting} className="h-12 px-4 sm:px-6 font-bold text-slate-600 rounded-xl hover:bg-slate-100 border-2 transition-colors">
-            <ArrowLeft className="sm:mr-2 h-5 w-5" weight="bold" /> <span className="hidden sm:inline">Back</span>
+        <div className="bg-slate-50 border-t border-slate-200 p-6 flex justify-between items-center">
+          <Button 
+            variant="outline" 
+            onClick={() => setCurrentStep(prev => prev - 1)}
+            disabled={currentStep === 1 || isSubmitting}
+            className="h-12 px-6 font-bold text-slate-600 rounded-xl hover:bg-slate-200 transition-colors"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" weight="bold" /> Back
           </Button>
 
           {currentStep < 4 ? (
-             <Button onClick={validateStep} className="h-12 px-6 sm:px-10 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg transition-transform active:scale-95">
-               Next Step <ArrowRight className="ml-2 h-5 w-5" weight="bold" />
+             <Button 
+              onClick={handleNextStep}
+              className="h-12 px-8 bg-[#ff3f7a] hover:bg-[#e02b62] text-white font-bold rounded-xl shadow-lg shadow-[#ff3f7a]/30 transition-all"
+             >
+               Next Step <ArrowRight className="ml-2 h-4 w-4" weight="bold" />
              </Button>
           ) : (
-             <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="h-14 px-8 sm:px-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white font-black text-lg rounded-xl shadow-xl shadow-[#ff3f7a]/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed">
-               {isSubmitting ? <><CircleNotch className="animate-spin h-6 w-6 mr-2" weight="bold" /> Submitting...</> : "Submit to CAC"}
+             <Button 
+              onClick={handleFinalSubmit}
+              disabled={isSubmitting}
+              className="h-14 px-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg rounded-xl shadow-lg shadow-emerald-600/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+             >
+               {isSubmitting ? (
+                 <><CircleNotch className="animate-spin h-6 w-6 mr-2" weight="bold" /> Submitting...</>
+               ) : "Submit"}
              </Button>
           )}
         </div>
