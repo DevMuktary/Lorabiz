@@ -170,9 +170,9 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
                   style={{ height: 400, width: "100%" }}
                   initialAspectRatio={aspectRatio}
                   aspectRatio={aspectRatio}
-                  guides={true} // Shows the grid lines
+                  guides={true}
                   ref={cropperRef}
-                  viewMode={1} // Restricts crop box to not exceed the canvas
+                  viewMode={1}
                   dragMode="move"
                   background={false}
                 />
@@ -193,22 +193,26 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
 
       {/* --- MIDDLE OF SCREEN LIGHTBOX (View Document) --- */}
       {viewFullScale && (
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md">
-           <div className="relative w-full max-w-4xl flex flex-col items-center">
-              
-              <div className="w-full flex justify-end mb-4">
-                <button 
-                  onClick={() => setViewFullScale(null)} 
-                  className="flex items-center gap-2 text-white bg-white/20 hover:bg-red-500 px-4 py-2 rounded-full font-bold transition-colors"
-                >
-                  <X weight="bold" size={20} /> Close Preview
-                </button>
-              </div>
+        <div 
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          onClick={() => setViewFullScale(null)} // Click outside to close
+        >
+           {/* PINNED CLOSE BUTTON (Always visible at top right) */}
+           <button 
+             onClick={(e) => { e.stopPropagation(); setViewFullScale(null); }} 
+             className="absolute top-4 right-4 md:top-8 md:right-8 flex items-center gap-2 text-white bg-white/10 hover:bg-red-500 px-4 py-2 rounded-full font-bold transition-colors z-50 shadow-lg border border-white/20"
+           >
+             <X weight="bold" size={20} /> Close Preview
+           </button>
 
+           <div 
+             className="relative w-full max-w-4xl flex flex-col items-center"
+             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the image itself
+           >
               {viewFullScale.toLowerCase().endsWith('.pdf') ? (
                  <iframe src={viewFullScale} className="w-full h-[80vh] rounded-2xl bg-white shadow-2xl border-4 border-slate-800" />
               ) : (
-                 <img src={viewFullScale} alt="Full Scale Preview" className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border-4 border-slate-800 bg-black" />
+                 <img src={viewFullScale} alt="Full Scale Preview" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-4 border-slate-800 bg-black" />
               )}
            </div>
         </div>
