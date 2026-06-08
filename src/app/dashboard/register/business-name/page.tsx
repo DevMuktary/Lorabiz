@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   Storefront, CaretLeft, MagnifyingGlass, CheckCircle, 
   WarningCircle, XCircle, ArrowRight, User, Users, CaretDown, Check, Sparkle, PencilSimple
@@ -79,6 +80,7 @@ function SearchableDropdown({
 // MAIN PAGE COMPONENT
 // ==========================================
 export default function BusinessNameRegistration() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
 
   // Step 1 State: Form Inputs
@@ -94,6 +96,7 @@ export default function BusinessNameRegistration() {
   // UI States
   const [isSearching, setIsSearching] = useState(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false);
 
   // Modal State
   const [resultModal, setResultModal] = useState<{
@@ -161,6 +164,41 @@ export default function BusinessNameRegistration() {
   const handleAcceptName = () => {
     setResultModal({ ...resultModal, isOpen: false });
     setIsNameLocked(true);
+  };
+
+  const handleProceedToDetails = async () => {
+    if (!ownershipType) return;
+    setIsCreatingDraft(true);
+
+    try {
+      const res = await fetch("/api/register/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proposedName,
+          altName1,
+          altName2,
+          entityType: "Business Name",
+          ownershipType,
+          category: selectedCategory,
+          specificNature,
+          similarityScore: "0" // Pass the actual score if you stored it, else "0"
+        }),
+      });
+
+      const data = await res.json();
+      
+      if (data.success) {
+        // Redirect directly to the dynamic details page
+        router.push(`/dashboard/register/details/${data.draftId}`);
+      } else {
+        alert(data.message || "Failed to create draft.");
+        setIsCreatingDraft(false);
+      }
+    } catch (error) {
+      alert("Network error. Please try again.");
+      setIsCreatingDraft(false);
+    }
   };
 
   return (
@@ -301,8 +339,16 @@ export default function BusinessNameRegistration() {
 
           <div className="flex gap-4">
              <button onClick={() => setStep(1)} className="h-14 px-6 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">Back</button>
-             <button disabled={!ownershipType} onClick={() => setStep(3)} className="flex-1 h-14 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2">
-               Proceed to Details <ArrowRight className="h-5 w-5" weight="bold" />
+             <button 
+               disabled={!ownershipType || isCreatingDraft} 
+               onClick={handleProceedToDetails} 
+               className="flex-1 h-14 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
+             >
+               {isCreatingDraft ? (
+                 <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+               ) : (
+                 <>Proceed to Details <ArrowRight className="h-5 w-5" weight="bold" /></>
+               )}
              </button>
           </div>
         </div>
