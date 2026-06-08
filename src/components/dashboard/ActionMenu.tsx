@@ -15,16 +15,26 @@ interface ActionMenuProps {
 export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
+  const [mounted, setMounted] = useState(false);
+  
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Safety check for Next.js portals
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const toggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
     if (!isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      // Calculate position relative to the viewport
+      
+      // FIX: Removed window.scrollY because we are using 'fixed' positioning.
+      // Now it will perfectly attach to the bottom of the button no matter where you scroll.
       setCoords({
-        top: rect.bottom + window.scrollY + 4,
+        top: rect.bottom + 4,
         right: window.innerWidth - rect.right,
       });
     }
@@ -38,17 +48,21 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
       }
     };
     
-    // Close on scroll to prevent the menu from floating away from the row
-    const handleScroll = () => setIsOpen(false);
+    // Close on scroll so the fixed menu doesn't float away from the scrolling table
+    const handleScroll = () => {
+      if (isOpen) setIsOpen(false);
+    };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    window.addEventListener("scroll", handleScroll, true);
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      window.addEventListener("scroll", handleScroll, true);
+    }
     
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       window.removeEventListener("scroll", handleScroll, true);
     };
-  }, []);
+  }, [isOpen]);
 
   const handleAction = (action: string) => {
     setIsOpen(false);
@@ -135,8 +149,8 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
         <DotsThreeVertical className="h-6 w-6" weight="bold" />
       </button>
       
-      {/* Use Portal to render outside the table's overflow:hidden parent */}
-      {isOpen && typeof document !== "undefined" && createPortal(MenuContent, document.body)}
+      {/* FIX: Check mounted before rendering portal to prevent hydration crashes */}
+      {mounted && isOpen && document.body && createPortal(MenuContent, document.body)}
     </>
   );
 }
