@@ -11,7 +11,6 @@ export async function GET(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Next.js 15+ requires params to be awaited
     const { id } = await props.params;
     
     const session = await getServerSession(authOptions);
@@ -19,7 +18,7 @@ export async function GET(
 
     const registration = await prisma.businessRegistration.findUnique({
       where: { id },
-      include: { proprietors: true } // Pull existing proprietors if any
+      include: { proprietors: true } 
     });
 
     if (!registration) {
@@ -34,7 +33,7 @@ export async function GET(
 }
 
 // ==========================================
-// SAVE & VALIDATE REGISTRATION (DRAFT OR FINAL)
+// SAVE & VALIDATE REGISTRATION (DATA ONLY)
 // ==========================================
 export async function PUT(
   req: Request, 
@@ -49,27 +48,36 @@ export async function PUT(
     const body = await req.json();
     const { companyInfo, proprietors, isDraft } = body;
 
-    // --- STRICT BACKEND VALIDATION ON FINAL SUBMIT ---
+    // SECURITY CHECK: Ensure they actually own this registration before saving
+    const currentReg = await prisma.businessRegistration.findUnique({ where: { id } });
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    
+    if (!currentReg || !user || currentReg.userId !== user.id) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+    }
+
+    // SECURITY CHECK: Stop them from editing an already paid/submitted application
+    if (currentReg.status !== "UNSUBMITTED") {
+      return NextResponse.json({ message: "Cannot edit an application that has already been submitted or paid for." }, { status: 403 });
+    }
+
+    // --- STRICT BACKEND VALIDATION ON FINAL SYNC ---
     if (!isDraft) {
-      // 1. Validate Company Info
       if (!companyInfo.state || !companyInfo.address) {
         return NextResponse.json({ success: false, message: "Company State and Address are compulsory." }, { status: 400 });
       }
 
-      // 2. Validate Proprietor Counts based on Ownership Type
       if (!proprietors || proprietors.length === 0) {
          return NextResponse.json({ success: false, message: "At least one proprietor is required." }, { status: 400 });
       }
 
-      const currentReg = await prisma.businessRegistration.findUnique({ where: { id } });
-      if (currentReg?.ownershipType === "SOLE" && proprietors.length !== 1) {
+      if (currentReg.ownershipType === "SOLE" && proprietors.length !== 1) {
         return NextResponse.json({ success: false, message: "Sole Proprietorship requires exactly 1 proprietor." }, { status: 400 });
       }
-      if (currentReg?.ownershipType !== "SOLE" && proprietors.length < 2) {
+      if (currentReg.ownershipType !== "SOLE" && proprietors.length < 2) {
         return NextResponse.json({ success: false, message: "Partnerships require at least 2 proprietors." }, { status: 400 });
       }
 
-      // 3. Validate Individual Proprietor Data & Documents
       for (const p of proprietors) {
          if (!p.surname || !p.firstName || !p.phone || !p.state || !p.gender || !p.dob || !p.serviceAddress) {
            return NextResponse.json({ success: false, message: `Proprietor ${p.firstName || ''} is missing required fields.` }, { status: 400 });
@@ -81,6 +89,8 @@ export async function PUT(
     }
 
     // 1. Update the base registration with Company Info
+    // SECURITY FIX: We NO LONGER update the `status` field here. 
+    // Status can only be changed by the Payment Webhook or Payment Verify API.
     await prisma.businessRegistration.update({
       where: { id },
       data: {
@@ -90,12 +100,10 @@ export async function PUT(
         companyStreetNo: companyInfo.streetNo || null,
         companyAddress: companyInfo.address || null,
         commencementDate: companyInfo.commencementDate || null,
-        // If it's a draft, keep old status, otherwise mark PENDING
-        status: isDraft ? undefined : "PENDING" 
       }
     });
 
-    // 2. Sync Proprietors (Delete old ones and insert new ones to avoid complex diffing)
+    // 2. Sync Proprietors
     await prisma.proprietor.deleteMany({
       where: { registrationId: id }
     });
@@ -107,6 +115,7 @@ export async function PUT(
         firstName: p.firstName,
         otherName: p.otherName || null,
         email: p.email || null,
+        phoneCode: p.phoneCode || "+234",
         phone: p.phone,
         gender: p.gender, 
         dob: p.dob,
@@ -127,7 +136,7 @@ export async function PUT(
 
     return NextResponse.json({ 
       success: true, 
-      message: isDraft ? "Draft saved securely." : "Registration submitted successfully!" 
+      message: "Data saved securely." 
     });
   } catch (error) {
     console.error("Save Details Error:", error);
@@ -161,8 +170,8 @@ export async function DELETE(
       return NextResponse.json({ message: "Unauthorized action. You do not own this application." }, { status: 403 });
     }
 
-    // Prisma's "onDelete: Cascade" rule from our schema will automatically delete all 
-    // linked Proprietors and Documents attached to this registration when it is dropped.
+    // Prisma's "onDelete: Cascade" rule will automatically delete all 
+    // linked Proprietors and Documents attached to this registration.
     await prisma.businessRegistration.delete({
       where: { id }
     });
