@@ -11,18 +11,21 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    // Update: We must include the connected Wallet table now
+    // Fetch user and include their connected wallet
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: { wallet: true }
     });
 
-    // Update: Safely convert the Prisma Decimal to a standard Javascript Number
+    // Safely convert the Prisma Decimal to a standard Javascript Number
     const currentBalance = user?.wallet?.balance ? Number(user.wallet.balance) : 0;
 
+    // THE FIX: Return the balance wrapped in a 'wallet' object so the frontend can read data.wallet.balance
     return NextResponse.json({ 
       success: true, 
-      balance: currentBalance 
+      wallet: {
+        balance: currentBalance 
+      }
     });
 
   } catch (error) {
