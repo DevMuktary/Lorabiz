@@ -49,9 +49,8 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
   // Watch for Paystack Config to be ready, then trigger it automatically
   useEffect(() => {
     if (paystackConfig && processingState === "initializing") {
-      initializePayment(
-        // On Success (Frontend Verification)
-        async (reference: any) => {
+      initializePayment({
+        onSuccess: async (reference: any) => {
           setProcessingState("verifying");
           try {
             const verifyRes = await fetch("/api/payment/verify", {
@@ -73,12 +72,11 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
             setProcessingState("idle");
           }
         },
-        // On Close (User cancelled)
-        () => {
+        onClose: () => {
           setProcessingState("idle");
           setPaystackConfig(null);
         }
-      );
+      });
     }
   }, [paystackConfig, processingState, initializePayment, router]);
 
