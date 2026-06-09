@@ -1,10 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePaystackPayment } from "react-paystack";
 import { useRouter } from "next/navigation";
 import { X, Wallet, CreditCard, CircleNotch, CheckCircle } from "@phosphor-icons/react";
 
+// ==========================================
+// 1. SAFE PAYSTACK WRAPPER
+// Added `useRef` to prevent Next.js Strict Mode from double-firing 
+// and crashing the Paystack iframe in the background.
+// ==========================================
+const PaystackTrigger = ({ config, onSuccess, onClose }: any) => {
+  const initializePayment = usePaystackPayment(config);
+  const hasFired = useRef(false);
+
+  useEffect(() => {
+    // Only allow Paystack to initialize strictly ONE time
+    if (hasFired.current) return;
+    hasFired.current = true;
+
+    // Small timeout ensures the script is fully attached to the DOM before firing
+    const timer = setTimeout(() => {
+      // @ts-ignore
+      initializePayment(onSuccess, onClose);
+    }, 300);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null; 
+};
+
+// ==========================================
+// 2. MAIN MODAL COMPONENT
+// ==========================================
 interface PaymentModalProps {
   registrationId: string;
   proposedName: string;
@@ -20,53 +50,22 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
   
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
-  // We store the real config here once the backend generates the unique reference
   const [paystackConfig, setPaystackConfig] = useState<any>(null);
 
-  // ==========================================
-  // THE FIX: PRE-LOAD SCRIPT AT TOP LEVEL
-  // This forces Paystack's JS to download in the background 
-  // the moment the modal opens, killing the race condition.
-  // ==========================================
-  const initializePayment = usePaystackPayment(paystackConfig || {
-    publicKey: "pk_test_dummy", // Dummy key just to trigger the script download
-    email: "temp@example.com",
-    amount: 100,
-    reference: ""
-  });
-
-  // When the backend returns the real config, THIS effect automatically opens Paystack
-  useEffect(() => {
-    if (paystackConfig && processingState === "initializing") {
-      // A tiny 200ms delay ensures React has fully registered the new config state
-      const timer = setTimeout(() => {
-        try {
-          // @ts-ignore - Bypassing strict TypeScript argument error
-          initializePayment(handlePaystackSuccess, handlePaystackClose);
-        } catch (e) {
-          console.error("Paystack Error:", e);
-          setErrorMsg("Failed to open Paystack. Please check your internet connection.");
-          setProcessingState("idle");
-        }
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paystackConfig, processingState]);
-
-  // Fetch Wallet Balance on Mount
+  // Fetch Wallet Balance
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await fetch("/api/user/wallet");
         const data = await res.json();
-        if (data.success) {
+        if (data.success && data.wallet) {
           setWalletBalance(Number(data.wallet.balance));
           setServicePrice(20000); // Or fetch from ServicePricing table
+        } else {
+          setErrorMsg("Failed to load wallet details.");
         }
       } catch (err) {
-        setErrorMsg("Failed to load wallet details.");
+        setErrorMsg("Network error loading wallet.");
       } finally {
         setLoading(false);
       }
@@ -74,7 +73,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
     fetchData();
   }, []);
 
-  // Handle Intent Creation
+  // Handle Wallet or Online Intent Creation
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
     setProcessingState("initializing");
     setErrorMsg(null);
@@ -102,7 +101,6 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
           setProcessingState("idle");
           return;
         }
-        // Setting this triggers the useEffect above to instantly open Paystack
         setPaystackConfig(data.paystackData);
       }
     } catch (error) {
@@ -141,10 +139,25 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
     setPaystackConfig(null);
   };
 
+  // Escape Hatch: Let the user cancel if it hangs
+  const handleForceCancel = () => {
+    setProcessingState("idle");
+    setPaystackConfig(null);
+  };
+
   const isWalletInsufficient = walletBalance !== null && servicePrice !== null && walletBalance < servicePrice;
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+      
+      {paystackConfig && processingState === "initializing" && (
+        <PaystackTrigger 
+          config={paystackConfig} 
+          onSuccess={handlePaystackSuccess} 
+          onClose={handlePaystackClose} 
+        />
+      )}
+
       <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         
         {/* HEADER */}
@@ -157,7 +170,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
           )}
         </div>
 
-        {/* PROCESSING STATES ("The Big Round Stuff") */}
+        {/* PROCESSING STATES */}
         {processingState !== "idle" ? (
           <div className="p-10 flex flex-col items-center justify-center text-center h-[350px]">
             {processingState === "success" ? (
@@ -172,7 +185,17 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
                 <h3 className="font-black text-xl text-slate-900 mb-2">
                   {processingState === "initializing" ? "Initializing Gateway..." : "Securing Payment..."}
                 </h3>
-                <p className="text-slate-500 font-medium">Please do not close this window.</p>
+                <p className="text-slate-500 font-medium mb-6">Please do not close this window.</p>
+                
+                {/* ESCAPE HATCH ADDED HERE */}
+                {processingState === "initializing" && (
+                  <button 
+                    onClick={handleForceCancel}
+                    className="text-sm font-bold text-slate-400 hover:text-red-500 underline underline-offset-4 transition-colors"
+                  >
+                    Cancel / Go Back
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -187,13 +210,12 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
             </div>
 
             {errorMsg && (
-              <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-xl text-sm font-bold flex items-center mb-6">
+              <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-xl text-sm font-bold flex items-center mb-6">
                 <span className="mr-2">⚠️</span> {errorMsg}
               </div>
             )}
 
             <div className="space-y-4">
-              {/* Option 1: Pay with Wallet */}
               <button 
                 onClick={() => handlePayment("WALLET")}
                 disabled={loading || isWalletInsufficient}
@@ -214,7 +236,6 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
                 <p className="text-xs text-red-500 font-bold text-center px-4">Insufficient balance. Please fund your wallet or pay online.</p>
               )}
 
-              {/* Option 2: Pay Online (Paystack) */}
               <button 
                 onClick={() => handlePayment("ONLINE")}
                 disabled={loading}
