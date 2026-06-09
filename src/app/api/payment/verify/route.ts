@@ -34,11 +34,14 @@ export async function POST(req: Request) {
 
     const amountPaid = Number(paystackData.data.amount) / 100; // Convert Kobo back to Naira
 
+    // Store the email safely outside the callback so TypeScript remembers it is a string
+    const userEmail = session.user.email as string;
+
     // 2. ATOMIC TRANSACTION TO PREVENT RACE CONDITIONS
     await prisma.$transaction(async (tx) => {
-      // Find the user and wallet
+      // Find the user and wallet using the strictly typed email
       const user = await tx.user.findUnique({ 
-        where: { email: session.user!.email }, 
+        where: { email: userEmail }, 
         include: { wallet: true } 
       });
       if (!user || !user.wallet) throw new Error("User or wallet missing");
