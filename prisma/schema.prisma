@@ -71,17 +71,17 @@ model BusinessRegistration {
   id                String             @id @default(cuid())
   userId            String
   proposedName      String
-  altName1        String?
-  altName2        String?
-  ownershipType   String?
+  altName1          String?
+  altName2          String?
+  ownershipType     String?
   entityType        String             
   category          String             
   businessType      String?
   specificNature    String             
   status            RegistrationStatus @default(UNSUBMITTED) 
   similarityScore   String?
-
-  // --- NEW: COMPANY INFORMATION ---
+  
+  // --- COMPANY INFORMATION ---
   companyEmail      String?
   companyState      String?
   companyCity       String?
@@ -93,10 +93,9 @@ model BusinessRegistration {
   updatedAt         DateTime           @updatedAt
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  proprietors       Proprietor[]       // Relation to Proprietors
+  proprietors       Proprietor[]     
 }
 
-// --- NEW: PROPRIETOR MODEL ---
 model Proprietor {
   id              String   @id @default(cuid())
   registrationId  String
@@ -104,7 +103,11 @@ model Proprietor {
   firstName       String
   otherName       String?
   email           String?
+  
+  // --- ADDED PHONE CODE HERE ---
+  phoneCode       String   @default("+234") 
   phone           String
+  
   gender          Gender
   dob             String
   state           String
@@ -117,7 +120,7 @@ model Proprietor {
   ninUrl          String?
   passportUrl     String?
   signatureUrl    String?
-
+  
   registration    BusinessRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 }
 
@@ -156,6 +159,7 @@ model ServicePricing {
   
   updatedAt   DateTime @updatedAt
 }
+
 model Transaction {
   id            String            @id @default(cuid())
   walletId      String
