@@ -20,7 +20,6 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Safety check for Next.js portals
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -30,9 +29,6 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
     
     if (!isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      
-      // FIX: Removed window.scrollY because we are using 'fixed' positioning.
-      // Now it will perfectly attach to the bottom of the button no matter where you scroll.
       setCoords({
         top: rect.bottom + 4,
         right: window.innerWidth - rect.right,
@@ -48,7 +44,6 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
       }
     };
     
-    // Close on scroll so the fixed menu doesn't float away from the scrolling table
     const handleScroll = () => {
       if (isOpen) setIsOpen(false);
     };
@@ -64,7 +59,9 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
     };
   }, [isOpen]);
 
-  const handleAction = (action: string) => {
+  // Added e.stopPropagation() here to prevent conflicts with table row clicks
+  const handleAction = (e: React.MouseEvent, action: string) => {
+    e.stopPropagation(); 
     setIsOpen(false);
     onExecute(action, reg.id);
   };
@@ -77,10 +74,10 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
     >
         {reg.status === 'UNSUBMITTED' && (
           <>
-            <button onClick={() => handleAction("CONTINUE")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+            <button onClick={(e) => handleAction(e, "CONTINUE")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
               <Play className="h-4 w-4 text-[#ff3f7a]" weight="fill" /> Continue Draft
             </button>
-            <button onClick={() => handleAction("DELETE")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-3">
+            <button onClick={(e) => handleAction(e, "DELETE")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-3">
               <Trash className="h-4 w-4" weight="fill" /> Delete Draft
             </button>
           </>
@@ -88,10 +85,10 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
 
         {reg.status === 'PENDING' && (
           <>
-            <button onClick={() => handleAction("VIEW")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+            <button onClick={(e) => handleAction(e, "VIEW")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
               <Eye className="h-4 w-4 text-blue-500" weight="fill" /> View Application
             </button>
-            <button onClick={() => handleAction("DOWNLOAD_RECEIPT")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+            <button onClick={(e) => handleAction(e, "DOWNLOAD_RECEIPT")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
               <FileText className="h-4 w-4 text-slate-400" weight="fill" /> Download Receipt
             </button>
           </>
@@ -99,13 +96,13 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
 
         {reg.status === 'QUERIED' && (
           <>
-            <button onClick={() => handleAction("FIX_QUERIES")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-600 bg-red-50/50 hover:bg-red-50 flex items-center gap-3 border-l-2 border-red-500">
+            <button onClick={(e) => handleAction(e, "FIX_QUERIES")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-600 bg-red-50/50 hover:bg-red-50 flex items-center gap-3 border-l-2 border-red-500">
               <WarningCircle className="h-4 w-4" weight="fill" /> Resolve Query
             </button>
-            <button onClick={() => handleAction("VIEW_REASON")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+            <button onClick={(e) => handleAction(e, "VIEW_REASON")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
               <FileText className="h-4 w-4 text-amber-500" weight="fill" /> View Query Reason
             </button>
-            <button onClick={() => handleAction("VIEW")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+            <button onClick={(e) => handleAction(e, "VIEW")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
               <Eye className="h-4 w-4 text-blue-500" weight="fill" /> View Application
             </button>
           </>
@@ -114,24 +111,24 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
         {reg.status === 'APPROVED' && (
           <>
             <div className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 mb-1">Official Documents</div>
-            <button onClick={() => handleAction("DOWNLOAD_CERT")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+            <button onClick={(e) => handleAction(e, "DOWNLOAD_CERT")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3">
               <Archive className="h-4 w-4 text-emerald-500" weight="fill" /> CAC Certificate
             </button>
-            <button onClick={() => handleAction("DOWNLOAD_STATUS")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+            <button onClick={(e) => handleAction(e, "DOWNLOAD_STATUS")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
               <FileText className="h-4 w-4 text-slate-400" weight="fill" /> Status Report
             </button>
             {(reg.entityType.includes('LLC') || reg.entityType.includes('Limited')) && (
-              <button onClick={() => handleAction("DOWNLOAD_MEMART")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+              <button onClick={(e) => handleAction(e, "DOWNLOAD_MEMART")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
                 <FileText className="h-4 w-4 text-slate-400" weight="fill" /> Download MEMART
               </button>
             )}
             {reg.entityType.includes('NGO') && (
-              <button onClick={() => handleAction("DOWNLOAD_CONSTITUTION")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+              <button onClick={(e) => handleAction(e, "DOWNLOAD_CONSTITUTION")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3">
                 <FileText className="h-4 w-4 text-slate-400" weight="fill" /> Download Constitution
               </button>
             )}
             <div className="border-t border-slate-100 my-1"></div>
-            <button onClick={() => handleAction("VIEW_TIN")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-[#ff3f7a] hover:bg-[#ff3f7a]/5 flex items-center gap-3">
+            <button onClick={(e) => handleAction(e, "VIEW_TIN")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-[#ff3f7a] hover:bg-[#ff3f7a]/5 flex items-center gap-3">
               <IdentificationCard className="h-4 w-4" weight="fill" /> View JTB TIN
             </button>
           </>
@@ -149,7 +146,6 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
         <DotsThreeVertical className="h-6 w-6" weight="bold" />
       </button>
       
-      {/* FIX: Check mounted before rendering portal to prevent hydration crashes */}
       {mounted && isOpen && document.body && createPortal(MenuContent, document.body)}
     </>
   );
