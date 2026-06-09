@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { CircleNotch } from "@phosphor-icons/react";
+import { CircleNotch, CircleDashed } from "@phosphor-icons/react";
 import CompanyStep from "@/components/dashboard/register/biz-name/CompanyStep";
 import ProprietorStep from "@/components/dashboard/register/biz-name/ProprietorStep";
 import DocumentStep from "@/components/dashboard/register/biz-name/DocumentStep";
@@ -22,6 +22,9 @@ export default function RegistrationDetailsPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   
+  // NEW: State to lock the screen if someone else already submitted it
+  const [lockedStatus, setLockedStatus] = useState<string | null>(null);
+  
   const [toast, setToast] = useState<{show: boolean, msg: string, type: "error" | "success"}>({ show: false, msg: "", type: "success" });
   const showToast = (msg: string, type: "error" | "success" = "error") => {
     setToast({ show: true, msg, type });
@@ -34,7 +37,7 @@ export default function RegistrationDetailsPage() {
 
   // AUTO-SAVE LOGIC
   const saveDraftToDB = useCallback(async () => {
-    if (!id || loading) return;
+    if (!id || loading || lockedStatus) return; // Do not autosave if locked
     setSaveStatus("saving");
     try {
       const res = await fetch(`/api/register/details/${id}`, {
@@ -47,18 +50,27 @@ export default function RegistrationDetailsPage() {
     } catch {
       setSaveStatus("error");
     }
-  }, [id, companyInfo, proprietors, loading]);
+  }, [id, companyInfo, proprietors, loading, lockedStatus]);
 
   useEffect(() => {
     const timer = setTimeout(() => saveDraftToDB(), 2000);
     return () => clearTimeout(timer);
   }, [companyInfo, proprietors, saveDraftToDB]);
 
-  // INITIAL FETCH
+  // INITIAL FETCH & MULTI-TAB LOCKOUT CHECK
   useEffect(() => {
     if (!id) return;
     fetch(`/api/register/details/${id}`).then(res => res.json()).then(json => {
       if (json.success) {
+        
+        // LOCKOUT CHECK: If already submitted, lock the screen and boot them out
+        if (json.data.status !== "UNSUBMITTED") {
+          setLockedStatus(json.data.status);
+          setTimeout(() => router.push("/dashboard"), 3500);
+          setLoading(false);
+          return;
+        }
+
         setDraft(json.data);
         setCompanyInfo({
           email: json.data.companyEmail || "", state: json.data.companyState || "", city: json.data.companyCity || "", 
@@ -72,7 +84,7 @@ export default function RegistrationDetailsPage() {
       }
       setLoading(false);
     });
-  }, [id]);
+  }, [id, router]);
 
   // VALIDATION & PROGRESSION PIPELINE
   const handleNextStep = () => {
@@ -114,8 +126,6 @@ export default function RegistrationDetailsPage() {
   const handleOpenPayment = async () => {
     setIsSubmitting(true);
     try {
-      // Force a final sync to the database before opening the payment modal
-      // We save it as a draft here because the Payment Webhook/Verify will officially lock it in as SUBMITTED
       const res = await fetch(`/api/register/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -124,7 +134,7 @@ export default function RegistrationDetailsPage() {
       
       if (res.ok) {
         setSaveStatus("saved");
-        setShowPaymentModal(true); // Open the checkout modal
+        setShowPaymentModal(true); 
       } else {
         showToast("Failed to sync final details. Please try again.", "error");
       }
@@ -135,10 +145,27 @@ export default function RegistrationDetailsPage() {
     }
   };
 
+  // MULTI-TAB / ALREADY SUBMITTED LOCKOUT SCREEN
+  if (lockedStatus) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50/50">
+        <CircleDashed className="animate-spin h-28 w-28 text-[#ff3f7a] mb-8" weight="bold" />
+        <h2 className="text-3xl font-black text-slate-900 mb-3 text-center">Application Locked</h2>
+        <p className="text-slate-500 font-medium text-lg text-center max-w-md">
+          This application is already submitted and is currently in <span className="font-bold text-[#ff3f7a]">{lockedStatus}</span> status.
+        </p>
+        <p className="text-sm font-bold tracking-widest uppercase text-slate-400 mt-8 animate-pulse">
+          Redirecting to Dashboard...
+        </p>
+      </div>
+    );
+  }
+
+  // BIG ZIGZAG LOADER FOR INITIAL PAGE LOAD
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <CircleNotch className="animate-spin h-10 w-10 text-[#ff3f7a]" weight="bold" />
+        <CircleDashed className="animate-spin h-28 w-28 text-[#ff3f7a]" weight="bold" />
       </div>
     );
   }
@@ -200,7 +227,6 @@ export default function RegistrationDetailsPage() {
         </div>
       </div>
 
-      {/* --- PAYMENT MODAL POPUP --- */}
       {showPaymentModal && (
         <PaymentModal 
           registrationId={id} 
