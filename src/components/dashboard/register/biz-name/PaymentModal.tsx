@@ -5,26 +5,6 @@ import { usePaystackPayment } from "react-paystack";
 import { useRouter } from "next/navigation";
 import { X, Wallet, CreditCard, CircleNotch, CheckCircle } from "@phosphor-icons/react";
 
-// ==========================================
-// 1. SAFE PAYSTACK WRAPPER
-// This prevents the "Page Couldn't Load" crash by ensuring 
-// Paystack only initializes when real data exists.
-// ==========================================
-const PaystackTrigger = ({ config, onSuccess, onClose }: any) => {
-  const initializePayment = usePaystackPayment(config);
-
-  useEffect(() => {
-    // @ts-ignore - react-paystack types incorrectly expect 1 argument, but the JS function requires both onSuccess and onClose.
-    initializePayment(onSuccess, onClose);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return null; // This component is invisible
-};
-
-// ==========================================
-// 2. MAIN MODAL COMPONENT
-// ==========================================
 interface PaymentModalProps {
   registrationId: string;
   proposedName: string;
@@ -40,9 +20,42 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
   
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  // We store the real config here once the backend generates the unique reference
   const [paystackConfig, setPaystackConfig] = useState<any>(null);
 
-  // Fetch Wallet Balance
+  // ==========================================
+  // THE FIX: PRE-LOAD SCRIPT AT TOP LEVEL
+  // This forces Paystack's JS to download in the background 
+  // the moment the modal opens, killing the race condition.
+  // ==========================================
+  const initializePayment = usePaystackPayment(paystackConfig || {
+    publicKey: "pk_test_dummy", // Dummy key just to trigger the script download
+    email: "temp@example.com",
+    amount: 100,
+    reference: ""
+  });
+
+  // When the backend returns the real config, THIS effect automatically opens Paystack
+  useEffect(() => {
+    if (paystackConfig && processingState === "initializing") {
+      // A tiny 200ms delay ensures React has fully registered the new config state
+      const timer = setTimeout(() => {
+        try {
+          // @ts-ignore - Bypassing strict TypeScript argument error
+          initializePayment(handlePaystackSuccess, handlePaystackClose);
+        } catch (e) {
+          console.error("Paystack Error:", e);
+          setErrorMsg("Failed to open Paystack. Please check your internet connection.");
+          setProcessingState("idle");
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paystackConfig, processingState]);
+
+  // Fetch Wallet Balance on Mount
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -61,7 +74,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
     fetchData();
   }, []);
 
-  // Handle Wallet or Online Intent Creation
+  // Handle Intent Creation
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
     setProcessingState("initializing");
     setErrorMsg(null);
@@ -84,13 +97,12 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
         setProcessingState("success");
         setTimeout(() => router.push("/dashboard?success=true"), 2500);
       } else if (method === "ONLINE") {
-        // SECURITY CHECK: Ensure environment variables are actually working
         if (!data.paystackData.publicKey) {
           setErrorMsg("Server error: Paystack Public Key is missing. Check .env file.");
           setProcessingState("idle");
           return;
         }
-        // Save config. This will trigger the <PaystackTrigger /> component below
+        // Setting this triggers the useEffect above to instantly open Paystack
         setPaystackConfig(data.paystackData);
       }
     } catch (error) {
@@ -133,16 +145,6 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-      
-      {/* INVISIBLE TRIGGER: Only mounts when paystackConfig has the real public key */}
-      {paystackConfig && processingState === "initializing" && (
-        <PaystackTrigger 
-          config={paystackConfig} 
-          onSuccess={handlePaystackSuccess} 
-          onClose={handlePaystackClose} 
-        />
-      )}
-
       <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         
         {/* HEADER */}
