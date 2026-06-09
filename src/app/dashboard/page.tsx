@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import DashboardMetrics from "@/components/dashboard/DashboardMetrics";
 import RegistrationsTable from "@/components/dashboard/RegistrationsTable";
 import FundWalletModal from "@/components/dashboard/FundWalletModal";
+import ReceiptModal from "@/components/dashboard/ReceiptModal";
 
 export default function DashboardOverview() {
   const router = useRouter();
@@ -16,6 +17,9 @@ export default function DashboardOverview() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
+  
+  // Receipt State
+  const [receiptData, setReceiptData] = useState<{show: boolean, reference: string, businessName: string, date: string, amount: number} | null>(null);
   
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -40,15 +44,61 @@ export default function DashboardOverview() {
     return () => clearTimeout(timeout);
   }, [page, search, statusFilter, typeFilter]);
 
-  const handleActionMenuExecute = (actionType: string, id: string) => {
+  const handleActionMenuExecute = async (actionType: string, id: string) => {
+    // Find the exact registration from the loaded data to pass to the receipt
+    // Checking both common structures (data.data or data.registrations) depending on your API
+    const targetReg = data?.data?.find((r: any) => r.id === id) || data?.registrations?.find((r: any) => r.id === id);
+
     switch (actionType) {
-      case "CONTINUE": router.push(`/dashboard/register/details/${id}`); break;
-      case "VIEW": router.push(`/dashboard/businesses/${id}`); break;
-      case "FIX_QUERIES": router.push(`/dashboard/businesses/${id}/queries`); break;
-      case "DOWNLOAD_CERT": alert("Trigger Cloudinary secure URL fetch"); break;
-      case "VIEW_TIN": alert("Open TIN Viewer Modal"); break;
+      case "CONTINUE": 
+        router.push(`/dashboard/register/details/${id}`); 
+        break;
+      
+      case "VIEW": 
+        // Routed to the new View Only page we will build next
+        router.push(`/dashboard/register/view/${id}`); 
+        break;
+      
+      case "DOWNLOAD_RECEIPT":
+        if (targetReg) {
+          setReceiptData({
+            show: true,
+            reference: `SRV_${id.substring(0, 8).toUpperCase()}`, // Simulated Reference
+            businessName: targetReg.proposedName || "Business Name Registration",
+            date: new Date(targetReg.updatedAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }),
+            amount: 20000 
+          });
+        }
+        break;
+
+      case "FIX_QUERIES": 
+        router.push(`/dashboard/businesses/${id}/queries`); 
+        break;
+      case "DOWNLOAD_CERT": 
+        alert("Trigger Cloudinary secure URL fetch"); 
+        break;
+      case "VIEW_TIN": 
+        alert("Open TIN Viewer Modal"); 
+        break;
+      
       case "DELETE":
-        if (confirm("Permanently delete this draft?")) fetchDashboardData();
+        if (confirm("Are you sure you want to permanently delete this draft? This cannot be undone.")) {
+          // BUG FIX: The actual API call is here now
+          try {
+            const res = await fetch(`/api/register/details/${id}`, {
+              method: "DELETE"
+            });
+            const json = await res.json();
+            
+            if (json.success) {
+              fetchDashboardData(); // Refresh the table automatically
+            } else {
+              alert(json.message || "Failed to delete application.");
+            }
+          } catch (error) {
+            alert("Network error while deleting.");
+          }
+        }
         break;
     }
   };
@@ -111,6 +161,17 @@ export default function DashboardOverview() {
         onClose={() => setIsFundModalOpen(false)} 
         onSuccessOptimistic={handleWalletSuccess} 
       />
+
+      {/* RECEIPT MODAL INTEGRATION */}
+      {receiptData?.show && (
+        <ReceiptModal 
+          businessName={receiptData.businessName}
+          reference={receiptData.reference}
+          date={receiptData.date}
+          amount={receiptData.amount}
+          onClose={() => setReceiptData(null)}
+        />
+      )}
     </div>
   );
 }
