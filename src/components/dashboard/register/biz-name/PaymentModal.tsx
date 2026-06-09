@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Script from "next/script"; // Use Next.js native script loader
-import { X, Wallet, CreditCard, CircleNotch, CheckCircle } from "@phosphor-icons/react";
+import Script from "next/script";
+import { X, Wallet, CreditCard, CircleDashed, CheckCircle } from "@phosphor-icons/react";
 
 interface PaymentModalProps {
   registrationId: string;
@@ -21,7 +21,9 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Fetch Wallet Balance
+  // Used to stop polling when component unmounts
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -29,7 +31,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
         const data = await res.json();
         if (data.success && data.wallet) {
           setWalletBalance(Number(data.wallet.balance));
-          setServicePrice(20000); // Or fetch from ServicePricing table
+          setServicePrice(20000); 
         } else {
           setErrorMsg("Failed to load wallet details.");
         }
@@ -40,38 +42,47 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
       }
     };
     fetchData();
+
+    return () => {
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    };
   }, []);
 
-  // Called when Paystack returns success
-  const handlePaystackSuccess = async (reference: string) => {
+  // =================================================================
+  // FRONTEND IS NOW A DUMB WATCHER: We rely entirely on the Webhook.
+  // We just poll our own database every 2 seconds to see if the status changed.
+  // =================================================================
+  const startWebhookPolling = () => {
     setProcessingState("verifying");
-    try {
-      const verifyRes = await fetch("/api/payment/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference })
-      });
-      const verifyData = await verifyRes.json();
-      
-      if (verifyData.success) {
-        setProcessingState("success");
-        setTimeout(() => router.push("/dashboard?success=true"), 2500);
-      } else {
-        setErrorMsg(verifyData.message || "Verification failed. Contact support.");
-        setProcessingState("idle");
+    
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/register/details/${registrationId}`);
+        const json = await res.json();
+        
+        // If the Webhook successfully processed the payment, the status will no longer be UNSUBMITTED
+        if (json.success && json.data.status !== "UNSUBMITTED") {
+          if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+          setProcessingState("success");
+          setTimeout(() => router.push("/dashboard?success=true"), 2500);
+        }
+      } catch (e) {
+        // Silent catch: ignore network errors while polling
       }
-    } catch (e) {
-      setErrorMsg("Network error during verification.");
-      setProcessingState("idle");
-    }
+    }, 2000);
+
+    // Escape hatch: If webhook takes longer than 30 seconds, tell user to check dashboard later
+    setTimeout(() => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        if (processingState !== "success") {
+          setErrorMsg("Payment received, but confirmation is taking longer than usual. Please check your dashboard in a few minutes.");
+          setProcessingState("idle");
+        }
+      }
+    }, 30000);
   };
 
-  // Called when user clicks "Cancel" inside the Paystack modal
-  const handlePaystackClose = () => {
-    setProcessingState("idle");
-  };
-
-  // Handle Wallet or Online Intent Creation
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
     setProcessingState("initializing");
     setErrorMsg(null);
@@ -100,23 +111,22 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
           return;
         }
 
-        // --- DIRECT VANILLA PAYSTACK TRIGGER ---
         try {
           const handler = (window as any).PaystackPop.setup({
             key: data.paystackData.publicKey,
             email: data.paystackData.email,
             amount: data.paystackData.amount,
             ref: data.paystackData.reference,
-            callback: function (response: any) {
-              handlePaystackSuccess(response.reference);
+            callback: function () {
+              // Paystack closed with success. Start polling for Webhook confirmation.
+              startWebhookPolling();
             },
             onClose: function () {
-              handlePaystackClose();
+              setProcessingState("idle");
             },
           });
           handler.openIframe();
         } catch (err) {
-          console.error("Paystack Object Error:", err);
           setErrorMsg("Payment gateway is still loading. Please wait a second and click again.");
           setProcessingState("idle");
         }
@@ -132,11 +142,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
       
-      {/* NATIVE NEXT.JS SCRIPT INJECTION */}
-      <Script 
-        src="https://js.paystack.co/v1/inline.js" 
-        strategy="lazyOnload" 
-      />
+      <Script src="https://js.paystack.co/v1/inline.js" strategy="lazyOnload" />
 
       <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         
@@ -150,22 +156,23 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
           )}
         </div>
 
-        {/* PROCESSING STATES */}
+        {/* PROCESSING STATES (UPDATED TO DASHBOARD ZIGZAG LOADER) */}
         {processingState !== "idle" ? (
           <div className="p-10 flex flex-col items-center justify-center text-center h-[350px]">
             {processingState === "success" ? (
               <div className="animate-in zoom-in duration-500 flex flex-col items-center">
-                <CheckCircle className="h-24 w-24 text-emerald-500 mb-6 drop-shadow-lg" weight="fill" />
+                <CheckCircle className="h-28 w-28 text-emerald-500 mb-6 drop-shadow-lg" weight="fill" />
                 <h3 className="font-black text-2xl text-slate-900 mb-2">Application Submitted!</h3>
                 <p className="text-slate-500 font-medium">Payment secured. Redirecting to your dashboard...</p>
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <CircleNotch className="animate-spin h-20 w-20 text-[#ff3f7a] mb-6" weight="bold" />
+                {/* BIG ZIGZAG LOADER */}
+                <CircleDashed className="animate-spin h-28 w-28 text-[#ff3f7a] mb-8" weight="bold" />
                 <h3 className="font-black text-xl text-slate-900 mb-2">
-                  {processingState === "initializing" ? "Initializing Gateway..." : "Securing Payment..."}
+                  {processingState === "initializing" ? "Initializing Gateway..." : "Verifying with Bank..."}
                 </h3>
-                <p className="text-slate-500 font-medium mb-6">Please do not close this window.</p>
+                <p className="text-slate-500 font-medium mb-6 text-sm">Please do not close this window.</p>
                 
                 {processingState === "initializing" && (
                   <button 
