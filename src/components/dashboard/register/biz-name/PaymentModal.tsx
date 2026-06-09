@@ -14,7 +14,7 @@ const PaystackTrigger = ({ config, onSuccess, onClose }: any) => {
   const initializePayment = usePaystackPayment(config);
 
   useEffect(() => {
-    // Automatically open the Paystack modal the moment this wrapper mounts
+    // @ts-ignore - react-paystack types incorrectly expect 1 argument, but the JS function requires both onSuccess and onClose.
     initializePayment(onSuccess, onClose);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
