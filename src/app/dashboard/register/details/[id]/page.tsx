@@ -8,6 +8,7 @@ import CompanyStep from "@/components/dashboard/register/biz-name/CompanyStep";
 import ProprietorStep from "@/components/dashboard/register/biz-name/ProprietorStep";
 import DocumentStep from "@/components/dashboard/register/biz-name/DocumentStep";
 import PreviewStep from "@/components/dashboard/register/biz-name/PreviewStep";
+import PaymentModal from "@/components/dashboard/register/biz-name/PaymentModal";
 import { CompanyInfo, Proprietor, isValidEmail, isValidPhone, calculateAge } from "@/components/dashboard/register/biz-name/schema";
 
 export default function RegistrationDetailsPage() {
@@ -19,6 +20,7 @@ export default function RegistrationDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   
   const [toast, setToast] = useState<{show: boolean, msg: string, type: "error" | "success"}>({ show: false, msg: "", type: "success" });
   const showToast = (msg: string, type: "error" | "success" = "error") => {
@@ -109,24 +111,30 @@ export default function RegistrationDetailsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleFinalSubmit = async () => {
+  const handleOpenPayment = async () => {
     setIsSubmitting(true);
     try {
+      // Force a final sync to the database before opening the payment modal
+      // We save it as a draft here because the Payment Webhook/Verify will officially lock it in as SUBMITTED
       const res = await fetch(`/api/register/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyInfo, proprietors, isDraft: false }) 
+        body: JSON.stringify({ companyInfo, proprietors, isDraft: true }) 
       });
-      const data = await res.json();
-      if (data.success) router.push("/dashboard?success=true");
-      else { showToast(data.message || "Failed to submit.", "error"); setIsSubmitting(false); }
+      
+      if (res.ok) {
+        setSaveStatus("saved");
+        setShowPaymentModal(true); // Open the checkout modal
+      } else {
+        showToast("Failed to sync final details. Please try again.", "error");
+      }
     } catch {
       showToast("Network error. Please check your connection.", "error");
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  // RESTORED THE SPINNING LOADER HERE
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -181,12 +189,25 @@ export default function RegistrationDetailsPage() {
                Continue
              </Button>
           ) : (
-             <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center">
-               {isSubmitting ? <><CircleNotch className="animate-spin h-5 w-5 mr-2" weight="bold" /> Submitting...</> : "Submit Application"}
+             <Button 
+                onClick={handleOpenPayment} 
+                disabled={isSubmitting} 
+                className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center"
+              >
+               {isSubmitting ? <><CircleNotch className="animate-spin h-5 w-5 mr-2" weight="bold" /> Loading...</> : "Checkout & Submit"}
              </Button>
           )}
         </div>
       </div>
+
+      {/* --- PAYMENT MODAL POPUP --- */}
+      {showPaymentModal && (
+        <PaymentModal 
+          registrationId={id} 
+          proposedName={draft.proposedName} 
+          onClose={() => setShowPaymentModal(false)} 
+        />
+      )}
     </div>
   );
 }
