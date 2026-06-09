@@ -4,8 +4,27 @@ import { useState, useEffect } from "react";
 import { usePaystackPayment } from "react-paystack";
 import { useRouter } from "next/navigation";
 import { X, Wallet, CreditCard, CircleNotch, CheckCircle } from "@phosphor-icons/react";
-import { Button } from "@/components/ui/button";
 
+// ==========================================
+// 1. SAFE PAYSTACK WRAPPER
+// This prevents the "Page Couldn't Load" crash by ensuring 
+// Paystack only initializes when real data exists.
+// ==========================================
+const PaystackTrigger = ({ config, onSuccess, onClose }: any) => {
+  const initializePayment = usePaystackPayment(config);
+
+  useEffect(() => {
+    // Automatically open the Paystack modal the moment this wrapper mounts
+    initializePayment(onSuccess, onClose);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null; // This component is invisible
+};
+
+// ==========================================
+// 2. MAIN MODAL COMPONENT
+// ==========================================
 interface PaymentModalProps {
   registrationId: string;
   proposedName: string;
@@ -19,15 +38,11 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
   const [servicePrice, setServicePrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // States for the "Big Round Stuff"
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Paystack config state
   const [paystackConfig, setPaystackConfig] = useState<any>(null);
-  const initializePayment = usePaystackPayment(paystackConfig || { publicKey: "", email: "", amount: 0, reference: "" });
 
-  // Fetch Wallet Balance and Price on Mount
+  // Fetch Wallet Balance
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -35,7 +50,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
         const data = await res.json();
         if (data.success) {
           setWalletBalance(Number(data.wallet.balance));
-          setServicePrice(20000); // HARDCODED for now, or fetch from your ServicePricing DB table
+          setServicePrice(20000); // Or fetch from ServicePricing table
         }
       } catch (err) {
         setErrorMsg("Failed to load wallet details.");
@@ -46,40 +61,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
     fetchData();
   }, []);
 
-  // Watch for Paystack Config to be ready, then trigger it automatically
-  useEffect(() => {
-    if (paystackConfig && processingState === "initializing") {
-      initializePayment({
-        onSuccess: async (reference: any) => {
-          setProcessingState("verifying");
-          try {
-            const verifyRes = await fetch("/api/payment/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ reference: reference.reference })
-            });
-            const verifyData = await verifyRes.json();
-            
-            if (verifyData.success) {
-              setProcessingState("success");
-              setTimeout(() => router.push("/dashboard?success=true"), 2500);
-            } else {
-              setErrorMsg(verifyData.message || "Verification failed. Please contact support.");
-              setProcessingState("idle");
-            }
-          } catch (e) {
-            setErrorMsg("Network error during verification.");
-            setProcessingState("idle");
-          }
-        },
-        onClose: () => {
-          setProcessingState("idle");
-          setPaystackConfig(null);
-        }
-      });
-    }
-  }, [paystackConfig, processingState, initializePayment, router]);
-
+  // Handle Wallet or Online Intent Creation
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
     setProcessingState("initializing");
     setErrorMsg(null);
@@ -102,6 +84,13 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
         setProcessingState("success");
         setTimeout(() => router.push("/dashboard?success=true"), 2500);
       } else if (method === "ONLINE") {
+        // SECURITY CHECK: Ensure environment variables are actually working
+        if (!data.paystackData.publicKey) {
+          setErrorMsg("Server error: Paystack Public Key is missing. Check .env file.");
+          setProcessingState("idle");
+          return;
+        }
+        // Save config. This will trigger the <PaystackTrigger /> component below
         setPaystackConfig(data.paystackData);
       }
     } catch (error) {
@@ -110,10 +99,50 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
     }
   };
 
+  // Called when Paystack returns success
+  const handlePaystackSuccess = async (referenceObj: any) => {
+    setProcessingState("verifying");
+    try {
+      const verifyRes = await fetch("/api/payment/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference: referenceObj.reference })
+      });
+      const verifyData = await verifyRes.json();
+      
+      if (verifyData.success) {
+        setProcessingState("success");
+        setTimeout(() => router.push("/dashboard?success=true"), 2500);
+      } else {
+        setErrorMsg(verifyData.message || "Verification failed. Contact support.");
+        setProcessingState("idle");
+      }
+    } catch (e) {
+      setErrorMsg("Network error during verification.");
+      setProcessingState("idle");
+    }
+  };
+
+  // Called when user clicks "Cancel" inside the Paystack modal
+  const handlePaystackClose = () => {
+    setProcessingState("idle");
+    setPaystackConfig(null);
+  };
+
   const isWalletInsufficient = walletBalance !== null && servicePrice !== null && walletBalance < servicePrice;
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+      
+      {/* INVISIBLE TRIGGER: Only mounts when paystackConfig has the real public key */}
+      {paystackConfig && processingState === "initializing" && (
+        <PaystackTrigger 
+          config={paystackConfig} 
+          onSuccess={handlePaystackSuccess} 
+          onClose={handlePaystackClose} 
+        />
+      )}
+
       <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         
         {/* HEADER */}
