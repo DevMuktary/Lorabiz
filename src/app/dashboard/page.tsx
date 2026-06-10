@@ -29,26 +29,22 @@ export default function DashboardOverview() {
   // --- MODAL STATES ---
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
   
-  // Receipt State holding dynamic serviceName and amount
   const [receiptData, setReceiptData] = useState<{show: boolean, reference: string, businessName: string, serviceName: string, date: string, amount: number} | null>(null);
   
-  // Custom Branded Delete Modal State
   const [deleteData, setDeleteData] = useState<{ isOpen: boolean; targetId: string | null; isDeleting: boolean }>({ 
     isOpen: false, targetId: null, isDeleting: false 
   });
 
-  // --- PROFESSIONAL TOAST SYSTEM ---
   const [toast, setToast] = useState<{show: boolean, msg: string, type: "error" | "success"}>({ show: false, msg: "", type: "success" });
   const showToast = useCallback((msg: string, type: "error" | "success" = "success") => {
     setToast({ show: true, msg, type });
     setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 4000);
   }, []);
 
-  // --- DATA FETCHING ---
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const query = new URLSearchParams({ page: page.toString(), search, status: statusFilter, type: typeFilter });
+      const query = newSearchParams({ page: page.toString(), search, status: statusFilter, type: typeFilter });
       const res = await fetch(`/api/dashboard?${query.toString()}`);
       if (res.ok) setData(await res.json());
     } catch (err) {
@@ -65,9 +61,16 @@ export default function DashboardOverview() {
 
   // --- ROUTING & ACTIONS ---
   const handleActionMenuExecute = (actionType: string, id: string, rowData?: any) => {
-    // Fallback search just in case rowData isn't passed from the menu
-    const list = Array.isArray(data) ? data : (data?.data || data?.registrations || data?.items || []);
-    const targetReg = rowData || list.find((r: any) => r.id === id);
+    // THE FIX: Safely find the arrays from the raw database response
+    let list: any[] = [];
+    if (Array.isArray(data)) list = data;
+    else if (Array.isArray(data?.data)) list = data.data;
+    else if (Array.isArray(data?.registrations)) list = data.registrations;
+    else if (Array.isArray(data?.items)) list = data.items;
+
+    // THE FIX: Force the dashboard to grab the FULL object from the list first. 
+    // We only use rowData as an absolute last resort.
+    const targetReg = list.find((r: any) => r.id === id) || rowData || {};
 
     switch (actionType) {
       case "CONTINUE": 
@@ -79,21 +82,28 @@ export default function DashboardOverview() {
         break;
       
       case "DOWNLOAD_RECEIPT":
-        // DYNAMIC PRICING ENGINE
-        const entity = targetReg?.entityType || "Business Name";
-        let calcAmount = 20000; // Default fallback
+        const entity = targetReg?.entityType || targetReg?.type || "Business Name";
+        
+        let calcAmount = 20000; 
         if (entity.includes("LLC") || entity.includes("Limited")) calcAmount = 50000;
         else if (entity.includes("NGO") || entity.includes("Incorporated")) calcAmount = 60000;
+
+        // Smart Extraction: Checks if your DB already has the amount paid saved, otherwise calculates it
+        const actualAmountPaid = targetReg?.amount || targetReg?.amountPaid || targetReg?.fee || targetReg?.transaction?.amount || calcAmount;
+
+        // Smart Extraction: Checks all possible naming conventions for the business name
+        const realName = targetReg?.proposedName || targetReg?.entityName || targetReg?.companyName || "Business Entity";
+
+        // Smart Extraction: Grabs the exact date it was submitted/updated
+        const realDate = targetReg?.updatedAt || targetReg?.createdAt || new Date().toISOString();
 
         setReceiptData({
           show: true,
           reference: `SRV_${id.substring(0, 8).toUpperCase()}`,
-          businessName: targetReg?.proposedName || targetReg?.entityName || "Business Entity",
-          serviceName: entity, // Passing real service name
-          date: targetReg?.updatedAt 
-            ? new Date(targetReg.updatedAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) 
-            : new Date().toLocaleDateString('en-NG'),
-          amount: calcAmount // Passing calculated dynamic amount
+          businessName: realName,
+          serviceName: entity,
+          date: new Date(realDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }),
+          amount: Number(actualAmountPaid) // Pushing the 100% accurate amount to the PDF
         });
         break;
 
@@ -115,7 +125,6 @@ export default function DashboardOverview() {
     }
   };
 
-  // --- SECURE DELETION HANDLER ---
   const executeDelete = async () => {
     if (!deleteData.targetId) return;
     
@@ -153,7 +162,6 @@ export default function DashboardOverview() {
   return (
     <div className="pb-12 max-w-full overflow-x-hidden relative">
       
-      {/* PROFESSIONAL TOAST NOTIFICATION */}
       {toast.show && (
         <div className={`fixed bottom-10 right-4 z-[99999] animate-in slide-in-from-right flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-bold ${toast.type === "error" ? "bg-red-600" : "bg-slate-900"}`}>
           {toast.type === "error" ? <WarningCircle weight="bold" size={20} /> : <CircleNotch weight="bold" size={20} className="text-emerald-400" />}
@@ -161,7 +169,6 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 mt-2">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -203,8 +210,6 @@ export default function DashboardOverview() {
         onExecuteAction={handleActionMenuExecute}
       />
 
-      {/* --- ALL MODALS DOWN HERE --- */}
-
       <FundWalletModal 
         isOpen={isFundModalOpen} 
         onClose={() => setIsFundModalOpen(false)} 
@@ -222,7 +227,6 @@ export default function DashboardOverview() {
         />
       )}
 
-      {/* BRANDED DELETE CONFIRMATION MODAL */}
       {deleteData.isOpen && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
