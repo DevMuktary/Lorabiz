@@ -8,8 +8,10 @@ import {
 } from "@phosphor-icons/react";
 
 interface ActionMenuProps {
-  reg: { id: string; status: string; entityType: string; };
-  onExecute: (action: string, id: string) => void;
+  // 1. Updated to accept the full row object instead of just 3 fields
+  reg: any; 
+  // 2. Updated to pass the rowData back to the parent dashboard
+  onExecute: (action: string, id: string, rowData: any) => void; 
 }
 
 export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
@@ -59,11 +61,11 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
     };
   }, [isOpen]);
 
-  // Added e.stopPropagation() here to prevent conflicts with table row clicks
   const handleAction = (e: React.MouseEvent, action: string) => {
     e.stopPropagation(); 
     setIsOpen(false);
-    onExecute(action, reg.id);
+    // 3. We now pass the full `reg` data back to the dashboard!
+    onExecute(action, reg.id, reg); 
   };
 
   const MenuContent = (
