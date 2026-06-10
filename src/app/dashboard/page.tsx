@@ -16,26 +16,20 @@ import ReceiptModal from "@/components/dashboard/ReceiptModal";
 export default function DashboardOverview() {
   const router = useRouter();
   
-  // --- CORE DATA STATE ---
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // --- FILTERS & PAGINATION ---
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [page, setPage] = useState(1);
 
-  // --- MODAL STATES ---
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
-  
   const [receiptData, setReceiptData] = useState<{show: boolean, reference: string, businessName: string, serviceName: string, date: string, amount: number} | null>(null);
-  
-  const [deleteData, setDeleteData] = useState<{ isOpen: boolean; targetId: string | null; isDeleting: boolean }>({ 
-    isOpen: false, targetId: null, isDeleting: false 
-  });
+  const [deleteData, setDeleteData] = useState<{ isOpen: boolean; targetId: string | null; isDeleting: boolean }>({ isOpen: false, targetId: null, isDeleting: false });
 
   const [toast, setToast] = useState<{show: boolean, msg: string, type: "error" | "success"}>({ show: false, msg: "", type: "success" });
+  
   const showToast = useCallback((msg: string, type: "error" | "success" = "success") => {
     setToast({ show: true, msg, type });
     setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 4000);
@@ -44,7 +38,7 @@ export default function DashboardOverview() {
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const query = newSearchParams({ page: page.toString(), search, status: statusFilter, type: typeFilter });
+      const query = new URLSearchParams({ page: page.toString(), search, status: statusFilter, type: typeFilter });
       const res = await fetch(`/api/dashboard?${query.toString()}`);
       if (res.ok) setData(await res.json());
     } catch (err) {
@@ -59,18 +53,10 @@ export default function DashboardOverview() {
     return () => clearTimeout(timeout);
   }, [fetchDashboardData]);
 
-  // --- ROUTING & ACTIONS ---
   const handleActionMenuExecute = (actionType: string, id: string, rowData?: any) => {
-    // THE FIX: Safely find the arrays from the raw database response
-    let list: any[] = [];
-    if (Array.isArray(data)) list = data;
-    else if (Array.isArray(data?.data)) list = data.data;
-    else if (Array.isArray(data?.registrations)) list = data.registrations;
-    else if (Array.isArray(data?.items)) list = data.items;
-
-    // THE FIX: Force the dashboard to grab the FULL object from the list first. 
-    // We only use rowData as an absolute last resort.
-    const targetReg = list.find((r: any) => r.id === id) || rowData || {};
+    // BUG FIX: Force a deep search of the actual table data so we get the FULL object, not just a stub
+    const list = Array.isArray(data) ? data : (data?.data || data?.registrations || data?.items || []);
+    const fullRowData = list.find((r: any) => r.id === id) || rowData || {};
 
     switch (actionType) {
       case "CONTINUE": 
@@ -82,60 +68,41 @@ export default function DashboardOverview() {
         break;
       
       case "DOWNLOAD_RECEIPT":
-        const entity = targetReg?.entityType || targetReg?.type || "Business Name";
+        const entity = fullRowData?.entityType || fullRowData?.type || "Business Name";
         
+        // Bulletproof dynamic calculation
         let calcAmount = 20000; 
-        if (entity.includes("LLC") || entity.includes("Limited")) calcAmount = 50000;
-        else if (entity.includes("NGO") || entity.includes("Incorporated")) calcAmount = 60000;
-
-        // Smart Extraction: Checks if your DB already has the amount paid saved, otherwise calculates it
-        const actualAmountPaid = targetReg?.amount || targetReg?.amountPaid || targetReg?.fee || targetReg?.transaction?.amount || calcAmount;
-
-        // Smart Extraction: Checks all possible naming conventions for the business name
-        const realName = targetReg?.proposedName || targetReg?.entityName || targetReg?.companyName || "Business Entity";
-
-        // Smart Extraction: Grabs the exact date it was submitted/updated
-        const realDate = targetReg?.updatedAt || targetReg?.createdAt || new Date().toISOString();
+        if (entity.toLowerCase().includes("llc") || entity.toLowerCase().includes("limited")) {
+          calcAmount = 50000;
+        } else if (entity.toLowerCase().includes("ngo") || entity.toLowerCase().includes("incorporated")) {
+          calcAmount = 60000;
+        }
 
         setReceiptData({
           show: true,
           reference: `SRV_${id.substring(0, 8).toUpperCase()}`,
-          businessName: realName,
+          businessName: fullRowData?.proposedName || fullRowData?.entityName || fullRowData?.name || "Business Entity",
           serviceName: entity,
-          date: new Date(realDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }),
-          amount: Number(actualAmountPaid) // Pushing the 100% accurate amount to the PDF
+          date: fullRowData?.updatedAt 
+            ? new Date(fullRowData.updatedAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) 
+            : new Date().toLocaleDateString('en-NG'),
+          amount: calcAmount 
         });
         break;
 
-      case "FIX_QUERIES": 
-        router.push(`/dashboard/businesses/${id}/queries`); 
-        break;
-      
-      case "DOWNLOAD_CERT": 
-        showToast("Fetching Official Certificate...", "success"); 
-        break;
-      
-      case "VIEW_TIN": 
-        showToast("Fetching JTB TIN Details...", "success"); 
-        break;
-      
-      case "DELETE":
-        setDeleteData({ isOpen: true, targetId: id, isDeleting: false });
-        break;
+      case "FIX_QUERIES": router.push(`/dashboard/businesses/${id}/queries`); break;
+      case "DOWNLOAD_CERT": showToast("Fetching Official Certificate...", "success"); break;
+      case "VIEW_TIN": showToast("Fetching JTB TIN Details...", "success"); break;
+      case "DELETE": setDeleteData({ isOpen: true, targetId: id, isDeleting: false }); break;
     }
   };
 
   const executeDelete = async () => {
     if (!deleteData.targetId) return;
-    
     setDeleteData(prev => ({ ...prev, isDeleting: true }));
-    
     try {
-      const res = await fetch(`/api/register/details/${deleteData.targetId}`, {
-        method: "DELETE"
-      });
+      const res = await fetch(`/api/register/details/${deleteData.targetId}`, { method: "DELETE" });
       const json = await res.json();
-      
       if (json.success) {
         showToast("Application permanently deleted.", "success");
         fetchDashboardData(); 
@@ -161,7 +128,6 @@ export default function DashboardOverview() {
 
   return (
     <div className="pb-12 max-w-full overflow-x-hidden relative">
-      
       {toast.show && (
         <div className={`fixed bottom-10 right-4 z-[99999] animate-in slide-in-from-right flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-bold ${toast.type === "error" ? "bg-red-600" : "bg-slate-900"}`}>
           {toast.type === "error" ? <WarningCircle weight="bold" size={20} /> : <CircleNotch weight="bold" size={20} className="text-emerald-400" />}
@@ -210,11 +176,7 @@ export default function DashboardOverview() {
         onExecuteAction={handleActionMenuExecute}
       />
 
-      <FundWalletModal 
-        isOpen={isFundModalOpen} 
-        onClose={() => setIsFundModalOpen(false)} 
-        onSuccessOptimistic={handleWalletSuccess} 
-      />
+      <FundWalletModal isOpen={isFundModalOpen} onClose={() => setIsFundModalOpen(false)} onSuccessOptimistic={handleWalletSuccess} />
 
       {receiptData?.show && (
         <ReceiptModal 
@@ -231,37 +193,17 @@ export default function DashboardOverview() {
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center relative">
-              <button 
-                onClick={() => !deleteData.isDeleting && setDeleteData({ isOpen: false, targetId: null, isDeleting: false })}
-                disabled={deleteData.isDeleting}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50"
-              >
+              <button onClick={() => !deleteData.isDeleting && setDeleteData({ isOpen: false, targetId: null, isDeleting: false })} disabled={deleteData.isDeleting} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50">
                 <X weight="bold" />
               </button>
-              
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-6 mt-4">
                 <Trash className="h-8 w-8 text-red-600" weight="fill" />
               </div>
-              
               <h3 className="text-xl font-black text-slate-900 mb-2">Delete Draft?</h3>
-              <p className="text-sm font-medium text-slate-500 mb-8 px-2">
-                This action cannot be undone. All saved data, including uploaded documents, will be permanently erased.
-              </p>
-              
+              <p className="text-sm font-medium text-slate-500 mb-8 px-2">This action cannot be undone. All saved data will be permanently erased.</p>
               <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setDeleteData({ isOpen: false, targetId: null, isDeleting: false })}
-                  disabled={deleteData.isDeleting}
-                  className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={executeDelete}
-                  disabled={deleteData.isDeleting}
-                  className="flex-1 h-12 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-md flex items-center justify-center"
-                >
+                <Button variant="outline" onClick={() => setDeleteData({ isOpen: false, targetId: null, isDeleting: false })} disabled={deleteData.isDeleting} className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-700 bg-white hover:bg-slate-50">Cancel</Button>
+                <Button onClick={executeDelete} disabled={deleteData.isDeleting} className="flex-1 h-12 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-md flex items-center justify-center">
                   {deleteData.isDeleting ? <CircleNotch className="animate-spin h-5 w-5" weight="bold" /> : "Yes, Delete"}
                 </Button>
               </div>
@@ -269,7 +211,6 @@ export default function DashboardOverview() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
