@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -49,6 +49,30 @@ const NAVIGATION = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // --- SMART HEADER STATE ---
+  const [showHeader, setShowHeader] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  // Detect scroll direction to hide/show header
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // If scrolling down and past the header's height (80px), hide it. 
+      // Otherwise, if scrolling up, show it.
+      if (currentScrollY > lastScrollY && currentScrollY > 80) {
+        setShowHeader(false);
+      } else {
+        setShowHeader(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   const getCurrentPageName = () => {
     for (const group of NAVIGATION) {
@@ -143,8 +167,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* MAIN CONTENT AREA */}
       <div className="lg:pl-72 flex flex-col min-h-screen">
         
-        {/* TOP HEADER */}
-        <header className="sticky top-0 z-30 h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6 lg:px-10 shrink-0">
+        {/* SMART HEADER */}
+        {/* Added transition-transform and conditional -translate-y-full to slide it out of view */}
+        <header className={`
+          sticky top-0 z-30 h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 
+          flex items-center justify-between px-6 lg:px-10 shrink-0 
+          transition-transform duration-300 ease-in-out
+          ${showHeader ? "translate-y-0" : "-translate-y-full"}
+        `}>
           <div className="flex items-center gap-4">
             <button 
               className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
@@ -169,7 +199,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* FIX: Added z-10 to force the main content above the invisible background layer */}
         <main className="flex-1 p-4 sm:p-6 lg:p-10 relative z-10">
           <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
