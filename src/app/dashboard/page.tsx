@@ -28,7 +28,9 @@ export default function DashboardOverview() {
 
   // --- MODAL STATES ---
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
-  const [receiptData, setReceiptData] = useState<{show: boolean, reference: string, businessName: string, date: string, amount: number} | null>(null);
+  
+  // ADDED 'serviceName' TO THE STATE INTERFACE HERE
+  const [receiptData, setReceiptData] = useState<{show: boolean, reference: string, businessName: string, serviceName: string, date: string, amount: number} | null>(null);
   
   // Custom Branded Delete Modal State
   const [deleteData, setDeleteData] = useState<{ isOpen: boolean; targetId: string | null; isDeleting: boolean }>({ 
@@ -62,10 +64,11 @@ export default function DashboardOverview() {
   }, [fetchDashboardData]);
 
   // --- ROUTING & ACTIONS ---
-  const handleActionMenuExecute = (actionType: string, id: string) => {
-    // Bulletproof search across all possible API structures to find the specific row
+  // ADDED 'rowData: any' AS THE THIRD PARAMETER
+  const handleActionMenuExecute = (actionType: string, id: string, rowData?: any) => {
+    // Bulletproof fallback search just in case rowData isn't passed for some reason
     const list = Array.isArray(data) ? data : (data?.data || data?.registrations || data?.items || []);
-    const targetReg = list.find((r: any) => r.id === id);
+    const targetReg = rowData || list.find((r: any) => r.id === id);
 
     switch (actionType) {
       case "CONTINUE": 
@@ -80,7 +83,9 @@ export default function DashboardOverview() {
         setReceiptData({
           show: true,
           reference: `SRV_${id.substring(0, 8).toUpperCase()}`,
-          businessName: targetReg?.proposedName || targetReg?.entityName || "Business Name Registration",
+          businessName: targetReg?.proposedName || targetReg?.entityName || "Business Entity",
+          // GRABBING THE REAL SERVICE NAME HERE
+          serviceName: targetReg?.entityType || "Business Name",
           date: targetReg?.updatedAt 
             ? new Date(targetReg.updatedAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) 
             : new Date().toLocaleDateString('en-NG'),
@@ -101,7 +106,6 @@ export default function DashboardOverview() {
         break;
       
       case "DELETE":
-        // Triggers the beautiful branded modal instead of the ugly browser alert
         setDeleteData({ isOpen: true, targetId: id, isDeleting: false });
         break;
     }
@@ -206,6 +210,7 @@ export default function DashboardOverview() {
       {receiptData?.show && (
         <ReceiptModal 
           businessName={receiptData.businessName}
+          serviceName={receiptData.serviceName} // PASSING THE REAL SERVICE NAME
           reference={receiptData.reference}
           date={receiptData.date}
           amount={receiptData.amount}
