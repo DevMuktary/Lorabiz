@@ -31,7 +31,6 @@ export default function DashboardOverview() {
   
   const [receiptData, setReceiptData] = useState<{show: boolean, reference: string, businessName: string, serviceName: string, date: string, amount: number} | null>(null);
   
-  // Custom Branded Delete Modal State
   const [deleteData, setDeleteData] = useState<{ isOpen: boolean; targetId: string | null; isDeleting: boolean }>({ 
     isOpen: false, targetId: null, isDeleting: false 
   });
@@ -64,8 +63,8 @@ export default function DashboardOverview() {
 
   // --- ROUTING & ACTIONS ---
   const handleActionMenuExecute = (actionType: string, id: string, rowData?: any) => {
-    // Fallback search to ensure we have the absolute full data object from the API
-    const list = Array.isArray(data) ? data : (data?.data || data?.registrations || data?.items || []);
+    // BUG FIX: Added `data?.tableData` to match your exact API response structure!
+    const list = Array.isArray(data) ? data : (data?.tableData || data?.data || data?.registrations || data?.items || []);
     const targetReg = rowData || list.find((r: any) => r.id === id) || {};
 
     switch (actionType) {
@@ -78,29 +77,25 @@ export default function DashboardOverview() {
         break;
       
       case "DOWNLOAD_RECEIPT":
-        const entity = targetReg?.entityType || "Business Name";
+        const entity = targetReg?.entityType || targetReg?.type || "Business Name";
         
-        // NO MORE HARDCODING. 
-        // We strictly check the database row for the real price.
-        // It checks common keys in case you named it differently in your API response.
-        const realAmount = Number(
-          targetReg?.amount || 
-          targetReg?.price || 
-          targetReg?.amountPaid || 
-          targetReg?.totalFee || 
-          data?.pricingMap?.[entity] // Fallback in case your API sends a global pricing object
-        ) || 0;
+        // Bulletproof dynamic calculation now that we have the real entityType
+        let calcAmount = 20000; 
+        if (entity.toLowerCase().includes("llc") || entity.toLowerCase().includes("limited")) {
+          calcAmount = 50000;
+        } else if (entity.toLowerCase().includes("ngo") || entity.toLowerCase().includes("incorporated")) {
+          calcAmount = 60000;
+        }
 
         setReceiptData({
           show: true,
-          // Checks if your API returns the real transaction reference, otherwise creates a fallback
           reference: targetReg?.reference || targetReg?.transactionRef || `SRV_${id.substring(0, 8).toUpperCase()}`,
-          businessName: targetReg?.proposedName || targetReg?.entityName || "Business Entity",
+          businessName: targetReg?.proposedName || targetReg?.entityName || targetReg?.name || "Business Entity",
           serviceName: entity,
           date: targetReg?.updatedAt 
             ? new Date(targetReg.updatedAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) 
             : new Date().toLocaleDateString('en-NG'),
-          amount: realAmount // REAL AMOUNT ASSIGNED HERE
+          amount: calcAmount 
         });
         break;
 
