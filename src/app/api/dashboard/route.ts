@@ -10,7 +10,12 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    // Fetch user and include wallet to save an extra database query later
+    const user = await prisma.user.findUnique({ 
+      where: { email: session.user.email },
+      include: { wallet: true }
+    });
+    
     if (!user) return NextResponse.json({ message: "No user found" }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
@@ -37,7 +42,8 @@ export async function GET(req: Request) {
       }
     }
 
-    // Atomic Promise.all for absolute maximum speed.
+    // Atomic Promise.all for absolute maximum speed. 
+    // We now also fetch ALL successful transactions for this user's wallet.
     const [
       registrations, 
       totalRecords,
@@ -47,7 +53,7 @@ export async function GET(req: Request) {
       queriedCount,
       unsubmittedCount,
       postIncCount,
-      wallet
+      transactions
     ] = await Promise.all([
       prisma.businessRegistration.findMany({
         where: whereClause,
@@ -59,16 +65,36 @@ export async function GET(req: Request) {
       prisma.businessRegistration.count({ where: { userId: user.id } }), 
       prisma.businessRegistration.count({ where: { userId: user.id, status: "PENDING" } }),
       prisma.businessRegistration.count({ where: { userId: user.id, status: "APPROVED" } }),
-      prisma.businessRegistration.count({ where: { userId: user.id, status: "QUERIED" } }), // <-- Fixed typo here
+      prisma.businessRegistration.count({ where: { userId: user.id, status: "QUERIED" } }), 
       prisma.businessRegistration.count({ where: { userId: user.id, status: "UNSUBMITTED" } }),
       prisma.businessRegistration.count({ 
         where: { userId: user.id, businessType: { in: ["Annual Returns", "Change of Name", "CTC"] } } 
       }),
-      prisma.wallet.findUnique({ where: { userId: user.id } })
+      // Fetch the transaction ledger
+      user.wallet ? prisma.transaction.findMany({
+        where: { walletId: user.wallet.id, status: "SUCCESS" }
+      }) : Promise.resolve([])
     ]);
 
+    // SMART MAPPING: Link the real transaction amount to the registration
+    const enrichedRegistrations = registrations.map((reg) => {
+      // Find the transaction that belongs to this registration
+      const relatedTx = transactions.find(tx => 
+        tx.reference.includes(reg.id) || 
+        tx.description.includes(reg.id) || 
+        tx.reference.includes(reg.id.substring(0, 8).toUpperCase())
+      );
+
+      return {
+        ...reg,
+        // Inject the real ledger data
+        amountPaid: relatedTx ? Number(relatedTx.amount) : 0,
+        transactionRef: relatedTx ? relatedTx.reference : `SRV_${reg.id.substring(0, 8).toUpperCase()}`
+      };
+    });
+
     return NextResponse.json({
-      walletBalance: wallet?.balance || 0,
+      walletBalance: user.wallet?.balance ? Number(user.wallet.balance) : 0,
       stats: {
         total: totalCount,
         pending: pendingCount,
@@ -77,7 +103,7 @@ export async function GET(req: Request) {
         unsubmitted: unsubmittedCount,
         postInc: postIncCount
       },
-      tableData: registrations,
+      tableData: enrichedRegistrations, // Sending the enriched data
       totalPages: Math.ceil(totalRecords / limit),
       currentPage: page
     }, { status: 200 });
