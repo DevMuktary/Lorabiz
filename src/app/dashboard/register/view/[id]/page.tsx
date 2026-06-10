@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { 
   ArrowLeft, Clock, CheckCircle, WarningCircle, 
-  Buildings, Users, FileText, Spinner, MapPin, EnvelopeSimple, Phone
+  Buildings, Users, FileText, Spinner, MapPin, EnvelopeSimple, X, Phone
 } from "@phosphor-icons/react";
 
 export default function ViewApplicationPage() {
