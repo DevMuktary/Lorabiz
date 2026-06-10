@@ -29,7 +29,7 @@ export default function DashboardOverview() {
   // --- MODAL STATES ---
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
   
-  // ADDED 'serviceName' TO THE STATE INTERFACE HERE
+  // Receipt State holding dynamic serviceName and amount
   const [receiptData, setReceiptData] = useState<{show: boolean, reference: string, businessName: string, serviceName: string, date: string, amount: number} | null>(null);
   
   // Custom Branded Delete Modal State
@@ -64,9 +64,8 @@ export default function DashboardOverview() {
   }, [fetchDashboardData]);
 
   // --- ROUTING & ACTIONS ---
-  // ADDED 'rowData: any' AS THE THIRD PARAMETER
   const handleActionMenuExecute = (actionType: string, id: string, rowData?: any) => {
-    // Bulletproof fallback search just in case rowData isn't passed for some reason
+    // Fallback search just in case rowData isn't passed from the menu
     const list = Array.isArray(data) ? data : (data?.data || data?.registrations || data?.items || []);
     const targetReg = rowData || list.find((r: any) => r.id === id);
 
@@ -80,16 +79,21 @@ export default function DashboardOverview() {
         break;
       
       case "DOWNLOAD_RECEIPT":
+        // DYNAMIC PRICING ENGINE
+        const entity = targetReg?.entityType || "Business Name";
+        let calcAmount = 20000; // Default fallback
+        if (entity.includes("LLC") || entity.includes("Limited")) calcAmount = 50000;
+        else if (entity.includes("NGO") || entity.includes("Incorporated")) calcAmount = 60000;
+
         setReceiptData({
           show: true,
           reference: `SRV_${id.substring(0, 8).toUpperCase()}`,
           businessName: targetReg?.proposedName || targetReg?.entityName || "Business Entity",
-          // GRABBING THE REAL SERVICE NAME HERE
-          serviceName: targetReg?.entityType || "Business Name",
+          serviceName: entity, // Passing real service name
           date: targetReg?.updatedAt 
             ? new Date(targetReg.updatedAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) 
             : new Date().toLocaleDateString('en-NG'),
-          amount: 20000 
+          amount: calcAmount // Passing calculated dynamic amount
         });
         break;
 
@@ -210,7 +214,7 @@ export default function DashboardOverview() {
       {receiptData?.show && (
         <ReceiptModal 
           businessName={receiptData.businessName}
-          serviceName={receiptData.serviceName} // PASSING THE REAL SERVICE NAME
+          serviceName={receiptData.serviceName}
           reference={receiptData.reference}
           date={receiptData.date}
           amount={receiptData.amount}
