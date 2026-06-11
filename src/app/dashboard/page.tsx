@@ -12,6 +12,7 @@ import DashboardMetrics from "@/components/dashboard/DashboardMetrics";
 import RegistrationsTable from "@/components/dashboard/RegistrationsTable";
 import FundWalletModal from "@/components/dashboard/FundWalletModal";
 import ReceiptModal from "@/components/dashboard/ReceiptModal";
+import QueryReasonModal from "@/components/dashboard/QueryReasonModal";
 
 export default function DashboardOverview() {
   const router = useRouter();
@@ -28,13 +29,9 @@ export default function DashboardOverview() {
 
   // --- MODAL STATES ---
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
-  
   const [receiptData, setReceiptData] = useState<{show: boolean, reference: string, businessName: string, serviceName: string, date: string, amount: number} | null>(null);
-  
-  // Custom Branded Delete Modal State
-  const [deleteData, setDeleteData] = useState<{ isOpen: boolean; targetId: string | null; isDeleting: boolean }>({ 
-    isOpen: false, targetId: null, isDeleting: false 
-  });
+  const [queryModalData, setQueryModalData] = useState<{show: boolean, businessName: string, reason: string, status: "RESOLVED"|"UNRESOLVED", date: string} | null>(null);
+  const [deleteData, setDeleteData] = useState<{ isOpen: boolean; targetId: string | null; isDeleting: boolean }>({ isOpen: false, targetId: null, isDeleting: false });
 
   // --- PROFESSIONAL TOAST SYSTEM ---
   const [toast, setToast] = useState<{show: boolean, msg: string, type: "error" | "success"}>({ show: false, msg: "", type: "success" });
@@ -64,7 +61,6 @@ export default function DashboardOverview() {
 
   // --- ROUTING & ACTIONS ---
   const handleActionMenuExecute = (actionType: string, id: string, rowData?: any) => {
-    // Fallback search to ensure we have the absolute full data object from the API
     const list = Array.isArray(data) ? data : (data?.data || data?.registrations || data?.items || []);
     const targetReg = rowData || list.find((r: any) => r.id === id) || {};
 
@@ -77,30 +73,37 @@ export default function DashboardOverview() {
         router.push(`/dashboard/register/view/${id}`); 
         break;
       
+      case "VIEW_REASON":
+        setQueryModalData({
+          show: true,
+          businessName: targetReg?.proposedName || targetReg?.entityName || "Business Application",
+          reason: targetReg?.queryReason || "Names closely resemble an existing entity. Please provide new alternative names.",
+          status: targetReg?.queryStatus || "UNRESOLVED",
+          date: targetReg?.updatedAt 
+            ? new Date(targetReg.updatedAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) 
+            : new Date().toLocaleDateString('en-NG'),
+        });
+        break;
+
       case "DOWNLOAD_RECEIPT":
         const entity = targetReg?.entityType || "Business Name";
-        
-        // NO MORE HARDCODING. 
-        // We strictly check the database row for the real price.
-        // It checks common keys in case you named it differently in your API response.
         const realAmount = Number(
           targetReg?.amount || 
           targetReg?.price || 
           targetReg?.amountPaid || 
           targetReg?.totalFee || 
-          data?.pricingMap?.[entity] // Fallback in case your API sends a global pricing object
+          data?.pricingMap?.[entity] 
         ) || 0;
 
         setReceiptData({
           show: true,
-          // Checks if your API returns the real transaction reference, otherwise creates a fallback
           reference: targetReg?.reference || targetReg?.transactionRef || `SRV_${id.substring(0, 8).toUpperCase()}`,
           businessName: targetReg?.proposedName || targetReg?.entityName || "Business Entity",
           serviceName: entity,
           date: targetReg?.updatedAt 
             ? new Date(targetReg.updatedAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) 
             : new Date().toLocaleDateString('en-NG'),
-          amount: realAmount // REAL AMOUNT ASSIGNED HERE
+          amount: realAmount 
         });
         break;
 
@@ -125,13 +128,10 @@ export default function DashboardOverview() {
   // --- SECURE DELETION HANDLER ---
   const executeDelete = async () => {
     if (!deleteData.targetId) return;
-    
     setDeleteData(prev => ({ ...prev, isDeleting: true }));
     
     try {
-      const res = await fetch(`/api/register/details/${deleteData.targetId}`, {
-        method: "DELETE"
-      });
+      const res = await fetch(`/api/register/details/${deleteData.targetId}`, { method: "DELETE" });
       const json = await res.json();
       
       if (json.success) {
@@ -154,32 +154,32 @@ export default function DashboardOverview() {
   };
 
   if (loading && !data) {
-    return <div className="h-64 flex items-center justify-center"><Spinner className="animate-spin h-8 w-8 text-[#ff3f7a]" /></div>;
+    return <div className="h-[60vh] flex items-center justify-center"><Spinner className="animate-spin h-8 w-8 text-[#ff3f7a]" /></div>;
   }
 
   return (
-    <div className="pb-12 max-w-full overflow-x-hidden relative">
+    <div className="pb-8 max-w-full overflow-x-hidden relative space-y-6">
       
       {/* PROFESSIONAL TOAST NOTIFICATION */}
       {toast.show && (
-        <div className={`fixed bottom-10 right-4 z-[99999] animate-in slide-in-from-right flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-bold ${toast.type === "error" ? "bg-red-600" : "bg-slate-900"}`}>
-          {toast.type === "error" ? <WarningCircle weight="bold" size={20} /> : <CircleNotch weight="bold" size={20} className="text-emerald-400" />}
+        <div className={`fixed bottom-8 right-6 z-[99999] animate-in slide-in-from-right flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] text-white font-bold text-sm tracking-wide ${toast.type === "error" ? "bg-red-600" : "bg-slate-900"}`}>
+          {toast.type === "error" ? <WarningCircle weight="bold" size={18} /> : <CircleNotch weight="bold" size={18} className="text-[#ff3f7a]" />}
           {toast.msg}
         </div>
       )}
 
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 mt-2">
+      {/* COMPACT TOP ACTION BAR */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-white p-6 sm:p-8 rounded-3xl border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
+            {new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">
             {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 18 ? "Good afternoon" : "Good evening"}, Chief 👋
           </h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">
-            {new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-          </p>
         </div>
-        <Link href="/dashboard/new">
-          <Button className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 font-bold px-6 flex items-center gap-2 rounded-xl active:scale-95 transition-transform shrink-0">
+        <Link href="/dashboard/new" className="shrink-0">
+          <Button className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-[0_4px_14px_rgba(255,63,122,0.3)] font-bold px-6 flex items-center gap-2 rounded-xl active:scale-95 transition-all">
             <Plus className="h-5 w-5" weight="bold" /> New Application
           </Button>
         </Link>
@@ -196,21 +196,23 @@ export default function DashboardOverview() {
         }}
       />
 
-      <RegistrationsTable 
-        data={data}
-        loading={loading}
-        page={page}
-        setPage={setPage}
-        search={search}
-        setSearch={setSearch}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        typeFilter={typeFilter}
-        setTypeFilter={setTypeFilter}
-        onExecuteAction={handleActionMenuExecute}
-      />
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden">
+        <RegistrationsTable 
+          data={data}
+          loading={loading}
+          page={page}
+          setPage={setPage}
+          search={search}
+          setSearch={setSearch}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          onExecuteAction={handleActionMenuExecute}
+        />
+      </div>
 
-      {/* --- ALL MODALS DOWN HERE --- */}
+      {/* --- MODALS --- */}
 
       <FundWalletModal 
         isOpen={isFundModalOpen} 
@@ -229,25 +231,34 @@ export default function DashboardOverview() {
         />
       )}
 
-      {/* BRANDED DELETE CONFIRMATION MODAL */}
+      {queryModalData?.show && (
+        <QueryReasonModal 
+          businessName={queryModalData.businessName}
+          reason={queryModalData.reason}
+          status={queryModalData.status}
+          date={queryModalData.date}
+          onClose={() => setQueryModalData(null)}
+        />
+      )}
+
       {deleteData.isOpen && (
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6 text-center relative">
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-[0_20px_60px_rgb(0,0,0,0.1)] animate-in zoom-in-95 duration-200 border border-slate-100">
+            <div className="p-8 text-center relative">
               <button 
                 onClick={() => !deleteData.isDeleting && setDeleteData({ isOpen: false, targetId: null, isDeleting: false })}
                 disabled={deleteData.isDeleting}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50"
+                className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50"
               >
-                <X weight="bold" />
+                <X weight="bold" size={16} />
               </button>
               
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-6 mt-4">
-                <Trash className="h-8 w-8 text-red-600" weight="fill" />
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-50 mb-6 border border-red-100">
+                <Trash className="h-7 w-7 text-red-500" weight="fill" />
               </div>
               
-              <h3 className="text-xl font-black text-slate-900 mb-2">Delete Draft?</h3>
-              <p className="text-sm font-medium text-slate-500 mb-8 px-2">
+              <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Delete Draft?</h3>
+              <p className="text-sm font-medium text-slate-500 mb-8 px-2 leading-relaxed">
                 This action cannot be undone. All saved data, including uploaded documents, will be permanently erased.
               </p>
               
@@ -256,14 +267,14 @@ export default function DashboardOverview() {
                   variant="outline" 
                   onClick={() => setDeleteData({ isOpen: false, targetId: null, isDeleting: false })}
                   disabled={deleteData.isDeleting}
-                  className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+                  className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900"
                 >
                   Cancel
                 </Button>
                 <Button 
                   onClick={executeDelete}
                   disabled={deleteData.isDeleting}
-                  className="flex-1 h-12 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-md flex items-center justify-center"
+                  className="flex-1 h-12 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-[0_4px_14px_rgba(220,38,38,0.3)] flex items-center justify-center"
                 >
                   {deleteData.isDeleting ? <CircleNotch className="animate-spin h-5 w-5" weight="bold" /> : "Yes, Delete"}
                 </Button>
