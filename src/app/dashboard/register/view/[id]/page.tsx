@@ -98,10 +98,29 @@ export default function ViewApplicationPage() {
             <Buildings weight="fill" className="h-40 w-40 text-slate-900" />
           </div>
           
-          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Proposed Entity Name</p>
-          <h1 className="text-2xl sm:text-4xl font-black text-slate-900 mb-4 pr-12 sm:pr-0 leading-tight">{data.proposedName}</h1>
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Primary Entity Name</p>
+          <h1 className="text-2xl sm:text-4xl font-black text-slate-900 mb-2 pr-12 sm:pr-0 leading-tight">{data.proposedName}</h1>
           
-          <div className="flex flex-wrap gap-2 sm:gap-3">
+          {/* --- NEW ALTERNATIVE NAMES SECTION --- */}
+          {(data.altName1 || data.altName2) && (
+            <div className="flex flex-col gap-1.5 mb-6 bg-slate-50/50 p-3 rounded-xl border border-slate-100 w-fit">
+              {data.altName1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Alt 1</span>
+                  <span className="text-sm font-bold text-slate-700">{data.altName1}</span>
+                </div>
+              )}
+              {data.altName2 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Alt 2</span>
+                  <span className="text-sm font-bold text-slate-700">{data.altName2}</span>
+                </div>
+              )}
+            </div>
+          )}
+          {/* ------------------------------------- */}
+          
+          <div className="flex flex-wrap gap-2 sm:gap-3 mt-4">
             <span className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-100 rounded-lg text-xs sm:text-sm font-bold text-slate-700 border border-slate-200">
               {data.entityType}
             </span>
@@ -196,7 +215,7 @@ export default function ViewApplicationPage() {
                   </p>
                 </div>
 
-                {/* Documents Grid - REPLACED <Image> WITH STANDARD <img> */}
+                {/* Documents Grid */}
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase mb-3 border-b border-slate-100 pb-2">Uploaded Documents</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -298,7 +317,6 @@ export default function ViewApplicationPage() {
               <X className="h-6 w-6" weight="bold" />
             </button>
             
-            {/* If Cloudinary returns a PDF, render an iframe. Otherwise, render an image. */}
             {previewImage.toLowerCase().endsWith('.pdf') ? (
               <iframe 
                 src={previewImage} 
