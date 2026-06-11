@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import { 
   ArrowLeft, Clock, CheckCircle, WarningCircle, 
@@ -17,6 +18,12 @@ export default function ViewApplicationPage() {
   
   // State for the Lightbox (to view uploaded documents)
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Set mounted state for createPortal to avoid Next.js hydration errors
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -66,11 +73,44 @@ export default function ViewApplicationPage() {
   const StatusUI = getStatusUI(data.status);
   const StatusIcon = StatusUI.icon;
 
+  // The Lightbox Modal wrapped in createPortal to escape the Sidebar's z-index trapping
+  const LightboxModal = previewImage ? (
+    <div 
+      className="fixed inset-0 z-[999999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+      onClick={() => setPreviewImage(null)}
+    >
+      <div 
+        className="relative w-full max-w-4xl max-h-[90vh] flex items-center justify-center"
+        onClick={(e) => e.stopPropagation()} 
+      >
+        <button 
+          onClick={() => setPreviewImage(null)}
+          className="absolute -top-12 right-0 p-2 text-white/50 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors z-50"
+        >
+          <X className="h-6 w-6" weight="bold" />
+        </button>
+        
+        {previewImage.toLowerCase().endsWith('.pdf') ? (
+          <iframe 
+            src={previewImage} 
+            className="w-full h-[80vh] rounded-xl shadow-2xl bg-white border-0" 
+          />
+        ) : (
+          <img 
+            src={previewImage} 
+            alt="Document Preview" 
+            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl bg-white/5" 
+          />
+        )}
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans relative">
+    <div className="min-h-screen bg-transparent pb-20 font-sans relative">
       
-      {/* STICKY TOP NAVIGATION - FIXED MOBILE LAYOUT */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 sm:px-8">
+      {/* TOP NAVIGATION - NO LONGER STICKY */}
+      <div className="pt-4 pb-4 px-4 sm:px-8">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
           
           <button 
@@ -90,7 +130,7 @@ export default function ViewApplicationPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 mt-6 sm:mt-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="max-w-5xl mx-auto px-4 sm:px-8 mt-2 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         
         {/* HEADER SECTION */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm relative overflow-hidden">
@@ -101,7 +141,6 @@ export default function ViewApplicationPage() {
           <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Primary Entity Name</p>
           <h1 className="text-2xl sm:text-4xl font-black text-slate-900 mb-2 pr-12 sm:pr-0 leading-tight">{data.proposedName}</h1>
           
-          {/* --- NEW ALTERNATIVE NAMES SECTION --- */}
           {(data.altName1 || data.altName2) && (
             <div className="flex flex-col gap-1.5 mb-6 bg-slate-50/50 p-3 rounded-xl border border-slate-100 w-fit">
               {data.altName1 && (
@@ -118,7 +157,6 @@ export default function ViewApplicationPage() {
               )}
             </div>
           )}
-          {/* ------------------------------------- */}
           
           <div className="flex flex-wrap gap-2 sm:gap-3 mt-4">
             <span className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-100 rounded-lg text-xs sm:text-sm font-bold text-slate-700 border border-slate-200">
@@ -300,38 +338,8 @@ export default function ViewApplicationPage() {
 
       </div>
 
-      {/* LIGHTBOX MODAL FOR DOCUMENTS (Supports PDFs & Images) */}
-      {previewImage && (
-        <div 
-          className="fixed inset-0 z-[999999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div 
-            className="relative w-full max-w-4xl max-h-[90vh] flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()} 
-          >
-            <button 
-              onClick={() => setPreviewImage(null)}
-              className="absolute -top-12 right-0 p-2 text-white/50 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors z-50"
-            >
-              <X className="h-6 w-6" weight="bold" />
-            </button>
-            
-            {previewImage.toLowerCase().endsWith('.pdf') ? (
-              <iframe 
-                src={previewImage} 
-                className="w-full h-[80vh] rounded-xl shadow-2xl bg-white border-0" 
-              />
-            ) : (
-              <img 
-                src={previewImage} 
-                alt="Document Preview" 
-                className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl bg-white/5" 
-              />
-            )}
-          </div>
-        </div>
-      )}
+      {/* RENDER THE LIGHTBOX AT THE DOCUMENT.BODY LEVEL USING CREATEPORTAL */}
+      {mounted && document.body && createPortal(LightboxModal, document.body)}
 
     </div>
   );
