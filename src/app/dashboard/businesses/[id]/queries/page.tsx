@@ -26,8 +26,8 @@ export default function QueryResolutionPage() {
   
   // UI States
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success">("idle");
   
   // Wizard State (1: Company, 2: Proprietors, 3: Documents)
   const [currentStep, setCurrentStep] = useState(1);
@@ -79,7 +79,7 @@ export default function QueryResolutionPage() {
   };
 
   const handleSubmitResolution = async () => {
-    setIsSubmitting(true);
+    setSubmitState("submitting");
     try {
       // 1. Save all the updated fields first
       const saveRes = await fetch(`/api/register/details/${id}`, {
@@ -91,16 +91,21 @@ export default function QueryResolutionPage() {
       if (!saveRes.ok) throw new Error("Failed to save changes");
 
       // 2. Call your backend to officially update the status to "PENDING"
-      // await fetch(`/api/register/details/${id}/resolve-query`, { method: "POST" });
+      const resolveRes = await fetch(`/api/register/details/${id}/resolve`, { method: "POST" });
       
+      if (!resolveRes.ok) throw new Error("Failed to clear query status");
+
+      // Trigger the beautiful success UI
+      setSubmitState("success");
+      
+      // Give them 2.5 seconds to see the success screen before redirecting
       setTimeout(() => { 
-        setIsSubmitting(false);
         setShowConfirmModal(false);
         router.push("/dashboard");
-      }, 1500);
+      }, 2500);
 
     } catch (error) {
-      setIsSubmitting(false);
+      setSubmitState("idle");
       alert("Failed to submit resolution. Please check your connection and try again.");
     }
   };
@@ -173,7 +178,7 @@ export default function QueryResolutionPage() {
             <Button 
               variant="outline" 
               onClick={() => setCurrentStep(p => p - 1)} 
-              disabled={currentStep === 1 || isSubmitting} 
+              disabled={currentStep === 1 || submitState !== "idle"} 
               className="h-12 px-4 sm:px-6 rounded-xl font-bold bg-white shrink-0 text-sm sm:text-base"
             >
               Back
@@ -189,7 +194,7 @@ export default function QueryResolutionPage() {
             ) : (
                <Button 
                   onClick={() => setShowConfirmModal(true)}
-                  disabled={isSubmitting} 
+                  disabled={submitState !== "idle"} 
                   className="h-12 px-5 sm:px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 shrink-0 text-sm sm:text-base"
                 >
                  <CheckCircle weight="bold" className="h-5 w-5 hidden sm:block" /> 
@@ -200,46 +205,65 @@ export default function QueryResolutionPage() {
         </div>
       </div>
 
-      {/* CONFIRMATION MODAL */}
+      {/* CONFIRMATION / SUCCESS MODAL */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-[0_20px_60px_rgb(0,0,0,0.1)] animate-in zoom-in-95 duration-200 border border-slate-100">
-            <div className="p-8 text-center relative">
-              <button 
-                onClick={() => !isSubmitting && setShowConfirmModal(false)}
-                disabled={isSubmitting}
-                className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50"
-              >
-                <X weight="bold" size={16} />
-              </button>
-              
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-emerald-50 mb-6 border border-emerald-100">
-                <CheckCircle className="h-7 w-7 text-emerald-500" weight="fill" />
+            
+            {submitState === "success" ? (
+              // --- BEAUTIFUL SUCCESS UI ---
+              <div className="p-8 text-center animate-in zoom-in-95 duration-300">
+                <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-emerald-500 mb-6 shadow-[0_0_40px_rgba(16,185,129,0.4)] animate-bounce">
+                  <CheckCircle className="h-10 w-10 text-white" weight="bold" />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Query Resolved!</h3>
+                <p className="text-sm font-medium text-slate-500 mb-8 leading-relaxed">
+                  Your application updates have been securely submitted to the registry.
+                </p>
+                <div className="flex items-center justify-center gap-2 text-sm font-bold text-slate-400 animate-pulse">
+                  <CircleNotch className="animate-spin h-4 w-4" weight="bold" /> Redirecting to dashboard...
+                </div>
               </div>
-              
-              <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Submit Resolution?</h3>
-              <p className="text-sm font-medium text-slate-500 mb-8 px-2 leading-relaxed">
-                Are you absolutely sure you have resolved all the issues raised by the CAC? Submitting incomplete fixes may lead to further delays.
-              </p>
-              
-              <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowConfirmModal(false)}
-                  disabled={isSubmitting}
-                  className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900"
+            ) : (
+              // --- STANDARD CONFIRMATION UI ---
+              <div className="p-8 text-center relative">
+                <button 
+                  onClick={() => submitState === "idle" && setShowConfirmModal(false)}
+                  disabled={submitState === "submitting"}
+                  className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50"
                 >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSubmitResolution}
-                  disabled={isSubmitting}
-                  className="flex-1 h-12 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_4px_14px_rgba(5,150,105,0.3)] flex items-center justify-center"
-                >
-                  {isSubmitting ? <CircleNotch className="animate-spin h-5 w-5" weight="bold" /> : "Yes, Submit"}
-                </Button>
+                  <X weight="bold" size={16} />
+                </button>
+                
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-emerald-50 mb-6 border border-emerald-100">
+                  <CheckCircle className="h-7 w-7 text-emerald-500" weight="fill" />
+                </div>
+                
+                <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Submit Resolution?</h3>
+                <p className="text-sm font-medium text-slate-500 mb-8 px-2 leading-relaxed">
+                  Are you absolutely sure you have resolved all the issues raised by the CAC? Submitting incomplete fixes may lead to further delays.
+                </p>
+                
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowConfirmModal(false)}
+                    disabled={submitState === "submitting"}
+                    className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSubmitResolution}
+                    disabled={submitState === "submitting"}
+                    className="flex-1 h-12 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_4px_14px_rgba(5,150,105,0.3)] flex items-center justify-center"
+                  >
+                    {submitState === "submitting" ? <CircleNotch className="animate-spin h-5 w-5" weight="bold" /> : "Yes, Submit"}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
+            
           </div>
         </div>
       )}
