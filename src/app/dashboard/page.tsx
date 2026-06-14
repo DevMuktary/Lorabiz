@@ -70,17 +70,17 @@ export default function DashboardOverview() {
         break;
       
       case "VIEW": 
-        router.push(`/dashboard/register/view/${id}`); 
+        router.push(`/dashboard/application/${id}`); 
         break;
       
       case "VIEW_REASON":
         setQueryModalData({
           show: true,
           businessName: targetReg?.proposedName || targetReg?.entityName || "Business Application",
-          reason: targetReg?.queryReason || "Names closely resemble an existing entity. Please provide new alternative names.",
+          reason: targetReg?.queryReason || "No specific query reason was recorded in the database.",
           status: targetReg?.queryStatus || "UNRESOLVED",
-          date: targetReg?.updatedAt 
-            ? new Date(targetReg.updatedAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) 
+          date: targetReg?.queryDate 
+            ? new Date(targetReg.queryDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) 
             : new Date().toLocaleDateString('en-NG'),
         });
         break;
