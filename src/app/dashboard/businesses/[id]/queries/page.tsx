@@ -3,22 +3,32 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
-  ArrowLeft, WarningCircle, CheckCircle, Spinner, X, CircleNotch 
+  ArrowLeft, WarningCircle, CheckCircle, X, CircleNotch, CircleDashed 
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
-// TODO: Import your actual registration form component here
-// import BusinessRegistrationForm from "@/components/register/BusinessRegistrationForm";
+// Import your existing registration steps
+import CompanyStep from "@/components/dashboard/register/biz-name/CompanyStep";
+import ProprietorStep from "@/components/dashboard/register/biz-name/ProprietorStep";
+import DocumentStep from "@/components/dashboard/register/biz-name/DocumentStep";
+
+import { CompanyInfo, Proprietor } from "@/components/dashboard/register/biz-name/schema";
 
 export default function QueryResolutionPage() {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
 
+  // Core Data States
   const [data, setData] = useState<any>(null);
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({ email: "", state: "", city: "", streetNo: "", address: "", commencementDate: "" });
+  const [proprietors, setProprietors] = useState<Proprietor[]>([]);
+  
+  // UI States
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"COMPANY" | "PROPRIETORS" | "DOCUMENTS">("COMPANY");
 
   useEffect(() => {
     if (!id) return;
@@ -26,7 +36,32 @@ export default function QueryResolutionPage() {
       try {
         const res = await fetch(`/api/register/details/${id}`);
         const json = await res.json();
-        if (json.success) setData(json.data);
+        
+        if (json.success) {
+          setData(json.data);
+          
+          // Hydrate Company Info
+          setCompanyInfo({
+            email: json.data.companyEmail || "", 
+            state: json.data.companyState || "", 
+            city: json.data.companyCity || "", 
+            streetNo: json.data.companyStreetNo || "", 
+            address: json.data.companyAddress || "", 
+            commencementDate: json.data.commencementDate || ""
+          });
+
+          // Hydrate Proprietor Info
+          if (json.data.proprietors?.length > 0) {
+            setProprietors(json.data.proprietors.map((p: any) => ({
+              ...p, 
+              documents: { 
+                nin: p.ninUrl || null, 
+                passport: p.passportUrl || null, 
+                signature: p.signatureUrl || null 
+              }
+            })));
+          }
+        }
       } catch (err) {
         console.error("Failed to load application details.");
       } finally {
@@ -39,24 +74,34 @@ export default function QueryResolutionPage() {
   const handleSubmitResolution = async () => {
     setIsSubmitting(true);
     try {
-      // POST request to your API to update the status to "PENDING"
-      // await fetch(`/api/register/details/${id}/resolve`, { method: "POST" });
+      // 1. Save all the updated fields first
+      const saveRes = await fetch(`/api/register/details/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyInfo, proprietors, isDraft: true })
+      });
+
+      if (!saveRes.ok) throw new Error("Failed to save changes");
+
+      // 2. TODO: Call your backend to officially update the status to "PENDING"
+      // await fetch(`/api/register/details/${id}/resolve-query`, { method: "POST" });
       
       setTimeout(() => { 
         setIsSubmitting(false);
         setShowConfirmModal(false);
         router.push("/dashboard");
       }, 1500);
+
     } catch (error) {
       setIsSubmitting(false);
-      alert("Failed to submit resolution. Please try again.");
+      alert("Failed to submit resolution. Please check your connection and try again.");
     }
   };
 
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-slate-50">
-        <Spinner className="animate-spin h-8 w-8 text-[#ff3f7a]" />
+        <CircleDashed className="animate-spin h-12 w-12 text-[#ff3f7a]" weight="bold" />
       </div>
     );
   }
@@ -86,34 +131,45 @@ export default function QueryResolutionPage() {
           <div>
             <h2 className="text-sm font-black text-amber-900 mb-1">Official CAC Query Feedback</h2>
             <p className="text-amber-800 font-medium text-sm leading-relaxed mb-2">
-              {data?.queryReason}
+              {data?.queryReason || "No specific reason provided by CAC."}
             </p>
             <p className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest">
-              Please update your application details below to resolve this issue.
+              Please update the relevant sections below to resolve this issue.
             </p>
           </div>
         </div>
 
-        {/* REAL FORM MOUNTING AREA */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-          
-          {/* TODO: Replace this placeholder div with your actual form component.
-            Example: <BusinessRegistrationForm initialData={data} isQueryMode={true} />
-          */}
-          <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
-            <p className="text-slate-500 font-bold text-center text-lg">
-              &lt;BusinessRegistrationForm initialData={"{data}"} /&gt;
-            </p>
-            <span className="text-sm font-medium text-slate-400 mt-2">Mount your existing multi-step form component here.</span>
-          </div>
+        {/* EDITOR TABS */}
+        <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2">
+          {["COMPANY", "PROPRIETORS", "DOCUMENTS"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className={`px-5 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${
+                activeTab === tab 
+                  ? "bg-[#ff3f7a] text-white shadow-md" 
+                  : "bg-white text-slate-500 hover:text-slate-900 border border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {tab === "COMPANY" && "Company Info"}
+              {tab === "PROPRIETORS" && "Proprietors"}
+              {tab === "DOCUMENTS" && "Documents"}
+            </button>
+          ))}
+        </div>
 
+        {/* EDITOR MOUNTING AREA */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+          {activeTab === "COMPANY" && <CompanyStep draft={data} companyInfo={companyInfo} setCompanyInfo={setCompanyInfo} />}
+          {activeTab === "PROPRIETORS" && <ProprietorStep proprietors={proprietors} setProprietors={setProprietors} isSoleProprietor={data?.ownershipType === "SOLE"} />}
+          {activeTab === "DOCUMENTS" && <DocumentStep proprietors={proprietors} setProprietors={setProprietors} />}
         </div>
 
         {/* ACTION FOOTER */}
         <div className="flex justify-end pt-2">
           <Button 
             onClick={() => setShowConfirmModal(true)}
-            className="h-14 px-8 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base rounded-2xl shadow-[0_4px_14px_rgba(5,150,105,0.3)] flex items-center gap-2 transition-all active:scale-95"
+            className="h-14 px-8 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base rounded-2xl shadow-[0_4px_14px_rgba(5,150,105,0.3)] flex items-center justify-center gap-2 transition-all active:scale-95"
           >
             <CheckCircle weight="bold" className="h-6 w-6" /> Complete & Submit Resolution
           </Button>
