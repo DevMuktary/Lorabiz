@@ -90,7 +90,7 @@ export default function QueryResolutionPage() {
 
       if (!saveRes.ok) throw new Error("Failed to save changes");
 
-      // 2. TODO: Call your backend to officially update the status to "PENDING"
+      // 2. Call your backend to officially update the status to "PENDING"
       // await fetch(`/api/register/details/${id}/resolve-query`, { method: "POST" });
       
       setTimeout(() => { 
@@ -169,27 +169,31 @@ export default function QueryResolutionPage() {
           {currentStep === 3 && <DocumentStep proprietors={proprietors} setProprietors={setProprietors} />}
 
           {/* WIZARD FOOTER NAVIGATION */}
-          <div className="bg-slate-50 border-t border-slate-200 p-6 flex justify-between items-center">
+          <div className="bg-slate-50 border-t border-slate-200 p-4 sm:p-6 flex justify-between items-center gap-3">
             <Button 
               variant="outline" 
               onClick={() => setCurrentStep(p => p - 1)} 
               disabled={currentStep === 1 || isSubmitting} 
-              className="h-12 px-6 rounded-xl font-bold bg-white"
+              className="h-12 px-4 sm:px-6 rounded-xl font-bold bg-white shrink-0 text-sm sm:text-base"
             >
               Back
             </Button>
             
             {currentStep < 3 ? (
-               <Button onClick={handleNextStep} className="h-12 px-8 bg-[#ff3f7a] text-white font-bold rounded-xl shadow-md hover:bg-[#e02b62]">
-                 Continue to Next Step
+               <Button 
+                 onClick={handleNextStep} 
+                 className="h-12 px-6 sm:px-8 bg-[#ff3f7a] text-white font-bold rounded-xl shadow-md hover:bg-[#e02b62] shrink-0 text-sm sm:text-base"
+               >
+                 Continue
                </Button>
             ) : (
                <Button 
                   onClick={() => setShowConfirmModal(true)}
                   disabled={isSubmitting} 
-                  className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center gap-2 transition-all active:scale-95"
+                  className="h-12 px-5 sm:px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 shrink-0 text-sm sm:text-base"
                 >
-                 <CheckCircle weight="bold" className="h-5 w-5" /> Complete & Submit Resolution
+                 <CheckCircle weight="bold" className="h-5 w-5 hidden sm:block" /> 
+                 Submit Resolution
                </Button>
             )}
           </div>
