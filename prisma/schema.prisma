@@ -80,6 +80,9 @@ model BusinessRegistration {
   specificNature    String             
   status            RegistrationStatus @default(UNSUBMITTED) 
   similarityScore   String?
+  queryReason   String?   @db.Text
+  queryStatus   String?   @default("UNRESOLVED")
+  queryDate     DateTime?
   
   // --- COMPANY INFORMATION ---
   companyEmail      String?
