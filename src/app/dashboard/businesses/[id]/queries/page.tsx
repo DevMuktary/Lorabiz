@@ -3,9 +3,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
-  ArrowLeft, WarningCircle, CheckCircle, Info, Spinner, X, CircleNotch 
+  ArrowLeft, WarningCircle, CheckCircle, Spinner, X, CircleNotch 
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+
+// TODO: Import your actual registration form component here
+// import BusinessRegistrationForm from "@/components/register/BusinessRegistrationForm";
 
 export default function QueryResolutionPage() {
   const params = useParams();
@@ -36,10 +39,10 @@ export default function QueryResolutionPage() {
   const handleSubmitResolution = async () => {
     setIsSubmitting(true);
     try {
-      // Typically, you would make a PUT request to your API here to update the status to "PENDING"
+      // POST request to your API to update the status to "PENDING"
       // await fetch(`/api/register/details/${id}/resolve`, { method: "POST" });
       
-      setTimeout(() => { // Simulated delay for realism
+      setTimeout(() => { 
         setIsSubmitting(false);
         setShowConfirmModal(false);
         router.push("/dashboard");
@@ -52,8 +55,8 @@ export default function QueryResolutionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Spinner className="animate-spin h-10 w-10 text-[#ff3f7a]" />
+      <div className="min-h-[60vh] flex items-center justify-center bg-slate-50">
+        <Spinner className="animate-spin h-8 w-8 text-[#ff3f7a]" />
       </div>
     );
   }
@@ -61,52 +64,53 @@ export default function QueryResolutionPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-20 font-sans">
       
-      {/* HEADER */}
-      <div className="bg-white border-b border-slate-200 px-4 py-4 sm:px-8">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      {/* COMPACT HEADER */}
+      <div className="bg-white border-b border-slate-100 px-4 py-3 sm:px-8">
+        <div className="max-w-4xl mx-auto flex items-center">
           <button 
             onClick={() => router.push("/dashboard")}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold transition-colors px-2 py-2 rounded-lg hover:bg-slate-100 -ml-2"
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold transition-colors px-2 py-2 rounded-lg hover:bg-slate-50 -ml-2"
           >
-            <ArrowLeft weight="bold" className="h-5 w-5" /> Back
+            <ArrowLeft weight="bold" className="h-5 w-5" /> Back to Dashboard
           </button>
-          <div className="bg-amber-100 text-amber-800 border border-amber-200 px-4 py-1.5 rounded-full flex items-center gap-2 text-xs font-black uppercase tracking-widest shadow-sm">
-            <WarningCircle weight="bold" className="h-4 w-4" /> Query Mode Active
-          </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-8 mt-8 space-y-8 animate-in fade-in duration-500">
+      <div className="max-w-4xl mx-auto px-4 sm:px-8 mt-6 space-y-6 animate-in fade-in duration-500">
         
-        {/* THE QUERY BANNER */}
-        <div className="bg-amber-50 border-l-4 border-amber-500 p-6 sm:p-8 rounded-r-3xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] relative overflow-hidden">
-          <WarningCircle className="absolute -right-6 -top-6 h-40 w-40 text-amber-500/10 pointer-events-none" weight="fill" />
-          <h2 className="text-xl sm:text-2xl font-black text-amber-900 mb-3 flex items-center gap-2">
-            <Info weight="fill" className="text-amber-500" /> Action Required
-          </h2>
-          <p className="text-amber-800 font-medium text-sm sm:text-base leading-relaxed max-w-2xl">
-            This application has been queried by the CAC. Please review the official feedback below and update your application details accordingly. Ensure you resolve all highlighted issues before submitting.
-          </p>
-          <div className="mt-6 bg-white/70 p-5 rounded-2xl border border-amber-200 shadow-sm">
-            <p className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest mb-1.5">Official CAC Feedback</p>
-            <p className="text-amber-900 font-bold text-sm sm:text-base leading-relaxed">
-              {data?.queryReason || "No specific query reason was recorded for this application. Please review your documents and names for any obvious errors."}
+        {/* COMPACT CAC QUERY ALERT */}
+        <div className="bg-amber-50 border border-amber-200 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row gap-4 sm:items-start shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+          <div className="bg-amber-100 p-2 rounded-full shrink-0 w-fit">
+            <WarningCircle className="h-6 w-6 text-amber-600" weight="fill" />
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-amber-900 mb-1">Official CAC Query Feedback</h2>
+            <p className="text-amber-800 font-medium text-sm leading-relaxed mb-2">
+              {data?.queryReason}
+            </p>
+            <p className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest">
+              Please update your application details below to resolve this issue.
             </p>
           </div>
         </div>
 
-        {/* MOCK FORM AREA (Placeholder for registration components) */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+        {/* REAL FORM MOUNTING AREA */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+          
+          {/* TODO: Replace this placeholder div with your actual form component.
+            Example: <BusinessRegistrationForm initialData={data} isQueryMode={true} />
+          */}
           <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
             <p className="text-slate-500 font-bold text-center text-lg">
-              [ Registration Form Rendered Here ]
+              &lt;BusinessRegistrationForm initialData={"{data}"} /&gt;
             </p>
-            <span className="text-sm font-medium text-slate-400 mt-2">Users edit their existing data directly on this page.</span>
+            <span className="text-sm font-medium text-slate-400 mt-2">Mount your existing multi-step form component here.</span>
           </div>
+
         </div>
 
         {/* ACTION FOOTER */}
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end pt-2">
           <Button 
             onClick={() => setShowConfirmModal(true)}
             className="h-14 px-8 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base rounded-2xl shadow-[0_4px_14px_rgba(5,150,105,0.3)] flex items-center gap-2 transition-all active:scale-95"
