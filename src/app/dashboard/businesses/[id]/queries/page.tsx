@@ -7,7 +7,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
-// Import your existing registration steps
+// Import existing registration steps
 import CompanyStep from "@/components/dashboard/register/biz-name/CompanyStep";
 import ProprietorStep from "@/components/dashboard/register/biz-name/ProprietorStep";
 import DocumentStep from "@/components/dashboard/register/biz-name/DocumentStep";
@@ -28,7 +28,9 @@ export default function QueryResolutionPage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"COMPANY" | "PROPRIETORS" | "DOCUMENTS">("COMPANY");
+  
+  // Wizard State (1: Company, 2: Proprietors, 3: Documents)
+  const [currentStep, setCurrentStep] = useState(1);
 
   useEffect(() => {
     if (!id) return;
@@ -70,6 +72,11 @@ export default function QueryResolutionPage() {
     };
     fetchDetails();
   }, [id]);
+
+  const handleNextStep = () => {
+    setCurrentStep((prev) => prev + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleSubmitResolution = async () => {
     setIsSubmitting(true);
@@ -134,47 +141,59 @@ export default function QueryResolutionPage() {
               {data?.queryReason || "No specific reason provided by CAC."}
             </p>
             <p className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest">
-              Please update the relevant sections below to resolve this issue.
+              Please review your details step-by-step and fix the issues raised above.
             </p>
           </div>
         </div>
 
-        {/* EDITOR TABS */}
-        <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2">
-          {["COMPANY", "PROPRIETORS", "DOCUMENTS"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={`px-5 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${
-                activeTab === tab 
-                  ? "bg-[#ff3f7a] text-white shadow-md" 
-                  : "bg-white text-slate-500 hover:text-slate-900 border border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              {tab === "COMPANY" && "Company Info"}
-              {tab === "PROPRIETORS" && "Proprietors"}
-              {tab === "DOCUMENTS" && "Documents"}
-            </button>
+        {/* STEPPER INDICATOR */}
+        <div className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full">
+          {[ 
+            { step: 1, title: "Company Information" }, 
+            { step: 2, title: "Proprietor Information" }, 
+            { step: 3, title: "Document Uploads" }
+          ].map((s) => (
+            <div key={s.step} className={`flex items-center gap-2 whitespace-nowrap text-sm ${currentStep === s.step ? "text-[#ff3f7a] font-black" : currentStep > s.step ? "text-slate-800 font-bold" : "text-slate-400 font-medium"}`}>
+              <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold ${currentStep === s.step ? "bg-[#ff3f7a] text-white" : currentStep > s.step ? "bg-slate-200 text-slate-800" : "bg-slate-100"}`}>
+                {s.step}
+              </span>
+              {s.title}
+            </div>
           ))}
         </div>
 
-        {/* EDITOR MOUNTING AREA */}
+        {/* WIZARD MOUNTING AREA */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-          {activeTab === "COMPANY" && <CompanyStep draft={data} companyInfo={companyInfo} setCompanyInfo={setCompanyInfo} />}
-          {activeTab === "PROPRIETORS" && <ProprietorStep proprietors={proprietors} setProprietors={setProprietors} isSoleProprietor={data?.ownershipType === "SOLE"} />}
-          {activeTab === "DOCUMENTS" && <DocumentStep proprietors={proprietors} setProprietors={setProprietors} />}
-        </div>
+          {currentStep === 1 && <CompanyStep draft={data} companyInfo={companyInfo} setCompanyInfo={setCompanyInfo} />}
+          {currentStep === 2 && <ProprietorStep proprietors={proprietors} setProprietors={setProprietors} isSoleProprietor={data?.ownershipType === "SOLE"} />}
+          {currentStep === 3 && <DocumentStep proprietors={proprietors} setProprietors={setProprietors} />}
 
-        {/* ACTION FOOTER */}
-        <div className="flex justify-end pt-2">
-          <Button 
-            onClick={() => setShowConfirmModal(true)}
-            className="h-14 px-8 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base rounded-2xl shadow-[0_4px_14px_rgba(5,150,105,0.3)] flex items-center justify-center gap-2 transition-all active:scale-95"
-          >
-            <CheckCircle weight="bold" className="h-6 w-6" /> Complete & Submit Resolution
-          </Button>
+          {/* WIZARD FOOTER NAVIGATION */}
+          <div className="bg-slate-50 border-t border-slate-200 p-6 flex justify-between items-center">
+            <Button 
+              variant="outline" 
+              onClick={() => setCurrentStep(p => p - 1)} 
+              disabled={currentStep === 1 || isSubmitting} 
+              className="h-12 px-6 rounded-xl font-bold bg-white"
+            >
+              Back
+            </Button>
+            
+            {currentStep < 3 ? (
+               <Button onClick={handleNextStep} className="h-12 px-8 bg-[#ff3f7a] text-white font-bold rounded-xl shadow-md hover:bg-[#e02b62]">
+                 Continue to Next Step
+               </Button>
+            ) : (
+               <Button 
+                  onClick={() => setShowConfirmModal(true)}
+                  disabled={isSubmitting} 
+                  className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center gap-2 transition-all active:scale-95"
+                >
+                 <CheckCircle weight="bold" className="h-5 w-5" /> Complete & Submit Resolution
+               </Button>
+            )}
+          </div>
         </div>
-
       </div>
 
       {/* CONFIRMATION MODAL */}
