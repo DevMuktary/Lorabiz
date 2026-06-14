@@ -16,7 +16,7 @@ const NAVIGATION = [
     category: "Main",
     links: [
       { name: "Overview", href: "/dashboard", icon: SquaresFour },
-      { name: "My Businesses", href: "/dashboard/businesses", icon: Briefcase },
+      { name: "My Applications", href: "/dashboard/applications", icon: Briefcase },
     ]
   },
   {
@@ -48,7 +48,10 @@ const NAVIGATION = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  
+  // --- SIDEBAR STATES ---
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
 
   // --- SMART HEADER STATE ---
   const [showHeader, setShowHeader] = useState(true);
@@ -97,7 +100,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none
-        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+        ${isDesktopSidebarCollapsed ? "lg:-translate-x-full" : "lg:translate-x-0"}
       `}>
         <div className="h-20 flex items-center justify-between px-8 border-b border-slate-100 shrink-0">
           <Image 
@@ -165,10 +169,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="lg:pl-72 flex flex-col min-h-screen">
+      <div className={`
+        flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out
+        ${isDesktopSidebarCollapsed ? "lg:pl-0" : "lg:pl-72"}
+      `}>
         
         {/* SMART HEADER */}
-        {/* Added transition-transform and conditional -translate-y-full to slide it out of view */}
         <header className={`
           sticky top-0 z-30 h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 
           flex items-center justify-between px-6 lg:px-10 shrink-0 
@@ -176,12 +182,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ${showHeader ? "translate-y-0" : "-translate-y-full"}
         `}>
           <div className="flex items-center gap-4">
+            {/* Mobile Toggle Button */}
             <button 
               className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <List className="h-6 w-6" />
             </button>
+            
+            {/* Desktop Toggle Button */}
+            <button 
+              className="hidden lg:block p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
+            >
+              <List className="h-6 w-6" />
+            </button>
+
             <h2 className="text-xl font-bold text-slate-800 hidden sm:block">
               {getCurrentPageName()}
             </h2>
