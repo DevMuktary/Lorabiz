@@ -56,9 +56,9 @@ export async function PUT(
       return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
     }
 
-    // SECURITY CHECK: Stop them from editing an already paid/submitted application
-    if (currentReg.status !== "UNSUBMITTED") {
-      return NextResponse.json({ message: "Cannot edit an application that has already been submitted or paid for." }, { status: 403 });
+    // 🚨 FIX: Allow editing ONLY if it is UNSUBMITTED or QUERIED. Block everything else (PENDING, APPROVED, etc.)
+    if (currentReg.status !== "UNSUBMITTED" && currentReg.status !== "QUERIED") {
+      return NextResponse.json({ message: "Cannot edit an application that is currently processing or already approved." }, { status: 403 });
     }
 
     // --- STRICT BACKEND VALIDATION ON FINAL SYNC ---
@@ -90,7 +90,6 @@ export async function PUT(
 
     // 1. Update the base registration with Company Info
     // SECURITY FIX: We NO LONGER update the `status` field here. 
-    // Status can only be changed by the Payment Webhook or Payment Verify API.
     await prisma.businessRegistration.update({
       where: { id },
       data: {
@@ -170,8 +169,6 @@ export async function DELETE(
       return NextResponse.json({ message: "Unauthorized action. You do not own this application." }, { status: 403 });
     }
 
-    // Prisma's "onDelete: Cascade" rule will automatically delete all 
-    // linked Proprietors and Documents attached to this registration.
     await prisma.businessRegistration.delete({
       where: { id }
     });
