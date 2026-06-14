@@ -28,18 +28,28 @@ export default function QueryResolutionPage() {
   const [loading, setLoading] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success">("idle");
+  const [isAlreadyResolved, setIsAlreadyResolved] = useState(false);
   
   // Wizard State (1: Company, 2: Proprietors, 3: Documents)
   const [currentStep, setCurrentStep] = useState(1);
 
   useEffect(() => {
     if (!id) return;
+    
     const fetchDetails = async () => {
       try {
         const res = await fetch(`/api/register/details/${id}`);
         const json = await res.json();
         
         if (json.success) {
+          // LOCKOUT CHECK: If already resolved on another tab/device
+          if (json.data.status !== "QUERIED") {
+            setIsAlreadyResolved(true);
+            setTimeout(() => router.push("/dashboard"), 3000);
+            setLoading(false);
+            return;
+          }
+
           setData(json.data);
           
           // Hydrate Company Info
@@ -70,8 +80,25 @@ export default function QueryResolutionPage() {
         setLoading(false);
       }
     };
+
     fetchDetails();
-  }, [id]);
+
+    // BACKGROUND POLLING: Check every 5 seconds if someone else fixed it
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/register/details/${id}`);
+        const json = await res.json();
+        if (json.success && json.data.status !== "QUERIED") {
+          setIsAlreadyResolved(true);
+          setTimeout(() => router.push("/dashboard"), 3000);
+        }
+      } catch (err) {
+        // Silent fail for background check
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [id, router]);
 
   const handleNextStep = () => {
     setCurrentStep((prev) => prev + 1);
@@ -81,7 +108,6 @@ export default function QueryResolutionPage() {
   const handleSubmitResolution = async () => {
     setSubmitState("submitting");
     try {
-      // 1. Save all the updated fields first
       const saveRes = await fetch(`/api/register/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -90,15 +116,12 @@ export default function QueryResolutionPage() {
 
       if (!saveRes.ok) throw new Error("Failed to save changes");
 
-      // 2. Call your backend to officially update the status to "PENDING"
       const resolveRes = await fetch(`/api/register/details/${id}/resolve`, { method: "POST" });
       
       if (!resolveRes.ok) throw new Error("Failed to clear query status");
 
-      // Trigger the beautiful success UI
       setSubmitState("success");
       
-      // Give them 2.5 seconds to see the success screen before redirecting
       setTimeout(() => { 
         setShowConfirmModal(false);
         router.push("/dashboard");
@@ -109,6 +132,22 @@ export default function QueryResolutionPage() {
       alert("Failed to submit resolution. Please check your connection and try again.");
     }
   };
+
+  // MULTI-TAB LOCKOUT SCREEN
+  if (isAlreadyResolved) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50/50">
+        <CheckCircle className="h-28 w-28 text-emerald-500 mb-8" weight="fill" />
+        <h2 className="text-3xl font-black text-slate-900 mb-3 text-center">Query Already Fixed</h2>
+        <p className="text-slate-500 font-medium text-lg text-center max-w-md">
+          This query has already been resolved and submitted.
+        </p>
+        <p className="text-sm font-bold tracking-widest uppercase text-slate-400 mt-8 animate-pulse">
+          Redirecting to Dashboard...
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -218,7 +257,7 @@ export default function QueryResolutionPage() {
                 </div>
                 <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Query Resolved!</h3>
                 <p className="text-sm font-medium text-slate-500 mb-8 leading-relaxed">
-                  Your application updates have been securely submitted to the registry.
+                  Your application updates have been submitted to the registry.
                 </p>
                 <div className="flex items-center justify-center gap-2 text-sm font-bold text-slate-400 animate-pulse">
                   <CircleNotch className="animate-spin h-4 w-4" weight="bold" /> Redirecting to dashboard...
