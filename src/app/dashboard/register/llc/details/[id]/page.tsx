@@ -43,6 +43,7 @@ export default function LlcRegistrationDetailsPage() {
     headOfficeSameAsRegistered: false, 
     headOfficeAddress: { state: "", lga: "", city: "", postCode: "", houseNo: "", street: "" },
     useDefaultArticles: true,
+    customArticles: [] as string[],
     witnessDetails: {},
     memorandumObjects: [] as string[],
     officers: [] as any[],
@@ -80,8 +81,9 @@ export default function LlcRegistrationDetailsPage() {
             description: json.data.description || prev.description,
             registeredAddress: rAddr,
             headOfficeAddress: hAddr,
-            headOfficeSameAsRegistered: isSame, // Auto-check if they match perfectly
+            headOfficeSameAsRegistered: isSame, 
             useDefaultArticles: json.data.useDefaultArticles ?? prev.useDefaultArticles,
+            customArticles: json.data.customArticles || prev.customArticles,
             witnessDetails: json.data.witnessDetails || prev.witnessDetails,
             memorandumObjects: json.data.memorandumObjects || prev.memorandumObjects,
             officers: json.data.officers || prev.officers,
