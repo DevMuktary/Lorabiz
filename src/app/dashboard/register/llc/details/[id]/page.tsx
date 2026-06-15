@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CircleNotch, CircleDashed } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import ComplianceStep from "@/components/dashboard/register/llc/ComplianceStep";
 import UploadsStep from "@/components/dashboard/register/llc/UploadsStep";
 import PreviewStep from "@/components/dashboard/register/llc/PreviewStep";
 
-// Optional: Import your PaymentModal when ready
+// Optional: Import your PaymentModal when ready for LLCs
 // import PaymentModal from "@/components/dashboard/register/llc/PaymentModal";
 
 export default function LlcRegistrationDetailsPage() {
@@ -29,6 +29,9 @@ export default function LlcRegistrationDetailsPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [draft, setDraft] = useState<any>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  
+  // STRICT VALIDATION STATE
+  const [showErrors, setShowErrors] = useState(false);
 
   // ==========================================
   // MASTER FORM STATE
@@ -37,7 +40,7 @@ export default function LlcRegistrationDetailsPage() {
     // Step 1
     email: "", principalActivity: "", specificActivity: "", description: "",
     registeredAddress: { state: "", lga: "", city: "", postCode: "", houseNo: "", street: "" },
-    headOfficeSameAsRegistered: true,
+    headOfficeSameAsRegistered: false, // Default to FALSE to force them to look at it
     headOfficeAddress: { state: "", lga: "", city: "", postCode: "", houseNo: "", street: "" },
     // Step 2 & 3
     useDefaultArticles: true,
@@ -58,7 +61,6 @@ export default function LlcRegistrationDetailsPage() {
   useEffect(() => {
     if (!id) return;
     
-    // We will build this API route next!
     fetch(`/api/register/llc/details/${id}`)
       .then(res => res.json())
       .then(json => {
@@ -78,7 +80,8 @@ export default function LlcRegistrationDetailsPage() {
             specificActivity: json.data.specificActivity || prev.specificActivity,
             description: json.data.description || prev.description,
             registeredAddress: json.data.registeredAddress || prev.registeredAddress,
-            headOfficeSameAsRegistered: json.data.headOfficeAddress ? false : true,
+            // If headOfficeAddress exists in DB, it means it's different
+            headOfficeSameAsRegistered: json.data.headOfficeAddress ? false : prev.headOfficeSameAsRegistered,
             headOfficeAddress: json.data.headOfficeAddress || prev.headOfficeAddress,
             useDefaultArticles: json.data.useDefaultArticles ?? prev.useDefaultArticles,
             witnessDetails: json.data.witnessDetails || prev.witnessDetails,
@@ -101,11 +104,31 @@ export default function LlcRegistrationDetailsPage() {
   // SAVE TO DATABASE & NEXT STEP
   // ==========================================
   const handleSaveAndNext = async () => {
-    // Basic step validation before moving forward
+    
+    // STRICT STEP 1 VALIDATION
+    if (currentStep === 1) {
+      const d = companyDetails;
+      const rAddr = d.registeredAddress;
+      const hAddr = d.headOfficeAddress;
+
+      const isBaseValid = d.email && d.description && rAddr.state && rAddr.lga && rAddr.city && rAddr.houseNo && rAddr.street;
+      const isHeadValid = d.headOfficeSameAsRegistered || (hAddr.state && hAddr.lga && hAddr.city && hAddr.houseNo && hAddr.street);
+
+      if (!isBaseValid || !isHeadValid) {
+        setShowErrors(true);
+        alert("Please fill all required fields highlighted in red before continuing.");
+        return; // BLOCK PROGRESS
+      }
+      setShowErrors(false);
+    }
+
+    // STRICT STEP 3 VALIDATION
     if (currentStep === 3 && companyDetails.memorandumObjects.length === 0) {
       alert("Please add at least one Object of Memorandum.");
       return;
     }
+    
+    // STRICT STEP 4 VALIDATION
     if (currentStep === 4 && companyDetails.officers.filter(o => o.roles.includes("DIRECTOR")).length === 0) {
       alert("You must add at least one Director.");
       return;
@@ -208,7 +231,7 @@ export default function LlcRegistrationDetailsPage() {
       {/* Dynamic Form Mounting */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
         
-        {currentStep === 1 && <CompanyDetailsStep data={companyDetails} updateData={setCompanyDetails} draft={draft} />}
+        {currentStep === 1 && <CompanyDetailsStep data={companyDetails} updateData={setCompanyDetails} draft={draft} showErrors={showErrors} />}
         {currentStep === 2 && <ArticlesStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 3 && <MemorandumStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 4 && <OfficersStep data={companyDetails} updateData={setCompanyDetails} />}
