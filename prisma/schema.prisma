@@ -41,6 +41,13 @@ enum TransactionStatus {
   REVERSED
 }
 
+enum OfficerRole {
+  DIRECTOR
+  SECRETARY
+  SHAREHOLDER
+  PSC
+}
+
 // ==========================================
 // MODELS
 // ==========================================
@@ -63,9 +70,14 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  registrations BusinessRegistration[]
-  wallet        Wallet?
+  registrations    BusinessRegistration[]
+  llcRegistrations LlcRegistration[]
+  wallet           Wallet?
 }
+
+// ==========================================
+// BUSINESS NAME REGISTRATION (Existing)
+// ==========================================
 
 model BusinessRegistration {
   id                String             @id @default(cuid())
@@ -80,9 +92,9 @@ model BusinessRegistration {
   specificNature    String             
   status            RegistrationStatus @default(UNSUBMITTED) 
   similarityScore   String?
-  queryReason   String?   @db.Text
-  queryStatus   String?   @default("UNRESOLVED")
-  queryDate     DateTime?
+  queryReason       String?            @db.Text
+  queryStatus       String?            @default("UNRESOLVED")
+  queryDate         DateTime?
   
   // --- COMPANY INFORMATION ---
   companyEmail      String?
@@ -106,11 +118,8 @@ model Proprietor {
   firstName       String
   otherName       String?
   email           String?
-  
-  // --- ADDED PHONE CODE HERE ---
   phoneCode       String   @default("+234") 
   phone           String
-  
   gender          Gender
   dob             String
   state           String
@@ -127,6 +136,97 @@ model Proprietor {
   registration    BusinessRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 }
 
+// ==========================================
+// LLC / COMPANY REGISTRATION (New)
+// ==========================================
+
+model LlcRegistration {
+  id                  String             @id @default(cuid())
+  userId              String
+  status              RegistrationStatus @default(UNSUBMITTED)
+  currentStep         Int                @default(1)
+  
+  // Step 1: Company Details
+  proposedName        String             // Approved from Name Search
+  email               String?
+  principalActivity   String?
+  specificActivity    String?
+  description         String?            @db.Text
+  
+  // Addresses (Stored as JSON to handle state/lga/city cleanly)
+  registeredAddress   Json?    
+  headOfficeAddress   Json?    
+  
+  // Step 2 & 3: Articles & Memorandum
+  useDefaultArticles  Boolean            @default(true)
+  witnessDetails      Json?              // The person witnessing the articles
+  memorandumObjects   String[]           // Array of the objects they add
+  
+  // Step 5: Share Capital
+  companyType         String?            // e.g., "ENTITY WITH SHARES BELOW FIVE MILLION"
+  totalShareCapital   Float?
+  shareClasses        Json?              // Array of { class: "ORDINARY", units: 1000000, pricePerUnit: 1 }
+
+  // Step 7: Compliance
+  declarantDetails    Json?
+  
+  // Status Tracking
+  queryReason         String?            @db.Text
+  queryStatus         String?            @default("UNRESOLVED")
+  
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  
+  // Relational Data
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  officers            CompanyOfficer[]
+}
+
+model CompanyOfficer {
+  id                  String   @id @default(cuid())
+  registrationId      String
+  
+  // The magic array field that handles overlaps (e.g., [DIRECTOR, SHAREHOLDER, PSC])
+  roles               OfficerRole[] 
+  
+  // Personal Details
+  surname             String
+  firstName           String
+  otherName           String?
+  dob                 String
+  gender              String
+  nationality         String
+  formerName          String?
+  formerNationality   String?
+  occupation          String
+  phone               String
+  email               String
+  
+  // Identification & Tax
+  idType              String?
+  idNumber            String?
+  taxResidency        String?
+  tin                 String?
+  
+  // Addresses (JSON to handle the complex state/lga/postalcode structures)
+  residentialAddress  Json?
+  serviceAddress      Json?
+  
+  // Specific Data based on Role
+  sharesAllotted      Float?   // Only used if role includes SHAREHOLDER
+  pscDetails          Json?    // Only used if role includes PSC (holds the % of voting rights, influence, etc.)
+  
+  // Document URLs (Single source of truth per human)
+  idDocumentUrl       String?
+  signatureUrl        String?
+  
+  registration        LlcRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// SYSTEM AUTH & LEDGER
+// ==========================================
+
 model OtpCode {
   id        String   @id @default(cuid())
   email     String   @unique 
@@ -134,10 +234,6 @@ model OtpCode {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
-
-// ==========================================
-// FINANCIAL LEDGER SYSTEM
-// ==========================================
 
 model Wallet {
   id        String   @id @default(cuid())
@@ -150,27 +246,23 @@ model Wallet {
   transactions Transaction[]
 }
 
-// ==========================================
-// SYSTEM SETTINGS & PRICING
-// ==========================================
-
 model ServicePricing {
-  id          String   @id @default(cuid())
-  serviceKey  String   @unique // e.g., "BUSINESS_NAME", "LLC", "NGO"
-  title       String   // e.g., "Business Name Registration"
-  price       Decimal  @default(0.00)
+  id         String   @id @default(cuid())
+  serviceKey String   @unique // e.g., "BUSINESS_NAME", "LLC_BASE", "LLC_EXTRA_MILLION"
+  title      String   
+  price      Decimal  @default(0.00)
   
-  updatedAt   DateTime @updatedAt
+  updatedAt  DateTime @updatedAt
 }
 
 model Transaction {
   id            String            @id @default(cuid())
   walletId      String
   amount        Decimal
-  balanceBefore Decimal           
-  balanceAfter  Decimal           
-  type          TransactionType   
-  status        TransactionStatus @default(PENDING) 
+  balanceBefore Decimal            
+  balanceAfter  Decimal            
+  type          TransactionType    
+  status        TransactionStatus  @default(PENDING) 
   reference     String            @unique 
   description   String            
   createdAt     DateTime          @default(now())
