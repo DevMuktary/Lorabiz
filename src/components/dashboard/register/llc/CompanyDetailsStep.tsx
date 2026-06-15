@@ -9,9 +9,7 @@ import { NIGERIA_STATES_LGA } from "@/lib/nigeria-states";
 export default function CompanyDetailsStep({ data, updateData, draft, showErrors }: any) {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  // 1. SMART VALIDATION ENGINE
   const getError = (fieldKey: string, value: string, type: "text" | "email" = "text") => {
-    // Only show errors if the user has touched the field OR if they tried to click "Next"
     if (!touched[fieldKey] && !showErrors) return null;
     
     if (!value || !value.trim()) {
@@ -24,34 +22,23 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
         return "Please enter a valid email address.";
       }
     }
-    
-    return null; // No errors
+    return null; 
   };
 
-  const handleBlur = (field: string) => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-  };
+  const handleBlur = (field: string) => setTouched((prev) => ({ ...prev, [field]: true }));
 
   const handleAddressChange = (field: string, value: string, isHeadOffice = false) => {
     const target = isHeadOffice ? "headOfficeAddress" : "registeredAddress";
-    
     if (field === "state") {
-      updateData((prev: any) => ({
-        ...prev,
-        [target]: { ...prev[target], state: value, lga: "" }
-      }));
+      updateData((prev: any) => ({ ...prev, [target]: { ...prev[target], state: value, lga: "" } }));
     } else {
-      updateData((prev: any) => ({
-        ...prev,
-        [target]: { ...prev[target], [field]: value }
-      }));
+      updateData((prev: any) => ({ ...prev, [target]: { ...prev[target], [field]: value } }));
     }
   };
 
   const states = Object.keys(NIGERIA_STATES_LGA).sort();
   const getLgasForState = (stateName: string) => NIGERIA_STATES_LGA[stateName] || [];
 
-  // 2. BEAUTIFUL ERROR COMPONENT
   const ErrorMessage = ({ msg }: { msg: string | null }) => {
     if (!msg) return null;
     return (
@@ -61,7 +48,6 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
     );
   };
 
-  // Run validators
   const errEmail = getError("email", data.email, "email");
   const errDesc = getError("desc", data.description);
   const errRegState = getError("regState", data.registeredAddress.state);
@@ -79,7 +65,6 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
   return (
     <div className="p-6 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden">
       
-      {/* SECTION 1: CORE DETAILS */}
       <section>
         <div className="mb-6">
           <h2 className="text-xl font-black text-slate-900">Company Information</h2>
@@ -98,6 +83,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
           <div className="space-y-2">
             <Label className={`text-xs font-bold uppercase ${errEmail ? "text-red-500" : "text-slate-500"}`}>Company Email <span className="text-red-500">*</span></Label>
             <Input 
+              id="field-email"
               placeholder="hello@company.com" 
               value={data.email} 
               onChange={e => { updateData({...data, email: e.target.value}); setTouched(p => ({...p, email: true})); }}
@@ -110,6 +96,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
           <div className="space-y-2 md:col-span-2">
             <Label className={`text-xs font-bold uppercase ${errDesc ? "text-red-500" : "text-slate-500"}`}>Description of Business Activity <span className="text-red-500">*</span></Label>
             <textarea 
+              id="field-desc"
               rows={3} placeholder="Briefly describe what this company will be doing..."
               value={data.description} 
               onChange={e => { updateData({...data, description: e.target.value}); setTouched(p => ({...p, desc: true})); }}
@@ -123,7 +110,6 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
 
       <hr className="border-slate-100" />
 
-      {/* SECTION 2: REGISTERED ADDRESS */}
       <section>
         <div className="mb-6">
           <h2 className="text-xl font-black text-slate-900">Registered Office Address</h2>
@@ -135,6 +121,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
             <Label className={`text-xs font-bold uppercase ${errRegState ? "text-red-500" : "text-slate-500"}`}>State <span className="text-red-500">*</span></Label>
             <div className="relative">
               <select 
+                id="field-regState"
                 value={data.registeredAddress.state} 
                 onChange={e => { handleAddressChange("state", e.target.value); setTouched(p => ({...p, regState: true})); }}
                 onBlur={() => handleBlur("regState")}
@@ -152,6 +139,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
             <Label className={`text-xs font-bold uppercase ${errRegLga ? "text-red-500" : "text-slate-500"}`}>LGA <span className="text-red-500">*</span></Label>
             <div className="relative">
               <select 
+                id="field-regLga"
                 value={data.registeredAddress.lga} 
                 disabled={!data.registeredAddress.state}
                 onChange={e => { handleAddressChange("lga", e.target.value); setTouched(p => ({...p, regLga: true})); }}
@@ -168,7 +156,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
 
           <div className="space-y-2">
             <Label className={`text-xs font-bold uppercase ${errRegCity ? "text-red-500" : "text-slate-500"}`}>City / Town / Village <span className="text-red-500">*</span></Label>
-            <Input placeholder="City name" value={data.registeredAddress.city} onChange={e => { handleAddressChange("city", e.target.value); setTouched(p => ({...p, regCity: true})); }} onBlur={() => handleBlur("regCity")} className={`h-12 font-bold ${errRegCity ? "border-red-500 bg-red-50/30" : ""}`} />
+            <Input id="field-regCity" placeholder="City name" value={data.registeredAddress.city} onChange={e => { handleAddressChange("city", e.target.value); setTouched(p => ({...p, regCity: true})); }} onBlur={() => handleBlur("regCity")} className={`h-12 font-bold ${errRegCity ? "border-red-500 bg-red-50/30" : ""}`} />
             <ErrorMessage msg={errRegCity} />
           </div>
 
@@ -179,13 +167,13 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
 
           <div className="space-y-2">
             <Label className={`text-xs font-bold uppercase ${errRegHouse ? "text-red-500" : "text-slate-500"}`}>House No. / Building Name <span className="text-red-500">*</span></Label>
-            <Input placeholder="E.g. 12 or Block B" value={data.registeredAddress.houseNo} onChange={e => { handleAddressChange("houseNo", e.target.value); setTouched(p => ({...p, regHouse: true})); }} onBlur={() => handleBlur("regHouse")} className={`h-12 font-bold ${errRegHouse ? "border-red-500 bg-red-50/30" : ""}`} />
+            <Input id="field-regHouse" placeholder="E.g. 12 or Block B" value={data.registeredAddress.houseNo} onChange={e => { handleAddressChange("houseNo", e.target.value); setTouched(p => ({...p, regHouse: true})); }} onBlur={() => handleBlur("regHouse")} className={`h-12 font-bold ${errRegHouse ? "border-red-500 bg-red-50/30" : ""}`} />
             <ErrorMessage msg={errRegHouse} />
           </div>
 
           <div className="space-y-2">
             <Label className={`text-xs font-bold uppercase ${errRegStreet ? "text-red-500" : "text-slate-500"}`}>Street Name <span className="text-red-500">*</span></Label>
-            <Input placeholder="E.g. Awolowo Way" value={data.registeredAddress.street} onChange={e => { handleAddressChange("street", e.target.value); setTouched(p => ({...p, regStreet: true})); }} onBlur={() => handleBlur("regStreet")} className={`h-12 font-bold ${errRegStreet ? "border-red-500 bg-red-50/30" : ""}`} />
+            <Input id="field-regStreet" placeholder="E.g. Awolowo Way" value={data.registeredAddress.street} onChange={e => { handleAddressChange("street", e.target.value); setTouched(p => ({...p, regStreet: true})); }} onBlur={() => handleBlur("regStreet")} className={`h-12 font-bold ${errRegStreet ? "border-red-500 bg-red-50/30" : ""}`} />
             <ErrorMessage msg={errRegStreet} />
           </div>
         </div>
@@ -193,7 +181,6 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
 
       <hr className="border-slate-100" />
 
-      {/* SECTION 3: HEAD OFFICE ADDRESS */}
       <section>
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -222,6 +209,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
               <Label className={`text-xs font-bold uppercase ${errHoState ? "text-red-500" : "text-slate-500"}`}>State <span className="text-red-500">*</span></Label>
               <div className="relative">
                 <select 
+                  id="field-hoState"
                   value={data.headOfficeAddress.state} 
                   onChange={e => { handleAddressChange("state", e.target.value, true); setTouched(p => ({...p, hoState: true})); }}
                   onBlur={() => handleBlur("hoState")}
@@ -239,6 +227,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
               <Label className={`text-xs font-bold uppercase ${errHoLga ? "text-red-500" : "text-slate-500"}`}>LGA <span className="text-red-500">*</span></Label>
               <div className="relative">
                 <select 
+                  id="field-hoLga"
                   value={data.headOfficeAddress.lga} 
                   disabled={!data.headOfficeAddress.state}
                   onChange={e => { handleAddressChange("lga", e.target.value, true); setTouched(p => ({...p, hoLga: true})); }}
@@ -255,7 +244,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
 
             <div className="space-y-2">
               <Label className={`text-xs font-bold uppercase ${errHoCity ? "text-red-500" : "text-slate-500"}`}>City / Town / Village <span className="text-red-500">*</span></Label>
-              <Input placeholder="City name" value={data.headOfficeAddress.city} onChange={e => { handleAddressChange("city", e.target.value, true); setTouched(p => ({...p, hoCity: true})); }} onBlur={() => handleBlur("hoCity")} className={`h-12 font-bold ${errHoCity ? "border-red-500 bg-red-50/30" : ""}`} />
+              <Input id="field-hoCity" placeholder="City name" value={data.headOfficeAddress.city} onChange={e => { handleAddressChange("city", e.target.value, true); setTouched(p => ({...p, hoCity: true})); }} onBlur={() => handleBlur("hoCity")} className={`h-12 font-bold ${errHoCity ? "border-red-500 bg-red-50/30" : ""}`} />
               <ErrorMessage msg={errHoCity} />
             </div>
 
@@ -266,13 +255,13 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
 
             <div className="space-y-2">
               <Label className={`text-xs font-bold uppercase ${errHoHouse ? "text-red-500" : "text-slate-500"}`}>House No. / Building Name <span className="text-red-500">*</span></Label>
-              <Input placeholder="E.g. 12 or Block B" value={data.headOfficeAddress.houseNo} onChange={e => { handleAddressChange("houseNo", e.target.value, true); setTouched(p => ({...p, hoHouse: true})); }} onBlur={() => handleBlur("hoHouse")} className={`h-12 font-bold ${errHoHouse ? "border-red-500 bg-red-50/30" : ""}`} />
+              <Input id="field-hoHouse" placeholder="E.g. 12 or Block B" value={data.headOfficeAddress.houseNo} onChange={e => { handleAddressChange("houseNo", e.target.value, true); setTouched(p => ({...p, hoHouse: true})); }} onBlur={() => handleBlur("hoHouse")} className={`h-12 font-bold ${errHoHouse ? "border-red-500 bg-red-50/30" : ""}`} />
               <ErrorMessage msg={errHoHouse} />
             </div>
 
             <div className="space-y-2">
               <Label className={`text-xs font-bold uppercase ${errHoStreet ? "text-red-500" : "text-slate-500"}`}>Street Name <span className="text-red-500">*</span></Label>
-              <Input placeholder="E.g. Awolowo Way" value={data.headOfficeAddress.street} onChange={e => { handleAddressChange("street", e.target.value, true); setTouched(p => ({...p, hoStreet: true})); }} onBlur={() => handleBlur("hoStreet")} className={`h-12 font-bold ${errHoStreet ? "border-red-500 bg-red-50/30" : ""}`} />
+              <Input id="field-hoStreet" placeholder="E.g. Awolowo Way" value={data.headOfficeAddress.street} onChange={e => { handleAddressChange("street", e.target.value, true); setTouched(p => ({...p, hoStreet: true})); }} onBlur={() => handleBlur("hoStreet")} className={`h-12 font-bold ${errHoStreet ? "border-red-500 bg-red-50/30" : ""}`} />
               <ErrorMessage msg={errHoStreet} />
             </div>
           </div>
