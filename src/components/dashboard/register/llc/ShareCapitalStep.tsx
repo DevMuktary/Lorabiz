@@ -64,8 +64,7 @@ export default function ShareCapitalStep({ data, updateData }: any) {
               onChange={e => updateShareData("companyType", e.target.value)}
             >
               <option value="ENTITY WITH SHARES BELOW FIVE MILLION">ENTITY WITH SHARES BELOW FIVE MILLION (Standard)</option>
-              {/* You can add the massive list of other specialized types here later */}
-              <option value="GENERAL TRADING">GENERAL TRADING (> 5M Shares)</option>
+              <option value="GENERAL TRADING">GENERAL TRADING (&gt; 5M Shares)</option>
             </select>
           </div>
 
