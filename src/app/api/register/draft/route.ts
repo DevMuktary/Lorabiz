@@ -10,37 +10,63 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    // ADDED: ownershipType, altName1, altName2
     const { 
       proposedName, altName1, altName2, 
       entityType, category, specificNature, 
       similarityScore, ownershipType 
     } = await req.json();
 
-    if (!proposedName || !entityType || !category || !specificNature || !ownershipType) {
+    if (!proposedName || !entityType || !category || !specificNature) {
       return NextResponse.json({ success: false, message: "Missing required fields." }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) throw new Error("User not found");
 
-    // Save the verified name as a draft
-    const draft = await prisma.businessRegistration.create({
-      data: {
-        userId: user.id,
-        proposedName: proposedName.toUpperCase(),
-        altName1: altName1 ? altName1.toUpperCase() : null,
-        altName2: altName2 ? altName2.toUpperCase() : null,
-        entityType,
-        ownershipType, // This is what Step 3 relies on!
-        category,
-        specificNature,
-        status: "UNSUBMITTED",
-        similarityScore: similarityScore ? similarityScore.toString() : "0",
+    // ==========================================
+    // ROUTE 1: LLC REGISTRATION SAVER
+    // ==========================================
+    if (entityType === "Company (LLC)") {
+      const draft = await prisma.llcRegistration.create({
+        data: {
+          userId: user.id,
+          proposedName: proposedName.toUpperCase(),
+          altName1: altName1 ? altName1.toUpperCase() : null,
+          altName2: altName2 ? altName2.toUpperCase() : null,
+          status: "UNSUBMITTED",
+          currentStep: 1,
+          principalActivity: category,
+          specificActivity: specificNature,
+          similarityScore: similarityScore ? similarityScore.toString() : "0",
+        }
+      });
+      return NextResponse.json({ success: true, draftId: draft.id });
+    } 
+    
+    // ==========================================
+    // ROUTE 2: BUSINESS NAME REGISTRATION SAVER
+    // ==========================================
+    else {
+      if (!ownershipType) {
+         return NextResponse.json({ success: false, message: "Ownership type is required for Business Names." }, { status: 400 });
       }
-    });
 
-    return NextResponse.json({ success: true, draftId: draft.id });
+      const draft = await prisma.businessRegistration.create({
+        data: {
+          userId: user.id,
+          proposedName: proposedName.toUpperCase(),
+          altName1: altName1 ? altName1.toUpperCase() : null,
+          altName2: altName2 ? altName2.toUpperCase() : null,
+          entityType,
+          ownershipType, 
+          category,
+          specificNature,
+          status: "UNSUBMITTED",
+          similarityScore: similarityScore ? similarityScore.toString() : "0",
+        }
+      });
+      return NextResponse.json({ success: true, draftId: draft.id });
+    }
 
   } catch (error) {
     console.error("Draft Creation Error:", error);
