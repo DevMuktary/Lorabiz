@@ -25,7 +25,17 @@ export async function GET(
       return NextResponse.json({ message: "Draft not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: registration });
+    // Reconstruct the frontend shareCapital object from the database fields
+    let formattedData = { ...registration };
+    if (registration.companyType || registration.totalShareCapital) {
+       (formattedData as any).shareCapital = {
+          companyType: registration.companyType,
+          totalIssuedCapital: registration.totalShareCapital,
+          ...((registration.shareClasses as object) || {})
+       };
+    }
+
+    return NextResponse.json({ success: true, data: formattedData });
   } catch (error) {
     console.error("Fetch LLC Details Error:", error);
     return NextResponse.json({ message: "Error fetching details" }, { status: 500 });
@@ -92,6 +102,11 @@ export async function PUT(
       }
     }
 
+    // Map frontend ShareCapital to Database Columns
+    const dbCompanyType = shareCapital?.companyType || null;
+    const dbTotalShareCapital = shareCapital?.totalIssuedCapital ? Number(shareCapital.totalIssuedCapital) : null;
+    const dbShareClasses = shareCapital ? { allotments: shareCapital.allotments || {} } : null;
+
     // 1. Update the base LLC registration table
     await prisma.llcRegistration.update({
       where: { id },
@@ -105,14 +120,17 @@ export async function PUT(
         useDefaultArticles: useDefaultArticles ?? true,
         witnessDetails: witnessDetails || null,
         memorandumObjects: memorandumObjects || [],
-        shareCapital: shareCapital || null,
+        
+        // FIX: Map strictly to Prisma schema fields
+        companyType: dbCompanyType,
+        totalShareCapital: dbTotalShareCapital,
+        shareClasses: dbShareClasses,
+        
         declarantDetails: declarantDetails || null,
-        // Assuming uploads are merged back into specific models, or stored as JSON if needed globally
       }
     });
 
     // 2. Sync Officers (Directors, Shareholders, PSCs)
-    // To handle dynamic updates perfectly, we delete existing officers and recreate them
     await prisma.companyOfficer.deleteMany({
       where: { registrationId: id }
     });
@@ -138,7 +156,7 @@ export async function PUT(
         tin: o.tin || null,
         residentialAddress: o.residentialAddress || null,
         serviceAddress: o.serviceAddress || null,
-        sharesAllotted: shareCapital?.allotments?.[o.id] || null,
+        sharesAllotted: shareCapital?.allotments?.[o.id] ? Number(shareCapital.allotments[o.id]) : null,
         pscDetails: o.pscDetails || null,
       }));
 
