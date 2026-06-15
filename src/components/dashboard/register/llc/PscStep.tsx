@@ -158,12 +158,12 @@ export default function PscStep({ data, updateData }: any) {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Holds >= 5% of Shares?</Label>
+                  <Label className="text-xs font-bold uppercase text-slate-500">Holds &gt;= 5% of Shares?</Label>
                   <Input value={`${tempPscData.holdsShares || "No"} (${tempPscData.sharesPercentage || "0"}%)`} disabled className="h-12 font-bold bg-slate-100" />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Holds >= 5% Voting Rights?</Label>
+                  <Label className="text-xs font-bold uppercase text-slate-500">Holds &gt;= 5% Voting Rights?</Label>
                   <Input value={`${tempPscData.holdsVotingRights || "No"} (${tempPscData.votingPercentage || "0"}%)`} disabled className="h-12 font-bold bg-slate-100" />
                 </div>
 
