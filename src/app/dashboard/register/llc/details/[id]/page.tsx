@@ -201,15 +201,15 @@ export default function LlcRegistrationDetailsPage() {
   return (
     <div className="max-w-5xl mx-auto pb-16 pt-8 px-4 font-sans relative">
       
-      {/* Header & Stepper */}
+      {/* Header & Stepper (FIXED HORIZONTAL SCROLL) */}
       <div className="mb-8 border-b border-slate-200 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 mb-6">{draft?.proposedName || "Loading..."}</h1>
-          <div className="flex gap-4 overflow-x-auto custom-scrollbar pb-2 w-full md:w-[700px]">
+        <div className="w-full overflow-hidden">
+          <h1 className="text-2xl font-black text-slate-900 mb-6 truncate pr-4">{draft?.proposedName || "Loading..."}</h1>
+          <div className="flex gap-4 overflow-x-auto custom-scrollbar pb-2 w-full max-w-full snap-x">
             {STEPS.map((title, index) => {
               const stepNum = index + 1;
               return (
-                <div key={stepNum} className={`flex items-center gap-2 whitespace-nowrap text-sm ${currentStep === stepNum ? "text-indigo-600 font-black" : currentStep > stepNum ? "text-slate-800 font-bold" : "text-slate-400 font-medium"}`}>
+                <div key={stepNum} className={`flex items-center gap-2 whitespace-nowrap text-sm snap-start shrink-0 ${currentStep === stepNum ? "text-indigo-600 font-black" : currentStep > stepNum ? "text-slate-800 font-bold" : "text-slate-400 font-medium"}`}>
                   <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold ${currentStep === stepNum ? "bg-indigo-600 text-white" : currentStep > stepNum ? "bg-slate-200 text-slate-800" : "bg-slate-100"}`}>
                     {stepNum}
                   </span>
@@ -220,12 +220,7 @@ export default function LlcRegistrationDetailsPage() {
           </div>
         </div>
         
-        {/* Autosave Indicator */}
-        <div className="hidden md:block text-xs font-bold text-slate-400 mb-2">
-          {saveStatus === "saving" && <span className="flex items-center gap-1"><CircleNotch className="animate-spin" /> Saving...</span>}
-          {saveStatus === "saved" && <span className="text-emerald-500">Draft Saved</span>}
-          {saveStatus === "error" && <span className="text-red-500">Save failed</span>}
-        </div>
+        {/* Autosave UI removed completely */}
       </div>
 
       {/* Dynamic Form Mounting */}
