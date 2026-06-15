@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client"; // IMPORT PRISMA HERE TO FIX JSON NULL ERROR
 
 // ==========================================
 // 1. GET: FETCH DRAFT DATA TO POPULATE THE UI
@@ -102,10 +103,14 @@ export async function PUT(
       }
     }
 
-    // Map frontend ShareCapital to Database Columns
+    // Map frontend ShareCapital to Database Columns safely for Prisma
     const dbCompanyType = shareCapital?.companyType || null;
     const dbTotalShareCapital = shareCapital?.totalIssuedCapital ? Number(shareCapital.totalIssuedCapital) : null;
-    const dbShareClasses = shareCapital ? { allotments: shareCapital.allotments || {} } : null;
+    
+    // FIX: Use Prisma.JsonNull instead of standard null to prevent TS error
+    const dbShareClasses = shareCapital 
+      ? { allotments: shareCapital.allotments || {} } 
+      : Prisma.JsonNull;
 
     // 1. Update the base LLC registration table
     await prisma.llcRegistration.update({
@@ -115,18 +120,18 @@ export async function PUT(
         principalActivity: principalActivity || null,
         specificActivity: specificActivity || null,
         description: description || null,
-        registeredAddress: registeredAddress || null,
-        headOfficeAddress: headOfficeSameAsRegistered ? null : headOfficeAddress,
-        useDefaultArticles: useDefaultArticles ?? true,
-        witnessDetails: witnessDetails || null,
-        memorandumObjects: memorandumObjects || [],
         
-        // FIX: Map strictly to Prisma schema fields
+        // Use Prisma.JsonNull for JSON fields that might be empty
+        registeredAddress: registeredAddress || Prisma.JsonNull,
+        headOfficeAddress: headOfficeSameAsRegistered ? Prisma.JsonNull : (headOfficeAddress || Prisma.JsonNull),
+        witnessDetails: witnessDetails || Prisma.JsonNull,
+        declarantDetails: declarantDetails || Prisma.JsonNull,
+        
+        useDefaultArticles: useDefaultArticles ?? true,
+        memorandumObjects: memorandumObjects || [],
         companyType: dbCompanyType,
         totalShareCapital: dbTotalShareCapital,
         shareClasses: dbShareClasses,
-        
-        declarantDetails: declarantDetails || null,
       }
     });
 
@@ -154,10 +159,13 @@ export async function PUT(
         idNumber: o.idNumber || null,
         taxResidency: o.taxResidency || null,
         tin: o.tin || null,
-        residentialAddress: o.residentialAddress || null,
-        serviceAddress: o.serviceAddress || null,
+        
+        // FIX: JSON nulls here as well
+        residentialAddress: o.residentialAddress || Prisma.JsonNull,
+        serviceAddress: o.serviceAddress || Prisma.JsonNull,
+        pscDetails: o.pscDetails || Prisma.JsonNull,
+        
         sharesAllotted: shareCapital?.allotments?.[o.id] ? Number(shareCapital.allotments[o.id]) : null,
-        pscDetails: o.pscDetails || null,
       }));
 
       await prisma.companyOfficer.createMany({
