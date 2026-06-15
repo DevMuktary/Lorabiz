@@ -37,8 +37,9 @@ export async function POST(req: Request) {
               Industry vertical: "${lineOfBusiness}".
               
               CRITICAL CAC RULES:
-              - DO NOT just append a word to the exact same highly unique root (e.g., if QUADROX failed, change the root word to something like QUADRA, NEXUS, or VORTEX).
-              - Must end with a strong qualifier (e.g., VENTURES, CONCEPTS, ENTERPRISES, SERVICES, HUB, BIZ, GLOBAL).
+              - DO NOT just append a word to the exact same highly unique root (e.g., if QUADROX failed, change the root to QUADRA, NEXUS, or VORTEX).
+              - IF entityType is 'Company (LLC)': The name MUST end with exactly the word "LIMITED" or "LTD".
+              - IF entityType is 'Business Name': The name MUST end with a qualifier like VENTURES, CONCEPTS, SERVICES, GLOBAL (DO NOT USE LTD OR LIMITED).
               - Output ONLY the raw name string. Do not use quotes.`
             }
           ],
@@ -92,7 +93,8 @@ export async function POST(req: Request) {
 
       if (!validAlternative) {
          const fallbackRoot = proposedName.split(" ")[0].substring(0, 5);
-         validAlternative = `${fallbackRoot} ${Math.floor(Math.random() * 900 + 100)} CONCEPTS`.toUpperCase();
+         const fallbackSuffix = entityType === "Company (LLC)" ? "LIMITED" : "CONCEPTS";
+         validAlternative = `${fallbackRoot} ${Math.floor(Math.random() * 900 + 100)} ${fallbackSuffix}`.toUpperCase();
       }
 
       return NextResponse.json({ success: true, alternativeName: validAlternative });
@@ -113,13 +115,14 @@ export async function POST(req: Request) {
         {
           role: "system",
           content: `You are a legal compliance gatekeeper for the Nigerian Corporate Affairs Commission (CAC).
-          Analyze the user's proposed company name for a "${entityType}":
+          Analyze the user's proposed name for a "${entityType}":
           
-          1. REJECTION - ILLEGAL SUFFIX: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC'.
-          2. REJECTION - RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE', or 'NIGERIAN'. NOTE: The word 'NIGERIA' is completely ALLOWED as a geographic indicator. Only block 'NIGERIAN'.
-          3. REJECTION - DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
-          4. WARNING - MISSING QUALIFIER: If the name lacks a standard Nigerian business descriptor at the end, flag as "MISSING_SUFFIX".
-          5. If it passes all rules, flag as "PASSED".`
+          1. LLC COMPLIANCE: If entityType is 'Company (LLC)', the name MUST end with 'LTD', 'LIMITED', 'PLC', 'GTE', or 'ULC'. If it doesn't, return status "MISSING_LLC_SUFFIX" and reason "A Company must end with LIMITED or LTD."
+          2. BUSINESS NAME COMPLIANCE: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC', return status "ILLEGAL_SUFFIX".
+          3. RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE', or 'NIGERIAN'. NOTE: 'NIGERIA' is ALLOWED. Only block 'NIGERIAN'.
+          4. DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
+          5. MISSING SUFFIX (Business Name): If 'Business Name' lacks a standard descriptor at the end, flag as "MISSING_SUFFIX".
+          6. If it passes all rules, flag as "PASSED".`
         },
         { role: "user", content: `Name: "${uppercaseName}"` }
       ],
@@ -130,7 +133,7 @@ export async function POST(req: Request) {
           schema: {
             type: "object",
             properties: {
-              status: { type: "string", enum: ["ILLEGAL_SUFFIX", "RESTRICTED_WORD", "DANGEROUS_WORD", "MISSING_SUFFIX", "PASSED"] },
+              status: { type: "string", enum: ["MISSING_LLC_SUFFIX", "ILLEGAL_SUFFIX", "RESTRICTED_WORD", "DANGEROUS_WORD", "MISSING_SUFFIX", "PASSED"] },
               reason: { type: "string" }
             },
             required: ["status", "reason"],
@@ -185,7 +188,7 @@ export async function POST(req: Request) {
           isBlocked: false, 
           rejectionType: "PASSED_WITH_WARNING",
           reasonMessage: "Name is available and ready for registration.",
-          warningMessage: "This name might not have a good suffix to be acceptable by CAC. While we keep on working to improve on our name search engine, if the name is queried by CAC, you will receive an SMS/email to update the name.",
+          warningMessage: uiWarningMessage || "Proceed with caution. The CAC examiner might query the chosen words.",
           data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
         });
     }
@@ -217,12 +220,12 @@ export async function POST(req: Request) {
           {
             role: "system",
             content: `You are a Senior Examiner at the Nigerian Corporate Affairs Commission (CAC). A basic text-matching algorithm flagged these two names as highly similar. 
-            Determine if a human examiner would REJECT the proposed name for being confusingly similar to the existing one.
+            Determine if a human examiner would REJECT the proposed name for being confusingly similar to the existing one. Be slightly lenient if the entity type is different, but strict on root words.
             
             CRITICAL CAC GUIDELINES:
-            1. UNIQUE ROOT COLLISION (REJECT): If both names share a highly unique, invented, or distinct root word (e.g., 'QUADROX', 'ZINOX', 'XELLER') and only differ by a generic secondary word (e.g., 'HOMES' vs 'TECHNOLOGIES LIMITED'), the CAC WILL REJECT IT. Return isConflict: true.
+            1. UNIQUE ROOT COLLISION (REJECT): If both names share a highly unique, invented, or distinct root word (e.g., 'QUADROX', 'ZINOX', 'XELLER') and only differ by a letter or by adding a word after (e.g., 'HOMES' vs 'TECHNOLOGIES LIMITED'), the CAC WILL REJECT IT. Return isConflict: true.
             2. GENERIC WORD SHARING (APPROVE): If they share generic everyday words, Islamic/Christian names, or standard nouns (e.g., 'HALAL', 'MUKHTAR', 'OLIVIA', 'SERVICES', 'NIGERIA') but the distinct prefixes or accompanying words differ (e.g., 'NMY HALAH HUB' vs 'HALAL HOMES HUB'), the CAC will APPROVE it. Return isConflict: false.
-            3. EXACT PHONETIC COPY (REJECT): If they are phonetically identical or pluralized versions of the exact same full name, REJECT IT.`
+            3. EXACT PHONETIC COPY (REJECT): If they are very identical like 99% or pluralized versions of the exact same full name, REJECT IT.`
           },
           { role: "user", content: `Proposed Name: "${uppercaseName}"\nExisting Conflict: "${mostSimilarName}"` }
         ],
