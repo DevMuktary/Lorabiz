@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Plus, User, IdentificationCard, Trash, Buildings } from "@phosphor-icons/react";
-import { v4 as uuidv4 } from "uuid";
 
 export default function OfficersStep({ data, updateData }: any) {
   const [isAdding, setIsAdding] = useState(false);
@@ -28,7 +27,8 @@ export default function OfficersStep({ data, updateData }: any) {
     if (currentOfficer.isAlsoShareholder) finalRoles.push("SHAREHOLDER");
 
     const newOfficer = {
-      id: uuidv4(), // Give them a unique ID so we can track their shares in Step 5
+      // FIX: Using the native browser crypto API instead of the external 'uuid' package
+      id: crypto.randomUUID(), 
       ...currentOfficer,
       roles: finalRoles
     };
@@ -40,6 +40,13 @@ export default function OfficersStep({ data, updateData }: any) {
 
     setIsAdding(false);
     setOfficerType(null);
+    
+    // Reset form
+    setCurrentOfficer({
+      roles: [], surname: "", firstName: "", email: "", phone: "", gender: "", 
+      dob: "", occupation: "", nationality: "NIGERIA", idType: "", idNumber: "", 
+      isAlsoShareholder: true
+    });
   };
 
   const removeOfficer = (idToRemove: string) => {
@@ -48,9 +55,6 @@ export default function OfficersStep({ data, updateData }: any) {
       officers: prev.officers.filter((o: any) => o.id !== idToRemove)
     }));
   };
-
-  // Quick stats for validation
-  const directorCount = officers.filter(o => o.roles.includes("DIRECTOR")).length;
 
   return (
     <div className="p-6 sm:p-10 space-y-8 animate-in fade-in duration-500">
