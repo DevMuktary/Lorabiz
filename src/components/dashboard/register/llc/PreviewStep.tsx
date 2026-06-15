@@ -140,7 +140,8 @@ export default function PreviewStep({ data, draft, onSubmit, isSubmitting }: any
                     <div className="flex justify-between items-center animate-in fade-in">
                       <div>
                         <p className="text-sm font-bold text-slate-500">Elevated Capital Fee</p>
-                        <p className="text-[10px] font-bold text-indigo-500">Shares > 1,000,000</p>
+                        {/* FIX: Using HTML entity &gt; instead of raw > */}
+                        <p className="text-[10px] font-bold text-indigo-500">Shares &gt; 1,000,000</p>
                       </div>
                       <p className="text-sm font-black text-slate-900">₦{extraFee.toLocaleString()}</p>
                     </div>
