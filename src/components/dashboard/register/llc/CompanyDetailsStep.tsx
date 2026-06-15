@@ -29,10 +29,48 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
 
   const handleAddressChange = (field: string, value: string, isHeadOffice = false) => {
     const target = isHeadOffice ? "headOfficeAddress" : "registeredAddress";
-    if (field === "state") {
-      updateData((prev: any) => ({ ...prev, [target]: { ...prev[target], state: value, lga: "" } }));
+    
+    updateData((prev: any) => {
+      let newData = { ...prev };
+      
+      // Update the specific field
+      if (field === "state") {
+        newData[target] = { ...newData[target], state: value, lga: "" };
+      } else {
+        newData[target] = { ...newData[target], [field]: value };
+      }
+
+      // UX MAGIC: 
+      // If they edit the Head Office manually, break the link.
+      if (isHeadOffice) {
+        newData.headOfficeSameAsRegistered = false;
+      } 
+      // If they edit Registered Address and it's still linked, live-update the Head Office!
+      else if (newData.headOfficeSameAsRegistered) {
+        newData.headOfficeAddress = { ...newData.registeredAddress };
+      }
+
+      return newData;
+    });
+  };
+
+  const handleToggleSameAsRegistered = () => {
+    const isNowSame = !data.headOfficeSameAsRegistered;
+    
+    if (isNowSame) {
+      // Instantly copy data from Registered to Head Office
+      updateData({
+        ...data,
+        headOfficeSameAsRegistered: true,
+        headOfficeAddress: { ...data.registeredAddress }
+      });
+      // Clear head office errors since we are copying valid data
+      setTouched(p => ({
+        ...p, hoState: false, hoLga: false, hoCity: false, hoHouse: false, hoStreet: false
+      }));
     } else {
-      updateData((prev: any) => ({ ...prev, [target]: { ...prev[target], [field]: value } }));
+      // Just uncheck it, leave the data there so they can edit it
+      updateData({ ...data, headOfficeSameAsRegistered: false });
     }
   };
 
@@ -48,6 +86,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
     );
   };
 
+  // Run validators
   const errEmail = getError("email", data.email, "email");
   const errDesc = getError("desc", data.description);
   const errRegState = getError("regState", data.registeredAddress.state);
@@ -56,11 +95,11 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
   const errRegHouse = getError("regHouse", data.registeredAddress.houseNo);
   const errRegStreet = getError("regStreet", data.registeredAddress.street);
 
-  const errHoState = !data.headOfficeSameAsRegistered ? getError("hoState", data.headOfficeAddress.state) : null;
-  const errHoLga = !data.headOfficeSameAsRegistered ? getError("hoLga", data.headOfficeAddress.lga) : null;
-  const errHoCity = !data.headOfficeSameAsRegistered ? getError("hoCity", data.headOfficeAddress.city) : null;
-  const errHoHouse = !data.headOfficeSameAsRegistered ? getError("hoHouse", data.headOfficeAddress.houseNo) : null;
-  const errHoStreet = !data.headOfficeSameAsRegistered ? getError("hoStreet", data.headOfficeAddress.street) : null;
+  const errHoState = getError("hoState", data.headOfficeAddress.state);
+  const errHoLga = getError("hoLga", data.headOfficeAddress.lga);
+  const errHoCity = getError("hoCity", data.headOfficeAddress.city);
+  const errHoHouse = getError("hoHouse", data.headOfficeAddress.houseNo);
+  const errHoStreet = getError("hoStreet", data.headOfficeAddress.street);
 
   return (
     <div className="p-6 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden">
@@ -181,6 +220,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
 
       <hr className="border-slate-100" />
 
+      {/* SECTION 3: HEAD OFFICE ADDRESS (ALWAYS VISIBLE NOW) */}
       <section>
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -194,7 +234,7 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
               <input 
                 type="checkbox" className="sr-only" 
                 checked={data.headOfficeSameAsRegistered}
-                onChange={() => updateData({...data, headOfficeSameAsRegistered: !data.headOfficeSameAsRegistered})}
+                onChange={handleToggleSameAsRegistered}
               />
               <div className={`block w-10 h-6 rounded-full transition-colors ${data.headOfficeSameAsRegistered ? "bg-indigo-500" : "bg-slate-300"}`}></div>
               <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${data.headOfficeSameAsRegistered ? "translate-x-4" : ""}`}></div>
@@ -202,70 +242,67 @@ export default function CompanyDetailsStep({ data, updateData, draft, showErrors
           </label>
         </div>
 
-        {!data.headOfficeSameAsRegistered && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-4 fade-in duration-300">
-            
-            <div className="space-y-2">
-              <Label className={`text-xs font-bold uppercase ${errHoState ? "text-red-500" : "text-slate-500"}`}>State <span className="text-red-500">*</span></Label>
-              <div className="relative">
-                <select 
-                  id="field-hoState"
-                  value={data.headOfficeAddress.state} 
-                  onChange={e => { handleAddressChange("state", e.target.value, true); setTouched(p => ({...p, hoState: true})); }}
-                  onBlur={() => handleBlur("hoState")}
-                  className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none transition-colors ${errHoState ? "border-red-500 bg-red-50 text-red-900" : "border-slate-200 bg-white text-slate-900 focus:border-indigo-500"}`}
-                >
-                  <option value="">-- Select State --</option>
-                  {states.map(state => <option key={state} value={state}>{state}</option>)}
-                </select>
-                <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
-              </div>
-              <ErrorMessage msg={errHoState} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="space-y-2">
+            <Label className={`text-xs font-bold uppercase ${errHoState ? "text-red-500" : "text-slate-500"}`}>State <span className="text-red-500">*</span></Label>
+            <div className="relative">
+              <select 
+                id="field-hoState"
+                value={data.headOfficeAddress.state} 
+                onChange={e => { handleAddressChange("state", e.target.value, true); setTouched(p => ({...p, hoState: true})); }}
+                onBlur={() => handleBlur("hoState")}
+                className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none transition-colors ${errHoState ? "border-red-500 bg-red-50 text-red-900" : "border-slate-200 bg-white text-slate-900 focus:border-indigo-500"}`}
+              >
+                <option value="">-- Select State --</option>
+                {states.map(state => <option key={state} value={state}>{state}</option>)}
+              </select>
+              <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
             </div>
-            
-            <div className="space-y-2">
-              <Label className={`text-xs font-bold uppercase ${errHoLga ? "text-red-500" : "text-slate-500"}`}>LGA <span className="text-red-500">*</span></Label>
-              <div className="relative">
-                <select 
-                  id="field-hoLga"
-                  value={data.headOfficeAddress.lga} 
-                  disabled={!data.headOfficeAddress.state}
-                  onChange={e => { handleAddressChange("lga", e.target.value, true); setTouched(p => ({...p, hoLga: true})); }}
-                  onBlur={() => handleBlur("hoLga")}
-                  className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none transition-colors ${!data.headOfficeAddress.state ? "bg-slate-50 border-slate-200 text-slate-400 opacity-60" : errHoLga ? "border-red-500 bg-red-50 text-red-900" : "border-slate-200 bg-white text-slate-900 focus:border-indigo-500"}`}
-                >
-                  <option value="">-- Select LGA --</option>
-                  {getLgasForState(data.headOfficeAddress.state).map(lga => <option key={lga} value={lga}>{lga}</option>)}
-                </select>
-                <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
-              </div>
-              <ErrorMessage msg={errHoLga} />
-            </div>
-
-            <div className="space-y-2">
-              <Label className={`text-xs font-bold uppercase ${errHoCity ? "text-red-500" : "text-slate-500"}`}>City / Town / Village <span className="text-red-500">*</span></Label>
-              <Input id="field-hoCity" placeholder="City name" value={data.headOfficeAddress.city} onChange={e => { handleAddressChange("city", e.target.value, true); setTouched(p => ({...p, hoCity: true})); }} onBlur={() => handleBlur("hoCity")} className={`h-12 font-bold ${errHoCity ? "border-red-500 bg-red-50/30" : ""}`} />
-              <ErrorMessage msg={errHoCity} />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase text-slate-500">Postal Code (Optional)</Label>
-              <Input placeholder="E.g. 100001" value={data.headOfficeAddress.postCode} onChange={e => handleAddressChange("postCode", e.target.value, true)} className="h-12 font-bold" />
-            </div>
-
-            <div className="space-y-2">
-              <Label className={`text-xs font-bold uppercase ${errHoHouse ? "text-red-500" : "text-slate-500"}`}>House No. / Building Name <span className="text-red-500">*</span></Label>
-              <Input id="field-hoHouse" placeholder="E.g. 12 or Block B" value={data.headOfficeAddress.houseNo} onChange={e => { handleAddressChange("houseNo", e.target.value, true); setTouched(p => ({...p, hoHouse: true})); }} onBlur={() => handleBlur("hoHouse")} className={`h-12 font-bold ${errHoHouse ? "border-red-500 bg-red-50/30" : ""}`} />
-              <ErrorMessage msg={errHoHouse} />
-            </div>
-
-            <div className="space-y-2">
-              <Label className={`text-xs font-bold uppercase ${errHoStreet ? "text-red-500" : "text-slate-500"}`}>Street Name <span className="text-red-500">*</span></Label>
-              <Input id="field-hoStreet" placeholder="E.g. Awolowo Way" value={data.headOfficeAddress.street} onChange={e => { handleAddressChange("street", e.target.value, true); setTouched(p => ({...p, hoStreet: true})); }} onBlur={() => handleBlur("hoStreet")} className={`h-12 font-bold ${errHoStreet ? "border-red-500 bg-red-50/30" : ""}`} />
-              <ErrorMessage msg={errHoStreet} />
-            </div>
+            <ErrorMessage msg={errHoState} />
           </div>
-        )}
+          
+          <div className="space-y-2">
+            <Label className={`text-xs font-bold uppercase ${errHoLga ? "text-red-500" : "text-slate-500"}`}>LGA <span className="text-red-500">*</span></Label>
+            <div className="relative">
+              <select 
+                id="field-hoLga"
+                value={data.headOfficeAddress.lga} 
+                disabled={!data.headOfficeAddress.state}
+                onChange={e => { handleAddressChange("lga", e.target.value, true); setTouched(p => ({...p, hoLga: true})); }}
+                onBlur={() => handleBlur("hoLga")}
+                className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none transition-colors ${!data.headOfficeAddress.state ? "bg-slate-50 border-slate-200 text-slate-400 opacity-60" : errHoLga ? "border-red-500 bg-red-50 text-red-900" : "border-slate-200 bg-white text-slate-900 focus:border-indigo-500"}`}
+              >
+                <option value="">-- Select LGA --</option>
+                {getLgasForState(data.headOfficeAddress.state).map(lga => <option key={lga} value={lga}>{lga}</option>)}
+              </select>
+              <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
+            </div>
+            <ErrorMessage msg={errHoLga} />
+          </div>
+
+          <div className="space-y-2">
+            <Label className={`text-xs font-bold uppercase ${errHoCity ? "text-red-500" : "text-slate-500"}`}>City / Town / Village <span className="text-red-500">*</span></Label>
+            <Input id="field-hoCity" placeholder="City name" value={data.headOfficeAddress.city} onChange={e => { handleAddressChange("city", e.target.value, true); setTouched(p => ({...p, hoCity: true})); }} onBlur={() => handleBlur("hoCity")} className={`h-12 font-bold ${errHoCity ? "border-red-500 bg-red-50/30" : ""}`} />
+            <ErrorMessage msg={errHoCity} />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase text-slate-500">Postal Code (Optional)</Label>
+            <Input placeholder="E.g. 100001" value={data.headOfficeAddress.postCode} onChange={e => handleAddressChange("postCode", e.target.value, true)} className="h-12 font-bold" />
+          </div>
+
+          <div className="space-y-2">
+            <Label className={`text-xs font-bold uppercase ${errHoHouse ? "text-red-500" : "text-slate-500"}`}>House No. / Building Name <span className="text-red-500">*</span></Label>
+            <Input id="field-hoHouse" placeholder="E.g. 12 or Block B" value={data.headOfficeAddress.houseNo} onChange={e => { handleAddressChange("houseNo", e.target.value, true); setTouched(p => ({...p, hoHouse: true})); }} onBlur={() => handleBlur("hoHouse")} className={`h-12 font-bold ${errHoHouse ? "border-red-500 bg-red-50/30" : ""}`} />
+            <ErrorMessage msg={errHoHouse} />
+          </div>
+
+          <div className="space-y-2">
+            <Label className={`text-xs font-bold uppercase ${errHoStreet ? "text-red-500" : "text-slate-500"}`}>Street Name <span className="text-red-500">*</span></Label>
+            <Input id="field-hoStreet" placeholder="E.g. Awolowo Way" value={data.headOfficeAddress.street} onChange={e => { handleAddressChange("street", e.target.value, true); setTouched(p => ({...p, hoStreet: true})); }} onBlur={() => handleBlur("hoStreet")} className={`h-12 font-bold ${errHoStreet ? "border-red-500 bg-red-50/30" : ""}`} />
+            <ErrorMessage msg={errHoStreet} />
+          </div>
+        </div>
       </section>
 
     </div>
