@@ -42,7 +42,7 @@ function SearchableDropdown({
       <label className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</label>
       <div 
         className={`flex items-center w-full h-14 px-4 border-2 rounded-xl transition-colors cursor-text ${
-          disabled ? "bg-slate-50 border-slate-200 opacity-60" : isOpen ? "bg-white border-[#ff3f7a] ring-2 ring-[#ff3f7a]/10" : "bg-white border-slate-200 hover:border-slate-300"
+          disabled ? "bg-slate-50 border-slate-200 opacity-60" : isOpen ? "bg-white border-indigo-500 ring-2 ring-indigo-500/10" : "bg-white border-slate-200 hover:border-slate-300"
         }`}
         onClick={() => !disabled && setIsOpen(true)}
       >
@@ -62,9 +62,9 @@ function SearchableDropdown({
               filteredOptions.map((opt, idx) => {
                 const isSelected = value === opt;
                 return (
-                  <li key={idx} onClick={() => { onChange(opt); setQuery(opt); setIsOpen(false); }} className={`px-4 py-3 cursor-pointer transition-colors flex items-center justify-between group ${isSelected ? "bg-[#ff3f7a]/10" : "hover:bg-slate-50"}`}>
-                    <span className={`text-sm font-bold ${isSelected ? "text-[#ff3f7a]" : "text-slate-900 group-hover:text-[#ff3f7a]"}`}>{opt}</span>
-                    {isSelected && <Check className="h-4 w-4 text-[#ff3f7a] shrink-0" weight="bold" />}
+                  <li key={idx} onClick={() => { onChange(opt); setQuery(opt); setIsOpen(false); }} className={`px-4 py-3 cursor-pointer transition-colors flex items-center justify-between group ${isSelected ? "bg-indigo-500/10" : "hover:bg-slate-50"}`}>
+                    <span className={`text-sm font-bold ${isSelected ? "text-indigo-600" : "text-slate-900 group-hover:text-indigo-600"}`}>{opt}</span>
+                    {isSelected && <Check className="h-4 w-4 text-indigo-600 shrink-0" weight="bold" />}
                   </li>
                 )
               })
@@ -103,7 +103,6 @@ export default function CompanyLlcRegistration() {
     status: "PASSED" | "WARNING" | "BLOCKED" | "IDLE";
     title: string;
     message: string;
-    rejectionType?: string;
   }>({ isOpen: false, status: "IDLE", title: "", message: "" });
 
   const categories = Object.keys(CAC_CATEGORIES).sort();
@@ -149,13 +148,14 @@ export default function CompanyLlcRegistration() {
       });
 
       const data = await res.json();
+      const finalName = data.data?.cleansedNameUsed || formattedName;
 
-      // If the user somehow bypassed the frontend auto-append, the backend AI catches it.
+      // Ensure the frontend always mentions the full final name
       if (data.rejectionType === "MISSING_LLC_SUFFIX") {
         setProposedName(`${formattedName} LIMITED`);
         setResultModal({
           isOpen: true, status: "WARNING", title: "Suffix Added", 
-          message: "We automatically appended 'LIMITED' to your proposed name as required by Nigerian law for private companies. You may proceed."
+          message: `We automatically appended 'LIMITED' to make it "${formattedName} LIMITED" as required by Nigerian law for private companies. You may proceed.`
         });
       } else if (data.isBlocked) {
         setResultModal({
@@ -163,11 +163,13 @@ export default function CompanyLlcRegistration() {
         });
       } else if (data.warningMessage) {
         setResultModal({
-          isOpen: true, status: "WARNING", title: "Proceed With Caution", message: data.warningMessage
+          isOpen: true, status: "WARNING", title: "Proceed With Caution", 
+          message: `${data.warningMessage} The name "${finalName}" has been processed.`
         });
       } else {
         setResultModal({
-          isOpen: true, status: "PASSED", title: "Congratulations!", message: "Great news! This Company name is available and perfectly structured."
+          isOpen: true, status: "PASSED", title: "Congratulations!", 
+          message: `Great news! "${finalName}" is available and perfectly structured for registration.`
         });
       }
     } catch (error) {
@@ -196,7 +198,7 @@ export default function CompanyLlcRegistration() {
           altName1,
           altName2,
           entityType: "Company (LLC)",
-          ownershipType: "LLC", // Not heavily used for LLCs, but satisfies backend schema
+          ownershipType: "LLC", 
           category: selectedCategory,
           specificNature,
           similarityScore: "0" 
