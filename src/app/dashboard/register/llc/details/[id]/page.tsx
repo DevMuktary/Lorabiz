@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CircleDashed, WarningCircle, X } from "@phosphor-icons/react";
+import { CircleDashed, WarningCircle, X, CircleNotch } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 // Import all 9 Step Components
@@ -16,6 +16,9 @@ import ComplianceStep from "@/components/dashboard/register/llc/ComplianceStep";
 import UploadsStep from "@/components/dashboard/register/llc/UploadsStep";
 import PreviewStep from "@/components/dashboard/register/llc/PreviewStep";
 
+// Optional: Import your PaymentModal when ready
+// import PaymentModal from "@/components/dashboard/register/llc/PaymentModal";
+
 export default function LlcRegistrationDetailsPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -26,9 +29,13 @@ export default function LlcRegistrationDetailsPage() {
   const [draft, setDraft] = useState<any>(null);
   
   // UX STATES
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [showErrors, setShowErrors] = useState(false);
   const [topError, setTopError] = useState<string | null>(null);
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
+  
+  // FIX: Restore the Payment Modal State
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // ==========================================
   // MASTER FORM STATE
@@ -105,12 +112,15 @@ export default function LlcRegistrationDetailsPage() {
     }
     if (loading || !id || !draft) return; 
 
+    setSaveStatus("saving");
     const timer = setTimeout(() => {
       fetch(`/api/register/llc/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...companyDetails, isDraft: true })
-      }).catch(() => {}); // Silent catch, no UI disruption
+      })
+      .then(res => res.ok ? setSaveStatus("saved") : setSaveStatus("error"))
+      .catch(() => setSaveStatus("error")); 
     }, 2000); 
 
     return () => clearTimeout(timer);
