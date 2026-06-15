@@ -16,9 +16,6 @@ import ComplianceStep from "@/components/dashboard/register/llc/ComplianceStep";
 import UploadsStep from "@/components/dashboard/register/llc/UploadsStep";
 import PreviewStep from "@/components/dashboard/register/llc/PreviewStep";
 
-// Optional: Import your PaymentModal when ready
-// import PaymentModal from "@/components/dashboard/register/llc/PaymentModal";
-
 export default function LlcRegistrationDetailsPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -33,29 +30,25 @@ export default function LlcRegistrationDetailsPage() {
   const [showErrors, setShowErrors] = useState(false);
   const [topError, setTopError] = useState<string | null>(null);
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
-  
-  // FIX: Restore the Payment Modal State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Auto-dismiss timer reference for the error banner
+  const errorTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // ==========================================
   // MASTER FORM STATE
   // ==========================================
   const [companyDetails, setCompanyDetails] = useState({
-    // Step 1
     email: "", principalActivity: "", specificActivity: "", description: "",
     registeredAddress: { state: "", lga: "", city: "", postCode: "", houseNo: "", street: "" },
     headOfficeSameAsRegistered: false, 
     headOfficeAddress: { state: "", lga: "", city: "", postCode: "", houseNo: "", street: "" },
-    // Step 2 & 3
     useDefaultArticles: true,
     witnessDetails: {},
     memorandumObjects: [] as string[],
-    // Step 4, 5, 6
     officers: [] as any[],
     shareCapital: null as any,
-    // Step 7
     declarantDetails: null as any,
-    // Step 8
     uploads: {} as any
   });
 
@@ -95,10 +88,7 @@ export default function LlcRegistrationDetailsPage() {
         }
         setLoading(false);
       })
-      .catch(err => {
-        console.error("Error fetching LLC draft:", err);
-        setLoading(false);
-      });
+      .catch(() => setLoading(false));
   }, [id, router]);
 
   // ==========================================
@@ -128,20 +118,55 @@ export default function LlcRegistrationDetailsPage() {
 
 
   // ==========================================
+  // ERROR BANNER MANAGER
+  // ==========================================
+  const triggerError = (message: string, anchorId?: string) => {
+    setShowErrors(true);
+    setTopError(message);
+    
+    // Clear any existing timer
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    
+    // Auto-dismiss after 6 seconds
+    errorTimerRef.current = setTimeout(() => {
+      setTopError(null);
+    }, 6000);
+
+    // Scroll to the specific field if provided
+    if (anchorId) {
+      setTimeout(() => {
+        const element = document.getElementById(anchorId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.focus();
+        }
+      }, 100);
+    }
+  };
+
+
+  // ==========================================
   // SMART VALIDATION & NEXT STEP
   // ==========================================
   const handleSaveAndNext = () => {
     setTopError(null);
     setShowErrors(false);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
 
-    // STRICT STEP 1 VALIDATION WITH SCROLL ANCHORING
+    // STRICT STEP 1 VALIDATION (Including Format Checking)
     if (currentStep === 1) {
       const d = companyDetails;
       const rAddr = d.registeredAddress;
       const hAddr = d.headOfficeAddress;
 
+      // Ensure Email format is correct
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!d.email || !d.email.trim() || !emailRegex.test(d.email)) {
+        triggerError("Please provide a valid Company Email address.", "field-email");
+        return;
+      }
+
       const checks = [
-        { val: d.email, name: "Company Email", id: "field-email" },
         { val: d.description, name: "Description of Business Activity", id: "field-desc" },
         { val: rAddr.state, name: "Registered State", id: "field-regState" },
         { val: rAddr.lga, name: "Registered LGA", id: "field-regLga" },
@@ -163,28 +188,18 @@ export default function LlcRegistrationDetailsPage() {
       const firstError = checks.find(c => !c.val || !c.val.trim());
 
       if (firstError) {
-        setShowErrors(true);
-        setTopError(`Please provide the ${firstError.name}.`);
-        
-        // Smoothly scroll the screen to the specific error
-        setTimeout(() => {
-          const element = document.getElementById(firstError.id);
-          if (element) {
-            element.scrollIntoView({ behavior: "smooth", block: "center" });
-            element.focus();
-          }
-        }, 100);
+        triggerError(`Please provide the ${firstError.name}.`, firstError.id);
         return; 
       }
     }
 
     if (currentStep === 3 && companyDetails.memorandumObjects.length === 0) {
-      setTopError("Please add at least one Object of Memorandum.");
+      triggerError("Please add at least one Object of Memorandum.");
       return;
     }
     
     if (currentStep === 4 && companyDetails.officers.filter(o => o.roles.includes("DIRECTOR")).length === 0) {
-      setTopError("You must add at least one Director.");
+      triggerError("You must add at least one Director.");
       return;
     }
     
@@ -199,9 +214,9 @@ export default function LlcRegistrationDetailsPage() {
   const handleFinalSubmit = async () => {
     setIsSubmittingFinal(true);
     setTopError(null);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     
     try {
-      // Final strict sync to database
       const res = await fetch(`/api/register/llc/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -209,14 +224,14 @@ export default function LlcRegistrationDetailsPage() {
       });
       
       if (res.ok) {
-        setShowPaymentModal(true); // Open the checkout gateway
+        setShowPaymentModal(true); 
       } else {
         const errorData = await res.json();
-        setTopError(errorData.message || "Please complete all mandatory fields before submitting.");
+        triggerError(errorData.message || "Please complete all mandatory fields before submitting.");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (error) {
-      setTopError("Failed to initialize checkout. Please check your connection.");
+      triggerError("Failed to initialize checkout. Please check your connection.");
     } finally {
       setIsSubmittingFinal(false);
     }
@@ -238,15 +253,26 @@ export default function LlcRegistrationDetailsPage() {
   return (
     <div className="max-w-5xl mx-auto pb-16 pt-8 px-4 font-sans relative">
       
-      {/* BEAUTIFUL GLOBAL ERROR BADGE */}
+      {/* BEAUTIFUL GLOBAL ERROR BADGE (Z-Index increased, pushed down from very top, auto-fades) */}
       {topError && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md animate-in slide-in-from-top-4 fade-in duration-300">
-          <div className="bg-red-600 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3 font-bold text-sm border border-red-500">
-            <div className="flex items-center gap-3">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[999999] w-[90%] max-w-md animate-in slide-in-from-top-8 fade-in duration-500">
+          <div className="bg-red-600 text-white px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(220,38,38,0.3)] flex items-center justify-between gap-3 font-bold text-sm border-2 border-red-500 overflow-hidden relative">
+            
+            {/* The animated shrink bar (Water effect) */}
+            <div className="absolute bottom-0 left-0 h-1 bg-red-400/50 animate-[shrink_6s_linear_forwards]" style={{ width: '100%' }} />
+
+            <div className="flex items-center gap-3 relative z-10">
               <WarningCircle weight="fill" className="h-6 w-6 shrink-0 text-red-200" />
               <span>{topError}</span>
             </div>
-            <button onClick={() => setTopError(null)} className="shrink-0 bg-red-700 hover:bg-red-800 rounded-full p-1.5 transition-colors">
+            
+            <button 
+              onClick={() => {
+                setTopError(null);
+                if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+              }} 
+              className="shrink-0 bg-red-700 hover:bg-red-800 rounded-full p-1.5 transition-colors relative z-10"
+            >
               <X weight="bold" className="h-4 w-4" />
             </button>
           </div>
