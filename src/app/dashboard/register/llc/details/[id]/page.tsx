@@ -32,7 +32,6 @@ export default function LlcRegistrationDetailsPage() {
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  // Auto-dismiss timer reference for the error banner
   const errorTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // ==========================================
@@ -68,15 +67,20 @@ export default function LlcRegistrationDetailsPage() {
           }
           setDraft(json.data);
           
+          // Check if head and registered perfectly match on load to check the box
+          const rAddr = json.data.registeredAddress || companyDetails.registeredAddress;
+          const hAddr = json.data.headOfficeAddress || companyDetails.headOfficeAddress;
+          const isSame = JSON.stringify(rAddr) === JSON.stringify(hAddr);
+
           setCompanyDetails(prev => ({
             ...prev,
             email: json.data.email || prev.email,
             principalActivity: json.data.principalActivity || prev.principalActivity,
             specificActivity: json.data.specificActivity || prev.specificActivity,
             description: json.data.description || prev.description,
-            registeredAddress: json.data.registeredAddress || prev.registeredAddress,
-            headOfficeSameAsRegistered: json.data.headOfficeAddress ? false : prev.headOfficeSameAsRegistered,
-            headOfficeAddress: json.data.headOfficeAddress || prev.headOfficeAddress,
+            registeredAddress: rAddr,
+            headOfficeAddress: hAddr,
+            headOfficeSameAsRegistered: isSame, // Auto-check if they match perfectly
             useDefaultArticles: json.data.useDefaultArticles ?? prev.useDefaultArticles,
             witnessDetails: json.data.witnessDetails || prev.witnessDetails,
             memorandumObjects: json.data.memorandumObjects || prev.memorandumObjects,
@@ -89,6 +93,7 @@ export default function LlcRegistrationDetailsPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, router]);
 
   // ==========================================
@@ -107,7 +112,8 @@ export default function LlcRegistrationDetailsPage() {
       fetch(`/api/register/llc/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...companyDetails, isDraft: true })
+        // IMPORTANT: We send false for headOfficeSameAsRegistered so the backend doesn't delete the visible data!
+        body: JSON.stringify({ ...companyDetails, headOfficeSameAsRegistered: false, isDraft: true })
       })
       .then(res => res.ok ? setSaveStatus("saved") : setSaveStatus("error"))
       .catch(() => setSaveStatus("error")); 
@@ -124,15 +130,12 @@ export default function LlcRegistrationDetailsPage() {
     setShowErrors(true);
     setTopError(message);
     
-    // Clear any existing timer
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     
-    // Auto-dismiss after 6 seconds
     errorTimerRef.current = setTimeout(() => {
       setTopError(null);
     }, 6000);
 
-    // Scroll to the specific field if provided
     if (anchorId) {
       setTimeout(() => {
         const element = document.getElementById(anchorId);
@@ -153,13 +156,12 @@ export default function LlcRegistrationDetailsPage() {
     setShowErrors(false);
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
 
-    // STRICT STEP 1 VALIDATION (Including Format Checking)
+    // STRICT STEP 1 VALIDATION
     if (currentStep === 1) {
       const d = companyDetails;
       const rAddr = d.registeredAddress;
       const hAddr = d.headOfficeAddress;
 
-      // Ensure Email format is correct
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!d.email || !d.email.trim() || !emailRegex.test(d.email)) {
         triggerError("Please provide a valid Company Email address.", "field-email");
@@ -172,18 +174,14 @@ export default function LlcRegistrationDetailsPage() {
         { val: rAddr.lga, name: "Registered LGA", id: "field-regLga" },
         { val: rAddr.city, name: "Registered City / Town", id: "field-regCity" },
         { val: rAddr.houseNo, name: "Registered House No.", id: "field-regHouse" },
-        { val: rAddr.street, name: "Registered Street Name", id: "field-regStreet" }
+        { val: rAddr.street, name: "Registered Street Name", id: "field-regStreet" },
+        // ALWAYS checking head office now since fields are always visible
+        { val: hAddr.state, name: "Head Office State", id: "field-hoState" },
+        { val: hAddr.lga, name: "Head Office LGA", id: "field-hoLga" },
+        { val: hAddr.city, name: "Head Office City / Town", id: "field-hoCity" },
+        { val: hAddr.houseNo, name: "Head Office House No.", id: "field-hoHouse" },
+        { val: hAddr.street, name: "Head Office Street Name", id: "field-hoStreet" }
       ];
-
-      if (!d.headOfficeSameAsRegistered) {
-        checks.push(
-          { val: hAddr.state, name: "Head Office State", id: "field-hoState" },
-          { val: hAddr.lga, name: "Head Office LGA", id: "field-hoLga" },
-          { val: hAddr.city, name: "Head Office City / Town", id: "field-hoCity" },
-          { val: hAddr.houseNo, name: "Head Office House No.", id: "field-hoHouse" },
-          { val: hAddr.street, name: "Head Office Street Name", id: "field-hoStreet" }
-        );
-      }
 
       const firstError = checks.find(c => !c.val || !c.val.trim());
 
@@ -203,7 +201,6 @@ export default function LlcRegistrationDetailsPage() {
       return;
     }
     
-    // If all clear, proceed! (Autosave handles the database sync)
     setCurrentStep(prev => prev + 1);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -220,7 +217,8 @@ export default function LlcRegistrationDetailsPage() {
       const res = await fetch(`/api/register/llc/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...companyDetails, isDraft: false })
+        // Force save of head office
+        body: JSON.stringify({ ...companyDetails, headOfficeSameAsRegistered: false, isDraft: false })
       });
       
       if (res.ok) {
@@ -253,24 +251,17 @@ export default function LlcRegistrationDetailsPage() {
   return (
     <div className="max-w-5xl mx-auto pb-16 pt-8 px-4 font-sans relative">
       
-      {/* BEAUTIFUL GLOBAL ERROR BADGE (Z-Index increased, pushed down from very top, auto-fades) */}
+      {/* BEAUTIFUL GLOBAL ERROR BADGE */}
       {topError && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[999999] w-[90%] max-w-md animate-in slide-in-from-top-8 fade-in duration-500">
           <div className="bg-red-600 text-white px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(220,38,38,0.3)] flex items-center justify-between gap-3 font-bold text-sm border-2 border-red-500 overflow-hidden relative">
-            
-            {/* The animated shrink bar (Water effect) */}
             <div className="absolute bottom-0 left-0 h-1 bg-red-400/50 animate-[shrink_6s_linear_forwards]" style={{ width: '100%' }} />
-
             <div className="flex items-center gap-3 relative z-10">
               <WarningCircle weight="fill" className="h-6 w-6 shrink-0 text-red-200" />
               <span>{topError}</span>
             </div>
-            
             <button 
-              onClick={() => {
-                setTopError(null);
-                if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-              }} 
+              onClick={() => { setTopError(null); if (errorTimerRef.current) clearTimeout(errorTimerRef.current); }} 
               className="shrink-0 bg-red-700 hover:bg-red-800 rounded-full p-1.5 transition-colors relative z-10"
             >
               <X weight="bold" className="h-4 w-4" />
@@ -282,7 +273,10 @@ export default function LlcRegistrationDetailsPage() {
       {/* Header & Stepper */}
       <div className="mb-8 border-b border-slate-200 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="w-full overflow-hidden">
+          {/* NEW CONTEXT HEADER */}
+          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5">Completing Application For</p>
           <h1 className="text-2xl font-black text-slate-900 mb-6 truncate pr-4">{draft?.proposedName || "Loading..."}</h1>
+          
           <div className="flex gap-4 overflow-x-auto custom-scrollbar pb-2 w-full max-w-full snap-x">
             {STEPS.map((title, index) => {
               const stepNum = index + 1;
@@ -319,7 +313,7 @@ export default function LlcRegistrationDetailsPage() {
           />
         )}
 
-        {/* Footer Navigation (Hidden on Step 9) */}
+        {/* Footer Navigation */}
         {currentStep < 9 && (
           <div className="bg-slate-50 border-t border-slate-200 p-6 flex justify-between items-center gap-4">
             <Button 
