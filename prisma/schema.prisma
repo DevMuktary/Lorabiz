@@ -148,6 +148,9 @@ model LlcRegistration {
   
   // Step 1: Company Details
   proposedName        String             // Approved from Name Search
+  altName1            String?            // ADD THIS
+  altName2            String?            // ADD THIS
+  similarityScore     String?            // ADD THIS
   email               String?
   principalActivity   String?
   specificActivity    String?
