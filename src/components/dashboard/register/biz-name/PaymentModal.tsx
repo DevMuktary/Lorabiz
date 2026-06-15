@@ -27,16 +27,24 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/user/wallet");
-        const data = await res.json();
-        if (data.success && data.wallet) {
-          setWalletBalance(Number(data.wallet.balance));
-          setServicePrice(20000); 
+        // Fetch wallet AND live pricing simultaneously from the database
+        const [walletRes, pricingRes] = await Promise.all([
+          fetch("/api/user/wallet"),
+          fetch("/api/pricing")
+        ]);
+        
+        const walletData = await walletRes.json();
+        const pricingData = await pricingRes.json();
+
+        if (walletData.success && walletData.wallet) {
+          setWalletBalance(Number(walletData.wallet.balance));
+          // Dynamically set the price using the database value instead of hardcoding
+          setServicePrice(pricingData.data?.BUSINESS_NAME || 20000); 
         } else {
           setErrorMsg("Failed to load wallet details.");
         }
       } catch (err) {
-        setErrorMsg("Network error loading wallet.");
+        setErrorMsg("Network error loading wallet and pricing.");
       } finally {
         setLoading(false);
       }
@@ -168,7 +176,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
             ) : (
               <div className="flex flex-col items-center">
                 {/* BIG ZIGZAG LOADER */}
-                <CircleDashed className="animate-spin h-28 w-28 text-[#ff3f7a] mb-8" weight="bold" />
+                <CircleDashed className="animate-spin h-28 w-28 text-indigo-500 mb-8" weight="bold" />
                 <h3 className="font-black text-xl text-slate-900 mb-2">
                   {processingState === "initializing" ? "Initializing Gateway..." : "Verifying with Bank..."}
                 </h3>
@@ -205,10 +213,10 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
               <button 
                 onClick={() => handlePayment("WALLET")}
                 disabled={loading || isWalletInsufficient}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-slate-200 hover:border-[#ff3f7a] hover:bg-[#ff3f7a]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed group text-left"
+                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed group text-left"
               >
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-[#ff3f7a] group-hover:text-white transition-colors">
+                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                     <Wallet size={24} weight="fill" />
                   </div>
                   <div>
@@ -225,10 +233,10 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
               <button 
                 onClick={() => handlePayment("ONLINE")}
                 disabled={loading}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-slate-200 hover:border-[#ff3f7a] hover:bg-[#ff3f7a]/5 transition-all group text-left"
+                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all group text-left"
               >
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-[#ff3f7a] group-hover:text-white transition-colors">
+                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                     <CreditCard size={24} weight="fill" />
                   </div>
                   <div>
