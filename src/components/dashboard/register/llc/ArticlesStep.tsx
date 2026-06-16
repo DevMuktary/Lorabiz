@@ -4,11 +4,11 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Info, Plus, Trash, PencilSimple, ListDashes, CheckCircle, Eye, X, WarningCircle } from "@phosphor-icons/react";
+import { Info, Plus, Trash, PencilSimple, ListDashes, CheckCircle, Eye, X, WarningCircle, CaretDown } from "@phosphor-icons/react";
 import { CAMA_ARTICLES_DEFAULT } from "@/lib/cama-articles";
+import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema"; // IMPORTED SCHEMA
 
 export default function ArticlesStep({ data, updateData, showErrors }: any) {
-  // Modal States
   const [modalState, setModalState] = useState<{ isOpen: boolean; mode: "add" | "edit"; idx: number | null }>({ isOpen: false, mode: "add", idx: null });
   const [currentArticle, setCurrentArticle] = useState({ articleNo: "", title: "", content: "" });
   
@@ -17,18 +17,23 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
   const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  // Validation State
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const articles: any[] = data.customArticles || [];
-  const witness = data.witnessDetails || {};
+  
+  // Provide safe defaults for new witness objects
+  const witness = {
+    country: "Nigeria",
+    phoneCode: "+234",
+    ...data.witnessDetails
+  };
 
   // ==========================================
   // VALIDATION ENGINE
   // ==========================================
   const handleBlur = (field: string) => setTouched((prev) => ({ ...prev, [field]: true }));
 
-  const getError = (fieldKey: string, value: string, type: "text" | "email" | "dob" = "text") => {
+  const getError = (fieldKey: string, value: string, type: "text" | "email" | "dob" | "phone" = "text") => {
     if (!touched[fieldKey] && !showErrors) return null;
     
     if (!value || !value.trim()) {
@@ -38,6 +43,10 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
     if (type === "email") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(value)) return "Please enter a valid email address.";
+    }
+
+    if (type === "phone") {
+      if (value.replace(/\D/g, '').length < 5) return "Please enter a valid phone number.";
     }
 
     if (type === "dob") {
@@ -64,8 +73,9 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
   const errDob = getError("w-dob", witness.dob, "dob");
   const errGen = getError("w-gender", witness.gender);
   const errOcc = getError("w-occ", witness.occupation);
-  const errPhone = getError("w-phone", witness.phone);
+  const errPhone = getError("w-phone", witness.phone, "phone");
   const errEmail = getError("w-email", witness.email, "email");
+  const errCountry = getError("w-country", witness.country);
   const errState = getError("w-state", witness.state);
   const errLga = getError("w-lga", witness.lga);
   const errStreet = getError("w-street", witness.street);
@@ -159,18 +169,38 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
     setDraggedIndex(null);
   };
 
+  // ==========================================
+  // WITNESS DETAILS HANDLER
+  // ==========================================
   const handleWitnessChange = (field: string, value: string) => {
-    updateData((prev: any) => ({
-      ...prev,
-      witnessDetails: { ...(prev.witnessDetails || {}), [field]: value }
-    }));
+    updateData((prev: any) => {
+      let updatedWitness = { ...(prev.witnessDetails || {}), [field]: value };
+      
+      // Auto-reset dependent fields when parents change
+      if (field === "country" && value !== "Nigeria") {
+        updatedWitness.state = "";
+        updatedWitness.lga = "";
+      }
+      if (field === "state" && updatedWitness.country === "Nigeria") {
+        updatedWitness.lga = ""; // Reset LGA when Nigerian State changes
+      }
+
+      return { ...prev, witnessDetails: updatedWitness };
+    });
+  };
+
+  // Helper for dynamic Nigeria dropdowns
+  const nigerianStates = NIGERIA_DATA.map(d => d.state).sort();
+  const getLgasForState = (stateName: string) => {
+    const stateObj = NIGERIA_DATA.find(d => d.state === stateName);
+    return stateObj ? stateObj.lgas.sort() : [];
   };
 
   return (
     <div className="p-4 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
       {/* ========================================== */}
-      {/* MODALS SECTION (Fixed Z-Index + Viewport locks) */}
+      {/* MODALS SECTION (Omitted for brevity, they are identical to before) */}
       {/* ========================================== */}
       
       {/* 1. ADD / EDIT ARTICLE MODAL */}
@@ -359,7 +389,6 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
                           {title}
                         </h4>
                       </div>
-                      {/* BUMPED TO line-clamp-5 */}
                       <p className="text-xs text-slate-500 font-medium line-clamp-5 pr-2 sm:pr-4 leading-relaxed mt-1">
                         {contentText}
                       </p>
@@ -386,7 +415,9 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
 
       <hr className="border-slate-100" />
 
+      {/* ========================================== */}
       {/* SECTION 3: WITNESS DETAILS */}
+      {/* ========================================== */}
       <section>
         <div className="mb-6">
           <h2 className="text-xl font-black text-slate-900">Details of Witness</h2>
@@ -426,7 +457,7 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
             <Label className={`text-xs font-bold uppercase ${errGen ? "text-red-500" : "text-slate-500"}`}>Gender <span className="text-red-500">*</span></Label>
             <select 
               id="field-w-gender"
-              className={`w-full h-12 px-4 border rounded-xl text-sm font-bold outline-none ${errGen ? "border-red-500 bg-red-50/30" : "border-slate-200 bg-white focus:border-indigo-500"}`}
+              className={`w-full h-12 px-4 border rounded-xl text-sm font-bold outline-none ${errGen ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`}
               value={witness.gender || ""} 
               onChange={e => { handleWitnessChange("gender", e.target.value); setTouched(p => ({...p, "w-gender": true})); }}
               onBlur={() => handleBlur("w-gender")}
@@ -444,36 +475,103 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
             <ErrorMessage msg={errOcc} />
           </div>
 
-          <div className="space-y-2">
-            <Label className={`text-xs font-bold uppercase ${errPhone ? "text-red-500" : "text-slate-500"}`}>Phone Number <span className="text-red-500">*</span></Label>
-            <div className="flex">
-              <span className={`flex items-center justify-center px-4 border border-r-0 rounded-l-xl text-sm font-black ${errPhone ? "bg-red-100 border-red-500 text-red-500" : "bg-slate-100 border-slate-200 text-slate-500"}`}>+234</span>
-              <Input id="field-w-phone" placeholder="8012345678" value={witness.phone || ""} onChange={e => { handleWitnessChange("phone", e.target.value); setTouched(p => ({...p, "w-phone": true})); }} onBlur={() => handleBlur("w-phone")} className={`h-12 font-bold rounded-l-none ${errPhone ? "border-red-500 bg-red-50/30" : ""}`} />
-            </div>
-            <ErrorMessage msg={errPhone} />
-          </div>
-
-          <div className="space-y-2">
+          <div className="space-y-2 md:col-span-2">
             <Label className={`text-xs font-bold uppercase ${errEmail ? "text-red-500" : "text-slate-500"}`}>Email Address <span className="text-red-500">*</span></Label>
             <Input id="field-w-email" type="email" placeholder="witness@example.com" value={witness.email || ""} onChange={e => { handleWitnessChange("email", e.target.value); setTouched(p => ({...p, "w-email": true})); }} onBlur={() => handleBlur("w-email")} className={`h-12 font-bold ${errEmail ? "border-red-500 bg-red-50/30" : ""}`} />
             <ErrorMessage msg={errEmail} />
+          </div>
+
+          <div className="space-y-2">
+            <Label className={`text-xs font-bold uppercase ${errCountry ? "text-red-500" : "text-slate-500"}`}>Country / Nationality <span className="text-red-500">*</span></Label>
+            <div className="relative">
+              <select 
+                id="field-w-country"
+                className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errCountry ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`}
+                value={witness.country} 
+                onChange={e => { handleWitnessChange("country", e.target.value); setTouched(p => ({...p, "w-country": true})); }}
+                onBlur={() => handleBlur("w-country")}
+              >
+                <option value="">-- Select Country --</option>
+                {COUNTRY_CODES.map(c => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
+              </select>
+              <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
+            </div>
+            <ErrorMessage msg={errCountry} />
+          </div>
+
+          <div className="space-y-2">
+            <Label className={`text-xs font-bold uppercase ${errPhone ? "text-red-500" : "text-slate-500"}`}>Phone Number <span className="text-red-500">*</span></Label>
+            <div className="flex">
+              <select 
+                value={witness.phoneCode} 
+                onChange={e => handleWitnessChange("phoneCode", e.target.value)}
+                className={`w-[100px] h-12 px-2 border border-r-0 rounded-l-xl text-sm font-bold outline-none appearance-none ${errPhone ? "bg-red-100 border-red-500 text-red-900" : "bg-slate-50 border-slate-200 text-slate-700 focus:border-indigo-500 focus:bg-white"}`}
+              >
+                {COUNTRY_CODES.map(c => <option key={`code-${c.name}`} value={c.code}>{c.flag} {c.code}</option>)}
+              </select>
+              <Input id="field-w-phone" type="tel" placeholder="8012345678" value={witness.phone || ""} onChange={e => { handleWitnessChange("phone", e.target.value); setTouched(p => ({...p, "w-phone": true})); }} onBlur={() => handleBlur("w-phone")} className={`h-12 font-bold rounded-l-none flex-1 ${errPhone ? "border-red-500 bg-red-50/30" : ""}`} />
+            </div>
+            <ErrorMessage msg={errPhone} />
           </div>
 
           <div className="md:col-span-2 mt-4">
              <h3 className="text-sm font-black text-slate-900 mb-4 border-b pb-2">Witness Residential Address</h3>
           </div>
 
-          <div className="space-y-2">
-            <Label className={`text-xs font-bold uppercase ${errState ? "text-red-500" : "text-slate-500"}`}>State <span className="text-red-500">*</span></Label>
-            <Input id="field-w-state" placeholder="E.g. LAGOS" value={witness.state || ""} onChange={e => { handleWitnessChange("state", e.target.value); setTouched(p => ({...p, "w-state": true})); }} onBlur={() => handleBlur("w-state")} className={`h-12 font-bold ${errState ? "border-red-500 bg-red-50/30" : ""}`} />
-            <ErrorMessage msg={errState} />
-          </div>
-          
-          <div className="space-y-2">
-            <Label className={`text-xs font-bold uppercase ${errLga ? "text-red-500" : "text-slate-500"}`}>LGA <span className="text-red-500">*</span></Label>
-            <Input id="field-w-lga" placeholder="Local Government Area" value={witness.lga || ""} onChange={e => { handleWitnessChange("lga", e.target.value); setTouched(p => ({...p, "w-lga": true})); }} onBlur={() => handleBlur("w-lga")} className={`h-12 font-bold ${errLga ? "border-red-500 bg-red-50/30" : ""}`} />
-            <ErrorMessage msg={errLga} />
-          </div>
+          {witness.country === "Nigeria" ? (
+            <>
+              <div className="space-y-2">
+                <Label className={`text-xs font-bold uppercase ${errState ? "text-red-500" : "text-slate-500"}`}>State <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <select 
+                    id="field-w-state"
+                    value={witness.state || ""} 
+                    onChange={e => { handleWitnessChange("state", e.target.value); setTouched(p => ({...p, "w-state": true})); }}
+                    onBlur={() => handleBlur("w-state")}
+                    className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none transition-colors ${errState ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`}
+                  >
+                    <option value="">-- Select State --</option>
+                    {nigerianStates.map(state => <option key={state} value={state}>{state}</option>)}
+                  </select>
+                  <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
+                </div>
+                <ErrorMessage msg={errState} />
+              </div>
+              
+              <div className="space-y-2">
+                <Label className={`text-xs font-bold uppercase ${errLga ? "text-red-500" : "text-slate-500"}`}>LGA <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <select 
+                    id="field-w-lga"
+                    value={witness.lga || ""} 
+                    disabled={!witness.state}
+                    onChange={e => { handleWitnessChange("lga", e.target.value); setTouched(p => ({...p, "w-lga": true})); }}
+                    onBlur={() => handleBlur("w-lga")}
+                    className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none transition-colors ${!witness.state ? "bg-slate-50 border-slate-200 text-slate-400 opacity-60" : errLga ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`}
+                  >
+                    <option value="">-- Select LGA --</option>
+                    {getLgasForState(witness.state).map(lga => <option key={lga} value={lga}>{lga}</option>)}
+                  </select>
+                  <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
+                </div>
+                <ErrorMessage msg={errLga} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label className={`text-xs font-bold uppercase ${errState ? "text-red-500" : "text-slate-500"}`}>State / Province <span className="text-red-500">*</span></Label>
+                <Input id="field-w-state" placeholder="E.g. Texas, Ontario" value={witness.state || ""} onChange={e => { handleWitnessChange("state", e.target.value); setTouched(p => ({...p, "w-state": true})); }} onBlur={() => handleBlur("w-state")} className={`h-12 font-bold ${errState ? "border-red-500 bg-red-50/30" : ""}`} />
+                <ErrorMessage msg={errState} />
+              </div>
+              
+              <div className="space-y-2">
+                <Label className={`text-xs font-bold uppercase ${errLga ? "text-red-500" : "text-slate-500"}`}>City / County <span className="text-red-500">*</span></Label>
+                <Input id="field-w-lga" placeholder="E.g. Austin, Toronto" value={witness.lga || ""} onChange={e => { handleWitnessChange("lga", e.target.value); setTouched(p => ({...p, "w-lga": true})); }} onBlur={() => handleBlur("w-lga")} className={`h-12 font-bold ${errLga ? "border-red-500 bg-red-50/30" : ""}`} />
+                <ErrorMessage msg={errLga} />
+              </div>
+            </>
+          )}
 
           <div className="space-y-2 md:col-span-2">
             <Label className={`text-xs font-bold uppercase ${errStreet ? "text-red-500" : "text-slate-500"}`}>Full Street Address <span className="text-red-500">*</span></Label>
