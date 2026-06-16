@@ -4,22 +4,15 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Info, Plus, Trash, PencilSimple, ListDashes, CheckCircle, WarningCircle } from "@phosphor-icons/react";
-
-const STANDARD_CAMA_ARTICLES = [
-  "The Company is a Private Company Limited by Shares.",
-  "The directors may exercise all the powers of the company to borrow money, and to mortgage or charge its undertaking, property, and uncalled capital.",
-  "The business of the company shall be managed by the directors, who may pay all expenses incurred in promoting and registering the company.",
-  "No share shall be transferred to a person who is not a member of the company so long as any member is willing to purchase the same at the fair value.",
-  "The quorum necessary for the transaction of the business of the directors may be fixed by the directors, and unless so fixed shall be two."
-];
+import { Info, Plus, Trash, PencilSimple, ListDashes, CheckCircle, WarningCircle, X } from "@phosphor-icons/react";
+import { CAMA_ARTICLES_DEFAULT } from "@/lib/cama-articles";
 
 export default function ArticlesStep({ data, updateData }: any) {
   const [currentText, setCurrentText] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [articleToDelete, setArticleToDelete] = useState<number | null>(null);
 
-  // Fallback to empty array if undefined
   const articles: string[] = data.customArticles || [];
   const witness = data.witnessDetails || {};
 
@@ -27,7 +20,7 @@ export default function ArticlesStep({ data, updateData }: any) {
   // ARTICLE LIST MANAGEMENT
   // ==========================================
   const handleLoadDefaults = () => {
-    updateData({ ...data, customArticles: [...STANDARD_CAMA_ARTICLES], useDefaultArticles: true });
+    updateData({ ...data, customArticles: [...CAMA_ARTICLES_DEFAULT], useDefaultArticles: true });
   };
 
   const handleSaveArticle = () => {
@@ -41,7 +34,6 @@ export default function ArticlesStep({ data, updateData }: any) {
       updated.push(currentText.trim());
     }
     
-    // Once they modify it, it's no longer purely default
     updateData({ ...data, customArticles: updated, useDefaultArticles: false });
     setCurrentText("");
   };
@@ -52,9 +44,11 @@ export default function ArticlesStep({ data, updateData }: any) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleRemove = (idx: number) => {
-    const updated = articles.filter((_, i) => i !== idx);
+  const confirmRemove = () => {
+    if (articleToDelete === null) return;
+    const updated = articles.filter((_, i) => i !== articleToDelete);
     updateData({ ...data, customArticles: updated, useDefaultArticles: false });
+    setArticleToDelete(null);
   };
 
   const handleClearAll = () => {
@@ -68,13 +62,12 @@ export default function ArticlesStep({ data, updateData }: any) {
   // ==========================================
   const handleDragStart = (e: any, index: number) => {
     setDraggedIndex(index);
-    // Required for Firefox drag support
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", index.toString());
   };
 
   const handleDragOver = (e: any, index: number) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault(); 
     e.dataTransfer.dropEffect = "move";
   };
 
@@ -85,8 +78,8 @@ export default function ArticlesStep({ data, updateData }: any) {
     const newArticles = [...articles];
     const itemToMove = newArticles[draggedIndex];
     
-    newArticles.splice(draggedIndex, 1); // Remove from old position
-    newArticles.splice(dropIndex, 0, itemToMove); // Insert at new position
+    newArticles.splice(draggedIndex, 1); 
+    newArticles.splice(dropIndex, 0, itemToMove); 
 
     updateData({ ...data, customArticles: newArticles, useDefaultArticles: false });
     setDraggedIndex(null);
@@ -103,8 +96,33 @@ export default function ArticlesStep({ data, updateData }: any) {
   };
 
   return (
-    <div className="p-6 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden">
+    <div className="p-6 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
+      {/* BEAUTIFUL DELETE CONFIRMATION MODAL */}
+      {articleToDelete !== null && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="h-16 w-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash className="h-8 w-8" weight="fill" />
+              </div>
+              <h3 className="font-black text-xl text-slate-900 mb-2">Delete Article?</h3>
+              <p className="text-slate-500 font-medium text-sm leading-relaxed mb-6">
+                Are you sure you want to remove this clause? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setArticleToDelete(null)} className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50">
+                  Cancel
+                </Button>
+                <Button onClick={confirmRemove} className="flex-1 h-12 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20">
+                  Yes, Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SECTION 1: ARTICLES MANAGEMENT */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
@@ -115,7 +133,6 @@ export default function ArticlesStep({ data, updateData }: any) {
             </p>
           </div>
 
-          {/* COMPACT ACTIONS */}
           <div className="flex items-center gap-2 shrink-0">
             {articles.length > 0 && (
               <Button variant="outline" onClick={handleClearAll} className="h-10 border-slate-200 text-red-500 hover:bg-red-50 font-bold rounded-xl text-xs">
@@ -124,49 +141,49 @@ export default function ArticlesStep({ data, updateData }: any) {
             )}
             <Button 
               onClick={handleLoadDefaults} 
-              className={`h-10 font-bold rounded-xl text-xs px-4 flex items-center gap-2 transition-colors ${data.useDefaultArticles && articles.length > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100" : "bg-slate-900 text-white hover:bg-slate-800"}`}
+              className={`h-10 font-bold rounded-xl text-xs px-4 flex items-center gap-2 transition-colors ${data.useDefaultArticles && articles.length > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100" : "bg-slate-900 text-white hover:bg-slate-800 shadow-md"}`}
             >
               {data.useDefaultArticles && articles.length > 0 ? <><CheckCircle weight="fill" className="h-4 w-4" /> Defaults Loaded</> : "Load CAMA Defaults"}
             </Button>
           </div>
         </div>
 
-        {/* INPUT BOX FOR ADDING/EDITING */}
-        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 mb-8">
-          <Label className="text-xs font-bold uppercase text-slate-500 mb-2 block">
-            {editingIndex !== null ? `Editing Article #${editingIndex + 1}` : "Add New Article"}
-          </Label>
-          <div className="flex flex-col sm:flex-row gap-3">
+        {/* GORGEOUS INPUT BOX */}
+        <div className="bg-white p-2 rounded-2xl border-2 border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all mb-8 shadow-sm">
+          <div className="p-3">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2 block">
+              {editingIndex !== null ? `EDITING ARTICLE #${editingIndex + 1}` : "ADD NEW ARTICLE"}
+            </Label>
             <textarea 
-              rows={2}
-              placeholder="E.g. The company shall have a first and paramount lien on every share..."
+              rows={3}
+              placeholder="Type your custom clause here..."
               value={currentText} 
               onChange={e => setCurrentText(e.target.value)}
-              className="w-full p-3 border rounded-xl font-bold text-sm outline-none border-slate-200 resize-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              className="w-full font-bold text-sm text-slate-700 placeholder-slate-400 outline-none resize-none bg-transparent leading-relaxed"
             />
-            <div className="flex flex-col gap-2 shrink-0 sm:w-32">
-              <Button 
-                onClick={handleSaveArticle}
-                disabled={!currentText.trim()}
-                className="h-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl"
-              >
-                {editingIndex !== null ? "Save Update" : <><Plus weight="bold" className="mr-2" /> Add</>}
+          </div>
+          <div className="flex justify-end p-2 bg-slate-50 rounded-xl gap-2">
+            {editingIndex !== null && (
+              <Button variant="ghost" onClick={() => { setEditingIndex(null); setCurrentText(""); }} className="h-10 px-6 font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-lg">
+                Cancel
               </Button>
-              {editingIndex !== null && (
-                <Button variant="ghost" onClick={() => { setEditingIndex(null); setCurrentText(""); }} className="h-8 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-200/50">
-                  Cancel
-                </Button>
-              )}
-            </div>
+            )}
+            <Button 
+              onClick={handleSaveArticle}
+              disabled={!currentText.trim()}
+              className="h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm"
+            >
+              {editingIndex !== null ? "Save Update" : <><Plus weight="bold" className="mr-2 h-4 w-4" /> Add Article</>}
+            </Button>
           </div>
         </div>
 
         {/* DRAGGABLE LIST */}
         <div>
           {articles.length === 0 ? (
-            <div className="text-center py-10 bg-white border-2 border-dashed border-slate-200 rounded-2xl">
-              <p className="text-sm font-medium text-slate-400">No articles added yet.</p>
-              <p className="text-xs font-bold text-amber-500 mt-1 uppercase tracking-widest">Click "Load CAMA Defaults" or add your own above.</p>
+            <div className="text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
+              <p className="text-sm font-bold text-slate-500">No articles added yet.</p>
+              <p className="text-xs font-black text-amber-500 mt-1 uppercase tracking-widest">Click "Load CAMA Defaults" or add your own.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -177,23 +194,33 @@ export default function ArticlesStep({ data, updateData }: any) {
                   onDragStart={(e) => handleDragStart(e, idx)}
                   onDragOver={(e) => handleDragOver(e, idx)}
                   onDrop={(e) => handleDrop(e, idx)}
-                  className={`flex items-start gap-4 p-4 bg-white border rounded-xl group transition-all ${draggedIndex === idx ? "opacity-50 border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-indigo-300 shadow-sm"}`}
+                  className={`flex flex-col sm:flex-row sm:items-start gap-4 p-4 bg-white border-2 rounded-2xl transition-all ${draggedIndex === idx ? "opacity-50 border-indigo-500 bg-indigo-50" : "border-slate-100 hover:border-slate-300 shadow-sm"}`}
                 >
-                  <div className="mt-1 cursor-grab active:cursor-grabbing text-slate-300 hover:text-indigo-500 p-1">
-                    <ListDashes className="h-5 w-5" weight="bold" />
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className="mt-0.5 cursor-grab active:cursor-grabbing text-slate-300 hover:text-indigo-500 transition-colors">
+                      <ListDashes className="h-6 w-6" weight="bold" />
+                    </div>
+                    <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 shrink-0 mt-0.5">
+                      {idx + 1}
+                    </div>
+                    <p className="text-sm font-bold text-slate-700 leading-relaxed mt-1">
+                      {article}
+                    </p>
                   </div>
-                  <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 shrink-0 mt-0.5">
-                    {idx + 1}
-                  </div>
-                  <p className="text-sm font-bold text-slate-700 flex-1 leading-relaxed">
-                    {article}
-                  </p>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button onClick={() => handleEdit(idx)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                      <PencilSimple className="h-4 w-4" weight="bold" />
+                  
+                  {/* OBVIOUS ACTION BUTTONS */}
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-start mt-4 sm:mt-0">
+                    <button 
+                      onClick={() => handleEdit(idx)} 
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                    >
+                      <PencilSimple className="h-4 w-4" weight="bold" /> Edit
                     </button>
-                    <button onClick={() => handleRemove(idx)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash className="h-4 w-4" weight="bold" />
+                    <button 
+                      onClick={() => setArticleToDelete(idx)} 
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                    >
+                      <Trash className="h-4 w-4" weight="bold" /> Delete
                     </button>
                   </div>
                 </div>
@@ -269,7 +296,6 @@ export default function ArticlesStep({ data, updateData }: any) {
             <Input type="email" placeholder="witness@example.com" value={witness.email || ""} onChange={e => handleWitnessChange("email", e.target.value)} className="h-12 font-bold" />
           </div>
 
-          {/* WITNESS ADDRESS */}
           <div className="md:col-span-2 mt-4">
              <h3 className="text-sm font-black text-slate-900 mb-4 border-b pb-2">Witness Residential Address</h3>
           </div>
