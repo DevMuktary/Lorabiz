@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client"; // IMPORT PRISMA HERE TO FIX JSON NULL ERROR
+import { Prisma } from "@prisma/client";
 
 // ==========================================
 // 1. GET: FETCH DRAFT DATA TO POPULATE THE UI
@@ -19,7 +19,7 @@ export async function GET(
 
     const registration = await prisma.llcRegistration.findUnique({
       where: { id },
-      include: { officers: true } // Pull in directors/shareholders too
+      include: { officers: true } 
     });
 
     if (!registration) {
@@ -57,10 +57,12 @@ export async function PUT(
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
+    
+    // FIX: Added `customArticles` to the destructured body so we don't lose it!
     const { 
       email, principalActivity, specificActivity, description,
       registeredAddress, headOfficeAddress, headOfficeSameAsRegistered,
-      useDefaultArticles, witnessDetails, memorandumObjects,
+      useDefaultArticles, customArticles, witnessDetails, memorandumObjects,
       officers, shareCapital, declarantDetails, isDraft 
     } = body;
 
@@ -85,8 +87,8 @@ export async function PUT(
       if (!registeredAddress?.state || !registeredAddress?.street) {
         return NextResponse.json({ success: false, message: "Registered Office Address is incomplete." }, { status: 400 });
       }
-      if (!useDefaultArticles && (!witnessDetails?.firstName || !witnessDetails?.signatureUrl)) {
-         return NextResponse.json({ success: false, message: "Witness details and signature are required for Articles of Association." }, { status: 400 });
+      if (!useDefaultArticles && (!witnessDetails?.firstName)) {
+         return NextResponse.json({ success: false, message: "Witness details are required for Articles of Association." }, { status: 400 });
       }
       if (!memorandumObjects || memorandumObjects.length === 0) {
         return NextResponse.json({ success: false, message: "At least one Object of Memorandum is required." }, { status: 400 });
@@ -107,7 +109,6 @@ export async function PUT(
     const dbCompanyType = shareCapital?.companyType || null;
     const dbTotalShareCapital = shareCapital?.totalIssuedCapital ? Number(shareCapital.totalIssuedCapital) : null;
     
-    // FIX: Use Prisma.JsonNull instead of standard null to prevent TS error
     const dbShareClasses = shareCapital 
       ? { allotments: shareCapital.allotments || {} } 
       : Prisma.JsonNull;
@@ -121,13 +122,16 @@ export async function PUT(
         specificActivity: specificActivity || null,
         description: description || null,
         
-        // Use Prisma.JsonNull for JSON fields that might be empty
         registeredAddress: registeredAddress || Prisma.JsonNull,
         headOfficeAddress: headOfficeSameAsRegistered ? Prisma.JsonNull : (headOfficeAddress || Prisma.JsonNull),
         witnessDetails: witnessDetails || Prisma.JsonNull,
         declarantDetails: declarantDetails || Prisma.JsonNull,
         
         useDefaultArticles: useDefaultArticles ?? true,
+        
+        // FIX: Tell Prisma to save the loaded articles to the database!
+        customArticles: customArticles || Prisma.JsonNull, 
+        
         memorandumObjects: memorandumObjects || [],
         companyType: dbCompanyType,
         totalShareCapital: dbTotalShareCapital,
@@ -160,7 +164,6 @@ export async function PUT(
         taxResidency: o.taxResidency || null,
         tin: o.tin || null,
         
-        // FIX: JSON nulls here as well
         residentialAddress: o.residentialAddress || Prisma.JsonNull,
         serviceAddress: o.serviceAddress || Prisma.JsonNull,
         pscDetails: o.pscDetails || Prisma.JsonNull,
