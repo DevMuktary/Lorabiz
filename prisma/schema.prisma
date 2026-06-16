@@ -162,6 +162,7 @@ model LlcRegistration {
   
   // Step 2 & 3: Articles & Memorandum
   useDefaultArticles  Boolean            @default(true)
+  customArticles      Json?
   witnessDetails      Json?              // The person witnessing the articles
   memorandumObjects   String[]           // Array of the objects they add
   
