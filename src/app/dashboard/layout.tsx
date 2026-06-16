@@ -86,47 +86,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-[#ff3f7a] selection:text-white">
+    <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-500 selection:text-white">
       
-      {/* MOBILE OVERLAY */}
+      {/* MOBILE OVERLAY (Higher z-index) */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
+          className="fixed inset-0 bg-slate-900/40 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {/* SIDEBAR */}
+      {/* SIDEBAR (Highest z-index to stay above everything) */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 
+        fixed inset-y-0 left-0 z-[99995] w-[260px] bg-white border-r border-slate-200 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
         ${isDesktopSidebarCollapsed ? "lg:-translate-x-full" : "lg:translate-x-0"}
       `}>
-        <div className="h-20 flex items-center justify-between px-8 border-b border-slate-100 shrink-0">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 shrink-0">
           <Image 
             src="/logo.png" 
             alt="Lumebiz" 
-            width={140} 
-            height={40} 
-            className="h-8 w-auto object-contain" 
+            width={120} 
+            height={32} 
+            className="h-7 w-auto object-contain" 
             priority
           />
           <button 
-            className="lg:hidden text-slate-500 hover:text-[#ff3f7a] transition-colors"
+            className="lg:hidden text-slate-500 hover:text-indigo-600 transition-colors"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            <X className="h-6 w-6" weight="bold" />
+            <X className="h-5 w-5" weight="bold" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-6 custom-scrollbar">
           {NAVIGATION.map((group) => (
-            <div key={group.category} className="space-y-2">
-              <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+            <div key={group.category} className="space-y-1.5">
+              <h3 className="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
                 {group.category}
               </h3>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {group.links.map((link) => {
                   const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
                   const Icon = link.icon;
@@ -137,18 +137,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       href={link.href}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`
-                        flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 group
+                        flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 group
                         ${isActive 
-                          ? "bg-[#ff3f7a]/10 text-[#ff3f7a]" 
+                          ? "bg-indigo-50 text-indigo-600" 
                           : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                         }
                       `}
                     >
                       <Icon 
                         weight={isActive ? "fill" : "regular"} 
-                        className={`h-5 w-5 transition-transform group-hover:scale-110 ${isActive ? "text-[#ff3f7a]" : "text-slate-400 group-hover:text-slate-600"}`} 
+                        className={`h-[18px] w-[18px] transition-transform group-hover:scale-110 ${isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"}`} 
                       />
-                      <span className="text-[15px]">{link.name}</span>
+                      {/* REDUCED TEXT SIZE FOR COMPACTNESS */}
+                      <span className="text-[13px] font-bold">{link.name}</span>
                     </Link>
                   );
                 })}
@@ -157,12 +158,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 shrink-0">
+        <div className="p-3 border-t border-slate-100 shrink-0">
           <button 
             onClick={() => signOut({ callbackUrl: "/auth/login" })}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group cursor-pointer"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group cursor-pointer"
           >
-            <SignOut className="h-5 w-5 text-slate-400 group-hover:text-red-500 transition-transform group-hover:-translate-x-1" />
+            <SignOut className="h-[18px] w-[18px] text-slate-400 group-hover:text-red-500 transition-transform group-hover:-translate-x-1" />
             Log Out
           </button>
         </div>
@@ -171,51 +172,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* MAIN CONTENT AREA */}
       <div className={`
         flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out
-        ${isDesktopSidebarCollapsed ? "lg:pl-0" : "lg:pl-72"}
+        ${isDesktopSidebarCollapsed ? "lg:pl-0" : "lg:pl-[260px]"}
       `}>
         
-        {/* SMART HEADER */}
+        {/* SMART HEADER (Lowered Z-Index to 10 so it stays under modals) */}
         <header className={`
-          sticky top-0 z-30 h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 
-          flex items-center justify-between px-6 lg:px-10 shrink-0 
+          sticky top-0 z-10 h-20 bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-100 
+          flex items-center justify-between px-6 lg:px-8 shrink-0 
           transition-transform duration-300 ease-in-out
           ${showHeader ? "translate-y-0" : "-translate-y-full"}
         `}>
-          <div className="flex items-center gap-4">
-            {/* Mobile Toggle Button */}
+          <div className="flex items-center gap-3">
             <button 
               className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsMobileMenuOpen(true)}
             >
-              <List className="h-6 w-6" />
+              <List className="h-5 w-5" weight="bold" />
             </button>
             
-            {/* Desktop Toggle Button */}
             <button 
               className="hidden lg:block p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
             >
-              <List className="h-6 w-6" />
+              <List className="h-5 w-5" weight="bold" />
             </button>
 
-            <h2 className="text-xl font-bold text-slate-800 hidden sm:block">
+            <h2 className="text-lg font-black text-slate-800 hidden sm:block">
               {getCurrentPageName()}
             </h2>
           </div>
 
-          <div className="flex items-center gap-5">
-            <button className="relative p-2 text-slate-500 hover:text-[#ff3f7a] transition-colors rounded-full hover:bg-[#ff3f7a]/10 cursor-pointer">
-              <Bell className="h-6 w-6" />
-              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-[#ff3f7a] rounded-full border-2 border-white"></span>
+          <div className="flex items-center gap-4">
+            <button className="relative p-2 text-slate-500 hover:text-indigo-600 transition-colors rounded-full hover:bg-indigo-50 cursor-pointer">
+              <Bell className="h-5 w-5" weight="bold" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-indigo-600 rounded-full border-2 border-white"></span>
             </button>
 
-            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#ff3f7a] to-[#ff7b9f] flex items-center justify-center text-white font-bold shadow-md cursor-pointer hover:opacity-90 transition-opacity">
+            <div className="h-9 w-9 rounded-full bg-slate-900 flex items-center justify-center text-white text-xs font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity">
               JD
             </div>
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-10 relative z-10">
+        {/* Removed relative z-10 from main to prevent stacking context traps */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-10">
           <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
           </div>
