@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CircleDashed, WarningCircle, X, CircleNotch } from "@phosphor-icons/react";
+import { CircleDashed, WarningCircle, X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 // Import all 9 Step Components
@@ -44,7 +44,7 @@ export default function LlcRegistrationDetailsPage() {
     headOfficeAddress: { state: "", lga: "", city: "", postCode: "", houseNo: "", street: "" },
     useDefaultArticles: true,
     customArticles: [] as string[],
-    witnessDetails: {},
+    witnessDetails: { surname: "", firstName: "", otherName: "", dob: "", gender: "", occupation: "", phone: "", email: "", state: "", lga: "", street: "" },
     memorandumObjects: [] as string[],
     officers: [] as any[],
     shareCapital: null as any,
@@ -68,7 +68,6 @@ export default function LlcRegistrationDetailsPage() {
           }
           setDraft(json.data);
           
-          // Check if head and registered perfectly match on load to check the box
           const rAddr = json.data.registeredAddress || companyDetails.registeredAddress;
           const hAddr = json.data.headOfficeAddress || companyDetails.headOfficeAddress;
           const isSame = JSON.stringify(rAddr) === JSON.stringify(hAddr);
@@ -114,7 +113,6 @@ export default function LlcRegistrationDetailsPage() {
       fetch(`/api/register/llc/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        // IMPORTANT: We send false for headOfficeSameAsRegistered so the backend doesn't delete the visible data!
         body: JSON.stringify({ ...companyDetails, headOfficeSameAsRegistered: false, isDraft: true })
       })
       .then(res => res.ok ? setSaveStatus("saved") : setSaveStatus("error"))
@@ -158,9 +156,10 @@ export default function LlcRegistrationDetailsPage() {
     setShowErrors(false);
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
 
+    const d = companyDetails;
+
     // STRICT STEP 1 VALIDATION
     if (currentStep === 1) {
-      const d = companyDetails;
       const rAddr = d.registeredAddress;
       const hAddr = d.headOfficeAddress;
 
@@ -177,7 +176,6 @@ export default function LlcRegistrationDetailsPage() {
         { val: rAddr.city, name: "Registered City / Town", id: "field-regCity" },
         { val: rAddr.houseNo, name: "Registered House No.", id: "field-regHouse" },
         { val: rAddr.street, name: "Registered Street Name", id: "field-regStreet" },
-        // ALWAYS checking head office now since fields are always visible
         { val: hAddr.state, name: "Head Office State", id: "field-hoState" },
         { val: hAddr.lga, name: "Head Office LGA", id: "field-hoLga" },
         { val: hAddr.city, name: "Head Office City / Town", id: "field-hoCity" },
@@ -186,19 +184,64 @@ export default function LlcRegistrationDetailsPage() {
       ];
 
       const firstError = checks.find(c => !c.val || !c.val.trim());
-
       if (firstError) {
         triggerError(`Please provide the ${firstError.name}.`, firstError.id);
         return; 
       }
     }
 
-    if (currentStep === 3 && companyDetails.memorandumObjects.length === 0) {
+    // STRICT STEP 2 VALIDATION (Articles & Witness)
+    if (currentStep === 2) {
+      const w = d.witnessDetails;
+
+      if (!d.customArticles || d.customArticles.length === 0) {
+        triggerError("You must provide at least one Article of Association to proceed.");
+        return;
+      }
+
+      const witnessChecks = [
+        { val: w.surname, name: "Witness Surname", id: "field-w-surname" },
+        { val: w.firstName, name: "Witness First Name", id: "field-w-first" },
+        { val: w.dob, name: "Witness Date of Birth", id: "field-w-dob" },
+        { val: w.gender, name: "Witness Gender", id: "field-w-gender" },
+        { val: w.occupation, name: "Witness Occupation", id: "field-w-occ" },
+        { val: w.phone, name: "Witness Phone Number", id: "field-w-phone" },
+        { val: w.email, name: "Witness Email Address", id: "field-w-email" },
+        { val: w.state, name: "Witness State", id: "field-w-state" },
+        { val: w.lga, name: "Witness LGA", id: "field-w-lga" },
+        { val: w.street, name: "Witness Full Street Address", id: "field-w-street" }
+      ];
+
+      const firstError = witnessChecks.find(c => !c.val || !c.val.trim());
+      if (firstError) {
+        triggerError(`Please provide the ${firstError.name}.`, firstError.id);
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(w.email)) {
+        triggerError("Please provide a valid Witness Email address.", "field-w-email");
+        return;
+      }
+
+      const dobDate = new Date(w.dob);
+      const ageDifMs = Date.now() - dobDate.getTime();
+      const ageDate = new Date(ageDifMs);
+      const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+      if (age < 18) {
+        triggerError("The witness must be at least 18 years old to sign legal documents.", "field-w-dob");
+        return;
+      }
+    }
+
+    // STRICT STEP 3 VALIDATION
+    if (currentStep === 3 && d.memorandumObjects.length === 0) {
       triggerError("Please add at least one Object of Memorandum.");
       return;
     }
     
-    if (currentStep === 4 && companyDetails.officers.filter(o => o.roles.includes("DIRECTOR")).length === 0) {
+    // STRICT STEP 4 VALIDATION
+    if (currentStep === 4 && d.officers.filter(o => o.roles.includes("DIRECTOR")).length === 0) {
       triggerError("You must add at least one Director.");
       return;
     }
@@ -219,7 +262,6 @@ export default function LlcRegistrationDetailsPage() {
       const res = await fetch(`/api/register/llc/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        // Force save of head office
         body: JSON.stringify({ ...companyDetails, headOfficeSameAsRegistered: false, isDraft: false })
       });
       
@@ -275,7 +317,6 @@ export default function LlcRegistrationDetailsPage() {
       {/* Header & Stepper */}
       <div className="mb-8 border-b border-slate-200 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="w-full overflow-hidden">
-          {/* NEW CONTEXT HEADER */}
           <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5">Completing Application For</p>
           <h1 className="text-2xl font-black text-slate-900 mb-6 truncate pr-4">{draft?.proposedName || "Loading..."}</h1>
           
@@ -299,7 +340,7 @@ export default function LlcRegistrationDetailsPage() {
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
         
         {currentStep === 1 && <CompanyDetailsStep data={companyDetails} updateData={setCompanyDetails} draft={draft} showErrors={showErrors} />}
-        {currentStep === 2 && <ArticlesStep data={companyDetails} updateData={setCompanyDetails} />}
+        {currentStep === 2 && <ArticlesStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
         {currentStep === 3 && <MemorandumStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 4 && <OfficersStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 5 && <ShareCapitalStep data={companyDetails} updateData={setCompanyDetails} />}
