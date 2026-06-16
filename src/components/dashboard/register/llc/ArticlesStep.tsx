@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Info, Plus, Trash, PencilSimple, ListDashes, CheckCircle, Eye, X, WarningCircle, CaretDown } from "@phosphor-icons/react";
 import { CAMA_ARTICLES_DEFAULT } from "@/lib/cama-articles";
-import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema"; // IMPORTED SCHEMA
+import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema"; 
 
 export default function ArticlesStep({ data, updateData, showErrors }: any) {
   const [modalState, setModalState] = useState<{ isOpen: boolean; mode: "add" | "edit"; idx: number | null }>({ isOpen: false, mode: "add", idx: null });
-  const [currentArticle, setCurrentArticle] = useState({ articleNo: "", title: "", content: "" });
+  const [currentArticle, setCurrentArticle] = useState({ part: "", title: "", subtitle: "", content: "" });
   
   const [viewingArticle, setViewingArticle] = useState<any>(null);
   const [articleToDelete, setArticleToDelete] = useState<number | null>(null);
@@ -21,7 +21,6 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
 
   const articles: any[] = data.customArticles || [];
   
-  // Provide safe defaults for new witness objects
   const witness = {
     country: "Nigeria",
     phoneCode: "+234",
@@ -85,39 +84,54 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
   // ==========================================
   const handleLoadDefaults = () => {
     const parsedDefaults = CAMA_ARTICLES_DEFAULT.map(str => {
-      const firstNewline = str.indexOf('\n');
-      if (firstNewline === -1) return { articleNo: "", title: "Article", content: str };
-
-      const firstLine = str.substring(0, firstNewline);
-      const content = str.substring(firstNewline + 1).trim();
+      const lines = str.split('\n');
+      const firstLine = lines[0] || "";
       const [no, ...titleParts] = firstLine.split(':');
+      
+      const part = no ? no.trim() : "";
+      const title = titleParts.length > 0 ? titleParts.join(':').trim() : "Article";
+      
+      let subtitle = "";
+      let content = "";
+      
+      // If there are more than 2 lines, assume line 2 is a subtitle
+      if (lines.length > 2) {
+        subtitle = lines[1].trim();
+        content = lines.slice(2).join('\n').trim();
+      } else if (lines.length === 2) {
+        content = lines[1].trim();
+      } else {
+        content = str;
+      }
 
-      return {
-        articleNo: no ? no.trim() : "",
-        title: titleParts.length > 0 ? titleParts.join(':').trim() : "Article",
-        content: content
-      };
+      return { part, title, subtitle, content };
     });
 
     updateData({ ...data, customArticles: parsedDefaults, useDefaultArticles: true });
   };
 
   const openAddModal = () => {
-    setCurrentArticle({ articleNo: `${articles.length + 1}`, title: "", content: "" });
+    setCurrentArticle({ part: `${articles.length + 1}`, title: "", subtitle: "", content: "" });
     setModalState({ isOpen: true, mode: "add", idx: null });
   };
 
   const openEditModal = (idx: number, article: any) => {
+    // Legacy support for plain strings or old "articleNo" format
     if (typeof article === "string") {
-      setCurrentArticle({ articleNo: `${idx + 1}`, title: "Custom Clause", content: article });
+      setCurrentArticle({ part: `${idx + 1}`, title: "Custom Clause", subtitle: "", content: article });
     } else {
-      setCurrentArticle({ articleNo: article.articleNo || "", title: article.title || "", content: article.content || "" });
+      setCurrentArticle({ 
+        part: article.part || article.articleNo || "", 
+        title: article.title || "", 
+        subtitle: article.subtitle || "", 
+        content: article.content || "" 
+      });
     }
     setModalState({ isOpen: true, mode: "edit", idx });
   };
 
   const saveArticle = () => {
-    if (!currentArticle.content.trim() || !currentArticle.title.trim()) return;
+    if (!currentArticle.content.trim() || !currentArticle.title.trim() || !currentArticle.part.trim()) return;
 
     let updated = [...articles];
     if (modalState.mode === "edit" && modalState.idx !== null) {
@@ -176,20 +190,18 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
     updateData((prev: any) => {
       let updatedWitness = { ...(prev.witnessDetails || {}), [field]: value };
       
-      // Auto-reset dependent fields when parents change
       if (field === "country" && value !== "Nigeria") {
         updatedWitness.state = "";
         updatedWitness.lga = "";
       }
       if (field === "state" && updatedWitness.country === "Nigeria") {
-        updatedWitness.lga = ""; // Reset LGA when Nigerian State changes
+        updatedWitness.lga = "";
       }
 
       return { ...prev, witnessDetails: updatedWitness };
     });
   };
 
-  // Helper for dynamic Nigeria dropdowns
   const nigerianStates = NIGERIA_DATA.map(d => d.state).sort();
   const getLgasForState = (stateName: string) => {
     const stateObj = NIGERIA_DATA.find(d => d.state === stateName);
@@ -200,10 +212,8 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
     <div className="p-4 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
       {/* ========================================== */}
-      {/* MODALS SECTION (Omitted for brevity, they are identical to before) */}
-      {/* ========================================== */}
-      
       {/* 1. ADD / EDIT ARTICLE MODAL */}
+      {/* ========================================== */}
       {modalState.isOpen && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
@@ -215,21 +225,26 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
                 <X weight="bold" />
               </button>
             </div>
+            
             <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-2 md:col-span-1">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Article No. <span className="text-red-500">*</span></Label>
-                  <Input placeholder="E.g. 1" value={currentArticle.articleNo} onChange={e => setCurrentArticle({...currentArticle, articleNo: e.target.value})} className="h-12 font-bold" />
+                  <Label className="text-xs font-bold uppercase text-slate-500">Part <span className="text-red-500">*</span></Label>
+                  <Input placeholder="E.g. 1" value={currentArticle.part} onChange={e => setCurrentArticle({...currentArticle, part: e.target.value})} className="h-12 font-bold" />
                 </div>
                 <div className="space-y-2 md:col-span-3">
                   <Label className="text-xs font-bold uppercase text-slate-500">Clause Title <span className="text-red-500">*</span></Label>
                   <Input placeholder="E.g. DIRECTORS’ POWERS" value={currentArticle.title} onChange={e => setCurrentArticle({...currentArticle, title: e.target.value})} className="h-12 font-bold" />
                 </div>
+                <div className="space-y-2 md:col-span-4">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Subtitle (Optional)</Label>
+                  <Input placeholder="E.g. Directors’ General Authority" value={currentArticle.subtitle} onChange={e => setCurrentArticle({...currentArticle, subtitle: e.target.value})} className="h-12 font-bold" />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase text-slate-500">Main Content / Clauses <span className="text-red-500">*</span></Label>
                 <textarea 
-                  rows={10}
+                  rows={8}
                   placeholder="Type the full legal clauses here..."
                   value={currentArticle.content} 
                   onChange={e => setCurrentArticle({...currentArticle, content: e.target.value})}
@@ -237,9 +252,10 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
                 />
               </div>
             </div>
+
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
               <Button variant="outline" onClick={() => setModalState({ isOpen: false, mode: "add", idx: null })} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
-              <Button onClick={saveArticle} disabled={!currentArticle.title.trim() || !currentArticle.content.trim()} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md">
+              <Button onClick={saveArticle} disabled={!currentArticle.title.trim() || !currentArticle.content.trim() || !currentArticle.part.trim()} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md">
                 {modalState.mode === "add" ? "Save Article" : "Update Article"}
               </Button>
             </div>
@@ -247,28 +263,35 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
         </div>
       )}
 
+      {/* ========================================== */}
       {/* 2. READ-ONLY VIEW MODAL */}
+      {/* ========================================== */}
       {viewingArticle && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start bg-slate-50 shrink-0 gap-4">
               <div>
                 <span className="inline-block px-2.5 py-1 bg-indigo-100 text-indigo-700 font-black text-[10px] uppercase tracking-widest rounded-md mb-2">
-                  Article {viewingArticle.articleNo || "-"}
+                  Part {viewingArticle.part || viewingArticle.articleNo || "-"}
                 </span>
                 <h3 className="font-black text-xl text-slate-900 leading-tight">
                   {viewingArticle.title || "Custom Article"}
                 </h3>
+                {viewingArticle.subtitle && (
+                  <p className="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest">{viewingArticle.subtitle}</p>
+                )}
               </div>
               <button onClick={() => setViewingArticle(null)} className="p-2 bg-slate-200 hover:bg-slate-300 rounded-full text-slate-600 transition-colors shrink-0">
                 <X weight="bold" />
               </button>
             </div>
+            
             <div className="p-6 overflow-y-auto custom-scrollbar bg-white">
               <p className="text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
                 {viewingArticle.content || viewingArticle}
               </p>
             </div>
+            
             <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end shrink-0">
               <Button onClick={() => setViewingArticle(null)} className="h-12 px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl">Close</Button>
             </div>
@@ -276,7 +299,9 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
         </div>
       )}
 
+      {/* ========================================== */}
       {/* 3. DELETE CONFIRMATION MODAL */}
+      {/* ========================================== */}
       {articleToDelete !== null && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -297,7 +322,9 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
         </div>
       )}
 
+      {/* ========================================== */}
       {/* 4. CLEAR ALL CONFIRMATION MODAL */}
+      {/* ========================================== */}
       {showClearAllModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -360,8 +387,9 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
             <div className="space-y-3">
               {articles.map((article, idx) => {
                 const isString = typeof article === "string";
-                const no = isString ? `${idx + 1}` : (article.articleNo || `${idx + 1}`);
+                const no = isString ? `${idx + 1}` : (article.part || article.articleNo || `${idx + 1}`);
                 const title = isString ? "Custom Clause" : (article.title || "Custom Clause");
+                const subtitle = isString ? "" : (article.subtitle || "");
                 const contentText = isString ? article : (article.content || "");
 
                 return (
@@ -383,11 +411,12 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
                           <ListDashes className="h-5 w-5" weight="bold" />
                         </div>
                         <span className="shrink-0 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">
-                          Art. {no}
+                          Part {no}
                         </span>
-                        <h4 className="text-sm font-black text-slate-800 truncate">
-                          {title}
-                        </h4>
+                        <div className="flex flex-col overflow-hidden">
+                          <h4 className="text-sm font-black text-slate-800 truncate">{title}</h4>
+                          {subtitle && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{subtitle}</span>}
+                        </div>
                       </div>
                       <p className="text-xs text-slate-500 font-medium line-clamp-5 pr-2 sm:pr-4 leading-relaxed mt-1">
                         {contentText}
