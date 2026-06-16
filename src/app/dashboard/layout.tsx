@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react"; // ADDED useSession
 import { 
   SquaresFour, Briefcase, Storefront, Buildings, HandHeart, IdentificationCard,
   CalendarCheck, ArrowCircleUp, PencilLine, Archive, CreditCard, UserCircle,
@@ -48,6 +48,7 @@ const NAVIGATION = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data: session } = useSession(); // PULL ACTUAL USER DATA
   
   // --- SIDEBAR STATES ---
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -85,8 +86,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return "Dashboard";
   };
 
+  // HELPER TO GENERATE REAL INITIALS
+  const getUserInitials = () => {
+    if (session?.user?.name) {
+      const names = session.user.name.split(" ");
+      if (names.length >= 2) return `${names[0][0]}${names[1][0]}`.toUpperCase();
+      return session.user.name.substring(0, 2).toUpperCase();
+    }
+    return null;
+  };
+
+  const initials = getUserInitials();
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 font-sans selection:bg-[#ff3f7a] selection:text-white">
       
       {/* MOBILE OVERLAY (Higher z-index) */}
       {isMobileMenuOpen && (
@@ -113,7 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             priority
           />
           <button 
-            className="lg:hidden text-slate-500 hover:text-indigo-600 transition-colors"
+            className="lg:hidden text-slate-500 hover:text-[#ff3f7a] transition-colors"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <X className="h-5 w-5" weight="bold" />
@@ -128,7 +141,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </h3>
               <div className="space-y-0.5">
                 {group.links.map((link) => {
-                  const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
+                  
+                  // FIXED ROUTING BUG: Exact match for Dashboard Root, StartsWith for everything else.
+                  const isActive = link.href === "/dashboard" 
+                    ? pathname === "/dashboard" 
+                    : pathname === link.href || pathname.startsWith(`${link.href}/`);
+                  
                   const Icon = link.icon;
                   
                   return (
@@ -139,16 +157,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       className={`
                         flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 group
                         ${isActive 
-                          ? "bg-indigo-50 text-indigo-600" 
+                          ? "bg-[#ff3f7a]/10 text-[#ff3f7a]" 
                           : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                         }
                       `}
                     >
                       <Icon 
                         weight={isActive ? "fill" : "regular"} 
-                        className={`h-[18px] w-[18px] transition-transform group-hover:scale-110 ${isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"}`} 
+                        className={`h-[18px] w-[18px] transition-transform group-hover:scale-110 ${isActive ? "text-[#ff3f7a]" : "text-slate-400 group-hover:text-slate-600"}`} 
                       />
-                      {/* REDUCED TEXT SIZE FOR COMPACTNESS */}
                       <span className="text-[13px] font-bold">{link.name}</span>
                     </Link>
                   );
@@ -203,18 +220,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="relative p-2 text-slate-500 hover:text-indigo-600 transition-colors rounded-full hover:bg-indigo-50 cursor-pointer">
+            <button className="relative p-2 text-slate-500 hover:text-[#ff3f7a] transition-colors rounded-full hover:bg-[#ff3f7a]/10 cursor-pointer">
               <Bell className="h-5 w-5" weight="bold" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-indigo-600 rounded-full border-2 border-white"></span>
+              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-[#ff3f7a] rounded-full border-2 border-white"></span>
             </button>
 
-            <div className="h-9 w-9 rounded-full bg-slate-900 flex items-center justify-center text-white text-xs font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity">
-              JD
+            {/* DYNAMIC USER AVATAR */}
+            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#ff3f7a] to-[#ff7b9f] flex items-center justify-center text-white text-xs font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity">
+              {initials ? (
+                initials
+              ) : (
+                <UserCircle weight="fill" className="h-5 w-5 text-white/90" />
+              )}
             </div>
           </div>
         </header>
 
-        {/* Removed relative z-10 from main to prevent stacking context traps */}
         <main className="flex-1 p-4 sm:p-6 lg:p-10">
           <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
