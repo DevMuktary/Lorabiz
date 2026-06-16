@@ -26,8 +26,8 @@ export async function GET(
       return NextResponse.json({ message: "Draft not found" }, { status: 404 });
     }
 
-    // Reconstruct the frontend shareCapital object from the database fields
     let formattedData = { ...registration };
+    
     if (registration.companyType || registration.totalShareCapital) {
        (formattedData as any).shareCapital = {
           companyType: registration.companyType,
@@ -58,7 +58,6 @@ export async function PUT(
 
     const body = await req.json();
     
-    // FIX: Added `customArticles` to the destructured body so we don't lose it!
     const { 
       email, principalActivity, specificActivity, description,
       registeredAddress, headOfficeAddress, headOfficeSameAsRegistered,
@@ -66,7 +65,6 @@ export async function PUT(
       officers, shareCapital, declarantDetails, isDraft 
     } = body;
 
-    // SECURITY: Ensure they actually own this registration
     const currentReg = await prisma.llcRegistration.findUnique({ where: { id } });
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     
@@ -74,7 +72,6 @@ export async function PUT(
       return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
     }
 
-    // SECURITY: Block edits if already processing or approved
     if (currentReg.status !== "UNSUBMITTED" && currentReg.status !== "QUERIED") {
       return NextResponse.json({ message: "Cannot edit a locked application." }, { status: 403 });
     }
@@ -105,12 +102,16 @@ export async function PUT(
       }
     }
 
-    // Map frontend ShareCapital to Database Columns safely for Prisma
     const dbCompanyType = shareCapital?.companyType || null;
     const dbTotalShareCapital = shareCapital?.totalIssuedCapital ? Number(shareCapital.totalIssuedCapital) : null;
     
     const dbShareClasses = shareCapital 
       ? { allotments: shareCapital.allotments || {} } 
+      : Prisma.JsonNull;
+
+    // Convert arrays/objects cleanly for Prisma Json fields
+    const dbCustomArticles = customArticles && customArticles.length > 0 
+      ? (customArticles as Prisma.JsonArray) 
       : Prisma.JsonNull;
 
     // 1. Update the base LLC registration table
@@ -129,8 +130,8 @@ export async function PUT(
         
         useDefaultArticles: useDefaultArticles ?? true,
         
-        // FIX: Tell Prisma to save the loaded articles to the database!
-        customArticles: customArticles || Prisma.JsonNull, 
+        // NOW IT WILL SAVE CORRECTLY TO THE DB
+        customArticles: dbCustomArticles, 
         
         memorandumObjects: memorandumObjects || [],
         companyType: dbCompanyType,
@@ -139,7 +140,7 @@ export async function PUT(
       }
     });
 
-    // 2. Sync Officers (Directors, Shareholders, PSCs)
+    // 2. Sync Officers
     await prisma.companyOfficer.deleteMany({
       where: { registrationId: id }
     });
