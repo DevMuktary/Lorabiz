@@ -44,7 +44,7 @@ export default function LlcRegistrationDetailsPage() {
     headOfficeAddress: { state: "", lga: "", city: "", postCode: "", houseNo: "", street: "" },
     useDefaultArticles: true,
     customArticles: [] as string[],
-    witnessDetails: { surname: "", firstName: "", otherName: "", dob: "", gender: "", occupation: "", phone: "", email: "", state: "", lga: "", street: "" },
+    witnessDetails: { surname: "", firstName: "", otherName: "", dob: "", gender: "", occupation: "", country: "Nigeria", phoneCode: "+234", phone: "", email: "", state: "", lga: "", street: "" },
     memorandumObjects: [] as string[],
     officers: [] as any[],
     shareCapital: null as any,
@@ -205,6 +205,8 @@ export default function LlcRegistrationDetailsPage() {
         { val: w.dob, name: "Witness Date of Birth", id: "field-w-dob" },
         { val: w.gender, name: "Witness Gender", id: "field-w-gender" },
         { val: w.occupation, name: "Witness Occupation", id: "field-w-occ" },
+        { val: w.country, name: "Witness Country", id: "field-w-country" },
+        { val: w.phoneCode, name: "Witness Phone Code", id: "field-w-phoneCode" },
         { val: w.phone, name: "Witness Phone Number", id: "field-w-phone" },
         { val: w.email, name: "Witness Email Address", id: "field-w-email" },
         { val: w.state, name: "Witness State", id: "field-w-state" },
@@ -230,6 +232,11 @@ export default function LlcRegistrationDetailsPage() {
       const age = Math.abs(ageDate.getUTCFullYear() - 1970);
       if (age < 18) {
         triggerError("The witness must be at least 18 years old to sign legal documents.", "field-w-dob");
+        return;
+      }
+      
+      if (w.phone.replace(/\D/g, '').length < 5) {
+        triggerError("Please provide a valid Witness Phone Number.", "field-w-phone");
         return;
       }
     }
