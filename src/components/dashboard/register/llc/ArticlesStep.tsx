@@ -16,7 +16,6 @@ export default function ArticlesStep({ data, updateData }: any) {
   const [articleToDelete, setArticleToDelete] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  // Fallback to empty array if undefined
   const articles: any[] = data.customArticles || [];
   const witness = data.witnessDetails || {};
 
@@ -24,7 +23,6 @@ export default function ArticlesStep({ data, updateData }: any) {
   // ARTICLE LIST MANAGEMENT
   // ==========================================
   const handleLoadDefaults = () => {
-    // Parse the big strings from the CAMA file into structured objects
     const parsedDefaults = CAMA_ARTICLES_DEFAULT.map(str => {
       const firstNewline = str.indexOf('\n');
       if (firstNewline === -1) return { articleNo: "", title: "Article", content: str };
@@ -49,7 +47,6 @@ export default function ArticlesStep({ data, updateData }: any) {
   };
 
   const openEditModal = (idx: number, article: any) => {
-    // Safely handle legacy strings if any exist in state, otherwise load object
     if (typeof article === "string") {
       setCurrentArticle({ articleNo: `${idx + 1}`, title: "Custom Clause", content: article });
     } else {
@@ -112,9 +109,6 @@ export default function ArticlesStep({ data, updateData }: any) {
     setDraggedIndex(null);
   };
 
-  // ==========================================
-  // WITNESS DETAILS HANDLER
-  // ==========================================
   const handleWitnessChange = (field: string, value: string) => {
     updateData((prev: any) => ({
       ...prev,
@@ -123,7 +117,7 @@ export default function ArticlesStep({ data, updateData }: any) {
   };
 
   return (
-    <div className="p-6 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
+    <div className="p-4 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
       {/* ========================================== */}
       {/* 1. ADD / EDIT ARTICLE MODAL */}
@@ -249,20 +243,21 @@ export default function ArticlesStep({ data, updateData }: any) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          {/* MOBILE RESPONSIVE ACTION BUTTONS */}
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
             {articles.length > 0 && (
-              <Button variant="outline" onClick={handleClearAll} className="h-10 border-slate-200 text-red-500 hover:bg-red-50 font-bold rounded-xl text-xs">
+              <Button variant="outline" onClick={handleClearAll} className="flex-1 md:flex-none h-10 border-slate-200 text-red-500 hover:bg-red-50 font-bold rounded-xl text-xs px-3">
                 Clear All
               </Button>
             )}
             <Button 
               onClick={handleLoadDefaults} 
-              className={`h-10 font-bold rounded-xl text-xs px-4 flex items-center gap-2 transition-colors ${data.useDefaultArticles && articles.length > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+              className={`flex-1 md:flex-none h-10 font-bold rounded-xl text-xs px-3 flex items-center justify-center gap-2 transition-colors ${data.useDefaultArticles && articles.length > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
             >
-              {data.useDefaultArticles && articles.length > 0 ? <><CheckCircle weight="fill" className="h-4 w-4" /> Defaults Loaded</> : "Load CAMA Defaults"}
+              {data.useDefaultArticles && articles.length > 0 ? <><CheckCircle weight="fill" className="h-4 w-4 shrink-0" /> <span className="truncate">Defaults Loaded</span></> : "Load CAMA Defaults"}
             </Button>
-            <Button onClick={openAddModal} className="h-10 font-bold rounded-xl text-xs px-4 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
-              <Plus weight="bold" /> Add Custom
+            <Button onClick={openAddModal} className="flex-1 md:flex-none h-10 font-bold rounded-xl text-xs px-3 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
+              <Plus weight="bold" className="shrink-0" /> Add Custom
             </Button>
           </div>
         </div>
@@ -270,17 +265,17 @@ export default function ArticlesStep({ data, updateData }: any) {
         {/* DRAGGABLE LIST (COMPACT & BEAUTIFUL) */}
         <div>
           {articles.length === 0 ? (
-            <div className="text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
+            <div className="text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl mx-1 sm:mx-0">
               <p className="text-sm font-bold text-slate-500">No articles added yet.</p>
               <p className="text-xs font-black text-indigo-500 mt-1 uppercase tracking-widest">Load Defaults or Add a Custom Article to begin.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {articles.map((article, idx) => {
-                // Handle legacy strings safely if they still exist in DB
                 const isString = typeof article === "string";
                 const no = isString ? `${idx + 1}` : (article.articleNo || `${idx + 1}`);
                 const title = isString ? "Custom Clause" : (article.title || "Custom Clause");
+                const contentText = isString ? article : (article.content || "");
 
                 return (
                   <div 
@@ -289,29 +284,39 @@ export default function ArticlesStep({ data, updateData }: any) {
                     onDragStart={(e) => handleDragStart(e, idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDrop={(e) => handleDrop(e, idx)}
-                    className={`flex items-center gap-4 p-3 pr-4 bg-white border rounded-2xl transition-all shadow-[0_2px_10px_rgb(0,0,0,0.02)] ${draggedIndex === idx ? "opacity-50 border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-indigo-300"}`}
+                    className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 pr-4 bg-white border rounded-2xl transition-all shadow-[0_2px_10px_rgb(0,0,0,0.02)] ${draggedIndex === idx ? "opacity-50 border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-indigo-300"}`}
                   >
-                    <div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-indigo-500 px-2 py-3">
+                    <div className="hidden sm:flex cursor-grab active:cursor-grabbing text-slate-300 hover:text-indigo-500 px-2 py-3">
                       <ListDashes className="h-5 w-5" weight="bold" />
                     </div>
                     
-                    <div className="flex-1 flex items-center gap-3 overflow-hidden">
-                      <span className="shrink-0 bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
-                        Art. {no}
-                      </span>
-                      <p className="text-sm font-black text-slate-800 truncate">
-                        {title}
+                    <div className="flex-1 flex flex-col gap-1 overflow-hidden py-1 w-full">
+                      <div className="flex items-center gap-3">
+                        {/* Mobile drag handle */}
+                        <div className="sm:hidden cursor-grab active:cursor-grabbing text-slate-300 hover:text-indigo-500">
+                          <ListDashes className="h-5 w-5" weight="bold" />
+                        </div>
+                        <span className="shrink-0 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">
+                          Art. {no}
+                        </span>
+                        <h4 className="text-sm font-black text-slate-800 truncate">
+                          {title}
+                        </h4>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium line-clamp-2 pr-2 sm:pr-4 leading-relaxed mt-1">
+                        {contentText}
                       </p>
                     </div>
                     
-                    <div className="flex items-center gap-1.5 shrink-0 pl-2 border-l border-slate-100">
-                      <button onClick={() => setViewingArticle(article)} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Read Article">
+                    {/* COLORED ACTION ICONS */}
+                    <div className="flex items-center justify-end gap-2 shrink-0 pt-2 sm:pt-0 sm:pl-3 sm:border-l border-slate-100 w-full sm:w-auto">
+                      <button onClick={() => setViewingArticle(article)} className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors flex items-center justify-center flex-1 sm:flex-none" title="Read Article">
                         <Eye className="h-5 w-5" weight="bold" />
                       </button>
-                      <button onClick={() => openEditModal(idx, article)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Article">
+                      <button onClick={() => openEditModal(idx, article)} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center justify-center flex-1 sm:flex-none" title="Edit Article">
                         <PencilSimple className="h-5 w-5" weight="bold" />
                       </button>
-                      <button onClick={() => setArticleToDelete(idx)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Article">
+                      <button onClick={() => setArticleToDelete(idx)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center flex-1 sm:flex-none" title="Delete Article">
                         <Trash className="h-5 w-5" weight="bold" />
                       </button>
                     </div>
