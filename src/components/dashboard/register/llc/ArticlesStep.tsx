@@ -4,44 +4,72 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Info, Plus, Trash, PencilSimple, ListDashes, CheckCircle, WarningCircle, X } from "@phosphor-icons/react";
+import { Info, Plus, Trash, PencilSimple, ListDashes, CheckCircle, Eye, X } from "@phosphor-icons/react";
 import { CAMA_ARTICLES_DEFAULT } from "@/lib/cama-articles";
 
 export default function ArticlesStep({ data, updateData }: any) {
-  const [currentText, setCurrentText] = useState("");
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  // Modal States
+  const [modalState, setModalState] = useState<{ isOpen: boolean; mode: "add" | "edit"; idx: number | null }>({ isOpen: false, mode: "add", idx: null });
+  const [currentArticle, setCurrentArticle] = useState({ articleNo: "", title: "", content: "" });
+  
+  const [viewingArticle, setViewingArticle] = useState<any>(null);
   const [articleToDelete, setArticleToDelete] = useState<number | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  const articles: string[] = data.customArticles || [];
+  // Fallback to empty array if undefined
+  const articles: any[] = data.customArticles || [];
   const witness = data.witnessDetails || {};
 
   // ==========================================
   // ARTICLE LIST MANAGEMENT
   // ==========================================
   const handleLoadDefaults = () => {
-    updateData({ ...data, customArticles: [...CAMA_ARTICLES_DEFAULT], useDefaultArticles: true });
+    // Parse the big strings from the CAMA file into structured objects
+    const parsedDefaults = CAMA_ARTICLES_DEFAULT.map(str => {
+      const firstNewline = str.indexOf('\n');
+      if (firstNewline === -1) return { articleNo: "", title: "Article", content: str };
+
+      const firstLine = str.substring(0, firstNewline);
+      const content = str.substring(firstNewline + 1).trim();
+      const [no, ...titleParts] = firstLine.split(':');
+
+      return {
+        articleNo: no ? no.trim() : "",
+        title: titleParts.length > 0 ? titleParts.join(':').trim() : "Article",
+        content: content
+      };
+    });
+
+    updateData({ ...data, customArticles: parsedDefaults, useDefaultArticles: true });
   };
 
-  const handleSaveArticle = () => {
-    if (!currentText.trim()) return;
-    
-    let updated = [...articles];
-    if (editingIndex !== null) {
-      updated[editingIndex] = currentText.trim();
-      setEditingIndex(null);
+  const openAddModal = () => {
+    setCurrentArticle({ articleNo: `${articles.length + 1}`, title: "", content: "" });
+    setModalState({ isOpen: true, mode: "add", idx: null });
+  };
+
+  const openEditModal = (idx: number, article: any) => {
+    // Safely handle legacy strings if any exist in state, otherwise load object
+    if (typeof article === "string") {
+      setCurrentArticle({ articleNo: `${idx + 1}`, title: "Custom Clause", content: article });
     } else {
-      updated.push(currentText.trim());
+      setCurrentArticle({ articleNo: article.articleNo || "", title: article.title || "", content: article.content || "" });
     }
-    
-    updateData({ ...data, customArticles: updated, useDefaultArticles: false });
-    setCurrentText("");
+    setModalState({ isOpen: true, mode: "edit", idx });
   };
 
-  const handleEdit = (idx: number) => {
-    setCurrentText(articles[idx]);
-    setEditingIndex(idx);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const saveArticle = () => {
+    if (!currentArticle.content.trim() || !currentArticle.title.trim()) return;
+
+    let updated = [...articles];
+    if (modalState.mode === "edit" && modalState.idx !== null) {
+      updated[modalState.idx] = { ...currentArticle };
+    } else {
+      updated.push({ ...currentArticle });
+    }
+
+    updateData({ ...data, customArticles: updated, useDefaultArticles: false });
+    setModalState({ isOpen: false, mode: "add", idx: null });
   };
 
   const confirmRemove = () => {
@@ -67,7 +95,7 @@ export default function ArticlesStep({ data, updateData }: any) {
   };
 
   const handleDragOver = (e: any, index: number) => {
-    e.preventDefault(); 
+    e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   };
 
@@ -77,9 +105,8 @@ export default function ArticlesStep({ data, updateData }: any) {
 
     const newArticles = [...articles];
     const itemToMove = newArticles[draggedIndex];
-    
-    newArticles.splice(draggedIndex, 1); 
-    newArticles.splice(dropIndex, 0, itemToMove); 
+    newArticles.splice(draggedIndex, 1);
+    newArticles.splice(dropIndex, 0, itemToMove);
 
     updateData({ ...data, customArticles: newArticles, useDefaultArticles: false });
     setDraggedIndex(null);
@@ -98,9 +125,96 @@ export default function ArticlesStep({ data, updateData }: any) {
   return (
     <div className="p-6 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
-      {/* BEAUTIFUL DELETE CONFIRMATION MODAL */}
-      {articleToDelete !== null && (
+      {/* ========================================== */}
+      {/* 1. ADD / EDIT ARTICLE MODAL */}
+      {/* ========================================== */}
+      {modalState.isOpen && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <h3 className="font-black text-lg text-slate-900">
+                {modalState.mode === "add" ? "Add New Article" : "Edit Article"}
+              </h3>
+              <button onClick={() => setModalState({ isOpen: false, mode: "add", idx: null })} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                <X weight="bold" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="space-y-2 md:col-span-1">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Article No. <span className="text-red-500">*</span></Label>
+                  <Input placeholder="E.g. 1 or 2A" value={currentArticle.articleNo} onChange={e => setCurrentArticle({...currentArticle, articleNo: e.target.value})} className="h-12 font-bold" />
+                </div>
+                <div className="space-y-2 md:col-span-3">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Clause Title <span className="text-red-500">*</span></Label>
+                  <Input placeholder="E.g. DIRECTORS’ POWERS" value={currentArticle.title} onChange={e => setCurrentArticle({...currentArticle, title: e.target.value})} className="h-12 font-bold" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Main Content / Clauses <span className="text-red-500">*</span></Label>
+                <textarea 
+                  rows={8}
+                  placeholder="Type the full legal clauses here..."
+                  value={currentArticle.content} 
+                  onChange={e => setCurrentArticle({...currentArticle, content: e.target.value})}
+                  className="w-full p-4 border rounded-xl font-medium text-sm outline-none border-slate-200 resize-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+              <Button variant="outline" onClick={() => setModalState({ isOpen: false, mode: "add", idx: null })} className="h-12 px-6 rounded-xl font-bold">
+                Cancel
+              </Button>
+              <Button onClick={saveArticle} disabled={!currentArticle.title.trim() || !currentArticle.content.trim()} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md">
+                {modalState.mode === "add" ? "Save Article" : "Update Article"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* 2. READ-ONLY VIEW MODAL */}
+      {/* ========================================== */}
+      {viewingArticle && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start bg-slate-50 shrink-0 gap-4">
+              <div>
+                <span className="inline-block px-2.5 py-1 bg-indigo-100 text-indigo-700 font-black text-[10px] uppercase tracking-widest rounded-md mb-2">
+                  Article {viewingArticle.articleNo || "-"}
+                </span>
+                <h3 className="font-black text-xl text-slate-900 leading-tight">
+                  {viewingArticle.title || "Custom Article"}
+                </h3>
+              </div>
+              <button onClick={() => setViewingArticle(null)} className="p-2 bg-slate-200 hover:bg-slate-300 rounded-full text-slate-600 transition-colors shrink-0">
+                <X weight="bold" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar bg-white">
+              <p className="text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
+                {viewingArticle.content || viewingArticle}
+              </p>
+            </div>
+            
+            <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end shrink-0">
+              <Button onClick={() => setViewingArticle(null)} className="h-12 px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* 3. BEAUTIFUL DELETE CONFIRMATION MODAL */}
+      {/* ========================================== */}
+      {articleToDelete !== null && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center">
               <div className="h-16 w-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -123,13 +237,15 @@ export default function ArticlesStep({ data, updateData }: any) {
         </div>
       )}
 
-      {/* SECTION 1: ARTICLES MANAGEMENT */}
+      {/* ========================================== */}
+      {/* MAIN UI: ARTICLES LIST */}
+      {/* ========================================== */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
             <h2 className="text-xl font-black text-slate-900">Articles of Association</h2>
             <p className="text-sm font-medium text-slate-500 mt-1">
-              Internal rules of the company. Drag to reorder, or edit existing clauses.
+              Internal rules of the company. Drag to reorder, view, edit, or add clauses.
             </p>
           </div>
 
@@ -141,90 +257,67 @@ export default function ArticlesStep({ data, updateData }: any) {
             )}
             <Button 
               onClick={handleLoadDefaults} 
-              className={`h-10 font-bold rounded-xl text-xs px-4 flex items-center gap-2 transition-colors ${data.useDefaultArticles && articles.length > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100" : "bg-slate-900 text-white hover:bg-slate-800 shadow-md"}`}
+              className={`h-10 font-bold rounded-xl text-xs px-4 flex items-center gap-2 transition-colors ${data.useDefaultArticles && articles.length > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
             >
               {data.useDefaultArticles && articles.length > 0 ? <><CheckCircle weight="fill" className="h-4 w-4" /> Defaults Loaded</> : "Load CAMA Defaults"}
             </Button>
-          </div>
-        </div>
-
-        {/* GORGEOUS INPUT BOX */}
-        <div className="bg-white p-2 rounded-2xl border-2 border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all mb-8 shadow-sm">
-          <div className="p-3">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2 block">
-              {editingIndex !== null ? `EDITING ARTICLE #${editingIndex + 1}` : "ADD NEW ARTICLE"}
-            </Label>
-            <textarea 
-              rows={3}
-              placeholder="Type your custom clause here..."
-              value={currentText} 
-              onChange={e => setCurrentText(e.target.value)}
-              className="w-full font-bold text-sm text-slate-700 placeholder-slate-400 outline-none resize-none bg-transparent leading-relaxed"
-            />
-          </div>
-          <div className="flex justify-end p-2 bg-slate-50 rounded-xl gap-2">
-            {editingIndex !== null && (
-              <Button variant="ghost" onClick={() => { setEditingIndex(null); setCurrentText(""); }} className="h-10 px-6 font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-lg">
-                Cancel
-              </Button>
-            )}
-            <Button 
-              onClick={handleSaveArticle}
-              disabled={!currentText.trim()}
-              className="h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm"
-            >
-              {editingIndex !== null ? "Save Update" : <><Plus weight="bold" className="mr-2 h-4 w-4" /> Add Article</>}
+            <Button onClick={openAddModal} className="h-10 font-bold rounded-xl text-xs px-4 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
+              <Plus weight="bold" /> Add Custom
             </Button>
           </div>
         </div>
 
-        {/* DRAGGABLE LIST */}
+        {/* DRAGGABLE LIST (COMPACT & BEAUTIFUL) */}
         <div>
           {articles.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
               <p className="text-sm font-bold text-slate-500">No articles added yet.</p>
-              <p className="text-xs font-black text-amber-500 mt-1 uppercase tracking-widest">Click "Load CAMA Defaults" or add your own.</p>
+              <p className="text-xs font-black text-indigo-500 mt-1 uppercase tracking-widest">Load Defaults or Add a Custom Article to begin.</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {articles.map((article, idx) => (
-                <div 
-                  key={`article-${idx}`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, idx)}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  onDrop={(e) => handleDrop(e, idx)}
-                  className={`flex flex-col sm:flex-row sm:items-start gap-4 p-4 bg-white border-2 rounded-2xl transition-all ${draggedIndex === idx ? "opacity-50 border-indigo-500 bg-indigo-50" : "border-slate-100 hover:border-slate-300 shadow-sm"}`}
-                >
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="mt-0.5 cursor-grab active:cursor-grabbing text-slate-300 hover:text-indigo-500 transition-colors">
-                      <ListDashes className="h-6 w-6" weight="bold" />
+              {articles.map((article, idx) => {
+                // Handle legacy strings safely if they still exist in DB
+                const isString = typeof article === "string";
+                const no = isString ? `${idx + 1}` : (article.articleNo || `${idx + 1}`);
+                const title = isString ? "Custom Clause" : (article.title || "Custom Clause");
+
+                return (
+                  <div 
+                    key={`article-${idx}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, idx)}
+                    onDragOver={(e) => handleDragOver(e, idx)}
+                    onDrop={(e) => handleDrop(e, idx)}
+                    className={`flex items-center gap-4 p-3 pr-4 bg-white border rounded-2xl transition-all shadow-[0_2px_10px_rgb(0,0,0,0.02)] ${draggedIndex === idx ? "opacity-50 border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-indigo-300"}`}
+                  >
+                    <div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-indigo-500 px-2 py-3">
+                      <ListDashes className="h-5 w-5" weight="bold" />
                     </div>
-                    <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 shrink-0 mt-0.5">
-                      {idx + 1}
+                    
+                    <div className="flex-1 flex items-center gap-3 overflow-hidden">
+                      <span className="shrink-0 bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
+                        Art. {no}
+                      </span>
+                      <p className="text-sm font-black text-slate-800 truncate">
+                        {title}
+                      </p>
                     </div>
-                    <p className="text-sm font-bold text-slate-700 leading-relaxed mt-1">
-                      {article}
-                    </p>
+                    
+                    <div className="flex items-center gap-1.5 shrink-0 pl-2 border-l border-slate-100">
+                      <button onClick={() => setViewingArticle(article)} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Read Article">
+                        <Eye className="h-5 w-5" weight="bold" />
+                      </button>
+                      <button onClick={() => openEditModal(idx, article)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Article">
+                        <PencilSimple className="h-5 w-5" weight="bold" />
+                      </button>
+                      <button onClick={() => setArticleToDelete(idx)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Article">
+                        <Trash className="h-5 w-5" weight="bold" />
+                      </button>
+                    </div>
                   </div>
-                  
-                  {/* OBVIOUS ACTION BUTTONS */}
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-start mt-4 sm:mt-0">
-                    <button 
-                      onClick={() => handleEdit(idx)} 
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
-                    >
-                      <PencilSimple className="h-4 w-4" weight="bold" /> Edit
-                    </button>
-                    <button 
-                      onClick={() => setArticleToDelete(idx)} 
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                    >
-                      <Trash className="h-4 w-4" weight="bold" /> Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -232,7 +325,7 @@ export default function ArticlesStep({ data, updateData }: any) {
 
       <hr className="border-slate-100" />
 
-      {/* SECTION 2: WITNESS DETAILS */}
+      {/* SECTION 3: WITNESS DETAILS */}
       <section>
         <div className="mb-6">
           <h2 className="text-xl font-black text-slate-900">Details of Witness</h2>
