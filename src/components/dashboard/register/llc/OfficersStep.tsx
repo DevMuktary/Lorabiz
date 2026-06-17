@@ -78,7 +78,6 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
   // FORM HANDLERS
   // ==========================================
   const handleSaveOfficer = () => {
-    // Force touch all fields to show errors if they try to save an empty form
     const allTouched = ["surname", "firstName", "email", "phone", "gender", "dob", "occupation", "nationality", "idType", "idNumber", "state", "lga", "city", "street"].reduce((acc, curr) => ({ ...acc, [curr]: true }), {});
     setTouched(allTouched);
 
@@ -147,7 +146,6 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
     });
   };
 
-  // Helpers
   const nigerianStates = NIGERIA_DATA.map(d => d.state).sort();
   const getLgasForState = (stateName: string) => {
     const stateObj = NIGERIA_DATA.find(d => d.state === stateName);
@@ -219,9 +217,6 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
           </div>
         </section>
       ) : (
-        /* ========================================== */
-        /* ADD / EDIT OFFICER FORM                    */
-        /* ========================================== */
         <section className="animate-in fade-in duration-300">
           <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4 bg-slate-50 -mx-4 sm:-mx-10 px-4 sm:px-10 pt-4 -mt-4 sm:-mt-10 rounded-t-3xl sm:rounded-none">
             <div>
@@ -236,7 +231,6 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* PERSONAL DETAILS */}
             <div className="md:col-span-2 mt-2">
                <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Personal Details</h3>
             </div>
@@ -266,7 +260,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
 
             <div className="space-y-2">
               <Label className={`text-xs font-bold uppercase ${errGender ? "text-red-500" : "text-slate-500"}`}>Gender <span className="text-red-500">*</span></Label>
-              <select className={`w-full h-12 px-4 border rounded-xl text-sm font-bold outline-none ${errGender ? "border-red-500 bg-red-50/30" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.gender} onChange={e => setCurrentOfficer({...currentOfficer, gender: e.target.value})} onBlur={() => handleBlur("gender")}>
+              <select className={`w-full h-12 px-4 border rounded-xl text-sm font-bold outline-none ${errGender ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.gender} onChange={e => setCurrentOfficer({...currentOfficer, gender: e.target.value})} onBlur={() => handleBlur("gender")}>
                 <option value="">-- Select Gender --</option>
                 <option value="MALE">MALE</option>
                 <option value="FEMALE">FEMALE</option>
@@ -283,8 +277,9 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
             <div className="space-y-2">
               <Label className={`text-xs font-bold uppercase ${errNat ? "text-red-500" : "text-slate-500"}`}>Nationality <span className="text-red-500">*</span></Label>
               <div className="relative">
-                <select className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errNat ? "border-red-500 bg-red-50/30" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.nationality} onChange={e => {
-                  setCurrentOfficer(p => {
+                {/* STRICT FIX: Typed "p" explicitly as "any" */}
+                <select className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errNat ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.nationality} onChange={e => {
+                  setCurrentOfficer((p: any) => {
                     let updated = { ...p, nationality: e.target.value };
                     if (e.target.value !== "Nigeria") { updated.residentialAddress.state = ""; updated.residentialAddress.lga = ""; }
                     return updated;
@@ -294,9 +289,9 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
                 </select>
                 <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
               </div>
+              <ErrorMessage msg={errNat} />
             </div>
 
-            {/* CONTACT DETAILS */}
             <div className="md:col-span-2 mt-4">
                <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Contact Details</h3>
             </div>
@@ -318,7 +313,6 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
               <ErrorMessage msg={errPhone} />
             </div>
 
-            {/* RESIDENTIAL ADDRESS */}
             <div className="md:col-span-2 mt-4">
                <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Residential Address</h3>
             </div>
@@ -328,7 +322,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
                 <div className="space-y-2">
                   <Label className={`text-xs font-bold uppercase ${errState ? "text-red-500" : "text-slate-500"}`}>State <span className="text-red-500">*</span></Label>
                   <div className="relative">
-                    <select value={addr.state} onChange={e => { handleAddressChange("state", e.target.value); handleAddressChange("lga", ""); }} onBlur={() => handleBlur("state")} className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errState ? "border-red-500 bg-red-50/30" : "border-slate-200 bg-white focus:border-indigo-500"}`}>
+                    <select value={addr.state} onChange={e => { handleAddressChange("state", e.target.value); handleAddressChange("lga", ""); }} onBlur={() => handleBlur("state")} className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errState ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`}>
                       <option value="">-- Select State --</option>
                       {nigerianStates.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -339,7 +333,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
                 <div className="space-y-2">
                   <Label className={`text-xs font-bold uppercase ${errLga ? "text-red-500" : "text-slate-500"}`}>LGA <span className="text-red-500">*</span></Label>
                   <div className="relative">
-                    <select value={addr.lga} disabled={!addr.state} onChange={e => handleAddressChange("lga", e.target.value)} onBlur={() => handleBlur("lga")} className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${!addr.state ? "bg-slate-50 opacity-60" : errLga ? "border-red-500 bg-red-50/30" : "border-slate-200 bg-white focus:border-indigo-500"}`}>
+                    <select value={addr.lga} disabled={!addr.state} onChange={e => handleAddressChange("lga", e.target.value)} onBlur={() => handleBlur("lga")} className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${!addr.state ? "bg-slate-50 opacity-60" : errLga ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`}>
                       <option value="">-- Select LGA --</option>
                       {getLgasForState(addr.state).map(l => <option key={l} value={l}>{l}</option>)}
                     </select>
@@ -375,7 +369,6 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
               <ErrorMessage msg={errStreet} />
             </div>
 
-            {/* IDENTIFICATION DETAILS */}
             <div className="md:col-span-2 mt-4">
                <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Identification</h3>
             </div>
@@ -383,7 +376,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
             <div className="space-y-2">
               <Label className={`text-xs font-bold uppercase ${errIdType ? "text-red-500" : "text-slate-500"}`}>Means of Identification <span className="text-red-500">*</span></Label>
               <div className="relative">
-                <select className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errIdType ? "border-red-500 bg-red-50/30" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.idType} onChange={e => setCurrentOfficer({...currentOfficer, idType: e.target.value})} onBlur={() => handleBlur("idType")}>
+                <select className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errIdType ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.idType} onChange={e => setCurrentOfficer({...currentOfficer, idType: e.target.value})} onBlur={() => handleBlur("idType")}>
                   <option value="">-- Select Option --</option>
                   <option value="NIN">National ID Card (NIN)</option>
                   <option value="PASSPORT">International Passport</option>
@@ -401,7 +394,6 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
               <ErrorMessage msg={errIdNum} />
             </div>
 
-            {/* Smart Toggle: Add as Shareholder */}
             {officerType === "DIRECTOR" && (
               <div className="md:col-span-2 mt-2 p-4 sm:p-5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between cursor-pointer shadow-sm hover:shadow-md transition-shadow" onClick={() => setCurrentOfficer({...currentOfficer, isAlsoShareholder: !currentOfficer.isAlsoShareholder})}>
                 <div className="pr-4">
