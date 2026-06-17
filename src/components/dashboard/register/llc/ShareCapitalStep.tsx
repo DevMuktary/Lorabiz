@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -20,16 +20,19 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const [showAllotmentModal, setShowAllotmentModal] = useState(false);
   const [expandedOfficerId, setExpandedId] = useState<string | null>(null);
 
-  // States for modding
   const [classForm, setClassForm] = useState<any>({ id: null, type: "EQUITY (ORDINARY)", totalValue: "", nominalValue: "" });
   const [allotForm, setAllotForm] = useState<any>({ officerId: "", type: "EQUITY (ORDINARY)", units: "" });
 
-  // Setup defaults if empty
-  const shareData = data.shareCapital || {
-    companyType: "ENTITY WITH SHARES BELOW FIVE MILLION",
-    totalIssuedCapital: 1000000,
-    shareClasses: [],
-    allotments: [] // Array of { officerId, type, units }
+  // ==========================================
+  // ANTI-CRASH SAFEGUARDS
+  // ==========================================
+  // If the database sends old object data, we force it to become an array to prevent .map() crashes
+  const rawShareData = data.shareCapital || {};
+  const shareData = {
+    companyType: rawShareData.companyType || "ENTITY WITH SHARES BELOW FIVE MILLION",
+    totalIssuedCapital: rawShareData.totalIssuedCapital || 1000000,
+    shareClasses: Array.isArray(rawShareData.shareClasses) ? rawShareData.shareClasses : [],
+    allotments: Array.isArray(rawShareData.allotments) ? rawShareData.allotments : []
   };
 
   const shareholders = (data.officers || []).filter((o: any) => o.roles.includes("SHAREHOLDER"));
@@ -42,9 +45,9 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const minRequired = selectedCompanyInfo ? selectedCompanyInfo.min : 1000000;
 
   // ==========================================
-  // CLASSES OF SHARES ENGINE
+  // MATH & CLASSES ENGINE
   // ==========================================
-  const totalClassesValue = shareData.shareClasses.reduce((acc: number, c: any) => acc + c.totalValue, 0);
+  const totalClassesValue = shareData.shareClasses.reduce((acc: number, c: any) => acc + (Number(c.totalValue) || 0), 0);
   const classError = shareData.totalIssuedCapital > 0 && totalClassesValue !== shareData.totalIssuedCapital;
 
   const saveShareClass = () => {
@@ -71,13 +74,16 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   // ==========================================
   // ALLOTMENT ENGINE
   // ==========================================
+  const totalAllotted = shareData.allotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
+  const totalRequired = shareData.totalIssuedCapital;
+  const remainingShares = totalRequired - totalAllotted;
+  const isPerfectMatch = remainingShares === 0 && !classError;
+
   const saveAllotment = () => {
     const unitsToAllot = parseNumber(allotForm.units);
     if (unitsToAllot <= 0) return;
 
-    let updatedAllotments = [...(shareData.allotments || [])];
-    
-    // Check if allotment already exists for this person + type
+    let updatedAllotments = [...shareData.allotments];
     const existingIdx = updatedAllotments.findIndex((a: any) => a.officerId === allotForm.officerId && a.type === allotForm.type);
     
     if (existingIdx >= 0) {
@@ -92,8 +98,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
   const openAllotment = (e: any, officerId: string) => {
     e.stopPropagation();
-    // Pre-load if exists
-    const existing = (shareData.allotments || []).find((a: any) => a.officerId === officerId);
+    const existing = shareData.allotments.find((a: any) => a.officerId === officerId);
     setAllotForm({ 
       officerId, 
       type: existing ? existing.type : (shareData.shareClasses[0]?.type || "EQUITY (ORDINARY)"), 
@@ -103,20 +108,15 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   };
 
   const getAllottedUnitsForOfficer = (officerId: string) => {
-    const records = (shareData.allotments || []).filter((a: any) => a.officerId === officerId);
+    const records = shareData.allotments.filter((a: any) => a.officerId === officerId);
     if (records.length === 0) return { text: "None Allotted", error: true };
     return { text: records.map((r: any) => `${formatNumberWithCommas(r.units)} ${r.type}`).join(" | "), error: false };
   };
 
-  // Global Math Check
-  const isSetupValid = shareData.totalIssuedCapital >= minRequired && !classError;
-
   return (
     <div className="p-4 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
-      {/* ========================================== */}
       {/* 1. MINIMUM CAPITAL REFERENCE MODAL */}
-      {/* ========================================== */}
       {showRefModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
@@ -160,9 +160,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       )}
 
-      {/* ========================================== */}
       {/* MAIN UI: CAPITAL DECLARATION */}
-      {/* ========================================== */}
       <section>
         <div className="mb-6 flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
@@ -224,9 +222,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
       <hr className="border-slate-100" />
 
-      {/* ========================================== */}
       {/* MAIN UI: SHARE BREAKDOWN TABLE */}
-      {/* ========================================== */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -336,14 +332,19 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
       <hr className="border-slate-100" />
 
-      {/* ========================================== */}
       {/* MAIN UI: SHAREHOLDER ALLOTMENT TABLE */}
-      {/* ========================================== */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h2 className="text-xl font-black text-slate-900">Shareholders Allotment</h2>
             <p className="text-sm font-medium text-slate-500 mt-1">Assign the created shares to the owners.</p>
+          </div>
+          <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 font-bold text-sm ${
+            isPerfectMatch ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
+            remainingShares < 0 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700'
+          }`}>
+            {isPerfectMatch ? <CheckCircle className="h-5 w-5" weight="fill" /> : <WarningCircle className="h-5 w-5" weight="fill" />}
+            {isPerfectMatch ? "100% Distributed" : remainingShares < 0 ? `${formatNumberWithCommas(Math.abs(remainingShares))} units OVER-distributed!` : `${formatNumberWithCommas(remainingShares)} units unassigned`}
           </div>
         </div>
 
@@ -360,7 +361,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
               return (
                 <div key={officer.id} className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] transition-all overflow-hidden hover:border-indigo-300">
-                  {/* ACCORDION HEADER */}
                   <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExpandedId(expandedOfficerId === officer.id ? null : officer.id)}>
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
@@ -388,7 +388,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                     </div>
                   </div>
 
-                  {/* ACCORDION BODY (SIDE-BY-OPPOSITE VIEW) */}
                   {expandedOfficerId === officer.id && (
                     <div className="p-5 sm:p-6 border-t border-slate-200 bg-slate-50/50 animate-in slide-in-from-top-2 fade-in duration-200">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
