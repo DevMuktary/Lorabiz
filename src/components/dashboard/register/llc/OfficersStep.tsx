@@ -4,21 +4,30 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Plus, User, Trash, PencilSimple, WarningCircle, CaretDown } from "@phosphor-icons/react";
+import { Plus, User, Trash, PencilSimple, WarningCircle, CaretDown, CaretUp } from "@phosphor-icons/react";
 import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema";
+
+// Helper component for the collapsible "Side by Opposite" view
+const DetailRow = ({ label, value }: { label: string, value: string }) => (
+  <div className="flex justify-between items-center py-2 border-b border-slate-200/60 last:border-0 gap-4">
+    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0">{label}</span>
+    <span className="text-[13px] font-black text-slate-900 text-right truncate">{value || "-"}</span>
+  </div>
+);
 
 export default function OfficersStep({ data, updateData, showErrors }: any) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [officerType, setOfficerType] = useState<"DIRECTOR" | "SECRETARY_INDIVIDUAL" | "SECRETARY_CORPORATE" | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null); // For collapsible view
 
   const [currentOfficer, setCurrentOfficer] = useState<any>({
     id: "", roles: [], surname: "", firstName: "", otherName: "", email: "", 
     phoneCode: "+234", phone: "", gender: "", dob: "", occupation: "", 
     nationality: "Nigeria", idType: "", idNumber: "", 
     residentialAddress: { state: "", lga: "", city: "", street: "" },
-    isAlsoShareholder: true 
+    isAlsoShareholder: false // Defaulted to false as requested
   });
 
   const officers: any[] = data.officers || [];
@@ -28,7 +37,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
   // ==========================================
   const handleBlur = (field: string) => setTouched((prev) => ({ ...prev, [field]: true }));
 
-  const getError = (fieldKey: string, value: string, type: "text" | "email" | "dob" | "phone" = "text") => {
+  const getError = (fieldKey: string, value: string, type: "text" | "email" | "dob" | "phone" | "idNumber" = "text") => {
     if (!touched[fieldKey] && !showErrors) return null;
     if (!value || !value.trim()) return "This field is required.";
     
@@ -41,6 +50,12 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
     if (type === "dob") {
       const age = Math.abs(new Date(Date.now() - new Date(value).getTime()).getUTCFullYear() - 1970);
       if (age < 18) return "Officer must be at least 18 years old.";
+    }
+    if (type === "idNumber") {
+      // STRICT NIN VALIDATION
+      if (currentOfficer.idType === "NIN" && !/^\d{11}$/.test(value)) {
+        return "NIN must be exactly 11 digits.";
+      }
     }
     return null; 
   };
@@ -64,7 +79,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
   const errOcc = getError("occupation", currentOfficer.occupation);
   const errNat = getError("nationality", currentOfficer.nationality);
   const errIdType = getError("idType", currentOfficer.idType);
-  const errIdNum = getError("idNumber", currentOfficer.idNumber);
+  const errIdNum = getError("idNumber", currentOfficer.idNumber, "idNumber");
   
   const addr = currentOfficer.residentialAddress;
   const errState = getError("state", addr.state);
@@ -118,11 +133,12 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
       phoneCode: "+234", phone: "", gender: "", dob: "", occupation: "", 
       nationality: "Nigeria", idType: "", idNumber: "", 
       residentialAddress: { state: "", lga: "", city: "", street: "" },
-      isAlsoShareholder: true
+      isAlsoShareholder: false
     });
   };
 
-  const editOfficer = (officer: any) => {
+  const editOfficer = (e: React.MouseEvent, officer: any) => {
+    e.stopPropagation(); // Prevent opening the accordion
     setOfficerType(officer.roles.includes("DIRECTOR") ? "DIRECTOR" : "SECRETARY_INDIVIDUAL");
     setEditingId(officer.id);
     setCurrentOfficer({
@@ -133,7 +149,8 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const removeOfficer = (idToRemove: string) => {
+  const removeOfficer = (e: React.MouseEvent, idToRemove: string) => {
+    e.stopPropagation(); // Prevent opening the accordion
     updateData((prev: any) => ({
       ...prev, officers: prev.officers.filter((o: any) => o.id !== idToRemove)
     }));
@@ -184,39 +201,84 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
                </div>
             ) : (
               officers.map((officer) => (
-                <div key={officer.id} className="p-4 sm:p-5 bg-white border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm hover:border-indigo-300 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
-                      <User className="h-6 w-6" weight="fill" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-black text-slate-900">{officer.firstName} {officer.surname}</h3>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {officer.roles.map((role: string) => (
-                          <span key={role} className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
-                            role === 'DIRECTOR' ? 'bg-indigo-100 text-indigo-700' : 
-                            role === 'SHAREHOLDER' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                          }`}>
-                            {role}
-                          </span>
-                        ))}
+                <div key={officer.id} className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] transition-all overflow-hidden hover:border-indigo-300">
+                  
+                  {/* ACCORDION HEADER */}
+                  <div 
+                    className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                    onClick={() => setExpandedId(expandedId === officer.id ? null : officer.id)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+                        <User className="h-6 w-6" weight="fill" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-slate-900">{officer.firstName} {officer.surname}</h3>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {officer.roles.map((role: string) => (
+                            <span key={role} className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                              role === 'DIRECTOR' ? 'bg-indigo-100 text-indigo-700' : 
+                              role === 'SHAREHOLDER' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {role}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
+                    
+                    <div className="flex items-center justify-end gap-2 border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 sm:pl-3">
+                      <div className="hidden sm:flex text-slate-400 p-2">
+                        {expandedId === officer.id ? <CaretUp weight="bold" /> : <CaretDown weight="bold" />}
+                      </div>
+                      <button onClick={(e) => editOfficer(e, officer)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center z-10 relative">
+                        <PencilSimple className="h-5 w-5" weight="bold" />
+                      </button>
+                      <button onClick={(e) => removeOfficer(e, officer.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center z-10 relative">
+                        <Trash className="h-5 w-5" weight="bold" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-end gap-2 border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 sm:pl-3">
-                    <button onClick={() => editOfficer(officer)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center">
-                      <PencilSimple className="h-5 w-5" weight="bold" />
-                    </button>
-                    <button onClick={() => removeOfficer(officer.id)} className="p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center">
-                      <Trash className="h-5 w-5" weight="bold" />
-                    </button>
-                  </div>
+
+                  {/* ACCORDION BODY (SIDE-BY-OPPOSITE DATA VIEW) */}
+                  {expandedId === officer.id && (
+                    <div className="p-5 border-t border-slate-100 bg-slate-50/50 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1">
+                        
+                        <div className="space-y-1">
+                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 border-b border-indigo-100 pb-1">Personal Details</h4>
+                          <DetailRow label="Gender" value={officer.gender} />
+                          <DetailRow label="Date of Birth" value={officer.dob} />
+                          <DetailRow label="Nationality" value={officer.nationality} />
+                          <DetailRow label="Occupation" value={officer.occupation} />
+                        </div>
+
+                        <div className="space-y-1 mt-6 md:mt-0">
+                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 border-b border-indigo-100 pb-1">Contact & ID</h4>
+                          <DetailRow label="Phone" value={`${officer.phoneCode} ${officer.phone}`} />
+                          <DetailRow label="Email" value={officer.email} />
+                          <DetailRow label="ID Type" value={officer.idType} />
+                          <DetailRow label="ID Number" value={officer.idNumber} />
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1 mt-6">
+                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 border-b border-indigo-100 pb-1">Residential Address</h4>
+                          <DetailRow label="Address" value={`${officer.residentialAddress?.street}, ${officer.residentialAddress?.city}, ${officer.residentialAddress?.lga}, ${officer.residentialAddress?.state}`} />
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               ))
             )}
           </div>
         </section>
       ) : (
+        /* ========================================== */
+        /* ADD / EDIT OFFICER FORM                    */
+        /* ========================================== */
         <section className="animate-in fade-in duration-300">
           <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4 bg-slate-50 -mx-4 sm:-mx-10 px-4 sm:px-10 pt-4 -mt-4 sm:-mt-10 rounded-t-3xl sm:rounded-none">
             <div>
@@ -260,7 +322,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
 
             <div className="space-y-2">
               <Label className={`text-xs font-bold uppercase ${errGender ? "text-red-500" : "text-slate-500"}`}>Gender <span className="text-red-500">*</span></Label>
-              <select className={`w-full h-12 px-4 border rounded-xl text-sm font-bold outline-none ${errGender ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.gender} onChange={e => setCurrentOfficer({...currentOfficer, gender: e.target.value})} onBlur={() => handleBlur("gender")}>
+              <select className={`w-full h-12 px-4 border rounded-xl text-sm font-bold outline-none ${errGender ? "border-red-500 bg-red-50/30" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.gender} onChange={e => setCurrentOfficer({...currentOfficer, gender: e.target.value})} onBlur={() => handleBlur("gender")}>
                 <option value="">-- Select Gender --</option>
                 <option value="MALE">MALE</option>
                 <option value="FEMALE">FEMALE</option>
@@ -277,7 +339,6 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
             <div className="space-y-2">
               <Label className={`text-xs font-bold uppercase ${errNat ? "text-red-500" : "text-slate-500"}`}>Nationality <span className="text-red-500">*</span></Label>
               <div className="relative">
-                {/* STRICT FIX: Typed "p" explicitly as "any" */}
                 <select className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errNat ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.nationality} onChange={e => {
                   setCurrentOfficer((p: any) => {
                     let updated = { ...p, nationality: e.target.value };
