@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ChartPieSlice, Info, Plus, Trash, PencilSimple, WarningCircle, X, ListMagnifyingGlass, User, CaretDown, CaretUp, Coins } from "@phosphor-icons/react";
+// FIX: Added CheckCircle back to the imports
+import { ChartPieSlice, Info, Plus, Trash, PencilSimple, WarningCircle, X, ListMagnifyingGlass, User, CaretDown, CaretUp, Coins, CheckCircle } from "@phosphor-icons/react";
 import { DESIGNATED_COMPANIES, numberToWordsNaira } from "@/lib/share-capital-data";
 
 const DetailRow = ({ label, value }: { label: string, value: string }) => (
@@ -14,7 +15,6 @@ const DetailRow = ({ label, value }: { label: string, value: string }) => (
   </div>
 );
 
-// Native formatting helpers to fix the backspace/deletion bug
 const formatNum = (val: any) => {
   if (val === "" || val === null || val === undefined || isNaN(val)) return "";
   return Number(val).toLocaleString("en-US");
@@ -50,7 +50,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const selectedCompanyInfo = DESIGNATED_COMPANIES.find(c => c.type === shareData.companyType);
   const minRequired = selectedCompanyInfo ? selectedCompanyInfo.min : 1000000;
   
-  // Safe math conversion for the main capital
   const totalIssuedCapitalNum = Number(shareData.totalIssuedCapital) || 0;
 
   // ==========================================
@@ -59,12 +58,11 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const totalClassesValue = shareData.shareClasses.reduce((acc: number, c: any) => acc + (Number(c.totalValue) || 0), 0);
   const classError = totalIssuedCapitalNum > 0 && totalClassesValue !== totalIssuedCapitalNum;
 
-  // Auto-calculate nominal value (Price)
   const calcNominalValue = () => {
     const tv = Number(classForm.totalValue) || 0;
     const un = Number(classForm.units) || 0;
     if (un === 0) return 0;
-    return (tv / un).toFixed(2); // Keep decimals for price if needed
+    return (tv / un).toFixed(2); 
   };
 
   const saveShareClass = () => {
@@ -135,7 +133,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   return (
     <div className="p-4 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
-      {/* 1. MINIMUM CAPITAL REFERENCE MODAL (MOBILE FIXED) */}
       {showRefModal && (
         <div className="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 flex flex-col max-h-[90vh] h-[90vh] sm:h-auto">
@@ -181,7 +178,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       )}
 
-      {/* MAIN UI: CAPITAL DECLARATION */}
       <section>
         <div className="mb-6 flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
@@ -223,7 +219,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
               Total Company Issued Share Capital
               <span className={totalIssuedCapitalNum < minRequired ? 'text-red-500' : 'text-slate-400'}>₦</span>
             </Label>
-            {/* FIX: Handled deletion bug with empty string logic */}
             <Input 
               type="text" 
               value={formatNum(shareData.totalIssuedCapital)} 
@@ -250,7 +245,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
       <hr className="border-slate-100" />
 
-      {/* MAIN UI: SHARE BREAKDOWN TABLE */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -321,7 +315,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       </section>
 
-      {/* SHARE CLASS MODAL (FIXED INPUT LOGIC) */}
       {showClassModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -364,7 +357,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
       <hr className="border-slate-100" />
 
-      {/* MAIN UI: SHAREHOLDER ALLOTMENT TABLE */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -459,7 +451,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         )}
       </section>
 
-      {/* ALLOTMENT MODAL (FIXED INPUT LOGIC) */}
       {showAllotmentModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
