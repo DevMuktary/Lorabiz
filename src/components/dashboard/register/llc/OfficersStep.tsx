@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Plus, User, Trash, PencilSimple, WarningCircle, CaretDown, CaretUp } from "@phosphor-icons/react";
 import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema";
 
-// Helper component for the collapsible "Side by Opposite" view
+// FIX: Removed `truncate` and added `break-words` so text wraps instead of turning to `...`. Changed items-center to items-start for multiline text.
 const DetailRow = ({ label, value }: { label: string, value: string }) => (
-  <div className="flex justify-between items-center py-2 border-b border-slate-200/60 last:border-0 gap-4">
-    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0">{label}</span>
-    <span className="text-[13px] font-black text-slate-900 text-right truncate">{value || "-"}</span>
+  <div className="flex justify-between items-start py-2.5 border-b border-slate-200/60 last:border-0 gap-4">
+    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0 mt-0.5">{label}</span>
+    <span className="text-[13px] font-black text-slate-900 text-right break-words">{value || "-"}</span>
   </div>
 );
 
@@ -20,14 +20,14 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [officerType, setOfficerType] = useState<"DIRECTOR" | "SECRETARY_INDIVIDUAL" | "SECRETARY_CORPORATE" | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [expandedId, setExpandedId] = useState<string | null>(null); // For collapsible view
+  const [expandedId, setExpandedId] = useState<string | null>(null); 
 
   const [currentOfficer, setCurrentOfficer] = useState<any>({
     id: "", roles: [], surname: "", firstName: "", otherName: "", email: "", 
     phoneCode: "+234", phone: "", gender: "", dob: "", occupation: "", 
     nationality: "Nigeria", idType: "", idNumber: "", 
     residentialAddress: { state: "", lga: "", city: "", street: "" },
-    isAlsoShareholder: false // Defaulted to false as requested
+    isAlsoShareholder: false 
   });
 
   const officers: any[] = data.officers || [];
@@ -52,7 +52,6 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
       if (age < 18) return "Officer must be at least 18 years old.";
     }
     if (type === "idNumber") {
-      // STRICT NIN VALIDATION
       if (currentOfficer.idType === "NIN" && !/^\d{11}$/.test(value)) {
         return "NIN must be exactly 11 digits.";
       }
@@ -138,7 +137,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
   };
 
   const editOfficer = (e: React.MouseEvent, officer: any) => {
-    e.stopPropagation(); // Prevent opening the accordion
+    e.stopPropagation(); 
     setOfficerType(officer.roles.includes("DIRECTOR") ? "DIRECTOR" : "SECRETARY_INDIVIDUAL");
     setEditingId(officer.id);
     setCurrentOfficer({
@@ -150,7 +149,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
   };
 
   const removeOfficer = (e: React.MouseEvent, idToRemove: string) => {
-    e.stopPropagation(); // Prevent opening the accordion
+    e.stopPropagation(); 
     updateData((prev: any) => ({
       ...prev, officers: prev.officers.filter((o: any) => o.id !== idToRemove)
     }));
@@ -205,7 +204,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
                   
                   {/* ACCORDION HEADER */}
                   <div 
-                    className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                    className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => setExpandedId(expandedId === officer.id ? null : officer.id)}
                   >
                     <div className="flex items-center gap-4">
@@ -227,43 +226,59 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-end gap-2 border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 sm:pl-3">
-                      <div className="hidden sm:flex text-slate-400 p-2">
-                        {expandedId === officer.id ? <CaretUp weight="bold" /> : <CaretDown weight="bold" />}
+                    <div className="flex items-center justify-between md:justify-end gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-3 md:pt-0 md:pl-3 w-full md:w-auto">
+                      
+                      {/* FIX: Clearly visible "View Details" button */}
+                      <div className={`flex items-center gap-1.5 font-bold text-xs px-3 py-2 rounded-lg mr-auto md:mr-2 transition-colors ${expandedId === officer.id ? 'bg-slate-200 text-slate-700' : 'bg-indigo-50 text-indigo-600'}`}>
+                        {expandedId === officer.id ? "Hide Details" : "View Details"}
+                        {expandedId === officer.id ? <CaretUp weight="bold" className="h-4 w-4" /> : <CaretDown weight="bold" className="h-4 w-4" />}
                       </div>
-                      <button onClick={(e) => editOfficer(e, officer)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center z-10 relative">
+
+                      <button onClick={(e) => editOfficer(e, officer)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors z-10 relative">
                         <PencilSimple className="h-5 w-5" weight="bold" />
                       </button>
-                      <button onClick={(e) => removeOfficer(e, officer.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center z-10 relative">
+                      <button onClick={(e) => removeOfficer(e, officer.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors z-10 relative">
                         <Trash className="h-5 w-5" weight="bold" />
                       </button>
                     </div>
                   </div>
 
-                  {/* ACCORDION BODY (SIDE-BY-OPPOSITE DATA VIEW) */}
+                  {/* ACCORDION BODY (UNMERGED DATA VIEW) */}
                   {expandedId === officer.id && (
-                    <div className="p-5 border-t border-slate-100 bg-slate-50/50 animate-in slide-in-from-top-2 fade-in duration-200">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1">
+                    <div className="p-5 sm:p-6 border-t border-slate-200 bg-slate-50/50 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                         
+                        {/* Column 1: Personal Details */}
                         <div className="space-y-1">
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 border-b border-indigo-100 pb-1">Personal Details</h4>
+                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1">Personal Details</h4>
+                          <DetailRow label="Surname" value={officer.surname} />
+                          <DetailRow label="First Name" value={officer.firstName} />
+                          <DetailRow label="Other Name" value={officer.otherName} />
                           <DetailRow label="Gender" value={officer.gender} />
                           <DetailRow label="Date of Birth" value={officer.dob} />
                           <DetailRow label="Nationality" value={officer.nationality} />
                           <DetailRow label="Occupation" value={officer.occupation} />
                         </div>
 
-                        <div className="space-y-1 mt-6 md:mt-0">
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 border-b border-indigo-100 pb-1">Contact & ID</h4>
-                          <DetailRow label="Phone" value={`${officer.phoneCode} ${officer.phone}`} />
-                          <DetailRow label="Email" value={officer.email} />
+                        {/* Column 2: Contact & ID */}
+                        <div className="space-y-1">
+                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1">Contact & ID</h4>
+                          <DetailRow label="Phone Code" value={officer.phoneCode} />
+                          <DetailRow label="Phone Number" value={officer.phone} />
+                          <DetailRow label="Email Address" value={officer.email} />
                           <DetailRow label="ID Type" value={officer.idType} />
                           <DetailRow label="ID Number" value={officer.idNumber} />
                         </div>
 
-                        <div className="md:col-span-2 space-y-1 mt-6">
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 border-b border-indigo-100 pb-1">Residential Address</h4>
-                          <DetailRow label="Address" value={`${officer.residentialAddress?.street}, ${officer.residentialAddress?.city}, ${officer.residentialAddress?.lga}, ${officer.residentialAddress?.state}`} />
+                        {/* Column 3: Full Address Unmerged */}
+                        <div className="md:col-span-2 space-y-1">
+                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1">Residential Address</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-1">
+                            <DetailRow label="State / Province" value={officer.residentialAddress?.state} />
+                            <DetailRow label="LGA / County" value={officer.residentialAddress?.lga} />
+                            <DetailRow label="City / Town" value={officer.residentialAddress?.city} />
+                            <DetailRow label="Street Address" value={officer.residentialAddress?.street} />
+                          </div>
                         </div>
 
                       </div>
@@ -322,7 +337,7 @@ export default function OfficersStep({ data, updateData, showErrors }: any) {
 
             <div className="space-y-2">
               <Label className={`text-xs font-bold uppercase ${errGender ? "text-red-500" : "text-slate-500"}`}>Gender <span className="text-red-500">*</span></Label>
-              <select className={`w-full h-12 px-4 border rounded-xl text-sm font-bold outline-none ${errGender ? "border-red-500 bg-red-50/30" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.gender} onChange={e => setCurrentOfficer({...currentOfficer, gender: e.target.value})} onBlur={() => handleBlur("gender")}>
+              <select className={`w-full h-12 px-4 border rounded-xl text-sm font-bold outline-none ${errGender ? "border-red-500 bg-red-50/30 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`} value={currentOfficer.gender} onChange={e => setCurrentOfficer({...currentOfficer, gender: e.target.value})} onBlur={() => handleBlur("gender")}>
                 <option value="">-- Select Gender --</option>
                 <option value="MALE">MALE</option>
                 <option value="FEMALE">FEMALE</option>
