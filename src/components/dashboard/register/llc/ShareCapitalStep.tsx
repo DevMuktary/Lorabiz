@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ChartPieSlice, Info, Plus, Trash, PencilSimple, WarningCircle, X, ListMagnifyingGlass, User, CaretDown, CaretUp, Coins } from "@phosphor-icons/react";
+import { ChartPieSlice, Info, Plus, Trash, PencilSimple, CheckCircle, WarningCircle, X, ListMagnifyingGlass, User, CaretDown, CaretUp, Coins } from "@phosphor-icons/react";
 import { DESIGNATED_COMPANIES, numberToWordsNaira, formatNumberWithCommas, parseNumber } from "@/lib/share-capital-data";
 
 const DetailRow = ({ label, value }: { label: string, value: string }) => (
