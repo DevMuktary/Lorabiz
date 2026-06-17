@@ -4,9 +4,6 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
-// ==========================================
-// 1. GET: FETCH DRAFT DATA TO POPULATE THE UI
-// ==========================================
 export async function GET(
   req: Request, 
   props: { params: Promise<{ id: string }> }
@@ -43,9 +40,6 @@ export async function GET(
   }
 }
 
-// ==========================================
-// 2. PUT: AUTOSAVE & FINAL SUBMISSION ENGINE
-// ==========================================
 export async function PUT(
   req: Request, 
   props: { params: Promise<{ id: string }> }
@@ -76,40 +70,31 @@ export async function PUT(
       return NextResponse.json({ message: "Cannot edit a locked application." }, { status: 403 });
     }
 
-    // --- STRICT FINAL VALIDATION BEFORE CHECKOUT ---
+    // --- STRICT FINAL VALIDATION ---
     if (!isDraft) {
-      if (!email || !description) {
-        return NextResponse.json({ success: false, message: "Company Email and Description are required." }, { status: 400 });
-      }
-      if (!registeredAddress?.state || !registeredAddress?.street) {
-        return NextResponse.json({ success: false, message: "Registered Office Address is incomplete." }, { status: 400 });
-      }
-      if (!useDefaultArticles && (!witnessDetails?.firstName)) {
-         return NextResponse.json({ success: false, message: "Witness details are required for Articles of Association." }, { status: 400 });
-      }
-      if (!memorandumObjects || memorandumObjects.length === 0) {
-        return NextResponse.json({ success: false, message: "At least one Object of Memorandum is required." }, { status: 400 });
-      }
+      if (!email || !description) return NextResponse.json({ success: false, message: "Company Email and Description are required." }, { status: 400 });
+      if (!registeredAddress?.state || !registeredAddress?.street) return NextResponse.json({ success: false, message: "Registered Office Address is incomplete." }, { status: 400 });
+      if (!useDefaultArticles && (!witnessDetails?.firstName)) return NextResponse.json({ success: false, message: "Witness details are required for Articles of Association." }, { status: 400 });
+      if (!memorandumObjects || memorandumObjects.length === 0) return NextResponse.json({ success: false, message: "At least one Object of Memorandum is required." }, { status: 400 });
       
       const directors = officers?.filter((o: any) => o.roles.includes("DIRECTOR")) || [];
-      if (directors.length === 0) {
-        return NextResponse.json({ success: false, message: "At least one Director is required." }, { status: 400 });
-      }
+      if (directors.length === 0) return NextResponse.json({ success: false, message: "At least one Director is required." }, { status: 400 });
       
       const shareholders = officers?.filter((o: any) => o.roles.includes("SHAREHOLDER")) || [];
-      if (shareholders.length === 0) {
-        return NextResponse.json({ success: false, message: "At least one Shareholder is required." }, { status: 400 });
-      }
+      if (shareholders.length === 0) return NextResponse.json({ success: false, message: "At least one Shareholder is required." }, { status: 400 });
     }
 
     const dbCompanyType = shareCapital?.companyType || null;
     const dbTotalShareCapital = shareCapital?.totalIssuedCapital ? Number(shareCapital.totalIssuedCapital) : null;
     
+    // Properly format classes and allotments for JSON storage
     const dbShareClasses = shareCapital 
-      ? { allotments: shareCapital.allotments || {} } 
+      ? { 
+          shareClasses: shareCapital.shareClasses || [], 
+          allotments: shareCapital.allotments || [] 
+        } 
       : Prisma.JsonNull;
 
-    // Convert arrays/objects cleanly for Prisma Json fields
     const dbCustomArticles = customArticles && customArticles.length > 0 
       ? (customArticles as Prisma.JsonArray) 
       : Prisma.JsonNull;
@@ -122,17 +107,12 @@ export async function PUT(
         principalActivity: principalActivity || null,
         specificActivity: specificActivity || null,
         description: description || null,
-        
         registeredAddress: registeredAddress || Prisma.JsonNull,
         headOfficeAddress: headOfficeSameAsRegistered ? Prisma.JsonNull : (headOfficeAddress || Prisma.JsonNull),
         witnessDetails: witnessDetails || Prisma.JsonNull,
         declarantDetails: declarantDetails || Prisma.JsonNull,
-        
         useDefaultArticles: useDefaultArticles ?? true,
-        
-        // NOW IT WILL SAVE CORRECTLY TO THE DB
         customArticles: dbCustomArticles, 
-        
         memorandumObjects: memorandumObjects || [],
         companyType: dbCompanyType,
         totalShareCapital: dbTotalShareCapital,
@@ -146,41 +126,45 @@ export async function PUT(
     });
 
     if (officers && officers.length > 0) {
-      const officerData = officers.map((o: any) => ({
-        registrationId: id,
-        roles: o.roles,
-        surname: o.surname,
-        firstName: o.firstName,
-        otherName: o.otherName || null,
-        dob: o.dob || "",
-        gender: o.gender || "",
-        nationality: o.nationality || "NIGERIA",
-        formerName: o.formerName || null,
-        formerNationality: o.formerNationality || null,
-        occupation: o.occupation || "",
-        phone: o.phone || "",
-        email: o.email || "",
-        idType: o.idType || null,
-        idNumber: o.idNumber || null,
-        taxResidency: o.taxResidency || null,
-        tin: o.tin || null,
-        
-        residentialAddress: o.residentialAddress || Prisma.JsonNull,
-        serviceAddress: o.serviceAddress || Prisma.JsonNull,
-        pscDetails: o.pscDetails || Prisma.JsonNull,
-        
-        sharesAllotted: shareCapital?.allotments?.[o.id] ? Number(shareCapital.allotments[o.id]) : null,
-      }));
+      const officerData = officers.map((o: any) => {
+        // Calculate the total units allotted specifically to this officer from the array
+        const allottedUnits = Array.isArray(shareCapital?.allotments)
+          ? shareCapital.allotments
+              .filter((a: any) => a.officerId === o.id)
+              .reduce((sum: number, a: any) => sum + (Number(a.units) || 0), 0)
+          : null;
+
+        return {
+          registrationId: id,
+          roles: o.roles,
+          surname: o.surname,
+          firstName: o.firstName,
+          otherName: o.otherName || null,
+          dob: o.dob || "",
+          gender: o.gender || "",
+          nationality: o.nationality || "NIGERIA",
+          formerName: o.formerName || null,
+          formerNationality: o.formerNationality || null,
+          occupation: o.occupation || "",
+          phone: o.phone || "",
+          email: o.email || "",
+          idType: o.idType || null,
+          idNumber: o.idNumber || null,
+          taxResidency: o.taxResidency || null,
+          tin: o.tin || null,
+          residentialAddress: o.residentialAddress || Prisma.JsonNull,
+          serviceAddress: o.serviceAddress || Prisma.JsonNull,
+          pscDetails: o.pscDetails || Prisma.JsonNull,
+          sharesAllotted: allottedUnits, // Now correctly pulls from the Array
+        };
+      });
 
       await prisma.companyOfficer.createMany({
         data: officerData
       });
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Data saved securely." 
-    });
+    return NextResponse.json({ success: true, message: "Data saved securely." });
   } catch (error) {
     console.error("Save LLC Details Error:", error);
     return NextResponse.json({ message: "Failed to save registration details" }, { status: 500 });
