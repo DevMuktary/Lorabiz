@@ -152,9 +152,12 @@ export default function LlcRegistrationDetailsPage() {
   // SMART VALIDATION & NEXT STEP
   // ==========================================
   const handleSaveAndNext = () => {
-    setTopError(null);
-    setShowErrors(false);
-    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    // If Step 5 (Share Capital) has broadcasted an error via setStepError, do not clear it.
+    if (currentStep !== 5) {
+        setTopError(null);
+    }
+    
+    setShowErrors(true); // Always set to true on click so inline fields turn red
 
     const d = companyDetails;
 
@@ -252,7 +255,19 @@ export default function LlcRegistrationDetailsPage() {
       triggerError("You must add at least one Director.");
       return;
     }
+
+    // STRICT STEP 5 VALIDATION (Share Capital)
+    if (currentStep === 5) {
+      // The child component computes errors via a `useEffect` and pushes the string
+      // up to `topError`. If `topError` exists when they click, we halt.
+      if (topError) {
+         window.scrollTo({ top: 0, behavior: "smooth" });
+         return; 
+      }
+    }
     
+    setShowErrors(false); // Reset visual inline errors for next step
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     setCurrentStep(prev => prev + 1);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -350,7 +365,10 @@ export default function LlcRegistrationDetailsPage() {
         {currentStep === 2 && <ArticlesStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
         {currentStep === 3 && <MemorandumStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 4 && <OfficersStep data={companyDetails} updateData={setCompanyDetails} />}
-        {currentStep === 5 && <ShareCapitalStep data={companyDetails} updateData={setCompanyDetails} />}
+        
+        {/* FIX: Passed setStepError={setTopError} and showErrors */}
+        {currentStep === 5 && <ShareCapitalStep data={companyDetails} updateData={setCompanyDetails} setStepError={setTopError} showErrors={showErrors} />}
+        
         {currentStep === 6 && <PscStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 7 && <ComplianceStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 8 && <UploadsStep data={companyDetails} updateData={setCompanyDetails} />}
