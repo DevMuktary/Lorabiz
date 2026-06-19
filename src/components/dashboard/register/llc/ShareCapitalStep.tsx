@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ const formatNum = (val: any) => {
 
 const cleanNum = (val: string) => val.replace(/\D/g, "");
 
-export default function ShareCapitalStep({ data, updateData, showErrors }: any) {
+export default function ShareCapitalStep({ data, updateData, setStepError }: any) {
   const [showRefModal, setShowRefModal] = useState(true);
   const [showClassModal, setShowClassModal] = useState(false);
   const [showAllotmentModal, setShowAllotmentModal] = useState(false);
@@ -66,9 +66,34 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const isPerfectMatch = totalRequiredUnits > 0 && remainingAllotmentUnits === 0 && !classMathError && !ordinaryShareError;
 
   // ==========================================
+  // GLOBAL ERROR BROADCAST (TO PAGE.TSX)
+  // ==========================================
+  useEffect(() => {
+    if (!setStepError) return;
+    
+    if (totalIssuedCapitalNum < minRequired) {
+      setStepError(`Total Issued Capital must be at least ₦${formatNum(minRequired)} for this company type.`);
+    } else if (shareData.shareClasses.length === 0) {
+      setStepError("You must create at least one Share Class (EQUITY (ORDINARY)).");
+    } else if (classMathError) {
+      setStepError(`Mismatch! Your Share Classes total ₦${formatNum(totalClassesValue)}, but your declared capital is ₦${formatNum(totalIssuedCapitalNum)}. You have ₦${formatNum(remainingCapitalValue)} remaining to allocate.`);
+    } else if (ordinaryShareError) {
+      setStepError("A company cannot be registered with only Preference shares. You must add at least one EQUITY (ORDINARY) share class.");
+    } else if (remainingAllotmentUnits > 0) {
+      setStepError(`You must allot 100% of the created shares. You still have ${formatNum(remainingAllotmentUnits)} units unassigned.`);
+    } else if (remainingAllotmentUnits < 0) {
+      setStepError(`You have over-distributed your shares by ${formatNum(Math.abs(remainingAllotmentUnits))} units. Please correct the allotments.`);
+    } else if (shareholders.length === 0) {
+       setStepError("You must add at least one Shareholder in Step 4 before assigning shares.");
+    } else {
+      setStepError(null); // Perfect!
+    }
+  }, [totalIssuedCapitalNum, minRequired, classMathError, totalClassesValue, remainingCapitalValue, ordinaryShareError, remainingAllotmentUnits, shareholders.length, shareData.shareClasses.length, setStepError]);
+
+
+  // ==========================================
   // CLASS FORM HELPERS
   // ==========================================
-  // Smart Dropdown Logic: Hide options already created (unless editing that specific one)
   const getAvailableClassTypes = () => {
     const hasEq = shareData.shareClasses.some((c: any) => c.type === "EQUITY (ORDINARY)");
     const hasPref = shareData.shareClasses.some((c: any) => c.type === "PREFERENCE");
@@ -86,11 +111,11 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
     }
     return remainingCapitalValue;
   };
+  
   const availableCapital = getAvailableCapitalForClass();
   const formTotalValue = Number(classForm.totalValue) || 0;
   const isClassOverLimit = formTotalValue > availableCapital;
 
-  // Auto-calculate nominal value (Price)
   const calcNominalValue = () => {
     const tv = Number(classForm.totalValue) || 0;
     const un = Number(classForm.units) || 0;
@@ -108,11 +133,16 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
     const nominalValue = tv / units; 
 
     let updated = [...shareData.shareClasses];
+    
+    // FIX: Force the explicit type selected from the form state
+    const newClass = { type: classForm.type, totalValue: tv, nominalValue, units };
+
     if (classForm.id !== null) {
-      updated[classForm.id] = { type: classForm.type, totalValue: tv, nominalValue, units };
+      updated[classForm.id] = newClass;
     } else {
-      updated.push({ type: classForm.type, totalValue: tv, nominalValue, units });
+      updated.push(newClass);
     }
+    
     updateShareData("shareClasses", updated);
     setShowClassModal(false);
   };
@@ -124,9 +154,8 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
   const openAddClassModal = () => {
     const availableTypes = getAvailableClassTypes();
-    if (availableTypes.length === 0) return; // Prevent opening if both exist
+    if (availableTypes.length === 0) return;
 
-    // Pre-fill the remaining amount
     const rem = totalIssuedCapitalNum - totalClassesValue;
     setClassForm({ 
       id: null, 
@@ -194,20 +223,11 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
     return { text: records.map((r: any) => `${formatNum(r.units)} ${r.type}`).join(" | "), error: false };
   };
 
-  const showGlobalBlocker = showErrors && (!isPerfectMatch || totalIssuedCapitalNum < minRequired);
 
   return (
     <div className="p-4 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
-      {showGlobalBlocker && (
-        <div className="bg-red-50 border-2 border-red-500 p-4 rounded-2xl mb-8 animate-bounce">
-          <div className="flex items-center gap-3">
-            <WarningCircle className="h-6 w-6 text-red-600 shrink-0" weight="fill" />
-            <p className="text-sm font-black text-red-900">You cannot proceed. Ensure Total Capital is met, Share Classes match the total, and 100% of shares are allotted to Shareholders.</p>
-          </div>
-        </div>
-      )}
-
+      {/* 1. MINIMUM CAPITAL REFERENCE MODAL */}
       {showRefModal && (
         <div className="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 flex flex-col max-h-[90vh] h-[90vh] sm:h-auto">
@@ -253,6 +273,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       )}
 
+      {/* MAIN UI: CAPITAL DECLARATION */}
       <section>
         <div className="mb-6 flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
@@ -320,6 +341,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
       <hr className="border-slate-100" />
 
+      {/* MAIN UI: SHARE BREAKDOWN TABLE */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -367,29 +389,30 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
               <tr>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">S/N</th>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Class Of Share</th>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Issue Share Capital (₦)</th>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Issued Capital in Words</th>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Divided Into (Units)</th>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Price per Unit (₦)</th>
+                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Calculated Total (₦)</th>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 text-center whitespace-nowrap">Action</th>
               </tr>
             </thead>
             <tbody className="text-xs font-bold text-slate-700 divide-y divide-slate-100">
               {shareData.shareClasses.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">No share classes added. Click "Add Share Class" to begin.</td>
+                  <td colSpan={6} className="p-8 text-center text-slate-400 font-medium">No share classes added. Click "Add Share Class" to begin.</td>
                 </tr>
               ) : (
                 shareData.shareClasses.map((c: any, idx: number) => (
                   <tr key={idx} className="hover:bg-slate-50/50">
                     <td className="p-4 text-slate-400">{idx + 1}</td>
                     <td className="p-4 text-indigo-600">{c.type}</td>
-                    <td className="p-4">{formatNum(c.totalValue)}</td>
-                    <td className="p-4 text-[10px] uppercase text-slate-500 max-w-[200px] break-words leading-relaxed" title={numberToWordsNaira(c.totalValue)}>{numberToWordsNaira(c.totalValue)}</td>
                     <td className="p-4 text-emerald-600 bg-emerald-50/50">{formatNum(c.units)}</td>
                     <td className="p-4">{formatNum(c.nominalValue)}</td>
+                    <td className="p-4 font-black">
+                      {formatNum(c.totalValue)}
+                      <p className="text-[9px] text-slate-400 font-medium mt-0.5">{numberToWordsNaira(c.totalValue)}</p>
+                    </td>
                     <td className="p-4 text-center flex items-center justify-center gap-2">
-                      <button onClick={() => { setClassForm({ id: idx, type: c.type, totalValue: c.totalValue.toString(), units: c.units.toString() }); setShowClassModal(true); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                      <button onClick={() => { setClassForm({ id: idx, type: c.type, units: c.units.toString(), totalValue: c.totalValue.toString() }); setShowClassModal(true); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
                         <PencilSimple className="h-4 w-4" weight="bold" />
                       </button>
                       <button onClick={() => removeClass(idx)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
@@ -404,6 +427,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       </section>
 
+      {/* SHARE CLASS MODAL */}
       {showClassModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -473,6 +497,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
       <hr className="border-slate-100" />
 
+      {/* MAIN UI: SHAREHOLDER ALLOTMENT TABLE */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -567,6 +592,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         )}
       </section>
 
+      {/* ALLOTMENT MODAL */}
       {showAllotmentModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
