@@ -27,9 +27,8 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const [showAllotmentModal, setShowAllotmentModal] = useState(false);
   const [expandedOfficerId, setExpandedId] = useState<string | null>(null);
 
-  // FIX: Form only takes Total Value and Units. Price is strictly calculated.
   const [classForm, setClassForm] = useState<any>({ id: null, type: "EQUITY (ORDINARY)", totalValue: "", units: "" });
-  const [allotForm, setAllotForm] = useState<any>({ officerId: "", type: "EQUITY (ORDINARY)", units: "" });
+  const [allotForm, setAllotForm] = useState<any>({ officerId: "", type: "", units: "" });
 
   const rawShareData = data.shareCapital || {};
   const shareData = {
@@ -57,7 +56,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const remainingCapitalValue = totalIssuedCapitalNum - totalClassesValue;
   const classMathError = totalIssuedCapitalNum > 0 && totalClassesValue !== totalIssuedCapitalNum;
   
-  // Strict Rule: Cannot have ONLY Preference Shares
   const hasOrdinaryShares = shareData.shareClasses.some((c: any) => c.type === "EQUITY (ORDINARY)");
   const ordinaryShareError = shareData.shareClasses.length > 0 && !hasOrdinaryShares;
 
@@ -70,15 +68,15 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   // ==========================================
   // CLASS FORM HELPERS
   // ==========================================
-  const classLiveTotalValue = Number(classForm.totalValue) || 0;
-  
-  // Total Value / Units = Price Per Unit
-  const calcNominalValue = () => {
-    const tv = Number(classForm.totalValue) || 0;
-    const un = Number(classForm.units) || 0;
-    if (un === 0) return 0;
-    // We use standard JS math; if it's a clean division it will be whole, otherwise decimals.
-    return Number((tv / un).toFixed(4)); 
+  // Smart Dropdown Logic: Hide options already created (unless editing that specific one)
+  const getAvailableClassTypes = () => {
+    const hasEq = shareData.shareClasses.some((c: any) => c.type === "EQUITY (ORDINARY)");
+    const hasPref = shareData.shareClasses.some((c: any) => c.type === "PREFERENCE");
+    
+    let options = [];
+    if (!hasEq || (classForm.id !== null && classForm.type === "EQUITY (ORDINARY)")) options.push("EQUITY (ORDINARY)");
+    if (!hasPref || (classForm.id !== null && classForm.type === "PREFERENCE")) options.push("PREFERENCE");
+    return options;
   };
 
   const getAvailableCapitalForClass = () => {
@@ -88,24 +86,32 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
     }
     return remainingCapitalValue;
   };
-  
   const availableCapital = getAvailableCapitalForClass();
-  const isClassOverLimit = classLiveTotalValue > availableCapital;
+  const formTotalValue = Number(classForm.totalValue) || 0;
+  const isClassOverLimit = formTotalValue > availableCapital;
+
+  // Auto-calculate nominal value (Price)
+  const calcNominalValue = () => {
+    const tv = Number(classForm.totalValue) || 0;
+    const un = Number(classForm.units) || 0;
+    if (un === 0) return 0;
+    return (tv / un).toFixed(2); 
+  };
 
   const saveShareClass = () => {
-    if (!classForm.totalValue || !classForm.units || isClassOverLimit) return;
+    if (!classForm.units || !classForm.totalValue || isClassOverLimit) return;
     
-    const totalValue = Number(classForm.totalValue);
+    const tv = Number(classForm.totalValue);
     const units = Number(classForm.units);
-    if (units <= 0 || totalValue <= 0) return;
+    if (units <= 0 || tv <= 0) return;
     
-    const nominalValue = totalValue / units;
+    const nominalValue = tv / units; 
 
     let updated = [...shareData.shareClasses];
     if (classForm.id !== null) {
-      updated[classForm.id] = { type: classForm.type, totalValue, nominalValue, units };
+      updated[classForm.id] = { type: classForm.type, totalValue: tv, nominalValue, units };
     } else {
-      updated.push({ type: classForm.type, totalValue, nominalValue, units });
+      updated.push({ type: classForm.type, totalValue: tv, nominalValue, units });
     }
     updateShareData("shareClasses", updated);
     setShowClassModal(false);
@@ -114,6 +120,21 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const removeClass = (idx: number) => {
     const updated = shareData.shareClasses.filter((_: any, i: number) => i !== idx);
     updateShareData("shareClasses", updated);
+  };
+
+  const openAddClassModal = () => {
+    const availableTypes = getAvailableClassTypes();
+    if (availableTypes.length === 0) return; // Prevent opening if both exist
+
+    // Pre-fill the remaining amount
+    const rem = totalIssuedCapitalNum - totalClassesValue;
+    setClassForm({ 
+      id: null, 
+      type: availableTypes[0], 
+      totalValue: rem > 0 ? rem.toString() : "", 
+      units: "" 
+    });
+    setShowClassModal(true);
   };
 
   // ==========================================
@@ -133,7 +154,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
          allottedForType -= existingRecord.units;
        }
     }
-
     return classDef.units - allottedForType;
   };
 
@@ -162,7 +182,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
     const existing = shareData.allotments.find((a: any) => a.officerId === officerId);
     setAllotForm({ 
       officerId, 
-      type: existing ? existing.type : (shareData.shareClasses[0]?.type || "EQUITY (ORDINARY)"), 
+      type: existing ? existing.type : (shareData.shareClasses[0]?.type || ""), 
       units: existing ? existing.units.toString() : "" 
     });
     setShowAllotmentModal(true);
@@ -245,6 +265,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+          
           <div className="space-y-2 md:col-span-2">
             <Label className="text-xs font-bold uppercase text-slate-500">Type of Company <span className="text-red-500">*</span></Label>
             <div className="relative">
@@ -303,23 +324,17 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h2 className="text-xl font-black text-slate-900">Share Details Breakdown</h2>
-            
-            {/* FIX: Clearly explaining the step as requested */}
-            <div className="flex items-start gap-2 mt-2 bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+            <div className="flex items-start gap-2 mt-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
               <Info className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" weight="fill" />
-              <p className="text-[13px] font-medium text-indigo-900 leading-relaxed">
-                <span className="font-black">How to divide your shares:</span> You must split your declared Total Capital into classes (typically just Equity). Enter the total value for the class and how many units it is divided into. <span className="font-bold">The system will automatically calculate the price per share.</span>
+              <p className="text-xs font-medium text-slate-600 leading-relaxed">
+                <span className="font-bold text-slate-900">Preference shares</span> means a share which does not entitle the holder to participate beyond a specified amount. <br/>
+                <span className="font-bold text-slate-900">Equity (ordinary) shares</span> means any share other than a preference share.
               </p>
             </div>
           </div>
-          
-          {/* FIX: Removed auto-fill logic. Just an empty form */}
           <Button 
-            onClick={() => { 
-              setClassForm({ id: null, type: "EQUITY (ORDINARY)", totalValue: "", units: "" }); 
-              setShowClassModal(true); 
-            }} 
-            disabled={remainingCapitalValue <= 0 && shareData.shareClasses.length > 0}
+            onClick={openAddClassModal} 
+            disabled={remainingCapitalValue <= 0 || shareData.shareClasses.length >= 2}
             className="h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shrink-0 shadow-md disabled:opacity-50"
           >
             <Plus weight="bold" className="mr-2" /> Add Share Class
@@ -369,8 +384,8 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                   <tr key={idx} className="hover:bg-slate-50/50">
                     <td className="p-4 text-slate-400">{idx + 1}</td>
                     <td className="p-4 text-indigo-600">{c.type}</td>
-                    <td className="p-4 font-black">{formatNum(c.totalValue)}</td>
-                    <td className="p-4 text-[10px] uppercase text-slate-500 max-w-[200px] break-words leading-relaxed">{numberToWordsNaira(c.totalValue)}</td>
+                    <td className="p-4">{formatNum(c.totalValue)}</td>
+                    <td className="p-4 text-[10px] uppercase text-slate-500 max-w-[200px] break-words leading-relaxed" title={numberToWordsNaira(c.totalValue)}>{numberToWordsNaira(c.totalValue)}</td>
                     <td className="p-4 text-emerald-600 bg-emerald-50/50">{formatNum(c.units)}</td>
                     <td className="p-4">{formatNum(c.nominalValue)}</td>
                     <td className="p-4 text-center flex items-center justify-center gap-2">
@@ -389,7 +404,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       </section>
 
-      {/* SHARE CLASS MODAL (FIXED INPUT LOGIC) */}
       {showClassModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -399,6 +413,13 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
             </div>
             <div className="p-6 space-y-5">
               
+              <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-2 mb-4">
+                <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" weight="fill" />
+                <p className="text-xs font-medium text-blue-800 leading-relaxed">
+                  Select the Class Type, assign its Total Value out of your master capital, and define how many Units it is divided into. The Price per Unit will be calculated automatically.
+                </p>
+              </div>
+
               <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-xl border border-indigo-100">
                 <span className="text-xs font-bold text-indigo-700">Available Capital</span>
                 <span className="text-sm font-black text-indigo-900">₦{formatNum(availableCapital)}</span>
@@ -408,8 +429,9 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                 <Label className="text-xs font-bold uppercase text-slate-500">Class of Shares <span className="text-red-500">*</span></Label>
                 <div className="relative">
                   <select value={classForm.type} onChange={e => setClassForm({...classForm, type: e.target.value})} className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-sm font-bold bg-white focus:border-indigo-500 outline-none">
-                    <option value="EQUITY (ORDINARY)">EQUITY (ORDINARY)</option>
-                    <option value="PREFERENCE">PREFERENCE</option>
+                    {getAvailableClassTypes().map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
                   </select>
                   <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
                 </div>
@@ -417,26 +439,27 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase text-slate-500">Total Value for this Class (₦) <span className="text-red-500">*</span></Label>
-                <Input type="text" placeholder="E.g. 1,000,000" value={formatNum(classForm.totalValue)} onChange={e => setClassForm({...classForm, totalValue: cleanNum(e.target.value)})} className={`h-12 font-black text-lg ${isClassOverLimit ? 'bg-red-50 text-red-600 border-red-300' : ''}`} />
-                <p className="text-[10px] font-black text-indigo-500 uppercase mt-1 bg-indigo-50 px-2 py-1 rounded inline-block">{numberToWordsNaira(Number(classForm.totalValue) || 0)}</p>
-                {isClassOverLimit && (
-                  <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1">
-                    <WarningCircle weight="fill" className="shrink-0" /> Exceeds available capital by ₦{formatNum(classLiveTotalValue - availableCapital)}
+                <Input type="text" placeholder="E.g. 1,000,000" value={formatNum(classForm.totalValue)} onChange={e => setClassForm({...classForm, totalValue: cleanNum(e.target.value)})} className={`h-12 font-black text-lg ${isClassOverLimit ? 'bg-red-50 text-red-600 border-red-300' : 'bg-white'}`} />
+                <div className="flex flex-col gap-1 mt-1">
+                  <p className="text-[10px] font-black text-indigo-500 uppercase bg-indigo-50 px-2 py-1 rounded self-start">
+                    {numberToWordsNaira(Number(classForm.totalValue) || 0)}
                   </p>
-                )}
+                  {isClassOverLimit && (
+                    <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1">
+                      <WarningCircle weight="fill" /> Exceeds available capital by ₦{formatNum(formTotalValue - availableCapital)}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Divided Into (Units) <span className="text-red-500">*</span></Label>
-                  <Input type="text" placeholder="E.g. 1,000,000" value={formatNum(classForm.units)} onChange={e => setClassForm({...classForm, units: cleanNum(e.target.value)})} className="h-12 font-bold" />
-                </div>
-                
-                {/* FIX: Price per Unit is Strictly Read-Only */}
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase text-slate-500">Auto-Calculated Price / Unit ₦</Label>
-                  <Input type="text" disabled value={formatNum(calcNominalValue())} className="h-12 font-black bg-slate-100 text-slate-500" />
-                </div>
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <Label className="text-xs font-bold uppercase text-slate-500">Divided Into (Number of Units) <span className="text-red-500">*</span></Label>
+                <Input type="text" placeholder="E.g. 1,000,000" value={formatNum(classForm.units)} onChange={e => setClassForm({...classForm, units: cleanNum(e.target.value)})} className="h-12 font-bold" />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Auto-Calculated Nominal Value (Price per Unit) ₦</Label>
+                <Input type="text" disabled value={formatNum(calcNominalValue())} className="h-12 font-black bg-slate-100 text-slate-500" />
               </div>
 
             </div>
@@ -450,7 +473,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
       <hr className="border-slate-100" />
 
-      {/* MAIN UI: SHAREHOLDER ALLOTMENT TABLE */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -459,10 +481,10 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
           </div>
           <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 font-bold text-sm ${
             isPerfectMatch ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
-            remainingAllotmentUnits < 0 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700'
+            'bg-amber-50 border-amber-200 text-amber-700'
           }`}>
             {isPerfectMatch ? <CheckCircle className="h-5 w-5" weight="fill" /> : <WarningCircle className="h-5 w-5" weight="fill" />}
-            {isPerfectMatch ? "100% Distributed" : remainingAllotmentUnits < 0 ? `${formatNum(Math.abs(remainingAllotmentUnits))} units OVER-distributed!` : `${formatNum(remainingAllotmentUnits)} units unassigned`}
+            {isPerfectMatch ? "100% Distributed" : `${formatNum(Math.abs(remainingAllotmentUnits))} units unassigned`}
           </div>
         </div>
 
@@ -545,7 +567,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         )}
       </section>
 
-      {/* ALLOTMENT MODAL */}
       {showAllotmentModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -557,9 +578,10 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
               <button onClick={() => setShowAllotmentModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X weight="bold" /></button>
             </div>
             <div className="p-6 space-y-4">
+              
               <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-xl border border-emerald-100">
                 <span className="text-xs font-bold text-emerald-700">Available Units ({allotForm.type})</span>
-                <span className="text-sm font-black text-emerald-900">{formatNum(availableUnitsForCurrentType)}</span>
+                <span className="text-sm font-black text-emerald-900">{formatNum(getAvailableUnitsForType(allotForm.type))}</span>
               </div>
 
               <div className="space-y-2">
@@ -575,17 +597,22 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                     className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-sm font-bold bg-white focus:border-indigo-500 outline-none"
                   >
                     {shareData.shareClasses.map((c: any) => (
-                      <option key={c.type} value={c.type}>{c.type} (Created: {formatNum(c.units)} Units)</option>
+                      <option key={c.type} value={c.type}>{c.type}</option>
                     ))}
                   </select>
                   <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase text-slate-500">Number of Units to Allot <span className="text-red-500">*</span></Label>
-                <Input type="text" placeholder="E.g. 500,000" value={formatNum(allotForm.units)} onChange={e => setAllotForm({...allotForm, units: cleanNum(e.target.value)})} className={`h-12 font-black text-lg ${isAllotmentOverLimit ? 'border-red-500 text-red-600 bg-red-50' : ''}`} />
-                {isAllotmentOverLimit && (
+                <Input 
+                  type="text" 
+                  placeholder="E.g. 500,000" 
+                  value={formatNum(allotForm.units)} 
+                  onChange={e => setAllotForm({...allotForm, units: cleanNum(e.target.value)})} 
+                  className={`h-12 font-black text-lg ${Number(allotForm.units) > getAvailableUnitsForType(allotForm.type) ? 'border-red-500 text-red-600 bg-red-50' : ''}`} 
+                />
+                {Number(allotForm.units) > getAvailableUnitsForType(allotForm.type) && (
                   <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1">
                     <WarningCircle weight="fill" /> You cannot allot more units than are available in this class.
                   </p>
@@ -594,7 +621,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
             </div>
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
               <Button variant="outline" onClick={() => setShowAllotmentModal(false)} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
-              <Button onClick={saveAllotment} disabled={!allotForm.units || isAllotmentOverLimit} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Assign Shares</Button>
+              <Button onClick={saveAllotment} disabled={!allotForm.units || Number(allotForm.units) > getAvailableUnitsForType(allotForm.type)} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Assign Shares</Button>
             </div>
           </div>
         </div>
