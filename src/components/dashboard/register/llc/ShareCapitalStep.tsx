@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ChartPieSlice, Info, Plus, Trash, PencilSimple, WarningCircle, X, ListMagnifyingGlass, User, CaretDown, CaretUp, Coins, CheckCircle, UserPlus } from "@phosphor-icons/react";
+import { ChartPieSlice, Info, Plus, Trash, PencilSimple, WarningCircle, User, CaretDown, CaretUp, Coins, CheckCircle, UserPlus } from "@phosphor-icons/react";
 import { DESIGNATED_COMPANIES, numberToWordsNaira } from "@/lib/share-capital-data";
-import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema";
+import { ReferenceModal, ShareClassModal, AllotmentModal, StandaloneShareholderModal } from "./ShareCapitalModals";
 
 const DetailRow = ({ label, value }: { label: string, value: string }) => (
   <div className="flex justify-between items-start py-2.5 border-b border-slate-200/60 last:border-0 gap-4">
@@ -15,66 +15,36 @@ const DetailRow = ({ label, value }: { label: string, value: string }) => (
   </div>
 );
 
-const formatNum = (val: any) => {
-  if (val === "" || val === null || val === undefined || isNaN(val)) return "";
-  return Number(val).toLocaleString("en-US");
-};
-
+const formatNum = (val: any) => (val === "" || val === null || isNaN(val)) ? "" : Number(val).toLocaleString("en-US");
 const cleanNum = (val: string) => val.replace(/\D/g, "");
 
 export default function ShareCapitalStep({ data, updateData, showErrors }: any) {
-  const [showRefModal, setShowRefModal] = useState(true);
-  const [showClassModal, setShowClassModal] = useState(false);
-  const [showAllotmentModal, setShowAllotmentModal] = useState(false);
-  const [showShModal, setShowShModal] = useState(false);
+  const [modals, setModals] = useState({ ref: true, class: false, allot: false, sh: false });
+  const [editingClassIdx, setEditingClassIdx] = useState<number | null>(null);
+  const [allottingOfficerId, setAllottingOfficerId] = useState<string | null>(null);
   const [expandedOfficerId, setExpandedId] = useState<string | null>(null);
-
-  const [classForm, setClassForm] = useState<any>({ id: null, type: "EQUITY (ORDINARY)", totalValue: "", units: "" });
-  const [allotForm, setAllotForm] = useState<any>({ officerId: "", type: "", units: "" });
-  
-  const [shForm, setShForm] = useState<any>({
-    surname: "", firstName: "", otherName: "", email: "", phoneCode: "+234", phone: "", 
-    gender: "", dob: "", occupation: "", nationality: "Nigeria", idType: "", idNumber: "", 
-    residentialAddress: { state: "", lga: "", city: "", street: "" },
-    allotType: "", allotUnits: ""
-  });
-  const [shTouched, setShTouched] = useState<Record<string, boolean>>({});
 
   const rawShareData = data.shareCapital || {};
   const allOfficers = data.officers || [];
   
   const activeShareholders = allOfficers.filter((o: any) => o.roles.includes("SHAREHOLDER"));
-  const validShareholderIds = new Set(activeShareholders.map((o: any) => o.id));
+  const validIds = new Set(activeShareholders.map((o: any) => o.id));
 
-  // Fix: Safe allotments array that directly reflects parent state to prevent wipeouts
-  const currentAllotments = Array.isArray(rawShareData.allotments) ? rawShareData.allotments : [];
+  // The Master Allotments Array (safe from ghost wipes)
+  const cleanAllotments = (Array.isArray(rawShareData.allotments) ? rawShareData.allotments : []).filter((a: any) => validIds.has(a.officerId));
 
   const shareData = {
     companyType: rawShareData.companyType || "ENTITY WITH SHARES BELOW FIVE MILLION",
     totalIssuedCapital: rawShareData.totalIssuedCapital !== undefined ? rawShareData.totalIssuedCapital : "1000000",
     shareClasses: Array.isArray(rawShareData.shareClasses) ? rawShareData.shareClasses : [],
-    allotments: currentAllotments 
+    allotments: cleanAllotments 
   };
-
-  // Run a silent clean-up ONLY when validShareholderIds change to avoid erasing active typing
-  useEffect(() => {
-    const cleaned = currentAllotments.filter((a: any) => validShareholderIds.has(a.officerId));
-    if (cleaned.length !== currentAllotments.length) {
-      updateData((prev: any) => ({
-        ...prev,
-        shareCapital: { ...(prev.shareCapital || {}), allotments: cleaned }
-      }));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [validShareholderIds.size]); // Only run if the number of shareholders changes
 
   const updateShareData = (field: string, value: any) => {
     updateData((prev: any) => ({ ...prev, shareCapital: { ...shareData, [field]: value } }));
   };
 
-  // ==========================================
-  // CORE MATH CONSTANTS
-  // ==========================================
+  // CORE MATH
   const selectedCompanyInfo = DESIGNATED_COMPANIES.find(c => c.type === shareData.companyType);
   const minRequired = selectedCompanyInfo ? selectedCompanyInfo.min : 1000000;
   const totalIssuedCapitalNum = Number(shareData.totalIssuedCapital) || 0;
@@ -87,126 +57,12 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const ordinaryShareError = shareData.shareClasses.length > 0 && !hasOrdinaryShares;
 
   const totalRequiredUnits = shareData.shareClasses.reduce((acc: number, c: any) => acc + (Number(c.units) || 0), 0);
-  const totalAllotted = shareData.allotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
+  const totalAllotted = cleanAllotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
   const remainingAllotmentUnits = totalRequiredUnits - totalAllotted;
   const isPerfectMatch = totalRequiredUnits > 0 && remainingAllotmentUnits === 0 && !classMathError && !ordinaryShareError;
 
-
-  // ==========================================
-  // CLASS FORM HELPERS
-  // ==========================================
-  const getAvailableClassTypes = () => {
-    const hasEq = shareData.shareClasses.some((c: any) => c.type === "EQUITY (ORDINARY)");
-    const hasPref = shareData.shareClasses.some((c: any) => c.type === "PREFERENCE");
-    
-    let options = [];
-    if (!hasEq || (classForm.id !== null && classForm.type === "EQUITY (ORDINARY)")) options.push("EQUITY (ORDINARY)");
-    if (!hasPref || (classForm.id !== null && classForm.type === "PREFERENCE")) options.push("PREFERENCE");
-    return options;
-  };
-
-  const openAddClassModal = () => {
-    const availableTypes = getAvailableClassTypes();
-    if (availableTypes.length === 0) return; 
-
-    const rem = totalIssuedCapitalNum - totalClassesValue;
-    setClassForm({ 
-      id: null, 
-      type: availableTypes[0], 
-      totalValue: rem > 0 ? rem.toString() : "", 
-      units: "" 
-    });
-    setShowClassModal(true);
-  };
-
-  const getAvailableCapitalForClass = () => {
-    if (classForm.id !== null) {
-      const currentClassValue = shareData.shareClasses[classForm.id].totalValue;
-      return remainingCapitalValue + currentClassValue;
-    }
-    return remainingCapitalValue;
-  };
-  
-  const availableCapital = getAvailableCapitalForClass();
-  const formTotalValue = Number(classForm.totalValue) || 0;
-  const isClassOverLimit = formTotalValue > availableCapital;
-
-  const calcNominalValue = () => {
-    const tv = Number(classForm.totalValue) || 0;
-    const un = Number(classForm.units) || 0;
-    if (un === 0) return 0;
-    return (tv / un).toFixed(2); 
-  };
-
-  const saveShareClass = () => {
-    if (!classForm.units || !classForm.totalValue || isClassOverLimit) return;
-    const tv = Number(classForm.totalValue);
-    const units = Number(classForm.units);
-    if (units <= 0 || tv <= 0) return;
-    
-    let updated = [...shareData.shareClasses];
-    const newClass = { type: classForm.type, totalValue: tv, nominalValue: tv/units, units };
-
-    if (classForm.id !== null) updated[classForm.id] = newClass;
-    else updated.push(newClass);
-    
-    updateShareData("shareClasses", updated);
-    setShowClassModal(false);
-  };
-
   const removeClass = (idx: number) => {
-    const updated = shareData.shareClasses.filter((_: any, i: number) => i !== idx);
-    updateShareData("shareClasses", updated);
-  };
-
-  // ==========================================
-  // ALLOTMENT & SHAREHOLDER HELPERS
-  // ==========================================
-  const getAvailableUnitsForType = (type: string, editingOfficerId?: string) => {
-    const classDef = shareData.shareClasses.find((c: any) => c.type === type);
-    if (!classDef) return 0;
-    
-    let allottedForType = shareData.allotments
-      .filter((a: any) => a.type === type)
-      .reduce((sum: number, a: any) => sum + Number(a.units), 0);
-      
-    if (editingOfficerId) {
-       const existingRecord = shareData.allotments.find((a: any) => a.officerId === editingOfficerId && a.type === type);
-       if (existingRecord) allottedForType -= existingRecord.units;
-    }
-    return classDef.units - allottedForType;
-  };
-
-  const saveAllotment = () => {
-    const unitsToAllot = Number(allotForm.units);
-    const maxUnits = getAvailableUnitsForType(allotForm.type, allotForm.officerId);
-    if (unitsToAllot <= 0 || unitsToAllot > maxUnits) return;
-
-    let updatedAllotments = [...shareData.allotments];
-    const existingIdx = updatedAllotments.findIndex((a: any) => a.officerId === allotForm.officerId && a.type === allotForm.type);
-    
-    if (existingIdx >= 0) updatedAllotments[existingIdx].units = unitsToAllot;
-    else updatedAllotments.push({ officerId: allotForm.officerId, type: allotForm.type, units: unitsToAllot });
-
-    updateShareData("allotments", updatedAllotments);
-    setShowAllotmentModal(false);
-  };
-
-  const openAllotment = (e: any, officerId: string) => {
-    e.stopPropagation();
-    const existing = shareData.allotments.find((a: any) => a.officerId === officerId);
-    setAllotForm({ 
-      officerId, 
-      type: existing ? existing.type : (shareData.shareClasses[0]?.type || ""), 
-      units: existing ? existing.units.toString() : "" 
-    });
-    setShowAllotmentModal(true);
-  };
-
-  const getAllottedUnitsForOfficer = (officerId: string) => {
-    const records = shareData.allotments.filter((a: any) => a.officerId === officerId);
-    if (records.length === 0) return { text: "None Allotted", error: true };
-    return { text: records.map((r: any) => `${formatNum(r.units)} ${r.type}`).join(" | "), error: false };
+    updateShareData("shareClasses", shareData.shareClasses.filter((_: any, i: number) => i !== idx));
   };
 
   const removeShareholder = (e: any, officerId: string) => {
@@ -216,120 +72,28 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
     if (officer.roles.includes("DIRECTOR")) {
       const newOfficers = allOfficers.map((o: any) => o.id === officerId ? { ...o, roles: o.roles.filter((r: string) => r !== "SHAREHOLDER") } : o);
-      const newAllotments = shareData.allotments.filter((a: any) => a.officerId !== officerId);
-      updateData((prev: any) => ({ ...prev, officers: newOfficers, shareCapital: { ...shareData, allotments: newAllotments } }));
+      updateData((prev: any) => ({ ...prev, officers: newOfficers, shareCapital: { ...shareData, allotments: cleanAllotments.filter((a: any) => a.officerId !== officerId) } }));
     } else {
       const newOfficers = allOfficers.filter((o: any) => o.id !== officerId);
-      const newAllotments = shareData.allotments.filter((a: any) => a.officerId !== officerId);
-      updateData((prev: any) => ({ ...prev, officers: newOfficers, shareCapital: { ...shareData, allotments: newAllotments } }));
+      updateData((prev: any) => ({ ...prev, officers: newOfficers, shareCapital: { ...shareData, allotments: cleanAllotments.filter((a: any) => a.officerId !== officerId) } }));
     }
   };
 
-  // ==========================================
-  // STANDALONE SHAREHOLDER MODAL LOGIC
-  // ==========================================
-  const shGetError = (fieldKey: string, value: string, type: "text" | "email" | "dob" | "phone" | "idNumber" = "text") => {
-    if (!shTouched[fieldKey]) return null;
-    if (!value || !value.trim()) return "Required.";
-    if (type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Invalid email.";
-    if (type === "phone" && value.replace(/\D/g, '').length < 5) return "Invalid phone.";
-    if (type === "dob") {
-      const age = Math.abs(new Date(Date.now() - new Date(value).getTime()).getUTCFullYear() - 1970);
-      if (age < 18) return "Must be 18+.";
-    }
-    if (type === "idNumber" && shForm.idType === "NIN" && !/^\d{11}$/.test(value)) return "Must be 11 digits.";
-    return null;
+  const getAllottedUnitsForOfficer = (officerId: string) => {
+    const records = cleanAllotments.filter((a: any) => a.officerId === officerId);
+    if (records.length === 0) return { text: "None Allotted", error: true };
+    return { text: records.map((r: any) => `${formatNum(r.units)} ${r.type}`).join(" | "), error: false };
   };
-
-  const ShErrorMsg = ({ msg }: { msg: string | null }) => {
-    if (!msg) return null;
-    return <div className="text-[10px] font-bold text-red-600 flex items-center gap-1 mt-1.5"><WarningCircle weight="fill" /> {msg}</div>;
-  };
-
-  const saveStandaloneShareholder = () => {
-    const fieldsToTouch = ["surname", "firstName", "email", "phone", "gender", "dob", "occupation", "nationality", "idType", "idNumber", "state", "lga", "city", "street", "allotUnits"];
-    setShTouched(fieldsToTouch.reduce((acc, curr) => ({ ...acc, [curr]: true }), {}));
-
-    const maxUnits = getAvailableUnitsForType(shForm.allotType);
-    const unitsToAllot = Number(shForm.allotUnits) || 0;
-
-    const hasErrors = !shForm.surname || !shForm.firstName || !shForm.email || !shForm.phone || !shForm.gender || !shForm.dob || !shForm.idType || !shForm.idNumber || !shForm.residentialAddress.state || unitsToAllot <= 0 || unitsToAllot > maxUnits;
-    
-    if (hasErrors) return;
-
-    const newId = crypto.randomUUID();
-    const newOfficer = {
-      id: newId, roles: ["SHAREHOLDER"],
-      surname: shForm.surname, firstName: shForm.firstName, otherName: shForm.otherName,
-      email: shForm.email, phoneCode: shForm.phoneCode, phone: shForm.phone,
-      gender: shForm.gender, dob: shForm.dob, occupation: shForm.occupation,
-      nationality: shForm.nationality, idType: shForm.idType, idNumber: shForm.idNumber,
-      residentialAddress: shForm.residentialAddress
-    };
-
-    const newAllotment = { officerId: newId, type: shForm.allotType, units: unitsToAllot };
-
-    // Push BOTH changes to the wrapper simultaneously
-    updateData((prev: any) => ({
-      ...prev,
-      officers: [...(prev.officers || []), newOfficer],
-      shareCapital: { ...(prev.shareCapital || shareData), allotments: [...shareData.allotments, newAllotment] }
-    }));
-
-    setShowShModal(false);
-  };
-
 
   return (
     <div className="p-4 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
-      {/* 1. MINIMUM CAPITAL REFERENCE MODAL */}
-      {showRefModal && (
-        <div className="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 flex flex-col max-h-[90vh] h-[90vh] sm:h-auto">
-            <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <div>
-                <h3 className="font-black text-base sm:text-lg text-slate-900 flex items-center gap-2">
-                  <ListMagnifyingGlass className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500" weight="fill" />
-                  Statutory Share Capital
-                </h3>
-                <p className="text-[11px] sm:text-xs font-bold text-slate-500 mt-1">Check the minimum requirements based on your industry.</p>
-              </div>
-              <button onClick={() => setShowRefModal(false)} className="p-2 bg-slate-200 hover:bg-slate-300 rounded-full text-slate-600 transition-colors">
-                <X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-            </div>
-            
-            <div className="p-0 overflow-y-auto custom-scrollbar flex-1 bg-white">
-              <div className="min-w-[600px]">
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-100 sticky top-0 shadow-sm z-10">
-                    <tr>
-                      <th className="p-3 text-[10px] font-black uppercase text-slate-500 border-b border-slate-200 w-16 text-center">S/N</th>
-                      <th className="p-3 text-[10px] font-black uppercase text-slate-500 border-b border-slate-200">Type of Company</th>
-                      <th className="p-3 text-[10px] font-black uppercase text-slate-500 border-b border-slate-200 text-right pr-6">Minimum Share Capital (₦)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-xs font-bold text-slate-700">
-                    {DESIGNATED_COMPANIES.map((c, i) => (
-                      <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="p-3 text-slate-400 text-center">{c.id === 0 ? "-" : c.id}</td>
-                        <td className="p-3 text-[11px] sm:text-xs leading-relaxed py-3">{c.type}</td>
-                        <td className="p-3 text-right text-indigo-600 pr-6">{formatNum(c.min)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50 flex justify-end shrink-0">
-              <Button onClick={() => setShowRefModal(false)} className="h-12 w-full sm:w-auto px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg">Close & Continue</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {modals.ref && <ReferenceModal onClose={() => setModals({ ...modals, ref: false })} />}
+      {modals.class && <ShareClassModal onClose={() => setModals({ ...modals, class: false })} shareData={shareData} updateShareData={updateShareData} editingIdx={editingClassIdx} totalCapital={totalIssuedCapitalNum} />}
+      {modals.allot && <AllotmentModal onClose={() => setModals({ ...modals, allot: false })} shareData={shareData} updateShareData={updateShareData} officerId={allottingOfficerId} />}
+      {modals.sh && <StandaloneShareholderModal onClose={() => setModals({ ...modals, sh: false })} shareData={shareData} updateData={updateData} cleanAllotments={cleanAllotments} />}
 
-      {/* MAIN UI: CAPITAL DECLARATION */}
+      {/* CAPITAL DECLARATION */}
       <section>
         <div className="mb-6 flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
@@ -345,75 +109,39 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
           <div className="space-y-2 md:col-span-2">
             <Label className="text-xs font-bold uppercase text-slate-500">Type of Company <span className="text-red-500">*</span></Label>
             <div className="relative">
-              <select 
-                className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-[13px] sm:text-sm font-bold bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none" 
-                value={shareData.companyType} 
-                onChange={e => updateShareData("companyType", e.target.value)}
-              >
+              <select className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-[13px] sm:text-sm font-bold bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none" value={shareData.companyType} onChange={e => updateShareData("companyType", e.target.value)}>
                 {DESIGNATED_COMPANIES.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
               </select>
               <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
             </div>
           </div>
-
           <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase text-slate-500 flex items-center justify-between">
-              Required Minimum Capital
-              <span className="text-indigo-600">₦</span>
-            </Label>
+            <Label className="text-xs font-bold uppercase text-slate-500 flex items-center justify-between">Required Minimum Capital <span className="text-indigo-600">₦</span></Label>
             <Input type="text" value={formatNum(minRequired)} disabled className="h-12 font-black text-indigo-900 bg-indigo-50/50 border-indigo-100" />
             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">{numberToWordsNaira(minRequired)}</p>
           </div>
-
           <div className="space-y-2">
-            <Label className={`text-xs font-bold uppercase flex items-center justify-between ${showErrors && totalIssuedCapitalNum < minRequired ? 'text-red-500' : 'text-slate-500'}`}>
-              Total Company Issued Share Capital
-              <span className={showErrors && totalIssuedCapitalNum < minRequired ? 'text-red-500' : 'text-slate-400'}>₦</span>
-            </Label>
-            <Input 
-              type="text" 
-              value={formatNum(shareData.totalIssuedCapital)} 
-              onChange={e => updateShareData("totalIssuedCapital", cleanNum(e.target.value))} 
-              className={`h-12 font-black text-lg ${showErrors && totalIssuedCapitalNum < minRequired ? 'border-red-500 bg-red-50 text-red-900' : 'border-slate-300 focus:border-indigo-500'}`} 
-            />
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1 bg-slate-100 px-3 py-1.5 rounded-md inline-block">
-              {numberToWordsNaira(totalIssuedCapitalNum)}
-            </p>
-            {showErrors && totalIssuedCapitalNum < minRequired && (
-              <div className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1">
-                <WarningCircle weight="fill" className="shrink-0" /> Must be at least {formatNum(minRequired)}
-              </div>
-            )}
-            {shareData.companyType === "ENTITY WITH SHARES BELOW FIVE MILLION" && totalIssuedCapitalNum >= 5000000 && (
-              <div className="text-[11px] font-bold text-red-600 flex items-start gap-1 mt-1 leading-tight">
-                <WarningCircle weight="fill" className="shrink-0 mt-0.5" /> 
-                Because you selected 'Shares Below 5 Million', you cannot exceed 4,999,999. Please change Company Type to 'General Trading' to issue 5M or more.
-              </div>
-            )}
+            <Label className={`text-xs font-bold uppercase flex items-center justify-between ${showErrors && totalIssuedCapitalNum < minRequired ? 'text-red-500' : 'text-slate-500'}`}>Total Company Issued Share Capital <span className={showErrors && totalIssuedCapitalNum < minRequired ? 'text-red-500' : 'text-slate-400'}>₦</span></Label>
+            <Input type="text" value={formatNum(shareData.totalIssuedCapital)} onChange={e => updateShareData("totalIssuedCapital", cleanNum(e.target.value))} className={`h-12 font-black text-lg ${showErrors && totalIssuedCapitalNum < minRequired ? 'border-red-500 bg-red-50 text-red-900' : 'border-slate-300 focus:border-indigo-500'}`} />
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1 bg-slate-100 px-3 py-1.5 rounded-md inline-block">{numberToWordsNaira(totalIssuedCapitalNum)}</p>
+            {showErrors && totalIssuedCapitalNum < minRequired && <div className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1"><WarningCircle weight="fill" className="shrink-0" /> Must be at least {formatNum(minRequired)}</div>}
           </div>
         </div>
       </section>
 
       <hr className="border-slate-100" />
 
-      {/* MAIN UI: SHARE BREAKDOWN TABLE */}
+      {/* SHARE CLASSES TABLE */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h2 className="text-xl font-black text-slate-900">Share Details Breakdown</h2>
             <div className="flex items-start gap-2 mt-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
               <Info className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" weight="fill" />
-              <p className="text-xs font-medium text-slate-600 leading-relaxed">
-                <span className="font-bold text-slate-900">Preference shares</span> means a share which does not entitle the holder to participate beyond a specified amount. <br/>
-                <span className="font-bold text-slate-900">Equity (ordinary) shares</span> means any share other than a preference share.
-              </p>
+              <p className="text-xs font-medium text-slate-600 leading-relaxed"><span className="font-bold text-slate-900">Preference shares</span> means a share which does not entitle the holder to participate beyond a specified amount. <br/><span className="font-bold text-slate-900">Equity (ordinary) shares</span> means any share other than a preference share.</p>
             </div>
           </div>
-          <Button 
-            onClick={openAddClassModal} 
-            disabled={remainingCapitalValue <= 0 || shareData.shareClasses.length >= 2}
-            className="h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shrink-0 shadow-md disabled:opacity-50"
-          >
+          <Button onClick={() => { setEditingClassIdx(null); setModals({ ...modals, class: true }); }} disabled={remainingCapitalValue <= 0 || shareData.shareClasses.length >= 2} className="h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shrink-0 shadow-md disabled:opacity-50">
             <Plus weight="bold" className="mr-2" /> Add Share Class
           </Button>
         </div>
@@ -423,17 +151,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
             <WarningCircle className="h-6 w-6 text-red-500 shrink-0" weight="fill" />
             <div>
               <p className="text-sm font-black text-red-900">Mismatch in Capital Breakdown</p>
-              <p className="text-xs font-medium text-red-700">The total sum of your share classes (₦{formatNum(totalClassesValue)}) does not match your declared Total Issued Capital (₦{formatNum(totalIssuedCapitalNum)}). You have ₦{formatNum(remainingCapitalValue)} remaining to allocate.</p>
-            </div>
-          </div>
-        )}
-
-        {showErrors && ordinaryShareError && (
-          <div className="mb-4 bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
-            <WarningCircle className="h-6 w-6 text-amber-500 shrink-0" weight="fill" />
-            <div>
-              <p className="text-sm font-black text-amber-900">Missing Ordinary Shares</p>
-              <p className="text-xs font-medium text-amber-800">A company cannot be registered with only Preference shares. You must add at least one EQUITY (ORDINARY) share class.</p>
+              <p className="text-xs font-medium text-red-700">The total sum of your share classes (₦{formatNum(totalClassesValue)}) does not match your declared capital. You have ₦{formatNum(remainingCapitalValue)} remaining.</p>
             </div>
           </div>
         )}
@@ -442,19 +160,17 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
           <table className="w-full text-left min-w-[800px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">S/N</th>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Class Of Share</th>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Divided Into (Units)</th>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Price per Unit (₦)</th>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Calculated Total (₦)</th>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 text-center whitespace-nowrap">Action</th>
+                <th className="p-4 text-[10px] font-black uppercase text-slate-500">S/N</th>
+                <th className="p-4 text-[10px] font-black uppercase text-slate-500">Class Of Share</th>
+                <th className="p-4 text-[10px] font-black uppercase text-slate-500">Divided Into (Units)</th>
+                <th className="p-4 text-[10px] font-black uppercase text-slate-500">Price per Unit (₦)</th>
+                <th className="p-4 text-[10px] font-black uppercase text-slate-500">Calculated Total (₦)</th>
+                <th className="p-4 text-[10px] font-black uppercase text-slate-500 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="text-xs font-bold text-slate-700 divide-y divide-slate-100">
               {shareData.shareClasses.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400 font-medium">No share classes added. Click "Add Share Class" to begin.</td>
-                </tr>
+                <tr><td colSpan={6} className="p-8 text-center text-slate-400 font-medium">No share classes added. Click "Add Share Class" to begin.</td></tr>
               ) : (
                 shareData.shareClasses.map((c: any, idx: number) => (
                   <tr key={idx} className="hover:bg-slate-50/50">
@@ -462,17 +178,10 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                     <td className="p-4 text-indigo-600">{c.type}</td>
                     <td className="p-4 text-emerald-600 bg-emerald-50/50">{formatNum(c.units)}</td>
                     <td className="p-4">{formatNum(c.nominalValue)}</td>
-                    <td className="p-4 font-black">
-                      {formatNum(c.totalValue)}
-                      <p className="text-[9px] text-slate-400 font-medium mt-0.5">{numberToWordsNaira(c.totalValue)}</p>
-                    </td>
+                    <td className="p-4 font-black">{formatNum(c.totalValue)}<p className="text-[9px] text-slate-400 font-medium mt-0.5">{numberToWordsNaira(c.totalValue)}</p></td>
                     <td className="p-4 text-center flex items-center justify-center gap-2">
-                      <button onClick={() => { setClassForm({ id: idx, type: c.type, units: c.units.toString(), totalValue: c.totalValue.toString() }); setShowClassModal(true); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
-                        <PencilSimple className="h-4 w-4" weight="bold" />
-                      </button>
-                      <button onClick={() => removeClass(idx)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                        <Trash className="h-4 w-4" weight="bold" />
-                      </button>
+                      <button onClick={() => { setEditingClassIdx(idx); setModals({ ...modals, class: true }); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><PencilSimple className="h-4 w-4" weight="bold" /></button>
+                      <button onClick={() => removeClass(idx)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash className="h-4 w-4" weight="bold" /></button>
                     </td>
                   </tr>
                 ))
@@ -482,78 +191,9 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       </section>
 
-      {/* SHARE CLASS MODAL */}
-      {showClassModal && (
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="font-black text-lg text-slate-900">{classForm.id !== null ? "Edit" : "Add"} Share Class</h3>
-              <button onClick={() => setShowClassModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X weight="bold" /></button>
-            </div>
-            
-            <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
-              
-              <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-2 mb-4">
-                <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" weight="fill" />
-                <p className="text-xs font-medium text-blue-800 leading-relaxed">
-                  Select the Class Type, assign its Total Value out of your master capital, and define how many Units it is divided into. The Price per Unit will be calculated automatically.
-                </p>
-              </div>
-
-              <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-xl border border-indigo-100">
-                <span className="text-xs font-bold text-indigo-700">Available Capital</span>
-                <span className="text-sm font-black text-indigo-900">₦{formatNum(availableCapital)}</span>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-slate-500">Class of Shares <span className="text-red-500">*</span></Label>
-                <div className="relative">
-                  <select value={classForm.type} onChange={e => setClassForm({...classForm, type: e.target.value})} className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-sm font-bold bg-white focus:border-indigo-500 outline-none">
-                    {getAvailableClassTypes().map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                  <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-slate-500">Total Value for this Class (₦) <span className="text-red-500">*</span></Label>
-                <Input type="text" placeholder="E.g. 1,000,000" value={formatNum(classForm.totalValue)} onChange={e => setClassForm({...classForm, totalValue: cleanNum(e.target.value)})} className={`h-12 font-black text-lg ${isClassOverLimit ? 'bg-red-50 text-red-600 border-red-300' : 'bg-white'}`} />
-                <div className="flex flex-col gap-1 mt-1">
-                  <p className="text-[10px] font-black text-indigo-500 uppercase bg-indigo-50 px-2 py-1 rounded self-start">
-                    {numberToWordsNaira(Number(classForm.totalValue) || 0)}
-                  </p>
-                  {isClassOverLimit && (
-                    <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1">
-                      <WarningCircle weight="fill" /> Exceeds available capital by ₦{formatNum(formTotalValue - availableCapital)}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <Label className="text-xs font-bold uppercase text-slate-500">Divided Into (Number of Units) <span className="text-red-500">*</span></Label>
-                <Input type="text" placeholder="E.g. 1,000,000" value={formatNum(classForm.units)} onChange={e => setClassForm({...classForm, units: cleanNum(e.target.value)})} className="h-12 font-bold" />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-slate-500">Auto-Calculated Nominal Value (Price per Unit) ₦</Label>
-                <Input type="text" disabled value={formatNum(calcNominalValue())} className="h-12 font-black bg-slate-100 text-slate-500" />
-              </div>
-
-            </div>
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
-              <Button variant="outline" onClick={() => setShowClassModal(false)} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
-              <Button onClick={saveShareClass} disabled={!classForm.totalValue || !classForm.units || Number(classForm.units) <= 0 || isClassOverLimit} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Save Class</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <hr className="border-slate-100" />
 
-      {/* MAIN UI: SHAREHOLDER ALLOTMENT TABLE */}
+      {/* SHAREHOLDERS TABLE */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -561,21 +201,11 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
             <p className="text-sm font-medium text-slate-500 mt-1">Assign the created shares to the owners.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 font-bold text-sm ${
-              isPerfectMatch ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
-              'bg-amber-50 border-amber-200 text-amber-700'
-            }`}>
+            <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 font-bold text-sm ${isPerfectMatch ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
               {isPerfectMatch ? <CheckCircle className="h-5 w-5" weight="fill" /> : <WarningCircle className="h-5 w-5" weight="fill" />}
               {isPerfectMatch ? "100% Distributed" : `${formatNum(Math.abs(remainingAllotmentUnits))} units unassigned`}
             </div>
-            
-            <Button 
-              onClick={() => {
-                setShForm({...shForm, allotType: shareData.shareClasses[0]?.type || ""});
-                setShowShModal(true);
-              }} 
-              className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md"
-            >
+            <Button onClick={() => setModals({ ...modals, sh: true })} className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md">
               <UserPlus weight="bold" className="mr-2 h-4 w-4" /> Add Standalone Shareholder
             </Button>
           </div>
@@ -585,46 +215,31 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
           <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-3xl bg-white">
             <User className="h-10 w-10 text-slate-300 mx-auto mb-3" weight="duotone" />
             <p className="text-sm font-medium text-slate-500">No Shareholders found.</p>
-            <p className="text-xs font-bold text-indigo-500 mt-1">Click "Add Standalone Shareholder" above, or go back to Step 4 to edit a Director.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {activeShareholders.map((officer: any, idx: number) => {
               const allotmentCheck = getAllottedUnitsForOfficer(officer.id);
-
               return (
                 <div key={officer.id} className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] transition-all overflow-hidden hover:border-indigo-300">
                   <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExpandedId(expandedOfficerId === officer.id ? null : officer.id)}>
                     <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-                        <User className="h-6 w-6" weight="fill" />
-                      </div>
+                      <div className="h-12 w-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0"><User className="h-6 w-6" weight="fill" /></div>
                       <div>
                         <h3 className="text-base font-black text-slate-900">{officer.firstName} {officer.surname}</h3>
                         <p className="text-[10px] font-bold text-slate-400 mt-1">S/N: {idx + 1} | {officer.roles.includes("DIRECTOR") ? "DIRECTOR & SHAREHOLDER" : "SHAREHOLDER ONLY"}</p>
                       </div>
                     </div>
-                    
                     <div className="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 md:border-l border-slate-100 pt-3 md:pt-0 md:pl-4 w-full md:w-auto">
-                      <div className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg mr-auto md:mr-2 ${allotmentCheck.error ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
-                        {allotmentCheck.text}
-                      </div>
-
+                      <div className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg mr-auto md:mr-2 ${allotmentCheck.error ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>{allotmentCheck.text}</div>
                       <div className={`hidden sm:flex items-center gap-1.5 font-bold text-xs px-3 py-2 rounded-lg transition-colors ${expandedOfficerId === officer.id ? 'bg-slate-200 text-slate-700' : 'bg-slate-100 text-slate-600'}`}>
                         {expandedOfficerId === officer.id ? "Hide Details" : "View Details"}
                         {expandedOfficerId === officer.id ? <CaretUp weight="bold" /> : <CaretDown weight="bold" />}
                       </div>
-
-                      <button onClick={(e) => openAllotment(e, officer.id)} disabled={shareData.shareClasses.length === 0} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors z-10 relative flex items-center gap-1.5 shadow-sm disabled:opacity-50">
-                        <Coins className="h-4 w-4" weight="fill" /> Allot
-                      </button>
-                      
-                      <button onClick={(e) => removeShareholder(e, officer.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors z-10 relative">
-                        <Trash className="h-5 w-5" weight="bold" />
-                      </button>
+                      <button onClick={(e) => { setAllottingOfficerId(officer.id); setModals({ ...modals, allot: true }); }} disabled={shareData.shareClasses.length === 0} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors z-10 relative flex items-center gap-1.5 shadow-sm disabled:opacity-50"><Coins className="h-4 w-4" weight="fill" /> Allot</button>
+                      <button onClick={(e) => removeShareholder(e, officer.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors z-10 relative"><Trash className="h-5 w-5" weight="bold" /></button>
                     </div>
                   </div>
-
                   {expandedOfficerId === officer.id && (
                     <div className="p-5 sm:p-6 border-t border-slate-200 bg-slate-50/50 animate-in slide-in-from-top-2 fade-in duration-200">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
@@ -635,8 +250,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                           <DetailRow label="Other Name" value={officer.otherName} />
                           <DetailRow label="Gender" value={officer.gender} />
                           <DetailRow label="Date of Birth" value={officer.dob} />
-                          <DetailRow label="Nationality" value={officer.nationality} />
-                          <DetailRow label="Occupation" value={officer.occupation} />
                         </div>
                         <div className="space-y-1">
                           <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1">Contact & ID</h4>
@@ -644,15 +257,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                           <DetailRow label="Email" value={officer.email} />
                           <DetailRow label="ID Type" value={officer.idType} />
                           <DetailRow label="ID Number" value={officer.idNumber} />
-                        </div>
-                        <div className="md:col-span-2 space-y-1">
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1">Residential Address</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-1">
-                            <DetailRow label="State / Province" value={officer.residentialAddress?.state} />
-                            <DetailRow label="LGA / County" value={officer.residentialAddress?.lga} />
-                            <DetailRow label="City / Town" value={officer.residentialAddress?.city} />
-                            <DetailRow label="Street Address" value={officer.residentialAddress?.street} />
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -663,241 +267,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
           </div>
         )}
       </section>
-
-      {/* ALLOTMENT MODAL */}
-      {showAllotmentModal && (
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50 shrink-0">
-              <h3 className="font-black text-lg text-emerald-900 flex items-center gap-2">
-                <Coins className="h-6 w-6 text-emerald-500" weight="fill" />
-                Allot Shares
-              </h3>
-              <button onClick={() => setShowAllotmentModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X weight="bold" /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              
-              <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                <span className="text-xs font-bold text-emerald-700">Available Units ({allotForm.type})</span>
-                <span className="text-sm font-black text-emerald-900">{formatNum(getAvailableUnitsForType(allotForm.type, allotForm.officerId))}</span>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-slate-500">Select Share Class <span className="text-red-500">*</span></Label>
-                <div className="relative">
-                  <select 
-                    value={allotForm.type} 
-                    onChange={e => {
-                      const newType = e.target.value;
-                      const existing = shareData.allotments.find((a: any) => a.officerId === allotForm.officerId && a.type === newType);
-                      setAllotForm({...allotForm, type: newType, units: existing ? existing.units.toString() : ""});
-                    }} 
-                    className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-sm font-bold bg-white focus:border-indigo-500 outline-none"
-                  >
-                    {shareData.shareClasses.map((c: any) => (
-                      <option key={c.type} value={c.type}>{c.type}</option>
-                    ))}
-                  </select>
-                  <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-slate-500">Number of Units to Allot <span className="text-red-500">*</span></Label>
-                <Input 
-                  type="text" 
-                  placeholder="E.g. 500,000" 
-                  value={formatNum(allotForm.units)} 
-                  onChange={e => setAllotForm({...allotForm, units: cleanNum(e.target.value)})} 
-                  className={`h-12 font-black text-lg ${Number(allotForm.units) > getAvailableUnitsForType(allotForm.type, allotForm.officerId) ? 'border-red-500 text-red-600 bg-red-50' : ''}`} 
-                />
-                {Number(allotForm.units) > getAvailableUnitsForType(allotForm.type, allotForm.officerId) && (
-                  <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1">
-                    <WarningCircle weight="fill" /> You cannot allot more units than are available in this class.
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
-              <Button variant="outline" onClick={() => setShowAllotmentModal(false)} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
-              <Button onClick={saveAllotment} disabled={!allotForm.units || Number(allotForm.units) > getAvailableUnitsForType(allotForm.type, allotForm.officerId)} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Assign Shares</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================== */}
-      {/* MASSIVE ADD STANDALONE SHAREHOLDER MODAL */}
-      {/* ========================================== */}
-      {showShModal && (
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50 shrink-0">
-              <div>
-                <h3 className="font-black text-lg text-emerald-900 flex items-center gap-2">
-                  <UserPlus className="h-6 w-6 text-emerald-500" weight="fill" />
-                  Add Standalone Shareholder
-                </h3>
-                <p className="text-xs font-bold text-emerald-700 mt-1">This person will NOT be listed as a Director.</p>
-              </div>
-              <button onClick={() => setShowShModal(false)} className="p-2 hover:bg-emerald-200 rounded-full text-emerald-800"><X weight="bold" /></button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <div className="md:col-span-2">
-                  <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Personal Details</h3>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Surname <span className="text-red-500">*</span></Label>
-                  <Input value={shForm.surname} onChange={e => setShForm({...shForm, surname: e.target.value})} onBlur={() => setShTouched({...shTouched, surname: true})} className="h-12 font-bold" />
-                  <ShErrorMsg msg={shGetError("surname", shForm.surname)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">First Name <span className="text-red-500">*</span></Label>
-                  <Input value={shForm.firstName} onChange={e => setShForm({...shForm, firstName: e.target.value})} onBlur={() => setShTouched({...shTouched, firstName: true})} className="h-12 font-bold" />
-                  <ShErrorMsg msg={shGetError("firstName", shForm.firstName)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Other Name</Label>
-                  <Input value={shForm.otherName} onChange={e => setShForm({...shForm, otherName: e.target.value})} className="h-12 font-bold" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Date of Birth <span className="text-red-500">*</span></Label>
-                  <Input type="date" value={shForm.dob} onChange={e => setShForm({...shForm, dob: e.target.value})} onBlur={() => setShTouched({...shTouched, dob: true})} className="h-12 font-bold uppercase" />
-                  <ShErrorMsg msg={shGetError("dob", shForm.dob, "dob")} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Gender <span className="text-red-500">*</span></Label>
-                  <select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={shForm.gender} onChange={e => setShForm({...shForm, gender: e.target.value})} onBlur={() => setShTouched({...shTouched, gender: true})}>
-                    <option value="">-- Select --</option>
-                    <option value="MALE">MALE</option>
-                    <option value="FEMALE">FEMALE</option>
-                  </select>
-                  <ShErrorMsg msg={shGetError("gender", shForm.gender)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Occupation <span className="text-red-500">*</span></Label>
-                  <Input value={shForm.occupation} onChange={e => setShForm({...shForm, occupation: e.target.value})} onBlur={() => setShTouched({...shTouched, occupation: true})} className="h-12 font-bold" />
-                  <ShErrorMsg msg={shGetError("occupation", shForm.occupation)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Nationality <span className="text-red-500">*</span></Label>
-                  <select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={shForm.nationality} onChange={e => {
-                    setShForm({...shForm, nationality: e.target.value, residentialAddress: {...shForm.residentialAddress, state: "", lga: ""}});
-                  }}>
-                    {COUNTRY_CODES.map(c => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2 mt-4">
-                  <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Contact & ID</h3>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Email Address <span className="text-red-500">*</span></Label>
-                  <Input type="email" value={shForm.email} onChange={e => setShForm({...shForm, email: e.target.value})} onBlur={() => setShTouched({...shTouched, email: true})} className="h-12 font-bold" />
-                  <ShErrorMsg msg={shGetError("email", shForm.email, "email")} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Phone Number <span className="text-red-500">*</span></Label>
-                  <div className="flex">
-                    <select value={shForm.phoneCode} onChange={e => setShForm({...shForm, phoneCode: e.target.value})} className="w-[100px] h-12 px-2 border border-r-0 border-slate-200 rounded-l-xl text-sm font-bold bg-slate-50 outline-none">
-                      {COUNTRY_CODES.map(c => <option key={`sc-${c.name}`} value={c.code}>{c.flag} {c.code}</option>)}
-                    </select>
-                    <Input type="tel" value={shForm.phone} onChange={e => setShForm({...shForm, phone: e.target.value})} onBlur={() => setShTouched({...shTouched, phone: true})} className="h-12 font-bold rounded-l-none flex-1" />
-                  </div>
-                  <ShErrorMsg msg={shGetError("phone", shForm.phone, "phone")} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Means of ID <span className="text-red-500">*</span></Label>
-                  <select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={shForm.idType} onChange={e => setShForm({...shForm, idType: e.target.value})} onBlur={() => setShTouched({...shTouched, idType: true})}>
-                    <option value="">-- Select --</option>
-                    <option value="NIN">National ID Card (NIN)</option>
-                    <option value="PASSPORT">International Passport</option>
-                    <option value="DRIVERS_LICENSE">Driver's License</option>
-                  </select>
-                  <ShErrorMsg msg={shGetError("idType", shForm.idType)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">ID Number <span className="text-red-500">*</span></Label>
-                  <Input value={shForm.idNumber} onChange={e => setShForm({...shForm, idNumber: e.target.value})} onBlur={() => setShTouched({...shTouched, idNumber: true})} className="h-12 font-bold" />
-                  <ShErrorMsg msg={shGetError("idNumber", shForm.idNumber, "idNumber")} />
-                </div>
-
-                <div className="md:col-span-2 mt-4">
-                  <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Residential Address</h3>
-                </div>
-
-                {shForm.nationality === "Nigeria" ? (
-                  <>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">State <span className="text-red-500">*</span></Label>
-                      <select value={shForm.residentialAddress.state} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, state: e.target.value, lga: ""}})} onBlur={() => setShTouched({...shTouched, state: true})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none">
-                        <option value="">-- Select --</option>
-                        {NIGERIA_DATA.map(d => <option key={d.state} value={d.state}>{d.state}</option>)}
-                      </select>
-                      <ShErrorMsg msg={shGetError("state", shForm.residentialAddress.state)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">LGA <span className="text-red-500">*</span></Label>
-                      <select value={shForm.residentialAddress.lga} disabled={!shForm.residentialAddress.state} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, lga: e.target.value}})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none">
-                        <option value="">-- Select --</option>
-                        {shForm.residentialAddress.state && NIGERIA_DATA.find(d => d.state === shForm.residentialAddress.state)?.lgas.map(l => <option key={l} value={l}>{l}</option>)}
-                      </select>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">State/Province <span className="text-red-500">*</span></Label><Input value={shForm.residentialAddress.state} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, state: e.target.value}})} className="h-12 font-bold" /></div>
-                    <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">County/Region <span className="text-red-500">*</span></Label><Input value={shForm.residentialAddress.lga} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, lga: e.target.value}})} className="h-12 font-bold" /></div>
-                  </>
-                )}
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">City / Town <span className="text-red-500">*</span></Label>
-                  <Input value={shForm.residentialAddress.city} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, city: e.target.value}})} className="h-12 font-bold" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Street Address <span className="text-red-500">*</span></Label>
-                  <Input value={shForm.residentialAddress.street} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, street: e.target.value}})} className="h-12 font-bold" />
-                </div>
-
-                <div className="md:col-span-2 mt-4 p-5 bg-indigo-50 border border-indigo-100 rounded-2xl grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-indigo-700">Initial Share Allotment <span className="text-red-500">*</span></Label>
-                    <select value={shForm.allotType} onChange={e => setShForm({...shForm, allotType: e.target.value})} className="w-full h-12 px-4 border border-indigo-200 bg-white rounded-xl text-sm font-bold outline-none">
-                      <option value="">-- Select Class --</option>
-                      {shareData.shareClasses.map((c: any) => <option key={c.type} value={c.type}>{c.type}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-indigo-700">Units to Allot <span className="text-red-500">*</span></Label>
-                    <Input type="text" value={formatNum(shForm.allotUnits)} onChange={e => setShForm({...shForm, allotUnits: cleanNum(e.target.value)})} onBlur={() => setShTouched({...shTouched, allotUnits: true})} className="h-12 font-black text-lg border-indigo-200" />
-                    <ShErrorMsg msg={!shForm.allotUnits && shTouched.allotUnits ? "Required" : Number(shForm.allotUnits) > getAvailableUnitsForType(shForm.allotType) ? "Exceeds available units." : null} />
-                  </div>
-                </div>
-
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
-              <Button variant="outline" onClick={() => setShowShModal(false)} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
-              <Button onClick={saveStandaloneShareholder} className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md">Save & Allot Shares</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
