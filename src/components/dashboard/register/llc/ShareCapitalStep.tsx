@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ const formatNum = (val: any) => {
 
 const cleanNum = (val: string) => val.replace(/\D/g, "");
 
-export default function ShareCapitalStep({ data, updateData, setStepError }: any) {
+export default function ShareCapitalStep({ data, updateData, showErrors }: any) {
   const [showRefModal, setShowRefModal] = useState(true);
   const [showClassModal, setShowClassModal] = useState(false);
   const [showAllotmentModal, setShowAllotmentModal] = useState(false);
@@ -64,31 +64,6 @@ export default function ShareCapitalStep({ data, updateData, setStepError }: any
   const totalAllotted = shareData.allotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
   const remainingAllotmentUnits = totalRequiredUnits - totalAllotted;
   const isPerfectMatch = totalRequiredUnits > 0 && remainingAllotmentUnits === 0 && !classMathError && !ordinaryShareError;
-
-  // ==========================================
-  // GLOBAL ERROR BROADCAST (TO PAGE.TSX)
-  // ==========================================
-  useEffect(() => {
-    if (!setStepError) return;
-    
-    if (totalIssuedCapitalNum < minRequired) {
-      setStepError(`Total Issued Capital must be at least ₦${formatNum(minRequired)} for this company type.`);
-    } else if (shareData.shareClasses.length === 0) {
-      setStepError("You must create at least one Share Class (EQUITY (ORDINARY)).");
-    } else if (classMathError) {
-      setStepError(`Mismatch! Your Share Classes total ₦${formatNum(totalClassesValue)}, but your declared capital is ₦${formatNum(totalIssuedCapitalNum)}. You have ₦${formatNum(remainingCapitalValue)} remaining to allocate.`);
-    } else if (ordinaryShareError) {
-      setStepError("A company cannot be registered with only Preference shares. You must add at least one EQUITY (ORDINARY) share class.");
-    } else if (remainingAllotmentUnits > 0) {
-      setStepError(`You must allot 100% of the created shares. You still have ${formatNum(remainingAllotmentUnits)} units unassigned.`);
-    } else if (remainingAllotmentUnits < 0) {
-      setStepError(`You have over-distributed your shares by ${formatNum(Math.abs(remainingAllotmentUnits))} units. Please correct the allotments.`);
-    } else if (shareholders.length === 0) {
-       setStepError("You must add at least one Shareholder in Step 4 before assigning shares.");
-    } else {
-      setStepError(null); // Perfect!
-    }
-  }, [totalIssuedCapitalNum, minRequired, classMathError, totalClassesValue, remainingCapitalValue, ordinaryShareError, remainingAllotmentUnits, shareholders.length, shareData.shareClasses.length, setStepError]);
 
 
   // ==========================================
@@ -133,8 +108,6 @@ export default function ShareCapitalStep({ data, updateData, setStepError }: any
     const nominalValue = tv / units; 
 
     let updated = [...shareData.shareClasses];
-    
-    // FIX: Force the explicit type selected from the form state
     const newClass = { type: classForm.type, totalValue: tv, nominalValue, units };
 
     if (classForm.id !== null) {
@@ -311,20 +284,20 @@ export default function ShareCapitalStep({ data, updateData, setStepError }: any
           </div>
 
           <div className="space-y-2">
-            <Label className={`text-xs font-bold uppercase flex items-center justify-between ${totalIssuedCapitalNum < minRequired ? 'text-red-500' : 'text-slate-500'}`}>
+            <Label className={`text-xs font-bold uppercase flex items-center justify-between ${showErrors && totalIssuedCapitalNum < minRequired ? 'text-red-500' : 'text-slate-500'}`}>
               Total Company Issued Share Capital
-              <span className={totalIssuedCapitalNum < minRequired ? 'text-red-500' : 'text-slate-400'}>₦</span>
+              <span className={showErrors && totalIssuedCapitalNum < minRequired ? 'text-red-500' : 'text-slate-400'}>₦</span>
             </Label>
             <Input 
               type="text" 
               value={formatNum(shareData.totalIssuedCapital)} 
               onChange={e => updateShareData("totalIssuedCapital", cleanNum(e.target.value))} 
-              className={`h-12 font-black text-lg ${totalIssuedCapitalNum < minRequired ? 'border-red-500 bg-red-50 text-red-900' : 'border-slate-300 focus:border-indigo-500'}`} 
+              className={`h-12 font-black text-lg ${showErrors && totalIssuedCapitalNum < minRequired ? 'border-red-500 bg-red-50 text-red-900' : 'border-slate-300 focus:border-indigo-500'}`} 
             />
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1 bg-slate-100 px-3 py-1.5 rounded-md inline-block">
               {numberToWordsNaira(totalIssuedCapitalNum)}
             </p>
-            {totalIssuedCapitalNum < minRequired && (
+            {showErrors && totalIssuedCapitalNum < minRequired && (
               <div className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1">
                 <WarningCircle weight="fill" className="shrink-0" /> Must be at least {formatNum(minRequired)}
               </div>
@@ -363,7 +336,7 @@ export default function ShareCapitalStep({ data, updateData, setStepError }: any
           </Button>
         </div>
 
-        {classMathError && (
+        {showErrors && classMathError && (
           <div className="mb-4 bg-red-50 border border-red-200 p-4 rounded-xl flex items-center gap-3">
             <WarningCircle className="h-6 w-6 text-red-500 shrink-0" weight="fill" />
             <div>
@@ -373,7 +346,7 @@ export default function ShareCapitalStep({ data, updateData, setStepError }: any
           </div>
         )}
 
-        {ordinaryShareError && (
+        {showErrors && ordinaryShareError && (
           <div className="mb-4 bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
             <WarningCircle className="h-6 w-6 text-amber-500 shrink-0" weight="fill" />
             <div>
