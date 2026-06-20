@@ -400,15 +400,16 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       </section>
 
-      {/* SHARE CLASS MODAL */}
+      {/* SHARE CLASS MODAL (FIXED HEIGHT) */}
       {showClassModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="font-black text-lg text-slate-900">{classForm.id !== null ? "Edit" : "Add"} Share Class</h3>
               <button onClick={() => setShowClassModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X weight="bold" /></button>
             </div>
-            <div className="p-6 space-y-5">
+            
+            <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
               
               <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-2 mb-4">
                 <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" weight="fill" />
@@ -460,6 +461,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
               </div>
 
             </div>
+            
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
               <Button variant="outline" onClick={() => setShowClassModal(false)} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
               <Button onClick={saveShareClass} disabled={!classForm.totalValue || !classForm.units || Number(classForm.units) <= 0 || isClassOverLimit} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Save Class</Button>
@@ -565,7 +567,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         )}
       </section>
 
-      {/* ALLOTMENT MODAL */}
       {showAllotmentModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
