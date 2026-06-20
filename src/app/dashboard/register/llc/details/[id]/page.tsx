@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CircleDashed, WarningCircle, X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { DESIGNATED_COMPANIES } from "@/lib/share-capital-data";
 
 // Import all 9 Step Components
 import CompanyDetailsStep from "@/components/dashboard/register/llc/CompanyDetailsStep";
@@ -152,12 +153,9 @@ export default function LlcRegistrationDetailsPage() {
   // SMART VALIDATION & NEXT STEP
   // ==========================================
   const handleSaveAndNext = () => {
-    // If Step 5 (Share Capital) has broadcasted an error via setStepError, do not clear it.
-    if (currentStep !== 5) {
-        setTopError(null);
-    }
-    
-    setShowErrors(true); // Always set to true on click so inline fields turn red
+    setTopError(null);
+    setShowErrors(true);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
 
     const d = companyDetails;
 
@@ -256,13 +254,54 @@ export default function LlcRegistrationDetailsPage() {
       return;
     }
 
-    // STRICT STEP 5 VALIDATION (Share Capital)
+    // STRICT STEP 5 VALIDATION (Share Capital Math)
     if (currentStep === 5) {
-      // The child component computes errors via a `useEffect` and pushes the string
-      // up to `topError`. If `topError` exists when they click, we halt.
-      if (topError) {
-         window.scrollTo({ top: 0, behavior: "smooth" });
-         return; 
+      const sc = d.shareCapital || {};
+      const companyType = sc.companyType || "ENTITY WITH SHARES BELOW FIVE MILLION";
+      const selectedCompanyInfo = DESIGNATED_COMPANIES.find(c => c.type === companyType);
+      const minRequired = selectedCompanyInfo ? selectedCompanyInfo.min : 1000000;
+      const totalIssuedCapitalNum = Number(sc.totalIssuedCapital) || 0;
+
+      if (totalIssuedCapitalNum < minRequired) {
+        triggerError(`Total Issued Capital must be at least ₦${minRequired.toLocaleString()} for this company type.`);
+        return;
+      }
+
+      const classes = sc.shareClasses || [];
+      if (classes.length === 0) {
+        triggerError("You must create at least one Share Class (EQUITY (ORDINARY)).");
+        return;
+      }
+
+      const totalClassesValue = classes.reduce((acc: number, c: any) => acc + (Number(c.totalValue) || 0), 0);
+      if (totalClassesValue !== totalIssuedCapitalNum) {
+        triggerError(`Mismatch! Your Share Classes total ₦${totalClassesValue.toLocaleString()}, but your declared capital is ₦${totalIssuedCapitalNum.toLocaleString()}.`);
+        return;
+      }
+
+      const hasOrdinary = classes.some((c: any) => c.type === "EQUITY (ORDINARY)");
+      if (!hasOrdinary) {
+        triggerError("A company cannot be registered with only Preference shares. You must add at least one EQUITY (ORDINARY) share class.");
+        return;
+      }
+
+      const totalRequiredUnits = classes.reduce((acc: number, c: any) => acc + (Number(c.units) || 0), 0);
+      const allotments = sc.allotments || [];
+      const totalAllotted = allotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
+      const remainingAllotmentUnits = totalRequiredUnits - totalAllotted;
+
+      const shareholders = (d.officers || []).filter((o: any) => o.roles.includes("SHAREHOLDER"));
+      if (shareholders.length === 0) {
+        triggerError("You must add at least one Shareholder in Step 4 before assigning shares.");
+        return;
+      }
+
+      if (remainingAllotmentUnits > 0) {
+        triggerError(`You must allot 100% of the created shares. You still have ${remainingAllotmentUnits.toLocaleString()} units unassigned.`);
+        return;
+      } else if (remainingAllotmentUnits < 0) {
+        triggerError(`You have over-distributed your shares by ${Math.abs(remainingAllotmentUnits).toLocaleString()} units. Please correct the allotments.`);
+        return;
       }
     }
     
@@ -366,8 +405,8 @@ export default function LlcRegistrationDetailsPage() {
         {currentStep === 3 && <MemorandumStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 4 && <OfficersStep data={companyDetails} updateData={setCompanyDetails} />}
         
-        {/* FIX: Passed setStepError={setTopError} and showErrors */}
-        {currentStep === 5 && <ShareCapitalStep data={companyDetails} updateData={setCompanyDetails} setStepError={setTopError} showErrors={showErrors} />}
+        {/* FIX: Removed setStepError from ShareCapitalStep entirely. */}
+        {currentStep === 5 && <ShareCapitalStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
         
         {currentStep === 6 && <PscStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 7 && <ComplianceStep data={companyDetails} updateData={setCompanyDetails} />}
