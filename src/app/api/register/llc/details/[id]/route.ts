@@ -25,6 +25,7 @@ export async function GET(
 
     let formattedData = { ...registration };
     
+    // Reconstruct shareCapital object exactly how the frontend expects it
     if (registration.companyType || registration.totalShareCapital) {
        (formattedData as any).shareCapital = {
           companyType: registration.companyType,
@@ -70,7 +71,7 @@ export async function PUT(
       return NextResponse.json({ message: "Cannot edit a locked application." }, { status: 403 });
     }
 
-    // --- STRICT FINAL VALIDATION ---
+    // --- STRICT FINAL VALIDATION (Only runs when they click 'Submit to CAC') ---
     if (!isDraft) {
       if (!email || !description) return NextResponse.json({ success: false, message: "Company Email and Description are required." }, { status: 400 });
       if (!registeredAddress?.state || !registeredAddress?.street) return NextResponse.json({ success: false, message: "Registered Office Address is incomplete." }, { status: 400 });
@@ -87,7 +88,7 @@ export async function PUT(
     const dbCompanyType = shareCapital?.companyType || null;
     const dbTotalShareCapital = shareCapital?.totalIssuedCapital ? Number(shareCapital.totalIssuedCapital) : null;
     
-    // Properly format classes and allotments for JSON storage
+    // Properly format share classes and allotments for JSON storage
     const dbShareClasses = shareCapital 
       ? { 
           shareClasses: shareCapital.shareClasses || [], 
@@ -121,12 +122,14 @@ export async function PUT(
     });
 
     // 2. Sync Officers
+    // Clear out existing officers to replace them completely with the incoming state
     await prisma.companyOfficer.deleteMany({
       where: { registrationId: id }
     });
 
     if (officers && officers.length > 0) {
       const officerData = officers.map((o: any) => {
+        
         // Calculate the total units allotted specifically to this officer from the array
         const allottedUnits = Array.isArray(shareCapital?.allotments)
           ? shareCapital.allotments
@@ -135,6 +138,7 @@ export async function PUT(
           : null;
 
         return {
+          id: o.id, // THE CRITICAL FIX: Tell the DB to keep the frontend's UUID
           registrationId: id,
           roles: o.roles,
           surname: o.surname,
@@ -155,7 +159,7 @@ export async function PUT(
           residentialAddress: o.residentialAddress || Prisma.JsonNull,
           serviceAddress: o.serviceAddress || Prisma.JsonNull,
           pscDetails: o.pscDetails || Prisma.JsonNull,
-          sharesAllotted: allottedUnits, // Now correctly pulls from the Array
+          sharesAllotted: allottedUnits, 
         };
       });
 
