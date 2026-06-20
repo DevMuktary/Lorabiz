@@ -4,8 +4,9 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ChartPieSlice, Info, Plus, Trash, PencilSimple, WarningCircle, X, ListMagnifyingGlass, User, CaretDown, CaretUp, Coins, CheckCircle } from "@phosphor-icons/react";
+import { ChartPieSlice, Info, Plus, Trash, PencilSimple, WarningCircle, X, ListMagnifyingGlass, User, CaretDown, CaretUp, Coins, CheckCircle, UserPlus } from "@phosphor-icons/react";
 import { DESIGNATED_COMPANIES, numberToWordsNaira } from "@/lib/share-capital-data";
+import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema";
 
 const DetailRow = ({ label, value }: { label: string, value: string }) => (
   <div className="flex justify-between items-start py-2.5 border-b border-slate-200/60 last:border-0 gap-4">
@@ -25,20 +26,41 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const [showRefModal, setShowRefModal] = useState(true);
   const [showClassModal, setShowClassModal] = useState(false);
   const [showAllotmentModal, setShowAllotmentModal] = useState(false);
+  const [showShModal, setShowShModal] = useState(false); // Standalone Shareholder Modal
   const [expandedOfficerId, setExpandedId] = useState<string | null>(null);
 
   const [classForm, setClassForm] = useState<any>({ id: null, type: "EQUITY (ORDINARY)", totalValue: "", units: "" });
   const [allotForm, setAllotForm] = useState<any>({ officerId: "", type: "", units: "" });
+  
+  // Standalone Shareholder Form State
+  const [shForm, setShForm] = useState<any>({
+    surname: "", firstName: "", otherName: "", email: "", phoneCode: "+234", phone: "", 
+    gender: "", dob: "", occupation: "", nationality: "Nigeria", idType: "", idNumber: "", 
+    residentialAddress: { state: "", lga: "", city: "", street: "" },
+    allotType: "", allotUnits: ""
+  });
+  const [shTouched, setShTouched] = useState<Record<string, boolean>>({});
 
+  // ==========================================
+  // STATE MANAGEMENT & GHOST PURGE
+  // ==========================================
   const rawShareData = data.shareCapital || {};
+  const allOfficers = data.officers || [];
+  
+  // Get ONLY valid active shareholders
+  const activeShareholders = allOfficers.filter((o: any) => o.roles.includes("SHAREHOLDER"));
+  const validShareholderIds = new Set(activeShareholders.map((o: any) => o.id));
+
+  // GHOST PURGE: Only keep allotments belonging to IDs that actually exist and have the SHAREHOLDER role
+  const rawAllotments = Array.isArray(rawShareData.allotments) ? rawShareData.allotments : [];
+  const cleanAllotments = rawAllotments.filter((a: any) => validShareholderIds.has(a.officerId));
+
   const shareData = {
     companyType: rawShareData.companyType || "ENTITY WITH SHARES BELOW FIVE MILLION",
     totalIssuedCapital: rawShareData.totalIssuedCapital !== undefined ? rawShareData.totalIssuedCapital : "1000000",
     shareClasses: Array.isArray(rawShareData.shareClasses) ? rawShareData.shareClasses : [],
-    allotments: Array.isArray(rawShareData.allotments) ? rawShareData.allotments : []
+    allotments: cleanAllotments // Mathematically safe state
   };
-
-  const shareholders = (data.officers || []).filter((o: any) => o.roles.includes("SHAREHOLDER"));
 
   const updateShareData = (field: string, value: any) => {
     updateData((prev: any) => ({ ...prev, shareCapital: { ...shareData, [field]: value } }));
@@ -61,7 +83,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
   // Allotment Math
   const totalRequiredUnits = shareData.shareClasses.reduce((acc: number, c: any) => acc + (Number(c.units) || 0), 0);
-  const totalAllotted = shareData.allotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
+  const totalAllotted = cleanAllotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
   const remainingAllotmentUnits = totalRequiredUnits - totalAllotted;
   const isPerfectMatch = totalRequiredUnits > 0 && remainingAllotmentUnits === 0 && !classMathError && !ordinaryShareError;
 
@@ -79,15 +101,10 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
     return options;
   };
 
-  const getAvailableCapitalForClass = () => {
-    if (classForm.id !== null) {
-      const currentClassValue = shareData.shareClasses[classForm.id].totalValue;
-      return remainingCapitalValue + currentClassValue;
-    }
-    return remainingCapitalValue;
-  };
-  
-  const availableCapital = getAvailableCapitalForClass();
+  const availableCapital = classForm.id !== null 
+    ? remainingCapitalValue + shareData.shareClasses[classForm.id].totalValue 
+    : remainingCapitalValue;
+
   const formTotalValue = Number(classForm.totalValue) || 0;
   const isClassOverLimit = formTotalValue > availableCapital;
 
@@ -100,100 +117,123 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
   const saveShareClass = () => {
     if (!classForm.units || !classForm.totalValue || isClassOverLimit) return;
-    
     const tv = Number(classForm.totalValue);
     const units = Number(classForm.units);
     if (units <= 0 || tv <= 0) return;
     
-    const nominalValue = tv / units; 
-
     let updated = [...shareData.shareClasses];
-    const newClass = { type: classForm.type, totalValue: tv, nominalValue, units };
+    const newClass = { type: classForm.type, totalValue: tv, nominalValue: tv/units, units };
 
-    if (classForm.id !== null) {
-      updated[classForm.id] = newClass;
-    } else {
-      updated.push(newClass);
-    }
+    if (classForm.id !== null) updated[classForm.id] = newClass;
+    else updated.push(newClass);
     
     updateShareData("shareClasses", updated);
     setShowClassModal(false);
   };
 
-  const removeClass = (idx: number) => {
-    const updated = shareData.shareClasses.filter((_: any, i: number) => i !== idx);
-    updateShareData("shareClasses", updated);
-  };
-
-  const openAddClassModal = () => {
-    const availableTypes = getAvailableClassTypes();
-    if (availableTypes.length === 0) return;
-
-    const rem = totalIssuedCapitalNum - totalClassesValue;
-    setClassForm({ 
-      id: null, 
-      type: availableTypes[0], 
-      totalValue: rem > 0 ? rem.toString() : "", 
-      units: "" 
-    });
-    setShowClassModal(true);
-  };
-
   // ==========================================
-  // ALLOTMENT FORM HELPERS
+  // ALLOTMENT & SHAREHOLDER HELPERS
   // ==========================================
-  const getAvailableUnitsForType = (type: string) => {
+  const getAvailableUnitsForType = (type: string, editingOfficerId?: string) => {
     const classDef = shareData.shareClasses.find((c: any) => c.type === type);
     if (!classDef) return 0;
     
-    let allottedForType = shareData.allotments
+    let allottedForType = cleanAllotments
       .filter((a: any) => a.type === type)
       .reduce((sum: number, a: any) => sum + Number(a.units), 0);
       
-    if (allotForm.officerId) {
-       const existingRecord = shareData.allotments.find((a: any) => a.officerId === allotForm.officerId && a.type === type);
-       if (existingRecord) {
-         allottedForType -= existingRecord.units;
-       }
+    if (editingOfficerId) {
+       const existingRecord = cleanAllotments.find((a: any) => a.officerId === editingOfficerId && a.type === type);
+       if (existingRecord) allottedForType -= existingRecord.units;
     }
     return classDef.units - allottedForType;
   };
 
-  const availableUnitsForCurrentType = getAvailableUnitsForType(allotForm.type);
-  const isAllotmentOverLimit = Number(allotForm.units) > availableUnitsForCurrentType;
-
   const saveAllotment = () => {
     const unitsToAllot = Number(allotForm.units);
-    if (unitsToAllot <= 0 || isAllotmentOverLimit) return;
+    const maxUnits = getAvailableUnitsForType(allotForm.type, allotForm.officerId);
+    if (unitsToAllot <= 0 || unitsToAllot > maxUnits) return;
 
-    let updatedAllotments = [...shareData.allotments];
+    let updatedAllotments = [...cleanAllotments];
     const existingIdx = updatedAllotments.findIndex((a: any) => a.officerId === allotForm.officerId && a.type === allotForm.type);
     
-    if (existingIdx >= 0) {
-      updatedAllotments[existingIdx].units = unitsToAllot;
-    } else {
-      updatedAllotments.push({ officerId: allotForm.officerId, type: allotForm.type, units: unitsToAllot });
-    }
+    if (existingIdx >= 0) updatedAllotments[existingIdx].units = unitsToAllot;
+    else updatedAllotments.push({ officerId: allotForm.officerId, type: allotForm.type, units: unitsToAllot });
 
     updateShareData("allotments", updatedAllotments);
     setShowAllotmentModal(false);
   };
 
-  const openAllotment = (e: any, officerId: string) => {
+  const removeShareholder = (e: any, officerId: string) => {
     e.stopPropagation();
-    const existing = shareData.allotments.find((a: any) => a.officerId === officerId);
-    setAllotForm({ 
-      officerId, 
-      type: existing ? existing.type : (shareData.shareClasses[0]?.type || ""), 
-      units: existing ? existing.units.toString() : "" 
-    });
-    setShowAllotmentModal(true);
+    const officer = allOfficers.find((o: any) => o.id === officerId);
+    if (!officer) return;
+
+    if (officer.roles.includes("DIRECTOR")) {
+      // Just strip the SHAREHOLDER role and purge their allotments
+      const newOfficers = allOfficers.map((o: any) => o.id === officerId ? { ...o, roles: o.roles.filter((r: string) => r !== "SHAREHOLDER") } : o);
+      const newAllotments = cleanAllotments.filter((a: any) => a.officerId !== officerId);
+      updateData((prev: any) => ({ ...prev, officers: newOfficers, shareCapital: { ...shareData, allotments: newAllotments } }));
+    } else {
+      // Standalone Shareholder - Nuke completely
+      const newOfficers = allOfficers.filter((o: any) => o.id !== officerId);
+      const newAllotments = cleanAllotments.filter((a: any) => a.officerId !== officerId);
+      updateData((prev: any) => ({ ...prev, officers: newOfficers, shareCapital: { ...shareData, allotments: newAllotments } }));
+    }
   };
 
-  const getAllottedUnitsForOfficer = (officerId: string) => {
-    const records = shareData.allotments.filter((a: any) => a.officerId === officerId);
-    if (records.length === 0) return { text: "None Allotted", error: true };
-    return { text: records.map((r: any) => `${formatNum(r.units)} ${r.type}`).join(" | "), error: false };
+  // ==========================================
+  // STANDALONE SHAREHOLDER MODAL LOGIC
+  // ==========================================
+  const shGetError = (fieldKey: string, value: string, type: "text" | "email" | "dob" | "phone" | "idNumber" = "text") => {
+    if (!shTouched[fieldKey]) return null;
+    if (!value || !value.trim()) return "Required.";
+    if (type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Invalid email.";
+    if (type === "phone" && value.replace(/\D/g, '').length < 5) return "Invalid phone.";
+    if (type === "dob") {
+      const age = Math.abs(new Date(Date.now() - new Date(value).getTime()).getUTCFullYear() - 1970);
+      if (age < 18) return "Must be 18+.";
+    }
+    if (type === "idNumber" && shForm.idType === "NIN" && !/^\d{11}$/.test(value)) return "Must be 11 digits.";
+    return null;
+  };
+
+  const ShErrorMsg = ({ msg }: { msg: string | null }) => {
+    if (!msg) return null;
+    return <div className="text-[10px] font-bold text-red-600 flex items-center gap-1 mt-1.5"><WarningCircle weight="fill" /> {msg}</div>;
+  };
+
+  const saveStandaloneShareholder = () => {
+    // Validate everything
+    const fieldsToTouch = ["surname", "firstName", "email", "phone", "gender", "dob", "occupation", "nationality", "idType", "idNumber", "state", "lga", "city", "street", "allotUnits"];
+    setShTouched(fieldsToTouch.reduce((acc, curr) => ({ ...acc, [curr]: true }), {}));
+
+    const maxUnits = getAvailableUnitsForType(shForm.allotType);
+    const unitsToAllot = Number(shForm.allotUnits) || 0;
+
+    const hasErrors = !shForm.surname || !shForm.firstName || !shForm.email || !shForm.phone || !shForm.gender || !shForm.dob || !shForm.idType || !shForm.idNumber || !shForm.residentialAddress.state || unitsToAllot <= 0 || unitsToAllot > maxUnits;
+    
+    if (hasErrors) return;
+
+    const newId = crypto.randomUUID();
+    const newOfficer = {
+      id: newId, roles: ["SHAREHOLDER"],
+      surname: shForm.surname, firstName: shForm.firstName, otherName: shForm.otherName,
+      email: shForm.email, phoneCode: shForm.phoneCode, phone: shForm.phone,
+      gender: shForm.gender, dob: shForm.dob, occupation: shForm.occupation,
+      nationality: shForm.nationality, idType: shForm.idType, idNumber: shForm.idNumber,
+      residentialAddress: shForm.residentialAddress
+    };
+
+    const newAllotment = { officerId: newId, type: shForm.allotType, units: unitsToAllot };
+
+    updateData((prev: any) => ({
+      ...prev,
+      officers: [...(prev.officers || []), newOfficer],
+      shareCapital: { ...shareData, allotments: [...cleanAllotments, newAllotment] }
+    }));
+
+    setShowShModal(false);
   };
 
 
@@ -259,7 +299,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
-          
           <div className="space-y-2 md:col-span-2">
             <Label className="text-xs font-bold uppercase text-slate-500">Type of Company <span className="text-red-500">*</span></Label>
             <div className="relative">
@@ -400,7 +439,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       </section>
 
-      {/* SHARE CLASS MODAL (FIXED HEIGHT) */}
+      {/* SHARE CLASS MODAL */}
       {showClassModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
@@ -461,7 +500,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
               </div>
 
             </div>
-            
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
               <Button variant="outline" onClick={() => setShowClassModal(false)} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
               <Button onClick={saveShareClass} disabled={!classForm.totalValue || !classForm.units || Number(classForm.units) <= 0 || isClassOverLimit} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Save Class</Button>
@@ -479,24 +517,36 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
             <h2 className="text-xl font-black text-slate-900">Shareholders Allotment</h2>
             <p className="text-sm font-medium text-slate-500 mt-1">Assign the created shares to the owners.</p>
           </div>
-          <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 font-bold text-sm ${
-            isPerfectMatch ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
-            'bg-amber-50 border-amber-200 text-amber-700'
-          }`}>
-            {isPerfectMatch ? <CheckCircle className="h-5 w-5" weight="fill" /> : <WarningCircle className="h-5 w-5" weight="fill" />}
-            {isPerfectMatch ? "100% Distributed" : `${formatNum(Math.abs(remainingAllotmentUnits))} units unassigned`}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 font-bold text-sm ${
+              isPerfectMatch ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
+              'bg-amber-50 border-amber-200 text-amber-700'
+            }`}>
+              {isPerfectMatch ? <CheckCircle className="h-5 w-5" weight="fill" /> : <WarningCircle className="h-5 w-5" weight="fill" />}
+              {isPerfectMatch ? "100% Distributed" : `${formatNum(Math.abs(remainingAllotmentUnits))} units unassigned`}
+            </div>
+            
+            <Button 
+              onClick={() => {
+                setShForm({...shForm, allotType: shareData.shareClasses[0]?.type || ""});
+                setShowShModal(true);
+              }} 
+              className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md"
+            >
+              <UserPlus weight="bold" className="mr-2 h-4 w-4" /> Add Standalone Shareholder
+            </Button>
           </div>
         </div>
 
-        {shareholders.length === 0 ? (
+        {activeShareholders.length === 0 ? (
           <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-3xl bg-white">
             <User className="h-10 w-10 text-slate-300 mx-auto mb-3" weight="duotone" />
             <p className="text-sm font-medium text-slate-500">No Shareholders found.</p>
-            <p className="text-xs font-bold text-indigo-500 mt-1">Please go back to Step 4 and add at least one Shareholder.</p>
+            <p className="text-xs font-bold text-indigo-500 mt-1">Click "Add Standalone Shareholder" above, or go back to Step 4 to edit a Director.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {shareholders.map((officer: any, idx: number) => {
+            {activeShareholders.map((officer: any, idx: number) => {
               const allotmentCheck = getAllottedUnitsForOfficer(officer.id);
 
               return (
@@ -508,7 +558,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                       </div>
                       <div>
                         <h3 className="text-base font-black text-slate-900">{officer.firstName} {officer.surname}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 mt-1">S/N: {idx + 1} | SHAREHOLDER</p>
+                        <p className="text-[10px] font-bold text-slate-400 mt-1">S/N: {idx + 1} | {officer.roles.includes("DIRECTOR") ? "DIRECTOR & SHAREHOLDER" : "SHAREHOLDER ONLY"}</p>
                       </div>
                     </div>
                     
@@ -522,8 +572,12 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                         {expandedOfficerId === officer.id ? <CaretUp weight="bold" /> : <CaretDown weight="bold" />}
                       </div>
 
-                      <button onClick={(e) => openAllotment(e, officer.id)} disabled={shareData.shareClasses.length === 0} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors z-10 relative flex items-center gap-1.5 shadow-sm disabled:opacity-50">
+                      <button onClick={(e) => openAllotment(e, officer.id)} disabled={shareData.shareClasses.length === 0} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors z-10 relative flex items-center gap-1.5 shadow-sm disabled:opacity-50">
                         <Coins className="h-4 w-4" weight="fill" /> Allot
+                      </button>
+                      
+                      <button onClick={(e) => removeShareholder(e, officer.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors z-10 relative">
+                        <Trash className="h-5 w-5" weight="bold" />
                       </button>
                     </div>
                   </div>
@@ -567,6 +621,9 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         )}
       </section>
 
+      {/* ========================================== */}
+      {/* ALLOTMENT MODAL (Existing) */}
+      {/* ========================================== */}
       {showAllotmentModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -581,7 +638,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
               
               <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-xl border border-emerald-100">
                 <span className="text-xs font-bold text-emerald-700">Available Units ({allotForm.type})</span>
-                <span className="text-sm font-black text-emerald-900">{formatNum(getAvailableUnitsForType(allotForm.type))}</span>
+                <span className="text-sm font-black text-emerald-900">{formatNum(getAvailableUnitsForType(allotForm.type, allotForm.officerId))}</span>
               </div>
 
               <div className="space-y-2">
@@ -591,7 +648,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                     value={allotForm.type} 
                     onChange={e => {
                       const newType = e.target.value;
-                      const existing = shareData.allotments.find((a: any) => a.officerId === allotForm.officerId && a.type === newType);
+                      const existing = cleanAllotments.find((a: any) => a.officerId === allotForm.officerId && a.type === newType);
                       setAllotForm({...allotForm, type: newType, units: existing ? existing.units.toString() : ""});
                     }} 
                     className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-sm font-bold bg-white focus:border-indigo-500 outline-none"
@@ -610,9 +667,9 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                   placeholder="E.g. 500,000" 
                   value={formatNum(allotForm.units)} 
                   onChange={e => setAllotForm({...allotForm, units: cleanNum(e.target.value)})} 
-                  className={`h-12 font-black text-lg ${Number(allotForm.units) > getAvailableUnitsForType(allotForm.type) ? 'border-red-500 text-red-600 bg-red-50' : ''}`} 
+                  className={`h-12 font-black text-lg ${Number(allotForm.units) > getAvailableUnitsForType(allotForm.type, allotForm.officerId) ? 'border-red-500 text-red-600 bg-red-50' : ''}`} 
                 />
-                {Number(allotForm.units) > getAvailableUnitsForType(allotForm.type) && (
+                {Number(allotForm.units) > getAvailableUnitsForType(allotForm.type, allotForm.officerId) && (
                   <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1">
                     <WarningCircle weight="fill" /> You cannot allot more units than are available in this class.
                   </p>
@@ -621,7 +678,180 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
             </div>
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
               <Button variant="outline" onClick={() => setShowAllotmentModal(false)} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
-              <Button onClick={saveAllotment} disabled={!allotForm.units || Number(allotForm.units) > getAvailableUnitsForType(allotForm.type)} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Assign Shares</Button>
+              <Button onClick={saveAllotment} disabled={!allotForm.units || Number(allotForm.units) > getAvailableUnitsForType(allotForm.type, allotForm.officerId)} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Assign Shares</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* MASSIVE ADD STANDALONE SHAREHOLDER MODAL */}
+      {/* ========================================== */}
+      {showShModal && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50 shrink-0">
+              <div>
+                <h3 className="font-black text-lg text-emerald-900 flex items-center gap-2">
+                  <UserPlus className="h-6 w-6 text-emerald-500" weight="fill" />
+                  Add Standalone Shareholder
+                </h3>
+                <p className="text-xs font-bold text-emerald-700 mt-1">This person will NOT be listed as a Director.</p>
+              </div>
+              <button onClick={() => setShowShModal(false)} className="p-2 hover:bg-emerald-200 rounded-full text-emerald-800"><X weight="bold" /></button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div className="md:col-span-2">
+                  <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Personal Details</h3>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Surname <span className="text-red-500">*</span></Label>
+                  <Input value={shForm.surname} onChange={e => setShForm({...shForm, surname: e.target.value})} onBlur={() => setShTouched({...shTouched, surname: true})} className="h-12 font-bold" />
+                  <ShErrorMsg msg={shGetError("surname", shForm.surname)} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">First Name <span className="text-red-500">*</span></Label>
+                  <Input value={shForm.firstName} onChange={e => setShForm({...shForm, firstName: e.target.value})} onBlur={() => setShTouched({...shTouched, firstName: true})} className="h-12 font-bold" />
+                  <ShErrorMsg msg={shGetError("firstName", shForm.firstName)} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Other Name</Label>
+                  <Input value={shForm.otherName} onChange={e => setShForm({...shForm, otherName: e.target.value})} className="h-12 font-bold" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Date of Birth <span className="text-red-500">*</span></Label>
+                  <Input type="date" value={shForm.dob} onChange={e => setShForm({...shForm, dob: e.target.value})} onBlur={() => setShTouched({...shTouched, dob: true})} className="h-12 font-bold uppercase" />
+                  <ShErrorMsg msg={shGetError("dob", shForm.dob, "dob")} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Gender <span className="text-red-500">*</span></Label>
+                  <select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={shForm.gender} onChange={e => setShForm({...shForm, gender: e.target.value})} onBlur={() => setShTouched({...shTouched, gender: true})}>
+                    <option value="">-- Select --</option>
+                    <option value="MALE">MALE</option>
+                    <option value="FEMALE">FEMALE</option>
+                  </select>
+                  <ShErrorMsg msg={shGetError("gender", shForm.gender)} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Occupation <span className="text-red-500">*</span></Label>
+                  <Input value={shForm.occupation} onChange={e => setShForm({...shForm, occupation: e.target.value})} onBlur={() => setShTouched({...shTouched, occupation: true})} className="h-12 font-bold" />
+                  <ShErrorMsg msg={shGetError("occupation", shForm.occupation)} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Nationality <span className="text-red-500">*</span></Label>
+                  <select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={shForm.nationality} onChange={e => {
+                    setShForm({...shForm, nationality: e.target.value, residentialAddress: {...shForm.residentialAddress, state: "", lga: ""}});
+                  }}>
+                    {COUNTRY_CODES.map(c => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Contact & ID</h3>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Email Address <span className="text-red-500">*</span></Label>
+                  <Input type="email" value={shForm.email} onChange={e => setShForm({...shForm, email: e.target.value})} onBlur={() => setShTouched({...shTouched, email: true})} className="h-12 font-bold" />
+                  <ShErrorMsg msg={shGetError("email", shForm.email, "email")} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Phone Number <span className="text-red-500">*</span></Label>
+                  <div className="flex">
+                    <select value={shForm.phoneCode} onChange={e => setShForm({...shForm, phoneCode: e.target.value})} className="w-[100px] h-12 px-2 border border-r-0 border-slate-200 rounded-l-xl text-sm font-bold bg-slate-50 outline-none">
+                      {COUNTRY_CODES.map(c => <option key={`sc-${c.name}`} value={c.code}>{c.flag} {c.code}</option>)}
+                    </select>
+                    <Input type="tel" value={shForm.phone} onChange={e => setShForm({...shForm, phone: e.target.value})} onBlur={() => setShTouched({...shTouched, phone: true})} className="h-12 font-bold rounded-l-none flex-1" />
+                  </div>
+                  <ShErrorMsg msg={shGetError("phone", shForm.phone, "phone")} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Means of ID <span className="text-red-500">*</span></Label>
+                  <select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={shForm.idType} onChange={e => setShForm({...shForm, idType: e.target.value})} onBlur={() => setShTouched({...shTouched, idType: true})}>
+                    <option value="">-- Select --</option>
+                    <option value="NIN">National ID Card (NIN)</option>
+                    <option value="PASSPORT">International Passport</option>
+                    <option value="DRIVERS_LICENSE">Driver's License</option>
+                  </select>
+                  <ShErrorMsg msg={shGetError("idType", shForm.idType)} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">ID Number <span className="text-red-500">*</span></Label>
+                  <Input value={shForm.idNumber} onChange={e => setShForm({...shForm, idNumber: e.target.value})} onBlur={() => setShTouched({...shTouched, idNumber: true})} className="h-12 font-bold" />
+                  <ShErrorMsg msg={shGetError("idNumber", shForm.idNumber, "idNumber")} />
+                </div>
+
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Residential Address</h3>
+                </div>
+
+                {shForm.nationality === "Nigeria" ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">State <span className="text-red-500">*</span></Label>
+                      <select value={shForm.residentialAddress.state} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, state: e.target.value, lga: ""}})} onBlur={() => setShTouched({...shTouched, state: true})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none">
+                        <option value="">-- Select --</option>
+                        {NIGERIA_DATA.map(d => <option key={d.state} value={d.state}>{d.state}</option>)}
+                      </select>
+                      <ShErrorMsg msg={shGetError("state", shForm.residentialAddress.state)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">LGA <span className="text-red-500">*</span></Label>
+                      <select value={shForm.residentialAddress.lga} disabled={!shForm.residentialAddress.state} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, lga: e.target.value}})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none">
+                        <option value="">-- Select --</option>
+                        {shForm.residentialAddress.state && NIGERIA_DATA.find(d => d.state === shForm.residentialAddress.state)?.lgas.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">State/Province <span className="text-red-500">*</span></Label><Input value={shForm.residentialAddress.state} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, state: e.target.value}})} className="h-12 font-bold" /></div>
+                    <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">County/Region <span className="text-red-500">*</span></Label><Input value={shForm.residentialAddress.lga} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, lga: e.target.value}})} className="h-12 font-bold" /></div>
+                  </>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">City / Town <span className="text-red-500">*</span></Label>
+                  <Input value={shForm.residentialAddress.city} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, city: e.target.value}})} className="h-12 font-bold" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Street Address <span className="text-red-500">*</span></Label>
+                  <Input value={shForm.residentialAddress.street} onChange={e => setShForm({...shForm, residentialAddress: {...shForm.residentialAddress, street: e.target.value}})} className="h-12 font-bold" />
+                </div>
+
+                <div className="md:col-span-2 mt-4 p-5 bg-indigo-50 border border-indigo-100 rounded-2xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase text-indigo-700">Initial Share Allotment <span className="text-red-500">*</span></Label>
+                    <select value={shForm.allotType} onChange={e => setShForm({...shForm, allotType: e.target.value})} className="w-full h-12 px-4 border border-indigo-200 bg-white rounded-xl text-sm font-bold outline-none">
+                      <option value="">-- Select Class --</option>
+                      {shareData.shareClasses.map((c: any) => <option key={c.type} value={c.type}>{c.type}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase text-indigo-700">Units to Allot <span className="text-red-500">*</span></Label>
+                    <Input type="text" value={formatNum(shForm.allotUnits)} onChange={e => setShForm({...shForm, allotUnits: cleanNum(e.target.value)})} onBlur={() => setShTouched({...shTouched, allotUnits: true})} className="h-12 font-black text-lg border-indigo-200" />
+                    <ShErrorMsg msg={!shForm.allotUnits && shTouched.allotUnits ? "Required" : Number(shForm.allotUnits) > getAvailableUnitsForType(shForm.allotType) ? "Exceeds available units." : null} />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+              <Button variant="outline" onClick={() => setShowShModal(false)} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
+              <Button onClick={saveStandaloneShareholder} className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md">Save & Allot Shares</Button>
             </div>
           </div>
         </div>
