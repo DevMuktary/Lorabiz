@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -46,20 +46,35 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const activeShareholders = allOfficers.filter((o: any) => o.roles.includes("SHAREHOLDER"));
   const validShareholderIds = new Set(activeShareholders.map((o: any) => o.id));
 
-  const rawAllotments = Array.isArray(rawShareData.allotments) ? rawShareData.allotments : [];
-  const cleanAllotments = rawAllotments.filter((a: any) => validShareholderIds.has(a.officerId));
+  // Fix: Safe allotments array that directly reflects parent state to prevent wipeouts
+  const currentAllotments = Array.isArray(rawShareData.allotments) ? rawShareData.allotments : [];
 
   const shareData = {
     companyType: rawShareData.companyType || "ENTITY WITH SHARES BELOW FIVE MILLION",
     totalIssuedCapital: rawShareData.totalIssuedCapital !== undefined ? rawShareData.totalIssuedCapital : "1000000",
     shareClasses: Array.isArray(rawShareData.shareClasses) ? rawShareData.shareClasses : [],
-    allotments: cleanAllotments 
+    allotments: currentAllotments 
   };
+
+  // Run a silent clean-up ONLY when validShareholderIds change to avoid erasing active typing
+  useEffect(() => {
+    const cleaned = currentAllotments.filter((a: any) => validShareholderIds.has(a.officerId));
+    if (cleaned.length !== currentAllotments.length) {
+      updateData((prev: any) => ({
+        ...prev,
+        shareCapital: { ...(prev.shareCapital || {}), allotments: cleaned }
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validShareholderIds.size]); // Only run if the number of shareholders changes
 
   const updateShareData = (field: string, value: any) => {
     updateData((prev: any) => ({ ...prev, shareCapital: { ...shareData, [field]: value } }));
   };
 
+  // ==========================================
+  // CORE MATH CONSTANTS
+  // ==========================================
   const selectedCompanyInfo = DESIGNATED_COMPANIES.find(c => c.type === shareData.companyType);
   const minRequired = selectedCompanyInfo ? selectedCompanyInfo.min : 1000000;
   const totalIssuedCapitalNum = Number(shareData.totalIssuedCapital) || 0;
@@ -72,7 +87,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   const ordinaryShareError = shareData.shareClasses.length > 0 && !hasOrdinaryShares;
 
   const totalRequiredUnits = shareData.shareClasses.reduce((acc: number, c: any) => acc + (Number(c.units) || 0), 0);
-  const totalAllotted = cleanAllotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
+  const totalAllotted = shareData.allotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
   const remainingAllotmentUnits = totalRequiredUnits - totalAllotted;
   const isPerfectMatch = totalRequiredUnits > 0 && remainingAllotmentUnits === 0 && !classMathError && !ordinaryShareError;
 
@@ -90,7 +105,6 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
     return options;
   };
 
-  // RESTORED: openAddClassModal
   const openAddClassModal = () => {
     const availableTypes = getAvailableClassTypes();
     if (availableTypes.length === 0) return; 
@@ -152,12 +166,12 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
     const classDef = shareData.shareClasses.find((c: any) => c.type === type);
     if (!classDef) return 0;
     
-    let allottedForType = cleanAllotments
+    let allottedForType = shareData.allotments
       .filter((a: any) => a.type === type)
       .reduce((sum: number, a: any) => sum + Number(a.units), 0);
       
     if (editingOfficerId) {
-       const existingRecord = cleanAllotments.find((a: any) => a.officerId === editingOfficerId && a.type === type);
+       const existingRecord = shareData.allotments.find((a: any) => a.officerId === editingOfficerId && a.type === type);
        if (existingRecord) allottedForType -= existingRecord.units;
     }
     return classDef.units - allottedForType;
@@ -168,7 +182,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
     const maxUnits = getAvailableUnitsForType(allotForm.type, allotForm.officerId);
     if (unitsToAllot <= 0 || unitsToAllot > maxUnits) return;
 
-    let updatedAllotments = [...cleanAllotments];
+    let updatedAllotments = [...shareData.allotments];
     const existingIdx = updatedAllotments.findIndex((a: any) => a.officerId === allotForm.officerId && a.type === allotForm.type);
     
     if (existingIdx >= 0) updatedAllotments[existingIdx].units = unitsToAllot;
@@ -202,11 +216,11 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
     if (officer.roles.includes("DIRECTOR")) {
       const newOfficers = allOfficers.map((o: any) => o.id === officerId ? { ...o, roles: o.roles.filter((r: string) => r !== "SHAREHOLDER") } : o);
-      const newAllotments = cleanAllotments.filter((a: any) => a.officerId !== officerId);
+      const newAllotments = shareData.allotments.filter((a: any) => a.officerId !== officerId);
       updateData((prev: any) => ({ ...prev, officers: newOfficers, shareCapital: { ...shareData, allotments: newAllotments } }));
     } else {
       const newOfficers = allOfficers.filter((o: any) => o.id !== officerId);
-      const newAllotments = cleanAllotments.filter((a: any) => a.officerId !== officerId);
+      const newAllotments = shareData.allotments.filter((a: any) => a.officerId !== officerId);
       updateData((prev: any) => ({ ...prev, officers: newOfficers, shareCapital: { ...shareData, allotments: newAllotments } }));
     }
   };
@@ -255,10 +269,11 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
     const newAllotment = { officerId: newId, type: shForm.allotType, units: unitsToAllot };
 
+    // Push BOTH changes to the wrapper simultaneously
     updateData((prev: any) => ({
       ...prev,
       officers: [...(prev.officers || []), newOfficer],
-      shareCapital: { ...shareData, allotments: [...cleanAllotments, newAllotment] }
+      shareCapital: { ...(prev.shareCapital || shareData), allotments: [...shareData.allotments, newAllotment] }
     }));
 
     setShowShModal(false);
@@ -268,6 +283,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
   return (
     <div className="p-4 sm:p-10 space-y-10 animate-in fade-in duration-500 w-full overflow-hidden relative">
       
+      {/* 1. MINIMUM CAPITAL REFERENCE MODAL */}
       {showRefModal && (
         <div className="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 flex flex-col max-h-[90vh] h-[90vh] sm:h-auto">
@@ -313,6 +329,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       )}
 
+      {/* MAIN UI: CAPITAL DECLARATION */}
       <section>
         <div className="mb-6 flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
@@ -379,6 +396,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
       <hr className="border-slate-100" />
 
+      {/* MAIN UI: SHARE BREAKDOWN TABLE */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -426,27 +444,28 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
               <tr>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">S/N</th>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Class Of Share</th>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Issue Share Capital (₦)</th>
-                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Issued Capital in Words</th>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Divided Into (Units)</th>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Price per Unit (₦)</th>
+                <th className="p-4 text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Calculated Total (₦)</th>
                 <th className="p-4 text-[10px] font-black uppercase text-slate-500 text-center whitespace-nowrap">Action</th>
               </tr>
             </thead>
             <tbody className="text-xs font-bold text-slate-700 divide-y divide-slate-100">
               {shareData.shareClasses.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">No share classes added. Click "Add Share Class" to begin.</td>
+                  <td colSpan={6} className="p-8 text-center text-slate-400 font-medium">No share classes added. Click "Add Share Class" to begin.</td>
                 </tr>
               ) : (
                 shareData.shareClasses.map((c: any, idx: number) => (
                   <tr key={idx} className="hover:bg-slate-50/50">
                     <td className="p-4 text-slate-400">{idx + 1}</td>
                     <td className="p-4 text-indigo-600">{c.type}</td>
-                    <td className="p-4">{formatNum(c.totalValue)}</td>
-                    <td className="p-4 text-[10px] uppercase text-slate-500 max-w-[200px] break-words leading-relaxed" title={numberToWordsNaira(c.totalValue)}>{numberToWordsNaira(c.totalValue)}</td>
                     <td className="p-4 text-emerald-600 bg-emerald-50/50">{formatNum(c.units)}</td>
                     <td className="p-4">{formatNum(c.nominalValue)}</td>
+                    <td className="p-4 font-black">
+                      {formatNum(c.totalValue)}
+                      <p className="text-[9px] text-slate-400 font-medium mt-0.5">{numberToWordsNaira(c.totalValue)}</p>
+                    </td>
                     <td className="p-4 text-center flex items-center justify-center gap-2">
                       <button onClick={() => { setClassForm({ id: idx, type: c.type, units: c.units.toString(), totalValue: c.totalValue.toString() }); setShowClassModal(true); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
                         <PencilSimple className="h-4 w-4" weight="bold" />
@@ -463,6 +482,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       </section>
 
+      {/* SHARE CLASS MODAL */}
       {showClassModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
@@ -533,6 +553,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
 
       <hr className="border-slate-100" />
 
+      {/* MAIN UI: SHAREHOLDER ALLOTMENT TABLE */}
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -668,7 +689,7 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
                     value={allotForm.type} 
                     onChange={e => {
                       const newType = e.target.value;
-                      const existing = cleanAllotments.find((a: any) => a.officerId === allotForm.officerId && a.type === newType);
+                      const existing = shareData.allotments.find((a: any) => a.officerId === allotForm.officerId && a.type === newType);
                       setAllotForm({...allotForm, type: newType, units: existing ? existing.units.toString() : ""});
                     }} 
                     className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-sm font-bold bg-white focus:border-indigo-500 outline-none"
@@ -704,6 +725,9 @@ export default function ShareCapitalStep({ data, updateData, showErrors }: any) 
         </div>
       )}
 
+      {/* ========================================== */}
+      {/* MASSIVE ADD STANDALONE SHAREHOLDER MODAL */}
+      {/* ========================================== */}
       {showShModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
