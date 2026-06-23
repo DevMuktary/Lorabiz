@@ -16,7 +16,9 @@ export default function PscStep({ data, updateData, showErrors }: any) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingOfficer, setEditingOfficer] = useState<any>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  // FIX: Array to track multiple expanded accordions so they can be auto-opened
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
   const officers = data.officers || [];
   
@@ -33,6 +35,8 @@ export default function PscStep({ data, updateData, showErrors }: any) {
     if (totalUnits === 0) return;
 
     let needsUpdate = false;
+    let newlyDetectedIds: string[] = [];
+
     const updatedOfficers = officers.map((officer: any) => {
       
       const officerUnits = allotments
@@ -46,6 +50,7 @@ export default function PscStep({ data, updateData, showErrors }: any) {
       // Auto-Add PSC Role
       if (isAutoPsc && !hasPscRole) {
         needsUpdate = true;
+        newlyDetectedIds.push(officer.id); // Flag for auto-open
         return {
           ...officer,
           roles: [...officer.roles, "PSC"],
@@ -92,6 +97,11 @@ export default function PscStep({ data, updateData, showErrors }: any) {
 
     if (needsUpdate) {
       updateData((prev: any) => ({ ...prev, officers: updatedOfficers }));
+      
+      // Auto-open newly detected PSCs
+      if (newlyDetectedIds.length > 0) {
+        setExpandedIds(prev => [...new Set([...prev, ...newlyDetectedIds])]);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allotments, totalUnits]);
@@ -116,11 +126,15 @@ export default function PscStep({ data, updateData, showErrors }: any) {
     }
   };
 
+  const toggleAccordion = (id: string) => {
+    setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
   return (
     <div className="p-4 sm:p-10 space-y-8 animate-in fade-in duration-500 relative">
       
       {showEditModal && <EditPscModal onClose={() => setShowEditModal(false)} officer={editingOfficer} updateData={updateData} />}
-      {showAddModal && <StandalonePscModal onClose={() => setShowAddModal(false)} updateData={updateData} />}
+      {showAddModal && <StandalonePscModal onClose={() => { setShowAddModal(false); /* Force open new PSC later if needed */ }} updateData={updateData} />}
 
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -152,12 +166,13 @@ export default function PscStep({ data, updateData, showErrors }: any) {
               const details = person.pscDetails || {};
               const isComplete = details.isPep && details.hasAffiliation;
               const isAutoPsc = person.roles.includes("SHAREHOLDER");
+              const isExpanded = expandedIds.includes(person.id);
 
               return (
                 <div key={person.id} className={`bg-white border rounded-2xl transition-colors shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden ${isComplete ? 'border-emerald-200 hover:border-emerald-300' : 'border-amber-300 ring-2 ring-amber-50'}`}>
                   
                   {/* ACCORDION HEADER */}
-                  <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50" onClick={() => setExpandedId(expandedId === person.id ? null : person.id)}>
+                  <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50" onClick={() => toggleAccordion(person.id)}>
                     <div className="flex items-center gap-4">
                       <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${isComplete ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'}`}>
                         <User className="h-5 w-5" weight="fill" />
@@ -177,8 +192,8 @@ export default function PscStep({ data, updateData, showErrors }: any) {
                          </div>
                       )}
 
-                      <div className={`hidden sm:flex items-center gap-1.5 font-bold text-xs px-3 py-2 rounded-lg transition-colors ${expandedId === person.id ? 'bg-slate-200 text-slate-700' : 'bg-slate-100 text-slate-600'}`}>
-                        {expandedId === person.id ? "Hide" : "View"} {expandedId === person.id ? <CaretUp weight="bold" /> : <CaretDown weight="bold" />}
+                      <div className={`hidden sm:flex items-center gap-1.5 font-bold text-xs px-3 py-2 rounded-lg transition-colors ${isExpanded ? 'bg-slate-200 text-slate-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {isExpanded ? "Hide" : "View"} {isExpanded ? <CaretUp weight="bold" /> : <CaretDown weight="bold" />}
                       </div>
 
                       <button onClick={(e) => { e.stopPropagation(); setEditingOfficer(person); setShowEditModal(true); }} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors z-10 relative flex items-center gap-1.5 shadow-sm ${isComplete ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}>
@@ -197,7 +212,7 @@ export default function PscStep({ data, updateData, showErrors }: any) {
                   </div>
 
                   {/* ACCORDION BODY */}
-                  {expandedId === person.id && (
+                  {isExpanded && (
                     <div className="p-5 sm:p-6 border-t border-slate-200 bg-slate-50/50 animate-in slide-in-from-top-2 fade-in duration-200">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                         
