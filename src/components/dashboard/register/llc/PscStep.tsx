@@ -17,7 +17,6 @@ export default function PscStep({ data, updateData, showErrors }: any) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingOfficer, setEditingOfficer] = useState<any>(null);
   
-  // FIX: Array to track multiple expanded accordions so they can be auto-opened
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
   const officers = data.officers || [];
@@ -28,6 +27,40 @@ export default function PscStep({ data, updateData, showErrors }: any) {
 
   const totalUnits = shareClasses.reduce((acc: number, c: any) => acc + (Number(c.units) || 0), 0);
 
+  // Only list active PSCs
+  const pscList = officers.filter((o: any) => o.roles.includes("PSC"));
+
+  // ==========================================
+  // AUTO-OPEN ALL PSCS BY DEFAULT
+  // ==========================================
+  useEffect(() => {
+    // If we have PSCs, make sure their IDs are in the expanded list.
+    // We use a Set to avoid duplicates and ensure everything is open initially.
+    if (pscList.length > 0) {
+      const allPscIds = pscList.map((p: any) => p.id);
+      
+      // We only want to force open if they aren't already explicitly tracked.
+      // This prevents closing an accordion and having it instantly pop back open on the next render.
+      setExpandedIds(prev => {
+        const newIds = new Set(prev);
+        let changed = false;
+        allPscIds.forEach((id: string) => {
+           // We assume if it's a completely new render/load, we open everything.
+           // In a real flow, you might need a "hasInitialized" ref if you want 
+           // users to keep things closed permanently, but for standard CAC forms, 
+           // showing all data is preferred.
+           if (!newIds.has(id)) {
+              newIds.add(id);
+              changed = true;
+           }
+        });
+        return changed ? Array.from(newIds) : prev;
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pscList.length]); // Re-run if the number of PSCs changes
+
+
   // ==========================================
   // AUTO-DETECT PSCs (>= 5% SHARES)
   // ==========================================
@@ -35,7 +68,6 @@ export default function PscStep({ data, updateData, showErrors }: any) {
     if (totalUnits === 0) return;
 
     let needsUpdate = false;
-    let newlyDetectedIds: string[] = [];
 
     const updatedOfficers = officers.map((officer: any) => {
       
@@ -50,7 +82,6 @@ export default function PscStep({ data, updateData, showErrors }: any) {
       // Auto-Add PSC Role
       if (isAutoPsc && !hasPscRole) {
         needsUpdate = true;
-        newlyDetectedIds.push(officer.id); // Flag for auto-open
         return {
           ...officer,
           roles: [...officer.roles, "PSC"],
@@ -97,17 +128,10 @@ export default function PscStep({ data, updateData, showErrors }: any) {
 
     if (needsUpdate) {
       updateData((prev: any) => ({ ...prev, officers: updatedOfficers }));
-      
-      // Auto-open newly detected PSCs
-      if (newlyDetectedIds.length > 0) {
-        setExpandedIds(prev => [...new Set([...prev, ...newlyDetectedIds])]);
-      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allotments, totalUnits]);
 
-  // Only list active PSCs
-  const pscList = officers.filter((o: any) => o.roles.includes("PSC"));
 
   const removeStandalonePsc = (e: any, officerId: string) => {
     e.stopPropagation();
@@ -134,7 +158,7 @@ export default function PscStep({ data, updateData, showErrors }: any) {
     <div className="p-4 sm:p-10 space-y-8 animate-in fade-in duration-500 relative">
       
       {showEditModal && <EditPscModal onClose={() => setShowEditModal(false)} officer={editingOfficer} updateData={updateData} />}
-      {showAddModal && <StandalonePscModal onClose={() => { setShowAddModal(false); /* Force open new PSC later if needed */ }} updateData={updateData} />}
+      {showAddModal && <StandalonePscModal onClose={() => setShowAddModal(false)} updateData={updateData} />}
 
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
