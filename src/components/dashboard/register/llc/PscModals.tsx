@@ -15,7 +15,7 @@ export function EditPscModal({ onClose, officer, updateData }: any) {
     isPep: officer.pscDetails?.isPep || "",
     hasAffiliation: officer.pscDetails?.hasAffiliation || "",
     holdsSharesIndirect: officer.pscDetails?.holdsSharesIndirect || "No",
-    holdsVotingDirect: officer.pscDetails?.holdsVotingDirect || officer.pscDetails?.sharesPercentage ? `Yes (${officer.pscDetails?.sharesPercentage}%)` : "No",
+    holdsVotingDirect: officer.pscDetails?.holdsVotingDirect?.includes("Yes") ? "Yes" : "No", // Normalized for dropdown
     holdsVotingIndirect: officer.pscDetails?.holdsVotingIndirect || "No",
     canAppointRemove: officer.pscDetails?.canAppointRemove || "No",
     hasSignificantInfluence: officer.pscDetails?.hasSignificantInfluence || "No"
@@ -34,7 +34,9 @@ export function EditPscModal({ onClose, officer, updateData }: any) {
             ...o,
             pscDetails: {
               ...o.pscDetails,
-              ...form
+              ...form,
+              // If they selected Yes, append the percentage back for backend
+              holdsVotingDirect: form.holdsVotingDirect === "Yes" && officer.pscDetails?.sharesPercentage ? `Yes (${officer.pscDetails.sharesPercentage}%)` : form.holdsVotingDirect
             }
           };
         }
@@ -74,9 +76,9 @@ export function EditPscModal({ onClose, officer, updateData }: any) {
           <hr className="border-slate-100" />
           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Details of Interest Held</h3>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {isAutoPsc && (
-              <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200 md:col-span-2">
                 <Label className="text-[11px] font-bold uppercase text-slate-500">Directly holds &gt;= 5% Shares? (Auto-Calculated)</Label>
                 <Input value={`Yes (${officer.pscDetails?.sharesPercentage}%)`} disabled className="h-10 font-bold bg-slate-100 text-slate-500" />
               </div>
@@ -84,27 +86,33 @@ export function EditPscModal({ onClose, officer, updateData }: any) {
             
             <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
               <Label className="text-[11px] font-bold uppercase text-slate-500">Indirectly holds &gt;= 5% Shares?</Label>
-              <Input placeholder="E.g. No, or Yes (10%)" value={form.holdsSharesIndirect} onChange={e => setForm({...form, holdsSharesIndirect: e.target.value})} className="h-10 font-bold bg-white" />
-            </div>
-
-            <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <Label className="text-[11px] font-bold uppercase text-slate-500">Directly holds &gt;= 5% Voting Rights?</Label>
-              <Input placeholder="E.g. No, or Yes (10%)" value={form.holdsVotingDirect} onChange={e => setForm({...form, holdsVotingDirect: e.target.value})} className="h-10 font-bold bg-white" />
-            </div>
-
-            <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <Label className="text-[11px] font-bold uppercase text-slate-500">Indirectly holds &gt;= 5% Voting Rights?</Label>
-              <Input placeholder="E.g. No, or Yes (10%)" value={form.holdsVotingIndirect} onChange={e => setForm({...form, holdsVotingIndirect: e.target.value})} className="h-10 font-bold bg-white" />
-            </div>
-
-            <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <Label className="text-[11px] font-bold uppercase text-slate-500">Right to Appoint/Remove majority of directors?</Label>
-              <select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none focus:border-indigo-500" value={form.canAppointRemove} onChange={e => setForm({...form, canAppointRemove: e.target.value})}>
+              <select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none focus:border-indigo-500" value={form.holdsSharesIndirect} onChange={e => setForm({...form, holdsSharesIndirect: e.target.value})}>
                 <option value="No">No</option><option value="Yes">Yes</option>
               </select>
             </div>
 
             <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <Label className="text-[11px] font-bold uppercase text-slate-500">Directly holds &gt;= 5% Voting Rights?</Label>
+              <select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none focus:border-indigo-500" value={form.holdsVotingDirect} onChange={e => setForm({...form, holdsVotingDirect: e.target.value})} disabled={isAutoPsc} title={isAutoPsc ? "Auto-mirrors your direct shares" : ""}>
+                <option value="No">No</option><option value="Yes">Yes</option>
+              </select>
+            </div>
+
+            <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <Label className="text-[11px] font-bold uppercase text-slate-500">Indirectly holds &gt;= 5% Voting Rights?</Label>
+              <select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none focus:border-indigo-500" value={form.holdsVotingIndirect} onChange={e => setForm({...form, holdsVotingIndirect: e.target.value})}>
+                <option value="No">No</option><option value="Yes">Yes</option>
+              </select>
+            </div>
+
+            <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <Label className="text-[11px] font-bold uppercase text-slate-500">Right to Appoint/Remove directors?</Label>
+              <select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none focus:border-indigo-500" value={form.canAppointRemove} onChange={e => setForm({...form, canAppointRemove: e.target.value})}>
+                <option value="No">No</option><option value="Yes">Yes</option>
+              </select>
+            </div>
+
+            <div className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-200 md:col-span-2">
               <Label className="text-[11px] font-bold uppercase text-slate-500">Exercises Significant Influence or Control?</Label>
               <select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none focus:border-indigo-500" value={form.hasSignificantInfluence} onChange={e => setForm({...form, hasSignificantInfluence: e.target.value})}>
                 <option value="No">No</option><option value="Yes">Yes</option>
@@ -123,7 +131,7 @@ export function EditPscModal({ onClose, officer, updateData }: any) {
 
 
 // ==========================================
-// 2. ADD STANDALONE PSC MODAL
+// 2. ADD STANDALONE PSC MODAL (Layout Fixed)
 // ==========================================
 export function StandalonePscModal({ onClose, updateData }: any) {
   const [form, setForm] = useState<any>({
@@ -178,44 +186,58 @@ export function StandalonePscModal({ onClose, updateData }: any) {
           <button onClick={onClose} className="p-2 hover:bg-amber-200 rounded-full text-amber-800"><X weight="bold" /></button>
         </div>
         <div id="psc-modal-scroll" className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-white">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-8">
             
-            <div className="md:col-span-2"><h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Personal Details</h3></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Surname *</Label><Input value={form.surname} onChange={e => setForm({...form, surname: e.target.value})} onBlur={() => setTouched({...touched, surname: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("surname", form.surname)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">First Name *</Label><Input value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} onBlur={() => setTouched({...touched, firstName: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("firstName", form.firstName)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Other Name</Label><Input value={form.otherName} onChange={e => setForm({...form, otherName: e.target.value})} className="h-12 font-bold" /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Date of Birth *</Label><Input type="date" value={form.dob} onChange={e => setForm({...form, dob: e.target.value})} onBlur={() => setTouched({...touched, dob: true})} className="h-12 font-bold uppercase" /><ErrMsg msg={getErr("dob", form.dob, "dob")} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Gender *</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})} onBlur={() => setTouched({...touched, gender: true})}><option value="">-- Select --</option><option value="MALE">MALE</option><option value="FEMALE">FEMALE</option></select><ErrMsg msg={getErr("gender", form.gender)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Occupation *</Label><Input value={form.occupation} onChange={e => setForm({...form, occupation: e.target.value})} onBlur={() => setTouched({...touched, occupation: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("occupation", form.occupation)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Nationality</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.nationality} onChange={e => setForm({...form, nationality: e.target.value, residentialAddress: {...form.residentialAddress, state: "", lga: ""}})}>{COUNTRY_CODES.map(c => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}</select></div>
-            
-            <div className="md:col-span-2 mt-4"><h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Contact & ID</h3></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Email Address *</Label><Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} onBlur={() => setTouched({...touched, email: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("email", form.email, "email")} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Phone Number *</Label><div className="flex"><select value={form.phoneCode} onChange={e => setForm({...form, phoneCode: e.target.value})} className="w-[100px] h-12 px-2 border border-r-0 border-slate-200 rounded-l-xl text-sm font-bold bg-slate-50 outline-none">{COUNTRY_CODES.map(c => <option key={`sc-${c.name}`} value={c.code}>{c.flag} {c.code}</option>)}</select><Input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} onBlur={() => setTouched({...touched, phone: true})} className="h-12 font-bold rounded-l-none flex-1" /></div><ErrMsg msg={getErr("phone", form.phone, "phone")} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Means of ID *</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.idType} onChange={e => setForm({...form, idType: e.target.value})} onBlur={() => setTouched({...touched, idType: true})}><option value="">-- Select --</option><option value="NIN">National ID Card (NIN)</option><option value="PASSPORT">International Passport</option><option value="DRIVERS_LICENSE">Driver's License</option></select><ErrMsg msg={getErr("idType", form.idType)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">ID Number *</Label><Input value={form.idNumber} onChange={e => setForm({...form, idNumber: e.target.value})} onBlur={() => setTouched({...touched, idNumber: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("idNumber", form.idNumber, "idNumber")} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Tax Residency</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.taxResidency} onChange={e => setForm({...form, taxResidency: e.target.value})}>{COUNTRY_CODES.map(c => <option key={`tax-${c.name}`} value={c.name}>{c.name}</option>)}</select></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">TIN (Optional)</Label><Input value={form.tin} onChange={e => setForm({...form, tin: e.target.value})} className="h-12 font-bold" /></div>
+            {/* PERSONAL DETAILS */}
+            <div>
+              <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest mb-4">Personal Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Surname *</Label><Input value={form.surname} onChange={e => setForm({...form, surname: e.target.value})} onBlur={() => setTouched({...touched, surname: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("surname", form.surname)} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">First Name *</Label><Input value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} onBlur={() => setTouched({...touched, firstName: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("firstName", form.firstName)} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Other Name</Label><Input value={form.otherName} onChange={e => setForm({...form, otherName: e.target.value})} className="h-12 font-bold" /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Date of Birth *</Label><Input type="date" value={form.dob} onChange={e => setForm({...form, dob: e.target.value})} onBlur={() => setTouched({...touched, dob: true})} className="h-12 font-bold uppercase" /><ErrMsg msg={getErr("dob", form.dob, "dob")} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Gender *</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})} onBlur={() => setTouched({...touched, gender: true})}><option value="">-- Select --</option><option value="MALE">MALE</option><option value="FEMALE">FEMALE</option></select><ErrMsg msg={getErr("gender", form.gender)} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Occupation *</Label><Input value={form.occupation} onChange={e => setForm({...form, occupation: e.target.value})} onBlur={() => setTouched({...touched, occupation: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("occupation", form.occupation)} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Nationality</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.nationality} onChange={e => setForm({...form, nationality: e.target.value, residentialAddress: {...form.residentialAddress, state: "", lga: ""}})}>{COUNTRY_CODES.map(c => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}</select></div>
+              </div>
+            </div>
 
-            <div className="md:col-span-2 mt-4"><h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Residential Address</h3></div>
-            {form.nationality === "Nigeria" ? (
-              <>
-                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">State *</Label><select value={form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, state: e.target.value, lga: ""}})} onBlur={() => setTouched({...touched, state: true})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none"><option value="">-- Select --</option>{NIGERIA_DATA.map(d => <option key={d.state} value={d.state}>{d.state}</option>)}</select><ErrMsg msg={getErr("state", form.residentialAddress.state)} /></div>
-                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">LGA *</Label><select value={form.residentialAddress.lga} disabled={!form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, lga: e.target.value}})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none"><option value="">-- Select --</option>{form.residentialAddress.state && NIGERIA_DATA.find(d => d.state === form.residentialAddress.state)?.lgas.map(l => <option key={l} value={l}>{l}</option>)}</select></div>
-              </>
-            ) : (
-              <>
-                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">State/Province *</Label><Input value={form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, state: e.target.value}})} className="h-12 font-bold" /></div>
-                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">County/Region *</Label><Input value={form.residentialAddress.lga} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, lga: e.target.value}})} className="h-12 font-bold" /></div>
-              </>
-            )}
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">City / Town *</Label><Input value={form.residentialAddress.city} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, city: e.target.value}})} className="h-12 font-bold" /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Street Address *</Label><Input value={form.residentialAddress.street} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, street: e.target.value}})} className="h-12 font-bold" /></div>
+            {/* CONTACT & ID */}
+            <div>
+              <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest mb-4">Contact & ID</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Email Address *</Label><Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} onBlur={() => setTouched({...touched, email: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("email", form.email, "email")} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Phone Number *</Label><div className="flex"><select value={form.phoneCode} onChange={e => setForm({...form, phoneCode: e.target.value})} className="w-[100px] h-12 px-2 border border-r-0 border-slate-200 rounded-l-xl text-sm font-bold bg-slate-50 outline-none">{COUNTRY_CODES.map(c => <option key={`sc-${c.name}`} value={c.code}>{c.flag} {c.code}</option>)}</select><Input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} onBlur={() => setTouched({...touched, phone: true})} className="h-12 font-bold rounded-l-none flex-1" /></div><ErrMsg msg={getErr("phone", form.phone, "phone")} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Means of ID *</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.idType} onChange={e => setForm({...form, idType: e.target.value})} onBlur={() => setTouched({...touched, idType: true})}><option value="">-- Select --</option><option value="NIN">National ID Card (NIN)</option><option value="PASSPORT">International Passport</option><option value="DRIVERS_LICENSE">Driver's License</option></select><ErrMsg msg={getErr("idType", form.idType)} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">ID Number *</Label><Input value={form.idNumber} onChange={e => setForm({...form, idNumber: e.target.value})} onBlur={() => setTouched({...touched, idNumber: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("idNumber", form.idNumber, "idNumber")} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Tax Residency</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.taxResidency} onChange={e => setForm({...form, taxResidency: e.target.value})}>{COUNTRY_CODES.map(c => <option key={`tax-${c.name}`} value={c.name}>{c.name}</option>)}</select></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">TIN (Optional)</Label><Input value={form.tin} onChange={e => setForm({...form, tin: e.target.value})} className="h-12 font-bold" /></div>
+              </div>
+            </div>
+
+            {/* RESIDENTIAL ADDRESS */}
+            <div>
+              <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest mb-4">Residential Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {form.nationality === "Nigeria" ? (
+                  <>
+                    <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">State *</Label><select value={form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, state: e.target.value, lga: ""}})} onBlur={() => setTouched({...touched, state: true})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none"><option value="">-- Select --</option>{NIGERIA_DATA.map(d => <option key={d.state} value={d.state}>{d.state}</option>)}</select><ErrMsg msg={getErr("state", form.residentialAddress.state)} /></div>
+                    <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">LGA *</Label><select value={form.residentialAddress.lga} disabled={!form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, lga: e.target.value}})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none"><option value="">-- Select --</option>{form.residentialAddress.state && NIGERIA_DATA.find(d => d.state === form.residentialAddress.state)?.lgas.map(l => <option key={l} value={l}>{l}</option>)}</select></div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">State/Province *</Label><Input value={form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, state: e.target.value}})} className="h-12 font-bold" /></div>
+                    <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">County/Region *</Label><Input value={form.residentialAddress.lga} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, lga: e.target.value}})} className="h-12 font-bold" /></div>
+                  </>
+                )}
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">City / Town *</Label><Input value={form.residentialAddress.city} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, city: e.target.value}})} className="h-12 font-bold" /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Street Address *</Label><Input value={form.residentialAddress.street} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, street: e.target.value}})} className="h-12 font-bold" /></div>
+              </div>
+            </div>
 
             {/* PSC DETAILS */}
-            <div className="md:col-span-2 mt-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl space-y-6">
+            <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl space-y-6">
               <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Details of PSC Affiliation</h3>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold uppercase text-slate-500">Is the PSC a PEP? *</Label>
@@ -230,13 +252,13 @@ export function StandalonePscModal({ onClose, updateData }: any) {
               </div>
 
               <h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest mt-6">Details of Interest Held</h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Directly holds &gt;= 5% Shares?</Label><Input placeholder="E.g. No, or Yes (10%)" value={form.pscDetails.holdsSharesDirect} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, holdsSharesDirect: e.target.value}})} className="h-10 font-bold bg-white" /></div>
-                <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Indirectly holds &gt;= 5% Shares?</Label><Input placeholder="E.g. No, or Yes (10%)" value={form.pscDetails.holdsSharesIndirect} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, holdsSharesIndirect: e.target.value}})} className="h-10 font-bold bg-white" /></div>
-                <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Directly holds &gt;= 5% Voting Rights?</Label><Input placeholder="E.g. No, or Yes (10%)" value={form.pscDetails.holdsVotingDirect} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, holdsVotingDirect: e.target.value}})} className="h-10 font-bold bg-white" /></div>
-                <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Indirectly holds &gt;= 5% Voting Rights?</Label><Input placeholder="E.g. No, or Yes (10%)" value={form.pscDetails.holdsVotingIndirect} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, holdsVotingIndirect: e.target.value}})} className="h-10 font-bold bg-white" /></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Directly holds &gt;= 5% Shares?</Label><select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none" value={form.pscDetails.holdsSharesDirect} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, holdsSharesDirect: e.target.value}})}><option value="No">No</option><option value="Yes">Yes</option></select></div>
+                <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Indirectly holds &gt;= 5% Shares?</Label><select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none" value={form.pscDetails.holdsSharesIndirect} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, holdsSharesIndirect: e.target.value}})}><option value="No">No</option><option value="Yes">Yes</option></select></div>
+                <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Directly holds &gt;= 5% Voting Rights?</Label><select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none" value={form.pscDetails.holdsVotingDirect} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, holdsVotingDirect: e.target.value}})}><option value="No">No</option><option value="Yes">Yes</option></select></div>
+                <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Indirectly holds &gt;= 5% Voting Rights?</Label><select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none" value={form.pscDetails.holdsVotingIndirect} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, holdsVotingIndirect: e.target.value}})}><option value="No">No</option><option value="Yes">Yes</option></select></div>
                 <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Right to Appoint/Remove majority of directors?</Label><select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none" value={form.pscDetails.canAppointRemove} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, canAppointRemove: e.target.value}})}><option value="No">No</option><option value="Yes">Yes</option></select></div>
-                <div className="space-y-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Exercises Significant Influence or Control?</Label><select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none" value={form.pscDetails.hasSignificantInfluence} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, hasSignificantInfluence: e.target.value}})}><option value="No">No</option><option value="Yes">Yes</option></select></div>
+                <div className="space-y-2 md:col-span-2"><Label className="text-[11px] font-bold uppercase text-slate-500">Exercises Significant Influence or Control?</Label><select className="w-full h-10 px-4 border border-slate-200 bg-white rounded-lg text-sm font-bold outline-none" value={form.pscDetails.hasSignificantInfluence} onChange={e => setForm({...form, pscDetails: {...form.pscDetails, hasSignificantInfluence: e.target.value}})}><option value="No">No</option><option value="Yes">Yes</option></select></div>
               </div>
             </div>
 
