@@ -34,21 +34,13 @@ export default function PscStep({ data, updateData, showErrors }: any) {
   // AUTO-OPEN ALL PSCS BY DEFAULT
   // ==========================================
   useEffect(() => {
-    // If we have PSCs, make sure their IDs are in the expanded list.
-    // We use a Set to avoid duplicates and ensure everything is open initially.
     if (pscList.length > 0) {
       const allPscIds = pscList.map((p: any) => p.id);
       
-      // We only want to force open if they aren't already explicitly tracked.
-      // This prevents closing an accordion and having it instantly pop back open on the next render.
       setExpandedIds(prev => {
         const newIds = new Set(prev);
         let changed = false;
         allPscIds.forEach((id: string) => {
-           // We assume if it's a completely new render/load, we open everything.
-           // In a real flow, you might need a "hasInitialized" ref if you want 
-           // users to keep things closed permanently, but for standard CAC forms, 
-           // showing all data is preferred.
            if (!newIds.has(id)) {
               newIds.add(id);
               changed = true;
@@ -58,11 +50,11 @@ export default function PscStep({ data, updateData, showErrors }: any) {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pscList.length]); // Re-run if the number of PSCs changes
+  }, [pscList.length]); 
 
 
   // ==========================================
-  // AUTO-DETECT PSCs (>= 5% SHARES)
+  // AUTO-DETECT PSCs (>= 5% SHARES) WITH DEFAULTS
   // ==========================================
   useEffect(() => {
     if (totalUnits === 0) return;
@@ -79,7 +71,7 @@ export default function PscStep({ data, updateData, showErrors }: any) {
       const isAutoPsc = percentage >= 5;
       const hasPscRole = officer.roles.includes("PSC");
 
-      // Auto-Add PSC Role
+      // Auto-Add PSC Role WITH strict defaults so it is instantly "Complete"
       if (isAutoPsc && !hasPscRole) {
         needsUpdate = true;
         return {
@@ -87,13 +79,13 @@ export default function PscStep({ data, updateData, showErrors }: any) {
           roles: [...officer.roles, "PSC"],
           pscDetails: {
             ...officer.pscDetails,
-            isPep: "", 
-            hasAffiliation: "", 
+            isPep: "No", // DEFAULT NO
+            hasAffiliation: "No", // DEFAULT NO
             holdsSharesDirect: `Yes (${percentage.toFixed(2)}%)`,
             holdsSharesIndirect: officer.pscDetails?.holdsSharesIndirect || "No",
             holdsVotingDirect: officer.pscDetails?.holdsVotingDirect || `Yes (${percentage.toFixed(2)}%)`,
             holdsVotingIndirect: officer.pscDetails?.holdsVotingIndirect || "No",
-            canAppointRemove: officer.pscDetails?.canAppointRemove || "No",
+            canAppointRemove: officer.pscDetails?.canAppointRemove || "No", // DEFAULT NO
             hasSignificantInfluence: officer.pscDetails?.hasSignificantInfluence || "No"
           }
         };
@@ -116,7 +108,7 @@ export default function PscStep({ data, updateData, showErrors }: any) {
            ...officer,
            pscDetails: {
              ...officer.pscDetails,
-             sharesPercentage: percentage.toFixed(2), // Keep for legacy reference
+             sharesPercentage: percentage.toFixed(2), 
              holdsSharesDirect: `Yes (${percentage.toFixed(2)}%)`,
              holdsVotingDirect: officer.pscDetails?.holdsVotingDirect?.includes("Yes") ? `Yes (${percentage.toFixed(2)}%)` : officer.pscDetails?.holdsVotingDirect
            }
@@ -139,10 +131,8 @@ export default function PscStep({ data, updateData, showErrors }: any) {
     if (!officer) return;
 
     if (officer.roles.length === 1 && officer.roles.includes("PSC")) {
-      // True standalone, nuke entirely
       updateData((prev: any) => ({ ...prev, officers: prev.officers.filter((o: any) => o.id !== officerId) }));
     } else {
-      // They have other roles (maybe Director?), just remove PSC role
       updateData((prev: any) => ({
         ...prev, 
         officers: prev.officers.map((o: any) => o.id === officerId ? { ...o, roles: o.roles.filter((r: string) => r !== "PSC"), pscDetails: null } : o)
