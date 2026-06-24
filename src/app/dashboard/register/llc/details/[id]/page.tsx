@@ -23,6 +23,8 @@ export default function LlcRegistrationDetailsPage() {
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
+  const [highestStep, setHighestStep] = useState(1); // Tracks the furthest unlocked step
+  
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<any>(null);
   
@@ -99,6 +101,16 @@ export default function LlcRegistrationDetailsPage() {
   }, [id, router]);
 
   // ==========================================
+  // SCROLL ACTIVE STEP INTO VIEW ON MOBILE
+  // ==========================================
+  useEffect(() => {
+    const stepEl = document.getElementById(`nav-step-${currentStep}`);
+    if (stepEl) {
+      stepEl.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [currentStep]);
+
+  // ==========================================
   // SILENT BACKGROUND AUTOSAVE
   // ==========================================
   const isFirstRender = useRef(true);
@@ -153,26 +165,22 @@ export default function LlcRegistrationDetailsPage() {
   // SMART VALIDATION & NEXT STEP
   // ==========================================
   const handleSaveAndNext = () => {
-    // If Step 5 (Share Capital) has broadcasted an error via setStepError, do not clear it.
     if (currentStep !== 5) {
         setTopError(null);
     }
-    
-    setShowErrors(true); // Always set to true on click so inline fields turn red
+    setShowErrors(true);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
 
     const d = companyDetails;
 
-    // STRICT STEP 1 VALIDATION
+    // STRICT STEP 1
     if (currentStep === 1) {
       const rAddr = d.registeredAddress;
       const hAddr = d.headOfficeAddress;
-
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!d.email || !d.email.trim() || !emailRegex.test(d.email)) {
-        triggerError("Please provide a valid Company Email address.", "field-email");
-        return;
-      }
-
+      
+      if (!d.email || !d.email.trim() || !emailRegex.test(d.email)) return triggerError("Please provide a valid Company Email address.", "field-email");
+      
       const checks = [
         { val: d.description, name: "Description of Business Activity", id: "field-desc" },
         { val: rAddr.state, name: "Registered State", id: "field-regState" },
@@ -188,21 +196,14 @@ export default function LlcRegistrationDetailsPage() {
       ];
 
       const firstError = checks.find(c => !c.val || !c.val.trim());
-      if (firstError) {
-        triggerError(`Please provide the ${firstError.name}.`, firstError.id);
-        return; 
-      }
+      if (firstError) return triggerError(`Please provide the ${firstError.name}.`, firstError.id);
     }
 
-    // STRICT STEP 2 VALIDATION (Articles & Witness)
+    // STRICT STEP 2 
     if (currentStep === 2) {
       const w = d.witnessDetails;
-
-      if (!d.customArticles || d.customArticles.length === 0) {
-        triggerError("You must provide at least one Article of Association to proceed.");
-        return;
-      }
-
+      if (!d.customArticles || d.customArticles.length === 0) return triggerError("You must provide at least one Article of Association to proceed.");
+      
       const witnessChecks = [
         { val: w.surname, name: "Witness Surname", id: "field-w-surname" },
         { val: w.firstName, name: "Witness First Name", id: "field-w-first" },
@@ -219,141 +220,98 @@ export default function LlcRegistrationDetailsPage() {
       ];
 
       const firstError = witnessChecks.find(c => !c.val || !c.val.trim());
-      if (firstError) {
-        triggerError(`Please provide the ${firstError.name}.`, firstError.id);
-        return;
-      }
+      if (firstError) return triggerError(`Please provide the ${firstError.name}.`, firstError.id);
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(w.email)) {
-        triggerError("Please provide a valid Witness Email address.", "field-w-email");
-        return;
-      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(w.email)) return triggerError("Please provide a valid Witness Email address.", "field-w-email");
+      
+      const age = Math.abs(new Date(Date.now() - new Date(w.dob).getTime()).getUTCFullYear() - 1970);
+      if (age < 18) return triggerError("The witness must be at least 18 years old to sign legal documents.", "field-w-dob");
+      if (w.phone.replace(/\D/g, '').length < 5) return triggerError("Please provide a valid Witness Phone Number.", "field-w-phone");
+    }
 
-      const dobDate = new Date(w.dob);
-      const ageDifMs = Date.now() - dobDate.getTime();
-      const ageDate = new Date(ageDifMs);
-      const age = Math.abs(ageDate.getUTCFullYear() - 1970);
-      if (age < 18) {
-        triggerError("The witness must be at least 18 years old to sign legal documents.", "field-w-dob");
-        return;
+    // STRICT STEP 3 
+    if (currentStep === 3 && d.memorandumObjects.length === 0) return triggerError("Please add at least one Object of Memorandum.");
+    
+    // STRICT STEP 4 
+    if (currentStep === 4 && d.officers.filter(o => o.roles.includes("DIRECTOR")).length === 0) return triggerError("You must add at least one Director.");
+
+    // STRICT STEP 5 
+    if (currentStep === 5) {
+      if (topError) {
+         window.scrollTo({ top: 0, behavior: "smooth" });
+         return; 
       }
       
-      if (w.phone.replace(/\D/g, '').length < 5) {
-        triggerError("Please provide a valid Witness Phone Number.", "field-w-phone");
-        return;
-      }
-    }
-
-    // STRICT STEP 3 VALIDATION
-    if (currentStep === 3 && d.memorandumObjects.length === 0) {
-      triggerError("Please add at least one Object of Memorandum.");
-      return;
-    }
-    
-    // STRICT STEP 4 VALIDATION
-    if (currentStep === 4 && d.officers.filter(o => o.roles.includes("DIRECTOR")).length === 0) {
-      triggerError("You must add at least one Director.");
-      return;
-    }
-
-    // STRICT STEP 5 VALIDATION (Share Capital Math)
-    if (currentStep === 5) {
       const sc = d.shareCapital || {};
       const companyType = sc.companyType || "ENTITY WITH SHARES BELOW FIVE MILLION";
       const selectedCompanyInfo = DESIGNATED_COMPANIES.find(c => c.type === companyType);
       const minRequired = selectedCompanyInfo ? selectedCompanyInfo.min : 1000000;
       const totalIssuedCapitalNum = Number(sc.totalIssuedCapital) || 0;
 
-      if (totalIssuedCapitalNum < minRequired) {
-        triggerError(`Total Issued Capital must be at least ₦${minRequired.toLocaleString()} for this company type.`);
-        return;
-      }
-
+      if (totalIssuedCapitalNum < minRequired) return triggerError(`Total Issued Capital must be at least ₦${minRequired.toLocaleString()} for this company type.`);
       const classes = sc.shareClasses || [];
-      if (classes.length === 0) {
-        triggerError("You must create at least one Share Class (EQUITY (ORDINARY)).");
-        return;
-      }
-
+      if (classes.length === 0) return triggerError("You must create at least one Share Class (EQUITY (ORDINARY)).");
       const totalClassesValue = classes.reduce((acc: number, c: any) => acc + (Number(c.totalValue) || 0), 0);
-      if (totalClassesValue !== totalIssuedCapitalNum) {
-        triggerError(`Mismatch! Your Share Classes total ₦${totalClassesValue.toLocaleString()}, but your declared capital is ₦${totalIssuedCapitalNum.toLocaleString()}.`);
-        return;
-      }
-
-      const hasOrdinary = classes.some((c: any) => c.type === "EQUITY (ORDINARY)");
-      if (!hasOrdinary) {
-        triggerError("A company cannot be registered with only Preference shares. You must add at least one EQUITY (ORDINARY) share class.");
-        return;
-      }
+      if (totalClassesValue !== totalIssuedCapitalNum) return triggerError(`Mismatch! Your Share Classes total ₦${totalClassesValue.toLocaleString()}, but your declared capital is ₦${totalIssuedCapitalNum.toLocaleString()}.`);
+      if (!classes.some((c: any) => c.type === "EQUITY (ORDINARY)")) return triggerError("A company cannot be registered with only Preference shares. You must add at least one EQUITY (ORDINARY) share class.");
 
       const totalRequiredUnits = classes.reduce((acc: number, c: any) => acc + (Number(c.units) || 0), 0);
       const allotments = sc.allotments || [];
       const totalAllotted = allotments.reduce((acc: number, a: any) => acc + (Number(a.units) || 0), 0);
       const remainingAllotmentUnits = totalRequiredUnits - totalAllotted;
 
-      const shareholders = (d.officers || []).filter((o: any) => o.roles.includes("SHAREHOLDER"));
-      if (shareholders.length === 0) {
-        triggerError("You must add at least one Shareholder in Step 4 before assigning shares.");
-        return;
-      }
-
-      if (remainingAllotmentUnits > 0) {
-        triggerError(`You must allot 100% of the created shares. You still have ${remainingAllotmentUnits.toLocaleString()} units unassigned.`);
-        return;
-      } else if (remainingAllotmentUnits < 0) {
-        triggerError(`You have over-distributed your shares by ${Math.abs(remainingAllotmentUnits).toLocaleString()} units. Please correct the allotments.`);
-        return;
-      }
+      if (d.officers.filter((o: any) => o.roles.includes("SHAREHOLDER")).length === 0) return triggerError("You must add at least one Shareholder before assigning shares.");
+      if (remainingAllotmentUnits > 0) return triggerError(`You must allot 100% of the created shares. You still have ${remainingAllotmentUnits.toLocaleString()} units unassigned.`);
+      if (remainingAllotmentUnits < 0) return triggerError(`You have over-distributed your shares by ${Math.abs(remainingAllotmentUnits).toLocaleString()} units. Please correct the allotments.`);
     }
 
-    // STRICT STEP 6 VALIDATION (PSC)
+    // STRICT STEP 6 (PSC)
     if (currentStep === 6) {
-        const pscs = d.officers.filter(o => o.roles.includes("PSC"));
-        const incompletePsc = pscs.find(p => !p.pscDetails?.isPep || !p.pscDetails?.hasAffiliation);
-        
-        if (incompletePsc) {
-            triggerError(`Please complete the details for PSC: ${incompletePsc.firstName} ${incompletePsc.surname}`);
-            return;
-        }
+        const incompletePsc = d.officers.filter(o => o.roles.includes("PSC")).find((p: any) => !p.pscDetails?.isPep || !p.pscDetails?.hasAffiliation);
+        if (incompletePsc) return triggerError(`Please complete the details for PSC: ${incompletePsc.firstName} ${incompletePsc.surname}`);
     }
 
-    // STRICT STEP 7 VALIDATION (Compliance)
+    // STRICT STEP 7 (Compliance)
     if (currentStep === 7) {
         const dec = d.declarantDetails || {};
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!dec.surname || !dec.firstName || !dec.phone || !dec.email || !dec.state || !dec.lga || !dec.city || !dec.street) return triggerError("Please fill in all required fields for the Declarant.");
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dec.email)) return triggerError("Please provide a valid Declarant Email address.");
+        if (dec.phone.replace(/\D/g, '').length < 5) return triggerError("Please provide a valid Declarant Phone Number.");
+        if (!dec.isAcknowledged) return triggerError("You must acknowledge the Statement of Compliance to proceed.");
+    }
 
-        if (!dec.surname || !dec.firstName || !dec.phone || !dec.email || !dec.state || !dec.lga || !dec.city || !dec.street) {
-             triggerError("Please fill in all required fields for the Declarant.");
-             return;
-        }
+    // STRICT STEP 8 (Uploads)
+    if (currentStep === 8) {
+      const u = d.uploads || {};
+      const missingDocs: string[] = [];
 
-        if (!emailRegex.test(dec.email)) {
-            triggerError("Please provide a valid Declarant Email address.");
-            return;
-        }
+      d.officers.forEach((o: any) => {
+        if (!u[`id-${o.id}`]) missingDocs.push(`ID for ${o.firstName}`);
+        if (!u[`sig-${o.id}`]) missingDocs.push(`Signature for ${o.firstName}`);
+      });
 
-        if (dec.phone.replace(/\D/g, '').length < 5) {
-             triggerError("Please provide a valid Declarant Phone Number.");
-             return;
-        }
+      if (d.witnessDetails?.firstName && !u['witness-sig']) missingDocs.push("Witness Signature");
+      if (d.declarantDetails?.firstName && !u['deponent-sig']) missingDocs.push("Declarant Signature");
 
-        if (!dec.isAcknowledged) {
-            triggerError("You must acknowledge the Statement of Compliance to proceed.");
-            return;
-        }
+      if (missingDocs.length > 0) {
+        const errorText = missingDocs.length === 1 
+          ? `Missing required upload: ${missingDocs[0]}` 
+          : `Missing required uploads: ${missingDocs[0]} (+${missingDocs.length - 1} more)`;
+        return triggerError(errorText);
+      }
     }
     
-    setShowErrors(false); // Reset visual inline errors for next step
+    // SUCCESS! Proceed to next step
+    setShowErrors(false);
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-    setCurrentStep(prev => prev + 1);
+    
+    const nextStepNum = currentStep + 1;
+    setCurrentStep(nextStepNum);
+    setHighestStep(prev => Math.max(prev, nextStepNum));
+    
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ==========================================
-  // FINAL SUBMISSION (TRIGGER PAYMENT)
-  // ==========================================
   const handleFinalSubmit = async () => {
     setIsSubmittingFinal(true);
     setTopError(null);
@@ -366,9 +324,8 @@ export default function LlcRegistrationDetailsPage() {
         body: JSON.stringify({ ...companyDetails, headOfficeSameAsRegistered: false, isDraft: false })
       });
       
-      if (res.ok) {
-        setShowPaymentModal(true); 
-      } else {
+      if (res.ok) setShowPaymentModal(true); 
+      else {
         const errorData = await res.json();
         triggerError(errorData.message || "Please complete all mandatory fields before submitting.");
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -415,18 +372,40 @@ export default function LlcRegistrationDetailsPage() {
         </div>
       )}
 
-      {/* Header & Stepper */}
+      {/* Header & Clickable Stepper */}
       <div className="mb-8 border-b border-slate-200 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="w-full overflow-hidden">
           <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5">Completing Application For</p>
           <h1 className="text-2xl font-black text-slate-900 mb-6 truncate pr-4">{draft?.proposedName || "Loading..."}</h1>
           
-          <div className="flex gap-4 overflow-x-auto custom-scrollbar pb-2 w-full max-w-full snap-x">
+          <div className="flex gap-3 sm:gap-4 overflow-x-auto custom-scrollbar pb-3 w-full max-w-full snap-x scroll-smooth select-none">
             {STEPS.map((title, index) => {
               const stepNum = index + 1;
+              const isUnlocked = stepNum <= highestStep;
+              const isActive = currentStep === stepNum;
+              
               return (
-                <div key={stepNum} className={`flex items-center gap-2 whitespace-nowrap text-sm snap-start shrink-0 ${currentStep === stepNum ? "text-indigo-600 font-black" : currentStep > stepNum ? "text-slate-800 font-bold" : "text-slate-400 font-medium"}`}>
-                  <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold ${currentStep === stepNum ? "bg-indigo-600 text-white" : currentStep > stepNum ? "bg-slate-200 text-slate-800" : "bg-slate-100"}`}>
+                <div 
+                  key={stepNum} 
+                  id={`nav-step-${stepNum}`}
+                  onClick={() => {
+                    if (isUnlocked && !isActive) {
+                      setCurrentStep(stepNum);
+                      setTopError(null);
+                      setShowErrors(false);
+                    }
+                  }}
+                  className={`flex items-center gap-2 whitespace-nowrap text-sm snap-start shrink-0 px-2 py-1 rounded-lg transition-colors ${
+                    isActive ? "text-indigo-600 font-black bg-indigo-50/50" : 
+                    isUnlocked ? "text-slate-800 font-bold hover:bg-slate-100 cursor-pointer" : 
+                    "text-slate-400 font-medium opacity-60 cursor-not-allowed"
+                  }`}
+                >
+                  <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-black transition-colors ${
+                    isActive ? "bg-indigo-600 text-white shadow-sm" : 
+                    isUnlocked ? "bg-slate-200 text-slate-800" : 
+                    "bg-slate-100 text-slate-400"
+                  }`}>
                     {stepNum}
                   </span>
                   {title}
@@ -447,7 +426,7 @@ export default function LlcRegistrationDetailsPage() {
         {currentStep === 5 && <ShareCapitalStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
         {currentStep === 6 && <PscStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
         {currentStep === 7 && <ComplianceStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
-        {currentStep === 8 && <UploadsStep data={companyDetails} updateData={setCompanyDetails} />}
+        {currentStep === 8 && <UploadsStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
         {currentStep === 9 && (
           <PreviewStep 
             data={companyDetails} 
@@ -464,7 +443,7 @@ export default function LlcRegistrationDetailsPage() {
               variant="outline" 
               onClick={() => { setCurrentStep(p => p - 1); setTopError(null); }} 
               disabled={currentStep === 1} 
-              className="h-12 px-6 rounded-xl font-bold bg-white text-slate-600"
+              className="h-12 px-6 rounded-xl font-bold bg-white text-slate-600 shadow-sm"
             >
               Back
             </Button>
