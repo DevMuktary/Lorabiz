@@ -9,17 +9,32 @@ import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz
 export default function ComplianceStep({ data, updateData, showErrors }: any) {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const declarant = data.declarantDetails || {
+  const defaultDeclarant = {
     surname: "", firstName: "", accreditationNumber: "", 
     phoneCode: "+234", phone: "", email: "", 
     state: "", lga: "", city: "", street: "", 
     isAcknowledged: false
   };
 
+  const declarant = data.declarantDetails || defaultDeclarant;
+
+  // FIX: Safely merge the previous state so it doesn't overwrite itself
   const handleUpdate = (field: string, value: any) => {
     updateData((prev: any) => ({
       ...prev,
-      declarantDetails: { ...declarant, [field]: value }
+      declarantDetails: { ...(prev.declarantDetails || defaultDeclarant), [field]: value }
+    }));
+  };
+
+  // FIX: Dedicated handler for State change to safely clear LGA at the same time
+  const handleStateChange = (newState: string) => {
+    updateData((prev: any) => ({
+      ...prev,
+      declarantDetails: { 
+        ...(prev.declarantDetails || defaultDeclarant), 
+        state: newState, 
+        lga: "" // Reset LGA safely
+      }
     }));
   };
 
@@ -142,7 +157,8 @@ export default function ComplianceStep({ data, updateData, showErrors }: any) {
           <div className="space-y-2">
             <Label className={`text-xs font-bold uppercase ${errState ? "text-red-500" : "text-slate-500"}`}>State <span className="text-red-500">*</span></Label>
             <div className="relative">
-              <select value={declarant.state} onChange={e => { handleUpdate("state", e.target.value); handleUpdate("lga", ""); }} onBlur={() => handleBlur("state")} className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errState ? "border-red-500 bg-red-50 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`}>
+              {/* FIX: Using handleStateChange here safely handles both fields */}
+              <select value={declarant.state} onChange={e => handleStateChange(e.target.value)} onBlur={() => handleBlur("state")} className={`w-full h-12 px-4 appearance-none border rounded-xl text-sm font-bold outline-none ${errState ? "border-red-500 bg-red-50 text-red-900" : "border-slate-200 bg-white focus:border-indigo-500"}`}>
                 <option value="">-- Select State --</option>
                 {nigerianStates.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
