@@ -1,6 +1,6 @@
 "use client";
 
-import { UploadSimple, FilePdf, CheckCircle, Trash } from "@phosphor-icons/react";
+import { UploadSimple, FilePdf, CheckCircle, Trash, WarningCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 // Helper to format roles beautifully: ["DIRECTOR", "PSC"] -> "DIRECTOR & PSC"
@@ -12,16 +12,24 @@ const formatRoles = (roles: string[]) => {
 };
 
 // Reusable row for each document
-function UploadRow({ title, isOptional = false, onUpload, isUploaded, onRemove }: any) {
+function UploadRow({ title, isOptional = false, onUpload, isUploaded, onRemove, hasError }: any) {
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-slate-50 border rounded-xl gap-4 transition-colors ${isUploaded ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200'}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-slate-50 border rounded-xl gap-4 transition-colors ${
+      isUploaded ? 'border-emerald-200 bg-emerald-50/30' : 
+      hasError ? 'border-red-400 bg-red-50/50 ring-2 ring-red-100' : 'border-slate-200'
+    }`}>
       <div>
         <h4 className="text-sm font-black text-slate-900 leading-tight">
           {title} {!isOptional && <span className="text-red-500 ml-1">*</span>}
         </h4>
-        <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
+        <p className={`text-[10px] font-bold mt-1 uppercase tracking-widest ${hasError && !isUploaded ? "text-red-500" : "text-slate-400"}`}>
           PDF, JPEG or PNG (Max 4MB)
         </p>
+        {hasError && !isUploaded && (
+          <div className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-2">
+            <WarningCircle weight="fill" /> Document is required
+          </div>
+        )}
       </div>
       
       <div className="shrink-0 flex items-center justify-end">
@@ -35,7 +43,7 @@ function UploadRow({ title, isOptional = false, onUpload, isUploaded, onRemove }
             </button>
           </div>
         ) : (
-          <Button variant="outline" className="h-10 bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 font-bold w-full sm:w-auto relative overflow-hidden group shadow-sm">
+          <Button variant="outline" className={`h-10 bg-white font-bold w-full sm:w-auto relative overflow-hidden group shadow-sm ${hasError ? 'border-red-300 text-red-600 hover:bg-red-50' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300'}`}>
             <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={onUpload} accept=".pdf,.jpg,.jpeg,.png" />
             <UploadSimple weight="bold" className="mr-2 h-4 w-4 transition-transform group-hover:-translate-y-1" /> Browse File
           </Button>
@@ -45,7 +53,7 @@ function UploadRow({ title, isOptional = false, onUpload, isUploaded, onRemove }
   );
 }
 
-export default function UploadsStep({ data, updateData }: any) {
+export default function UploadsStep({ data, updateData, showErrors }: any) {
   const officers = data.officers || [];
   const witness = data.witnessDetails || {};
   const declarant = data.declarantDetails || {};
@@ -98,6 +106,7 @@ export default function UploadsStep({ data, updateData }: any) {
               isUploaded={!!uploads[`id-${officer.id}`]}
               onUpload={simulateUpload(`id-${officer.id}`)}
               onRemove={removeUpload(`id-${officer.id}`)}
+              hasError={showErrors && !uploads[`id-${officer.id}`]}
             />
           ))}
 
@@ -111,6 +120,7 @@ export default function UploadsStep({ data, updateData }: any) {
                isUploaded={!!uploads['witness-sig']}
                onUpload={simulateUpload('witness-sig')}
                onRemove={removeUpload('witness-sig')}
+               hasError={showErrors && !uploads['witness-sig']}
              />
           )}
 
@@ -121,6 +131,7 @@ export default function UploadsStep({ data, updateData }: any) {
                isUploaded={!!uploads['deponent-sig']}
                onUpload={simulateUpload('deponent-sig')}
                onRemove={removeUpload('deponent-sig')}
+               hasError={showErrors && !uploads['deponent-sig']}
              />
           )}
 
@@ -132,6 +143,7 @@ export default function UploadsStep({ data, updateData }: any) {
                isUploaded={!!uploads[`sig-${officer.id}`]}
                onUpload={simulateUpload(`sig-${officer.id}`)}
                onRemove={removeUpload(`sig-${officer.id}`)}
+               hasError={showErrors && !uploads[`sig-${officer.id}`]}
              />
           ))}
 
@@ -143,13 +155,6 @@ export default function UploadsStep({ data, updateData }: any) {
             isUploaded={!!uploads['reason-restriction']} 
             onUpload={simulateUpload('reason-restriction')} 
             onRemove={removeUpload('reason-restriction')} 
-          />
-          <UploadRow 
-            title="STATUTORY DECLARATION OF COMPLIANCE FOR LEGAL PRACTITIONERS" 
-            isOptional 
-            isUploaded={!!uploads['legal-declaration']} 
-            onUpload={simulateUpload('legal-declaration')} 
-            onRemove={removeUpload('legal-declaration')} 
           />
           <UploadRow 
             title="OTHERS" 
