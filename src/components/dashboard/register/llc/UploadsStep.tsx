@@ -1,6 +1,6 @@
 "use client";
 
-import { UploadSimple, FilePdf, CheckCircle, Trash, WarningCircle } from "@phosphor-icons/react";
+import { UploadSimple, FilePdf, CheckCircle, Trash, WarningCircle, Eye } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 // Helper to format roles beautifully: ["DIRECTOR", "PSC"] -> "DIRECTOR & PSC"
@@ -12,7 +12,9 @@ const formatRoles = (roles: string[]) => {
 };
 
 // Reusable row for each document
-function UploadRow({ title, isOptional = false, onUpload, isUploaded, onRemove, hasError }: any) {
+function UploadRow({ title, isOptional = false, onUpload, fileUrl, onRemove, hasError }: any) {
+  const isUploaded = !!fileUrl;
+
   return (
     <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-slate-50 border rounded-xl gap-4 transition-colors ${
       isUploaded ? 'border-emerald-200 bg-emerald-50/30' : 
@@ -34,11 +36,26 @@ function UploadRow({ title, isOptional = false, onUpload, isUploaded, onRemove, 
       
       <div className="shrink-0 flex items-center justify-end">
         {isUploaded ? (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-emerald-700 bg-emerald-100 px-4 py-2 rounded-lg font-bold text-sm border border-emerald-200 shadow-sm">
-              <CheckCircle weight="fill" className="h-5 w-5 text-emerald-500" /> Uploaded
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 text-emerald-700 bg-emerald-100 px-3 sm:px-4 py-2 rounded-lg font-bold text-sm border border-emerald-200 shadow-sm">
+              <CheckCircle weight="fill" className="h-5 w-5 text-emerald-500 shrink-0" /> <span className="hidden sm:inline">Uploaded</span>
             </div>
-            <button onClick={onRemove} title="Remove file" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100">
+            
+            <a 
+              href={fileUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              title="View file" 
+              className="p-2 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+            >
+              <Eye weight="bold" className="h-5 w-5" />
+            </a>
+
+            <button 
+              onClick={onRemove} 
+              title="Remove file" 
+              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+            >
               <Trash weight="bold" className="h-5 w-5" />
             </button>
           </div>
@@ -58,14 +75,17 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
   const witness = data.witnessDetails || {};
   const declarant = data.declarantDetails || {};
   
-  // Dummy upload handler (Replace with Cloudinary/S3 logic)
+  // Dummy upload handler (Replace with real Cloudinary/S3 logic when ready)
   const simulateUpload = (docKey: string) => (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
     
+    // Simulating an actual file URL so the "View" button has something to open
+    const fakeUrl = URL.createObjectURL(file);
+    
     updateData((prev: any) => ({
       ...prev,
-      uploads: { ...(prev.uploads || {}), [docKey]: "https://dummy-url.com/file.pdf" }
+      uploads: { ...(prev.uploads || {}), [docKey]: fakeUrl }
     }));
   };
 
@@ -103,7 +123,7 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
             <UploadRow 
               key={`id-${officer.id}`} 
               title={`MEANS OF ID - ${officer.surname} ${officer.firstName}`} 
-              isUploaded={!!uploads[`id-${officer.id}`]}
+              fileUrl={uploads[`id-${officer.id}`]}
               onUpload={simulateUpload(`id-${officer.id}`)}
               onRemove={removeUpload(`id-${officer.id}`)}
               hasError={showErrors && !uploads[`id-${officer.id}`]}
@@ -117,7 +137,7 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
           {witness.firstName && (
              <UploadRow 
                title={`SIGNATURE OF WITNESS - ${witness.surname} ${witness.firstName}`} 
-               isUploaded={!!uploads['witness-sig']}
+               fileUrl={uploads['witness-sig']}
                onUpload={simulateUpload('witness-sig')}
                onRemove={removeUpload('witness-sig')}
                hasError={showErrors && !uploads['witness-sig']}
@@ -128,7 +148,7 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
           {declarant.firstName && (
              <UploadRow 
                title={`SIGNATURE OF DEPONENT/DECLARANT - ${declarant.surname} ${declarant.firstName}`} 
-               isUploaded={!!uploads['deponent-sig']}
+               fileUrl={uploads['deponent-sig']}
                onUpload={simulateUpload('deponent-sig')}
                onRemove={removeUpload('deponent-sig')}
                hasError={showErrors && !uploads['deponent-sig']}
@@ -140,7 +160,7 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
              <UploadRow 
                key={`sig-${officer.id}`} 
                title={`SIGNATURE OF ${formatRoles(officer.roles)} - ${officer.surname} ${officer.firstName}`} 
-               isUploaded={!!uploads[`sig-${officer.id}`]}
+               fileUrl={uploads[`sig-${officer.id}`]}
                onUpload={simulateUpload(`sig-${officer.id}`)}
                onRemove={removeUpload(`sig-${officer.id}`)}
                hasError={showErrors && !uploads[`sig-${officer.id}`]}
@@ -152,14 +172,14 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
           <UploadRow 
             title="REASON FOR RESTRICTION OF RESIDENTIAL ADDRESS" 
             isOptional 
-            isUploaded={!!uploads['reason-restriction']} 
+            fileUrl={uploads['reason-restriction']} 
             onUpload={simulateUpload('reason-restriction')} 
             onRemove={removeUpload('reason-restriction')} 
           />
           <UploadRow 
             title="OTHERS" 
             isOptional 
-            isUploaded={!!uploads['others']} 
+            fileUrl={uploads['others']} 
             onUpload={simulateUpload('others')} 
             onRemove={removeUpload('others')} 
           />
