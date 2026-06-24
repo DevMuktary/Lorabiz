@@ -1,188 +1,310 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CreditCard, WarningCircle, Buildings, Users, ShieldCheck, Receipt, CircleNotch } from "@phosphor-icons/react";
+import { 
+  Buildings, 
+  Users, 
+  Bank, 
+  FilePdf,
+  WarningCircle,
+  CreditCard,
+  CheckCircle,
+  ArrowRight,
+  ShieldCheck,
+  Money
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
-export default function PreviewStep({ data, draft, onSubmit, isSubmitting }: any) {
-  
-  // DYNAMIC PRICING STATE
-  const [pricing, setPricing] = useState<{ LLC_BASE: number; LLC_EXTRA_MILLION: number; SERVICE_CHARGE: number } | null>(null);
-  const [loadingPricing, setLoadingPricing] = useState(true);
+// Format currency for Naira
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    minimumFractionDigits: 0,
+  }).format(amount);
+};
 
-  // Fetch Live Prices from the Database
+// Helper for officer roles
+const formatRoles = (roles: string[]) => {
+  if (!roles || roles.length === 0) return "OFFICER";
+  return roles.join(' & ');
+};
+
+// Map upload keys to human-readable labels
+const getUploadLabel = (key: string) => {
+  if (key === 'witness-sig') return 'Witness Signature';
+  if (key === 'deponent-sig') return 'Declarant Signature';
+  if (key === 'reason-restriction') return 'Address Restriction Reason';
+  if (key === 'others') return 'Additional Document';
+  if (key.startsWith('id-')) return 'Means of Identification';
+  if (key.startsWith('sig-')) return 'Officer Signature';
+  return 'Uploaded Document';
+};
+
+export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
+  const [pricing, setPricing] = useState<{
+    baseFee: number;
+    extraSharesFee: number;
+    stampDuty: number;
+    serviceFee: number;
+    total: number;
+  } | null>(null);
+  
+  const [isLoadingPricing, setIsLoadingPricing] = useState(true);
+
+  // Safely fallback data objects if undefined
+  const company = data.companyDetails || {};
+  const shares = data.shareCapital || {};
+  const officers = data.officers || [];
+  const uploads = data.uploads || {};
+
   useEffect(() => {
     const fetchPricing = async () => {
+      setIsLoadingPricing(true);
       try {
-        const res = await fetch("/api/pricing");
-        const json = await res.json();
-        if (json.success) {
-          setPricing(json.data);
+        const totalShares = Number(shares.totalShares) || 1000000;
+        
+        // Attempt to fetch exact breakdown from your pricing API
+        const res = await fetch('/api/pricing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service: 'llc',
+            shares: totalShares,
+            companyType: company.companyType || 'LTD'
+          })
+        });
+
+        if (res.ok) {
+          const apiPricing = await res.json();
+          setPricing(apiPricing);
+        } else {
+          throw new Error("API fallback triggered");
         }
       } catch (error) {
-        console.error("Failed to load pricing.");
+        // Fallback to strict CAC & FIRS calculation logic
+        const totalShares = Number(shares.totalShares) || 1000000;
+        
+        const baseCACFee = 10000; // Base CAC fee for first 1M shares
+        const extraSharesCACFee = Math.max(0, Math.ceil((totalShares - 1000000) / 1000000)) * 5000; // N5k per additional 1M
+        const stampDuty = totalShares * 0.0075; // 0.75% FIRS Stamp Duty
+        const lumebizServiceFee = 20000; // Standard Lumebiz agency fee
+        
+        setPricing({
+          baseFee: baseCACFee,
+          extraSharesFee: extraSharesCACFee,
+          stampDuty: stampDuty,
+          serviceFee: lumebizServiceFee,
+          total: baseCACFee + extraSharesCACFee + stampDuty + lumebizServiceFee
+        });
       } finally {
-        setLoadingPricing(false);
+        setIsLoadingPricing(false);
       }
     };
-    fetchPricing();
-  }, []);
 
-  const totalShares = data.shareCapital?.totalIssuedCapital || 0;
-  const isElevatedCapital = totalShares > 1000000;
-  
-  // Calculate Totals Safely
-  const baseFee = pricing?.LLC_BASE || 0;
-  const extraFee = isElevatedCapital ? (pricing?.LLC_EXTRA_MILLION || 0) : 0;
-  const serviceCharge = pricing?.SERVICE_CHARGE || 0;
-  
-  const totalAmount = baseFee + extraFee + serviceCharge;
+    fetchPricing();
+  }, [shares.totalShares, company.companyType]);
+
+  const handleProceedToPayment = () => {
+    // Pass everything (including the verified pricing data) to the parent to trigger the payment checkout modal/API
+    onComplete({
+      ...data,
+      calculatedPricing: pricing
+    });
+  };
 
   return (
-    <div className="p-6 sm:p-10 space-y-10 animate-in fade-in duration-500">
+    <div className="p-4 sm:p-10 space-y-8 animate-in fade-in duration-500">
       
-      {/* FINAL REVIEW WARNING */}
-      <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-start gap-4">
-        <WarningCircle className="h-8 w-8 text-amber-500 shrink-0" weight="fill" />
+      <div className="mb-6 flex items-start gap-4">
+        <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+          <ShieldCheck className="h-6 w-6" weight="fill" />
+        </div>
         <div>
-          <h2 className="text-sm font-black text-amber-900">Final Review</h2>
-          <p className="text-xs font-medium text-amber-700 mt-1 leading-relaxed">
-            Please review the summary below carefully. Once submitted and paid, making changes requires a formal query resolution process with the CAC.
+          <h2 className="text-xl font-black text-slate-900">Review & Payment</h2>
+          <p className="text-sm font-medium text-slate-500 mt-1">
+            Please review all provided information carefully before proceeding to payment.
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LEFT COLUMN: DATA SUMMARY */}
+        {/* LEFT COLUMN: Data Preview */}
         <div className="lg:col-span-2 space-y-6">
           
           {/* Company Details */}
-          <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
-            <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center gap-2">
-              <Buildings className="h-5 w-5 text-slate-500" weight="duotone"/>
-              <h3 className="text-sm font-bold text-slate-900">Company Information</h3>
-            </div>
-            <div className="p-5 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2 mb-4 uppercase tracking-widest border-b border-slate-100 pb-3">
+              <Buildings weight="duotone" className="h-5 w-5 text-indigo-500" />
+              Company Details
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Approved Name</p>
-                <p className="text-base font-black text-slate-900">{draft?.proposedName || "N/A"}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</p>
-                  <p className="text-sm font-bold text-slate-700">{data.email || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Principal Activity</p>
-                  <p className="text-sm font-bold text-slate-700">{data.principalActivity || "N/A"}</p>
-                </div>
+                <span className="text-slate-500 block mb-1 text-xs">Proposed Name 1</span>
+                <span className="font-semibold text-slate-900">{company.proposedName1 || 'N/A'}</span>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registered Address</p>
-                <p className="text-sm font-medium text-slate-700">
-                  {data.registeredAddress?.houseNo} {data.registeredAddress?.street}, {data.registeredAddress?.city}, {data.registeredAddress?.state}
-                </p>
+                <span className="text-slate-500 block mb-1 text-xs">Proposed Name 2</span>
+                <span className="font-semibold text-slate-900">{company.proposedName2 || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-1 text-xs">Company Type</span>
+                <span className="font-semibold text-slate-900">{company.companyType || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-1 text-xs">Email</span>
+                <span className="font-semibold text-slate-900">{company.email || 'N/A'}</span>
+              </div>
+              <div className="sm:col-span-2">
+                <span className="text-slate-500 block mb-1 text-xs">Principal Address</span>
+                <span className="font-semibold text-slate-900">
+                  {company.address ? `${company.address.street}, ${company.address.city}, ${company.address.state}` : 'N/A'}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Officers & Capital */}
-          <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
-            <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center gap-2">
-              <Users className="h-5 w-5 text-slate-500" weight="duotone"/>
-              <h3 className="text-sm font-bold text-slate-900">Structure & Capital</h3>
-            </div>
-            <div className="p-5 space-y-4">
+          {/* Share Capital */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2 mb-4 uppercase tracking-widest border-b border-slate-100 pb-3">
+              <Bank weight="duotone" className="h-5 w-5 text-indigo-500" />
+              Share Capital
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Issued Capital</p>
-                <p className="text-lg font-black text-indigo-600">₦ {totalShares.toLocaleString()}</p>
+                <span className="text-slate-500 block mb-1 text-xs">Total Issued Shares</span>
+                <span className="font-semibold text-slate-900">{Number(shares.totalShares || 0).toLocaleString()}</span>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Appointed Officers</p>
-                <div className="space-y-2">
-                  {(data.officers || []).map((o: any) => (
-                    <div key={o.id} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg px-3">
-                      <p className="text-sm font-bold text-slate-700">{o.firstName} {o.surname}</p>
-                      <p className="text-xs font-bold text-slate-500">{o.roles.join(", ")}</p>
-                    </div>
-                  ))}
+                <span className="text-slate-500 block mb-1 text-xs">Share Type</span>
+                <span className="font-semibold text-slate-900">{shares.shareType || 'Ordinary'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Officers */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2 mb-4 uppercase tracking-widest border-b border-slate-100 pb-3">
+              <Users weight="duotone" className="h-5 w-5 text-indigo-500" />
+              Company Officers ({officers.length})
+            </h3>
+            <div className="space-y-4">
+              {officers.map((officer: any, idx: number) => (
+                <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm flex justify-between items-center">
+                  <div>
+                    <div className="font-bold text-slate-900">{officer.firstName} {officer.surname}</div>
+                    <div className="text-slate-500 text-xs">{officer.email}</div>
+                  </div>
+                  <div className="text-xs font-bold text-indigo-700 bg-indigo-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                    {formatRoles(officer.roles)}
+                  </div>
                 </div>
-              </div>
+              ))}
+              {officers.length === 0 && <p className="text-sm text-slate-500 italic">No officers added.</p>}
             </div>
+          </div>
+
+          {/* Uploads */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2 mb-4 uppercase tracking-widest border-b border-slate-100 pb-3">
+              <FilePdf weight="duotone" className="h-5 w-5 text-indigo-500" />
+              Uploaded Documents
+            </h3>
+            {Object.keys(uploads).length > 0 ? (
+              <ul className="space-y-2">
+                {Object.entries(uploads).map(([key, url]) => (
+                  <li key={key} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle weight="fill" className="text-emerald-500 h-5 w-5" />
+                      <span className="text-sm font-medium text-slate-700">{getUploadLabel(key)}</span>
+                    </div>
+                    <a 
+                      href={url as string} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline"
+                    >
+                      View File
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-lg text-sm font-medium">
+                <WarningCircle weight="fill" className="h-5 w-5" />
+                No documents have been uploaded yet.
+              </div>
+            )}
           </div>
 
         </div>
 
-        {/* RIGHT COLUMN: CHECKOUT SUMMARY */}
-        <div className="lg:col-span-1">
-          <div className="border-2 border-indigo-100 rounded-2xl overflow-hidden bg-white shadow-xl sticky top-24">
-            <div className="bg-indigo-600 px-5 py-4 flex items-center gap-2 text-white">
-              <Receipt className="h-6 w-6" weight="duotone"/>
-              <h3 className="text-base font-black">Checkout Summary</h3>
+        {/* RIGHT COLUMN: Pricing & Payment */}
+        <div className="space-y-6">
+          <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl sticky top-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
+                <Money weight="duotone" className="h-5 w-5 text-emerald-400" />
+              </div>
+              <h3 className="text-lg font-bold">Payment Summary</h3>
             </div>
-            
-            <div className="p-6 space-y-4">
-              {loadingPricing ? (
-                <div className="flex flex-col items-center justify-center py-6 text-slate-400">
-                  <CircleNotch className="h-8 w-8 animate-spin mb-2" weight="bold" />
-                  <p className="text-xs font-bold uppercase tracking-widest">Loading Live Pricing...</p>
+
+            {isLoadingPricing ? (
+              <div className="space-y-4 animate-pulse">
+                <div className="h-4 bg-white/10 rounded w-full"></div>
+                <div className="h-4 bg-white/10 rounded w-3/4"></div>
+                <div className="h-4 bg-white/10 rounded w-5/6"></div>
+                <div className="h-8 bg-white/20 rounded w-full mt-6"></div>
+              </div>
+            ) : (
+              <div className="space-y-4 text-sm">
+                
+                <div className="flex justify-between items-center text-slate-300">
+                  <span>CAC Base Registration</span>
+                  <span className="font-medium text-white">{formatCurrency(pricing?.baseFee || 0)}</span>
                 </div>
-              ) : (
-                <>
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm font-bold text-slate-500">LLC Registration (Base)</p>
-                    <p className="text-sm font-black text-slate-900">₦{baseFee.toLocaleString()}</p>
+                
+                {Number(pricing?.extraSharesFee) > 0 && (
+                  <div className="flex justify-between items-center text-slate-300">
+                    <span>Extra Shares Fee</span>
+                    <span className="font-medium text-white">{formatCurrency(pricing?.extraSharesFee || 0)}</span>
                   </div>
+                )}
 
-                  {/* DYNAMIC ELEVATED CAPITAL FEE */}
-                  {isElevatedCapital && (
-                    <div className="flex justify-between items-center animate-in fade-in">
-                      <div>
-                        <p className="text-sm font-bold text-slate-500">Elevated Capital Fee</p>
-                        {/* FIX: Using HTML entity &gt; instead of raw > */}
-                        <p className="text-[10px] font-bold text-indigo-500">Shares &gt; 1,000,000</p>
-                      </div>
-                      <p className="text-sm font-black text-slate-900">₦{extraFee.toLocaleString()}</p>
-                    </div>
-                  )}
+                <div className="flex justify-between items-center text-slate-300">
+                  <span>Stamp Duty <span className="text-[10px] opacity-70">(0.75%)</span></span>
+                  <span className="font-medium text-white">{formatCurrency(pricing?.stampDuty || 0)}</span>
+                </div>
 
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm font-bold text-slate-500">Agency Service Charge</p>
-                    <p className="text-sm font-black text-slate-900">₦{serviceCharge.toLocaleString()}</p>
-                  </div>
+                <div className="flex justify-between items-center text-slate-300 border-b border-white/10 pb-4">
+                  <span>Lumebiz Service Fee</span>
+                  <span className="font-medium text-white">{formatCurrency(pricing?.serviceFee || 0)}</span>
+                </div>
 
-                  <hr className="border-slate-200 border-dashed" />
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-base font-medium text-slate-200">Total Amount</span>
+                  <span className="text-2xl font-black text-emerald-400">{formatCurrency(pricing?.total || 0)}</span>
+                </div>
 
-                  <div className="flex justify-between items-center">
-                    <p className="text-lg font-black text-slate-900">Total Amount</p>
-                    <p className="text-2xl font-black text-indigo-600">₦{totalAmount.toLocaleString()}</p>
-                  </div>
+                <Button 
+                  onClick={handleProceedToPayment}
+                  disabled={isSubmitting || isLoadingPricing}
+                  className="w-full mt-6 bg-indigo-500 hover:bg-indigo-600 text-white h-12 rounded-xl font-bold text-base transition-all active:scale-[0.98]"
+                >
+                  {isSubmitting ? 'Processing...' : 'Proceed to Payment'}
+                  {!isSubmitting && <ArrowRight className="ml-2 h-5 w-5" weight="bold" />}
+                </Button>
 
-                  <div className="pt-4">
-                    <Button 
-                      onClick={onSubmit}
-                      disabled={isSubmitting || !pricing}
-                      className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-base shadow-[0_4px_14px_rgba(5,150,105,0.3)] flex items-center justify-center gap-2 transition-transform active:scale-95"
-                    >
-                      {isSubmitting ? (
-                         <CircleNotch className="animate-spin h-6 w-6" weight="bold" />
-                      ) : (
-                         <><CreditCard className="h-6 w-6" weight="fill" /> Pay & Submit Application</>
-                      )}
-                    </Button>
-                    <p className="text-[10px] font-bold text-center text-slate-400 mt-3 uppercase tracking-widest flex items-center justify-center gap-1">
-                      <ShieldCheck className="h-4 w-4" weight="fill" /> SECURE ENCRYPTED PAYMENT
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
+                <p className="text-[11px] text-center text-slate-400 mt-4 leading-relaxed">
+                  By proceeding to payment, you confirm that all details provided are accurate and true.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
       </div>
-
     </div>
   );
 }
