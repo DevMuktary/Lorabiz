@@ -177,6 +177,11 @@ model LlcRegistration {
   // Status Tracking
   queryReason         String?            @db.Text
   queryStatus         String?            @default("UNRESOLVED")
+
+  witnessSignatureUrl   String?
+  declarantSignatureUrl String?
+  reasonRestrictionUrl  String?
+  otherDocumentsUrl     String?
   
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
