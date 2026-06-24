@@ -153,9 +153,12 @@ export default function LlcRegistrationDetailsPage() {
   // SMART VALIDATION & NEXT STEP
   // ==========================================
   const handleSaveAndNext = () => {
-    setTopError(null);
-    setShowErrors(true);
-    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    // If Step 5 (Share Capital) has broadcasted an error via setStepError, do not clear it.
+    if (currentStep !== 5) {
+        setTopError(null);
+    }
+    
+    setShowErrors(true); // Always set to true on click so inline fields turn red
 
     const d = companyDetails;
 
@@ -304,6 +307,43 @@ export default function LlcRegistrationDetailsPage() {
         return;
       }
     }
+
+    // STRICT STEP 6 VALIDATION (PSC)
+    if (currentStep === 6) {
+        const pscs = d.officers.filter(o => o.roles.includes("PSC"));
+        const incompletePsc = pscs.find(p => !p.pscDetails?.isPep || !p.pscDetails?.hasAffiliation);
+        
+        if (incompletePsc) {
+            triggerError(`Please complete the details for PSC: ${incompletePsc.firstName} ${incompletePsc.surname}`);
+            return;
+        }
+    }
+
+    // STRICT STEP 7 VALIDATION (Compliance)
+    if (currentStep === 7) {
+        const dec = d.declarantDetails || {};
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!dec.surname || !dec.firstName || !dec.phone || !dec.email || !dec.state || !dec.lga || !dec.city || !dec.street) {
+             triggerError("Please fill in all required fields for the Declarant.");
+             return;
+        }
+
+        if (!emailRegex.test(dec.email)) {
+            triggerError("Please provide a valid Declarant Email address.");
+            return;
+        }
+
+        if (dec.phone.replace(/\D/g, '').length < 5) {
+             triggerError("Please provide a valid Declarant Phone Number.");
+             return;
+        }
+
+        if (!dec.isAcknowledged) {
+            triggerError("You must acknowledge the Statement of Compliance to proceed.");
+            return;
+        }
+    }
     
     setShowErrors(false); // Reset visual inline errors for next step
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
@@ -403,13 +443,10 @@ export default function LlcRegistrationDetailsPage() {
         {currentStep === 1 && <CompanyDetailsStep data={companyDetails} updateData={setCompanyDetails} draft={draft} showErrors={showErrors} />}
         {currentStep === 2 && <ArticlesStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
         {currentStep === 3 && <MemorandumStep data={companyDetails} updateData={setCompanyDetails} />}
-        {currentStep === 4 && <OfficersStep data={companyDetails} updateData={setCompanyDetails} />}
-        
-        {/* FIX: Removed setStepError from ShareCapitalStep entirely. */}
+        {currentStep === 4 && <OfficersStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
         {currentStep === 5 && <ShareCapitalStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
-        
-        {currentStep === 6 && <PscStep data={companyDetails} updateData={setCompanyDetails} />}
-        {currentStep === 7 && <ComplianceStep data={companyDetails} updateData={setCompanyDetails} />}
+        {currentStep === 6 && <PscStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
+        {currentStep === 7 && <ComplianceStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
         {currentStep === 8 && <UploadsStep data={companyDetails} updateData={setCompanyDetails} />}
         {currentStep === 9 && (
           <PreviewStep 
