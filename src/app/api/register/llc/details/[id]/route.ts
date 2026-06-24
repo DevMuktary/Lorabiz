@@ -23,16 +23,31 @@ export async function GET(
       return NextResponse.json({ message: "Draft not found" }, { status: 404 });
     }
 
-    let formattedData = { ...registration };
+    let formattedData: any = { ...registration };
     
     // Reconstruct shareCapital object exactly how the frontend expects it
     if (registration.companyType || registration.totalShareCapital) {
-       (formattedData as any).shareCapital = {
+       formattedData.shareCapital = {
           companyType: registration.companyType,
           totalIssuedCapital: registration.totalShareCapital,
           ...((registration.shareClasses as object) || {})
        };
     }
+
+    // --- RECONSTRUCT UPLOADS OBJECT FOR FRONTEND ---
+    const uploads: Record<string, string> = {};
+    
+    if (registration.witnessSignatureUrl) uploads['witness-sig'] = registration.witnessSignatureUrl;
+    if (registration.declarantSignatureUrl) uploads['deponent-sig'] = registration.declarantSignatureUrl;
+    if (registration.reasonRestrictionUrl) uploads['reason-restriction'] = registration.reasonRestrictionUrl;
+    if (registration.otherDocumentsUrl) uploads['others'] = registration.otherDocumentsUrl;
+
+    registration.officers.forEach((officer) => {
+      if (officer.idDocumentUrl) uploads[`id-${officer.id}`] = officer.idDocumentUrl;
+      if (officer.signatureUrl) uploads[`sig-${officer.id}`] = officer.signatureUrl;
+    });
+
+    formattedData.uploads = uploads;
 
     return NextResponse.json({ success: true, data: formattedData });
   } catch (error) {
@@ -57,7 +72,7 @@ export async function PUT(
       email, principalActivity, specificActivity, description,
       registeredAddress, headOfficeAddress, headOfficeSameAsRegistered,
       useDefaultArticles, customArticles, witnessDetails, memorandumObjects,
-      officers, shareCapital, declarantDetails, isDraft 
+      officers, shareCapital, declarantDetails, isDraft, uploads = {} // Added uploads extraction
     } = body;
 
     const currentReg = await prisma.llcRegistration.findUnique({ where: { id } });
@@ -100,7 +115,7 @@ export async function PUT(
       ? (customArticles as Prisma.JsonArray) 
       : Prisma.JsonNull;
 
-    // 1. Update the base LLC registration table
+    // 1. Update the base LLC registration table (Added saving generic document URLs)
     await prisma.llcRegistration.update({
       where: { id },
       data: {
@@ -118,6 +133,10 @@ export async function PUT(
         companyType: dbCompanyType,
         totalShareCapital: dbTotalShareCapital,
         shareClasses: dbShareClasses,
+        witnessSignatureUrl: uploads['witness-sig'] || null,
+        declarantSignatureUrl: uploads['deponent-sig'] || null,
+        reasonRestrictionUrl: uploads['reason-restriction'] || null,
+        otherDocumentsUrl: uploads['others'] || null,
       }
     });
 
@@ -138,7 +157,7 @@ export async function PUT(
           : null;
 
         return {
-          id: o.id, // THE CRITICAL FIX: Tell the DB to keep the frontend's UUID
+          id: o.id, 
           registrationId: id,
           roles: o.roles,
           surname: o.surname,
@@ -160,6 +179,8 @@ export async function PUT(
           serviceAddress: o.serviceAddress || Prisma.JsonNull,
           pscDetails: o.pscDetails || Prisma.JsonNull,
           sharesAllotted: allottedUnits, 
+          idDocumentUrl: uploads[`id-${o.id}`] || null, // SAVING ID DOC
+          signatureUrl: uploads[`sig-${o.id}`] || null, // SAVING SIGNATURE DOC
         };
       });
 
