@@ -8,7 +8,8 @@ import {
   WarningCircle,
   Bank,
   CheckCircle,
-  FilePdf
+  FilePdf,
+  X
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
