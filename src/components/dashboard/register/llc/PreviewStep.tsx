@@ -67,26 +67,27 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
   // Modal State for Documents
   const [previewDoc, setPreviewDoc] = useState<{ url: string, label: string } | null>(null);
 
-  // Extract all data blocks safely based on frontend state structure
-  const company = data.companyDetails || data || {};
+  // Safely extract all data blocks
+  const company = data.companyDetails || {};
   const shares = data.shareCapital || {};
   const officers = data.officers || [];
   const uploads = data.uploads || {};
   
-  const registeredAddress = company.address || data.registeredAddress || {};
-  const headOfficeAddress = data.headOfficeAddress || {};
+  const registeredAddress = data.registeredAddress || company.address || company.registeredAddress || {};
+  const headOfficeAddress = data.headOfficeAddress || company.headOfficeAddress || {};
   const witness = data.witnessDetails || {};
   const declarant = data.declarantDetails || {};
   const memoObjects = data.memorandumObjects || [];
 
-  // Safely map names
-  const proposedName1 = company.proposedName1 || company.proposedName;
-  const proposedName2 = company.proposedName2 || company.altName1;
-  const proposedName3 = company.proposedName3 || company.altName2;
+  // 1. ROBUST NAME EXTRACTION: Checks root level first, then nested company object
+  const proposedName1 = data.proposedName || company.proposedName1 || company.proposedName;
+  const proposedName2 = data.altName1 || company.proposedName2 || company.altName1;
+  const proposedName3 = data.altName2 || company.proposedName3 || company.altName2;
 
-  // Safely map share types
+  // 2. ROBUST SHARE CLASS EXTRACTION
   const shareClasses = Array.isArray(shares.shareClasses) ? shares.shareClasses : [];
   const totalShares = Number(shares.totalIssuedCapital || shares.totalShares || data.totalShareCapital || 0);
+  const fallbackShareType = shares.shareType || shares.class || shares.type || data.shareType || 'ORDINARY';
 
   const fetchPricing = async () => {
     setIsLoadingPricing(true);
@@ -154,7 +155,7 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
               <DetailItem label="Proposed Name 1" value={proposedName1} colSpan />
               <DetailItem label="Alternative Name 1" value={proposedName2} />
               <DetailItem label="Alternative Name 2" value={proposedName3} />
-              <DetailItem label="Company Email" value={company.email} />
+              <DetailItem label="Company Email" value={data.email || company.email} />
               
               <div className="col-span-full border-t border-slate-100 pt-5 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <DetailItem label="Principal Activity" value={data.principalActivity || company.principalActivity} />
@@ -202,14 +203,14 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                      {shareClasses.map((cls: any, i: number) => (
                        <div key={i} className="flex justify-between items-center bg-slate-50 border border-slate-200 px-3 py-2 rounded text-sm">
-                         <span className="font-bold text-slate-800">{cls.class}</span>
+                         <span className="font-bold text-slate-800">{cls.class || fallbackShareType}</span>
                          <span className="font-medium text-slate-600">{Number(cls.units || 0).toLocaleString()} Units</span>
                        </div>
                      ))}
                    </div>
                  ) : (
                     <div className="flex justify-between items-center bg-slate-50 border border-slate-200 px-3 py-2 rounded text-sm max-w-sm">
-                      <span className="font-bold text-slate-800">{shares.shareType || 'ORDINARY'}</span>
+                      <span className="font-bold text-slate-800">{fallbackShareType}</span>
                       <span className="font-medium text-slate-600">{totalShares.toLocaleString()} Units</span>
                     </div>
                  )}
@@ -392,26 +393,27 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
 
       </div>
 
-      {/* Document Viewer Modal */}
+      {/* 3. MOBILE-OPTIMIZED FULLSCREEN DOCUMENT VIEWER MODAL */}
       {previewDoc && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm sm:p-4">
+          <div className="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:rounded-xl sm:max-w-4xl flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
               <div className="flex items-center gap-2">
                 <FilePdf weight="fill" className="text-indigo-600 h-5 w-5" />
-                <h3 className="font-bold text-slate-800">{previewDoc.label}</h3>
+                <h3 className="font-bold text-slate-800 truncate pr-4">{previewDoc.label}</h3>
               </div>
               <button 
                 onClick={() => setPreviewDoc(null)} 
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-200 transition-colors"
+                className="text-slate-400 hover:text-slate-700 p-2 -mr-2 rounded-md hover:bg-slate-200 transition-colors"
+                aria-label="Close modal"
               >
                 <X weight="bold" className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 bg-slate-200 overflow-hidden relative min-h-[60vh]">
+            <div className="flex-1 bg-slate-200 overflow-hidden relative w-full h-full">
                <iframe 
                  src={previewDoc.url} 
-                 className="w-full h-full border-0" 
+                 className="w-full h-full border-0 absolute inset-0" 
                  title={previewDoc.label}
                />
             </div>
