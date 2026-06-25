@@ -9,6 +9,7 @@ import {
   WarningCircle,
   ShieldCheck,
   ArrowRight,
+  ArrowLeft,
   CheckCircle,
   MapPin,
   IdentificationCard,
@@ -59,7 +60,7 @@ const formatAddress = (addr: any) => {
   return parts.join(', ');
 };
 
-export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
+export default function PreviewStep({ data, onComplete, onBack, isSubmitting }: any) {
   const [pricing, setPricing] = useState<any>(null);
   const [isLoadingPricing, setIsLoadingPricing] = useState(true);
   const [pricingError, setPricingError] = useState<string | null>(null);
@@ -67,34 +68,38 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
   // Modal State for Documents
   const [previewDoc, setPreviewDoc] = useState<{ url: string, label: string } | null>(null);
 
-  // Safely extract all data blocks
-  const company = data.companyDetails || {};
-  const shares = data.shareCapital || {};
+  // ==========================================
+  // EXACT PRISMA & STATE MAPPING
+  // ==========================================
+  
+  // 1. Company Details
+  const proposedName1 = data.proposedName || data.companyDetails?.proposedName || data.companyDetails?.proposedName1;
+  const proposedName2 = data.altName1 || data.companyDetails?.altName1 || data.companyDetails?.proposedName2;
+  const proposedName3 = data.altName2 || data.companyDetails?.altName2 || data.companyDetails?.proposedName3;
+  const email = data.email || data.companyDetails?.email;
+  const principalActivity = data.principalActivity || data.companyDetails?.principalActivity;
+  const specificActivity = data.specificActivity || data.companyDetails?.specificActivity;
+  const description = data.description || data.companyDetails?.description;
+  const registeredAddress = data.registeredAddress || data.companyDetails?.registeredAddress || data.companyDetails?.address || {};
+  const headOfficeAddress = data.headOfficeAddress || data.companyDetails?.headOfficeAddress || {};
+
+  // 2. Share Capital (Prisma: companyType, totalShareCapital, shareClasses JSON array)
+  const totalShares = Number(data.totalShareCapital || data.shareCapital?.totalShareCapital || data.shareCapital?.totalIssuedCapital || 0);
+  const companyType = data.companyType || data.shareCapital?.companyType || data.companyDetails?.companyType || 'LTD';
+  const rawShareClasses = data.shareClasses || data.shareCapital?.shareClasses || data.shareCapital?.classes;
+  const shareClassesArray = Array.isArray(rawShareClasses) ? rawShareClasses : [];
+
+  // 3. Officers & Compliance
   const officers = data.officers || [];
   const uploads = data.uploads || {};
-  
-  const registeredAddress = data.registeredAddress || company.address || company.registeredAddress || {};
-  const headOfficeAddress = data.headOfficeAddress || company.headOfficeAddress || {};
   const witness = data.witnessDetails || {};
-  const declarant = data.declarantDetails || {};
   const memoObjects = data.memorandumObjects || [];
 
-  // 1. ROBUST NAME EXTRACTION: Checks root level first, then nested company object
-  const proposedName1 = data.proposedName || company.proposedName1 || company.proposedName;
-  const proposedName2 = data.altName1 || company.proposedName2 || company.altName1;
-  const proposedName3 = data.altName2 || company.proposedName3 || company.altName2;
-
-  // 2. ROBUST SHARE CLASS EXTRACTION
-  const shareClasses = Array.isArray(shares.shareClasses) ? shares.shareClasses : [];
-  const totalShares = Number(shares.totalIssuedCapital || shares.totalShares || data.totalShareCapital || 0);
-  const fallbackShareType = shares.shareType || shares.class || shares.type || data.shareType || 'ORDINARY';
 
   const fetchPricing = async () => {
     setIsLoadingPricing(true);
     setPricingError(null);
     try {
-      const companyType = shares.companyType || company.companyType || data.companyType || 'LTD';
-      
       const res = await fetch('/api/pricing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,10 +110,7 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
         })
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch pricing");
-      }
-      
+      if (!res.ok) throw new Error("Failed to fetch pricing");
       const apiPricing = await res.json();
       setPricing(apiPricing);
     } catch (error) {
@@ -121,7 +123,7 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
 
   useEffect(() => {
     fetchPricing();
-  }, [totalShares, shares.companyType, company.companyType]);
+  }, [totalShares, companyType]);
 
   const handleProceedToPayment = () => {
     if (!pricing) return;
@@ -155,12 +157,12 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
               <DetailItem label="Proposed Name 1" value={proposedName1} colSpan />
               <DetailItem label="Alternative Name 1" value={proposedName2} />
               <DetailItem label="Alternative Name 2" value={proposedName3} />
-              <DetailItem label="Company Email" value={data.email || company.email} />
+              <DetailItem label="Company Email" value={email} />
               
               <div className="col-span-full border-t border-slate-100 pt-5 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <DetailItem label="Principal Activity" value={data.principalActivity || company.principalActivity} />
-                <DetailItem label="Specific Activity" value={data.specificActivity || company.specificActivity} />
-                <DetailItem label="Business Description" value={data.description || company.description} colSpan />
+                <DetailItem label="Principal Activity" value={principalActivity} />
+                <DetailItem label="Specific Activity" value={specificActivity} />
+                <DetailItem label="Business Description" value={description} colSpan />
               </div>
 
               <div className="col-span-full border-t border-slate-100 pt-5 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -193,25 +195,24 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
             <div className="p-5 space-y-5">
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                  <DetailItem label="Total Issued Capital" value={totalShares.toLocaleString()} />
-                 <DetailItem label="Company Type" value={shares.companyType || company.companyType} colSpan />
+                 <DetailItem label="Company Type" value={companyType} colSpan />
                </div>
 
-               {/* Share Classes */}
+               {/* Share Classes Loop directly from Prisma structure */}
                <div>
                  <span className="text-slate-500 block mb-2 text-[11px] font-bold uppercase tracking-wider">Share Classes</span>
-                 {shareClasses.length > 0 ? (
+                 {shareClassesArray.length > 0 ? (
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                     {shareClasses.map((cls: any, i: number) => (
+                     {shareClassesArray.map((cls: any, i: number) => (
                        <div key={i} className="flex justify-between items-center bg-slate-50 border border-slate-200 px-3 py-2 rounded text-sm">
-                         <span className="font-bold text-slate-800">{cls.class || fallbackShareType}</span>
+                         <span className="font-bold text-slate-800">{cls.class || 'ORDINARY'}</span>
                          <span className="font-medium text-slate-600">{Number(cls.units || 0).toLocaleString()} Units</span>
                        </div>
                      ))}
                    </div>
                  ) : (
-                    <div className="flex justify-between items-center bg-slate-50 border border-slate-200 px-3 py-2 rounded text-sm max-w-sm">
-                      <span className="font-bold text-slate-800">{fallbackShareType}</span>
-                      <span className="font-medium text-slate-600">{totalShares.toLocaleString()} Units</span>
+                    <div className="flex items-center gap-2 text-slate-500 bg-slate-50 p-3 rounded-lg text-sm border border-slate-200 italic">
+                      No share classes defined.
                     </div>
                  )}
                </div>
@@ -241,9 +242,9 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
             
             <div className="p-5 space-y-4">
               {officers.map((officer: any, idx: number) => {
-                const allottedUnits = Array.isArray(shares.allotments) 
-                  ? shares.allotments.filter((a: any) => a.officerId === officer.id).reduce((sum: number, a: any) => sum + (Number(a.units) || 0), 0)
-                  : null;
+                const allottedUnits = Array.isArray(data.shareCapital?.allotments) 
+                  ? data.shareCapital.allotments.filter((a: any) => a.officerId === officer.id).reduce((sum: number, a: any) => sum + (Number(a.units) || 0), 0)
+                  : officer.sharesAllotted || null;
 
                 return (
                   <div key={idx} className="border border-slate-200 rounded-lg p-4">
@@ -378,14 +379,25 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
                   <span className="text-2xl font-bold text-white">{formatCurrency(pricing.total)}</span>
                 </div>
 
-                <Button 
-                  onClick={handleProceedToPayment}
-                  disabled={isSubmitting}
-                  className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white h-12 rounded-lg font-bold transition-all"
-                >
-                  {isSubmitting ? 'Processing...' : 'Proceed to Payment'}
-                  {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" weight="bold" />}
-                </Button>
+                {/* Back and Submit Buttons Group */}
+                <div className="flex gap-3 mt-6 pt-2">
+                  <Button 
+                    onClick={onBack}
+                    disabled={isSubmitting}
+                    variant="outline"
+                    className="w-1/3 bg-slate-800 border-slate-700 text-white hover:bg-slate-700 hover:text-white h-12 rounded-lg font-bold"
+                  >
+                    <ArrowLeft className="h-4 w-4" weight="bold" />
+                  </Button>
+                  <Button 
+                    onClick={handleProceedToPayment}
+                    disabled={isSubmitting}
+                    className="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white h-12 rounded-lg font-bold transition-all"
+                  >
+                    {isSubmitting ? 'Processing...' : 'Pay & Submit'}
+                    {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" weight="bold" />}
+                  </Button>
+                </div>
               </div>
             ) : null}
           </div>
@@ -393,7 +405,7 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
 
       </div>
 
-      {/* 3. MOBILE-OPTIMIZED FULLSCREEN DOCUMENT VIEWER MODAL */}
+      {/* MOBILE-OPTIMIZED FULLSCREEN DOCUMENT VIEWER MODAL */}
       {previewDoc && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm sm:p-4">
           <div className="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:rounded-xl sm:max-w-4xl flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
