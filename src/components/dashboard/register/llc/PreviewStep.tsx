@@ -52,17 +52,23 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
   
   const [isLoadingPricing, setIsLoadingPricing] = useState(true);
 
-  // Safely fallback data objects if undefined
-  const company = data.companyDetails || {};
+  // Read directly from the flat DB structure provided by the API
   const shares = data.shareCapital || {};
   const officers = data.officers || [];
   const uploads = data.uploads || {};
+  const registeredAddress = data.registeredAddress || {};
+
+  // Safely extract the share array if it exists to get the class type
+  const shareClassesArray = Array.isArray(shares.shareClasses) ? shares.shareClasses : [];
+  const primaryShareType = shareClassesArray[0]?.class || 'ORDINARY';
 
   useEffect(() => {
     const fetchPricing = async () => {
       setIsLoadingPricing(true);
       try {
-        const totalShares = Number(shares.totalShares) || 1000000;
+        // Correctly read from totalIssuedCapital as formatted by your GET API
+        const totalShares = Number(shares.totalIssuedCapital || data.totalShareCapital) || 1000000;
+        const companyType = shares.companyType || data.companyType || 'PRIVATE UNLIMITED COMPANY';
         
         // Attempt to fetch exact breakdown from your pricing API
         const res = await fetch('/api/pricing', {
@@ -71,7 +77,7 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
           body: JSON.stringify({
             service: 'llc',
             shares: totalShares,
-            companyType: company.companyType || 'LTD'
+            companyType: companyType
           })
         });
 
@@ -83,7 +89,7 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
         }
       } catch (error) {
         // Fallback to strict CAC & FIRS calculation logic
-        const totalShares = Number(shares.totalShares) || 1000000;
+        const totalShares = Number(shares.totalIssuedCapital || data.totalShareCapital) || 1000000;
         
         const baseCACFee = 10000; // Base CAC fee for first 1M shares
         const extraSharesCACFee = Math.max(0, Math.ceil((totalShares - 1000000) / 1000000)) * 5000; // N5k per additional 1M
@@ -103,10 +109,9 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
     };
 
     fetchPricing();
-  }, [shares.totalShares, company.companyType]);
+  }, [shares.totalIssuedCapital, data.totalShareCapital, shares.companyType, data.companyType]);
 
   const handleProceedToPayment = () => {
-    // Pass everything (including the verified pricing data) to the parent to trigger the payment checkout modal/API
     onComplete({
       ...data,
       calculatedPricing: pricing
@@ -142,24 +147,30 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
               <div>
                 <span className="text-slate-500 block mb-1 text-xs">Proposed Name 1</span>
-                <span className="font-semibold text-slate-900">{company.proposedName1 || 'N/A'}</span>
+                <span className="font-semibold text-slate-900">{data.proposedName || 'N/A'}</span>
               </div>
               <div>
-                <span className="text-slate-500 block mb-1 text-xs">Proposed Name 2</span>
-                <span className="font-semibold text-slate-900">{company.proposedName2 || 'N/A'}</span>
+                <span className="text-slate-500 block mb-1 text-xs">Alternative Name 1</span>
+                <span className="font-semibold text-slate-900">{data.altName1 || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-1 text-xs">Alternative Name 2</span>
+                <span className="font-semibold text-slate-900">{data.altName2 || 'N/A'}</span>
               </div>
               <div>
                 <span className="text-slate-500 block mb-1 text-xs">Company Type</span>
-                <span className="font-semibold text-slate-900">{company.companyType || 'N/A'}</span>
+                <span className="font-semibold text-slate-900">{data.companyType || shares.companyType || 'N/A'}</span>
               </div>
               <div>
                 <span className="text-slate-500 block mb-1 text-xs">Email</span>
-                <span className="font-semibold text-slate-900">{company.email || 'N/A'}</span>
+                <span className="font-semibold text-slate-900">{data.email || 'N/A'}</span>
               </div>
               <div className="sm:col-span-2">
-                <span className="text-slate-500 block mb-1 text-xs">Principal Address</span>
+                <span className="text-slate-500 block mb-1 text-xs">Registered Address</span>
                 <span className="font-semibold text-slate-900">
-                  {company.address ? `${company.address.street}, ${company.address.city}, ${company.address.state}` : 'N/A'}
+                  {registeredAddress.street 
+                    ? `${registeredAddress.street}, ${registeredAddress.city || ''}, ${registeredAddress.lga || ''}, ${registeredAddress.state || ''}` 
+                    : 'N/A'}
                 </span>
               </div>
             </div>
@@ -174,11 +185,13 @@ export default function PreviewStep({ data, onComplete, isSubmitting }: any) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-slate-500 block mb-1 text-xs">Total Issued Shares</span>
-                <span className="font-semibold text-slate-900">{Number(shares.totalShares || 0).toLocaleString()}</span>
+                <span className="font-semibold text-slate-900">
+                  {Number(shares.totalIssuedCapital || data.totalShareCapital || 0).toLocaleString()}
+                </span>
               </div>
               <div>
-                <span className="text-slate-500 block mb-1 text-xs">Share Type</span>
-                <span className="font-semibold text-slate-900">{shares.shareType || 'Ordinary'}</span>
+                <span className="text-slate-500 block mb-1 text-xs">Primary Share Type</span>
+                <span className="font-semibold text-slate-900">{primaryShareType}</span>
               </div>
             </div>
           </div>
