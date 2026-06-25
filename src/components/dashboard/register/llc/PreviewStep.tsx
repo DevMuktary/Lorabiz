@@ -272,7 +272,7 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
               Compliance & Uploads
             </h3>
             
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-8">
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5">
                  <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                    <CheckCircle weight="fill" /> Statement of Compliance
@@ -289,21 +289,27 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
                  </div>
               </div>
 
+              {/* SINGLE UNIFIED DOCUMENTS CARD */}
               <div>
                 <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Uploaded Documents</h4>
                 {Object.keys(uploads).length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {Object.entries(uploads).map(([key, url]) => (
-                      <div key={key} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
-                        <div className="flex items-center gap-2.5 overflow-hidden">
-                          <CheckCircle weight="fill" className="text-emerald-500 h-5 w-5 shrink-0" />
-                          <span className="text-xs font-black text-slate-700 truncate tracking-wide">{getUploadLabel(key)}</span>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                    {Object.entries(uploads).map(([key, url], index, arr) => (
+                      <div 
+                        key={key} 
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3 ${index !== arr.length - 1 ? 'border-b border-slate-100' : ''}`}
+                      >
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="h-8 w-8 rounded-full bg-emerald-100/50 flex items-center justify-center shrink-0">
+                            <CheckCircle weight="fill" className="text-emerald-500 h-5 w-5" />
+                          </div>
+                          <span className="text-sm font-black text-slate-800 truncate tracking-wide">{getUploadLabel(key)}</span>
                         </div>
                         <button 
                           onClick={(e) => { e.preventDefault(); setPreviewDoc({ url: url as string, label: getUploadLabel(key) }); }}
-                          className="text-[10px] font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-slate-900 px-3 py-1.5 rounded-lg shrink-0 ml-2 transition-colors shadow-sm"
+                          className="w-full sm:w-auto text-[10px] font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-slate-900 px-5 py-2.5 rounded-lg shrink-0 transition-colors shadow-sm text-center"
                         >
-                          View
+                          View Document
                         </button>
                       </div>
                     ))}
