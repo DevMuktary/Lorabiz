@@ -2,21 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { 
-  Buildings, 
-  Users, 
-  Bank, 
-  FilePdf,
-  WarningCircle,
   ShieldCheck,
   ArrowRight,
   ArrowLeft,
+  WarningCircle,
+  Bank,
   CheckCircle,
-  MapPin,
-  IdentificationCard,
-  EnvelopeSimple,
-  Phone,
-  X,
-  FileText
+  FilePdf
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
@@ -48,37 +40,41 @@ const getUploadLabel = (key: string) => {
   return 'Uploaded Document';
 };
 
-// Reusable Detail Item
-const DetailItem = ({ label, value, colSpan = false, highlight = false }: { label: string, value: any, colSpan?: boolean, highlight?: boolean }) => (
-  <div className={`${colSpan ? "sm:col-span-2 md:col-span-3" : ""} ${highlight ? "bg-indigo-50 p-3 rounded-lg border border-indigo-100" : ""}`}>
-    <span className={`block mb-1 text-[10px] font-bold uppercase tracking-widest ${highlight ? "text-indigo-600" : "text-slate-500"}`}>{label}</span>
-    <span className={`text-sm ${highlight ? "font-black text-indigo-900" : "font-black text-slate-900"}`}>{value || <span className="text-slate-300 italic font-medium">Not provided</span>}</span>
+// Reusable Table Row for clean key-value display
+const TableRow = ({ label, value, isHighlight = false, isLast = false }: { label: string, value: React.ReactNode, isHighlight?: boolean, isLast?: boolean }) => (
+  <div className={`flex flex-col sm:flex-row sm:items-start py-3.5 gap-2 sm:gap-6 ${isLast ? '' : 'border-b border-slate-100'} ${isHighlight ? 'bg-indigo-50/50 -mx-6 px-6' : ''}`}>
+    <div className="w-full sm:w-1/3 shrink-0">
+      <span className={`text-[11px] font-bold uppercase tracking-widest ${isHighlight ? 'text-indigo-600' : 'text-slate-500'}`}>{label}</span>
+    </div>
+    <div className="w-full sm:w-2/3">
+      <span className={`text-sm ${isHighlight ? 'font-black text-indigo-900' : 'font-black text-slate-900'}`}>{value || <span className="text-slate-400 italic font-medium">Not provided</span>}</span>
+    </div>
   </div>
 );
 
-// Reusable Address Formatter (Updated for new state/lga/city/street structure)
+// Address Formatter
 const formatAddress = (addr: any) => {
   if (!addr || !addr.state) return null;
   const parts = [addr.houseNo, addr.street, addr.city, addr.lga, addr.state].filter(Boolean);
   return parts.join(', ');
 };
 
-export default function PreviewStep({ data, onComplete, onBack, isSubmitting }: any) {
+export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitting }: any) {
   const [pricing, setPricing] = useState<any>(null);
   const [isLoadingPricing, setIsLoadingPricing] = useState(true);
   const [pricingError, setPricingError] = useState<string | null>(null);
   
-  // Modal State for Documents
   const [previewDoc, setPreviewDoc] = useState<{ url: string, label: string } | null>(null);
 
   // ==========================================
-  // EXACT PRISMA & STATE MAPPING
+  // EXACT PRISMA & STATE MAPPING FIXES
   // ==========================================
   
-  // 1. Company Details
-  const proposedName1 = data.proposedName || data.companyDetails?.proposedName || data.companyDetails?.proposedName1;
-  const proposedName2 = data.altName1 || data.companyDetails?.altName1 || data.companyDetails?.proposedName2;
-  const proposedName3 = data.altName2 || data.companyDetails?.altName2 || data.companyDetails?.proposedName3;
+  // 1. Company Details (Prioritize draft for primary name if state is lagging)
+  const proposedName1 = draft?.proposedName || data.proposedName || data.companyDetails?.proposedName || data.companyDetails?.proposedName1;
+  const proposedName2 = draft?.altName1 || data.altName1 || data.companyDetails?.altName1 || data.companyDetails?.proposedName2;
+  const proposedName3 = draft?.altName2 || data.altName2 || data.companyDetails?.altName2 || data.companyDetails?.proposedName3;
+  
   const email = data.email || data.companyDetails?.email;
   const principalActivity = data.principalActivity || data.companyDetails?.principalActivity;
   const specificActivity = data.specificActivity || data.companyDetails?.specificActivity;
@@ -90,14 +86,11 @@ export default function PreviewStep({ data, onComplete, onBack, isSubmitting }: 
   const totalShares = Number(data.totalShareCapital || data.shareCapital?.totalIssuedCapital || 0);
   const companyType = data.companyType || data.shareCapital?.companyType || data.companyDetails?.companyType || 'ENTITY WITH SHARES BELOW FIVE MILLION';
   const rawShareClasses = data.shareClasses || data.shareCapital?.shareClasses;
-  
-  // Handle new nested shareClasses JSON structure from backend update
   const shareClassesArray = Array.isArray(rawShareClasses) ? rawShareClasses : (rawShareClasses?.shareClasses || []);
 
   // 3. Officers & Compliance
   const officers = data.officers || [];
   const uploads = data.uploads || {};
-  const witness = data.witnessDetails || {};
   const declarant = data.declarantDetails || {};
   const memoObjects = data.memorandumObjects || [];
 
@@ -159,145 +152,111 @@ export default function PreviewStep({ data, onComplete, onBack, isSubmitting }: 
         <div className="xl:col-span-2 space-y-8">
           
           {/* SECTION 1: Company Information */}
-          <section className="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden">
-            <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center gap-2">
-              <Buildings weight="fill" className="h-5 w-5 text-indigo-500" />
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Company Details</h3>
-            </div>
-            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              <DetailItem label="Proposed Name 1" value={proposedName1} colSpan highlight />
-              <DetailItem label="Alternative Name 1" value={proposedName2} />
-              <DetailItem label="Alternative Name 2" value={proposedName3} />
-              <DetailItem label="Company Email" value={email} />
-              
-              <div className="col-span-full border-t border-slate-100 pt-6 mt-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <DetailItem label="Principal Activity" value={principalActivity} />
-                <DetailItem label="Specific Activity" value={specificActivity} />
-                <DetailItem label="Business Description" value={description} colSpan />
-              </div>
-
-              <div className="col-span-full border-t border-slate-100 pt-6 mt-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <span className="text-slate-500 block mb-2 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                    <MapPin weight="fill" className="text-indigo-400" /> Registered Address
-                  </span>
-                  <p className="font-black text-slate-900 text-sm leading-relaxed">
-                    {formatAddress(registeredAddress) || 'Not provided'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-slate-500 block mb-2 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                    <MapPin weight="fill" className="text-indigo-400" /> Head Office Address
-                  </span>
-                  <p className="font-black text-slate-900 text-sm leading-relaxed">
-                    {formatAddress(headOfficeAddress) || <span className="italic text-slate-400">Same as Registered Address</span>}
-                  </p>
-                </div>
-              </div>
+          <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <h3 className="bg-slate-50 border-b border-slate-200 px-6 py-4 text-sm font-black text-slate-900 uppercase tracking-widest">
+              Company Information
+            </h3>
+            <div className="px-6 py-2">
+              <TableRow label="Proposed Name 1" value={proposedName1} isHighlight />
+              <TableRow label="Alternative Name 1" value={proposedName2} />
+              <TableRow label="Alternative Name 2" value={proposedName3} />
+              <TableRow label="Company Email" value={email} />
+              <TableRow label="Principal Activity" value={principalActivity} />
+              <TableRow label="Specific Activity" value={specificActivity} />
+              <TableRow label="Business Description" value={description} />
+              <TableRow label="Registered Address" value={formatAddress(registeredAddress)} />
+              <TableRow label="Head Office Address" value={formatAddress(headOfficeAddress) || "Same as Registered Address"} isLast />
             </div>
           </section>
 
           {/* SECTION 2: Share Capital & Objects */}
-          <section className="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden">
-             <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center gap-2">
-              <Bank weight="fill" className="h-5 w-5 text-indigo-500" />
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Capital & Objects</h3>
-            </div>
-            <div className="p-6 space-y-6">
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                 <DetailItem label="Company Type" value={companyType} />
-                 <DetailItem label="Total Issued Capital" value={`₦${totalShares.toLocaleString()}`} highlight />
-               </div>
-
-               {/* Share Classes */}
-               <div className="border-t border-slate-100 pt-6 mt-2">
-                 <span className="text-slate-500 block mb-3 text-[10px] font-bold uppercase tracking-widest">Share Classes</span>
-                 {shareClassesArray.length > 0 ? (
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                     {shareClassesArray.map((cls: any, i: number) => (
-                       <div key={i} className="flex justify-between items-center bg-indigo-50 border border-indigo-100 px-4 py-3 rounded-xl text-sm">
-                         <span className="font-black text-indigo-900">{cls.type || cls.class || 'ORDINARY'}</span>
-                         <div className="text-right">
-                            <span className="font-bold text-indigo-700 block">{Number(cls.units || 0).toLocaleString()} Units</span>
-                            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">₦{Number(cls.totalValue || 0).toLocaleString()}</span>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 ) : (
-                    <div className="flex items-center gap-2 text-slate-500 bg-slate-50 p-4 rounded-xl text-sm border border-slate-200 italic font-medium">
-                      No share classes defined.
+          <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <h3 className="bg-slate-50 border-b border-slate-200 px-6 py-4 text-sm font-black text-slate-900 uppercase tracking-widest">
+              Capital & Objects
+            </h3>
+            <div className="px-6 py-2">
+              <TableRow label="Company Type" value={companyType} />
+              <TableRow label="Total Issued Capital" value={`₦${totalShares.toLocaleString()}`} isHighlight />
+              
+              <div className="flex flex-col sm:flex-row sm:items-start py-3.5 gap-2 sm:gap-6 border-b border-slate-100">
+                <div className="w-full sm:w-1/3 shrink-0">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Share Classes</span>
+                </div>
+                <div className="w-full sm:w-2/3">
+                  {shareClassesArray.length > 0 ? (
+                    <div className="space-y-2">
+                      {shareClassesArray.map((cls: any, i: number) => (
+                        <div key={i} className="flex justify-between items-center bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-sm">
+                          <span className="font-black text-slate-800">{cls.type || cls.class || 'ORDINARY'}</span>
+                          <span className="font-bold text-indigo-600">{Number(cls.units || 0).toLocaleString()} Units</span>
+                        </div>
+                      ))}
                     </div>
-                 )}
-               </div>
+                  ) : (
+                    <span className="text-slate-400 italic font-medium">None defined</span>
+                  )}
+                </div>
+              </div>
 
-               <div className="border-t border-slate-100 pt-6">
-                 <span className="text-slate-500 block mb-3 text-[10px] font-bold uppercase tracking-widest">Objects of Memorandum</span>
-                 <ul className="list-disc pl-5 space-y-2 text-sm font-black text-slate-800">
-                   {memoObjects.length > 0 ? (
-                     memoObjects.map((obj: string, i: number) => <li key={i}>{obj}</li>)
-                   ) : (
-                     <li className="text-slate-400 italic list-none ml-[-1.25rem] font-medium">Using default objects / Not provided</li>
-                   )}
-                 </ul>
-               </div>
+              <div className="flex flex-col sm:flex-row sm:items-start py-3.5 gap-2 sm:gap-6">
+                <div className="w-full sm:w-1/3 shrink-0">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Objects of Memorandum</span>
+                </div>
+                <div className="w-full sm:w-2/3">
+                  <ul className="list-disc pl-4 space-y-1 text-sm font-black text-slate-800">
+                    {memoObjects.length > 0 ? (
+                      memoObjects.map((obj: string, i: number) => <li key={i}>{obj}</li>)
+                    ) : (
+                      <li className="text-slate-400 italic list-none ml-[-1rem] font-medium">Using default objects / Not provided</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
             </div>
           </section>
 
           {/* SECTION 3: Officers */}
-          <section className="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden">
-            <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users weight="fill" className="h-5 w-5 text-indigo-500" />
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Company Officers</h3>
-              </div>
-              <span className="bg-indigo-100 text-indigo-700 font-black text-xs px-3 py-1 rounded-lg">{officers.length} Total</span>
-            </div>
+          <section className="space-y-6">
+            <h3 className="text-lg font-black text-slate-900 border-b border-slate-200 pb-2">Company Officers</h3>
             
-            <div className="p-6 space-y-4">
+            <div className="space-y-6">
               {officers.map((officer: any, idx: number) => {
                 const isPsc = officer.roles.includes("PSC");
                 const isStandalonePsc = officer.roles.length === 1 && isPsc;
 
                 return (
-                  <div key={idx} className={`border rounded-xl p-5 shadow-sm transition-colors ${isStandalonePsc ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-white'}`}>
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-5 pb-4 border-b border-slate-100 gap-3">
-                      <div>
-                         <h4 className="font-black text-lg text-slate-900 leading-tight">{officer.firstName} {officer.surname} {officer.otherName || ''}</h4>
-                         {isPsc && officer.pscDetails?.isPep && (
-                           <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest block mt-1">Politically Exposed Person (PEP)</span>
-                         )}
-                      </div>
-                      <div className={`text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest self-start sm:self-auto ${isStandalonePsc ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                  <div key={idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div className={`px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b ${isStandalonePsc ? 'bg-amber-50 border-amber-100' : 'bg-slate-50 border-slate-200'}`}>
+                      <h4 className="font-black text-base text-slate-900">{idx + 1} | {officer.firstName} {officer.surname} {officer.otherName || ''}</h4>
+                      <div className={`text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest self-start sm:self-auto ${isStandalonePsc ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'}`}>
                         {formatRoles(officer.roles)}
                       </div>
                     </div>
+                    
+                    <div className="px-6 py-2">
+                      <TableRow label="Date of Birth" value={officer.dob} />
+                      <TableRow label="Gender" value={officer.gender} />
+                      <TableRow label="Nationality" value={officer.nationality} />
+                      <TableRow label="Occupation" value={officer.occupation} />
+                      <TableRow label="Contact" value={`${officer.phoneCode || ''} ${officer.phone} | ${officer.email}`} />
+                      <TableRow label="Identification" value={`${officer.idType || 'N/A'}: ${officer.idNumber || 'N/A'}`} />
+                      
+                      {officer.roles.includes("SHAREHOLDER") && (
+                         <TableRow label="Shares Allotted" value={officer.sharesAllotted ? `${officer.sharesAllotted.toLocaleString()} Units` : 'See Breakdown'} />
+                      )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-5 gap-x-4">
-                      <div className="flex items-center gap-2.5"><EnvelopeSimple className="text-slate-400 h-4 w-4" weight="bold"/> <span className="text-sm font-black text-slate-700 truncate">{officer.email}</span></div>
-                      <div className="flex items-center gap-2.5"><Phone className="text-slate-400 h-4 w-4" weight="bold"/> <span className="text-sm font-black text-slate-700">{officer.phoneCode} {officer.phone}</span></div>
-                      
-                      <div className="col-span-full border-t border-slate-100 pt-5 mt-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
-                         <DetailItem label="Date of Birth" value={officer.dob} />
-                         <DetailItem label="Gender" value={officer.gender} />
-                         <DetailItem label="Nationality" value={officer.nationality} />
-                         <DetailItem label="Occupation" value={officer.occupation} />
-                      </div>
-                      
-                      <div className="col-span-full border-t border-slate-100 pt-5 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div>
-                          <span className="text-slate-500 block mb-2 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5"><IdentificationCard weight="fill" className="text-indigo-400"/> Identification</span>
-                          <p className="font-black text-slate-900 text-sm bg-slate-50 px-3 py-2 rounded-lg border border-slate-100 inline-block">{officer.idType || 'N/A'}: {officer.idNumber || 'N/A'}</p>
+                      {/* PSC Block if applicable */}
+                      {isPsc && officer.pscDetails && (
+                        <div className="mt-2 bg-slate-50 rounded-xl p-4 border border-slate-100 mb-4">
+                           <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">PSC Declarations</h5>
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-xs font-bold text-slate-700">
+                             <div className="flex justify-between border-b border-slate-200 pb-1"><span>Is PEP?</span> <span className="text-slate-900">{officer.pscDetails.isPep}</span></div>
+                             <div className="flex justify-between border-b border-slate-200 pb-1"><span>Has Affiliation?</span> <span className="text-slate-900">{officer.pscDetails.hasAffiliation}</span></div>
+                             <div className="flex justify-between border-b border-slate-200 pb-1"><span>Direct Shares</span> <span className="text-slate-900">{officer.pscDetails.holdsSharesDirect}</span></div>
+                             <div className="flex justify-between border-b border-slate-200 pb-1"><span>Direct Voting</span> <span className="text-slate-900">{officer.pscDetails.holdsVotingDirect}</span></div>
+                           </div>
                         </div>
-                        {officer.roles.includes("SHAREHOLDER") && (
-                          <div>
-                            <span className="text-slate-500 block mb-2 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5"><Bank weight="fill" className="text-indigo-400"/> Share Allotment</span>
-                            <p className="font-black text-indigo-700 text-sm bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 inline-block">
-                               {officer.sharesAllotted ? officer.sharesAllotted.toLocaleString() + ' Units' : 'See Breakdown'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -307,21 +266,25 @@ export default function PreviewStep({ data, onComplete, onBack, isSubmitting }: 
           </section>
 
           {/* SECTION 4: Compliance & Uploads */}
-          <section className="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden">
-            <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center gap-2">
-              <FileText weight="fill" className="h-5 w-5 text-indigo-500" />
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Compliance & Uploads</h3>
-            </div>
+          <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <h3 className="bg-slate-50 border-b border-slate-200 px-6 py-4 text-sm font-black text-slate-900 uppercase tracking-widest">
+              Compliance & Uploads
+            </h3>
             
             <div className="p-6 space-y-6">
-              
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5">
                  <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                    <CheckCircle weight="fill" /> Statement of Compliance
                  </h4>
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DetailItem label="Declarant Name" value={`${declarant.firstName || ''} ${declarant.surname || ''}`} />
-                    <DetailItem label="Accreditation" value={declarant.accreditationNumber || 'N/A'} />
+                    <div>
+                      <span className="block mb-1 text-[10px] font-bold uppercase tracking-widest text-emerald-700">Declarant Name</span>
+                      <span className="text-sm font-black text-emerald-900">{`${declarant.firstName || ''} ${declarant.surname || ''}`}</span>
+                    </div>
+                    <div>
+                      <span className="block mb-1 text-[10px] font-bold uppercase tracking-widest text-emerald-700">Accreditation</span>
+                      <span className="text-sm font-black text-emerald-900">{declarant.accreditationNumber || 'N/A'}</span>
+                    </div>
                  </div>
               </div>
 
@@ -330,7 +293,7 @@ export default function PreviewStep({ data, onComplete, onBack, isSubmitting }: 
                 {Object.keys(uploads).length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {Object.entries(uploads).map(([key, url]) => (
-                      <div key={key} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-200 transition-colors">
+                      <div key={key} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
                         <div className="flex items-center gap-2.5 overflow-hidden">
                           <CheckCircle weight="fill" className="text-emerald-500 h-5 w-5 shrink-0" />
                           <span className="text-xs font-black text-slate-700 truncate tracking-wide">{getUploadLabel(key)}</span>
@@ -351,7 +314,6 @@ export default function PreviewStep({ data, onComplete, onBack, isSubmitting }: 
                   </div>
                 )}
               </div>
-
             </div>
           </section>
 
