@@ -12,11 +12,10 @@ import {
   CreditCard
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import PaymentModal from "./PaymentModal";
 
-// CORRECTED IMPORT: Using the exact name exported from your file
 import { CAMA_ARTICLES_DEFAULT } from "@/lib/cama-articles";
 
-// Fallback just in case the import is empty or named differently
 const FALLBACK_CAMA_ARTICLES = [
   "The Company is a private company and accordingly, the right to transfer shares is restricted.",
   "The number of members of the Company is limited to 50.",
@@ -25,7 +24,6 @@ const FALLBACK_CAMA_ARTICLES = [
   "The business of the Company shall be managed by the Directors who may pay all expenses incurred in promoting and registering the Company."
 ];
 
-// Format currency for Naira
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
@@ -34,7 +32,6 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-// Helper for officer roles
 const formatRoles = (roles: string[]) => {
   if (!roles || roles.length === 0) return "OFFICER";
   if (roles.length === 1) return roles[0];
@@ -42,7 +39,6 @@ const formatRoles = (roles: string[]) => {
   return `${roles.slice(0, -1).join(', ')} & ${roles[roles.length - 1]}`;
 };
 
-// Map upload keys to human-readable labels
 const getUploadLabel = (key: string) => {
   if (key === 'witness-sig') return 'Witness Signature';
   if (key === 'deponent-sig') return 'Declarant Signature';
@@ -53,14 +49,11 @@ const getUploadLabel = (key: string) => {
   return 'Uploaded Document';
 };
 
-// Reusable Table Row with OBVIOUS separator between object and value
 const TableRow = ({ label, value, isHighlight = false, isLast = false }: { label: string, value: React.ReactNode, isHighlight?: boolean, isLast?: boolean }) => (
   <div className={`flex flex-col sm:flex-row border-slate-300 ${isLast ? '' : 'border-b'}`}>
-    {/* LABEL COLUMN */}
     <div className={`w-full sm:w-1/3 shrink-0 py-4 px-5 sm:border-r border-slate-300 ${isHighlight ? 'bg-indigo-50' : 'bg-slate-100'}`}>
       <span className={`text-[11px] font-black uppercase tracking-widest ${isHighlight ? 'text-indigo-700' : 'text-slate-600'}`}>{label}</span>
     </div>
-    {/* VALUE COLUMN */}
     <div className={`w-full sm:w-2/3 py-4 px-5 flex items-center bg-white`}>
       <div className={`text-sm w-full ${isHighlight ? 'font-black text-indigo-900' : 'font-black text-slate-900'}`}>
         {value || <span className="text-slate-400 italic font-medium">Not provided</span>}
@@ -69,7 +62,6 @@ const TableRow = ({ label, value, isHighlight = false, isLast = false }: { label
   </div>
 );
 
-// Advanced Address Formatter (Handles nested AND flat address structures)
 const formatFlatAddress = (obj: any) => {
   if (!obj) return null;
   if (obj.address && obj.address.state) {
@@ -86,11 +78,8 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
   const [pricingError, setPricingError] = useState<string | null>(null);
   
   const [previewDoc, setPreviewDoc] = useState<{ url: string, label: string } | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  // ==========================================
-  // STATE MAPPING
-  // ==========================================
-  
   const proposedName1 = draft?.proposedName || data.proposedName || data.companyDetails?.proposedName || data.companyDetails?.proposedName1;
   const proposedName2 = draft?.altName1 || data.altName1 || data.companyDetails?.altName1 || data.companyDetails?.proposedName2;
   const proposedName3 = draft?.altName2 || data.altName2 || data.companyDetails?.altName2 || data.companyDetails?.proposedName3;
@@ -113,12 +102,14 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
   const witness = data.witnessDetails || {};
   const memoObjects = data.memorandumObjects || [];
   
-  // Articles extraction
   const useDefaultArticles = data.useDefaultArticles ?? true;
   const customArticles = data.customArticles || [];
   const activeArticles = useDefaultArticles 
     ? (CAMA_ARTICLES_DEFAULT && CAMA_ARTICLES_DEFAULT.length > 0 ? CAMA_ARTICLES_DEFAULT : FALLBACK_CAMA_ARTICLES) 
     : customArticles;
+
+  // Extract Registration ID safely
+  const registrationId = draft?.id || data?.id || data?.companyDetails?.id;
 
   const fetchPricing = async () => {
     setIsLoadingPricing(true);
@@ -151,16 +142,23 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
   }, [totalShares, companyType]);
 
   const handleProceedToPayment = () => {
-    if (!pricing) return;
-    onComplete({
-      ...data,
-      calculatedPricing: pricing
-    });
+    if (!pricing || !registrationId) return;
+    setShowPaymentModal(true);
   };
 
   return (
     <div className="py-4 space-y-10 animate-in fade-in duration-500 max-w-5xl mx-auto">
       
+      {/* Payment Modal Override */}
+      {showPaymentModal && pricing && (
+        <PaymentModal
+          registrationId={registrationId}
+          proposedName={proposedName1 || "LLC Registration"}
+          totalAmount={pricing.total}
+          onClose={() => setShowPaymentModal(false)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
         <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
@@ -432,7 +430,7 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
             <div className="space-y-4 text-sm">
               
               <div className="flex justify-between items-center text-slate-300">
-                <span className="font-medium text-sm">Base CAC Fee</span>
+                <span className="font-medium text-sm">Base Registration Fee</span>
                 <span className="font-black text-white">{formatCurrency(pricing.baseFee)}</span>
               </div>
               
@@ -445,16 +443,6 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
                   <span className="font-black">{formatCurrency(pricing.extraSharesFee)}</span>
                 </div>
               )}
-
-              <div className="flex justify-between items-center text-slate-300">
-                <span className="font-medium text-sm">Stamp Duty (FIRS)</span>
-                <span className="font-black text-white">{formatCurrency(pricing.stampDuty)}</span>
-              </div>
-
-              <div className="flex justify-between items-center text-slate-300 border-b border-slate-800 pb-5">
-                <span className="font-medium text-sm">Processing Fee</span>
-                <span className="font-black text-white">{formatCurrency(pricing.serviceFee)}</span>
-              </div>
 
               <div className="flex justify-between items-end pt-3 mb-8 bg-slate-950 p-4 rounded-xl border border-slate-800">
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Due</span>
