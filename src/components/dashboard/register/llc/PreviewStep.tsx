@@ -113,7 +113,7 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
   const witness = data.witnessDetails || {};
   const memoObjects = data.memorandumObjects || [];
   
-  // Articles extraction (CORRECTED USAGE)
+  // Articles extraction
   const useDefaultArticles = data.useDefaultArticles ?? true;
   const customArticles = data.customArticles || [];
   const activeArticles = useDefaultArticles 
@@ -336,6 +336,7 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
             <>
               <TableRow label="First Name" value={witness.firstName} />
               <TableRow label="Surname" value={witness.surname} />
+              <TableRow label="Date of Birth" value={witness.dob} />
               <TableRow label="Phone Number" value={witness.phone} />
               <TableRow label="Email Address" value={witness.email} />
               <TableRow label="Occupation" value={witness.occupation} />
@@ -353,8 +354,7 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
             <>
               <TableRow label="First Name" value={declarant.firstName} />
               <TableRow label="Surname" value={declarant.surname} />
-              <TableRow label="Identification Type" value={declarant.idType} />
-              <TableRow label="Identification Number" value={declarant.idNumber} />
+              <TableRow label="Deponent Address" value={formatFlatAddress(declarant.residentialAddress) || formatFlatAddress(declarant.address) || formatFlatAddress(declarant)} />
               <TableRow label="Accreditation Number" value={declarant.accreditationNumber || 'N/A'} isLast />
             </>
           ) : (
