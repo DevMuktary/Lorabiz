@@ -13,8 +13,8 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
-// Attempt to import default articles (Update the export name if it differs in your file)
-import { defaultArticles } from "@/lib/cama-articles";
+// CORRECTED IMPORT: Using the exact name exported from your file
+import { CAMA_ARTICLES_DEFAULT } from "@/lib/cama-articles";
 
 // Fallback just in case the import is empty or named differently
 const FALLBACK_CAMA_ARTICLES = [
@@ -113,11 +113,11 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
   const witness = data.witnessDetails || {};
   const memoObjects = data.memorandumObjects || [];
   
-  // Articles extraction
+  // Articles extraction (CORRECTED USAGE)
   const useDefaultArticles = data.useDefaultArticles ?? true;
   const customArticles = data.customArticles || [];
   const activeArticles = useDefaultArticles 
-    ? (defaultArticles && defaultArticles.length > 0 ? defaultArticles : FALLBACK_CAMA_ARTICLES) 
+    ? (CAMA_ARTICLES_DEFAULT && CAMA_ARTICLES_DEFAULT.length > 0 ? CAMA_ARTICLES_DEFAULT : FALLBACK_CAMA_ARTICLES) 
     : customArticles;
 
   const fetchPricing = async () => {
