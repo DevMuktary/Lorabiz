@@ -6,13 +6,24 @@ import {
   ArrowRight,
   ArrowLeft,
   WarningCircle,
-  Bank,
   CheckCircle,
   FilePdf,
   X,
   CreditCard
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+
+// Attempt to import default articles (Update the export name if it differs in your file)
+import { defaultArticles } from "@/lib/cama-articles";
+
+// Fallback just in case the import is empty or named differently
+const FALLBACK_CAMA_ARTICLES = [
+  "The Company is a private company and accordingly, the right to transfer shares is restricted.",
+  "The number of members of the Company is limited to 50.",
+  "Any invitation to the public to subscribe for any shares or debentures of the Company is prohibited.",
+  "The Directors may exercise all the powers of the Company to borrow money.",
+  "The business of the Company shall be managed by the Directors who may pay all expenses incurred in promoting and registering the Company."
+];
 
 // Format currency for Naira
 const formatCurrency = (amount: number) => {
@@ -105,6 +116,9 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
   // Articles extraction
   const useDefaultArticles = data.useDefaultArticles ?? true;
   const customArticles = data.customArticles || [];
+  const activeArticles = useDefaultArticles 
+    ? (defaultArticles && defaultArticles.length > 0 ? defaultArticles : FALLBACK_CAMA_ARTICLES) 
+    : customArticles;
 
   const fetchPricing = async () => {
     setIsLoadingPricing(true);
@@ -219,29 +233,29 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           />
 
           <TableRow 
-            label="Articles of Association" 
+            label={useDefaultArticles ? "Articles of Association (Default)" : "Articles of Association (Custom)"}
             isLast
             value={
-              useDefaultArticles ? (
-                <div className="bg-emerald-50 p-3.5 rounded-lg border border-emerald-200">
-                  <span className="text-sm font-black text-emerald-900 flex items-center gap-2">
-                    <CheckCircle weight="fill" className="text-emerald-600" /> Standard Articles Adopted
-                  </span>
-                  <p className="text-xs font-bold text-emerald-700 mt-1 ml-6">As prescribed by the Companies and Allied Matters Act (CAMA) 2020.</p>
-                </div>
-              ) : (
-                <ul className="list-decimal pl-4 space-y-3 text-sm font-black text-slate-800">
-                  {Array.isArray(customArticles) && customArticles.length > 0 ? (
-                    customArticles.map((article: any, i: number) => (
+              <div className="w-full">
+                {useDefaultArticles && (
+                  <div className="mb-4 bg-emerald-50 p-3.5 rounded-lg border border-emerald-200">
+                    <span className="text-sm font-black text-emerald-900 flex items-center gap-2">
+                      <CheckCircle weight="fill" className="text-emerald-600" /> Standard CAMA Articles Adopted
+                    </span>
+                  </div>
+                )}
+                <ul className="list-decimal pl-4 space-y-3 text-sm font-black text-slate-800 bg-slate-50 p-5 rounded-lg border border-slate-200">
+                  {Array.isArray(activeArticles) && activeArticles.length > 0 ? (
+                    activeArticles.map((article: any, i: number) => (
                       <li key={i} className="pl-1 leading-relaxed">
                         {typeof article === 'string' ? article : article.text || article.content || article.article || JSON.stringify(article)}
                       </li>
                     ))
                   ) : (
-                    <li className="text-slate-400 italic list-none ml-[-1rem] font-medium">No custom articles provided</li>
+                    <li className="text-slate-400 italic list-none ml-[-1rem] font-medium">No articles provided</li>
                   )}
                 </ul>
-              )
+              </div>
             } 
           />
         </div>
@@ -268,12 +282,23 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
                 </div>
                 
                 <div>
-                  <TableRow label="Date of Birth & Gender" value={`${officer.dob} | ${officer.gender}`} />
-                  <TableRow label="Nationality & Occupation" value={`${officer.nationality} | ${officer.occupation}`} />
-                  <TableRow label="Contact Information" value={`${officer.phoneCode || ''} ${officer.phone} | ${officer.email}`} />
-                  <TableRow label="Identification" value={`${officer.idType || 'N/A'}: ${officer.idNumber || 'N/A'}`} />
+                  <TableRow label="First Name" value={officer.firstName} />
+                  <TableRow label="Surname" value={officer.surname} />
+                  {officer.otherName && <TableRow label="Other Name" value={officer.otherName} />}
+                  <TableRow label="Date of Birth" value={officer.dob} />
+                  <TableRow label="Gender" value={officer.gender} />
+                  <TableRow label="Nationality" value={officer.nationality} />
+                  {officer.formerName && <TableRow label="Former Name" value={officer.formerName} />}
+                  {officer.formerNationality && <TableRow label="Former Nationality" value={officer.formerNationality} />}
+                  <TableRow label="Occupation" value={officer.occupation} />
+                  <TableRow label="Phone Number" value={`${officer.phoneCode || ''} ${officer.phone}`} />
+                  <TableRow label="Email Address" value={officer.email} />
+                  <TableRow label="Identification Type" value={officer.idType} />
+                  <TableRow label="Identification Number" value={officer.idNumber} />
+                  {officer.taxResidency && <TableRow label="Tax Residency" value={officer.taxResidency} />}
+                  {officer.tin && <TableRow label="TIN" value={officer.tin} />}
                   <TableRow label="Residential Address" value={formatFlatAddress(officer.residentialAddress)} />
-                  <TableRow label="Service Address" value={formatFlatAddress(officer.serviceAddress) || <span className="italic">Same as Residential</span>} />
+                  <TableRow label="Service Address" value={formatFlatAddress(officer.serviceAddress) || <span className="italic">Same as Residential Address</span>} />
                   
                   {officer.roles.includes("SHAREHOLDER") && (
                      <TableRow isHighlight label="Shares Allotted" value={officer.sharesAllotted ? `${officer.sharesAllotted.toLocaleString()} Units` : 'See Breakdown'} />
@@ -286,6 +311,7 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
                       </div>
                       <TableRow label="Politically Exposed Person?" value={officer.pscDetails.isPep} />
                       <TableRow label="Has Affiliations?" value={officer.pscDetails.hasAffiliation} />
+                      <TableRow label="Direct Shares Held" value={officer.pscDetails.holdsSharesDirect} />
                       <TableRow label="Direct Voting Rights" value={officer.pscDetails.holdsVotingDirect} isLast />
                     </div>
                   )}
@@ -308,8 +334,11 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           </div>
           {witness.firstName ? (
             <>
-              <TableRow label="Witness Name" value={`${witness.firstName} ${witness.surname}`} />
-              <TableRow label="Contact & Occupation" value={`${witness.phone} | ${witness.email} | ${witness.occupation}`} />
+              <TableRow label="First Name" value={witness.firstName} />
+              <TableRow label="Surname" value={witness.surname} />
+              <TableRow label="Phone Number" value={witness.phone} />
+              <TableRow label="Email Address" value={witness.email} />
+              <TableRow label="Occupation" value={witness.occupation} />
               <TableRow label="Witness Address" value={formatFlatAddress(witness)} />
             </>
           ) : (
@@ -322,7 +351,10 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           </div>
           {declarant.firstName ? (
             <>
-              <TableRow label="Declarant Name" value={`${declarant.firstName} ${declarant.surname}`} />
+              <TableRow label="First Name" value={declarant.firstName} />
+              <TableRow label="Surname" value={declarant.surname} />
+              <TableRow label="Identification Type" value={declarant.idType} />
+              <TableRow label="Identification Number" value={declarant.idNumber} />
               <TableRow label="Accreditation Number" value={declarant.accreditationNumber || 'N/A'} isLast />
             </>
           ) : (
