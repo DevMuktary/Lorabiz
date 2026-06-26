@@ -13,8 +13,13 @@ async function main() {
     },
     {
       serviceKey: "LLC",
-      title: "Limited Liability Company (LTD)",
-      price: 35000.00,
+      title: "Limited Liability Company (LTD) - Up to 1M Shares", // ALL-INCLUSIVE Base Price (CAC + Stamp + Processing)
+      price: 35000.00, 
+    },
+    {
+      serviceKey: "LLC_EXTRA_MILLION",
+      title: "LLC Additional Fee per 1M Shares", // Multiplier fee for > 1M shares
+      price: 15000.00, // Adjust this to what you want to charge per extra million
     },
     {
       serviceKey: "NGO",
