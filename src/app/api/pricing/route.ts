@@ -5,15 +5,18 @@ export async function GET() {
   try {
     const prices = await prisma.servicePricing.findMany();
     
+    // Map DB rows to a clean object
     const pricingMap = prices.reduce((acc: any, item) => {
       acc[item.serviceKey] = Number(item.price);
       return acc;
     }, {});
 
+    // Provide safe fallbacks in case DB hasn't been seeded yet
     const defaultPricing = {
-      LLC_BASE: pricingMap.LLC_BASE || 10000,
-      LLC_EXTRA_MILLION: pricingMap.LLC_EXTRA_MILLION || 5000,
-      SERVICE_CHARGE: pricingMap.SERVICE_CHARGE || 20000,
+      LLC: pricingMap.LLC || 35000,
+      LLC_EXTRA_MILLION: pricingMap.LLC_EXTRA_MILLION || 15000,
+      BUSINESS_NAME: pricingMap.BUSINESS_NAME || 29000,
+      NGO: pricingMap.NGO || 120000,
     };
 
     return NextResponse.json({ success: true, data: defaultPricing });
@@ -25,7 +28,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { service, shares, companyType } = body;
+    const { service, shares } = body;
 
     // Fetch dynamic pricing from DB
     const prices = await prisma.servicePricing.findMany();
@@ -34,30 +37,45 @@ export async function POST(req: Request) {
       return acc;
     }, {});
 
-    // Set prices with strict fallbacks
-    const baseCACFee = pricingMap.LLC_BASE || 10000;
-    const extraMillionFee = pricingMap.LLC_EXTRA_MILLION || 5000;
-    const serviceCharge = pricingMap.SERVICE_CHARGE || 20000;
+    // 1. Unified Base Fee (Includes standard CAC, Stamp, and processing fee for up to 1M shares)
+    const baseLLCFee = pricingMap.LLC || 35000;
+    
+    // 2. Extra Million Multiplier Fee
+    const extraMillionFee = pricingMap.LLC_EXTRA_MILLION || 15000;
 
     if (service === 'llc') {
       const totalShares = Number(shares) || 1000000;
 
-      // Calculate Extra Shares Fee (e.g., 5000 for every additional 1,000,000 shares)
+      // Math.ceil correctly handles exactly what you asked for:
+      // 1M shares = 0 extra
+      // 2M shares = 1 extra multiplier
+      // 3M shares = 2 extra multipliers, etc.
       const extraSharesCACFee = Math.max(0, Math.ceil((totalShares - 1000000) / 1000000)) * extraMillionFee;
 
-      // Calculate Stamp Duty (0.75% of total share capital)
-      const stampDuty = totalShares * 0.0075;
-
       // Grand Total
-      const total = baseCACFee + extraSharesCACFee + stampDuty + serviceCharge;
+      const total = baseLLCFee + extraSharesCACFee;
 
-      // Send the exact structure the PreviewStep is waiting for
+      // Notice: We intentionally do NOT return stampDuty or serviceFee here.
+      // This ensures the frontend doesn't render those rows, keeping the price clean to the user.
       return NextResponse.json({
-        baseFee: baseCACFee,
+        baseFee: baseLLCFee,
         extraSharesFee: extraSharesCACFee,
-        stampDuty: stampDuty,
-        serviceFee: serviceCharge,
         total: total
+      });
+    }
+
+    // Handlers for other services you offer
+    if (service === 'business-name') {
+      return NextResponse.json({
+        baseFee: pricingMap.BUSINESS_NAME || 29000,
+        total: pricingMap.BUSINESS_NAME || 29000
+      });
+    }
+    
+    if (service === 'ngo') {
+      return NextResponse.json({
+        baseFee: pricingMap.NGO || 120000,
+        total: pricingMap.NGO || 120000
       });
     }
 
