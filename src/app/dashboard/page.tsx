@@ -107,7 +107,6 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 relative">
       
-      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
@@ -118,7 +117,6 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* WALLET DISPLAY - Uses flex-between on mobile, aligns right on desktop */}
         <div className="flex items-center justify-between w-full sm:w-auto gap-4 shrink-0 bg-card p-2 pl-5 sm:pl-6 pr-2.5 rounded-full border border-border shadow-sm sm:ml-auto">
           <div className="flex flex-col text-left sm:text-right">
             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-tight">
@@ -143,15 +141,30 @@ export default function DashboardPage() {
           <FundWalletModal 
             isOpen={isWalletModalOpen} 
             onClose={() => setIsWalletModalOpen(false)} 
-            onSuccessOptimistic={(amount) => {
+            onSuccess={(amount) => {
+              // 1. Optimistically update the UI balance
               setBalance((prev) => (Number(prev) + amount).toString());
+              
+              // 2. Show the Success Notification!
+              setAlertInfo({ 
+                title: "Payment Successful 🎉", 
+                message: `Your wallet was successfully funded with ₦${amount.toLocaleString()}.` 
+              });
+
+              // 3. Fetch from DB silently to ensure perfect sync
               setTimeout(fetchBalance, 3000); 
-            }} 
+            }}
+            onFailure={(message) => {
+              // 1. Show the Failure Notification
+              setAlertInfo({ 
+                title: "Payment Failed", 
+                message: message 
+              });
+            }}
           />
         </div>
       </div>
 
-      {/* SERVICE CARDS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {SERVICES.map((service) => {
           
@@ -226,7 +239,7 @@ export default function DashboardPage() {
       </div>
 
       {alertInfo && (
-        <div className="fixed bottom-6 right-6 bg-foreground text-background px-5 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm border border-border">
+        <div className="fixed bottom-6 right-6 bg-foreground text-background px-5 py-4 rounded-2xl shadow-2xl z-[99999] flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm border border-border">
           <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
             <Info weight="fill" className="h-5 w-5 text-primary" />
           </div>
