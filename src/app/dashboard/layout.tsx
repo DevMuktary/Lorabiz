@@ -7,35 +7,33 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { 
-  SquaresFour, Briefcase, Storefront, Buildings, HandHeart, IdentificationCard,
-  CalendarCheck, ArrowCircleUp, PencilLine, Archive, CreditCard, UserCircle,
-  SignOut, Bell, List, X 
+  SquaresFour, Briefcase, Buildings, ShieldCheck, Copyright, 
+  Handshake, IdentificationCard, DeviceMobile, CreditCard, 
+  UserCircle, SignOut, Bell, List, X 
 } from "@phosphor-icons/react";
 
 const NAVIGATION = [
   {
     category: "Main",
     links: [
-      { name: "Overview", href: "/dashboard", icon: SquaresFour },
+      { name: "Service Hub", href: "/dashboard", icon: SquaresFour },
       { name: "My Applications", href: "/dashboard/applications", icon: Briefcase },
     ]
   },
   {
-    category: "Pre-Incorporation",
+    category: "Available Services",
     links: [
-      { name: "Register Business Name", href: "/dashboard/register/business-name", icon: Storefront },
-      { name: "Register Company (LLC)", href: "/dashboard/register/llc", icon: Buildings },
-      { name: "Register NGO / IT", href: "/dashboard/register/ngo", icon: HandHeart },
-      { name: "Generate NIN Slip", href: "/dashboard/nin-slip", icon: IdentificationCard },
+      { name: "CAC Registration", href: "/dashboard/cac", icon: Buildings },
     ]
   },
   {
-    category: "Post-Incorporation",
+    category: "Upcoming Services",
     links: [
-      { name: "File Annual Returns", href: "/dashboard/post-inc/annual-returns", icon: CalendarCheck },
-      { name: "Upgrade BN to LLC", href: "/dashboard/post-inc/upgrade", icon: ArrowCircleUp },
-      { name: "Make Changes", href: "/dashboard/post-inc/changes", icon: PencilLine },
-      { name: "Document Retrieval", href: "/dashboard/post-inc/documents", icon: Archive },
+      { name: "SCUML", href: "/dashboard/coming-soon?service=SCUML", icon: ShieldCheck },
+      { name: "Trademark (IPO)", href: "/dashboard/coming-soon?service=Trademark", icon: Copyright },
+      { name: "SMEDAN", href: "/dashboard/coming-soon?service=SMEDAN", icon: Handshake },
+      { name: "NIN Services", href: "/dashboard/coming-soon?service=NIMC", icon: IdentificationCard },
+      { name: "Utility & Airtime", href: "/dashboard/coming-soon?service=Utilities", icon: DeviceMobile },
     ]
   },
   {
@@ -51,41 +49,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { data: session } = useSession();
   
-  // --- SIDEBAR STATES ---
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
-
-  // --- SMART HEADER STATE ---
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  // Detect scroll direction to hide/show header
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
       if (currentScrollY > lastScrollY && currentScrollY > 80) {
         setShowHeader(false);
       } else {
         setShowHeader(true);
       }
-      
       setLastScrollY(currentScrollY);
     };
-
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
   const getCurrentPageName = () => {
+    // Check main nav links
     for (const group of NAVIGATION) {
       const found = group.links.find(link => link.href === pathname);
       if (found) return found.name;
     }
+    // Fallbacks for sub-routes
+    if (pathname.includes("/dashboard/cac")) return "CAC Services";
+    if (pathname.includes("/dashboard/coming-soon")) return "Coming Soon";
     return "Dashboard";
   };
 
-  // HELPER TO GENERATE REAL INITIALS
   const getUserInitials = () => {
     if (session?.user?.name) {
       const names = session.user.name.split(" ");
@@ -100,7 +94,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-background font-sans selection:bg-primary selection:text-white transition-colors duration-300">
       
-      {/* MOBILE OVERLAY (Higher z-index) */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
@@ -108,7 +101,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      {/* SIDEBAR */}
       <aside className={`
         fixed inset-y-0 left-0 z-[99995] w-[260px] bg-white dark:bg-card border-r border-slate-200 dark:border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none
@@ -125,7 +117,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             priority
           />
           <button 
-            className="lg:hidden text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors cursor-pointer"
+            className="lg:hidden text-slate-500 dark:text-slate-400 hover:text-primary transition-colors cursor-pointer"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <X className="h-5 w-5" weight="bold" />
@@ -140,9 +132,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </h3>
               <div className="space-y-0.5">
                 {group.links.map((link) => {
+                  // If it's the exact overview page, strictly match. Otherwise match sub-paths.
                   const isActive = link.href === "/dashboard" 
                     ? pathname === "/dashboard" 
-                    : pathname === link.href || pathname.startsWith(`${link.href}/`);
+                    : pathname.startsWith(link.href.split('?')[0]); 
                   
                   const Icon = link.icon;
                   
@@ -183,13 +176,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <div className={`
         flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out
         ${isDesktopSidebarCollapsed ? "lg:pl-0" : "lg:pl-[260px]"}
       `}>
         
-        {/* SMART HEADER */}
         <header className={`
           sticky top-0 z-10 h-20 bg-white/80 dark:bg-card/80 backdrop-blur-md shadow-sm border-b border-slate-100 dark:border-border 
           flex items-center justify-between px-6 lg:px-8 shrink-0 
@@ -219,12 +210,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-4">
             <ThemeToggle />
             
-            <button className="relative p-2 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors rounded-full hover:bg-primary/10 cursor-pointer">
+            <button className="relative p-2 text-slate-500 dark:text-slate-400 hover:text-primary transition-colors rounded-full hover:bg-primary/10 cursor-pointer">
               <Bell className="h-5 w-5" weight="bold" />
               <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-primary rounded-full border-2 border-white dark:border-card"></span>
             </button>
 
-            {/* DYNAMIC USER AVATAR */}
             <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-white text-xs font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity">
               {initials ? (
                 initials
