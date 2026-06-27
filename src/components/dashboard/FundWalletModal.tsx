@@ -37,20 +37,25 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
   const handlePay = () => {
     if (!amount || Number(amount) < 100) return alert("Minimum amount is ₦100");
     
+    // 1. Instantly trigger the loading state on the button
     setIsProcessing(true);
     
-    initializePayment({
-      onSuccess: () => {
-        setIsProcessing(false);
-        onSuccess(Number(amount));
-        onClose();
-      },
-      onClose: () => {
-        setIsProcessing(false);
-        onFailure("The payment process was cancelled or failed.");
-        onClose();
-      }
-    });
+    // 2. Give React 500ms to actually paint the spinner on the screen 
+    // BEFORE Paystack freezes the browser thread to load its white iframe.
+    setTimeout(() => {
+      initializePayment({
+        onSuccess: () => {
+          setIsProcessing(false);
+          onSuccess(Number(amount));
+          onClose();
+        },
+        onClose: () => {
+          setIsProcessing(false);
+          onFailure("The payment process was cancelled or failed.");
+          onClose();
+        }
+      });
+    }, 500); 
   };
 
   return (
@@ -70,7 +75,6 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
             <Wallet className="h-8 w-8" weight="fill" />
           </div>
           <h3 className="text-2xl font-black text-slate-900 tracking-tight">Fund Wallet</h3>
-          {/* Removed the word "secure" as requested */}
           <p className="text-slate-500 text-sm font-medium mt-1">Add funds instantly via card or bank transfer.</p>
         </div>
 
