@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { 
   Plus, 
   Spinner, 
-  FileDotted, 
+  FileText, 
   Hourglass, 
   WarningCircle, 
   CheckCircle,
@@ -73,7 +73,7 @@ export default function RegistrationsHubPage() {
           <div className="flex items-center justify-between">
             <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Drafts</p>
             <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
-              <FileDotted weight="duotone" className="h-4 w-4" />
+              <FileText weight="duotone" className="h-4 w-4" />
             </div>
           </div>
           <p className="text-3xl font-black text-foreground">
