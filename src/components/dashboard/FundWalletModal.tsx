@@ -13,21 +13,20 @@ interface FundWalletModalProps {
   onSuccessOptimistic: (amount: number) => void;
 }
 
-const QUICK_AMOUNTS = [15000, 30000, 50000];
+// Adjusted quick amounts to be more realistic alongside a 100 limit
+const QUICK_AMOUNTS = [1000, 5000, 10000];
 
 export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }: FundWalletModalProps) {
   const { data: session } = useSession();
   const [amount, setAmount] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
   
-  // Notice we use the NEXT_PUBLIC_ key here for frontend init
   const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY as string;
 
-  // Configuration for Paystack
   const config = {
-    // Unique reference starting with FW_ so Webhook knows it's Wallet Funding
     reference: `FW_${Date.now()}_${Math.floor(Math.random() * 1000000)}`,
     email: session?.user?.email || "customer@lorabiz.com",
-    amount: Number(amount) * 100, // Paystack requires amount in Kobo
+    amount: Number(amount) * 100, 
     publicKey: paystackKey,
   };
 
@@ -36,17 +35,20 @@ export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }
   if (!isOpen) return null;
 
   const handlePay = () => {
-    if (!amount || Number(amount) < 1000) return alert("Minimum amount is ₦1,000");
+    // 1. Lowered limit to 100
+    if (!amount || Number(amount) < 100) return alert("Minimum amount is ₦100");
     
-    // Trigger Paystack Popup
+    // 2. Turn on the spinner while Paystack initializes
+    setIsProcessing(true);
+    
     initializePayment({
       onSuccess: () => {
-        // Optimistically update the UI balance immediately
+        setIsProcessing(false);
         onSuccessOptimistic(Number(amount));
         onClose();
       },
       onClose: () => {
-        // User closed the Paystack modal without paying
+        setIsProcessing(false);
         console.log("Payment canceled by user");
       }
     });
@@ -55,7 +57,12 @@ export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in">
       <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 relative">
-        <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors cursor-pointer">
+        <button 
+          onClick={() => {
+            if (!isProcessing) onClose();
+          }} 
+          className="absolute top-5 right-5 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors cursor-pointer"
+        >
           <X className="h-4 w-4" weight="bold" />
         </button>
 
@@ -73,7 +80,8 @@ export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }
               <button
                 key={amt}
                 onClick={() => setAmount(amt.toString())}
-                className={`py-2 rounded-xl text-sm font-bold border-2 transition-colors cursor-pointer ${
+                disabled={isProcessing}
+                className={`py-2 rounded-xl text-sm font-bold border-2 transition-colors cursor-pointer disabled:opacity-50 ${
                   amount === amt.toString() ? "border-[#c72d76] bg-[#c72d76]/5 text-[#c72d76]" : "border-slate-100 text-slate-600 hover:border-slate-300"
                 }`}
               >
@@ -89,19 +97,27 @@ export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }
               <Input 
                 type="number"
                 value={amount}
+                disabled={isProcessing}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="Enter amount"
-                className="pl-9 h-14 text-lg font-bold border-2 border-slate-200 focus-visible:ring-[#c72d76] focus-visible:border-[#c72d76] rounded-xl text-slate-900"
+                className="pl-9 h-14 text-lg font-bold border-2 border-slate-200 focus-visible:ring-[#c72d76] focus-visible:border-[#c72d76] rounded-xl text-slate-900 disabled:opacity-50"
               />
             </div>
           </div>
 
           <Button 
             onClick={handlePay}
-            disabled={!amount || Number(amount) < 1000}
+            disabled={isProcessing || !amount || Number(amount) < 100}
             className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 transition-transform active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
-            Proceed to Pay
+            {isProcessing ? (
+              <>
+                <Spinner className="animate-spin h-5 w-5" weight="bold" />
+                <span>Initializing...</span>
+              </>
+            ) : (
+              "Proceed to Pay"
+            )}
           </Button>
         </div>
       </div>
