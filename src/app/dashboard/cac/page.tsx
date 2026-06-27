@@ -3,12 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Sparkle, X, Info } from "@phosphor-icons/react";
+import { ArrowRight, Sparkle, X, Info, ArrowLeft } from "@phosphor-icons/react";
 
 const CAC_CATEGORIES = [
   {
-    title: "New Incorporation",
-    description: "Start a fresh registration for a Business Name, Company (LLC), or NGO.",
+    title: "Registrations",
+    description: "Start new registrations and track your ongoing Business Name, Company (LLC), or NGO applications.",
     logo: "/cac.png",
     href: "/dashboard/cac/new-incorporation",
     active: true,
@@ -52,13 +52,23 @@ export default function CacHubPage() {
 
   return (
     <div className="space-y-8 relative">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-black text-foreground">
-          Corporate Affairs Commission (CAC)
-        </h1>
-        <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-          Choose whether you are starting a new business registration or managing an existing incorporated entity.
-        </p>
+      <div className="flex flex-col gap-5">
+        <Link 
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-lg"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" />
+          Back to Service Hub
+        </Link>
+        
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-black text-foreground">
+            Corporate Affairs Commission (CAC)
+          </h1>
+          <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
+            Choose whether you are starting a new business registration or managing an existing incorporated entity.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
