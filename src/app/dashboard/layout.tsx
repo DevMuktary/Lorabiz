@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { 
   SquaresFour, Briefcase, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, CreditCard, 
-  UserCircle, SignOut, Bell, List, X 
+  UserCircle, SignOut, Bell, List, X, Info 
 } from "@phosphor-icons/react";
 
 const NAVIGATION = [
@@ -29,11 +29,11 @@ const NAVIGATION = [
   {
     category: "Upcoming Services",
     links: [
-      { name: "SCUML", href: "/dashboard/coming-soon?service=SCUML", icon: ShieldCheck },
-      { name: "Trademark (IPO)", href: "/dashboard/coming-soon?service=Trademark", icon: Copyright },
-      { name: "SMEDAN", href: "/dashboard/coming-soon?service=SMEDAN", icon: Handshake },
-      { name: "NIN Services", href: "/dashboard/coming-soon?service=NIMC", icon: IdentificationCard },
-      { name: "Utility & Airtime", href: "/dashboard/coming-soon?service=Utilities", icon: DeviceMobile },
+      { name: "SCUML", href: "#", icon: ShieldCheck, isComingSoon: true },
+      { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
+      { name: "SMEDAN", href: "#", icon: Handshake, isComingSoon: true },
+      { name: "NIN Services", href: "#", icon: IdentificationCard, isComingSoon: true },
+      { name: "Utility & Airtime", href: "#", icon: DeviceMobile, isComingSoon: true },
     ]
   },
   {
@@ -53,7 +53,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  
+  // State for the global sidebar "Coming Soon" alert
+  const [sidebarAlert, setSidebarAlert] = useState<string | null>(null);
 
+  // Auto-hide the header on scroll down
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -68,6 +72,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
+  // Auto-dismiss the coming soon alert after 3 seconds
+  useEffect(() => {
+    if (sidebarAlert) {
+      const timer = setTimeout(() => setSidebarAlert(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [sidebarAlert]);
+
   const getCurrentPageName = () => {
     // Check main nav links
     for (const group of NAVIGATION) {
@@ -76,7 +88,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     // Fallbacks for sub-routes
     if (pathname.includes("/dashboard/cac")) return "CAC Services";
-    if (pathname.includes("/dashboard/coming-soon")) return "Coming Soon";
     return "Dashboard";
   };
 
@@ -92,8 +103,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = getUserInitials();
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-background font-sans selection:bg-primary selection:text-white transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-background font-sans selection:bg-primary selection:text-white transition-colors duration-300 relative">
       
+      {/* MOBILE OVERLAY */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
@@ -101,6 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
+      {/* SIDEBAR */}
       <aside className={`
         fixed inset-y-0 left-0 z-[99995] w-[260px] bg-white dark:bg-card border-r border-slate-200 dark:border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none
@@ -132,10 +145,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </h3>
               <div className="space-y-0.5">
                 {group.links.map((link) => {
-                  // If it's the exact overview page, strictly match. Otherwise match sub-paths.
                   const isActive = link.href === "/dashboard" 
                     ? pathname === "/dashboard" 
-                    : pathname.startsWith(link.href.split('?')[0]); 
+                    : pathname.startsWith(link.href.split('?')[0]) && link.href !== "#"; 
                   
                   const Icon = link.icon;
                   
@@ -143,7 +155,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Link 
                       key={link.name} 
                       href={link.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={(e) => {
+                        // If it's a coming soon link, prevent navigation and show alert
+                        if (link.isComingSoon) {
+                          e.preventDefault();
+                          setSidebarAlert(link.name);
+                        } else {
+                          setIsMobileMenuOpen(false);
+                        }
+                      }}
                       className={`
                         flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 group
                         ${isActive 
@@ -176,6 +196,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
+      {/* MAIN CONTENT AREA */}
       <div className={`
         flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out
         ${isDesktopSidebarCollapsed ? "lg:pl-0" : "lg:pl-[260px]"}
@@ -232,6 +253,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
 
       </div>
+
+      {/* GLOBAL SIDEBAR ALERT FOR "COMING SOON" */}
+      {sidebarAlert && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-4 rounded-2xl shadow-2xl z-[99999] flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
+            <Info weight="fill" className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h4 className="font-bold text-sm">{sidebarAlert}</h4>
+            <p className="text-xs opacity-80 mt-0.5">This service is launching very soon!</p>
+          </div>
+          <button 
+            onClick={() => setSidebarAlert(null)} 
+            className="ml-2 p-1.5 hover:bg-white/20 dark:hover:bg-slate-900/10 rounded-full transition-colors cursor-pointer shrink-0"
+          >
+            <X weight="bold" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }
