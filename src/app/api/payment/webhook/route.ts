@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       const registrationId = reference.split("_")[1];
 
       // 4. ATOMIC TRANSACTION (Kills Race Conditions with the Frontend Verify API)
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         const user = await tx.user.findUnique({ 
           where: { email: userEmail }, 
           include: { wallet: true } 
@@ -50,10 +50,28 @@ export async function POST(req: Request) {
           return; 
         }
 
-        const registration = await tx.businessRegistration.findUnique({ where: { id: registrationId } });
-        if (!registration || registration.status !== "UNSUBMITTED") {
-          return;
+        // --- MULTI-SERVICE DETECTION LOGIC ---
+        let serviceType: "business" | "llc" | null = null;
+        let regName = "Registration";
+
+        // First, check if it's a Business Name
+        const bizReg = await tx.businessRegistration.findUnique({ where: { id: registrationId } });
+        if (bizReg) {
+          if (bizReg.status !== "UNSUBMITTED") return; // Already paid
+          serviceType = "business";
+          regName = bizReg.proposedName;
+        } else {
+          // If not a Business Name, check if it's an LLC
+          const llcReg = await tx.llcRegistration.findUnique({ where: { id: registrationId } });
+          if (llcReg) {
+            if (llcReg.status !== "UNSUBMITTED") return; // Already paid
+            serviceType = "llc";
+            regName = llcReg.proposedName || "LLC Application";
+          }
         }
+
+        // If no matching unsubmitted registration is found in ANY table, exit safely.
+        if (!serviceType) return; 
 
         // STEP A: FUND THE WALLET
         const currentBalance = Number(user.wallet.balance);
@@ -84,7 +102,7 @@ export async function POST(req: Request) {
             type: "DEBIT",
             status: "SUCCESS",
             reference: `SRV_PAY_${registrationId}_${Date.now()}`,
-            description: `Payment for Business Registration (${registration.proposedName})`
+            description: `Payment for Registration (${regName})`
           }
         });
 
@@ -94,10 +112,18 @@ export async function POST(req: Request) {
           data: { balance: newBalanceAfterPayment } 
         });
 
-        await tx.businessRegistration.update({
-          where: { id: registrationId },
-          data: { status: "PENDING" } 
-        });
+        // Update the specific database table based on what they registered
+        if (serviceType === "business") {
+          await tx.businessRegistration.update({
+            where: { id: registrationId },
+            data: { status: "PENDING" } 
+          });
+        } else if (serviceType === "llc") {
+          await tx.llcRegistration.update({
+            where: { id: registrationId },
+            data: { status: "PENDING" } 
+          });
+        }
       });
     }
 
