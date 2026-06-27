@@ -73,6 +73,7 @@ model User {
   registrations    BusinessRegistration[]
   llcRegistrations LlcRegistration[]
   wallet           Wallet?
+  waitlists        Waitlist[]
 }
 
 // ==========================================
@@ -137,7 +138,7 @@ model Proprietor {
 }
 
 // ==========================================
-// LLC / COMPANY REGISTRATION (New)
+// LLC / COMPANY REGISTRATION
 // ==========================================
 
 model LlcRegistration {
@@ -146,35 +147,29 @@ model LlcRegistration {
   status              RegistrationStatus @default(UNSUBMITTED)
   currentStep         Int                @default(1)
   
-  // Step 1: Company Details
-  proposedName        String             // Approved from Name Search
-  altName1            String?            // ADD THIS
-  altName2            String?            // ADD THIS
-  similarityScore     String?            // ADD THIS
+  proposedName        String             
+  altName1            String?            
+  altName2            String?            
+  similarityScore     String?            
   email               String?
   principalActivity   String?
   specificActivity    String?
   description         String?            @db.Text
   
-  // Addresses (Stored as JSON to handle state/lga/city cleanly)
   registeredAddress   Json?    
   headOfficeAddress   Json?    
   
-  // Step 2 & 3: Articles & Memorandum
   useDefaultArticles  Boolean            @default(true)
   customArticles      Json?
-  witnessDetails      Json?              // The person witnessing the articles
-  memorandumObjects   String[]           // Array of the objects they add
+  witnessDetails      Json?              
+  memorandumObjects   String[]           
   
-  // Step 5: Share Capital
-  companyType         String?            // e.g., "ENTITY WITH SHARES BELOW FIVE MILLION"
+  companyType         String?            
   totalShareCapital   Float?
-  shareClasses        Json?              // Array of { class: "ORDINARY", units: 1000000, pricePerUnit: 1 }
+  shareClasses        Json?              
 
-  // Step 7: Compliance
   declarantDetails    Json?
   
-  // Status Tracking
   queryReason         String?            @db.Text
   queryStatus         String?            @default("UNRESOLVED")
 
@@ -186,7 +181,6 @@ model LlcRegistration {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   
-  // Relational Data
   user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   officers            CompanyOfficer[]
 }
@@ -195,10 +189,8 @@ model CompanyOfficer {
   id                  String   @id @default(cuid())
   registrationId      String
   
-  // The magic array field that handles overlaps (e.g., [DIRECTOR, SHAREHOLDER, PSC])
   roles               OfficerRole[] 
   
-  // Personal Details
   surname             String
   firstName           String
   otherName           String?
@@ -211,21 +203,17 @@ model CompanyOfficer {
   phone               String
   email               String
   
-  // Identification & Tax
   idType              String?
   idNumber            String?
   taxResidency        String?
   tin                 String?
   
-  // Addresses (JSON to handle the complex state/lga/postalcode structures)
   residentialAddress  Json?
   serviceAddress      Json?
   
-  // Specific Data based on Role
-  sharesAllotted      Float?   // Only used if role includes SHAREHOLDER
-  pscDetails          Json?    // Only used if role includes PSC (holds the % of voting rights, influence, etc.)
+  sharesAllotted      Float?   
+  pscDetails          Json?    
   
-  // Document URLs (Single source of truth per human)
   idDocumentUrl       String?
   signatureUrl        String?
   
@@ -233,7 +221,7 @@ model CompanyOfficer {
 }
 
 // ==========================================
-// SYSTEM AUTH & LEDGER
+// SYSTEM AUTH, LEDGER & WAITLIST
 // ==========================================
 
 model OtpCode {
@@ -257,10 +245,9 @@ model Wallet {
 
 model ServicePricing {
   id         String   @id @default(cuid())
-  serviceKey String   @unique // e.g., "BUSINESS_NAME", "LLC_BASE", "LLC_EXTRA_MILLION"
+  serviceKey String   @unique 
   title      String   
   price      Decimal  @default(0.00)
-  
   updatedAt  DateTime @updatedAt
 }
 
@@ -278,4 +265,16 @@ model Transaction {
   updatedAt     DateTime          @updatedAt
 
   wallet        Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+}
+
+model Waitlist {
+  id        String   @id @default(cuid())
+  userId    String
+  service   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Ensures a user can't join the waitlist for the same service twice
+  @@unique([userId, service])
 }
