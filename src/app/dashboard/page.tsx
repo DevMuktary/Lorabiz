@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ArrowRight, Sparkle, X, Info, Plus } from "@phosphor-icons/react";
+import { ArrowRight, Sparkle, X, Info, Plus, Spinner } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/dashboard/FundWalletModal";
 
 const SERVICES = [
@@ -58,7 +58,6 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
-  // Fetch Wallet Balance
   const fetchBalance = () => {
     fetch('/api/user/wallet')
       .then(res => res.json())
@@ -119,15 +118,15 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* WALLET DISPLAY - Added sm:ml-auto to push it completely to the right */}
-        <div className="flex items-center gap-8 shrink-0 bg-card p-2 pl-6 pr-2.5 rounded-full border border-border shadow-sm sm:ml-auto">
-          <div className="flex flex-col text-right">
+        {/* WALLET DISPLAY - Uses flex-between on mobile, aligns right on desktop */}
+        <div className="flex items-center justify-between w-full sm:w-auto gap-4 shrink-0 bg-card p-2 pl-5 sm:pl-6 pr-2.5 rounded-full border border-border shadow-sm sm:ml-auto">
+          <div className="flex flex-col text-left sm:text-right">
             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-tight">
               Wallet Balance
             </span>
-            <span className="font-bold text-foreground leading-tight">
+            <span className="font-bold text-foreground leading-tight flex items-center h-[20px]">
               {isLoadingBalance 
-                ? "Loading..." 
+                ? <Spinner className="animate-spin h-3.5 w-3.5 text-muted-foreground mt-0.5" weight="bold" />
                 : `₦${Number(balance).toLocaleString(undefined, {minimumFractionDigits: 2})}`
               }
             </span>
@@ -135,7 +134,7 @@ export default function DashboardPage() {
 
           <button 
             onClick={() => setIsWalletModalOpen(true)}
-            className="flex items-center gap-1.5 px-6 py-2.5 bg-primary text-primary-foreground rounded-full font-bold text-xs hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-5 sm:px-6 py-2.5 bg-primary text-primary-foreground rounded-full font-bold text-xs hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer shrink-0"
           >
             <Plus weight="bold" className="h-3.5 w-3.5" />
             Fund Wallet
@@ -145,9 +144,7 @@ export default function DashboardPage() {
             isOpen={isWalletModalOpen} 
             onClose={() => setIsWalletModalOpen(false)} 
             onSuccessOptimistic={(amount) => {
-              // Optimistically update the balance instantly for snappy UX
               setBalance((prev) => (Number(prev) + amount).toString());
-              // Fetch from DB silently to ensure perfect sync
               setTimeout(fetchBalance, 3000); 
             }} 
           />
