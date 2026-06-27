@@ -1,165 +1,125 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { ArrowRight, Sparkle, X, Info, ArrowLeft } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
+import { Storefront, Buildings, HandHeart, Plus, Spinner } from "@phosphor-icons/react";
+import DashboardMetrics from "@/components/dashboard/DashboardMetrics";
+import RegistrationsTable from "@/components/dashboard/RegistrationsTable";
 
-const CAC_CATEGORIES = [
-  {
-    title: "Registrations",
-    description: "Start new registrations and track your ongoing Business Name, Company (LLC), or NGO applications.",
-    logo: "/cac.png",
-    href: "/dashboard/cac/new-incorporation",
-    active: true,
+const NEW_SERVICES = [
+  { 
+    name: "Business Name", 
+    desc: "Register a sole proprietorship or partnership.", 
+    href: "/dashboard/register/business-name", 
+    icon: Storefront 
   },
-  {
-    title: "Post Incorporation",
-    description: "File annual returns, change directors, upgrade business name to LLC, and more.",
-    logo: "/cac.png",
-    active: false,
-  }
+  { 
+    name: "Company (LLC)", 
+    desc: "Register a Private Limited Liability Company (LTD).", 
+    href: "/dashboard/register/llc", 
+    icon: Buildings 
+  },
+  { 
+    name: "Incorporated Trustees", 
+    desc: "Register an NGO, Church, Club, or Foundation.", 
+    href: "/dashboard/register/ngo", 
+    icon: HandHeart 
+  },
 ];
 
-export default function CacHubPage() {
-  const [alertInfo, setAlertInfo] = useState<{title: string, message: string} | null>(null);
+export default function NewIncorporationPage() {
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (alertInfo) {
-      const timer = setTimeout(() => setAlertInfo(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [alertInfo]);
-
-  const handleWaitlist = async (serviceTitle: string) => {
+  // Fetch the user's registration history and metrics
+  const fetchDashboardData = async () => {
     try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: serviceTitle })
-      });
-      if (res.ok) {
-        setAlertInfo({ title: serviceTitle, message: "Added to the waitlist! We will notify you once it launches." });
-      } else if (res.status === 409) {
-        setAlertInfo({ title: serviceTitle, message: "You are already on the waitlist!" });
-      } else {
-        setAlertInfo({ title: "Oops!", message: "Something went wrong." });
-      }
-    } catch {
-      setAlertInfo({ title: "Oops!", message: "Network error." });
+      const res = await fetch('/api/dashboard');
+      const data = await res.json();
+      setDashboardData(data);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
   return (
-    <div className="space-y-8 relative">
-      <div className="flex flex-col gap-5">
-        <Link 
-          href="/dashboard"
-          className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-lg"
-        >
-          <ArrowLeft weight="bold" className="h-4 w-4" />
-          Back to Service Hub
-        </Link>
-        
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-black text-foreground">
-            Corporate Affairs Commission (CAC)
-          </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-            Choose whether you are starting a new business registration or managing an existing incorporated entity.
-          </p>
+    <div className="space-y-12">
+      
+      {/* 1. START NEW REGISTRATION SECTION */}
+      <section className="space-y-5">
+        <div>
+          <h2 className="text-xl font-black text-foreground">Start New Registration</h2>
+          <p className="text-sm text-muted-foreground mt-1">Select the entity type you wish to register.</p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-        {CAC_CATEGORIES.map((category) => {
-          
-          const CardTopContent = (
-            <>
-              {!category.active && (
-                <span className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-secondary text-muted-foreground">
-                  <Sparkle weight="fill" className="h-3 w-3" />
-                  Waitlist
-                </span>
-              )}
-
-              <div className={`h-16 w-16 mb-5 rounded-xl bg-secondary flex items-center justify-center p-3 shadow-inner ${!category.active ? 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all' : ''}`}>
-                <Image 
-                  src={category.logo} 
-                  alt={category.title} 
-                  width={60} 
-                  height={60} 
-                  className="object-contain w-full h-full"
-                />
-              </div>
-
-              <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors text-left">
-                {category.title}
-              </h3>
-              
-              <p className="text-sm text-muted-foreground mb-4 flex-1 text-left">
-                {category.description}
-              </p>
-            </>
-          );
-
-          if (category.active) {
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {NEW_SERVICES.map((service) => {
+            const Icon = service.icon;
             return (
               <Link 
-                href={category.href!} 
-                key={category.title}
-                className="relative group flex flex-col p-6 rounded-2xl border transition-all duration-300 bg-card border-border hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5"
+                key={service.name}
+                href={service.href}
+                className="flex flex-col p-5 bg-card border border-border rounded-2xl hover:border-primary hover:shadow-lg hover:shadow-primary/5 transition-all group"
               >
-                {CardTopContent}
-                <div className="mt-auto pt-4">
-                  <div className="flex items-center justify-center gap-2 w-full py-3 bg-primary text-primary-foreground font-bold text-sm rounded-xl group-hover:opacity-90 transition-opacity">
-                    Open Services <ArrowRight weight="bold" className="h-4 w-4" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors shrink-0">
+                    <Icon weight="duotone" className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+                  </div>
+                  <div className="h-8 w-8 rounded-full bg-secondary text-muted-foreground flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                    <Plus weight="bold" className="h-4 w-4" />
                   </div>
                 </div>
+                
+                <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                  {service.name}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  {service.desc}
+                </p>
               </Link>
-            );
-          } else {
-            return (
-              <div 
-                key={category.title}
-                onClick={() => setAlertInfo({ title: category.title, message: "Post Incorporation services are launching soon!" })}
-                className="relative group flex flex-col p-6 rounded-2xl border transition-all duration-300 bg-card/40 border-border/60 hover:border-border hover:bg-card cursor-pointer"
-              >
-                {CardTopContent}
-                <div className="mt-auto pt-4">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleWaitlist(category.title);
-                    }}
-                    className="flex items-center justify-center gap-2 w-full py-3 bg-secondary text-foreground font-bold text-sm rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors cursor-pointer"
-                  >
-                    Join Waitlist <ArrowRight weight="bold" className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          }
-        })}
-      </div>
-
-      {alertInfo && (
-        <div className="fixed bottom-6 right-6 bg-foreground text-background px-5 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm border border-border">
-          <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
-            <Info weight="fill" className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h4 className="font-bold text-sm leading-tight">{alertInfo.title}</h4>
-            <p className="text-xs opacity-90 mt-1 leading-snug">{alertInfo.message}</p>
-          </div>
-          <button 
-            onClick={() => setAlertInfo(null)} 
-            className="ml-2 p-1.5 hover:bg-background/20 rounded-full transition-colors cursor-pointer shrink-0"
-          >
-            <X weight="bold" className="h-4 w-4" />
-          </button>
+            )
+          })}
         </div>
-      )}
+      </section>
+
+      {/* 2. HISTORY & METRICS SECTION */}
+      <section className="space-y-6 pt-6 border-t border-border">
+        <div>
+          <h2 className="text-xl font-black text-foreground">Your Applications</h2>
+          <p className="text-sm text-muted-foreground mt-1">Track the status of your ongoing and completed registrations.</p>
+        </div>
+
+        {isLoading ? (
+          <div className="py-20 flex flex-col items-center justify-center text-muted-foreground">
+            <Spinner className="animate-spin h-8 w-8 mb-4 text-primary" weight="bold" />
+            <p className="text-sm font-medium">Loading your applications...</p>
+          </div>
+        ) : dashboardData ? (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            {/* If your components expect props differently, adjust them here */}
+            {dashboardData.stats && <DashboardMetrics stats={dashboardData.stats} />}
+            {dashboardData.tableData && (
+              <RegistrationsTable 
+                data={dashboardData.tableData} 
+                currentPage={dashboardData.currentPage}
+                totalPages={dashboardData.totalPages}
+                onRefresh={fetchDashboardData} // Optional: trigger refresh after paying/submitting
+              />
+            )}
+          </div>
+        ) : (
+          <div className="py-20 text-center text-muted-foreground text-sm">
+            Failed to load applications.
+          </div>
+        )}
+      </section>
+
     </div>
   );
 }
