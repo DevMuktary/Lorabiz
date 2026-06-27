@@ -1,34 +1,91 @@
 @import "tailwindcss";
 
+@layer base {
+  :root {
+    --background: 1 0 0; /* Pure glowing white */
+    --foreground: 0.145 0.018 256.43; /* Deep charcoal */
+    
+    --card: 1 0 0;
+    --card-foreground: 0.145 0.018 256.43;
+    
+    --popover: 1 0 0;
+    --popover-foreground: 0.145 0.018 256.43;
+    
+    --primary: 0.52 0.22 3.23; /* Your #c72d76 brand color */
+    --primary-foreground: 0.98 0.01 250;
+    
+    --secondary: 0.96 0.01 250;
+    --secondary-foreground: 0.15 0.02 250;
+    
+    --muted: 0.96 0.01 250;
+    --muted-foreground: 0.55 0.02 250;
+    
+    --accent: 0.96 0.01 250;
+    --accent-foreground: 0.15 0.02 250;
+    
+    --destructive: 0.57 0.23 27.34;
+    --destructive-foreground: 0.98 0.01 250;
+    
+    --border: 0.92 0.01 250;
+    --input: 0.92 0.01 250;
+    --ring: 0.52 0.22 3.23;
+    
+    --radius: 0.6rem;
+  }
+
+  .dark {
+    --background: 0.05 0 0; /* Deep pitch/black */
+    --foreground: 0.98 0 0; /* Bright readable text */
+    
+    --card: 0.09 0 0; /* Elevated dark layer */
+    --card-foreground: 0.98 0 0;
+    
+    --popover: 0.09 0 0;
+    --popover-foreground: 0.98 0 0;
+    
+    --primary: 0.58 0.22 3.23; /* Slightly brighter brand for contrast */
+    --primary-foreground: 0.98 0.01 250;
+    
+    --secondary: 0.15 0.02 250;
+    --secondary-foreground: 0.98 0 0;
+    
+    --muted: 0.15 0.02 250;
+    --muted-foreground: 0.70 0.02 250;
+    
+    --accent: 0.15 0.02 250;
+    --accent-foreground: 0.98 0 0;
+    
+    --destructive: 0.57 0.23 27.34;
+    --destructive-foreground: 0.98 0.01 250;
+    
+    --border: 0.18 0 0;
+    --input: 0.18 0 0;
+    --ring: 0.58 0.22 3.23;
+  }
+}
+
 @theme {
-  --background: oklch(1 0 0); /* Pure glowing white */
-  --foreground: oklch(0.145 0.018 256.43); /* Deep charcoal for crisp reading */
+  --color-background: oklch(var(--background));
+  --color-foreground: oklch(var(--foreground));
+  --color-card: oklch(var(--card));
+  --color-card-foreground: oklch(var(--card-foreground));
+  --color-popover: oklch(var(--popover));
+  --color-popover-foreground: oklch(var(--popover-foreground));
+  --color-primary: oklch(var(--primary));
+  --color-primary-foreground: oklch(var(--primary-foreground));
+  --color-secondary: oklch(var(--secondary));
+  --color-secondary-foreground: oklch(var(--secondary-foreground));
+  --color-muted: oklch(var(--muted));
+  --color-muted-foreground: oklch(var(--muted-foreground));
+  --color-accent: oklch(var(--accent));
+  --color-accent-foreground: oklch(var(--accent-foreground));
+  --color-destructive: oklch(var(--destructive));
+  --color-destructive-foreground: oklch(var(--destructive-foreground));
+  --color-border: oklch(var(--border));
+  --color-input: oklch(var(--input));
+  --color-ring: oklch(var(--ring));
   
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0.018 256.43);
-  
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0.018 256.43);
-  
-  /* Your brand color: #c72d76 converted to modern OKLCH for vibrant display */
-  --primary: oklch(0.52 0.22 3.23); 
-  --primary-foreground: oklch(0.98 0.01 250); /* White text on primary buttons */
-  
-  --secondary: oklch(0.96 0.01 250);
-  --secondary-foreground: oklch(0.15 0.02 250);
-  
-  --muted: oklch(0.96 0.01 250);
-  --muted-foreground: oklch(0.55 0.02 250);
-  
-  --accent: oklch(0.96 0.01 250);
-  --accent-foreground: oklch(0.15 0.02 250);
-  
-  --destructive: oklch(0.57 0.23 27.34);
-  --destructive-foreground: oklch(0.98 0.01 250);
-  
-  --border: oklch(0.92 0.01 250);
-  --input: oklch(0.92 0.01 250);
-  --ring: oklch(0.52 0.22 3.23); /* Ring highlights match your brand color */
-  
-  --radius: 0.6rem; /* Clean, slightly rounded modern edges */
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
 }
