@@ -10,13 +10,13 @@ import { usePaystackPayment } from "react-paystack";
 interface FundWalletModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccessOptimistic: (amount: number) => void;
+  onSuccess: (amount: number) => void;
+  onFailure: (message: string) => void;
 }
 
-// Adjusted quick amounts to be more realistic alongside a 100 limit
 const QUICK_AMOUNTS = [1000, 5000, 10000];
 
-export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }: FundWalletModalProps) {
+export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure }: FundWalletModalProps) {
   const { data: session } = useSession();
   const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -35,21 +35,22 @@ export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }
   if (!isOpen) return null;
 
   const handlePay = () => {
-    // 1. Lowered limit to 100
     if (!amount || Number(amount) < 100) return alert("Minimum amount is ₦100");
     
-    // 2. Turn on the spinner while Paystack initializes
     setIsProcessing(true);
     
     initializePayment({
       onSuccess: () => {
         setIsProcessing(false);
-        onSuccessOptimistic(Number(amount));
+        // Trigger the success alert on the dashboard
+        onSuccess(Number(amount));
         onClose();
       },
       onClose: () => {
         setIsProcessing(false);
-        console.log("Payment canceled by user");
+        // Trigger the failure/cancelled alert on the dashboard
+        onFailure("The payment process was cancelled or failed.");
+        onClose();
       }
     });
   };
