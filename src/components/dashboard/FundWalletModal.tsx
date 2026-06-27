@@ -4,6 +4,8 @@ import { useState } from "react";
 import { X, Wallet, Spinner } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSession } from "next-auth/react";
+import { usePaystackPayment } from "react-paystack";
 
 interface FundWalletModalProps {
   isOpen: boolean;
@@ -14,34 +16,51 @@ interface FundWalletModalProps {
 const QUICK_AMOUNTS = [15000, 30000, 50000];
 
 export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }: FundWalletModalProps) {
+  const { data: session } = useSession();
   const [amount, setAmount] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Notice we use the NEXT_PUBLIC_ key here for frontend init
+  const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY as string;
+
+  // Configuration for Paystack
+  const config = {
+    // Unique reference starting with FW_ so Webhook knows it's Wallet Funding
+    reference: `FW_${Date.now()}_${Math.floor(Math.random() * 1000000)}`,
+    email: session?.user?.email || "customer@lorabiz.com",
+    amount: Number(amount) * 100, // Paystack requires amount in Kobo
+    publicKey: paystackKey,
+  };
+
+  const initializePayment = usePaystackPayment(config);
 
   if (!isOpen) return null;
 
-  const handlePay = async () => {
+  const handlePay = () => {
     if (!amount || Number(amount) < 1000) return alert("Minimum amount is ₦1,000");
     
-    setIsProcessing(true);
-    
-    // TODO: Initialize Paystack/Flutterwave inline JS here.
-    // For now, we simulate a successful payment delay.
-    setTimeout(() => {
-      setIsProcessing(false);
-      onSuccessOptimistic(Number(amount)); // Optimistically update UI
-      onClose(); // Close modal
-    }, 2000);
+    // Trigger Paystack Popup
+    initializePayment({
+      onSuccess: () => {
+        // Optimistically update the UI balance immediately
+        onSuccessOptimistic(Number(amount));
+        onClose();
+      },
+      onClose: () => {
+        // User closed the Paystack modal without paying
+        console.log("Payment canceled by user");
+      }
+    });
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in">
       <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 relative">
-        <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors">
+        <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors cursor-pointer">
           <X className="h-4 w-4" weight="bold" />
         </button>
 
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="h-16 w-16 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4">
+          <div className="h-16 w-16 bg-[#c72d76]/10 text-[#c72d76] rounded-full flex items-center justify-center mb-4">
             <Wallet className="h-8 w-8" weight="fill" />
           </div>
           <h3 className="text-2xl font-black text-slate-900 tracking-tight">Fund Wallet</h3>
@@ -49,14 +68,13 @@ export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }
         </div>
 
         <div className="space-y-6">
-          {/* Quick Select Chips */}
           <div className="grid grid-cols-3 gap-3">
             {QUICK_AMOUNTS.map((amt) => (
               <button
                 key={amt}
                 onClick={() => setAmount(amt.toString())}
-                className={`py-2 rounded-xl text-sm font-bold border-2 transition-colors ${
-                  amount === amt.toString() ? "border-[#ff3f7a] bg-[#ff3f7a]/5 text-[#ff3f7a]" : "border-slate-100 text-slate-600 hover:border-slate-300"
+                className={`py-2 rounded-xl text-sm font-bold border-2 transition-colors cursor-pointer ${
+                  amount === amt.toString() ? "border-[#c72d76] bg-[#c72d76]/5 text-[#c72d76]" : "border-slate-100 text-slate-600 hover:border-slate-300"
                 }`}
               >
                 ₦{amt.toLocaleString()}
@@ -73,17 +91,17 @@ export default function FundWalletModal({ isOpen, onClose, onSuccessOptimistic }
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="Enter amount"
-                className="pl-9 h-14 text-lg font-bold border-2 border-slate-200 focus-visible:ring-[#ff3f7a] focus-visible:border-[#ff3f7a] rounded-xl"
+                className="pl-9 h-14 text-lg font-bold border-2 border-slate-200 focus-visible:ring-[#c72d76] focus-visible:border-[#c72d76] rounded-xl text-slate-900"
               />
             </div>
           </div>
 
           <Button 
             onClick={handlePay}
-            disabled={isProcessing || !amount}
-            className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 transition-transform active:scale-[0.98] disabled:opacity-50"
+            disabled={!amount || Number(amount) < 1000}
+            className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 transition-transform active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
-            {isProcessing ? <Spinner className="animate-spin h-5 w-5" weight="bold" /> : "Proceed to Pay"}
+            Proceed to Pay
           </Button>
         </div>
       </div>
