@@ -16,6 +16,12 @@ const SERVICES = [
     active: true,
   },
   {
+    title: "NIMC Services",
+    description: "Generate and print verified NIN slips directly from the dashboard.",
+    logo: "/nimc.png",
+    active: false,
+  },
+  {
     title: "SCUML Certificate",
     description: "Special Control Unit Against Money Laundering registration & compliance.",
     logo: "/scuml.png",
@@ -31,12 +37,6 @@ const SERVICES = [
     title: "SMEDAN",
     description: "Get your business certified with the Small and Medium Enterprises agency.",
     logo: "/smedan.png",
-    active: false,
-  },
-  {
-    title: "NIMC Services",
-    description: "Generate and print verified NIN slips directly from the dashboard.",
-    logo: "/nimc.png",
     active: false,
   },
   {
@@ -60,13 +60,16 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
-  // Fetch Wallet Balance
+  // Fetch Wallet Balance (FIXED PARSING LOGIC)
   useEffect(() => {
     fetch('/api/user/wallet')
       .then(res => res.json())
       .then(data => {
-        if (data && data.balance !== undefined) {
-          setBalance(data.balance);
+        // The API returns the balance nested inside a wallet object
+        if (data?.wallet?.balance !== undefined) {
+          setBalance(data.wallet.balance);
+        } else if (data?.balance !== undefined) {
+          setBalance(data.balance); // Fallback just in case
         }
       })
       .catch(console.error)
@@ -116,8 +119,8 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* WALLET DISPLAY - Fixed spacing */}
-        <div className="flex items-center gap-6 shrink-0 bg-card p-2 pl-6 pr-2.5 rounded-full border border-border shadow-sm">
+        {/* WALLET DISPLAY - Fixed spacing and text */}
+        <div className="flex items-center gap-8 shrink-0 bg-card p-2 pl-6 pr-2.5 rounded-full border border-border shadow-sm">
           <div className="flex flex-col text-right">
             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-tight">
               Wallet Balance
@@ -132,10 +135,10 @@ export default function DashboardPage() {
 
           <button 
             onClick={() => setIsWalletModalOpen(true)}
-            className="flex items-center gap-1.5 px-5 py-2.5 bg-primary text-primary-foreground rounded-full font-bold text-xs hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-6 py-2.5 bg-primary text-primary-foreground rounded-full font-bold text-xs hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer"
           >
             <Plus weight="bold" className="h-3.5 w-3.5" />
-            Fund
+            Fund Wallet
           </button>
 
           <FundWalletModal 
