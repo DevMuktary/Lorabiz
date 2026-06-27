@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { 
   Plus, 
   Spinner, 
@@ -14,12 +15,28 @@ import {
 import RegistrationsTable from "@/components/dashboard/RegistrationsTable";
 
 export default function RegistrationsHubPage() {
+  const router = useRouter();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- Table Filter & Pagination States ---
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+
   const fetchDashboardData = async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch('/api/dashboard');
+      // Build the query string for filtering and pagination
+      const query = new URLSearchParams({
+        page: page.toString(),
+        search: search,
+        status: statusFilter,
+        type: typeFilter
+      }).toString();
+
+      const res = await fetch(`/api/dashboard?${query}`);
       const data = await res.json();
       setDashboardData(data);
     } catch (error) {
@@ -29,9 +46,20 @@ export default function RegistrationsHubPage() {
     }
   };
 
+  // Automatically fetch data when filters or pagination change
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    // Add a slight debounce so we don't spam the API while typing a search
+    const timeoutId = setTimeout(() => {
+      fetchDashboardData();
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [page, search, statusFilter, typeFilter]);
+
+  // Handler for actions clicked inside the table
+  const handleExecuteAction = (action: string, id: string) => {
+    // Basic fallback routing if your ActionMenu relies on the parent
+    router.push(`/dashboard/register/details/${id}`);
+  };
 
   // Safe defaults if API hasn't loaded yet
   const stats = dashboardData?.stats || { unsubmitted: 0, pending: 0, queried: 0, approved: 0 };
@@ -77,7 +105,7 @@ export default function RegistrationsHubPage() {
             </div>
           </div>
           <p className="text-3xl font-black text-foreground">
-            {isLoading ? <Spinner className="animate-spin h-6 w-6 text-muted-foreground" /> : stats.unsubmitted}
+            {isLoading && !dashboardData ? <Spinner className="animate-spin h-6 w-6 text-muted-foreground" /> : stats.unsubmitted}
           </p>
         </div>
 
@@ -90,7 +118,7 @@ export default function RegistrationsHubPage() {
             </div>
           </div>
           <p className="text-3xl font-black text-foreground">
-            {isLoading ? <Spinner className="animate-spin h-6 w-6 text-muted-foreground" /> : stats.pending}
+            {isLoading && !dashboardData ? <Spinner className="animate-spin h-6 w-6 text-muted-foreground" /> : stats.pending}
           </p>
         </div>
 
@@ -103,7 +131,7 @@ export default function RegistrationsHubPage() {
             </div>
           </div>
           <p className="text-3xl font-black text-foreground">
-            {isLoading ? <Spinner className="animate-spin h-6 w-6 text-muted-foreground" /> : stats.queried}
+            {isLoading && !dashboardData ? <Spinner className="animate-spin h-6 w-6 text-muted-foreground" /> : stats.queried}
           </p>
         </div>
 
@@ -116,30 +144,27 @@ export default function RegistrationsHubPage() {
             </div>
           </div>
           <p className="text-3xl font-black text-foreground">
-            {isLoading ? <Spinner className="animate-spin h-6 w-6 text-muted-foreground" /> : stats.approved}
+            {isLoading && !dashboardData ? <Spinner className="animate-spin h-6 w-6 text-muted-foreground" /> : stats.approved}
           </p>
         </div>
       </div>
 
       {/* 3. HISTORY TABLE */}
       <div className="pt-4 border-t border-border">
-        {isLoading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-muted-foreground">
-            <Spinner className="animate-spin h-8 w-8 mb-4 text-primary" weight="bold" />
-            <p className="text-sm font-medium">Loading your applications...</p>
-          </div>
-        ) : dashboardData?.tableData ? (
-          <RegistrationsTable 
-            data={dashboardData.tableData} 
-            currentPage={dashboardData.currentPage}
-            totalPages={dashboardData.totalPages}
-            onRefresh={fetchDashboardData} 
-          />
-        ) : (
-          <div className="py-20 text-center text-muted-foreground text-sm border border-dashed border-border rounded-2xl">
-            No registrations found. Click "Start New Registration" to begin.
-          </div>
-        )}
+        {/* We pass the full dashboardData object here because the table expects data.tableData and data.totalPages inside */}
+        <RegistrationsTable 
+          data={dashboardData || {}} 
+          loading={isLoading}
+          page={page}
+          setPage={setPage}
+          search={search}
+          setSearch={setSearch}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          onExecuteAction={handleExecuteAction}
+        />
       </div>
 
     </div>
