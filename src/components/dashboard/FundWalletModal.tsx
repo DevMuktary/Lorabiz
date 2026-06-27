@@ -70,7 +70,8 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
             <Wallet className="h-8 w-8" weight="fill" />
           </div>
           <h3 className="text-2xl font-black text-slate-900 tracking-tight">Fund Wallet</h3>
-          <p className="text-slate-500 text-sm font-medium mt-1">Add funds instantly via secure card or transfer.</p>
+          {/* Removed the word "secure" as requested */}
+          <p className="text-slate-500 text-sm font-medium mt-1">Add funds instantly via card or bank transfer.</p>
         </div>
 
         <div className="space-y-6">
@@ -112,7 +113,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
             {isProcessing ? (
               <>
                 <Spinner className="animate-spin h-5 w-5" weight="bold" />
-                <span>Initializing...</span>
+                <span>Connecting to gateway...</span>
               </>
             ) : (
               "Proceed to Pay"
