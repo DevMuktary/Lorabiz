@@ -50,35 +50,35 @@ const SERVICES = [
 export default function DashboardPage() {
   const { data: session } = useSession();
   
-  // Extract just the first name for the greeting
   const firstName = session?.user?.name?.split(" ")[0] || "there";
 
   const [alertInfo, setAlertInfo] = useState<{title: string, message: string} | null>(null);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   
-  // Balance state
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
-  // Fetch Wallet Balance (FIXED PARSING LOGIC)
-  useEffect(() => {
+  // Fetch Wallet Balance
+  const fetchBalance = () => {
     fetch('/api/user/wallet')
       .then(res => res.json())
       .then(data => {
-        // The API returns the balance nested inside a wallet object
         if (data?.wallet?.balance !== undefined) {
           setBalance(data.wallet.balance);
         } else if (data?.balance !== undefined) {
-          setBalance(data.balance); // Fallback just in case
+          setBalance(data.balance); 
         }
       })
       .catch(console.error)
       .finally(() => {
         setIsLoadingBalance(false);
       });
+  };
+
+  useEffect(() => {
+    fetchBalance();
   }, []);
 
-  // Auto-dismiss the alert
   useEffect(() => {
     if (alertInfo) {
       const timer = setTimeout(() => setAlertInfo(null), 4000);
@@ -119,8 +119,8 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* WALLET DISPLAY - Fixed spacing and text */}
-        <div className="flex items-center gap-8 shrink-0 bg-card p-2 pl-6 pr-2.5 rounded-full border border-border shadow-sm">
+        {/* WALLET DISPLAY - Added sm:ml-auto to push it completely to the right */}
+        <div className="flex items-center gap-8 shrink-0 bg-card p-2 pl-6 pr-2.5 rounded-full border border-border shadow-sm sm:ml-auto">
           <div className="flex flex-col text-right">
             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-tight">
               Wallet Balance
@@ -144,7 +144,12 @@ export default function DashboardPage() {
           <FundWalletModal 
             isOpen={isWalletModalOpen} 
             onClose={() => setIsWalletModalOpen(false)} 
-            onSuccessOptimistic={() => {}} 
+            onSuccessOptimistic={(amount) => {
+              // Optimistically update the balance instantly for snappy UX
+              setBalance((prev) => (Number(prev) + amount).toString());
+              // Fetch from DB silently to ensure perfect sync
+              setTimeout(fetchBalance, 3000); 
+            }} 
           />
         </div>
       </div>
@@ -153,7 +158,6 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {SERVICES.map((service) => {
           
-          // Shared Top Content for both Active and Inactive Cards
           const CardTopContent = (
             <>
               {!service.active && (
@@ -183,7 +187,6 @@ export default function DashboardPage() {
             </>
           );
 
-          // RENDER ACTIVE SERVICES
           if (service.active) {
             return (
               <Link 
@@ -192,8 +195,6 @@ export default function DashboardPage() {
                 className="relative group flex flex-col p-6 rounded-2xl border transition-all duration-300 bg-card border-border hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5"
               >
                 {CardTopContent}
-                
-                {/* Styled Button inside the link wrapper */}
                 <div className="mt-auto pt-4">
                   <div className="flex items-center justify-center gap-2 w-full py-3 bg-primary text-primary-foreground font-bold text-sm rounded-xl group-hover:opacity-90 transition-opacity">
                     Access Service <ArrowRight weight="bold" className="h-4 w-4" />
@@ -202,22 +203,16 @@ export default function DashboardPage() {
               </Link>
             );
           } 
-          
-          // RENDER INACTIVE (WAITLIST) SERVICES
           else {
             return (
               <div 
                 key={service.title}
-                // Clicking the card anywhere shows the launching soon alert
                 onClick={() => setAlertInfo({ title: service.title, message: "This service is launching soon!" })}
                 className="relative group flex flex-col p-6 rounded-2xl border transition-all duration-300 bg-card/40 border-border/60 hover:border-border hover:bg-card cursor-pointer"
               >
                 {CardTopContent}
-                
-                {/* Explicit Button to Join Waitlist */}
                 <div className="mt-auto pt-4">
                   <button 
-                    // e.stopPropagation() prevents the card's onClick from firing when the button is clicked
                     onClick={(e) => {
                       e.stopPropagation();
                       handleWaitlist(service.title);
@@ -233,7 +228,6 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* FLOATING ALERT */}
       {alertInfo && (
         <div className="fixed bottom-6 right-6 bg-foreground text-background px-5 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm border border-border">
           <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
