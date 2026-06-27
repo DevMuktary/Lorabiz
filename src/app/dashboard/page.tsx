@@ -47,50 +47,91 @@ const SERVICES = [
 ];
 
 export default function DashboardPage() {
-  const [comingSoonAlert, setComingSoonAlert] = useState<string | null>(null);
-  
-  // State to control the Fund Wallet Modal
+  const [alertInfo, setAlertInfo] = useState<{title: string, message: string} | null>(null);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [balance, setBalance] = useState<string | null>(null);
 
-  // Auto-dismiss the alert after 3 seconds
+  // Fetch Wallet Balance
   useEffect(() => {
-    if (comingSoonAlert) {
-      const timer = setTimeout(() => setComingSoonAlert(null), 3000);
+    fetch('/api/user/wallet')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.balance !== undefined) {
+          setBalance(data.balance);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  // Auto-dismiss the alert after 4 seconds
+  useEffect(() => {
+    if (alertInfo) {
+      const timer = setTimeout(() => setAlertInfo(null), 4000);
       return () => clearTimeout(timer);
     }
-  }, [comingSoonAlert]);
+  }, [alertInfo]);
+
+  const handleWaitlist = async (serviceTitle: string) => {
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service: serviceTitle })
+      });
+      
+      if (res.ok) {
+        setAlertInfo({ 
+          title: serviceTitle, 
+          message: "You've been added to the waitlist! We will notify you once it launches." 
+        });
+      } else if (res.status === 409) {
+        setAlertInfo({ 
+          title: serviceTitle, 
+          message: "You are already on the waitlist! We will notify you once it goes live." 
+        });
+      } else {
+        setAlertInfo({ title: "Oops!", message: "Something went wrong. Please try again." });
+      }
+    } catch (error) {
+      setAlertInfo({ title: "Oops!", message: "Network error. Please try again." });
+    }
+  };
 
   return (
     <div className="space-y-8 relative">
       
-      {/* HEADER WITH FUND WALLET BUTTON */}
+      {/* HEADER WITH WALLET DISPLAY & FUND BUTTON */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-black text-slate-900 dark:text-white">
-            Welcome to Lumebiz
+            Welcome to Lorabiz
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 max-w-2xl text-sm leading-relaxed">
+          <p className="text-slate-600 dark:text-slate-400 max-w-2xl text-sm leading-relaxed">
             Select a service below to get started. From company registration to daily business utilities, manage all your operations in one secure place.
           </p>
         </div>
         
-        {/* Fund Wallet Trigger Button & Modal */}
-        <div className="shrink-0">
+        <div className="flex items-center gap-4 shrink-0 bg-white dark:bg-card p-2 pr-2.5 rounded-full border border-slate-200 dark:border-border shadow-sm">
+          {/* Balance Display */}
+          <div className="flex flex-col text-right pl-4">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight">Wallet Balance</span>
+            <span className="font-bold text-slate-900 dark:text-white leading-tight">
+              {balance !== null ? `₦${Number(balance).toLocaleString(undefined, {minimumFractionDigits: 2})}` : "₦---"}
+            </span>
+          </div>
+
           <button 
             onClick={() => setIsWalletModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-full font-bold text-sm hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-full font-bold text-xs hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer"
           >
-            <Plus weight="bold" className="h-4 w-4" />
-            Fund Wallet
+            <Plus weight="bold" className="h-3.5 w-3.5" />
+            Fund
           </button>
 
           <FundWalletModal 
             isOpen={isWalletModalOpen} 
             onClose={() => setIsWalletModalOpen(false)} 
-            onSuccessOptimistic={() => {
-              // This acts as a callback when the funding is successful.
-              // We pass an empty function here to satisfy TypeScript.
-            }} 
+            onSuccessOptimistic={() => { /* Add optimistic update logic if needed */ }} 
           />
         </div>
       </div>
@@ -102,13 +143,14 @@ export default function DashboardPage() {
           const CardContent = (
             <>
               {!service.active && (
-                <span className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  <Sparkle weight="fill" className="h-3 w-3" />
-                  Coming Soon
+                <span className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  <Sparkle weight="fill" className="h-3 w-3 text-slate-500 dark:text-slate-400" />
+                  Waitlist
                 </span>
               )}
 
-              <div className="h-16 w-16 mb-6 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center p-3 shadow-inner">
+              {/* ONLY the image container gets grayscale, NOT the whole card */}
+              <div className={`h-16 w-16 mb-6 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center p-3 shadow-inner ${!service.active ? 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all' : ''}`}>
                 <Image 
                   src={service.logo} 
                   alt={service.title} 
@@ -122,13 +164,13 @@ export default function DashboardPage() {
                 {service.title}
               </h3>
               
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 flex-1 text-left">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 flex-1 text-left">
                 {service.description}
               </p>
 
               <div className={`
                 flex items-center gap-2 text-sm font-bold transition-colors mt-auto
-                ${service.active ? "text-primary" : "text-slate-400 dark:text-slate-500"}
+                ${service.active ? "text-primary" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white"}
               `}>
                 {service.active ? "Access Service" : "Join Waitlist"}
                 <ArrowRight weight="bold" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -150,8 +192,8 @@ export default function DashboardPage() {
             return (
               <button 
                 key={service.title}
-                onClick={() => setComingSoonAlert(service.title)}
-                className="relative group flex flex-col p-6 rounded-2xl border transition-all duration-300 bg-slate-50 dark:bg-card/50 border-slate-100 dark:border-border/50 hover:border-slate-300 dark:hover:border-border grayscale hover:grayscale-0 cursor-pointer"
+                onClick={() => handleWaitlist(service.title)}
+                className="relative group flex flex-col p-6 rounded-2xl border transition-all duration-300 bg-slate-50/50 dark:bg-card/30 border-slate-200 dark:border-border/50 hover:border-slate-300 dark:hover:border-border hover:bg-white dark:hover:bg-card cursor-pointer"
               >
                 {CardContent}
               </button>
@@ -160,18 +202,18 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* SLEEK FLOATING ALERT FOR "COMING SOON" */}
-      {comingSoonAlert && (
-        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300">
+      {/* SLEEK FLOATING ALERT */}
+      {alertInfo && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm">
           <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
             <Info weight="fill" className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h4 className="font-bold text-sm">{comingSoonAlert}</h4>
-            <p className="text-xs opacity-80 mt-0.5">This service is launching very soon!</p>
+            <h4 className="font-bold text-sm leading-tight">{alertInfo.title}</h4>
+            <p className="text-xs opacity-90 mt-1 leading-snug">{alertInfo.message}</p>
           </div>
           <button 
-            onClick={() => setComingSoonAlert(null)} 
+            onClick={() => setAlertInfo(null)} 
             className="ml-2 p-1.5 hover:bg-white/20 dark:hover:bg-slate-900/10 rounded-full transition-colors cursor-pointer shrink-0"
           >
             <X weight="bold" className="h-4 w-4" />
