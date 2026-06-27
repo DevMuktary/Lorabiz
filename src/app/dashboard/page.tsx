@@ -3,8 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Sparkle, X, Info } from "@phosphor-icons/react";
-// Import the Fund Wallet Modal (adjust to { FundWalletModal } if it's a named export)
+import { ArrowRight, Sparkle, X, Info, Plus } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/dashboard/FundWalletModal";
 
 const SERVICES = [
@@ -49,6 +48,9 @@ const SERVICES = [
 
 export default function DashboardPage() {
   const [comingSoonAlert, setComingSoonAlert] = useState<string | null>(null);
+  
+  // State to control the Fund Wallet Modal
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
   // Auto-dismiss the alert after 3 seconds
   useEffect(() => {
@@ -72,9 +74,24 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* Mount the Fund Wallet component here */}
+        {/* Fund Wallet Trigger Button & Modal */}
         <div className="shrink-0">
-          <FundWalletModal />
+          <button 
+            onClick={() => setIsWalletModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-full font-bold text-sm hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer"
+          >
+            <Plus weight="bold" className="h-4 w-4" />
+            Fund Wallet
+          </button>
+
+          <FundWalletModal 
+            isOpen={isWalletModalOpen} 
+            onClose={() => setIsWalletModalOpen(false)} 
+            onSuccessOptimistic={() => {
+              // This acts as a callback when the funding is successful.
+              // We pass an empty function here to satisfy TypeScript.
+            }} 
+          />
         </div>
       </div>
 
@@ -82,7 +99,6 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {SERVICES.map((service) => {
           
-          // Shared Card Content
           const CardContent = (
             <>
               {!service.active && (
@@ -120,7 +136,6 @@ export default function DashboardPage() {
             </>
           );
 
-          // Render as a Link if active, or a Button if inactive
           if (service.active) {
             return (
               <Link 
