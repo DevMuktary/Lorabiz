@@ -96,7 +96,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ service: serviceName })
       });
-      
       if (res.ok) {
         setSidebarAlert({ title: serviceName, message: "Added to the waitlist! We will notify you once it launches." });
       } else if (res.status === 409) {
@@ -104,7 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       } else {
         setSidebarAlert({ title: "Oops!", message: "Something went wrong." });
       }
-    } catch (error) {
+    } catch {
       setSidebarAlert({ title: "Oops!", message: "Network error." });
     }
   };
@@ -130,22 +129,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = getUserInitials();
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-background font-sans selection:bg-primary selection:text-white transition-colors duration-300 relative">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground transition-colors duration-300 relative">
       
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
+          className="fixed inset-0 bg-background/80 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       <aside className={`
-        fixed inset-y-0 left-0 z-[99995] w-[260px] bg-white dark:bg-card border-r border-slate-200 dark:border-border 
+        fixed inset-y-0 left-0 z-[99995] w-[260px] bg-card border-r border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
         ${isDesktopSidebarCollapsed ? "lg:-translate-x-full" : "lg:translate-x-0"}
       `}>
-        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 dark:border-border shrink-0">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-border shrink-0">
           <Image 
             src="/logo.png" 
             alt="Lorabiz" 
@@ -155,7 +154,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             priority
           />
           <button 
-            className="lg:hidden text-slate-500 dark:text-slate-400 hover:text-primary transition-colors cursor-pointer"
+            className="lg:hidden text-muted-foreground hover:text-primary transition-colors cursor-pointer"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <X className="h-5 w-5" weight="bold" />
@@ -165,7 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-6 custom-scrollbar">
           {NAVIGATION.map((group) => (
             <div key={group.category} className="space-y-1.5">
-              <h3 className="px-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+              <h3 className="px-3 text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
                 {group.category}
               </h3>
               <div className="space-y-0.5">
@@ -191,14 +190,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       className={`
                         flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 group
                         ${isActive 
-                          ? "bg-primary/10 text-primary dark:bg-primary/20" 
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white"
+                          ? "bg-primary/10 text-primary" 
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                         }
                       `}
                     >
                       <Icon 
                         weight={isActive ? "fill" : "regular"} 
-                        className={`h-[18px] w-[18px] transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"}`} 
+                        className={`h-[18px] w-[18px] transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} 
                       />
                       <span className="text-[13px] font-bold">{link.name}</span>
                     </Link>
@@ -209,12 +208,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-        <div className="p-3 border-t border-slate-100 dark:border-border shrink-0">
+        <div className="p-3 border-t border-border shrink-0">
           <button 
             onClick={() => signOut({ callbackUrl: "/auth/login" })}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 dark:hover:text-red-500 transition-all duration-200 group cursor-pointer"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 group cursor-pointer"
           >
-            <SignOut className="h-[18px] w-[18px] text-slate-400 dark:text-slate-500 group-hover:text-red-500 transition-transform group-hover:-translate-x-1" />
+            <SignOut className="h-[18px] w-[18px] text-muted-foreground group-hover:text-destructive transition-transform group-hover:-translate-x-1" />
             Log Out
           </button>
         </div>
@@ -226,27 +225,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       `}>
         
         <header className={`
-          sticky top-0 z-10 h-20 bg-white/80 dark:bg-card/80 backdrop-blur-md shadow-sm border-b border-slate-100 dark:border-border 
+          sticky top-0 z-10 h-20 bg-background/80 backdrop-blur-md shadow-sm border-b border-border 
           flex items-center justify-between px-6 lg:px-8 shrink-0 
           transition-transform duration-300 ease-in-out
           ${showHeader ? "translate-y-0" : "-translate-y-full"}
         `}>
           <div className="flex items-center gap-3">
             <button 
-              className="lg:hidden p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+              className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <List className="h-5 w-5" weight="bold" />
             </button>
             
             <button 
-              className="hidden lg:block p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+              className="hidden lg:block p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
             >
               <List className="h-5 w-5" weight="bold" />
             </button>
 
-            <h2 className="text-lg font-black text-slate-800 dark:text-white hidden sm:block">
+            <h2 className="text-lg font-black text-foreground hidden sm:block">
               {getCurrentPageName()}
             </h2>
           </div>
@@ -254,12 +253,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-4">
             <ThemeToggle />
             
-            <button className="relative p-2 text-slate-500 dark:text-slate-400 hover:text-primary transition-colors rounded-full hover:bg-primary/10 cursor-pointer">
+            <button className="relative p-2 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-primary/10 cursor-pointer">
               <Bell className="h-5 w-5" weight="bold" />
-              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-primary rounded-full border-2 border-white dark:border-card"></span>
+              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-primary rounded-full border-2 border-background"></span>
             </button>
 
-            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-white text-xs font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity">
+            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-xs font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity">
               {initials ? (
                 initials
               ) : (
@@ -278,7 +277,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {sidebarAlert && (
-        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-4 rounded-2xl shadow-2xl z-[99999] flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm">
+        <div className="fixed bottom-6 right-6 bg-foreground text-background px-5 py-4 rounded-2xl shadow-2xl z-[99999] flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm border border-border">
           <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
             <Info weight="fill" className="h-5 w-5 text-primary" />
           </div>
@@ -288,7 +287,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <button 
             onClick={() => setSidebarAlert(null)} 
-            className="ml-2 p-1.5 hover:bg-white/20 dark:hover:bg-slate-900/10 rounded-full transition-colors cursor-pointer shrink-0"
+            className="ml-2 p-1.5 hover:bg-background/20 rounded-full transition-colors cursor-pointer shrink-0"
           >
             <X weight="bold" className="h-4 w-4" />
           </button>
