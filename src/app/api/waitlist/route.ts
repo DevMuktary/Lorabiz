@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma"; // Added curly braces here!
 
 export async function POST(req: Request) {
   try {
