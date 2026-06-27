@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Script from "next/script";
 import { X, Wallet, CreditCard, CircleDashed, CheckCircle } from "@phosphor-icons/react";
 
 interface PaymentModalProps {
@@ -21,10 +20,19 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Used to stop polling when component unmounts
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // 1. SAFELY INJECT PAYSTACK (Prevents "Form" and "CORS" errors)
+    if (typeof window !== "undefined" && !document.getElementById("paystack-script")) {
+      const script = document.createElement("script");
+      script.id = "paystack-script";
+      script.src = "https://js.paystack.co/v1/inline.js";
+      script.async = true;
+      document.head.appendChild(script); // Append to head, not body, to avoid scanner bugs
+    }
+
+    // 2. Load Wallet Balance
     const fetchWallet = async () => {
       try {
         const walletRes = await fetch("/api/user/wallet");
@@ -48,30 +56,24 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
     };
   }, []);
 
-  // =================================================================
-  // Webhook Polling for LLC Verification
-  // =================================================================
   const startWebhookPolling = () => {
     setProcessingState("verifying");
     
     pollingIntervalRef.current = setInterval(async () => {
       try {
-        // Poll the LLC-specific details endpoint
         const res = await fetch(`/api/register/llc/details/${registrationId}`);
         const json = await res.json();
         
-        // If the Webhook successfully processed the payment, the status updates
         if (json.success && json.data.status !== "UNSUBMITTED") {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
           setTimeout(() => router.push("/dashboard?success=true"), 2500);
         }
       } catch (e) {
-        // Silent catch: ignore network errors while polling
+        // Silent catch
       }
     }, 2000);
 
-    // Escape hatch: If webhook takes longer than 30 seconds
     setTimeout(() => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -87,6 +89,13 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
     setProcessingState("initializing");
     setErrorMsg(null);
 
+    // Safeguard: Ensure Paystack is fully loaded before allowing online click
+    if (method === "ONLINE" && !(window as any).PaystackPop) {
+      setErrorMsg("Payment gateway is still connecting securely. Please wait a moment and click again.");
+      setProcessingState("idle");
+      return;
+    }
+
     try {
       const res = await fetch("/api/payment/checkout", {
         method: "POST",
@@ -94,7 +103,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
         body: JSON.stringify({ 
           registrationId, 
           paymentMethod: method,
-          service: "llc" // Explicitly flag this as an LLC checkout for your backend
+          service: "llc" // Identifies the request in the backend
         })
       });
       const data = await res.json();
@@ -110,7 +119,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
         setTimeout(() => router.push("/dashboard?success=true"), 2500);
       } else if (method === "ONLINE") {
         if (!data.paystackData.publicKey) {
-          setErrorMsg("Server error: Paystack Public Key is missing.");
+          setErrorMsg("Server error: Paystack Public Key is missing from your environment variables.");
           setProcessingState("idle");
           return;
         }
@@ -122,7 +131,6 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
             amount: data.paystackData.amount,
             ref: data.paystackData.reference,
             callback: function () {
-              // Paystack closed with success. Start polling.
               startWebhookPolling();
             },
             onClose: function () {
@@ -131,12 +139,12 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
           });
           handler.openIframe();
         } catch (err) {
-          setErrorMsg("Payment gateway is still loading. Please wait a second and click again.");
+          setErrorMsg("Failed to open payment modal. Please try again.");
           setProcessingState("idle");
         }
       }
     } catch (error) {
-      setErrorMsg("Network error. Please try again.");
+      setErrorMsg("Network error connecting to the payment server. Please try again.");
       setProcessingState("idle");
     }
   };
@@ -145,9 +153,6 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-      
-      <Script src="https://js.paystack.co/v1/inline.js" strategy="lazyOnload" />
-
       <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         
         {/* HEADER */}
