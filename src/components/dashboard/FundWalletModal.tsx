@@ -42,13 +42,11 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
     initializePayment({
       onSuccess: () => {
         setIsProcessing(false);
-        // Trigger the success alert on the dashboard
         onSuccess(Number(amount));
         onClose();
       },
       onClose: () => {
         setIsProcessing(false);
-        // Trigger the failure/cancelled alert on the dashboard
         onFailure("The payment process was cancelled or failed.");
         onClose();
       }
