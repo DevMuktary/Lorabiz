@@ -30,12 +30,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning is necessary here for next-themes
     <html lang="en" suppressHydrationWarning>
-      {/* 
-        Changed min-h-screen to min-h-[100dvh] to fix the Safari toolbar bug
-        Removed overscroll-none to allow the toolbar to collapse on scroll
-      */}
-      <body className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-slate-50 text-slate-900 min-h-[100dvh] flex flex-col`}>
+      <body className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-background text-foreground min-h-[100dvh] flex flex-col transition-colors duration-300`}>
         <Providers>
           {children}
         </Providers>
