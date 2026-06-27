@@ -12,7 +12,21 @@ import {
   UserCircle, SignOut, Bell, List, X, Info 
 } from "@phosphor-icons/react";
 
-const NAVIGATION = [
+// 1. We define the TypeScript shapes here so the compiler knows what to expect!
+type NavLink = {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  isComingSoon?: boolean; // The "?" makes this optional so TS won't complain
+};
+
+type NavCategory = {
+  category: string;
+  links: NavLink[];
+};
+
+// 2. We apply the type to the NAVIGATION array
+const NAVIGATION: NavCategory[] = [
   {
     category: "Main",
     links: [
@@ -54,10 +68,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   
-  // State for the global sidebar "Coming Soon" alert
   const [sidebarAlert, setSidebarAlert] = useState<string | null>(null);
 
-  // Auto-hide the header on scroll down
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -72,7 +84,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
-  // Auto-dismiss the coming soon alert after 3 seconds
   useEffect(() => {
     if (sidebarAlert) {
       const timer = setTimeout(() => setSidebarAlert(null), 3000);
@@ -81,12 +92,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [sidebarAlert]);
 
   const getCurrentPageName = () => {
-    // Check main nav links
     for (const group of NAVIGATION) {
       const found = group.links.find(link => link.href === pathname);
       if (found) return found.name;
     }
-    // Fallbacks for sub-routes
     if (pathname.includes("/dashboard/cac")) return "CAC Services";
     return "Dashboard";
   };
@@ -105,7 +114,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-background font-sans selection:bg-primary selection:text-white transition-colors duration-300 relative">
       
-      {/* MOBILE OVERLAY */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
@@ -113,7 +121,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      {/* SIDEBAR */}
       <aside className={`
         fixed inset-y-0 left-0 z-[99995] w-[260px] bg-white dark:bg-card border-r border-slate-200 dark:border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none
@@ -156,7 +163,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       key={link.name} 
                       href={link.href}
                       onClick={(e) => {
-                        // If it's a coming soon link, prevent navigation and show alert
                         if (link.isComingSoon) {
                           e.preventDefault();
                           setSidebarAlert(link.name);
@@ -196,7 +202,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <div className={`
         flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out
         ${isDesktopSidebarCollapsed ? "lg:pl-0" : "lg:pl-[260px]"}
@@ -254,7 +259,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       </div>
 
-      {/* GLOBAL SIDEBAR ALERT FOR "COMING SOON" */}
       {sidebarAlert && (
         <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-4 rounded-2xl shadow-2xl z-[99999] flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300">
           <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
