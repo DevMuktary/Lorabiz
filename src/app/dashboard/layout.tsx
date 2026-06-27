@@ -12,12 +12,11 @@ import {
   UserCircle, SignOut, Bell, List, X, Info 
 } from "@phosphor-icons/react";
 
-// 1. We define the TypeScript shapes here so the compiler knows what to expect!
 type NavLink = {
   name: string;
   href: string;
   icon: React.ElementType;
-  isComingSoon?: boolean; // The "?" makes this optional so TS won't complain
+  isComingSoon?: boolean;
 };
 
 type NavCategory = {
@@ -25,7 +24,6 @@ type NavCategory = {
   links: NavLink[];
 };
 
-// 2. We apply the type to the NAVIGATION array
 const NAVIGATION: NavCategory[] = [
   {
     category: "Main",
@@ -68,7 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   
-  const [sidebarAlert, setSidebarAlert] = useState<string | null>(null);
+  const [sidebarAlert, setSidebarAlert] = useState<{title: string, message: string} | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -86,10 +84,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (sidebarAlert) {
-      const timer = setTimeout(() => setSidebarAlert(null), 3000);
+      const timer = setTimeout(() => setSidebarAlert(null), 4000);
       return () => clearTimeout(timer);
     }
   }, [sidebarAlert]);
+
+  const handleSidebarWaitlist = async (serviceName: string) => {
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service: serviceName })
+      });
+      
+      if (res.ok) {
+        setSidebarAlert({ title: serviceName, message: "Added to the waitlist! We will notify you once it launches." });
+      } else if (res.status === 409) {
+        setSidebarAlert({ title: serviceName, message: "You are already on the waitlist!" });
+      } else {
+        setSidebarAlert({ title: "Oops!", message: "Something went wrong." });
+      }
+    } catch (error) {
+      setSidebarAlert({ title: "Oops!", message: "Network error." });
+    }
+  };
 
   const getCurrentPageName = () => {
     for (const group of NAVIGATION) {
@@ -130,7 +148,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 dark:border-border shrink-0">
           <Image 
             src="/logo.png" 
-            alt="Lumebiz" 
+            alt="Lorabiz" 
             width={120} 
             height={32} 
             className="h-7 w-auto object-contain dark:brightness-200 dark:contrast-100" 
@@ -147,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-6 custom-scrollbar">
           {NAVIGATION.map((group) => (
             <div key={group.category} className="space-y-1.5">
-              <h3 className="px-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+              <h3 className="px-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
                 {group.category}
               </h3>
               <div className="space-y-0.5">
@@ -165,7 +183,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       onClick={(e) => {
                         if (link.isComingSoon) {
                           e.preventDefault();
-                          setSidebarAlert(link.name);
+                          handleSidebarWaitlist(link.name);
                         } else {
                           setIsMobileMenuOpen(false);
                         }
@@ -260,13 +278,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {sidebarAlert && (
-        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-4 rounded-2xl shadow-2xl z-[99999] flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-4 rounded-2xl shadow-2xl z-[99999] flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm">
           <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
             <Info weight="fill" className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h4 className="font-bold text-sm">{sidebarAlert}</h4>
-            <p className="text-xs opacity-80 mt-0.5">This service is launching very soon!</p>
+            <h4 className="font-bold text-sm leading-tight">{sidebarAlert.title}</h4>
+            <p className="text-xs opacity-90 mt-1 leading-snug">{sidebarAlert.message}</p>
           </div>
           <button 
             onClick={() => setSidebarAlert(null)} 
