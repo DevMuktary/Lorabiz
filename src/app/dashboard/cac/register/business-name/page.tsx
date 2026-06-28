@@ -102,13 +102,14 @@ export default function BusinessNameRegistration() {
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
 
-  // Modal State
+  // Modal State (Added searchedName to strictly track what was checked)
   const [resultModal, setResultModal] = useState<{
     isOpen: boolean;
     status: "PASSED" | "WARNING" | "BLOCKED" | "IDLE";
     title: string;
     message: string;
-  }>({ isOpen: false, status: "IDLE", title: "", message: "" });
+    searchedName: string;
+  }>({ isOpen: false, status: "IDLE", title: "", message: "", searchedName: "" });
 
   // Step 2 State
   const [ownershipType, setOwnershipType] = useState<"SOLE" | "PARTNERSHIP" | null>(null);
@@ -126,11 +127,13 @@ export default function BusinessNameRegistration() {
         isOpen: true,
         status: "BLOCKED",
         title: "Name Too Short",
+        searchedName: proposedName,
         message: "CAC requires business names to be descriptive. Please use at least two words (e.g., 'Ade Ventures' instead of just 'Ade')."
       });
       return;
     }
 
+    // Trigger the big full-screen loading modal
     setIsSearching(true);
 
     try {
@@ -144,20 +147,20 @@ export default function BusinessNameRegistration() {
 
       if (data.isBlocked) {
         setResultModal({
-          isOpen: true, status: "BLOCKED", title: "Name Unavailable", message: data.reasonMessage
+          isOpen: true, status: "BLOCKED", title: "Name Unavailable", searchedName: proposedName, message: data.reasonMessage
         });
       } else if (data.warningMessage) {
         setResultModal({
-          isOpen: true, status: "WARNING", title: "Proceed With Caution", message: data.warningMessage
+          isOpen: true, status: "WARNING", title: "Proceed With Caution", searchedName: proposedName, message: data.warningMessage
         });
       } else {
         setResultModal({
-          isOpen: true, status: "PASSED", title: "Congratulations!", message: "Great news! This name is available and perfectly structured for registration."
+          isOpen: true, status: "PASSED", title: "Congratulations!", searchedName: proposedName, message: "Great news! This name is available and perfectly structured for registration."
         });
       }
     } catch (error) {
       setResultModal({
-        isOpen: true, status: "WARNING", title: "Registry Slow", message: "CAC registry connection is currently slow. You may use this name anyway, and our team will verify it manually."
+        isOpen: true, status: "WARNING", title: "Registry Slow", searchedName: proposedName, message: "CAC registry connection is currently slow. You may use this name anyway, and our team will verify it manually."
       });
     } finally {
       setIsSearching(false);
@@ -204,11 +207,32 @@ export default function BusinessNameRegistration() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto pb-20 animate-in fade-in duration-500">
+    <div className="max-w-3xl mx-auto pb-20 animate-in fade-in duration-500 relative">
       
+      {/* ========================================== */}
+      {/* BIG FULL-SCREEN LOADING MODAL              */}
+      {/* ========================================== */}
+      {isSearching && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="flex flex-col items-center justify-center p-8 sm:p-10 bg-card border border-border rounded-[2rem] shadow-2xl max-w-sm w-full text-center">
+            <div className="relative h-20 w-20 mb-6">
+              <div className="absolute inset-0 rounded-full border-4 border-secondary"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+              <MagnifyingGlass className="absolute inset-0 m-auto h-8 w-8 text-primary animate-pulse" weight="bold" />
+            </div>
+            <h3 className="text-xl font-black text-foreground mb-2 tracking-tight">Checking Database...</h3>
+            <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+              Please wait while we cross-check <br/>
+              <span className="font-black text-foreground inline-block mt-1 px-2 py-1 bg-secondary rounded-md">"{proposedName}"</span><br/>
+              against the CAC registry.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8 pt-2 flex items-center gap-4">
-        <Link href="/dashboard/cac/new-incorporation" className="p-2 bg-card rounded-xl border border-border text-muted-foreground hover:text-foreground shadow-sm transition-colors">
+        <Link href="/dashboard/cac/new-incorporation" className="p-2 bg-card rounded-xl border border-border text-muted-foreground hover:text-foreground shadow-sm transition-colors cursor-pointer">
           <CaretLeft className="h-5 w-5" weight="bold" />
         </Link>
         <div>
@@ -265,7 +289,7 @@ export default function BusinessNameRegistration() {
               </div>
 
               <button type="submit" disabled={isSearching || !proposedName || !selectedCategory || !specificNature} className="w-full h-14 bg-foreground text-background font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 mt-2 cursor-pointer">
-                {isSearching ? <div className="h-5 w-5 border-2 border-background/30 border-t-background rounded-full animate-spin"></div> : <><MagnifyingGlass className="h-5 w-5" weight="bold" /> Check Availability</>}
+                <MagnifyingGlass className="h-5 w-5" weight="bold" /> Check Availability
               </button>
             </form>
           ) : (
@@ -357,12 +381,12 @@ export default function BusinessNameRegistration() {
       {/* ========================================== */}
       {/* THE AVAILABILITY RESULT MODAL              */}
       {/* ========================================== */}
-      <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 ${resultModal.isOpen ? "visible" : "invisible pointer-events-none"}`}>
+      <div className={`fixed inset-0 z-[150] flex items-center justify-center p-4 ${resultModal.isOpen ? "visible" : "invisible pointer-events-none"}`}>
         <div className={`absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity duration-300 ${resultModal.isOpen ? "opacity-100" : "opacity-0"}`} onClick={() => setResultModal({ ...resultModal, isOpen: false })} />
         
         <div className={`relative w-full max-w-sm bg-card border border-border rounded-3xl shadow-2xl p-6 text-center transition-all duration-300 ${resultModal.isOpen ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"}`}>
           
-          <div className="flex justify-center mb-5">
+          <div className="flex justify-center mb-4">
             {resultModal.status === "PASSED" && (
               <div className="h-20 w-20 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center ring-8 ring-emerald-500/5">
                 <CheckCircle className="h-10 w-10" weight="fill" />
@@ -381,6 +405,14 @@ export default function BusinessNameRegistration() {
           </div>
 
           <h3 className="text-xl font-black text-foreground mb-2">{resultModal.title}</h3>
+          
+          {/* Explicitly displays the searched name */}
+          <div className="mb-3">
+             <span className="inline-block px-3 py-1.5 bg-secondary text-foreground font-black text-sm rounded-lg border border-border">
+               "{resultModal.searchedName}"
+             </span>
+          </div>
+
           <p className="text-sm font-medium text-muted-foreground leading-relaxed mb-8">{resultModal.message}</p>
 
           <div className="flex flex-col gap-3">
