@@ -12,7 +12,7 @@ import {
   IdentificationCard 
 } from "@phosphor-icons/react/dist/ssr";
 
-// 1. SMART FETCH: Try Business Names first, then LLCs
+// Try Business Names first, then LLCs
 async function getRegistrationData(id: string) {
   let type = "BUSINESS_NAME";
   let reg: any = await prisma.businessRegistration.findUnique({ where: { id } });
@@ -26,13 +26,15 @@ async function getRegistrationData(id: string) {
   return { ...reg, _appType: type };
 }
 
-export default async function ViewRegistrationPage({ params }: { params: { id: string } }) {
-  const reg = await getRegistrationData(params.id);
+// FIXED: In Next.js 15+, params is a Promise and must be awaited!
+export default async function ViewRegistrationPage({ params }: { params: Promise<{ id: string }> }) {
+  // Await the params before trying to extract the ID
+  const { id } = await params;
+  
+  const reg = await getRegistrationData(id);
 
-  // If the ID doesn't exist in either table, show the Next.js 404 page
   if (!reg) notFound();
 
-  // Helper variables
   const isLLC = reg._appType === "LLC";
   const MainIcon = isLLC ? Buildings : Storefront;
 
@@ -114,7 +116,6 @@ export default async function ViewRegistrationPage({ params }: { params: { id: s
                 </p>
               </div>
 
-              {/* Conditional LLC Field */}
               {isLLC && reg.shareCapital && (
                 <div>
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Share Capital</p>
@@ -142,7 +143,7 @@ export default async function ViewRegistrationPage({ params }: { params: { id: s
 
         </div>
 
-        {/* RIGHT COLUMN: Personnel / Objects */}
+        {/* RIGHT COLUMN: Personnel */}
         <div className="space-y-6">
           
           <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
@@ -150,10 +151,8 @@ export default async function ViewRegistrationPage({ params }: { params: { id: s
               {isLLC ? "Directors & Shareholders" : "Proprietors"}
              </h2>
              
-             {/* Read-Only display of the personnel data */}
              {reg.personnel || reg.proprietors || reg.directors ? (
                <div className="space-y-3">
-                 {/* This handles parsing if your array is stored as a JSON string */}
                  {Array.isArray(reg.personnel || reg.proprietors || reg.directors) ? 
                    (reg.personnel || reg.proprietors || reg.directors).map((person: any, i: number) => (
                      <div key={i} className="p-3 bg-secondary/50 rounded-xl border border-border">
