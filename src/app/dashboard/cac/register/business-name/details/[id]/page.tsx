@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CircleNotch, CircleDashed } from "@phosphor-icons/react";
@@ -17,7 +17,6 @@ export default function RegistrationDetailsPage() {
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
-  // NEW: Track the highest unlocked step so they can click backward/forward safely
   const [highestStepReached, setHighestStepReached] = useState(1); 
   
   const [loading, setLoading] = useState(true);
@@ -28,6 +27,10 @@ export default function RegistrationDetailsPage() {
   const [lockedStatus, setLockedStatus] = useState<string | null>(null);
   
   const [toast, setToast] = useState<{show: boolean, msg: string, type: "error" | "success"}>({ show: false, msg: "", type: "success" });
+  
+  // NEW: Ref to target the scrollable stepper container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const showToast = (msg: string, type: "error" | "success" = "error") => {
     setToast({ show: true, msg, type });
     setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 4000);
@@ -36,6 +39,18 @@ export default function RegistrationDetailsPage() {
   const [draft, setDraft] = useState({ proposedName: "LOADING...", ownershipType: "SOLE", specificNature: "LOADING..." });
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({ email: "", state: "", city: "", streetNo: "", address: "", commencementDate: "" });
   const [proprietors, setProprietors] = useState<Proprietor[]>([]);
+
+  // AUTO-SCROLL HORIZONTAL STEPPER ON MOBILE
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const activeBtn = document.getElementById(`step-btn-${currentStep}`);
+    
+    if (container && activeBtn) {
+      // Mathematically perfectly center the active button in the viewport
+      const scrollLeft = activeBtn.offsetLeft - container.offsetWidth / 2 + activeBtn.offsetWidth / 2;
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    }
+  }, [currentStep]);
 
   // AUTO-SAVE LOGIC
   const saveDraftToDB = useCallback(async () => {
@@ -121,7 +136,6 @@ export default function RegistrationDetailsPage() {
 
     setCurrentStep(prev => {
       const next = prev + 1;
-      // Unlock the next step if they successfully validate through the current one
       setHighestStepReached(h => Math.max(h, next));
       return next;
     });
@@ -186,7 +200,8 @@ export default function RegistrationDetailsPage() {
 
       {/* STICKY TEXT-BASED STEPPER */}
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md pb-4 pt-4 mb-8 border-b border-border flex justify-between items-end">
-        <div className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full md:w-auto">
+        {/* WE ADDED scrollContainerRef HERE */}
+        <div ref={scrollContainerRef} className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full md:w-auto scroll-smooth">
           {[ 
             { step: 1, title: "Company Information" }, 
             { step: 2, title: "Proprietor Information" }, 
@@ -200,6 +215,7 @@ export default function RegistrationDetailsPage() {
             return (
               <button 
                 key={s.step} 
+                id={`step-btn-${s.step}`} // WE ADDED THE ID HERE SO WE CAN TARGET IT
                 onClick={() => isAccessible && setCurrentStep(s.step)}
                 disabled={!isAccessible}
                 className={`flex items-center gap-2 whitespace-nowrap text-sm transition-colors ${
