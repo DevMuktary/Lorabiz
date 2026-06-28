@@ -14,7 +14,6 @@ import {
 } from "@phosphor-icons/react";
 
 import RegistrationsTable from "@/components/features/cac/new-incorporation/RegistrationsTable";
-// 1. Import your Receipt Modal
 import ReceiptModal from "@/components/features/cac/new-incorporation/ReceiptModal";
 
 export default function RegistrationsHubPage() {
@@ -27,7 +26,6 @@ export default function RegistrationsHubPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
 
-  // 2. State for the Receipt Modal
   const [receiptData, setReceiptData] = useState<any>(null);
 
   const fetchDashboardData = async () => {
@@ -57,23 +55,19 @@ export default function RegistrationsHubPage() {
     return () => clearTimeout(timeoutId);
   }, [page, search, statusFilter, typeFilter]);
 
-  // 3. SMART ACTION HANDLER
   const handleExecuteAction = (action: string, id: string) => {
     const normalizedAction = action.toLowerCase();
 
     if (normalizedAction.includes("receipt")) {
-      // Find the specific registration from our loaded table data
       const reg = dashboardData?.tableData?.find((r: any) => r.id === id);
       if (reg) {
-        setReceiptData(reg); // This opens the modal!
+        setReceiptData(reg); 
       }
     } 
     else if (normalizedAction.includes("view")) {
-      // Route to details but add a ?mode=view query parameter so they aren't forced to edit
       router.push(`/dashboard/cac/register/details/${id}?mode=view`);
     } 
     else {
-      // Default: "Continue Application" / "Edit" goes straight to the form
       router.push(`/dashboard/cac/register/details/${id}`);
     }
   };
@@ -179,12 +173,10 @@ export default function RegistrationsHubPage() {
         />
       </div>
 
-      {/* 4. RENDER THE RECEIPT MODAL WHEN DATA IS PRESENT */}
       {receiptData && (
         <ReceiptModal 
-          isOpen={!!receiptData} 
           onClose={() => setReceiptData(null)} 
-          reg={receiptData} // Passing the registration data to the modal
+          reg={receiptData} 
         />
       )}
 
