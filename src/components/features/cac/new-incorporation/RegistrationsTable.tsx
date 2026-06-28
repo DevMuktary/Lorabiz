@@ -91,9 +91,10 @@ export default function RegistrationsTable({
                     <p className="text-xs font-bold text-muted-foreground mt-1 uppercase">{reg.id.slice(0,8)}</p>
                   </td>
                   <td className="px-6 py-5 font-bold text-muted-foreground">
-                    {/* Safely handle Business Names, LLCs, and future NGOs */}
-                    {reg.businessType === 'BUSINESS_NAME' ? 'Business Name' : 
-                     reg.companyType || reg.entityType || 'Company (LLC)'}
+                    {/* FIXED: Uses the backend's _appType to accurately display entity types */}
+                    {reg._appType === 'BUSINESS_NAME' ? 'Business Name' : 
+                     reg._appType === 'LLC' ? 'Company (LLC)' : 
+                     reg._appType === 'NGO' ? 'Incorporated Trustees' : 'Unknown'}
                   </td>
                   <td className="px-6 py-5 font-bold text-muted-foreground">
                     {new Date(reg.updatedAt).toLocaleDateString()}
