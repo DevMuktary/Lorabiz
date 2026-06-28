@@ -12,7 +12,9 @@ import {
   CheckCircle,
   ArrowLeft
 } from "@phosphor-icons/react";
-import RegistrationsTable from "@/components/dashboard/RegistrationsTable";
+
+// FIXED: Updated the import path to your new folder structure!
+import RegistrationsTable from "@/components/features/cac/new-incorporation/RegistrationsTable";
 
 export default function RegistrationsHubPage() {
   const router = useRouter();
@@ -151,7 +153,6 @@ export default function RegistrationsHubPage() {
 
       {/* 3. HISTORY TABLE */}
       <div className="pt-4 border-t border-border">
-        {/* We pass the full dashboardData object here because the table expects data.tableData and data.totalPages inside */}
         <RegistrationsTable 
           data={dashboardData || {}} 
           loading={isLoading}
