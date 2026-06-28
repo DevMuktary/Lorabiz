@@ -102,7 +102,7 @@ export default function BusinessNameRegistration() {
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
 
-  // Modal State (Now supports displaying conflicting names)
+  // Modal State
   const [resultModal, setResultModal] = useState<{
     isOpen: boolean;
     status: "PASSED" | "WARNING" | "BLOCKED" | "IDLE";
@@ -117,6 +117,22 @@ export default function BusinessNameRegistration() {
 
   const categories = Object.keys(CAC_CATEGORIES).sort();
   const specificNatures = selectedCategory ? CAC_CATEGORIES[selectedCategory].sort() : [];
+
+  // --- VALIDATION HELPER FOR ILLEGAL SUFFIXES ---
+  const getIllegalSuffixError = (name: string) => {
+    if (!name) return "";
+    const illegalWords = ["LTD", "LIMITED", "PLC", "INC", "INCORPORATED"];
+    const words = name.toUpperCase().split(/[\s,.-]+/); // Split by space or punctuation
+    const found = words.find(w => illegalWords.includes(w));
+    if (found) {
+      return `Business Names cannot contain "${found}". Use Ventures, Enterprises, etc.`;
+    }
+    return "";
+  };
+
+  const alt1Error = getIllegalSuffixError(altName1);
+  const alt2Error = getIllegalSuffixError(altName2);
+  const hasAltErrors = Boolean(alt1Error || alt2Error);
 
   const handleNameSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +162,6 @@ export default function BusinessNameRegistration() {
 
       const data = await res.json();
       
-      // Extract conflicts regardless of what your backend named the array
       const foundConflicts = data.conflicts || data.conflictingNames || data.similarNames || [];
 
       if (data.isBlocked) {
@@ -320,19 +335,50 @@ export default function BusinessNameRegistration() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input 
-                    type="text" value={altName1} onChange={(e) => setAltName1(e.target.value.toUpperCase())}
-                    placeholder="Alternative Name 1 (Optional)"
-                    className="w-full h-12 px-4 border-2 border-border bg-background rounded-xl text-sm font-bold text-foreground focus:border-primary focus:ring-primary outline-none transition-colors placeholder:text-muted-foreground"
-                  />
-                  <input 
-                    type="text" value={altName2} onChange={(e) => setAltName2(e.target.value.toUpperCase())}
-                    placeholder="Alternative Name 2 (Optional)"
-                    className="w-full h-12 px-4 border-2 border-border bg-background rounded-xl text-sm font-bold text-foreground focus:border-primary focus:ring-primary outline-none transition-colors placeholder:text-muted-foreground"
-                  />
+                  {/* ALT NAME 1 */}
+                  <div>
+                    <input 
+                      type="text" value={altName1} onChange={(e) => setAltName1(e.target.value.toUpperCase())}
+                      placeholder="Alternative Name 1 (Optional)"
+                      className={`w-full h-12 px-4 border-2 rounded-xl text-sm font-bold text-foreground outline-none transition-colors placeholder:text-muted-foreground ${
+                        alt1Error 
+                          ? "border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-500/5" 
+                          : "border-border bg-background focus:border-primary focus:ring-primary"
+                      }`}
+                    />
+                    {alt1Error && (
+                      <p className="text-xs text-red-500 font-bold flex items-start gap-1 mt-1.5 leading-tight">
+                        <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
+                        {alt1Error}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* ALT NAME 2 */}
+                  <div>
+                    <input 
+                      type="text" value={altName2} onChange={(e) => setAltName2(e.target.value.toUpperCase())}
+                      placeholder="Alternative Name 2 (Optional)"
+                      className={`w-full h-12 px-4 border-2 rounded-xl text-sm font-bold text-foreground outline-none transition-colors placeholder:text-muted-foreground ${
+                        alt2Error 
+                          ? "border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-500/5" 
+                          : "border-border bg-background focus:border-primary focus:ring-primary"
+                      }`}
+                    />
+                    {alt2Error && (
+                      <p className="text-xs text-red-500 font-bold flex items-start gap-1 mt-1.5 leading-tight">
+                        <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
+                        {alt2Error}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
-                <button onClick={() => setStep(2)} className="w-full h-14 mt-8 bg-foreground text-background font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-transform active:scale-95 cursor-pointer">
+                <button 
+                  onClick={() => setStep(2)} 
+                  disabled={hasAltErrors}
+                  className="w-full h-14 mt-8 bg-foreground text-background font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
                   Save & Continue <ArrowRight className="h-5 w-5" weight="bold" />
                 </button>
               </div>
