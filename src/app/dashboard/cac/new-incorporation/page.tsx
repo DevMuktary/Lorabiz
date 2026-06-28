@@ -55,6 +55,7 @@ export default function RegistrationsHubPage() {
     return () => clearTimeout(timeoutId);
   }, [page, search, statusFilter, typeFilter]);
 
+  // SMART ACTION HANDLER
   const handleExecuteAction = (action: string, id: string) => {
     const normalizedAction = action.toLowerCase();
 
@@ -65,9 +66,11 @@ export default function RegistrationsHubPage() {
       }
     } 
     else if (normalizedAction.includes("view")) {
-      router.push(`/dashboard/cac/register/details/${id}?mode=view`);
+      // FIXED: Route to the dedicated read-only view page
+      router.push(`/dashboard/cac/register/view/${id}`);
     } 
     else {
+      // Edit / Continue goes to the active form page
       router.push(`/dashboard/cac/register/details/${id}`);
     }
   };
