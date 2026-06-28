@@ -13,24 +13,26 @@ import {
   ArrowLeft
 } from "@phosphor-icons/react";
 
-// FIXED: Updated the import path to your new folder structure!
 import RegistrationsTable from "@/components/features/cac/new-incorporation/RegistrationsTable";
+// 1. Import your Receipt Modal
+import ReceiptModal from "@/components/features/cac/new-incorporation/ReceiptModal";
 
 export default function RegistrationsHubPage() {
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- Table Filter & Pagination States ---
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
 
+  // 2. State for the Receipt Modal
+  const [receiptData, setReceiptData] = useState<any>(null);
+
   const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
-      // Build the query string for filtering and pagination
       const query = new URLSearchParams({
         page: page.toString(),
         search: search,
@@ -48,28 +50,39 @@ export default function RegistrationsHubPage() {
     }
   };
 
-  // Automatically fetch data when filters or pagination change
   useEffect(() => {
-    // Add a slight debounce so we don't spam the API while typing a search
     const timeoutId = setTimeout(() => {
       fetchDashboardData();
     }, 300);
     return () => clearTimeout(timeoutId);
   }, [page, search, statusFilter, typeFilter]);
 
-  // Handler for actions clicked inside the table
+  // 3. SMART ACTION HANDLER
   const handleExecuteAction = (action: string, id: string) => {
-    // Basic fallback routing if your ActionMenu relies on the parent
-    router.push(`/dashboard/cac/register/details/${id}`);
+    const normalizedAction = action.toLowerCase();
+
+    if (normalizedAction.includes("receipt")) {
+      // Find the specific registration from our loaded table data
+      const reg = dashboardData?.tableData?.find((r: any) => r.id === id);
+      if (reg) {
+        setReceiptData(reg); // This opens the modal!
+      }
+    } 
+    else if (normalizedAction.includes("view")) {
+      // Route to details but add a ?mode=view query parameter so they aren't forced to edit
+      router.push(`/dashboard/cac/register/details/${id}?mode=view`);
+    } 
+    else {
+      // Default: "Continue Application" / "Edit" goes straight to the form
+      router.push(`/dashboard/cac/register/details/${id}`);
+    }
   };
 
-  // Safe defaults if API hasn't loaded yet
   const stats = dashboardData?.stats || { unsubmitted: 0, pending: 0, queried: 0, approved: 0 };
 
   return (
     <div className="space-y-10">
       
-      {/* 1. HEADER & CTA */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-5">
           <Link 
@@ -96,7 +109,6 @@ export default function RegistrationsHubPage() {
         </Link>
       </div>
 
-      {/* 2. METRICS CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Unsubmitted */}
         <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex flex-col gap-4">
@@ -151,7 +163,6 @@ export default function RegistrationsHubPage() {
         </div>
       </div>
 
-      {/* 3. HISTORY TABLE */}
       <div className="pt-4 border-t border-border">
         <RegistrationsTable 
           data={dashboardData || {}} 
@@ -167,6 +178,15 @@ export default function RegistrationsHubPage() {
           onExecuteAction={handleExecuteAction}
         />
       </div>
+
+      {/* 4. RENDER THE RECEIPT MODAL WHEN DATA IS PRESENT */}
+      {receiptData && (
+        <ReceiptModal 
+          isOpen={!!receiptData} 
+          onClose={() => setReceiptData(null)} 
+          reg={receiptData} // Passing the registration data to the modal
+        />
+      )}
 
     </div>
   );
