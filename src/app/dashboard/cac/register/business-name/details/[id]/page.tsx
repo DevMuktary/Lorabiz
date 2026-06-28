@@ -40,7 +40,7 @@ export default function RegistrationDetailsPage() {
     if (!id || loading || lockedStatus) return; // Do not autosave if locked
     setSaveStatus("saving");
     try {
-      const res = await fetch(`/api/cac/register/details/${id}`, {
+      const res = await fetch(`/api/cac/register/business-name/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyInfo, proprietors, isDraft: true })
@@ -60,13 +60,13 @@ export default function RegistrationDetailsPage() {
   // INITIAL FETCH & MULTI-TAB LOCKOUT CHECK
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/cac/register/details/${id}`).then(res => res.json()).then(json => {
+    fetch(`/api/cac/register/business-name/details/${id}`).then(res => res.json()).then(json => {
       if (json.success) {
         
         // LOCKOUT CHECK: If already submitted, lock the screen and boot them out
         if (json.data.status !== "UNSUBMITTED") {
           setLockedStatus(json.data.status);
-          setTimeout(() => router.push("/dashboard"), 3500);
+          setTimeout(() => router.push("/dashboard/new-incorporation"), 3500);
           setLoading(false);
           return;
         }
@@ -126,7 +126,7 @@ export default function RegistrationDetailsPage() {
   const handleOpenPayment = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/cac/register/details/${id}`, {
+      const res = await fetch(`/api/cac/register/business-name/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyInfo, proprietors, isDraft: true }) 

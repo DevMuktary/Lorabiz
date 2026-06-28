@@ -71,7 +71,7 @@ export default function RegistrationsHubPage() {
     } 
     else {
       // Edit / Continue goes to the active form page
-      router.push(`/dashboard/cac/register/details/${id}`);
+      router.push(`/dashboard/cac/register/business-name/details/${id}`);
     }
   };
 

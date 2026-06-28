@@ -65,7 +65,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
     
     pollingIntervalRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/cac/register/details/${registrationId}`);
+        const res = await fetch(`/api/cac/register/business-name/details/${registrationId}`);
         const json = await res.json();
         
         // If the Webhook successfully processed the payment, the status will no longer be UNSUBMITTED

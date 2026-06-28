@@ -214,7 +214,7 @@ export default function BusinessNameRegistration() {
       const data = await res.json();
       
       if (data.success) {
-        router.push(`/dashboard/cac/register/details/${data.draftId}`);
+        router.push(`/dashboard/cac/register/business-name/details/${data.draftId}`);
       } else {
         alert(data.message || "Failed to create draft.");
         setIsCreatingDraft(false);
