@@ -47,7 +47,7 @@ const getUploadLabel = (key: string) => {
 
 const formatFlatAddress = (obj: any) => {
   if (!obj) return null;
-  if (typeof obj === 'string') return obj; // Handle plain string addresses
+  if (typeof obj === 'string') return obj; 
   if (obj.address && obj.address.state) {
     const parts = [obj.address.houseNo || obj.address.buildingNo, obj.address.street, obj.address.city, obj.address.lga, obj.address.state].filter(Boolean);
     return parts.length > 0 ? parts.join(', ') : null;
@@ -56,7 +56,13 @@ const formatFlatAddress = (obj: any) => {
   return parts.length > 0 ? parts.join(', ') : null;
 };
 
-// UI Component for clean data display
+// Extremely resilient JSON parser to handle Prisma JSON fields
+const parseJson = (val: any, fallback: any) => {
+  if (!val) return fallback;
+  if (typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch { return fallback; }
+};
+
 const SummaryItem = ({ label, value, highlight = false }: { label: string, value: any, highlight?: boolean }) => (
   <div className={`flex flex-col p-3 rounded-xl border ${highlight ? 'bg-primary/5 border-primary/20' : 'bg-secondary/50 border-border'}`}>
     <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${highlight ? 'text-primary' : 'text-muted-foreground'}`}>{label}</span>
@@ -64,7 +70,6 @@ const SummaryItem = ({ label, value, highlight = false }: { label: string, value
   </div>
 );
 
-// --- DATA FETCHING ---
 async function getRegistrationData(id: string) {
   let type = "BUSINESS_NAME";
   let reg: any = await prisma.businessRegistration.findUnique({ where: { id } });
@@ -80,23 +85,49 @@ async function getRegistrationData(id: string) {
 
 export default async function ViewRegistrationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const reg = await getRegistrationData(id);
+  const dbReg = await getRegistrationData(id);
 
-  if (!reg) notFound();
+  if (!dbReg) notFound();
 
-  // Variables & Parsing
-  const isLLC = reg._appType === "LLC";
+  const isLLC = dbReg._appType === "LLC";
   const MainIcon = isLLC ? Buildings : Storefront;
   
-  // Parse JSON fields safely
-  const officers = Array.isArray(reg.officers) ? reg.officers : (typeof reg.officers === 'string' ? JSON.parse(reg.officers || '[]') : []);
-  const proprietors = Array.isArray(reg.proprietors) ? reg.proprietors : (typeof reg.proprietors === 'string' ? JSON.parse(reg.proprietors || '[]') : []);
-  const shareClassesArray = Array.isArray(reg.shareClasses) ? reg.shareClasses : (typeof reg.shareClasses === 'string' ? JSON.parse(reg.shareClasses || '[]') : []);
-  const memoObjects = Array.isArray(reg.memorandumObjects) ? reg.memorandumObjects : (typeof reg.memorandumObjects === 'string' ? JSON.parse(reg.memorandumObjects || '[]') : []);
-  const customArticles = Array.isArray(reg.customArticles) ? reg.customArticles : (typeof reg.customArticles === 'string' ? JSON.parse(reg.customArticles || '[]') : []);
-  const uploads = reg.uploads && typeof reg.uploads === 'object' ? reg.uploads : (typeof reg.uploads === 'string' ? JSON.parse(reg.uploads || '{}') : {});
-  const declarant = reg.declarantDetails && typeof reg.declarantDetails === 'object' ? reg.declarantDetails : (typeof reg.declarantDetails === 'string' ? JSON.parse(reg.declarantDetails || '{}') : {});
-  const witness = reg.witnessDetails && typeof reg.witnessDetails === 'object' ? reg.witnessDetails : (typeof reg.witnessDetails === 'string' ? JSON.parse(reg.witnessDetails || '{}') : {});
+  // Merge potential wrapper objects (like formData or data) just in case
+  const reg = {
+    ...dbReg,
+    ...(parseJson(dbReg.data, {})),
+    ...(parseJson(dbReg.formData, {}))
+  };
+
+  // --- AGGRESSIVE DATA EXTRACTION ---
+  
+  // LLC Data
+  const officers = parseJson(reg.officers || reg.personnel, []);
+  let rawShares = parseJson(reg.shareClasses || reg.shareCapital?.shareClasses, []);
+  const shareClassesArray = Array.isArray(rawShares) ? rawShares : (rawShares?.shareClasses || []);
+  const memoObjects = parseJson(reg.memorandumObjects, []);
+  const customArticles = parseJson(reg.customArticles, []);
+  const uploads = parseJson(reg.uploads || reg.documents, {});
+  const declarant = parseJson(reg.declarantDetails || reg.declarant, {});
+  const witness = parseJson(reg.witnessDetails || reg.witness, {});
+
+  // Business Name Data
+  const proprietors = parseJson(reg.proprietors || reg.personnel, []);
+  const companyInfo = parseJson(reg.companyInfo, {});
+  const draft = parseJson(reg.draft, {});
+
+  // Normalized Display Variables
+  const proposedName1 = reg.proposedName1 || reg.proposedName || draft.proposedName || companyInfo.proposedName1;
+  const proposedName2 = reg.proposedName2 || reg.altName1 || draft.altName1;
+  const proposedName3 = reg.proposedName3 || reg.altName2 || draft.altName2;
+  const email = reg.email || reg.companyEmail || companyInfo.email;
+  
+  const natureOfBusiness = reg.natureOfBusiness || reg.principalActivity || draft.specificNature;
+  const businessDesc = reg.businessDesc || reg.description || draft.specificNature || companyInfo.specificNature;
+  const commencementDate = reg.commencementDate || companyInfo.commencementDate;
+  
+  const address = formatFlatAddress(reg.address || reg.registeredAddress || companyInfo.address || companyInfo);
+  const headOffice = formatFlatAddress(reg.headOfficeAddress);
 
   const activeArticles = reg.useDefaultArticles 
     ? (CAMA_ARTICLES_DEFAULT && CAMA_ARTICLES_DEFAULT.length > 0 ? CAMA_ARTICLES_DEFAULT : FALLBACK_CAMA_ARTICLES) 
@@ -122,7 +153,7 @@ export default async function ViewRegistrationPage({ params }: { params: Promise
                 <MainIcon weight="duotone" className="h-6 w-6" />
               </div>
               <h1 className="text-3xl font-black text-foreground">
-                {reg.proposedName1 || reg.proposedName || "Unnamed Application"}
+                {proposedName1 || "Unnamed Application"}
               </h1>
             </div>
             <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
@@ -152,19 +183,19 @@ export default async function ViewRegistrationPage({ params }: { params: Promise
             <IdentificationCard className="h-5 w-5 text-primary" weight="duotone" /> Entity Information
           </h2>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <SummaryItem label="Proposed Name 1" value={reg.proposedName1 || reg.proposedName} highlight />
-            <SummaryItem label="Alternative Name 1" value={reg.proposedName2 || reg.altName1} />
-            <SummaryItem label="Alternative Name 2" value={reg.proposedName3 || reg.altName2} />
+            <SummaryItem label="Proposed Name 1" value={proposedName1} highlight />
+            <SummaryItem label="Alternative Name 1" value={proposedName2} />
+            <SummaryItem label="Alternative Name 2" value={proposedName3} />
             
-            <SummaryItem label="Company Email" value={reg.email || reg.companyEmail} />
-            {!isLLC && <SummaryItem label="Commencement Date" value={reg.commencementDate} />}
-            <SummaryItem label="Nature of Business" value={reg.natureOfBusiness || reg.principalActivity || reg.specificNature} />
+            <SummaryItem label="Company Email" value={email} />
+            {!isLLC && <SummaryItem label="Commencement Date" value={commencementDate} />}
+            <SummaryItem label="Nature of Business" value={natureOfBusiness} />
             {isLLC && <SummaryItem label="Specific Activity" value={reg.specificActivity} />}
-            {isLLC && <SummaryItem label="Company Type" value={reg.companyType} />}
+            {isLLC && <SummaryItem label="Company Type" value={reg.companyType || reg.shareCapital?.companyType} />}
             
-            <div className="md:col-span-2 lg:col-span-3 mt-2"><SummaryItem label="Business Description" value={reg.businessDesc || reg.description} /></div>
-            <div className="md:col-span-2 lg:col-span-3"><SummaryItem label="Registered Address" value={formatFlatAddress(reg.address || reg.registeredAddress)} /></div>
-            {isLLC && <div className="md:col-span-2 lg:col-span-3"><SummaryItem label="Head Office Address" value={formatFlatAddress(reg.headOfficeAddress) || "Same as Registered Address"} /></div>}
+            <div className="md:col-span-2 lg:col-span-3 mt-2"><SummaryItem label="Business Description" value={businessDesc} /></div>
+            <div className="md:col-span-2 lg:col-span-3"><SummaryItem label="Registered Address" value={address} /></div>
+            {isLLC && <div className="md:col-span-2 lg:col-span-3"><SummaryItem label="Head Office Address" value={headOffice || "Same as Registered Address"} /></div>}
           </div>
         </div>
 
@@ -179,7 +210,7 @@ export default async function ViewRegistrationPage({ params }: { params: Promise
               <div>
                 <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Total Issued Capital & Share Classes</p>
                 <div className="p-4 bg-secondary/50 border border-border rounded-xl">
-                  <p className="text-2xl font-black text-foreground mb-4">₦{Number(reg.shareCapital || reg.totalShareCapital || 0).toLocaleString()}</p>
+                  <p className="text-2xl font-black text-foreground mb-4">₦{Number(reg.shareCapital?.totalIssuedCapital || reg.totalShareCapital || 0).toLocaleString()}</p>
                   
                   {shareClassesArray.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -244,7 +275,7 @@ export default async function ViewRegistrationPage({ params }: { params: Promise
               {isLLC ? "Company Officers" : "Proprietors"}
             </div>
             <span className="text-[10px] bg-foreground text-background px-2.5 py-1 rounded-md">
-              {isLLC ? officers.length : proprietors.length} Total
+              {(isLLC ? officers : proprietors).length} Total
             </span>
           </h2>
           
@@ -279,12 +310,12 @@ export default async function ViewRegistrationPage({ params }: { params: Promise
                     <SummaryItem label="ID Number" value={person.idNumber || person.nin || "N/A"} />
                     
                     <div className="md:col-span-2 lg:col-span-3 mt-2">
-                      <SummaryItem label="Residential Address" value={formatFlatAddress(person.residentialAddress || person)} />
+                      <SummaryItem label="Residential Address" value={formatFlatAddress(person.residentialAddress || person.serviceAddress || person)} />
                     </div>
 
                     {isLLC && person.roles?.includes("SHAREHOLDER") && (
                        <div className="md:col-span-2 lg:col-span-3">
-                         <SummaryItem highlight label="Shares Allotted" value={person.sharesAllotted ? `${Number(person.sharesAllotted).toLocaleString()} Units` : 'N/A'} />
+                         <SummaryItem highlight label="Shares Allotted" value={person.sharesAllotted ? `${Number(person.sharesAllotted).toLocaleString()} Units` : 'See Breakdown'} />
                        </div>
                     )}
 
@@ -302,7 +333,7 @@ export default async function ViewRegistrationPage({ params }: { params: Promise
                     )}
 
                     {/* DOCUMENTS FOR BUSINESS NAME PROPRIETORS */}
-                    {!isLLC && person.documents && (
+                    {!isLLC && person.documents && Object.keys(person.documents).length > 0 && (
                        <div className="md:col-span-2 lg:col-span-3 mt-4 pt-4 border-t border-border">
                           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">Uploaded Documents</p>
                           <div className="flex flex-wrap gap-4">
