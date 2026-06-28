@@ -85,12 +85,12 @@ export default function PreviewStep({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 bg-background p-5 rounded-xl border border-border shadow-sm">
             <SummaryItem label="Proposed Name" value={draft.proposedName} />
             <SummaryItem label="Nature of Business" value={draft.specificNature} />
-            <SummaryItem label="Commencement Date" value={companyInfo.commencementDate} />
+            <SummaryItem label="Business Commencement Date" value={companyInfo.commencementDate} />
             <SummaryItem label="Company Email" value={companyInfo.email} />
-            <SummaryItem label="State of Residence" value={companyInfo.state} />
-            <SummaryItem label="City" value={companyInfo.city} />
-            <SummaryItem label="Street Number" value={companyInfo.streetNo} />
-            <div className="md:col-span-2"><SummaryItem label="Full Street Address" value={companyInfo.address} /></div>
+            <SummaryItem label="Company State of Residence" value={companyInfo.state} />
+            <SummaryItem label="Company City" value={companyInfo.city} />
+            <SummaryItem label="Company Street Number" value={companyInfo.streetNo} />
+            <div className="md:col-span-2"><SummaryItem label="Company Street Address" value={companyInfo.address} /></div>
           </div>
         </div>
 
