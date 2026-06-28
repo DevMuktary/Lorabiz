@@ -29,7 +29,7 @@ export default function ViewApplicationPage() {
     if (!id) return;
     const fetchDetails = async () => {
       try {
-        const res = await fetch(`/api/register/details/${id}`);
+        const res = await fetch(`/api/cac/register/details/${id}`);
         const json = await res.json();
         if (json.success) {
           setData(json.data);

@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CircleNotch, CircleDashed } from "@phosphor-icons/react";
-import CompanyStep from "@/components/dashboard/register/biz-name/CompanyStep";
-import ProprietorStep from "@/components/dashboard/register/biz-name/ProprietorStep";
-import DocumentStep from "@/components/dashboard/register/biz-name/DocumentStep";
-import PreviewStep from "@/components/dashboard/register/biz-name/PreviewStep";
-import PaymentModal from "@/components/dashboard/register/biz-name/PaymentModal";
-import { CompanyInfo, Proprietor, isValidEmail, isValidPhone, calculateAge } from "@/components/dashboard/register/biz-name/schema";
+import CompanyStep from "@/components/features/cac/register/biz-name/CompanyStep";
+import ProprietorStep from "@/components/features/cac/register/biz-name/ProprietorStep";
+import DocumentStep from "@/components/features/cac/register/biz-name/DocumentStep";
+import PreviewStep from "@/components/features/cac/register/biz-name/PreviewStep";
+import PaymentModal from "@/components/features/cac/register/biz-name/PaymentModal";
+import { CompanyInfo, Proprietor, isValidEmail, isValidPhone, calculateAge } from "@/components/features/cac/register/biz-name/schema";
 
 export default function RegistrationDetailsPage() {
   const params = useParams();
@@ -40,7 +40,7 @@ export default function RegistrationDetailsPage() {
     if (!id || loading || lockedStatus) return; // Do not autosave if locked
     setSaveStatus("saving");
     try {
-      const res = await fetch(`/api/register/details/${id}`, {
+      const res = await fetch(`/api/cac/register/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyInfo, proprietors, isDraft: true })
@@ -60,7 +60,7 @@ export default function RegistrationDetailsPage() {
   // INITIAL FETCH & MULTI-TAB LOCKOUT CHECK
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/register/details/${id}`).then(res => res.json()).then(json => {
+    fetch(`/api/cac/register/details/${id}`).then(res => res.json()).then(json => {
       if (json.success) {
         
         // LOCKOUT CHECK: If already submitted, lock the screen and boot them out
@@ -126,7 +126,7 @@ export default function RegistrationDetailsPage() {
   const handleOpenPayment = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/register/details/${id}`, {
+      const res = await fetch(`/api/cac/register/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyInfo, proprietors, isDraft: true }) 

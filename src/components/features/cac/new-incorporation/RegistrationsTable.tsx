@@ -1,6 +1,6 @@
 import { MagnifyingGlass, Archive } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import ActionMenu from "./ActionMenu";
+import ActionMenu from "../features/cac/new-incorporation/ActionMenu";
 
 interface TableProps {
   data: any;

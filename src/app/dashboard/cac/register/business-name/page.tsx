@@ -171,7 +171,7 @@ export default function BusinessNameRegistration() {
     setIsCreatingDraft(true);
 
     try {
-      const res = await fetch("/api/register/draft", {
+      const res = await fetch("/api/cac/register/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -190,7 +190,7 @@ export default function BusinessNameRegistration() {
       
       if (data.success) {
         // Redirect directly to the dynamic details page
-        router.push(`/dashboard/register/details/${data.draftId}`);
+        router.push(`/dashboard/cac/register/details/${data.draftId}`);
       } else {
         alert(data.message || "Failed to create draft.");
         setIsCreatingDraft(false);

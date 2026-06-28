@@ -2,78 +2,84 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import { X, Wallet, CreditCard, CircleDashed, CheckCircle } from "@phosphor-icons/react";
 
 interface PaymentModalProps {
   registrationId: string;
   proposedName: string;
-  totalAmount: number;
   onClose: () => void;
 }
 
-export default function PaymentModal({ registrationId, proposedName, totalAmount, onClose }: PaymentModalProps) {
+export default function PaymentModal({ registrationId, proposedName, onClose }: PaymentModalProps) {
   const router = useRouter();
   
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [servicePrice, setServicePrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Used to stop polling when component unmounts
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // 1. SAFELY INJECT PAYSTACK (Prevents "Form" and "CORS" errors)
-    if (typeof window !== "undefined" && !document.getElementById("paystack-script")) {
-      const script = document.createElement("script");
-      script.id = "paystack-script";
-      script.src = "https://js.paystack.co/v1/inline.js";
-      script.async = true;
-      document.head.appendChild(script); // Append to head, not body, to avoid scanner bugs
-    }
-
-    // 2. Load Wallet Balance
-    const fetchWallet = async () => {
+    const fetchData = async () => {
       try {
-        const walletRes = await fetch("/api/user/wallet");
+        // Fetch wallet AND live pricing simultaneously from the database
+        const [walletRes, pricingRes] = await Promise.all([
+          fetch("/api/user/wallet"),
+          fetch("/api/pricing")
+        ]);
+        
         const walletData = await walletRes.json();
+        const pricingData = await pricingRes.json();
 
         if (walletData.success && walletData.wallet) {
           setWalletBalance(Number(walletData.wallet.balance));
+          // Dynamically set the price using the database value instead of hardcoding
+          setServicePrice(pricingData.data?.BUSINESS_NAME || 20000); 
         } else {
           setErrorMsg("Failed to load wallet details.");
         }
       } catch (err) {
-        setErrorMsg("Network error loading wallet.");
+        setErrorMsg("Network error loading wallet and pricing.");
       } finally {
         setLoading(false);
       }
     };
-    fetchWallet();
+    fetchData();
 
     return () => {
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     };
   }, []);
 
+  // =================================================================
+  // FRONTEND IS NOW A DUMB WATCHER: We rely entirely on the Webhook.
+  // We just poll our own database every 2 seconds to see if the status changed.
+  // =================================================================
   const startWebhookPolling = () => {
     setProcessingState("verifying");
     
     pollingIntervalRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/register/llc/details/${registrationId}`);
+        const res = await fetch(`/api/cac/register/details/${registrationId}`);
         const json = await res.json();
         
+        // If the Webhook successfully processed the payment, the status will no longer be UNSUBMITTED
         if (json.success && json.data.status !== "UNSUBMITTED") {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
           setTimeout(() => router.push("/dashboard?success=true"), 2500);
         }
       } catch (e) {
-        // Silent catch
+        // Silent catch: ignore network errors while polling
       }
     }, 2000);
 
+    // Escape hatch: If webhook takes longer than 30 seconds, tell user to check dashboard later
     setTimeout(() => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -89,22 +95,11 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
     setProcessingState("initializing");
     setErrorMsg(null);
 
-    // Safeguard: Ensure Paystack is fully loaded before allowing online click
-    if (method === "ONLINE" && !(window as any).PaystackPop) {
-      setErrorMsg("Payment gateway is still connecting securely. Please wait a moment and click again.");
-      setProcessingState("idle");
-      return;
-    }
-
     try {
       const res = await fetch("/api/payment/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          registrationId, 
-          paymentMethod: method,
-          service: "llc" // Identifies the request in the backend
-        })
+        body: JSON.stringify({ registrationId, paymentMethod: method })
       });
       const data = await res.json();
 
@@ -119,7 +114,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
         setTimeout(() => router.push("/dashboard?success=true"), 2500);
       } else if (method === "ONLINE") {
         if (!data.paystackData.publicKey) {
-          setErrorMsg("Server error: Paystack Public Key is missing from your environment variables.");
+          setErrorMsg("Server error: Paystack Public Key is missing. Trigger a rebuild on Railway.");
           setProcessingState("idle");
           return;
         }
@@ -131,6 +126,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
             amount: data.paystackData.amount,
             ref: data.paystackData.reference,
             callback: function () {
+              // Paystack closed with success. Start polling for Webhook confirmation.
               startWebhookPolling();
             },
             onClose: function () {
@@ -139,20 +135,23 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
           });
           handler.openIframe();
         } catch (err) {
-          setErrorMsg("Failed to open payment modal. Please try again.");
+          setErrorMsg("Payment gateway is still loading. Please wait a second and click again.");
           setProcessingState("idle");
         }
       }
     } catch (error) {
-      setErrorMsg("Network error connecting to the payment server. Please try again.");
+      setErrorMsg("Network error. Please try again.");
       setProcessingState("idle");
     }
   };
 
-  const isWalletInsufficient = walletBalance !== null && totalAmount !== null && walletBalance < totalAmount;
+  const isWalletInsufficient = walletBalance !== null && servicePrice !== null && walletBalance < servicePrice;
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+      
+      <Script src="https://js.paystack.co/v1/inline.js" strategy="lazyOnload" />
+
       <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         
         {/* HEADER */}
@@ -165,7 +164,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
           )}
         </div>
 
-        {/* PROCESSING STATES */}
+        {/* PROCESSING STATES (UPDATED TO DASHBOARD ZIGZAG LOADER) */}
         {processingState !== "idle" ? (
           <div className="p-10 flex flex-col items-center justify-center text-center h-[350px]">
             {processingState === "success" ? (
@@ -176,6 +175,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
               </div>
             ) : (
               <div className="flex flex-col items-center">
+                {/* BIG ZIGZAG LOADER */}
                 <CircleDashed className="animate-spin h-28 w-28 text-indigo-500 mb-8" weight="bold" />
                 <h3 className="font-black text-xl text-slate-900 mb-2">
                   {processingState === "initializing" ? "Initializing Gateway..." : "Verifying with Bank..."}
@@ -199,7 +199,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
           <div className="p-6">
             <div className="text-center mb-8">
               <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Total Fee</p>
-              <h2 className="text-4xl font-black text-slate-900">₦{totalAmount.toLocaleString()}</h2>
+              <h2 className="text-4xl font-black text-slate-900">₦{servicePrice?.toLocaleString() || "..."}</h2>
               <p className="text-slate-500 text-sm font-medium mt-2">Registration for: <span className="font-bold text-slate-800">{proposedName}</span></p>
             </div>
 

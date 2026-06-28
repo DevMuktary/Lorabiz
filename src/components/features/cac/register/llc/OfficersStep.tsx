@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Plus, User, Trash, PencilSimple, WarningCircle, CaretDown, CaretUp } from "@phosphor-icons/react";
-import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema";
+import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/features/cac/register/biz-name/schema";
 
 // FIX: Removed `truncate` and added `break-words` so text wraps instead of turning to `...`. Changed items-center to items-start for multiline text.
 const DetailRow = ({ label, value }: { label: string, value: string }) => (

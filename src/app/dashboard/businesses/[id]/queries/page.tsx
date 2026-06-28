@@ -8,11 +8,11 @@ import {
 import { Button } from "@/components/ui/button";
 
 // Import existing registration steps
-import CompanyStep from "@/components/dashboard/register/biz-name/CompanyStep";
-import ProprietorStep from "@/components/dashboard/register/biz-name/ProprietorStep";
-import DocumentStep from "@/components/dashboard/register/biz-name/DocumentStep";
+import CompanyStep from "@/components/features/cac/register/biz-name/CompanyStep";
+import ProprietorStep from "@/components/features/cac/register/biz-name/ProprietorStep";
+import DocumentStep from "@/components/features/cac/register/biz-name/DocumentStep";
 
-import { CompanyInfo, Proprietor } from "@/components/dashboard/register/biz-name/schema";
+import { CompanyInfo, Proprietor } from "@/components/features/cac/register/biz-name/schema";
 
 export default function QueryResolutionPage() {
   const params = useParams();
@@ -38,7 +38,7 @@ export default function QueryResolutionPage() {
     
     const fetchDetails = async () => {
       try {
-        const res = await fetch(`/api/register/details/${id}`);
+        const res = await fetch(`/api/cac/register/details/${id}`);
         const json = await res.json();
         
         if (json.success) {
@@ -86,7 +86,7 @@ export default function QueryResolutionPage() {
     // BACKGROUND POLLING: Check every 5 seconds if someone else fixed it
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/register/details/${id}`);
+        const res = await fetch(`/api/cac/register/details/${id}`);
         const json = await res.json();
         if (json.success && json.data.status !== "QUERIED") {
           setIsAlreadyResolved(true);
@@ -108,7 +108,7 @@ export default function QueryResolutionPage() {
   const handleSubmitResolution = async () => {
     setSubmitState("submitting");
     try {
-      const saveRes = await fetch(`/api/register/details/${id}`, {
+      const saveRes = await fetch(`/api/cac/register/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyInfo, proprietors, isDraft: true })
@@ -116,7 +116,7 @@ export default function QueryResolutionPage() {
 
       if (!saveRes.ok) throw new Error("Failed to save changes");
 
-      const resolveRes = await fetch(`/api/register/details/${id}/resolve`, { method: "POST" });
+      const resolveRes = await fetch(`/api/cac/register/details/${id}/resolve`, { method: "POST" });
       
       if (!resolveRes.ok) throw new Error("Failed to clear query status");
 

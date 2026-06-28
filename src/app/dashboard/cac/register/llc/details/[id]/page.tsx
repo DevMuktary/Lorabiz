@@ -7,15 +7,15 @@ import { Button } from "@/components/ui/button";
 import { DESIGNATED_COMPANIES } from "@/lib/share-capital-data";
 
 // Import all 9 Step Components
-import CompanyDetailsStep from "@/components/dashboard/register/llc/CompanyDetailsStep";
-import ArticlesStep from "@/components/dashboard/register/llc/ArticlesStep";
-import MemorandumStep from "@/components/dashboard/register/llc/MemorandumStep";
-import OfficersStep from "@/components/dashboard/register/llc/OfficersStep";
-import ShareCapitalStep from "@/components/dashboard/register/llc/ShareCapitalStep";
-import PscStep from "@/components/dashboard/register/llc/PscStep";
-import ComplianceStep from "@/components/dashboard/register/llc/ComplianceStep";
-import UploadsStep from "@/components/dashboard/register/llc/UploadsStep";
-import PreviewStep from "@/components/dashboard/register/llc/PreviewStep";
+import CompanyDetailsStep from "@/components/features/cac/register/llc/CompanyDetailsStep";
+import ArticlesStep from "@/components/features/cac/register/llc/ArticlesStep";
+import MemorandumStep from "@/components/features/cac/register/llc/MemorandumStep";
+import OfficersStep from "@/components/features/cac/register/llc/OfficersStep";
+import ShareCapitalStep from "@/components/features/cac/register/llc/ShareCapitalStep";
+import PscStep from "@/components/features/cac/register/llc/PscStep";
+import ComplianceStep from "@/components/features/cac/register/llc/ComplianceStep";
+import UploadsStep from "@/components/features/cac/register/llc/UploadsStep";
+import PreviewStep from "@/components/features/cac/register/llc/PreviewStep";
 
 export default function LlcRegistrationDetailsPage() {
   const params = useParams();
@@ -61,7 +61,7 @@ export default function LlcRegistrationDetailsPage() {
   useEffect(() => {
     if (!id) return;
     
-    fetch(`/api/register/llc/details/${id}`)
+    fetch(`/api/cac/register/llc/details/${id}`)
       .then(res => res.json())
       .then(json => {
         if (json.success) {
@@ -123,7 +123,7 @@ export default function LlcRegistrationDetailsPage() {
 
     setSaveStatus("saving");
     const timer = setTimeout(() => {
-      fetch(`/api/register/llc/details/${id}`, {
+      fetch(`/api/cac/register/llc/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...companyDetails, headOfficeSameAsRegistered: false, isDraft: true })
@@ -318,7 +318,7 @@ export default function LlcRegistrationDetailsPage() {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     
     try {
-      const res = await fetch(`/api/register/llc/details/${id}`, {
+      const res = await fetch(`/api/cac/register/llc/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...companyDetails, headOfficeSameAsRegistered: false, isDraft: false })

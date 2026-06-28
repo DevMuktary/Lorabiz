@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Info, WarningCircle, X, ListMagnifyingGlass, CaretDown, Coins, UserPlus } from "@phosphor-icons/react";
 import { DESIGNATED_COMPANIES, numberToWordsNaira } from "@/lib/share-capital-data";
-import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema";
+import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/features/cac/register/biz-name/schema";
 
 const formatNum = (val: any) => (val === "" || val === null || isNaN(val)) ? "" : Number(val).toLocaleString("en-US");
 const cleanNum = (val: string) => val.replace(/\D/g, "");

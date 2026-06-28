@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     }
 
     // Success! We DO NOT delete the code here. We leave it so the final 
-    // /api/register route can safely consume it during the final user creation.
+    // /api/cac/register route can safely consume it during the final user creation.
     return NextResponse.json({ message: "OTP verified successfully" }, { status: 200 });
 
   } catch (error) {

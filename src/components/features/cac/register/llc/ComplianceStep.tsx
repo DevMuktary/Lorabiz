@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileText, CheckCircle, WarningCircle, CaretDown, Info } from "@phosphor-icons/react";
-import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema";
+import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/features/cac/register/biz-name/schema";
 
 export default function ComplianceStep({ data, updateData, showErrors }: any) {
   const [touched, setTouched] = useState<Record<string, boolean>>({});

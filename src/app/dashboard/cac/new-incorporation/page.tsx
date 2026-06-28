@@ -58,7 +58,7 @@ export default function RegistrationsHubPage() {
   // Handler for actions clicked inside the table
   const handleExecuteAction = (action: string, id: string) => {
     // Basic fallback routing if your ActionMenu relies on the parent
-    router.push(`/dashboard/register/details/${id}`);
+    router.push(`/dashboard/cac/register/details/${id}`);
   };
 
   // Safe defaults if API hasn't loaded yet

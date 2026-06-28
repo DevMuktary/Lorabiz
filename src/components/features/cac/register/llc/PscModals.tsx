@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { WarningCircle, X, UserPlus, PencilSimple } from "@phosphor-icons/react";
-import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema";
+import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/features/cac/register/biz-name/schema";
 
 // ==========================================
 // 1. EDIT EXISTING PSC MODAL

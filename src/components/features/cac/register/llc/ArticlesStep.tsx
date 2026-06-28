@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Info, Plus, Trash, PencilSimple, ListDashes, CheckCircle, Eye, X, WarningCircle, CaretDown } from "@phosphor-icons/react";
 import { CAMA_ARTICLES_DEFAULT } from "@/lib/cama-articles";
-import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/dashboard/register/biz-name/schema"; 
+import { COUNTRY_CODES, NIGERIA_DATA } from "@/components/features/cac/register/biz-name/schema"; 
 
 export default function ArticlesStep({ data, updateData, showErrors }: any) {
   const [modalState, setModalState] = useState<{ isOpen: boolean; mode: "add" | "edit"; idx: number | null }>({ isOpen: false, mode: "add", idx: null });

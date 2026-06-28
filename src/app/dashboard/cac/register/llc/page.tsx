@@ -190,7 +190,7 @@ export default function CompanyLlcRegistration() {
     setIsCreatingDraft(true);
 
     try {
-      const res = await fetch("/api/register/draft", {
+      const res = await fetch("/api/cac/register/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -209,7 +209,7 @@ export default function CompanyLlcRegistration() {
       
       if (data.success) {
         // Redirects to the massive 9-step LLC Details UI we will build next
-        router.push(`/dashboard/register/llc/details/${data.draftId}`);
+        router.push(`/dashboard/cac/register/llc/details/${data.draftId}`);
       } else {
         alert(data.message || "Failed to create draft.");
         setIsCreatingDraft(false);

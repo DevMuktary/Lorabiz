@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { ArrowRight, Sparkle, X, Info, Plus, Spinner } from "@phosphor-icons/react";
-import FundWalletModal from "@/components/dashboard/FundWalletModal";
+import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 
 const SERVICES = [
   {
