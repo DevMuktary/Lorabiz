@@ -22,25 +22,25 @@ export default function RegistrationsTable({
 }: TableProps) {
   
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden mt-8">
+    <div className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden mt-8 transition-colors duration-300">
       
       {/* Toolbar with Full Filters */}
-      <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row justify-between gap-4 bg-slate-50/50">
+      <div className="p-5 border-b border-border flex flex-col lg:flex-row justify-between gap-4 bg-secondary/30">
         <div className="relative flex-1 max-w-md">
-          <MagnifyingGlass className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+          <MagnifyingGlass className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" weight="bold" />
           <input 
             type="text" 
             value={search} 
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Search by proposed name..." 
-            className="pl-11 pr-4 h-12 border-2 border-slate-200 rounded-xl text-sm font-medium focus:ring-[#ff3f7a] focus:border-[#ff3f7a] w-full outline-none transition-all bg-white"
+            className="pl-11 pr-4 h-12 border-2 border-border rounded-xl text-sm font-medium focus:ring-primary focus:border-primary w-full outline-none transition-all bg-background text-foreground placeholder:text-muted-foreground"
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
             <select 
               value={typeFilter} 
               onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }} 
-              className="h-12 px-4 rounded-xl border-2 border-slate-200 bg-white font-bold text-slate-600 outline-none focus:border-[#ff3f7a]"
+              className="h-12 px-4 rounded-xl border-2 border-border bg-background font-bold text-foreground outline-none focus:border-primary transition-colors cursor-pointer"
             >
               <option value="ALL">All Entities</option>
               <option value="BUSINESS_NAME">Business Name</option>
@@ -52,7 +52,7 @@ export default function RegistrationsTable({
             <select 
               value={statusFilter} 
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} 
-              className="h-12 px-4 rounded-xl border-2 border-slate-200 bg-white font-bold text-slate-600 outline-none focus:border-[#ff3f7a]"
+              className="h-12 px-4 rounded-xl border-2 border-border bg-background font-bold text-foreground outline-none focus:border-primary transition-colors cursor-pointer"
             >
               <option value="ALL">All Statuses</option>
               <option value="UNSUBMITTED">Not Submitted</option>
@@ -66,7 +66,7 @@ export default function RegistrationsTable({
       <div className={`w-full overflow-x-auto transition-opacity duration-200 min-h-[350px] ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
         <table className="w-full text-left border-collapse text-sm whitespace-nowrap min-w-[800px]">
           <thead>
-            <tr className="bg-slate-50 text-slate-400 border-b border-slate-100">
+            <tr className="bg-secondary/50 text-muted-foreground border-b border-border">
               <th className="px-6 py-4 font-bold text-xs tracking-wider uppercase">Business Name</th>
               <th className="px-6 py-4 font-bold text-xs tracking-wider uppercase">Entity Type</th>
               <th className="px-6 py-4 font-bold text-xs tracking-wider uppercase">Last Updated</th>
@@ -74,32 +74,36 @@ export default function RegistrationsTable({
               <th className="px-6 py-4 font-bold text-xs tracking-wider uppercase text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border/50">
             {data?.tableData?.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-20 text-center text-slate-500">
-                  <Archive className="h-12 w-12 mx-auto text-slate-300 mb-4" />
-                  <p className="font-bold text-lg text-slate-700">No records found</p>
+                <td colSpan={5} className="px-6 py-20 text-center text-muted-foreground">
+                  <Archive className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" weight="duotone" />
+                  <p className="font-bold text-lg text-foreground">No records found</p>
                   <p className="text-sm font-medium mt-1">Try adjusting your filters or search term.</p>
                 </td>
               </tr>
             ) : (
               data?.tableData?.map((reg: any) => (
-                <tr key={reg.id} className="hover:bg-slate-50/50 transition-colors group">
+                <tr key={reg.id} className="hover:bg-secondary/30 transition-colors group">
                   <td className="px-6 py-5">
-                    <p className="font-black text-slate-900">{reg.proposedName}</p>
-                    <p className="text-xs font-semibold text-slate-400 mt-1 uppercase">{reg.id.slice(0,8)}</p>
+                    <p className="font-black text-foreground">{reg.proposedName || "Unnamed Registration"}</p>
+                    <p className="text-xs font-bold text-muted-foreground mt-1 uppercase">{reg.id.slice(0,8)}</p>
                   </td>
-                  <td className="px-6 py-5 font-bold text-slate-600">
-                    {reg.businessType === 'BUSINESS_NAME' ? 'Business Name' : reg.businessType}
+                  <td className="px-6 py-5 font-bold text-muted-foreground">
+                    {/* Safely handle Business Names, LLCs, and future NGOs */}
+                    {reg.businessType === 'BUSINESS_NAME' ? 'Business Name' : 
+                     reg.companyType || reg.entityType || 'Company (LLC)'}
                   </td>
-                  <td className="px-6 py-5 font-semibold text-slate-500">{new Date(reg.updatedAt).toLocaleDateString()}</td>
+                  <td className="px-6 py-5 font-bold text-muted-foreground">
+                    {new Date(reg.updatedAt).toLocaleDateString()}
+                  </td>
                   <td className="px-6 py-5">
                     <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black tracking-widest uppercase
-                      ${reg.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : ''}
-                      ${reg.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : ''}
-                      ${reg.status === 'QUERIED' ? 'bg-red-100 text-red-700' : ''}
-                      ${reg.status === 'UNSUBMITTED' ? 'bg-slate-100 text-slate-600' : ''}
+                      ${reg.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : ''}
+                      ${reg.status === 'PENDING' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : ''}
+                      ${reg.status === 'QUERIED' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : ''}
+                      ${reg.status === 'UNSUBMITTED' ? 'bg-secondary text-muted-foreground' : ''}
                     `}>
                       {reg.status}
                     </span>
@@ -115,13 +119,27 @@ export default function RegistrationsTable({
       </div>
 
       {data?.totalPages > 1 && (
-        <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
-          <span className="text-sm font-bold text-slate-500">
-            Page <span className="text-slate-900">{page}</span> of {data.totalPages}
+        <div className="p-4 border-t border-border flex items-center justify-between bg-secondary/30">
+          <span className="text-sm font-bold text-muted-foreground">
+            Page <span className="text-foreground">{page}</span> of {data.totalPages}
           </span>
           <div className="flex gap-2">
-            <Button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} variant="outline" className="h-9 font-bold rounded-xl border-2 border-slate-200 text-slate-600">Prev</Button>
-            <Button onClick={() => setPage(p => Math.min(data.totalPages, p + 1))} disabled={page === data.totalPages} variant="outline" className="h-9 font-bold rounded-xl border-2 border-slate-200 text-slate-600">Next</Button>
+            <Button 
+              onClick={() => setPage((p: number) => Math.max(1, p - 1))} 
+              disabled={page === 1} 
+              variant="outline" 
+              className="h-9 font-bold rounded-xl border-2 border-border text-foreground hover:bg-secondary disabled:opacity-50"
+            >
+              Prev
+            </Button>
+            <Button 
+              onClick={() => setPage((p: number) => Math.min(data.totalPages, p + 1))} 
+              disabled={page === data.totalPages} 
+              variant="outline" 
+              className="h-9 font-bold rounded-xl border-2 border-border text-foreground hover:bg-secondary disabled:opacity-50"
+            >
+              Next
+            </Button>
           </div>
         </div>
       )}
