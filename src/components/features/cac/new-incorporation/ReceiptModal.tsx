@@ -6,20 +6,27 @@ import { X, DownloadSimple, CheckCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 interface ReceiptModalProps {
-  serviceName?: string;
-  businessName: string;
-  reference: string;
-  date: string;
-  amount: number;
+  reg: any; // We now accept the entire registration object
   onClose: () => void;
 }
 
-export default function ReceiptModal({ serviceName = "Business Name", businessName, reference, date, amount, onClose }: ReceiptModalProps) {
+export default function ReceiptModal({ reg, onClose }: ReceiptModalProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Safe formatting so it never returns NaN
-  const safeAmount = Number(amount) || 0;
+  if (!reg) return null;
+
+  // Extract variables safely from the registration object
+  const businessName = reg.proposedName || "Unnamed Registration";
+  const reference = reg.transactionRef || `SRV_${reg.id.slice(0,8).toUpperCase()}`;
+  const date = new Date(reg.updatedAt).toLocaleDateString();
+  const safeAmount = Number(reg.amountPaid) || 0;
   const formattedAmount = safeAmount.toLocaleString();
+  
+  // Determine the service name based on our backend _appType
+  let serviceName = "Business";
+  if (reg._appType === "BUSINESS_NAME") serviceName = "Business Name";
+  if (reg._appType === "LLC") serviceName = "Company (LLC)";
+  if (reg._appType === "NGO") serviceName = "Incorporated Trustees";
 
   const handleDownloadPDF = () => {
     setIsDownloading(true);
@@ -34,9 +41,9 @@ export default function ReceiptModal({ serviceName = "Business Name", businessNa
       doc.text("PAID", 40, 150, { angle: 45 });
 
       // Header
-      doc.setTextColor(255, 63, 122);
+      doc.setTextColor(199, 45, 118); // #c72d76
       doc.setFontSize(28);
-      doc.text("LumeBiz.", 20, 30);
+      doc.text("Lorabiz.", 20, 30);
 
       doc.setTextColor(100, 116, 139);
       doc.setFontSize(10);
@@ -82,18 +89,18 @@ export default function ReceiptModal({ serviceName = "Business Name", businessNa
       doc.line(20, 105, 190, 105);
       doc.setFontSize(12);
       doc.text(`Processing Fee and ${serviceName} Registration`, 20, 95);
-      doc.text(`NGN ${formattedAmount}`, 190, 95, { align: "right" }); // BUG FIX: Aligned right perfectly
+      doc.text(`NGN ${formattedAmount}`, 190, 95, { align: "right" });
 
       // Totals
       doc.setDrawColor(226, 232, 240);
       doc.line(110, 120, 190, 120);
-      doc.setDrawColor(255, 63, 122);
+      doc.setDrawColor(199, 45, 118); // #c72d76
       doc.setLineWidth(1);
       doc.line(110, 135, 190, 135);
 
       doc.setFontSize(14);
       doc.text("TOTAL", 110, 130);
-      doc.setTextColor(255, 63, 122);
+      doc.setTextColor(199, 45, 118); // #c72d76
       doc.text(`NGN ${formattedAmount}`, 190, 130, { align: "right" });
 
       // Footer
@@ -104,9 +111,9 @@ export default function ReceiptModal({ serviceName = "Business Name", businessNa
       
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
-      doc.text("Thank you for choosing LumeBiz. Support: hello@lumebiz.com", 105, 256, { align: "center" });
+      doc.text("Thank you for choosing Lorabiz. Support: hello@lorabiz.com", 105, 256, { align: "center" });
 
-      doc.save(`LumeBiz_Receipt_${reference}.pdf`);
+      doc.save(`Lorabiz_Receipt_${reference}.pdf`);
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
@@ -134,7 +141,7 @@ export default function ReceiptModal({ serviceName = "Business Name", businessNa
 
              <div className="flex justify-between items-start mb-6 pb-6 relative z-10" style={{ borderBottomColor: "#f1f5f9", borderBottomWidth: "1px", borderBottomStyle: "solid" }}>
                 <div>
-                  <h1 className="text-2xl font-black tracking-tighter" style={{ color: "#ff3f7a" }}>LumeBiz<span style={{ color: "#0f172a" }}>.</span></h1>
+                  <h1 className="text-2xl font-black tracking-tighter" style={{ color: "#c72d76" }}>Lorabiz<span style={{ color: "#0f172a" }}>.</span></h1>
                   <p className="text-[10px] md:text-xs font-medium mt-1" style={{ color: "#64748b" }}>Fast & Secure Business Registrations</p>
                 </div>
                 <div className="text-right">
@@ -170,9 +177,9 @@ export default function ReceiptModal({ serviceName = "Business Name", businessNa
 
              <div className="flex justify-end relative z-10 mb-8">
                <div className="w-[180px]">
-                 <div className="flex justify-between py-3" style={{ borderTopColor: "#e2e8f0", borderTopWidth: "2px", borderTopStyle: "solid", borderBottomColor: "#ff3f7a", borderBottomWidth: "4px", borderBottomStyle: "solid" }}>
+                 <div className="flex justify-between py-3" style={{ borderTopColor: "#e2e8f0", borderTopWidth: "2px", borderTopStyle: "solid", borderBottomColor: "#c72d76", borderBottomWidth: "4px", borderBottomStyle: "solid" }}>
                    <p className="text-sm font-black uppercase" style={{ color: "#0f172a" }}>Total</p>
-                   <p className="text-base font-black" style={{ color: "#ff3f7a" }}>₦{formattedAmount}</p>
+                   <p className="text-base font-black" style={{ color: "#c72d76" }}>₦{formattedAmount}</p>
                  </div>
                </div>
              </div>
@@ -182,13 +189,13 @@ export default function ReceiptModal({ serviceName = "Business Name", businessNa
                   <CheckCircle weight="fill" color="#10b981" className="h-4 w-4" />
                   <span className="font-bold text-xs" style={{ color: "#334155" }}>Payment Verified</span>
                 </div>
-                <p className="text-[9px] font-medium" style={{ color: "#94a3b8" }}>Thank you for choosing LumeBiz. Support: hello@lumebiz.com</p>
+                <p className="text-[9px] font-medium" style={{ color: "#94a3b8" }}>Thank you for choosing Lorabiz. Support: hello@lorabiz.com</p>
              </div>
           </div>
         </div>
 
         <div className="px-5 py-4 bg-[#ffffff] border-t border-[#e2e8f0] flex justify-end shrink-0 z-50">
-          <Button onClick={handleDownloadPDF} disabled={isDownloading} className="w-full md:w-auto h-12 px-8 bg-[#0f172a] hover:bg-[#1e293b] text-[#ffffff] font-bold rounded-xl shadow-md flex items-center justify-center">
+          <Button onClick={handleDownloadPDF} disabled={isDownloading} className="w-full md:w-auto h-12 px-8 bg-[#0f172a] hover:bg-[#1e293b] text-[#ffffff] font-bold rounded-xl shadow-md flex items-center justify-center cursor-pointer">
             {isDownloading ? "Generating..." : <><DownloadSimple weight="bold" className="mr-2 h-5 w-5" /> Download PDF</>}
           </Button>
         </div>
