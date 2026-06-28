@@ -112,8 +112,6 @@ export default async function ViewRegistrationPage({ params }: { params: Promise
   
   // LLC Data
   const officers = parseJson(reg.officers || reg.personnel, []);
-  
-  // FIXED: Explicitly parse shareCapital first to extract nested arrays
   const shareCapitalData = parseJson(reg.shareCapital, {});
   const totalCapital = reg.totalShareCapital || shareCapitalData.totalIssuedCapital || 0;
   const rawShares = parseJson(reg.shareClasses, null) || shareCapitalData.shareClasses;
@@ -126,20 +124,22 @@ export default async function ViewRegistrationPage({ params }: { params: Promise
 
   // Business Name Data
   const proprietors = parseJson(reg.proprietors || reg.personnel, []);
-  const companyInfo = parseJson(reg.companyInfo, {});
-  const draft = parseJson(reg.draft, {});
 
-  // Normalized Display Variables
-  const proposedName1 = reg.proposedName1 || reg.proposedName || draft.proposedName || companyInfo.proposedName1;
-  const proposedName2 = reg.proposedName2 || reg.altName1 || draft.altName1;
-  const proposedName3 = reg.proposedName3 || reg.altName2 || draft.altName2;
-  const email = reg.email || reg.companyEmail || companyInfo.email;
+  // Normalized Display Variables (Mapping flat DB columns for BN, JSON for LLC)
+  const proposedName1 = reg.proposedName1 || reg.proposedName;
+  const proposedName2 = reg.proposedName2 || reg.altName1;
+  const proposedName3 = reg.proposedName3 || reg.altName2;
+  const email = reg.email || reg.companyEmail;
   
-  const natureOfBusiness = reg.natureOfBusiness || reg.principalActivity || draft.specificNature;
-  const businessDesc = reg.businessDesc || reg.description || draft.specificNature || companyInfo.specificNature;
-  const commencementDate = reg.commencementDate || companyInfo.commencementDate;
+  const natureOfBusiness = reg.natureOfBusiness || reg.principalActivity || reg.specificNature;
+  const businessDesc = reg.businessDesc || reg.description || reg.specificNature;
+  const commencementDate = reg.commencementDate;
   
-  const address = formatFlatAddress(reg.address || reg.registeredAddress || companyInfo.address || companyInfo);
+  // Address logic: LLC uses JSON object, BN uses flat strings
+  const address = isLLC 
+    ? formatFlatAddress(reg.address || reg.registeredAddress)
+    : [reg.companyStreetNo, reg.companyAddress, reg.companyCity, reg.companyState].filter(Boolean).join(", ");
+    
   const headOffice = formatFlatAddress(reg.headOfficeAddress);
 
   const activeArticles = reg.useDefaultArticles 
