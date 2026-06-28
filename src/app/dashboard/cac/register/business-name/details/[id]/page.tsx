@@ -17,12 +17,14 @@ export default function RegistrationDetailsPage() {
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
+  // NEW: Track the highest unlocked step so they can click backward/forward safely
+  const [highestStepReached, setHighestStepReached] = useState(1); 
+  
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   
-  // NEW: State to lock the screen if someone else already submitted it
   const [lockedStatus, setLockedStatus] = useState<string | null>(null);
   
   const [toast, setToast] = useState<{show: boolean, msg: string, type: "error" | "success"}>({ show: false, msg: "", type: "success" });
@@ -37,7 +39,7 @@ export default function RegistrationDetailsPage() {
 
   // AUTO-SAVE LOGIC
   const saveDraftToDB = useCallback(async () => {
-    if (!id || loading || lockedStatus) return; // Do not autosave if locked
+    if (!id || loading || lockedStatus) return; 
     setSaveStatus("saving");
     try {
       const res = await fetch(`/api/cac/register/business-name/details/${id}`, {
@@ -57,16 +59,14 @@ export default function RegistrationDetailsPage() {
     return () => clearTimeout(timer);
   }, [companyInfo, proprietors, saveDraftToDB]);
 
-  // INITIAL FETCH & MULTI-TAB LOCKOUT CHECK
+  // INITIAL FETCH
   useEffect(() => {
     if (!id) return;
     fetch(`/api/cac/register/business-name/details/${id}`).then(res => res.json()).then(json => {
       if (json.success) {
-        
-        // LOCKOUT CHECK: If already submitted, lock the screen and boot them out
         if (json.data.status !== "UNSUBMITTED") {
           setLockedStatus(json.data.status);
-          setTimeout(() => router.push("/dashboard/new-incorporation"), 3500);
+          setTimeout(() => router.push("/dashboard/cac/new-incorporation"), 3500);
           setLoading(false);
           return;
         }
@@ -119,7 +119,12 @@ export default function RegistrationDetailsPage() {
       if (missingDocs) { showToast("Ensure NIN, Passport, and Signature are uploaded for all proprietors.", "error"); return; }
     }
 
-    setCurrentStep(prev => prev + 1);
+    setCurrentStep(prev => {
+      const next = prev + 1;
+      // Unlock the next step if they successfully validate through the current one
+      setHighestStepReached(h => Math.max(h, next));
+      return next;
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -148,13 +153,13 @@ export default function RegistrationDetailsPage() {
   // MULTI-TAB / ALREADY SUBMITTED LOCKOUT SCREEN
   if (lockedStatus) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50/50">
-        <CircleDashed className="animate-spin h-28 w-28 text-[#ff3f7a] mb-8" weight="bold" />
-        <h2 className="text-3xl font-black text-slate-900 mb-3 text-center">Application Locked</h2>
-        <p className="text-slate-500 font-medium text-lg text-center max-w-md">
-          This application is already submitted and is currently in <span className="font-bold text-[#ff3f7a]">{lockedStatus}</span> status.
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+        <CircleDashed className="animate-spin h-28 w-28 text-primary mb-8" weight="bold" />
+        <h2 className="text-3xl font-black text-foreground mb-3 text-center">Application Locked</h2>
+        <p className="text-muted-foreground font-medium text-lg text-center max-w-md">
+          This application is already submitted and is currently in <span className="font-bold text-primary">{lockedStatus}</span> status.
         </p>
-        <p className="text-sm font-bold tracking-widest uppercase text-slate-400 mt-8 animate-pulse">
+        <p className="text-sm font-bold tracking-widest uppercase text-muted-foreground/50 mt-8 animate-pulse">
           Redirecting to Dashboard...
         </p>
       </div>
@@ -164,14 +169,14 @@ export default function RegistrationDetailsPage() {
   // BIG ZIGZAG LOADER FOR INITIAL PAGE LOAD
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <CircleDashed className="animate-spin h-28 w-28 text-[#ff3f7a]" weight="bold" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <CircleDashed className="animate-spin h-28 w-28 text-primary" weight="bold" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-16 pt-8 px-4 font-sans relative">
+    <div className="max-w-4xl mx-auto pb-16 pt-4 px-4 font-sans relative">
       
       {toast.show && (
         <div className={`fixed bottom-10 right-4 z-[9999] animate-in slide-in-from-right flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-bold ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
@@ -179,47 +184,69 @@ export default function RegistrationDetailsPage() {
         </div>
       )}
 
-      {/* TEXT-BASED STEPPER & SIMPLE AUTOSAVE */}
-      <div className="flex justify-between items-end mb-8 border-b border-slate-200 pb-4">
+      {/* STICKY TEXT-BASED STEPPER */}
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md pb-4 pt-4 mb-8 border-b border-border flex justify-between items-end">
         <div className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full md:w-auto">
           {[ 
             { step: 1, title: "Company Information" }, 
             { step: 2, title: "Proprietor Information" }, 
             { step: 3, title: "Document Uploads" }, 
             { step: 4, title: "Preview" }
-          ].map((s) => (
-            <div key={s.step} className={`flex items-center gap-2 whitespace-nowrap text-sm ${currentStep === s.step ? "text-[#ff3f7a] font-black" : currentStep > s.step ? "text-slate-800 font-bold" : "text-slate-400 font-medium"}`}>
-              <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold ${currentStep === s.step ? "bg-[#ff3f7a] text-white" : currentStep > s.step ? "bg-slate-200 text-slate-800" : "bg-slate-100"}`}>{s.step}</span>
-              {s.title}
-            </div>
-          ))}
+          ].map((s) => {
+            const isAccessible = s.step <= highestStepReached;
+            const isActive = currentStep === s.step;
+            const isPast = currentStep > s.step;
+
+            return (
+              <button 
+                key={s.step} 
+                onClick={() => isAccessible && setCurrentStep(s.step)}
+                disabled={!isAccessible}
+                className={`flex items-center gap-2 whitespace-nowrap text-sm transition-colors ${
+                  isActive ? "text-primary font-black" : 
+                  isPast ? "text-foreground font-bold hover:text-primary cursor-pointer" : 
+                  isAccessible ? "text-muted-foreground font-medium hover:text-foreground cursor-pointer" : 
+                  "text-muted-foreground/40 font-medium cursor-not-allowed"
+                }`}
+              >
+                <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold transition-colors ${
+                  isActive ? "bg-primary text-primary-foreground" : 
+                  isPast ? "bg-secondary text-foreground border border-border" : 
+                  "bg-secondary/50 text-muted-foreground/50"
+                }`}>
+                  {s.step}
+                </span>
+                {s.title}
+              </button>
+            );
+          })}
         </div>
-        <div className="hidden md:block text-xs font-bold text-slate-400">
+        <div className="hidden md:block text-xs font-bold text-muted-foreground">
           {saveStatus === "saving" && "Saving draft..."}
           {saveStatus === "saved" && "Saved"}
           {saveStatus === "error" && <span className="text-red-500">Save failed</span>}
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden relative">
+      <div className="bg-card rounded-3xl border border-border shadow-xl overflow-hidden relative">
         {currentStep === 1 && <CompanyStep draft={draft} companyInfo={companyInfo} setCompanyInfo={setCompanyInfo} />}
         {currentStep === 2 && <ProprietorStep proprietors={proprietors} setProprietors={setProprietors} isSoleProprietor={draft.ownershipType === "SOLE"} />}
         {currentStep === 3 && <DocumentStep proprietors={proprietors} setProprietors={setProprietors} />}
         {currentStep === 4 && <PreviewStep draft={draft} companyInfo={companyInfo} proprietors={proprietors} setCurrentStep={setCurrentStep} />}
 
-        <div className="bg-slate-50 border-t border-slate-200 p-6 flex justify-between">
-          <Button variant="outline" onClick={() => setCurrentStep(p => p - 1)} disabled={currentStep === 1 || isSubmitting} className="h-12 px-6 rounded-xl font-bold bg-white">
+        <div className="bg-secondary/30 border-t border-border p-6 flex justify-between">
+          <Button variant="outline" onClick={() => setCurrentStep(p => p - 1)} disabled={currentStep === 1 || isSubmitting} className="h-12 px-6 rounded-xl font-bold bg-background text-foreground border-border hover:bg-secondary cursor-pointer">
             Back
           </Button>
           {currentStep < 4 ? (
-             <Button onClick={handleNextStep} className="h-12 px-8 bg-[#ff3f7a] text-white font-bold rounded-xl shadow-md hover:bg-[#e02b62]">
+             <Button onClick={handleNextStep} className="h-12 px-8 bg-primary text-primary-foreground font-bold rounded-xl shadow-md hover:opacity-90 cursor-pointer">
                Continue
              </Button>
           ) : (
              <Button 
                 onClick={handleOpenPayment} 
                 disabled={isSubmitting} 
-                className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center"
+                className="h-12 px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl shadow-lg flex items-center cursor-pointer"
               >
                {isSubmitting ? <><CircleNotch className="animate-spin h-5 w-5 mr-2" weight="bold" /> Loading...</> : "Checkout & Submit"}
              </Button>
