@@ -121,7 +121,7 @@ export default function BusinessNameRegistration() {
   // --- VALIDATION HELPER FOR ILLEGAL SUFFIXES ---
   const getIllegalSuffixError = (name: string) => {
     if (!name) return "";
-    const illegalWords = ["LTD", "LIMITED", "PLC", "INC", "INCORPORATED"];
+    const illegalWords = ["LTD", "LIMITED", "PLC", "INC", "INCORPORATED", "NIGERIAN"];
     const words = name.toUpperCase().split(/[\s,.-]+/); // Split by space or punctuation
     const found = words.find(w => illegalWords.includes(w));
     if (found) {
