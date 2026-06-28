@@ -41,7 +41,7 @@ export default function CompanyStep({
             {companyInfo.email.length > 0 && !isValidEmail(companyInfo.email) && <p className="text-red-500 text-xs font-bold mt-1">Invalid email format</p>}
           </div>
           <div className="space-y-1">
-            <Label className="font-bold">Commencement Date <span className="text-red-500">*</span></Label>
+            <Label className="font-bold">Business Commencement Date <span className="text-red-500">*</span></Label>
             <Input 
               type="date" 
               value={companyInfo.commencementDate} 
@@ -54,7 +54,7 @@ export default function CompanyStep({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-1">
-            <Label className="font-bold">State of Residence <span className="text-red-500">*</span></Label>
+            <Label className="font-bold">Company State of Residence <span className="text-red-500">*</span></Label>
             <select 
               value={companyInfo.state} 
               onChange={e => setCompanyInfo({...companyInfo, state: e.target.value})} 
@@ -75,7 +75,7 @@ export default function CompanyStep({
             {!companyInfo.city && <p className="text-red-500 text-xs font-bold mt-1">Required</p>}
           </div>
           <div className="space-y-1">
-            <Label className="font-bold">Street Number <span className="text-red-500">*</span></Label>
+            <Label className="font-bold">Company Street Number <span className="text-red-500">*</span></Label>
             <Input 
               value={companyInfo.streetNo} 
               onChange={e => setCompanyInfo({...companyInfo, streetNo: e.target.value})} 
@@ -86,9 +86,9 @@ export default function CompanyStep({
         </div>
 
         <div className="space-y-1">
-          <Label className="font-bold">Full Street Address <span className="text-red-500">*</span></Label>
+          <Label className="font-bold">Company Street Address <span className="text-red-500">*</span></Label>
           <Input 
-            placeholder="E.g. 12 Awolowo Way, Ikeja" 
+            placeholder="E.g. 12 Awolowo Way" 
             value={companyInfo.address} 
             onChange={e => setCompanyInfo({...companyInfo, address: e.target.value})} 
             className="h-12 bg-background border-border text-foreground focus-visible:ring-primary focus-visible:border-primary rounded-xl placeholder:text-muted-foreground" 
