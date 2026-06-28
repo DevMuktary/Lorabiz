@@ -59,7 +59,7 @@ const REGISTRATION_TYPES = [
     bg: "bg-emerald-50 dark:bg-emerald-500/10",
     border: "border-border",
     badge: "Mandatory 28-Day Pub.",
-    active: false, // Set to false for coming soon
+    active: false, 
   }
 ];
 
@@ -104,18 +104,14 @@ export default async function NewRegistrationPage() {
           const livePrice = priceMap[type.dbKey];
           const formattedPrice = livePrice ? `₦${livePrice.toLocaleString()}` : "Pricing via Admin";
 
-          return (
-            <Link 
-              key={type.id} 
-              href={type.href}
-              className={`
-                relative flex flex-col h-full bg-card p-6 sm:p-8 rounded-3xl border transition-all duration-300 
-                ${type.active ? 'hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]' : 'grayscale opacity-70 cursor-not-allowed'}
-                group ${type.border}
-              `}
-              // Prevent navigation if inactive
-              onClick={(e) => !type.active && e.preventDefault()}
-            >
+          const cardClasses = `
+            relative flex flex-col h-full bg-card p-6 sm:p-8 rounded-3xl border transition-all duration-300 
+            ${type.active ? 'hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]' : 'grayscale opacity-70 cursor-not-allowed'}
+            group ${type.border}
+          `;
+
+          const CardInnerContent = (
+            <>
               {/* Coming Soon Overlay for Inactive */}
               {!type.active && (
                  <div className="absolute inset-0 bg-background/10 backdrop-blur-[1px] z-20 rounded-3xl flex items-center justify-center">
@@ -194,8 +190,23 @@ export default async function NewRegistrationPage() {
                   {type.active && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" weight="bold" />}
                 </div>
               </div>
-            </Link>
+            </>
           );
+
+          // Render a Link if active, and a disabled div if inactive
+          if (type.active) {
+            return (
+              <Link key={type.id} href={type.href} className={cardClasses}>
+                {CardInnerContent}
+              </Link>
+            );
+          } else {
+            return (
+              <div key={type.id} className={cardClasses}>
+                {CardInnerContent}
+              </div>
+            );
+          }
         })}
       </div>
 
