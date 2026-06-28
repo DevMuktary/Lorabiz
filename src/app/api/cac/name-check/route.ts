@@ -157,6 +157,7 @@ export async function POST(req: Request) {
         isBlocked: true,
         rejectionType: preFlightResult.status,
         reasonMessage: preFlightResult.reason,
+        conflicts: [], // No conflict here, just a rule violation
         data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
       });
     }
@@ -176,6 +177,7 @@ export async function POST(req: Request) {
         isBlocked: false,
         reasonMessage: "Registry connection is slow. Proceed, and we will verify manually.",
         warningMessage: uiWarningMessage, 
+        conflicts: [],
         data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
       });
     }
@@ -189,16 +191,19 @@ export async function POST(req: Request) {
           rejectionType: "PASSED_WITH_WARNING",
           reasonMessage: "Name is available and ready for registration.",
           warningMessage: uiWarningMessage || "Proceed with caution. The CAC examiner might query the chosen words.",
+          conflicts: [],
           data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
         });
     }
     
+    // EXACT MATCH FOUND
     if (cacJson.message === "Name exist") {
       return NextResponse.json({
         success: true,
         isBlocked: true,
         rejectionType: "EXACT_MATCH",
         reasonMessage: "This exact name is already registered by another business.",
+        conflicts: [uppercaseName], // We push the exact name to the frontend
         data: { mostSimilarName: uppercaseName, cleansedNameUsed: uppercaseName }
       });
     }
@@ -262,6 +267,7 @@ export async function POST(req: Request) {
       rejectionType: finalIsBlocked ? "SEMANTIC_CONFLICT" : "PASSED",
       reasonMessage: finalReasonMessage,
       warningMessage: uiWarningMessage, 
+      conflicts: finalIsBlocked ? [mostSimilarName] : [], // If blocked semantically, push the similar name to the UI!
       data: {
         mostSimilarName: mostSimilarName,
         cleansedNameUsed: uppercaseName
