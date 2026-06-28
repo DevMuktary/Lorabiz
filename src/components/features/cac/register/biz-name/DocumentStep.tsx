@@ -10,13 +10,13 @@ export default function DocumentStep({
 }) {
   return (
     <div className="p-6 md:p-8 animate-in fade-in slide-in-from-right-4 duration-300">
-       <h2 className="text-2xl font-black text-slate-900 mb-2 border-b pb-4">Document Uploads</h2>
-       <p className="text-slate-500 mb-6 text-sm font-medium">Please upload valid IDs and signatures. Ensure documents are clear and readable.</p>
+       <h2 className="text-2xl font-black text-foreground mb-2 border-b border-border pb-4">Document Uploads</h2>
+       <p className="text-muted-foreground mb-6 text-sm font-medium">Please upload valid IDs and signatures. Ensure documents are clear and readable.</p>
 
        <div className="space-y-6">
          {proprietors.map((p, idx) => (
-           <div key={p.id} className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-sm">
-              <h3 className="font-black text-lg text-slate-800 mb-5 border-b border-slate-100 pb-3">{p.surname} {p.firstName}'s Documents</h3>
+           <div key={p.id} className="bg-card rounded-2xl p-5 md:p-6 border border-border shadow-sm transition-colors duration-300">
+              <h3 className="font-black text-lg text-foreground mb-5 border-b border-border pb-3">{p.surname} {p.firstName}'s Documents</h3>
               
               <div className="flex flex-col gap-3">
                 <FileUpload 
