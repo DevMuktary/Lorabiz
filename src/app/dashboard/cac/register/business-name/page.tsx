@@ -102,14 +102,15 @@ export default function BusinessNameRegistration() {
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
 
-  // Modal State (Added searchedName to strictly track what was checked)
+  // Modal State (Now supports displaying conflicting names)
   const [resultModal, setResultModal] = useState<{
     isOpen: boolean;
     status: "PASSED" | "WARNING" | "BLOCKED" | "IDLE";
     title: string;
     message: string;
     searchedName: string;
-  }>({ isOpen: false, status: "IDLE", title: "", message: "", searchedName: "" });
+    conflicts: string[];
+  }>({ isOpen: false, status: "IDLE", title: "", message: "", searchedName: "", conflicts: [] });
 
   // Step 2 State
   const [ownershipType, setOwnershipType] = useState<"SOLE" | "PARTNERSHIP" | null>(null);
@@ -128,12 +129,12 @@ export default function BusinessNameRegistration() {
         status: "BLOCKED",
         title: "Name Too Short",
         searchedName: proposedName,
-        message: "CAC requires business names to be descriptive. Please use at least two words (e.g., 'Ade Ventures' instead of just 'Ade')."
+        message: "CAC requires business names to be descriptive. Please use at least two words (e.g., 'Ade Ventures' instead of just 'Ade').",
+        conflicts: []
       });
       return;
     }
 
-    // Trigger the big full-screen loading modal
     setIsSearching(true);
 
     try {
@@ -144,23 +145,26 @@ export default function BusinessNameRegistration() {
       });
 
       const data = await res.json();
+      
+      // Extract conflicts regardless of what your backend named the array
+      const foundConflicts = data.conflicts || data.conflictingNames || data.similarNames || [];
 
       if (data.isBlocked) {
         setResultModal({
-          isOpen: true, status: "BLOCKED", title: "Name Unavailable", searchedName: proposedName, message: data.reasonMessage
+          isOpen: true, status: "BLOCKED", title: "Name Unavailable", searchedName: proposedName, message: data.reasonMessage, conflicts: foundConflicts
         });
       } else if (data.warningMessage) {
         setResultModal({
-          isOpen: true, status: "WARNING", title: "Proceed With Caution", searchedName: proposedName, message: data.warningMessage
+          isOpen: true, status: "WARNING", title: "Proceed With Caution", searchedName: proposedName, message: data.warningMessage, conflicts: foundConflicts
         });
       } else {
         setResultModal({
-          isOpen: true, status: "PASSED", title: "Congratulations!", searchedName: proposedName, message: "Great news! This name is available and perfectly structured for registration."
+          isOpen: true, status: "PASSED", title: "Congratulations!", searchedName: proposedName, message: "Great news! This name is available and perfectly structured for registration.", conflicts: []
         });
       }
     } catch (error) {
       setResultModal({
-        isOpen: true, status: "WARNING", title: "Registry Slow", searchedName: proposedName, message: "CAC registry connection is currently slow. You may use this name anyway, and our team will verify it manually."
+        isOpen: true, status: "WARNING", title: "Registry Slow", searchedName: proposedName, message: "CAC registry connection is currently slow. You may use this name anyway, and our team will verify it manually.", conflicts: []
       });
     } finally {
       setIsSearching(false);
@@ -384,7 +388,7 @@ export default function BusinessNameRegistration() {
       <div className={`fixed inset-0 z-[150] flex items-center justify-center p-4 ${resultModal.isOpen ? "visible" : "invisible pointer-events-none"}`}>
         <div className={`absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity duration-300 ${resultModal.isOpen ? "opacity-100" : "opacity-0"}`} onClick={() => setResultModal({ ...resultModal, isOpen: false })} />
         
-        <div className={`relative w-full max-w-sm bg-card border border-border rounded-3xl shadow-2xl p-6 text-center transition-all duration-300 ${resultModal.isOpen ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"}`}>
+        <div className={`relative w-full max-w-md bg-card border border-border rounded-3xl shadow-2xl p-6 text-center transition-all duration-300 ${resultModal.isOpen ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"}`}>
           
           <div className="flex justify-center mb-4">
             {resultModal.status === "PASSED" && (
@@ -406,14 +410,31 @@ export default function BusinessNameRegistration() {
 
           <h3 className="text-xl font-black text-foreground mb-2">{resultModal.title}</h3>
           
-          {/* Explicitly displays the searched name */}
+          {/* Displays the searched name */}
           <div className="mb-3">
              <span className="inline-block px-3 py-1.5 bg-secondary text-foreground font-black text-sm rounded-lg border border-border">
                "{resultModal.searchedName}"
              </span>
           </div>
 
-          <p className="text-sm font-medium text-muted-foreground leading-relaxed mb-8">{resultModal.message}</p>
+          <p className={`text-sm font-medium text-muted-foreground leading-relaxed ${resultModal.conflicts.length > 0 ? 'mb-4' : 'mb-8'}`}>
+            {resultModal.message}
+          </p>
+
+          {/* DYNAMIC CONFLICTS LIST */}
+          {resultModal.conflicts.length > 0 && (
+            <div className="mb-8 text-left bg-red-500/5 border border-red-500/10 p-4 rounded-xl">
+              <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-2">Conflicting Names Found:</p>
+              <ul className="flex flex-col gap-2">
+                {resultModal.conflicts.map((conflict, i) => (
+                  <li key={i} className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0"></span>
+                    {conflict}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex flex-col gap-3">
             {resultModal.status === "PASSED" && (
