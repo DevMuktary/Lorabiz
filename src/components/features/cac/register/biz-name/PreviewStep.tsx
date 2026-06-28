@@ -7,9 +7,9 @@ import { X, FilePdf, MagnifyingGlassPlus } from "@phosphor-icons/react";
 
 // --- HELPER COMPONENT FOR CLEAN DATA DISPLAY ---
 const SummaryItem = ({ label, value }: { label: string, value: any }) => (
-  <div className="flex flex-col border-b border-slate-100 py-2 last:border-0">
-    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</span>
-    <span className="font-bold text-slate-800 text-sm break-words">{value || "-"}</span>
+  <div className="flex flex-col border-b border-border py-2 last:border-0">
+    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">{label}</span>
+    <span className="font-bold text-foreground text-sm break-words">{value || "-"}</span>
   </div>
 );
 
@@ -33,7 +33,7 @@ export default function PreviewStep({
 
   const DocumentThumbnail = ({ label, url }: { label: string, url: string | null }) => {
     if (!url) return (
-      <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-red-200 bg-red-50 rounded-xl h-32">
+      <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-red-500/20 bg-red-500/5 rounded-xl h-32">
         <span className="text-red-500 font-bold text-xs uppercase tracking-widest text-center">{label}</span>
         <span className="text-red-400 font-bold text-[10px] mt-1">Missing</span>
       </div>
@@ -44,10 +44,10 @@ export default function PreviewStep({
     return (
       <div 
         onClick={() => setViewFullScale(url)}
-        className="group relative flex flex-col items-center justify-center border border-slate-200 bg-slate-50 rounded-xl h-32 overflow-hidden cursor-pointer hover:border-[#ff3f7a] transition-all"
+        className="group relative flex flex-col items-center justify-center border border-border bg-secondary/50 rounded-xl h-32 overflow-hidden cursor-pointer hover:border-primary transition-all"
       >
         {isPdf ? (
-          <div className="flex flex-col items-center justify-center text-emerald-600 gap-2">
+          <div className="flex flex-col items-center justify-center text-emerald-500 gap-2">
             <FilePdf className="h-8 w-8" weight="fill" />
             <span className="font-bold text-[10px] uppercase">PDF</span>
           </div>
@@ -56,14 +56,14 @@ export default function PreviewStep({
         )}
         
         {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-slate-900/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px]">
-          <MagnifyingGlassPlus className="text-white h-6 w-6 mb-1" weight="bold" />
-          <span className="text-white font-bold text-[10px] uppercase tracking-widest">View</span>
+        <div className="absolute inset-0 bg-background/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px]">
+          <MagnifyingGlassPlus className="text-foreground h-6 w-6 mb-1" weight="bold" />
+          <span className="text-foreground font-bold text-[10px] uppercase tracking-widest">View</span>
         </div>
         
         {/* Label Strip */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-1.5 text-center">
-          <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">{label}</span>
+        <div className="absolute bottom-0 left-0 right-0 bg-background border-t border-border px-2 py-1.5 text-center">
+          <span className="text-[10px] font-black text-foreground uppercase tracking-widest">{label}</span>
         </div>
       </div>
     );
@@ -71,18 +71,18 @@ export default function PreviewStep({
 
   return (
     <div className="p-4 md:p-8 animate-in fade-in slide-in-from-right-4 duration-300">
-      <h2 className="text-2xl font-black text-slate-900 mb-6 border-b pb-4">Final Review</h2>
+      <h2 className="text-2xl font-black text-foreground mb-6 border-b border-border pb-4">Final Review</h2>
       
       <div className="space-y-8">
         
         {/* ==================================== COMPANY SUMMARY ==================================== */}
-        <div className="bg-slate-50 p-5 md:p-6 rounded-2xl border border-slate-200">
-          <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-4">
-            <h3 className="font-black text-slate-800 uppercase text-sm tracking-widest">Company Information</h3>
-            <button onClick={() => setCurrentStep(1)} className="text-[#ff3f7a] font-bold text-sm hover:underline bg-[#ff3f7a]/10 px-3 py-1 rounded-lg">Edit</button>
+        <div className="bg-card p-5 md:p-6 rounded-2xl border border-border shadow-sm">
+          <div className="flex justify-between items-center mb-4 border-b border-border pb-4">
+            <h3 className="font-black text-foreground uppercase text-sm tracking-widest">Company Information</h3>
+            <button onClick={() => setCurrentStep(1)} className="text-primary font-bold text-sm hover:underline bg-primary/10 px-3 py-1 rounded-lg">Edit</button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 bg-background p-5 rounded-xl border border-border shadow-sm">
             <SummaryItem label="Proposed Name" value={draft.proposedName} />
             <SummaryItem label="Nature of Business" value={draft.specificNature} />
             <SummaryItem label="Commencement Date" value={companyInfo.commencementDate} />
@@ -95,12 +95,12 @@ export default function PreviewStep({
         </div>
 
         {/* ==================================== PROPRIETORS SUMMARY ==================================== */}
-        <div className="bg-slate-50 p-5 md:p-6 rounded-2xl border border-slate-200">
-          <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-4">
-            <h3 className="font-black text-slate-800 uppercase text-sm tracking-widest">Proprietors & Documents</h3>
+        <div className="bg-card p-5 md:p-6 rounded-2xl border border-border shadow-sm">
+          <div className="flex justify-between items-center mb-4 border-b border-border pb-4">
+            <h3 className="font-black text-foreground uppercase text-sm tracking-widest">Proprietors & Documents</h3>
             <div className="flex gap-2">
-              <button onClick={() => setCurrentStep(2)} className="text-blue-600 font-bold text-xs hover:underline bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">Edit Info</button>
-              <button onClick={() => setCurrentStep(3)} className="text-emerald-600 font-bold text-xs hover:underline bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">Edit Docs</button>
+              <button onClick={() => setCurrentStep(2)} className="text-blue-500 font-bold text-xs hover:underline bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20">Edit Info</button>
+              <button onClick={() => setCurrentStep(3)} className="text-emerald-500 font-bold text-xs hover:underline bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">Edit Docs</button>
             </div>
           </div>
           
@@ -109,8 +109,8 @@ export default function PreviewStep({
               const pCode = p.phoneCode || "+234";
 
               return (
-                <div key={p.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                  <h4 className="font-black text-slate-900 mb-4 pb-2 border-b text-lg border-slate-100">
+                <div key={p.id} className="bg-background p-5 rounded-xl border border-border shadow-sm">
+                  <h4 className="font-black text-foreground mb-4 pb-2 border-b border-border text-lg">
                     {idx + 1}. {p.surname} {p.firstName}
                   </h4>
                   
@@ -131,8 +131,8 @@ export default function PreviewStep({
                   </div>
 
                   {/* Documents Data */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Uploaded Documents</p>
+                  <div className="bg-secondary/50 p-4 rounded-xl border border-border">
+                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">Uploaded Documents</p>
                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <DocumentThumbnail label="NIN Card/Slip" url={p.documents.nin} />
                         <DocumentThumbnail label="Passport" url={p.documents.passport} />
@@ -149,24 +149,24 @@ export default function PreviewStep({
       {/* ==================================== FULL SCALE LIGHTBOX (Teleported) ==================================== */}
       {mounted && viewFullScale && createPortal(
         <div 
-          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
           onClick={() => setViewFullScale(null)} 
         >
            <button 
              onClick={(e) => { e.stopPropagation(); setViewFullScale(null); }} 
-             className="absolute top-4 right-4 md:top-8 md:right-8 flex items-center gap-2 text-white bg-white/10 hover:bg-red-500 px-4 py-2 rounded-full font-bold transition-colors z-50 shadow-lg border border-white/20"
+             className="absolute top-4 right-4 md:top-8 md:right-8 flex items-center gap-2 text-white bg-white/10 hover:bg-red-500 px-4 py-2 rounded-full font-bold transition-colors z-50 shadow-lg border border-white/20 cursor-pointer"
            >
              <X weight="bold" size={20} /> Close Preview
            </button>
 
            <div 
-             className="relative w-full max-w-5xl flex flex-col items-center"
+             className="relative w-full max-w-5xl flex flex-col items-center animate-in zoom-in-95 duration-200"
              onClick={(e) => e.stopPropagation()}
            >
               {viewFullScale.toLowerCase().endsWith('.pdf') ? (
-                 <iframe src={viewFullScale} className="w-full h-[85vh] rounded-2xl bg-white shadow-2xl border-4 border-slate-800" />
+                 <iframe src={viewFullScale} className="w-full h-[85vh] rounded-2xl bg-background shadow-2xl border-4 border-border" />
               ) : (
-                 <img src={viewFullScale} alt="Full Scale Preview" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-4 border-slate-800 bg-black" />
+                 <img src={viewFullScale} alt="Full Scale Preview" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-4 border-border bg-black" />
               )}
            </div>
         </div>,
