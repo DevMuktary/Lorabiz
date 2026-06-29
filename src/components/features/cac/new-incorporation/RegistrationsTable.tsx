@@ -63,8 +63,8 @@ export default function RegistrationsTable({
         </div>
       </div>
 
-      {/* REMOVED min-h-[350px] HERE so it shrinks dynamically */}
-      <div className={`w-full overflow-x-auto transition-opacity duration-200 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+      {/* FIXED: Added 'pb-24' here so the dropdown on the last row never gets cut off! */}
+      <div className={`w-full overflow-x-auto pb-24 transition-opacity duration-200 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
         <table className="w-full text-left border-collapse text-sm whitespace-nowrap min-w-[800px]">
           <thead>
             <tr className="bg-secondary/50 text-muted-foreground border-b border-border">
