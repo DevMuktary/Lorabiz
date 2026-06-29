@@ -16,6 +16,7 @@ import PscStep from "@/components/features/cac/register/llc/PscStep";
 import ComplianceStep from "@/components/features/cac/register/llc/ComplianceStep";
 import UploadsStep from "@/components/features/cac/register/llc/UploadsStep";
 import PreviewStep from "@/components/features/cac/register/llc/PreviewStep";
+import PaymentModal from "@/components/features/cac/register/biz-name/PaymentModal"; // Ensure path is correct
 
 export default function LlcRegistrationDetailsPage() {
   const params = useParams();
@@ -36,6 +37,7 @@ export default function LlcRegistrationDetailsPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const errorTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // For horizontal stepper scrolling
 
   // ==========================================
   // MASTER FORM STATE
@@ -66,7 +68,7 @@ export default function LlcRegistrationDetailsPage() {
       .then(json => {
         if (json.success) {
           if (json.data.status !== "UNSUBMITTED" && json.data.status !== "QUERIED") {
-            router.push("/dashboard"); 
+            router.push("/dashboard/cac/new-incorporation"); 
             return;
           }
           setDraft(json.data);
@@ -101,12 +103,16 @@ export default function LlcRegistrationDetailsPage() {
   }, [id, router]);
 
   // ==========================================
-  // SCROLL ACTIVE STEP INTO VIEW ON MOBILE
+  // AUTO-SCROLL HORIZONTAL STEPPER ON MOBILE
   // ==========================================
   useEffect(() => {
-    const stepEl = document.getElementById(`nav-step-${currentStep}`);
-    if (stepEl) {
-      stepEl.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    const container = scrollContainerRef.current;
+    const activeBtn = document.getElementById(`nav-step-${currentStep}`);
+    
+    if (container && activeBtn) {
+      // Mathematically perfectly center the active button in the viewport
+      const scrollLeft = activeBtn.offsetLeft - container.offsetWidth / 2 + activeBtn.offsetWidth / 2;
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
     }
   }, [currentStep]);
 
@@ -339,8 +345,8 @@ export default function LlcRegistrationDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <CircleDashed className="animate-spin h-28 w-28 text-indigo-500" weight="bold" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <CircleDashed className="animate-spin h-28 w-28 text-primary" weight="bold" />
       </div>
     );
   }
@@ -356,15 +362,15 @@ export default function LlcRegistrationDetailsPage() {
       {/* BEAUTIFUL GLOBAL ERROR BADGE */}
       {topError && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[999999] w-[90%] max-w-md animate-in slide-in-from-top-8 fade-in duration-500">
-          <div className="bg-red-600 text-white px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(220,38,38,0.3)] flex items-center justify-between gap-3 font-bold text-sm border-2 border-red-500 overflow-hidden relative">
-            <div className="absolute bottom-0 left-0 h-1 bg-red-400/50 animate-[shrink_6s_linear_forwards]" style={{ width: '100%' }} />
+          <div className="bg-destructive text-destructive-foreground px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(220,38,38,0.3)] flex items-center justify-between gap-3 font-bold text-sm border-2 border-destructive/50 overflow-hidden relative">
+            <div className="absolute bottom-0 left-0 h-1 bg-destructive-foreground/30 animate-[shrink_6s_linear_forwards]" style={{ width: '100%' }} />
             <div className="flex items-center gap-3 relative z-10">
-              <WarningCircle weight="fill" className="h-6 w-6 shrink-0 text-red-200" />
+              <WarningCircle weight="fill" className="h-6 w-6 shrink-0 text-destructive-foreground/80" />
               <span>{topError}</span>
             </div>
             <button 
               onClick={() => { setTopError(null); if (errorTimerRef.current) clearTimeout(errorTimerRef.current); }} 
-              className="shrink-0 bg-red-700 hover:bg-red-800 rounded-full p-1.5 transition-colors relative z-10"
+              className="shrink-0 bg-destructive-foreground/10 hover:bg-destructive-foreground/20 rounded-full p-1.5 transition-colors relative z-10"
             >
               <X weight="bold" className="h-4 w-4" />
             </button>
@@ -373,12 +379,12 @@ export default function LlcRegistrationDetailsPage() {
       )}
 
       {/* Header & Clickable Stepper */}
-      <div className="mb-8 border-b border-slate-200 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="mb-8 border-b border-border pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="w-full overflow-hidden">
-          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5">Completing Application For</p>
-          <h1 className="text-2xl font-black text-slate-900 mb-6 truncate pr-4">{draft?.proposedName || "Loading..."}</h1>
+          <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5">Completing Application For</p>
+          <h1 className="text-2xl font-black text-foreground mb-6 truncate pr-4">{draft?.proposedName || "Loading..."}</h1>
           
-          <div className="flex gap-3 sm:gap-4 overflow-x-auto custom-scrollbar pb-3 w-full max-w-full snap-x scroll-smooth select-none">
+          <div ref={scrollContainerRef} className="flex gap-3 sm:gap-4 overflow-x-auto custom-scrollbar pb-3 w-full max-w-full snap-x scroll-smooth select-none">
             {STEPS.map((title, index) => {
               const stepNum = index + 1;
               const isUnlocked = stepNum <= highestStep;
@@ -396,15 +402,15 @@ export default function LlcRegistrationDetailsPage() {
                     }
                   }}
                   className={`flex items-center gap-2 whitespace-nowrap text-sm snap-start shrink-0 px-2 py-1 rounded-lg transition-colors ${
-                    isActive ? "text-indigo-600 font-black bg-indigo-50/50" : 
-                    isUnlocked ? "text-slate-800 font-bold hover:bg-slate-100 cursor-pointer" : 
-                    "text-slate-400 font-medium opacity-60 cursor-not-allowed"
+                    isActive ? "text-primary font-black bg-primary/10" : 
+                    isUnlocked ? "text-foreground font-bold hover:bg-secondary cursor-pointer" : 
+                    "text-muted-foreground font-medium opacity-60 cursor-not-allowed"
                   }`}
                 >
                   <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-black transition-colors ${
-                    isActive ? "bg-indigo-600 text-white shadow-sm" : 
-                    isUnlocked ? "bg-slate-200 text-slate-800" : 
-                    "bg-slate-100 text-slate-400"
+                    isActive ? "bg-primary text-primary-foreground shadow-sm" : 
+                    isUnlocked ? "bg-secondary border border-border text-foreground" : 
+                    "bg-secondary/50 border border-border/50 text-muted-foreground/50"
                   }`}>
                     {stepNum}
                   </span>
@@ -417,7 +423,7 @@ export default function LlcRegistrationDetailsPage() {
       </div>
 
       {/* Dynamic Form Mounting */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+      <div className="bg-card rounded-3xl border border-border shadow-xl overflow-hidden">
         
         {currentStep === 1 && <CompanyDetailsStep data={companyDetails} updateData={setCompanyDetails} draft={draft} showErrors={showErrors} />}
         {currentStep === 2 && <ArticlesStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
@@ -438,25 +444,34 @@ export default function LlcRegistrationDetailsPage() {
 
         {/* Footer Navigation */}
         {currentStep < 9 && (
-          <div className="bg-slate-50 border-t border-slate-200 p-6 flex justify-between items-center gap-4">
+          <div className="bg-secondary/30 border-t border-border p-6 flex justify-between items-center gap-4">
             <Button 
               variant="outline" 
               onClick={() => { setCurrentStep(p => p - 1); setTopError(null); }} 
               disabled={currentStep === 1} 
-              className="h-12 px-6 rounded-xl font-bold bg-white text-slate-600 shadow-sm"
+              className="h-12 px-6 rounded-xl font-bold bg-background text-foreground border-border hover:bg-secondary shadow-sm cursor-pointer"
             >
               Back
             </Button>
             
             <Button 
               onClick={handleSaveAndNext} 
-              className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md min-w-[160px] flex items-center justify-center gap-2"
+              className="h-12 px-8 bg-primary hover:opacity-90 text-primary-foreground font-bold rounded-xl shadow-md min-w-[160px] flex items-center justify-center gap-2 cursor-pointer"
             >
               Save & Continue
             </Button>
           </div>
         )}
       </div>
+
+      {/* PAYMENT MODAL (RENDERED WHEN READY) */}
+      {showPaymentModal && (
+        <PaymentModal 
+          registrationId={id} 
+          proposedName={draft?.proposedName || ""} 
+          onClose={() => setShowPaymentModal(false)} 
+        />
+      )}
     </div>
   );
 }
