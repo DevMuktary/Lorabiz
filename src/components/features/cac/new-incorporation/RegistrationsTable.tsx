@@ -63,7 +63,8 @@ export default function RegistrationsTable({
         </div>
       </div>
 
-      <div className={`w-full overflow-x-auto transition-opacity duration-200 min-h-[350px] ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+      {/* REMOVED min-h-[350px] HERE so it shrinks dynamically */}
+      <div className={`w-full overflow-x-auto transition-opacity duration-200 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
         <table className="w-full text-left border-collapse text-sm whitespace-nowrap min-w-[800px]">
           <thead>
             <tr className="bg-secondary/50 text-muted-foreground border-b border-border">
@@ -91,7 +92,6 @@ export default function RegistrationsTable({
                     <p className="text-xs font-bold text-muted-foreground mt-1 uppercase">{reg.id.slice(0,8)}</p>
                   </td>
                   <td className="px-6 py-5 font-bold text-muted-foreground">
-                    {/* FIXED: Uses the backend's _appType to accurately display entity types */}
                     {reg._appType === 'BUSINESS_NAME' ? 'Business Name' : 
                      reg._appType === 'LLC' ? 'Company (LLC)' : 
                      reg._appType === 'NGO' ? 'Incorporated Trustees' : 'Unknown'}
