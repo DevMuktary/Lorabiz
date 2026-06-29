@@ -10,7 +10,8 @@ import {
   Hourglass, 
   WarningCircle, 
   CheckCircle,
-  ArrowLeft
+  ArrowLeft,
+  Trash
 } from "@phosphor-icons/react";
 
 import RegistrationsTable from "@/components/features/cac/new-incorporation/RegistrationsTable";
@@ -27,6 +28,12 @@ export default function RegistrationsHubPage() {
   const [typeFilter, setTypeFilter] = useState("ALL");
 
   const [receiptData, setReceiptData] = useState<any>(null);
+
+  // Custom Delete Modals State
+  const [deleteContext, setDeleteContext] = useState<{ isOpen: boolean, id: string | null, isLoading: boolean, error: string | null }>({
+    isOpen: false, id: null, isLoading: false, error: null
+  });
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -55,29 +62,35 @@ export default function RegistrationsHubPage() {
     return () => clearTimeout(timeoutId);
   }, [page, search, statusFilter, typeFilter]);
 
-  // SMART ACTION HANDLER (NOW WITH DELETE LOGIC)
-  const handleExecuteAction = async (action: string, id: string) => {
+  // CUSTOM DELETE EXECUTION
+  const executeDelete = async () => {
+    if (!deleteContext.id) return;
+    
+    setDeleteContext(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    try {
+      const res = await fetch(`/api/cac/delete?id=${deleteContext.id}`, { method: "DELETE" });
+      const data = await res.json();
+      
+      if (data.success) {
+        setDeleteContext({ isOpen: false, id: null, isLoading: false, error: null });
+        setSuccessModalOpen(true);
+        fetchDashboardData(); // Refresh table
+      } else {
+        setDeleteContext(prev => ({ ...prev, isLoading: false, error: data.message || "Failed to delete the registration." }));
+      }
+    } catch (error) {
+      setDeleteContext(prev => ({ ...prev, isLoading: false, error: "A network error occurred. Please check your connection." }));
+    }
+  };
+
+  // SMART ACTION HANDLER
+  const handleExecuteAction = (action: string, id: string) => {
     const normalizedAction = action.toLowerCase();
 
     if (normalizedAction.includes("delete")) {
-      const confirmDelete = window.confirm("Are you sure you want to permanently delete this application? This action cannot be undone.");
-      if (!confirmDelete) return;
-
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/cac/delete?id=${id}`, { method: "DELETE" });
-        const data = await res.json();
-        
-        if (data.success) {
-          fetchDashboardData(); // Refresh the table automatically
-        } else {
-          alert(data.message || "Failed to delete the registration.");
-          setIsLoading(false);
-        }
-      } catch (error) {
-        alert("A network error occurred while trying to delete.");
-        setIsLoading(false);
-      }
+      // Trigger the custom modal instead of window.confirm
+      setDeleteContext({ isOpen: true, id: id, isLoading: false, error: null });
     } 
     else if (normalizedAction.includes("receipt")) {
       const reg = dashboardData?.tableData?.find((r: any) => r.id === id);
@@ -89,8 +102,6 @@ export default function RegistrationsHubPage() {
       router.push(`/dashboard/cac/register/view/${id}`);
     } 
     else {
-      // Edit / Continue goes to the active form page
-      // Adjust this logic if LLCs and Business Names route to different paths
       router.push(`/dashboard/cac/register/business-name/details/${id}`);
     }
   };
@@ -98,8 +109,73 @@ export default function RegistrationsHubPage() {
   const stats = dashboardData?.stats || { unsubmitted: 0, pending: 0, queried: 0, approved: 0 };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 relative">
       
+      {/* ========================================== */}
+      {/* CUSTOM DELETE CONFIRMATION MODAL             */}
+      {/* ========================================== */}
+      {deleteContext.isOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="h-20 w-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-5 ring-8 ring-red-500/5">
+              <Trash weight="fill" className="h-10 w-10" />
+            </div>
+            <h3 className="text-xl font-black text-foreground mb-2">Delete Application?</h3>
+            <p className="text-sm text-muted-foreground font-medium mb-6">
+              Are you sure you want to permanently delete this registration? This action cannot be undone.
+            </p>
+
+            {deleteContext.error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold p-3 rounded-lg mb-6">
+                {deleteContext.error}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={executeDelete}
+                disabled={deleteContext.isLoading}
+                className="w-full h-14 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center disabled:opacity-50 cursor-pointer shadow-lg shadow-red-500/20"
+              >
+                {deleteContext.isLoading ? <Spinner className="animate-spin h-5 w-5" /> : "Yes, Delete It"}
+              </button>
+              <button
+                onClick={() => setDeleteContext({ isOpen: false, id: null, isLoading: false, error: null })}
+                disabled={deleteContext.isLoading}
+                className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* CUSTOM SUCCESS MODAL                         */}
+      {/* ========================================== */}
+      {successModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="h-20 w-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 ring-8 ring-emerald-500/5">
+              <CheckCircle weight="fill" className="h-10 w-10" />
+            </div>
+            <h3 className="text-xl font-black text-foreground mb-2">Deleted Successfully</h3>
+            <p className="text-sm text-muted-foreground font-medium mb-8">
+              The application has been permanently removed from your records.
+            </p>
+            <button
+              onClick={() => setSuccessModalOpen(false)}
+              className="w-full h-14 bg-foreground text-background font-bold rounded-xl hover:opacity-90 transition-colors cursor-pointer shadow-lg"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
+
+
+      {/* MAIN DASHBOARD CONTENT */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-5">
           <Link 
@@ -119,7 +195,7 @@ export default function RegistrationsHubPage() {
 
         <Link 
           href="/dashboard/cac/new-incorporation/new"
-          className="flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-primary-foreground rounded-full font-bold text-sm hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 shrink-0"
+          className="flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-primary-foreground rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 shrink-0 shadow-lg shadow-primary/20"
         >
           <Plus weight="bold" className="h-4 w-4" />
           Start New Registration
