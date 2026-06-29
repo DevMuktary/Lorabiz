@@ -55,22 +55,42 @@ export default function RegistrationsHubPage() {
     return () => clearTimeout(timeoutId);
   }, [page, search, statusFilter, typeFilter]);
 
-  // SMART ACTION HANDLER
-  const handleExecuteAction = (action: string, id: string) => {
+  // SMART ACTION HANDLER (NOW WITH DELETE LOGIC)
+  const handleExecuteAction = async (action: string, id: string) => {
     const normalizedAction = action.toLowerCase();
 
-    if (normalizedAction.includes("receipt")) {
+    if (normalizedAction.includes("delete")) {
+      const confirmDelete = window.confirm("Are you sure you want to permanently delete this application? This action cannot be undone.");
+      if (!confirmDelete) return;
+
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/cac/delete?id=${id}`, { method: "DELETE" });
+        const data = await res.json();
+        
+        if (data.success) {
+          fetchDashboardData(); // Refresh the table automatically
+        } else {
+          alert(data.message || "Failed to delete the registration.");
+          setIsLoading(false);
+        }
+      } catch (error) {
+        alert("A network error occurred while trying to delete.");
+        setIsLoading(false);
+      }
+    } 
+    else if (normalizedAction.includes("receipt")) {
       const reg = dashboardData?.tableData?.find((r: any) => r.id === id);
       if (reg) {
         setReceiptData(reg); 
       }
     } 
     else if (normalizedAction.includes("view")) {
-      // FIXED: Route to the dedicated read-only view page
       router.push(`/dashboard/cac/register/view/${id}`);
     } 
     else {
       // Edit / Continue goes to the active form page
+      // Adjust this logic if LLCs and Business Names route to different paths
       router.push(`/dashboard/cac/register/business-name/details/${id}`);
     }
   };
@@ -111,7 +131,7 @@ export default function RegistrationsHubPage() {
         <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Drafts</p>
-            <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
               <FileText weight="duotone" className="h-4 w-4" />
             </div>
           </div>
@@ -124,7 +144,7 @@ export default function RegistrationsHubPage() {
         <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Pending</p>
-            <div className="h-8 w-8 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500">
+            <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
               <Hourglass weight="duotone" className="h-4 w-4" />
             </div>
           </div>
@@ -137,7 +157,7 @@ export default function RegistrationsHubPage() {
         <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Queried</p>
-            <div className="h-8 w-8 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-red-500">
+            <div className="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
               <WarningCircle weight="duotone" className="h-4 w-4" />
             </div>
           </div>
@@ -150,7 +170,7 @@ export default function RegistrationsHubPage() {
         <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Approved</p>
-            <div className="h-8 w-8 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+            <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
               <CheckCircle weight="duotone" className="h-4 w-4" />
             </div>
           </div>
