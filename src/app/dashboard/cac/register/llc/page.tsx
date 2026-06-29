@@ -398,7 +398,7 @@ export default function CompanyLlcRegistration() {
                 disabled={isCreatingDraft || hasAltErrors}
                 className="w-full h-14 mt-8 bg-foreground text-background font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {isCreatingDraft ? <div className="h-5 w-5 border-2 border-background/30 border-t-background rounded-full animate-spin"></div> : <>Build Company Structure <ArrowRight className="h-5 w-5" weight="bold" /></>}
+                {isCreatingDraft ? <div className="h-5 w-5 border-2 border-background/30 border-t-background rounded-full animate-spin"></div> : <>Continue Registration <ArrowRight className="h-5 w-5" weight="bold" /></>}
               </button>
             </div>
           </div>
