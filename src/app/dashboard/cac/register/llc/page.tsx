@@ -39,10 +39,14 @@ function SearchableDropdown({
 
   return (
     <div className="space-y-2 relative" ref={dropdownRef}>
-      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</label>
+      <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</label>
       <div 
         className={`flex items-center w-full h-14 px-4 border-2 rounded-xl transition-colors cursor-text ${
-          disabled ? "bg-slate-50 border-slate-200 opacity-60" : isOpen ? "bg-white border-indigo-500 ring-2 ring-indigo-500/10" : "bg-white border-slate-200 hover:border-slate-300"
+          disabled 
+            ? "bg-secondary/50 border-border opacity-60" 
+            : isOpen 
+              ? "bg-background border-primary ring-2 ring-primary/10" 
+              : "bg-background border-border hover:border-primary/50"
         }`}
         onClick={() => !disabled && setIsOpen(true)}
       >
@@ -50,25 +54,25 @@ function SearchableDropdown({
           type="text" value={isOpen ? query : value}
           onChange={(e) => { setQuery(e.target.value); setIsOpen(true); if (e.target.value !== value) onChange(""); }}
           onFocus={() => !disabled && setIsOpen(true)} placeholder={placeholder} disabled={disabled}
-          className="w-full h-full font-bold text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-medium bg-transparent disabled:cursor-not-allowed truncate pr-2"
+          className="w-full h-full font-bold text-foreground outline-none placeholder:text-muted-foreground placeholder:font-medium bg-transparent disabled:cursor-not-allowed truncate pr-2"
         />
-        <CaretDown className={`h-5 w-5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} weight="bold" />
+        <CaretDown className={`h-5 w-5 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} weight="bold" />
       </div>
       
       {isOpen && !disabled && (
-        <div className="absolute z-50 top-[76px] left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-[0_10px_40px_rgb(0,0,0,0.1)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-          <ul className="max-h-60 overflow-y-auto overscroll-contain py-2 scrollbar-thin scrollbar-thumb-slate-200">
+        <div className="absolute z-50 top-[76px] left-0 right-0 bg-popover border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <ul className="max-h-60 overflow-y-auto overscroll-contain py-2 scrollbar-thin scrollbar-thumb-secondary">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt, idx) => {
                 const isSelected = value === opt;
                 return (
-                  <li key={idx} onClick={() => { onChange(opt); setQuery(opt); setIsOpen(false); }} className={`px-4 py-3 cursor-pointer transition-colors flex items-center justify-between group ${isSelected ? "bg-indigo-500/10" : "hover:bg-slate-50"}`}>
-                    <span className={`text-sm font-bold ${isSelected ? "text-indigo-600" : "text-slate-900 group-hover:text-indigo-600"}`}>{opt}</span>
-                    {isSelected && <Check className="h-4 w-4 text-indigo-600 shrink-0" weight="bold" />}
+                  <li key={idx} onClick={() => { onChange(opt); setQuery(opt); setIsOpen(false); }} className={`px-4 py-3 cursor-pointer transition-colors flex items-center justify-between group ${isSelected ? "bg-primary/10" : "hover:bg-secondary/50"}`}>
+                    <span className={`text-sm font-bold ${isSelected ? "text-primary" : "text-foreground group-hover:text-primary"}`}>{opt}</span>
+                    {isSelected && <Check className="h-4 w-4 text-primary shrink-0" weight="bold" />}
                   </li>
                 )
               })
-            ) : <li className="px-4 py-6 text-center text-sm font-medium text-slate-500">No results found.</li>}
+            ) : <li className="px-4 py-6 text-center text-sm font-medium text-muted-foreground">No results found.</li>}
           </ul>
         </div>
       )}
@@ -97,16 +101,35 @@ export default function CompanyLlcRegistration() {
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
 
-  // Modal State
+  // Modal State (Supports displaying searched name and conflicts)
   const [resultModal, setResultModal] = useState<{
     isOpen: boolean;
     status: "PASSED" | "WARNING" | "BLOCKED" | "IDLE";
     title: string;
     message: string;
-  }>({ isOpen: false, status: "IDLE", title: "", message: "" });
+    searchedName: string;
+    conflicts: string[];
+  }>({ isOpen: false, status: "IDLE", title: "", message: "", searchedName: "", conflicts: [] });
 
   const categories = Object.keys(CAC_CATEGORIES).sort();
   const specificNatures = selectedCategory ? CAC_CATEGORIES[selectedCategory].sort() : [];
+
+  // --- VALIDATION HELPER FOR LLC ILLEGAL SUFFIXES ---
+  const getIllegalLlcSuffixError = (name: string) => {
+    if (!name) return "";
+    // For a Private Limited Company (LTD), they cannot use these specific public/guarantee/foreign suffixes
+    const illegalWords = ["PLC", "INC", "INCORPORATED", "GTE", "ULC", "LLP"];
+    const words = name.toUpperCase().split(/[\s,.-]+/);
+    const found = words.find(w => illegalWords.includes(w));
+    if (found) {
+      return `Private companies (LTD) cannot contain "${found}". Please use LIMITED or LTD.`;
+    }
+    return "";
+  };
+
+  const alt1Error = getIllegalLlcSuffixError(altName1);
+  const alt2Error = getIllegalLlcSuffixError(altName2);
+  const hasAltErrors = Boolean(alt1Error || alt2Error);
 
   const handleNameInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.toUpperCase();
@@ -128,7 +151,9 @@ export default function CompanyLlcRegistration() {
     if (wordCount < 2) {
       setResultModal({
         isOpen: true, status: "BLOCKED", title: "Name Too Short", 
-        message: "CAC requires company names to be descriptive. Please use at least two words."
+        searchedName: formattedName,
+        message: "CAC requires company names to be descriptive. Please use at least two words.",
+        conflicts: []
       });
       return;
     }
@@ -149,32 +174,38 @@ export default function CompanyLlcRegistration() {
 
       const data = await res.json();
       const finalName = data.data?.cleansedNameUsed || formattedName;
+      const foundConflicts = data.conflicts || data.conflictingNames || data.similarNames || [];
 
       // Ensure the frontend always mentions the full final name
       if (data.rejectionType === "MISSING_LLC_SUFFIX") {
         setProposedName(`${formattedName} LIMITED`);
         setResultModal({
-          isOpen: true, status: "WARNING", title: "Suffix Added", 
-          message: `We automatically appended 'LIMITED' to make it "${formattedName} LIMITED" as required by Nigerian law for private companies. You may proceed.`
+          isOpen: true, status: "WARNING", title: "Suffix Added", searchedName: finalName,
+          message: `We automatically appended 'LIMITED' to make it "${formattedName} LIMITED" as required by Nigerian law for private companies. You may proceed.`,
+          conflicts: foundConflicts
         });
       } else if (data.isBlocked) {
         setResultModal({
-          isOpen: true, status: "BLOCKED", title: "Name Unavailable", message: data.reasonMessage
+          isOpen: true, status: "BLOCKED", title: "Name Unavailable", searchedName: finalName, message: data.reasonMessage, conflicts: foundConflicts
         });
       } else if (data.warningMessage) {
         setResultModal({
-          isOpen: true, status: "WARNING", title: "Proceed With Caution", 
-          message: `${data.warningMessage} The name "${finalName}" has been processed.`
+          isOpen: true, status: "WARNING", title: "Proceed With Caution", searchedName: finalName,
+          message: `${data.warningMessage}`,
+          conflicts: foundConflicts
         });
       } else {
         setResultModal({
-          isOpen: true, status: "PASSED", title: "Congratulations!", 
-          message: `Great news! "${finalName}" is available and perfectly structured for registration.`
+          isOpen: true, status: "PASSED", title: "Congratulations!", searchedName: finalName,
+          message: `Great news! This name is available and perfectly structured for registration.`,
+          conflicts: []
         });
       }
     } catch (error) {
       setResultModal({
-        isOpen: true, status: "WARNING", title: "Registry Slow", message: "CAC registry connection is currently slow. You may use this name anyway, and our team will verify it manually."
+        isOpen: true, status: "WARNING", title: "Registry Slow", searchedName: formattedName, 
+        message: "CAC registry connection is currently slow. You may use this name anyway, and our team will verify it manually.", 
+        conflicts: []
       });
     } finally {
       setIsSearching(false);
@@ -208,7 +239,7 @@ export default function CompanyLlcRegistration() {
       const data = await res.json();
       
       if (data.success) {
-        // Redirects to the massive 9-step LLC Details UI we will build next
+        // Redirects to the massive LLC Details UI
         router.push(`/dashboard/cac/register/llc/details/${data.draftId}`);
       } else {
         alert(data.message || "Failed to create draft.");
@@ -221,28 +252,49 @@ export default function CompanyLlcRegistration() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto pb-20 animate-in fade-in duration-500">
+    <div className="max-w-3xl mx-auto pb-20 animate-in fade-in duration-500 relative">
       
+      {/* ========================================== */}
+      {/* BIG FULL-SCREEN LOADING MODAL              */}
+      {/* ========================================== */}
+      {isSearching && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="flex flex-col items-center justify-center p-8 sm:p-10 bg-card border border-border rounded-[2rem] shadow-2xl max-w-sm w-full text-center">
+            <div className="relative h-20 w-20 mb-6">
+              <div className="absolute inset-0 rounded-full border-4 border-secondary"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+              <MagnifyingGlass className="absolute inset-0 m-auto h-8 w-8 text-primary animate-pulse" weight="bold" />
+            </div>
+            <h3 className="text-xl font-black text-foreground mb-2 tracking-tight">Checking Database...</h3>
+            <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+              Please wait while we cross-check <br/>
+              <span className="font-black text-foreground inline-block mt-1 px-2 py-1 bg-secondary rounded-md">"{proposedName}"</span><br/>
+              against the CAC registry.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8 pt-2 flex items-center gap-4">
-        <Link href="/dashboard/new" className="p-2 bg-white rounded-xl border border-slate-200 text-slate-500 hover:text-slate-900 shadow-sm transition-colors">
+        <Link href="/dashboard/cac/new-incorporation" className="p-2 bg-card rounded-xl border border-border text-muted-foreground hover:text-foreground shadow-sm transition-colors cursor-pointer">
           <CaretLeft className="h-5 w-5" weight="bold" />
         </Link>
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Register a Company (LLC)</h1>
-          <p className="text-sm font-medium text-slate-500">Step 1: Name Compliance & Search</p>
+          <h1 className="text-2xl font-black text-foreground tracking-tight">Register a Company (LLC)</h1>
+          <p className="text-sm font-medium text-muted-foreground">Step 1: Name Compliance & Search</p>
         </div>
       </div>
 
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm relative">
+      <div className="bg-card p-6 sm:p-8 rounded-3xl border border-border shadow-sm relative transition-colors duration-300">
         
         <div className="flex items-center gap-3 sm:gap-4 mb-8">
-          <div className="h-12 w-12 shrink-0 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+          <div className="h-12 w-12 shrink-0 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
             <Buildings className="h-6 w-6" weight="fill" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900 leading-tight">Company Name Search</h2>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">LLCs must end with LIMITED or LTD.</p>
+            <h2 className="text-xl font-black text-foreground leading-tight">Company Name Search</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-0.5">LLCs must end with LIMITED or LTD.</p>
           </div>
         </div>
 
@@ -250,20 +302,20 @@ export default function CompanyLlcRegistration() {
         {!isNameLocked ? (
           <form onSubmit={handleNameSearch} className="space-y-6 animate-in fade-in">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Proposed Company Name</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Proposed Company Name</label>
               <input 
                 type="text" value={proposedName}
                 onChange={handleNameInput}
                 placeholder="e.g. PEAK PERFORMANCE LOGISTICS LIMITED"
-                className="w-full h-14 px-4 border-2 border-slate-200 rounded-xl font-bold text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 outline-none transition-colors"
+                className="w-full h-14 px-4 border-2 border-border bg-background rounded-xl font-bold text-foreground focus:border-primary focus:ring-primary outline-none transition-colors placeholder:text-muted-foreground"
                 required
               />
             </div>
 
             <div className="flex justify-end items-center gap-2 -mt-3">
-              <span className="text-xs font-medium text-slate-500">Unsure what to pick?</span>
-              <button type="button" onClick={() => setIsAiAssistantOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 text-xs font-bold hover:from-indigo-500/20 hover:to-purple-500/20 transition-all border border-indigo-500/20 shadow-sm">
-                <Sparkle className="h-3.5 w-3.5" weight="fill" /> Ask LumeBizAi
+              <span className="text-xs font-medium text-muted-foreground">Unsure what to pick?</span>
+              <button type="button" onClick={() => setIsAiAssistantOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 text-primary text-xs font-bold hover:from-primary/20 hover:to-purple-500/20 transition-all border border-primary/20 shadow-sm cursor-pointer">
+                <Sparkle className="h-3.5 w-3.5" weight="fill" /> Ask LorabizAI
               </button>
             </div>
 
@@ -272,8 +324,8 @@ export default function CompanyLlcRegistration() {
               <SearchableDropdown label="Specific Nature" placeholder={selectedCategory ? "Search nature..." : "Select category first"} value={specificNature} options={specificNatures} disabled={!selectedCategory} onChange={(val) => setSpecificNature(val)} />
             </div>
 
-            <button type="submit" disabled={isSearching || !proposedName || !selectedCategory || !specificNature} className="w-full h-14 bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 mt-2">
-              {isSearching ? <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <><MagnifyingGlass className="h-5 w-5" weight="bold" /> Check Availability</>}
+            <button type="submit" disabled={isSearching || !proposedName || !selectedCategory || !specificNature} className="w-full h-14 bg-foreground text-background font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 mt-2 cursor-pointer">
+              <MagnifyingGlass className="h-5 w-5" weight="bold" /> Check Availability
             </button>
           </form>
         ) : (
@@ -281,45 +333,72 @@ export default function CompanyLlcRegistration() {
           // LOCKED STATE: THEY ACCEPTED A NAME
           <div className="animate-in fade-in slide-in-from-bottom-4">
             {/* Success Summary Card */}
-            <div className="p-5 border-2 border-indigo-500 bg-indigo-50 rounded-2xl relative mb-8">
-              <div className="absolute -top-3 left-4 bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-md">Primary Name Secured</div>
+            <div className="p-5 border-2 border-primary bg-primary/5 rounded-2xl relative mb-8">
+              <div className="absolute -top-3 left-4 bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-md">Primary Name Secured</div>
               <div className="flex justify-between items-start mt-2">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">{proposedName}</h3>
-                  <p className="text-sm font-medium text-slate-600 mt-1">{specificNature}</p>
+                  <h3 className="text-lg font-black text-foreground">{proposedName}</h3>
+                  <p className="text-sm font-medium text-muted-foreground mt-1">{specificNature}</p>
                 </div>
-                <button onClick={() => setIsNameLocked(false)} className="h-10 w-10 shrink-0 bg-white border border-slate-200 text-slate-500 rounded-full flex items-center justify-center hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm" title="Edit Name">
+                <button onClick={() => setIsNameLocked(false)} className="h-10 w-10 shrink-0 bg-background border border-border text-muted-foreground rounded-full flex items-center justify-center hover:bg-secondary hover:text-foreground transition-colors shadow-sm cursor-pointer" title="Edit Name">
                   <PencilSimple className="h-5 w-5" weight="bold" />
                 </button>
               </div>
             </div>
 
             {/* Alternative Names Form */}
-            <div className="pt-6 border-t border-slate-100">
+            <div className="pt-6 border-t border-border">
               <div className="mb-5">
-                <h3 className="text-sm font-bold text-slate-900">Add Alternative Names (Highly Recommended)</h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">If the CAC examiner rejects your primary name during manual review, they will automatically approve one of these to save you days of delay.</p>
+                <h3 className="text-sm font-bold text-foreground">Add Alternative Names (Highly Recommended)</h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">If the CAC examiner rejects your primary name during manual review, they will automatically approve one of these to save you days of delay.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input 
-                  type="text" value={altName1} onChange={(e) => setAltName1(e.target.value.toUpperCase())}
-                  placeholder="Alternative Name 1 (Optional)"
-                  className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 outline-none transition-colors"
-                />
-                <input 
-                  type="text" value={altName2} onChange={(e) => setAltName2(e.target.value.toUpperCase())}
-                  placeholder="Alternative Name 2 (Optional)"
-                  className="w-full h-12 px-4 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 outline-none transition-colors"
-                />
+                {/* ALT NAME 1 */}
+                <div>
+                  <input 
+                    type="text" value={altName1} onChange={(e) => setAltName1(e.target.value.toUpperCase())}
+                    placeholder="Alternative Name 1 (Optional)"
+                    className={`w-full h-12 px-4 border-2 rounded-xl text-sm font-bold text-foreground outline-none transition-colors placeholder:text-muted-foreground ${
+                      alt1Error 
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-500/5" 
+                        : "border-border bg-background focus:border-primary focus:ring-primary"
+                    }`}
+                  />
+                  {alt1Error && (
+                    <p className="text-xs text-red-500 font-bold flex items-start gap-1 mt-1.5 leading-tight">
+                      <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
+                      {alt1Error}
+                    </p>
+                  )}
+                </div>
+
+                {/* ALT NAME 2 */}
+                <div>
+                  <input 
+                    type="text" value={altName2} onChange={(e) => setAltName2(e.target.value.toUpperCase())}
+                    placeholder="Alternative Name 2 (Optional)"
+                    className={`w-full h-12 px-4 border-2 rounded-xl text-sm font-bold text-foreground outline-none transition-colors placeholder:text-muted-foreground ${
+                      alt2Error 
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-500/5" 
+                        : "border-border bg-background focus:border-primary focus:ring-primary"
+                    }`}
+                  />
+                  {alt2Error && (
+                    <p className="text-xs text-red-500 font-bold flex items-start gap-1 mt-1.5 leading-tight">
+                      <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
+                      {alt2Error}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <button 
                 onClick={handleProceedToDetails} 
-                disabled={isCreatingDraft}
-                className="w-full h-14 mt-8 bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg hover:bg-slate-800 transition-transform active:scale-95 disabled:opacity-50"
+                disabled={isCreatingDraft || hasAltErrors}
+                className="w-full h-14 mt-8 bg-foreground text-background font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {isCreatingDraft ? <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <>Build Company Structure <ArrowRight className="h-5 w-5" weight="bold" /></>}
+                {isCreatingDraft ? <div className="h-5 w-5 border-2 border-background/30 border-t-background rounded-full animate-spin"></div> : <>Build Company Structure <ArrowRight className="h-5 w-5" weight="bold" /></>}
               </button>
             </div>
           </div>
@@ -329,52 +408,77 @@ export default function CompanyLlcRegistration() {
       {/* ========================================== */}
       {/* THE AVAILABILITY RESULT MODAL              */}
       {/* ========================================== */}
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${resultModal.isOpen ? "visible" : "invisible pointer-events-none"}`}>
-        <div className={`absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 ${resultModal.isOpen ? "opacity-100" : "opacity-0"}`} onClick={() => setResultModal({ ...resultModal, isOpen: false })} />
+      <div className={`fixed inset-0 z-[150] flex items-center justify-center p-4 ${resultModal.isOpen ? "visible" : "invisible pointer-events-none"}`}>
+        <div className={`absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity duration-300 ${resultModal.isOpen ? "opacity-100" : "opacity-0"}`} onClick={() => setResultModal({ ...resultModal, isOpen: false })} />
         
-        <div className={`relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center transition-all duration-300 ${resultModal.isOpen ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"}`}>
+        <div className={`relative w-full max-w-md bg-card border border-border rounded-3xl shadow-2xl p-6 text-center transition-all duration-300 ${resultModal.isOpen ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"}`}>
           
-          <div className="flex justify-center mb-5">
+          <div className="flex justify-center mb-4">
             {resultModal.status === "PASSED" && (
-              <div className="h-20 w-20 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center ring-8 ring-emerald-50/50">
+              <div className="h-20 w-20 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center ring-8 ring-emerald-500/5">
                 <CheckCircle className="h-10 w-10" weight="fill" />
               </div>
             )}
             {resultModal.status === "WARNING" && (
-              <div className="h-20 w-20 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center ring-8 ring-amber-50/50">
+              <div className="h-20 w-20 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center ring-8 ring-amber-500/5">
                 <WarningCircle className="h-10 w-10" weight="fill" />
               </div>
             )}
             {resultModal.status === "BLOCKED" && (
-              <div className="h-20 w-20 rounded-full bg-red-50 text-red-500 flex items-center justify-center ring-8 ring-red-50/50">
+              <div className="h-20 w-20 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center ring-8 ring-red-500/5">
                 <XCircle className="h-10 w-10" weight="fill" />
               </div>
             )}
           </div>
 
-          <h3 className="text-xl font-black text-slate-900 mb-2">{resultModal.title}</h3>
-          <p className="text-sm font-medium text-slate-500 leading-relaxed mb-8">{resultModal.message}</p>
+          <h3 className="text-xl font-black text-foreground mb-2">{resultModal.title}</h3>
+          
+          {/* Displays the searched name */}
+          <div className="mb-3">
+             <span className="inline-block px-3 py-1.5 bg-secondary text-foreground font-black text-sm rounded-lg border border-border">
+               "{resultModal.searchedName}"
+             </span>
+          </div>
+
+          <p className={`text-sm font-medium text-muted-foreground leading-relaxed ${resultModal.conflicts.length > 0 ? 'mb-4' : 'mb-8'}`}>
+            {resultModal.message}
+          </p>
+
+          {/* DYNAMIC CONFLICTS LIST */}
+          {resultModal.conflicts.length > 0 && (
+            <div className="mb-8 text-left bg-red-500/5 border border-red-500/10 p-4 rounded-xl">
+              <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-2">Conflicting Names Found:</p>
+              <ul className="flex flex-col gap-2">
+                {resultModal.conflicts.map((conflict, i) => (
+                  <li key={i} className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0"></span>
+                    {conflict}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex flex-col gap-3">
             {resultModal.status === "PASSED" && (
-              <button onClick={handleAcceptName} className="w-full h-14 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20">
-                Accept Name
+              <button onClick={handleAcceptName} className="w-full h-14 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-500/20 cursor-pointer">
+                Continue Registration
               </button>
             )}
 
             {resultModal.status === "WARNING" && (
               <>
-                <button onClick={handleAcceptName} className="w-full h-14 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20">
-                  Accept & Proceed
+                <button onClick={handleAcceptName} className="w-full h-14 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20 cursor-pointer">
+                  Use Name Anyway
                 </button>
-                <button onClick={() => setResultModal({ ...resultModal, isOpen: false })} className="w-full h-14 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
+                <button onClick={() => setResultModal({ ...resultModal, isOpen: false })} className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80 transition-colors cursor-pointer">
                   Modify Name
                 </button>
               </>
             )}
 
             {resultModal.status === "BLOCKED" && (
-              <button onClick={() => setResultModal({ ...resultModal, isOpen: false })} className="w-full h-14 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg">
+              <button onClick={() => setResultModal({ ...resultModal, isOpen: false })} className="w-full h-14 bg-foreground text-background font-bold rounded-xl hover:opacity-90 transition-colors shadow-lg cursor-pointer">
                 Try Another Name
               </button>
             )}
