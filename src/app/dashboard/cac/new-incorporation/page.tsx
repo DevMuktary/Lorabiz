@@ -84,16 +84,19 @@ export default function RegistrationsHubPage() {
     }
   };
 
-  // SMART ACTION HANDLER
+  // ==========================================
+  // SMART ACTION HANDLER (WITH DYNAMIC ROUTING)
+  // ==========================================
   const handleExecuteAction = (action: string, id: string) => {
     const normalizedAction = action.toLowerCase();
+    
+    // Find the exact registration record to check its type
+    const reg = dashboardData?.tableData?.find((r: any) => r.id === id);
 
     if (normalizedAction.includes("delete")) {
-      // Trigger the custom modal instead of window.confirm
       setDeleteContext({ isOpen: true, id: id, isLoading: false, error: null });
     } 
     else if (normalizedAction.includes("receipt")) {
-      const reg = dashboardData?.tableData?.find((r: any) => r.id === id);
       if (reg) {
         setReceiptData(reg); 
       }
@@ -102,7 +105,12 @@ export default function RegistrationsHubPage() {
       router.push(`/dashboard/cac/register/view/${id}`);
     } 
     else {
-      router.push(`/dashboard/cac/register/business-name/details/${id}`);
+      // DYNAMIC ROUTING: Check entity type and route to the correct details page!
+      if (reg?._appType === "LLC") {
+        router.push(`/dashboard/cac/register/llc/details/${id}`);
+      } else {
+        router.push(`/dashboard/cac/register/business-name/details/${id}`);
+      }
     }
   };
 
@@ -111,9 +119,7 @@ export default function RegistrationsHubPage() {
   return (
     <div className="space-y-10 relative">
       
-      {/* ========================================== */}
-      {/* CUSTOM DELETE CONFIRMATION MODAL             */}
-      {/* ========================================== */}
+      {/* CUSTOM DELETE CONFIRMATION MODAL */}
       {deleteContext.isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
           <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
@@ -151,9 +157,7 @@ export default function RegistrationsHubPage() {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* CUSTOM SUCCESS MODAL                         */}
-      {/* ========================================== */}
+      {/* CUSTOM SUCCESS MODAL */}
       {successModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
           <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
