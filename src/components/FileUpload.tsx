@@ -117,37 +117,37 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
   return (
     <>
       {/* --- COMPACT ROW UI --- */}
-      <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-xl transition-all ${value ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 bg-slate-50'}`}>
+      <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-xl transition-all ${value ? 'border-emerald-500/30 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.05)]' : 'border-border bg-card'}`}>
         
         <div className="flex items-center gap-3 mb-4 sm:mb-0">
-          <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${value ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+          <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${value ? 'bg-emerald-500/20 text-emerald-500' : 'bg-secondary text-muted-foreground'}`}>
             {value ? <CheckCircle weight="fill" className="h-6 w-6" /> : isPdfPreview ? <FilePdf weight="fill" className="h-5 w-5" /> : <ImageIcon weight="fill" className="h-5 w-5" />}
           </div>
           <div>
-            <p className="font-bold text-sm text-slate-800">{label}</p>
-            {description && <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{description}</p>}
+            <p className="font-bold text-sm text-foreground">{label}</p>
+            {description && <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{description}</p>}
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {!value && !isUploading && (
-            <Button onClick={() => fileInputRef.current?.click()} className="bg-slate-900 text-white w-full sm:w-auto hover:bg-slate-800 h-10 px-6 rounded-lg font-bold">
+            <Button onClick={() => fileInputRef.current?.click()} className="bg-primary hover:opacity-90 text-primary-foreground w-full sm:w-auto h-10 px-6 rounded-lg font-bold shadow-md cursor-pointer transition-opacity">
               Choose File
             </Button>
           )}
           
           {isUploading && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-lg font-bold text-sm w-full sm:w-auto justify-center">
+            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg font-bold text-sm w-full sm:w-auto justify-center border border-primary/20">
               <CircleNotch className="animate-spin h-5 w-5" weight="bold" /> Uploading...
             </div>
           )}
 
           {value && !isUploading && (
             <div className="flex w-full sm:w-auto gap-2">
-              <Button onClick={() => setViewFullScale(value)} variant="outline" className="flex-1 sm:flex-none border-slate-300 text-slate-700 font-bold hover:bg-slate-100 h-10">
+              <Button onClick={() => setViewFullScale(value)} variant="outline" className="flex-1 sm:flex-none border-border bg-background text-foreground font-bold hover:bg-secondary h-10 cursor-pointer">
                 View Document
               </Button>
-              <Button onClick={onRemove} variant="outline" className="flex-1 sm:flex-none border-red-200 text-red-600 font-bold hover:bg-red-50 hover:text-red-700 hover:border-red-300 h-10">
+              <Button onClick={onRemove} variant="outline" className="flex-1 sm:flex-none border-red-500/30 text-red-500 font-bold bg-background hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50 h-10 cursor-pointer transition-colors">
                 Remove
               </Button>
             </div>
@@ -159,19 +159,19 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
 
       {/* --- DRAGGABLE CROP MODAL (Teleported to body via React Portal) --- */}
       {mounted && imageToCrop && createPortal(
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-black text-lg text-slate-900">Crop Document ({label})</h3>
-              <button onClick={() => { setImageToCrop(null); setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-secondary/50">
+              <h3 className="font-black text-lg text-foreground">Crop Document ({label})</h3>
+              <button onClick={() => { setImageToCrop(null); setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="p-2 hover:bg-secondary rounded-full text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                 <X weight="bold" />
               </button>
             </div>
             
             <div className="p-6">
-              <p className="text-sm font-medium text-slate-500 mb-4">Drag the edges or corners of the box to select the area you want to upload.</p>
+              <p className="text-sm font-medium text-muted-foreground mb-4">Drag the edges or corners of the box to select the area you want to upload.</p>
               
-              <div className="w-full bg-slate-100 rounded-xl overflow-hidden mb-6 border border-slate-200">
+              <div className="w-full bg-secondary/30 rounded-xl overflow-hidden mb-6 border border-border">
                 <Cropper
                   src={imageToCrop}
                   style={{ height: 400, width: "100%" }}
@@ -186,10 +186,10 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button onClick={handleCropAndUpload} className="flex-1 h-12 rounded-xl font-bold text-white bg-[#ff3f7a] hover:bg-[#e02b62]">
+                <Button onClick={handleCropAndUpload} className="flex-1 h-12 rounded-xl font-bold text-primary-foreground bg-primary hover:opacity-90 shadow-md cursor-pointer">
                   Crop & Upload
                 </Button>
-                <Button onClick={handleUploadOriginal} variant="outline" className="flex-1 h-12 rounded-xl font-bold text-slate-700 bg-white hover:bg-slate-50 border-slate-300">
+                <Button onClick={handleUploadOriginal} variant="outline" className="flex-1 h-12 rounded-xl font-bold text-foreground bg-background hover:bg-secondary border-border cursor-pointer">
                   Upload Original (Skip)
                 </Button>
               </div>
@@ -202,24 +202,24 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
       {/* --- LIGHTBOX PREVIEW (Teleported to body via React Portal) --- */}
       {mounted && viewFullScale && createPortal(
         <div 
-          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
           onClick={() => setViewFullScale(null)} 
         >
            <button 
              onClick={(e) => { e.stopPropagation(); setViewFullScale(null); }} 
-             className="absolute top-4 right-4 md:top-8 md:right-8 flex items-center gap-2 text-white bg-white/10 hover:bg-red-500 px-4 py-2 rounded-full font-bold transition-colors z-50 shadow-lg border border-white/20"
+             className="absolute top-4 right-4 md:top-8 md:right-8 flex items-center gap-2 text-foreground bg-secondary/50 hover:bg-red-500 hover:text-white px-4 py-2 rounded-full font-bold transition-colors z-50 shadow-lg border border-border cursor-pointer"
            >
              <X weight="bold" size={20} /> Close Preview
            </button>
 
            <div 
-             className="relative w-full max-w-4xl flex flex-col items-center"
+             className="relative w-full max-w-4xl flex flex-col items-center animate-in zoom-in-95 duration-200"
              onClick={(e) => e.stopPropagation()}
            >
               {viewFullScale.toLowerCase().endsWith('.pdf') ? (
-                 <iframe src={viewFullScale} className="w-full h-[80vh] rounded-2xl bg-white shadow-2xl border-4 border-slate-800" />
+                 <iframe src={viewFullScale} className="w-full h-[80vh] rounded-2xl bg-card shadow-2xl border-2 border-border" />
               ) : (
-                 <img src={viewFullScale} alt="Full Scale Preview" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-4 border-slate-800 bg-black" />
+                 <img src={viewFullScale} alt="Full Scale Preview" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-2 border-border bg-card" />
               )}
            </div>
         </div>,
