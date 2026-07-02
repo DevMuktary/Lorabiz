@@ -67,7 +67,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
         if (json.success && json.data.status !== "UNSUBMITTED") {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
-          setTimeout(() => router.push("/dashboard?success=true"), 2500);
+          setTimeout(() => router.push("/dashboard/cac/new-incoporation?success=true"), 2500);
         }
       } catch (e) {
         // Silent catch
