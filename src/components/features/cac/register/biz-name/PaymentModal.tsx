@@ -111,7 +111,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
 
       if (method === "WALLET") {
         setProcessingState("success");
-        setTimeout(() => router.push("/dashboard?success=true"), 2500);
+        setTimeout(() => router.push("/dashboard/cac/new-incorporation?success=true"), 2500);
       } else if (method === "ONLINE") {
         if (!data.paystackData.publicKey) {
           setErrorMsg("Server error: Paystack Public Key is missing. Trigger a rebuild on Railway.");
