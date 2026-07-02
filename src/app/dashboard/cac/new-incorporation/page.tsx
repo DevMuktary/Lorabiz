@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   Plus, 
   Spinner, 
@@ -11,7 +11,8 @@ import {
   WarningCircle, 
   CheckCircle,
   ArrowLeft,
-  Trash
+  Trash,
+  X
 } from "@phosphor-icons/react";
 
 import RegistrationsTable from "@/components/features/cac/new-incorporation/RegistrationsTable";
@@ -19,6 +20,8 @@ import ReceiptModal from "@/components/features/cac/new-incorporation/ReceiptMod
 
 export default function RegistrationsHubPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -34,6 +37,27 @@ export default function RegistrationsHubPage() {
     isOpen: false, id: null, isLoading: false, error: null
   });
   const [successModalOpen, setSuccessModalOpen] = useState(false);
+  
+  // Custom Payment Success Alert
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+
+  // Detect ?success=true from URL
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      setShowPaymentSuccess(true);
+      
+      // Clean up the URL so it doesn't stay there on refresh
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+
+      // Auto-hide the alert after 10 seconds
+      const timer = setTimeout(() => {
+        setShowPaymentSuccess(false);
+      }, 10000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -119,6 +143,34 @@ export default function RegistrationsHubPage() {
   return (
     <div className="space-y-10 relative">
       
+      {/* ========================================== */}
+      {/* 1. PAYMENT SUCCESS ALERT NOTIFICATION        */}
+      {/* ========================================== */}
+      {showPaymentSuccess && (
+        <div className="fixed top-24 right-4 sm:right-10 z-[999] animate-in slide-in-from-top-10 fade-in duration-500">
+          <div className="bg-card border-2 border-emerald-500 shadow-[0_10px_40px_rgba(16,185,129,0.2)] rounded-2xl p-4 sm:p-5 flex items-start gap-4 max-w-sm relative overflow-hidden">
+            {/* Progress bar animation */}
+            <div className="absolute bottom-0 left-0 h-1.5 bg-emerald-500 animate-[shrink_10s_linear_forwards]" style={{ width: '100%' }} />
+            
+            <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <CheckCircle className="h-6 w-6" weight="fill" />
+            </div>
+            <div className="pr-6">
+              <h4 className="text-base font-black text-foreground mb-1">🎉 Payment Successful!</h4>
+              <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                Your application has been submitted and is now <span className="font-bold text-blue-500">Pending</span> review.
+              </p>
+            </div>
+            <button 
+              onClick={() => setShowPaymentSuccess(false)}
+              className="absolute top-4 right-4 p-1 rounded-full text-muted-foreground hover:bg-secondary transition-colors cursor-pointer"
+            >
+              <X weight="bold" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* CUSTOM DELETE CONFIRMATION MODAL */}
       {deleteContext.isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
