@@ -16,41 +16,41 @@ const cleanNum = (val: string) => val.replace(/\D/g, "");
 // ==========================================
 export function ReferenceModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 flex flex-col max-h-[90vh] h-[90vh] sm:h-auto">
-        <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+    <div className="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center bg-background/80 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-card border border-border rounded-t-3xl sm:rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 flex flex-col max-h-[90vh] h-[90vh] sm:h-auto">
+        <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-border flex justify-between items-center bg-secondary/50 shrink-0">
           <div>
-            <h3 className="font-black text-base sm:text-lg text-slate-900 flex items-center gap-2">
-              <ListMagnifyingGlass className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500" weight="fill" /> Statutory Share Capital
+            <h3 className="font-black text-base sm:text-lg text-foreground flex items-center gap-2">
+              <ListMagnifyingGlass className="h-5 w-5 sm:h-6 sm:w-6 text-primary" weight="fill" /> Statutory Share Capital
             </h3>
-            <p className="text-[11px] sm:text-xs font-bold text-slate-500 mt-1">Check minimum requirements based on your industry.</p>
+            <p className="text-[11px] sm:text-xs font-bold text-muted-foreground mt-1">Check minimum requirements based on your industry.</p>
           </div>
-          <button onClick={onClose} className="p-2 bg-slate-200 hover:bg-slate-300 rounded-full text-slate-600 transition-colors"><X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" /></button>
+          <button onClick={onClose} className="p-2 bg-secondary hover:bg-secondary/80 rounded-full text-foreground transition-colors cursor-pointer"><X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" /></button>
         </div>
-        <div className="p-0 overflow-y-auto custom-scrollbar flex-1 bg-white">
+        <div className="p-0 overflow-y-auto custom-scrollbar flex-1 bg-background">
           <div className="min-w-[600px]">
             <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-100 sticky top-0 shadow-sm z-10">
+              <thead className="bg-secondary/50 sticky top-0 shadow-sm z-10">
                 <tr>
-                  <th className="p-3 text-[10px] font-black uppercase text-slate-500 border-b border-slate-200 w-16 text-center">S/N</th>
-                  <th className="p-3 text-[10px] font-black uppercase text-slate-500 border-b border-slate-200">Type of Company</th>
-                  <th className="p-3 text-[10px] font-black uppercase text-slate-500 border-b border-slate-200 text-right pr-6">Minimum Share Capital (₦)</th>
+                  <th className="p-3 text-[10px] font-black uppercase text-muted-foreground border-b border-border w-16 text-center">S/N</th>
+                  <th className="p-3 text-[10px] font-black uppercase text-muted-foreground border-b border-border">Type of Company</th>
+                  <th className="p-3 text-[10px] font-black uppercase text-muted-foreground border-b border-border text-right pr-6">Minimum Share Capital (₦)</th>
                 </tr>
               </thead>
-              <tbody className="text-xs font-bold text-slate-700">
+              <tbody className="text-xs font-bold text-foreground">
                 {DESIGNATED_COMPANIES.map((c, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="p-3 text-slate-400 text-center">{c.id === 0 ? "-" : c.id}</td>
+                  <tr key={i} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                    <td className="p-3 text-muted-foreground text-center">{c.id === 0 ? "-" : c.id}</td>
                     <td className="p-3 text-[11px] sm:text-xs leading-relaxed py-3">{c.type}</td>
-                    <td className="p-3 text-right text-indigo-600 pr-6">{formatNum(c.min)}</td>
+                    <td className="p-3 text-right text-primary pr-6">{formatNum(c.min)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
-        <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50 flex justify-end shrink-0">
-          <Button onClick={onClose} className="h-12 w-full sm:w-auto px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg">Close & Continue</Button>
+        <div className="p-4 sm:p-5 border-t border-border bg-secondary/30 flex justify-end shrink-0">
+          <Button onClick={onClose} className="h-12 w-full sm:w-auto px-8 bg-foreground hover:opacity-90 text-background font-bold rounded-xl shadow-lg cursor-pointer">Close & Continue</Button>
         </div>
       </div>
     </div>
@@ -105,50 +105,50 @@ export function ShareClassModal({ onClose, shareData, updateShareData, editingId
   };
 
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
-        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-          <h3 className="font-black text-lg text-slate-900">{editingIdx !== null ? "Edit" : "Add"} Share Class</h3>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X weight="bold" /></button>
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-card border border-border rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+        <div className="px-6 py-5 border-b border-border flex justify-between items-center bg-secondary/50 shrink-0">
+          <h3 className="font-black text-lg text-foreground">{editingIdx !== null ? "Edit" : "Add"} Share Class</h3>
+          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-full text-muted-foreground hover:text-foreground transition-colors cursor-pointer"><X weight="bold" /></button>
         </div>
-        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
-          <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-2 mb-4">
-            <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" weight="fill" />
-            <p className="text-xs font-medium text-blue-800 leading-relaxed">Select the Class Type, assign its Total Value out of your master capital, and define how many Units it is divided into.</p>
+        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar bg-background">
+          <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl flex items-start gap-2 mb-4">
+            <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" weight="fill" />
+            <p className="text-xs font-medium text-blue-500 leading-relaxed">Select the Class Type, assign its Total Value out of your master capital, and define how many Units it is divided into.</p>
           </div>
-          <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-xl border border-indigo-100">
-            <span className="text-xs font-bold text-indigo-700">Available Capital</span>
-            <span className="text-sm font-black text-indigo-900">₦{formatNum(availableCapital)}</span>
+          <div className="flex justify-between items-center bg-primary/10 p-3 rounded-xl border border-primary/20">
+            <span className="text-xs font-bold text-primary">Available Capital</span>
+            <span className="text-sm font-black text-primary">₦{formatNum(availableCapital)}</span>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase text-slate-500">Class of Shares <span className="text-red-500">*</span></Label>
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Class of Shares <span className="text-red-500">*</span></Label>
             <div className="relative">
-              <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-sm font-bold bg-white focus:border-indigo-500 outline-none">
+              <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full h-12 px-4 appearance-none border border-border rounded-xl text-sm font-bold bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors">
                 {getOptions().map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
+              <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-muted-foreground pointer-events-none" weight="bold" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase text-slate-500">Total Value for this Class (₦) <span className="text-red-500">*</span></Label>
-            <Input type="text" value={formatNum(form.totalValue)} onChange={e => setForm({...form, totalValue: cleanNum(e.target.value)})} className={`h-12 font-black text-lg ${isOver ? 'bg-red-50 text-red-600 border-red-300' : 'bg-white'}`} />
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Total Value for this Class (₦) <span className="text-red-500">*</span></Label>
+            <Input type="text" value={formatNum(form.totalValue)} onChange={e => setForm({...form, totalValue: cleanNum(e.target.value)})} className={`h-12 font-black text-lg bg-background text-foreground ${isOver ? 'bg-red-500/10 text-red-500 border-red-500' : 'border-border focus-visible:ring-primary focus-visible:border-primary'}`} />
             <div className="flex flex-col gap-1 mt-1">
-              <p className="text-[10px] font-black text-indigo-500 uppercase bg-indigo-50 px-2 py-1 rounded self-start">{numberToWordsNaira(Number(form.totalValue) || 0)}</p>
-              {isOver && <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1"><WarningCircle weight="fill" /> Exceeds available capital by ₦{formatNum(formVal - availableCapital)}</p>}
+              <p className="text-[10px] font-black text-primary uppercase bg-primary/10 px-2 py-1 rounded self-start">{numberToWordsNaira(Number(form.totalValue) || 0)}</p>
+              {isOver && <p className="text-[11px] font-bold text-red-500 flex items-center gap-1 mt-1"><WarningCircle weight="fill" /> Exceeds available capital by ₦{formatNum(formVal - availableCapital)}</p>}
             </div>
           </div>
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            <Label className="text-xs font-bold uppercase text-slate-500">Divided Into (Number of Units) <span className="text-red-500">*</span></Label>
-            <Input type="text" value={formatNum(form.units)} onChange={e => setForm({...form, units: cleanNum(e.target.value)})} className="h-12 font-bold" />
+          <div className="space-y-2 pt-2 border-t border-border">
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Divided Into (Number of Units) <span className="text-red-500">*</span></Label>
+            <Input type="text" value={formatNum(form.units)} onChange={e => setForm({...form, units: cleanNum(e.target.value)})} className="h-12 font-bold bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase text-slate-500">Auto-Calculated Nominal Value (Price per Unit) ₦</Label>
-            <Input type="text" disabled value={formatNum(calcPrice())} className="h-12 font-black bg-slate-100 text-slate-500" />
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Auto-Calculated Nominal Value (Price per Unit) ₦</Label>
+            <Input type="text" disabled value={formatNum(calcPrice())} className="h-12 font-black bg-secondary text-muted-foreground border-border opacity-70" />
           </div>
         </div>
-        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
-          <Button variant="outline" onClick={onClose} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
-          <Button onClick={handleSave} disabled={!form.totalValue || !form.units || Number(form.units) <= 0 || isOver} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Save Class</Button>
+        <div className="p-6 border-t border-border bg-secondary/30 flex justify-end gap-3 shrink-0">
+          <Button variant="outline" onClick={onClose} className="h-12 px-6 rounded-xl font-bold bg-background border-border text-foreground hover:bg-secondary cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} disabled={!form.totalValue || !form.units || Number(form.units) <= 0 || isOver} className="h-12 px-8 bg-primary hover:opacity-90 text-primary-foreground font-bold rounded-xl shadow-md disabled:opacity-50 cursor-pointer">Save Class</Button>
         </div>
       </div>
     </div>
@@ -185,39 +185,39 @@ export function AllotmentModal({ onClose, shareData, updateShareData, officerId 
   };
 
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50 shrink-0">
-          <h3 className="font-black text-lg text-emerald-900 flex items-center gap-2"><Coins className="h-6 w-6 text-emerald-500" weight="fill" /> Allot Shares</h3>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X weight="bold" /></button>
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-card border border-border rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-5 border-b border-border flex justify-between items-center bg-emerald-500/10 shrink-0">
+          <h3 className="font-black text-lg text-emerald-500 flex items-center gap-2"><Coins className="h-6 w-6 text-emerald-500" weight="fill" /> Allot Shares</h3>
+          <button onClick={onClose} className="p-2 hover:bg-emerald-500/20 rounded-full text-emerald-500 transition-colors cursor-pointer"><X weight="bold" /></button>
         </div>
-        <div className="p-6 space-y-4">
-          <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-            <span className="text-xs font-bold text-emerald-700">Available Units ({form.type})</span>
-            <span className="text-sm font-black text-emerald-900">{formatNum(availableUnits)}</span>
+        <div className="p-6 space-y-4 bg-background">
+          <div className="flex justify-between items-center bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
+            <span className="text-xs font-bold text-emerald-500">Available Units ({form.type})</span>
+            <span className="text-sm font-black text-emerald-500">{formatNum(availableUnits)}</span>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase text-slate-500">Select Share Class <span className="text-red-500">*</span></Label>
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Select Share Class <span className="text-red-500">*</span></Label>
             <div className="relative">
               <select value={form.type} onChange={e => {
                 const nt = e.target.value;
                 const ex = shareData.allotments.find((a: any) => a.officerId === officerId && a.type === nt);
                 setForm({ type: nt, units: ex ? ex.units.toString() : "" });
-              }} className="w-full h-12 px-4 appearance-none border border-slate-200 rounded-xl text-sm font-bold bg-white focus:border-indigo-500 outline-none">
+              }} className="w-full h-12 px-4 appearance-none border border-border rounded-xl text-sm font-bold bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors">
                 {shareData.shareClasses.map((c: any) => <option key={c.type} value={c.type}>{c.type}</option>)}
               </select>
-              <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-slate-400 pointer-events-none" weight="bold" />
+              <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-muted-foreground pointer-events-none" weight="bold" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase text-slate-500">Number of Units to Allot <span className="text-red-500">*</span></Label>
-            <Input type="text" value={formatNum(form.units)} onChange={e => setForm({...form, units: cleanNum(e.target.value)})} className={`h-12 font-black text-lg ${isOver ? 'border-red-500 text-red-600 bg-red-50' : ''}`} />
-            {isOver && <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1"><WarningCircle weight="fill" /> Cannot allot more units than are available.</p>}
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Number of Units to Allot <span className="text-red-500">*</span></Label>
+            <Input type="text" value={formatNum(form.units)} onChange={e => setForm({...form, units: cleanNum(e.target.value)})} className={`h-12 font-black text-lg bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary ${isOver ? 'border-red-500 text-red-500 bg-red-500/10' : ''}`} />
+            {isOver && <p className="text-[11px] font-bold text-red-500 flex items-center gap-1 mt-1"><WarningCircle weight="fill" /> Cannot allot more units than are available.</p>}
           </div>
         </div>
-        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
-          <Button variant="outline" onClick={onClose} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
-          <Button onClick={handleSave} disabled={!form.units || isOver} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50">Assign Shares</Button>
+        <div className="p-6 border-t border-border bg-secondary/30 flex justify-end gap-3 shrink-0">
+          <Button variant="outline" onClick={onClose} className="h-12 px-6 rounded-xl font-bold bg-background border-border text-foreground hover:bg-secondary cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} disabled={!form.units || isOver} className="h-12 px-8 bg-primary hover:opacity-90 text-primary-foreground font-bold rounded-xl shadow-md disabled:opacity-50 cursor-pointer">Assign Shares</Button>
         </div>
       </div>
     </div>
@@ -249,7 +249,7 @@ export function StandaloneShareholderModal({ onClose, shareData, updateData, cle
     if (type === "idNumber" && form.idType === "NIN" && !/^\d{11}$/.test(val)) return "Must be 11 digits.";
     return null;
   };
-  const ErrMsg = ({ msg }: { msg: string | null }) => msg ? <div className="text-[10px] font-bold text-red-600 flex items-center gap-1 mt-1.5"><WarningCircle weight="fill" /> {msg}</div> : null;
+  const ErrMsg = ({ msg }: { msg: string | null }) => msg ? <div className="text-[10px] font-bold text-red-500 flex items-center gap-1 mt-1.5"><WarningCircle weight="fill" /> {msg}</div> : null;
 
   const handleSave = () => {
     const fieldsToTouch = ["surname", "firstName", "email", "phone", "gender", "dob", "occupation", "idType", "idNumber", "state", "allotUnits"];
@@ -275,46 +275,52 @@ export function StandaloneShareholderModal({ onClose, shareData, updateData, cle
   };
 
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50 shrink-0">
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-card border border-border rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+        <div className="px-6 py-5 border-b border-border flex justify-between items-center bg-emerald-500/10 shrink-0">
           <div>
-            <h3 className="font-black text-lg text-emerald-900 flex items-center gap-2"><UserPlus className="h-6 w-6 text-emerald-500" weight="fill" /> Add Standalone Shareholder</h3>
-            <p className="text-xs font-bold text-emerald-700 mt-1">This person will NOT be listed as a Director.</p>
+            <h3 className="font-black text-lg text-emerald-500 flex items-center gap-2"><UserPlus className="h-6 w-6 text-emerald-500" weight="fill" /> Add Standalone Shareholder</h3>
+            <p className="text-xs font-bold text-emerald-500/80 mt-1">This person will NOT be listed as a Director.</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-emerald-200 rounded-full text-emerald-800"><X weight="bold" /></button>
+          <button onClick={onClose} className="p-2 hover:bg-emerald-500/20 rounded-full text-emerald-500 transition-colors cursor-pointer"><X weight="bold" /></button>
         </div>
-        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-white">
+        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-background">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2"><h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Personal Details</h3></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Surname *</Label><Input value={form.surname} onChange={e => setForm({...form, surname: e.target.value})} onBlur={() => setTouched({...touched, surname: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("surname", form.surname)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">First Name *</Label><Input value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} onBlur={() => setTouched({...touched, firstName: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("firstName", form.firstName)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Other Name</Label><Input value={form.otherName} onChange={e => setForm({...form, otherName: e.target.value})} className="h-12 font-bold" /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Date of Birth *</Label><Input type="date" value={form.dob} onChange={e => setForm({...form, dob: e.target.value})} onBlur={() => setTouched({...touched, dob: true})} className="h-12 font-bold uppercase" /><ErrMsg msg={getErr("dob", form.dob, "dob")} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Gender *</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})} onBlur={() => setTouched({...touched, gender: true})}><option value="">-- Select --</option><option value="MALE">MALE</option><option value="FEMALE">FEMALE</option></select><ErrMsg msg={getErr("gender", form.gender)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Occupation *</Label><Input value={form.occupation} onChange={e => setForm({...form, occupation: e.target.value})} onBlur={() => setTouched({...touched, occupation: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("occupation", form.occupation)} /></div>
+            <div className="md:col-span-2"><h3 className="text-sm font-black text-foreground border-b border-border pb-2 uppercase tracking-widest">Personal Details</h3></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">Surname *</Label><Input value={form.surname} onChange={e => setForm({...form, surname: e.target.value})} onBlur={() => setTouched({...touched, surname: true})} className="h-12 font-bold bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /><ErrMsg msg={getErr("surname", form.surname)} /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">First Name *</Label><Input value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} onBlur={() => setTouched({...touched, firstName: true})} className="h-12 font-bold bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /><ErrMsg msg={getErr("firstName", form.firstName)} /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">Other Name</Label><Input value={form.otherName} onChange={e => setForm({...form, otherName: e.target.value})} className="h-12 font-bold bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">Date of Birth *</Label><Input type="date" value={form.dob} onChange={e => setForm({...form, dob: e.target.value})} onBlur={() => setTouched({...touched, dob: true})} className="h-12 font-bold uppercase appearance-none bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /><ErrMsg msg={getErr("dob", form.dob, "dob")} /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">Gender *</Label><select className="w-full h-12 px-4 border border-border bg-background text-foreground rounded-xl text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})} onBlur={() => setTouched({...touched, gender: true})}><option value="">-- Select --</option><option value="MALE">MALE</option><option value="FEMALE">FEMALE</option></select><ErrMsg msg={getErr("gender", form.gender)} /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">Occupation *</Label><Input value={form.occupation} onChange={e => setForm({...form, occupation: e.target.value})} onBlur={() => setTouched({...touched, occupation: true})} className="h-12 font-bold bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /><ErrMsg msg={getErr("occupation", form.occupation)} /></div>
             
-            <div className="md:col-span-2 mt-4"><h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Contact & ID</h3></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Email Address *</Label><Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} onBlur={() => setTouched({...touched, email: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("email", form.email, "email")} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Phone Number *</Label><div className="flex"><select value={form.phoneCode} onChange={e => setForm({...form, phoneCode: e.target.value})} className="w-[100px] h-12 px-2 border border-r-0 border-slate-200 rounded-l-xl text-sm font-bold bg-slate-50 outline-none">{COUNTRY_CODES.map(c => <option key={c.name} value={c.code}>{c.flag} {c.code}</option>)}</select><Input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} onBlur={() => setTouched({...touched, phone: true})} className="h-12 font-bold rounded-l-none flex-1" /></div><ErrMsg msg={getErr("phone", form.phone, "phone")} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Means of ID *</Label><select className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none" value={form.idType} onChange={e => setForm({...form, idType: e.target.value})} onBlur={() => setTouched({...touched, idType: true})}><option value="">-- Select --</option><option value="NIN">National ID Card (NIN)</option><option value="PASSPORT">International Passport</option><option value="DRIVERS_LICENSE">Driver's License</option></select><ErrMsg msg={getErr("idType", form.idType)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">ID Number *</Label><Input value={form.idNumber} onChange={e => setForm({...form, idNumber: e.target.value})} onBlur={() => setTouched({...touched, idNumber: true})} className="h-12 font-bold" /><ErrMsg msg={getErr("idNumber", form.idNumber, "idNumber")} /></div>
+            <div className="md:col-span-2 mt-4"><h3 className="text-sm font-black text-foreground border-b border-border pb-2 uppercase tracking-widest">Contact & ID</h3></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">Email Address *</Label><Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} onBlur={() => setTouched({...touched, email: true})} className="h-12 font-bold bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /><ErrMsg msg={getErr("email", form.email, "email")} /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">Phone Number *</Label><div className="flex"><select value={form.phoneCode} onChange={e => setForm({...form, phoneCode: e.target.value})} className="w-[100px] h-12 px-2 border-r rounded-none border-border bg-secondary text-foreground text-sm font-bold outline-none"><option value="+234">🇳🇬 +234</option>{COUNTRY_CODES.map(c => <option key={c.name} value={c.code}>{c.flag} {c.code}</option>)}</select><Input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} onBlur={() => setTouched({...touched, phone: true})} className="h-12 font-bold rounded-l-none flex-1 bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /></div><ErrMsg msg={getErr("phone", form.phone, "phone")} /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">Means of ID *</Label><div className="relative"><select className="w-full h-12 px-4 border border-border bg-background text-foreground rounded-xl text-sm font-bold outline-none appearance-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" value={form.idType} onChange={e => setForm({...form, idType: e.target.value})} onBlur={() => setTouched({...touched, idType: true})}><option value="">-- Select --</option><option value="NIN">National ID Card (NIN)</option><option value="PASSPORT">International Passport</option><option value="DRIVERS_LICENSE">Driver's License</option></select><CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-muted-foreground pointer-events-none" weight="bold" /></div><ErrMsg msg={getErr("idType", form.idType)} /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">ID Number *</Label><Input value={form.idNumber} onChange={e => setForm({...form, idNumber: e.target.value})} onBlur={() => setTouched({...touched, idNumber: true})} className="h-12 font-bold bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /><ErrMsg msg={getErr("idNumber", form.idNumber, "idNumber")} /></div>
 
-            <div className="md:col-span-2 mt-4"><h3 className="text-sm font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Residential Address</h3></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">State *</Label><select value={form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, state: e.target.value, lga: ""}})} onBlur={() => setTouched({...touched, state: true})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none"><option value="">-- Select --</option>{NIGERIA_DATA.map(d => <option key={d.state} value={d.state}>{d.state}</option>)}</select><ErrMsg msg={getErr("state", form.residentialAddress.state)} /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">LGA *</Label><select value={form.residentialAddress.lga} disabled={!form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, lga: e.target.value}})} className="w-full h-12 px-4 border border-slate-200 bg-white rounded-xl text-sm font-bold outline-none"><option value="">-- Select --</option>{form.residentialAddress.state && NIGERIA_DATA.find(d => d.state === form.residentialAddress.state)?.lgas.map(l => <option key={l} value={l}>{l}</option>)}</select></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">City / Town *</Label><Input value={form.residentialAddress.city} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, city: e.target.value}})} className="h-12 font-bold" /></div>
-            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-slate-500">Street Address *</Label><Input value={form.residentialAddress.street} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, street: e.target.value}})} className="h-12 font-bold" /></div>
+            <div className="md:col-span-2 mt-4"><h3 className="text-sm font-black text-foreground border-b border-border pb-2 uppercase tracking-widest">Residential Address</h3></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">State *</Label><div className="relative"><select value={form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, state: e.target.value, lga: ""}})} onBlur={() => setTouched({...touched, state: true})} className="w-full h-12 px-4 border appearance-none border-border bg-background text-foreground rounded-xl text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"><option value="">-- Select --</option>{NIGERIA_DATA.map(d => <option key={d.state} value={d.state}>{d.state}</option>)}</select><CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-muted-foreground pointer-events-none" weight="bold" /></div><ErrMsg msg={getErr("state", form.residentialAddress.state)} /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">LGA *</Label><div className="relative"><select value={form.residentialAddress.lga} disabled={!form.residentialAddress.state} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, lga: e.target.value}})} className="w-full h-12 px-4 border appearance-none border-border bg-background text-foreground rounded-xl text-sm font-bold outline-none disabled:opacity-50 focus:border-primary focus:ring-1 focus:ring-primary transition-colors"><option value="">-- Select --</option>{form.residentialAddress.state && NIGERIA_DATA.find(d => d.state === form.residentialAddress.state)?.lgas.map(l => <option key={l} value={l}>{l}</option>)}</select><CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-muted-foreground pointer-events-none" weight="bold" /></div></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">City / Town *</Label><Input value={form.residentialAddress.city} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, city: e.target.value}})} className="h-12 font-bold bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-muted-foreground">Street Address *</Label><Input value={form.residentialAddress.street} onChange={e => setForm({...form, residentialAddress: {...form.residentialAddress, street: e.target.value}})} className="h-12 font-bold bg-background text-foreground border-border focus-visible:ring-primary focus-visible:border-primary" /></div>
 
-            <div className="md:col-span-2 mt-4 p-5 bg-indigo-50 border border-indigo-100 rounded-2xl grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2"><Label className="text-xs font-bold uppercase text-indigo-700">Initial Share Allotment *</Label><select value={form.allotType} onChange={e => setForm({...form, allotType: e.target.value})} className="w-full h-12 px-4 border border-indigo-200 bg-white rounded-xl text-sm font-bold outline-none"><option value="">-- Select Class --</option>{shareData.shareClasses.map((c: any) => <option key={c.type} value={c.type}>{c.type}</option>)}</select></div>
-              <div className="space-y-2"><Label className="text-xs font-bold uppercase text-indigo-700">Units to Allot *</Label><Input type="text" value={formatNum(form.allotUnits)} onChange={e => setForm({...form, allotUnits: cleanNum(e.target.value)})} onBlur={() => setTouched({...touched, allotUnits: true})} className="h-12 font-black text-lg border-indigo-200" /><ErrMsg msg={!form.allotUnits && touched.allotUnits ? "Required" : Number(form.allotUnits) > getAvailUnits(form.allotType) ? "Exceeds available units." : null} /></div>
+            <div className="md:col-span-2 mt-4 p-5 bg-primary/10 border border-primary/20 rounded-2xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-primary">Initial Share Allotment *</Label>
+                <div className="relative">
+                  <select value={form.allotType} onChange={e => setForm({...form, allotType: e.target.value})} className="w-full h-12 px-4 border appearance-none border-primary/20 bg-background text-foreground rounded-xl text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"><option value="">-- Select Class --</option>{shareData.shareClasses.map((c: any) => <option key={c.type} value={c.type}>{c.type}</option>)}</select>
+                  <CaretDown className="absolute right-4 top-3.5 h-5 w-5 text-primary pointer-events-none" weight="bold" />
+                </div>
+              </div>
+              <div className="space-y-2"><Label className="text-xs font-bold uppercase text-primary">Units to Allot *</Label><Input type="text" value={formatNum(form.allotUnits)} onChange={e => setForm({...form, allotUnits: cleanNum(e.target.value)})} onBlur={() => setTouched({...touched, allotUnits: true})} className="h-12 font-black text-lg border-primary/20 bg-background text-foreground focus-visible:ring-primary focus-visible:border-primary" /><ErrMsg msg={!form.allotUnits && touched.allotUnits ? "Required" : Number(form.allotUnits) > getAvailUnits(form.allotType) ? "Exceeds available units." : null} /></div>
             </div>
           </div>
         </div>
-        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
-          <Button variant="outline" onClick={onClose} className="h-12 px-6 rounded-xl font-bold bg-white">Cancel</Button>
-          <Button onClick={handleSave} className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md">Save & Allot</Button>
+        <div className="p-6 border-t border-border bg-secondary/30 flex justify-end gap-3 shrink-0">
+          <Button variant="outline" onClick={onClose} className="h-12 px-6 rounded-xl font-bold bg-background border-border text-foreground hover:bg-secondary cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} className="h-12 px-8 bg-primary hover:opacity-90 text-primary-foreground font-bold rounded-xl shadow-md cursor-pointer">Save & Allot</Button>
         </div>
       </div>
     </div>
