@@ -117,7 +117,7 @@ function RegistrationsHubContent() {
   const handleExecuteAction = (action: string, id: string) => {
     const normalizedAction = action.toLowerCase();
     
-    // Find the exact registration record to check its type
+    // Find the exact registration record to check its type and status
     const reg = dashboardData?.tableData?.find((r: any) => r.id === id);
 
     if (normalizedAction.includes("delete")) {
@@ -128,11 +128,24 @@ function RegistrationsHubContent() {
         setReceiptData(reg); 
       }
     } 
+    // FIXED: Catch "Reason", "Resolve", or any general View on a QUERIED app
+    else if (
+      normalizedAction.includes("reason") || 
+      normalizedAction.includes("resolve") || 
+      (normalizedAction.includes("view") && reg?.status === "QUERIED")
+    ) {
+      if (reg?._appType === "LLC") {
+        router.push(`/dashboard/cac/llc/${id}/queries`);
+      } else {
+        router.push(`/dashboard/cac/businesses/${id}/queries`);
+      }
+    }
+    // Standard Read-Only View (For Approved/Pending apps)
     else if (normalizedAction.includes("view")) {
       router.push(`/dashboard/cac/register/view/${id}`);
     } 
     else {
-      // DYNAMIC ROUTING: Check entity type and route to the correct details page!
+      // Normal Edit/Continue for unsubmitted drafts
       if (reg?._appType === "LLC") {
         router.push(`/dashboard/cac/register/llc/details/${id}`);
       } else {
