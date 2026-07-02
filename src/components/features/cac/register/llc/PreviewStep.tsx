@@ -50,13 +50,13 @@ const getUploadLabel = (key: string) => {
 };
 
 const TableRow = ({ label, value, isHighlight = false, isLast = false }: { label: string, value: React.ReactNode, isHighlight?: boolean, isLast?: boolean }) => (
-  <div className={`flex flex-col sm:flex-row border-slate-300 ${isLast ? '' : 'border-b'}`}>
-    <div className={`w-full sm:w-1/3 shrink-0 py-4 px-5 sm:border-r border-slate-300 ${isHighlight ? 'bg-indigo-50' : 'bg-slate-100'}`}>
-      <span className={`text-[11px] font-black uppercase tracking-widest ${isHighlight ? 'text-indigo-700' : 'text-slate-600'}`}>{label}</span>
+  <div className={`flex flex-col sm:flex-row border-border ${isLast ? '' : 'border-b'}`}>
+    <div className={`w-full sm:w-1/3 shrink-0 py-4 px-5 sm:border-r border-border ${isHighlight ? 'bg-primary/5' : 'bg-secondary/30'}`}>
+      <span className={`text-[11px] font-black uppercase tracking-widest ${isHighlight ? 'text-primary' : 'text-muted-foreground'}`}>{label}</span>
     </div>
-    <div className={`w-full sm:w-2/3 py-4 px-5 flex items-center bg-white`}>
-      <div className={`text-sm w-full ${isHighlight ? 'font-black text-indigo-900' : 'font-black text-slate-900'}`}>
-        {value || <span className="text-slate-400 italic font-medium">Not provided</span>}
+    <div className={`w-full sm:w-2/3 py-4 px-5 flex items-center bg-background`}>
+      <div className={`text-sm w-full ${isHighlight ? 'font-black text-primary' : 'font-black text-foreground'}`}>
+        {value || <span className="text-muted-foreground/60 italic font-medium">Not provided</span>}
       </div>
     </div>
   </div>
@@ -160,22 +160,22 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
-        <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
+      <div className="flex items-center gap-3 border-b border-border pb-4">
+        <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
            <ShieldCheck className="h-5 w-5" weight="fill" />
         </div>
         <div>
-           <h2 className="text-xl font-black text-slate-900 leading-tight">Full Application Review</h2>
-           <p className="text-xs font-medium text-slate-500 mt-0.5">Please verify all extracted details accurately before submission.</p>
+           <h2 className="text-xl font-black text-foreground leading-tight">Full Application Review</h2>
+           <p className="text-xs font-medium text-muted-foreground mt-0.5">Please verify all extracted details accurately before submission.</p>
         </div>
       </div>
 
       {/* FULL WIDTH DETAILS CARD */}
-      <div className="bg-white border border-slate-300 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         
         {/* SECTION 1: Company Information */}
-        <h3 className="bg-slate-900 text-white px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
-          <span className="bg-indigo-500 text-white h-5 w-5 rounded-full flex items-center justify-center text-[10px]">1</span>
+        <h3 className="bg-secondary/50 text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2 border-b border-border">
+          <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">1</span>
           Company Information
         </h3>
         <div>
@@ -191,8 +191,8 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
         </div>
 
         {/* SECTION 2: Share Capital & Objects */}
-        <h3 className="bg-slate-900 border-t border-slate-800 text-white px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
-          <span className="bg-indigo-500 text-white h-5 w-5 rounded-full flex items-center justify-center text-[10px]">2</span>
+        <h3 className="bg-secondary/50 border-y border-border text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
+          <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">2</span>
           Capital, Objects & Articles
         </h3>
         <div>
@@ -205,14 +205,14 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
               shareClassesArray.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                   {shareClassesArray.map((cls: any, i: number) => (
-                    <div key={i} className="flex flex-wrap justify-between items-center gap-3 bg-white border border-slate-300 px-4 py-3 rounded-lg text-sm shadow-sm">
-                      <span className="font-black text-slate-800 break-words">{cls.type || cls.class || 'ORDINARY'}</span>
-                      <span className="font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md shrink-0 border border-indigo-100">{Number(cls.units || 0).toLocaleString()} Units</span>
+                    <div key={i} className="flex flex-wrap justify-between items-center gap-3 bg-background border border-border px-4 py-3 rounded-lg text-sm shadow-sm">
+                      <span className="font-black text-foreground break-words">{cls.type || cls.class || 'ORDINARY'}</span>
+                      <span className="font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-md shrink-0 border border-primary/20">{Number(cls.units || 0).toLocaleString()} Units</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <span className="text-slate-400 italic font-medium">None defined</span>
+                <span className="text-muted-foreground italic font-medium">None defined</span>
               )
             } 
           />
@@ -220,11 +220,11 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           <TableRow 
             label="Objects of Memorandum" 
             value={
-              <ul className="list-disc pl-4 space-y-1.5 text-sm font-black text-slate-800">
+              <ul className="list-disc pl-4 space-y-1.5 text-sm font-black text-foreground">
                 {memoObjects.length > 0 ? (
                   memoObjects.map((obj: string, i: number) => <li key={i} className="leading-relaxed">{obj}</li>)
                 ) : (
-                  <li className="text-slate-400 italic list-none ml-[-1rem] font-medium">Using default objects / Not provided</li>
+                  <li className="text-muted-foreground italic list-none ml-[-1rem] font-medium">Using default objects / Not provided</li>
                 )}
               </ul>
             } 
@@ -236,13 +236,13 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
             value={
               <div className="w-full">
                 {useDefaultArticles && (
-                  <div className="mb-4 bg-emerald-50 p-3.5 rounded-lg border border-emerald-200">
-                    <span className="text-sm font-black text-emerald-900 flex items-center gap-2">
-                      <CheckCircle weight="fill" className="text-emerald-600" /> Standard CAMA Articles Adopted
+                  <div className="mb-4 bg-emerald-500/10 p-3.5 rounded-lg border border-emerald-500/20">
+                    <span className="text-sm font-black text-emerald-500 flex items-center gap-2">
+                      <CheckCircle weight="fill" className="text-emerald-500" /> Standard CAMA Articles Adopted
                     </span>
                   </div>
                 )}
-                <ul className="list-decimal pl-4 space-y-3 text-sm font-black text-slate-800 bg-slate-50 p-5 rounded-lg border border-slate-200">
+                <ul className="list-decimal pl-4 space-y-3 text-sm font-black text-foreground bg-secondary/30 p-5 rounded-lg border border-border">
                   {Array.isArray(activeArticles) && activeArticles.length > 0 ? (
                     activeArticles.map((article: any, i: number) => (
                       <li key={i} className="pl-1 leading-relaxed">
@@ -250,7 +250,7 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
                       </li>
                     ))
                   ) : (
-                    <li className="text-slate-400 italic list-none ml-[-1rem] font-medium">No articles provided</li>
+                    <li className="text-muted-foreground italic list-none ml-[-1rem] font-medium">No articles provided</li>
                   )}
                 </ul>
               </div>
@@ -259,22 +259,22 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
         </div>
 
         {/* SECTION 3: Officers */}
-        <h3 className="bg-slate-900 border-t border-slate-800 text-white px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-between">
+        <h3 className="bg-secondary/50 border-y border-border text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="bg-indigo-500 text-white h-5 w-5 rounded-full flex items-center justify-center text-[10px]">3</span>
+            <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">3</span>
             Company Officers
           </div>
-          <span className="text-[10px] bg-slate-700 px-2.5 py-1 rounded-md text-slate-200">{officers.length} Total</span>
+          <span className="text-[10px] bg-foreground text-background px-2.5 py-1 rounded-md">{officers.length} Total</span>
         </h3>
-        <div className="bg-slate-100 p-6 space-y-6">
+        <div className="bg-secondary/30 p-6 space-y-6">
           {officers.map((officer: any, idx: number) => {
             const isPsc = officer.roles.includes("PSC");
 
             return (
-              <div key={idx} className="bg-white border border-slate-300 rounded-xl shadow-sm overflow-hidden">
-                <div className="bg-indigo-50/80 border-b border-slate-300 px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <h4 className="font-black text-sm text-slate-900">{idx + 1}. {officer.firstName} {officer.surname} {officer.otherName || ''}</h4>
-                  <div className="text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest self-start sm:self-auto bg-indigo-200 text-indigo-900">
+              <div key={idx} className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-primary/5 border-b border-border px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h4 className="font-black text-sm text-foreground">{idx + 1}. {officer.firstName} {officer.surname} {officer.otherName || ''}</h4>
+                  <div className="text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest self-start sm:self-auto bg-primary/10 text-primary">
                     {formatRoles(officer.roles)}
                   </div>
                 </div>
@@ -303,9 +303,9 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
                   )}
 
                   {isPsc && officer.pscDetails && (
-                    <div className="bg-amber-50/30 border-t border-slate-300">
-                      <div className="px-5 py-3 border-b border-slate-300 bg-amber-100/50">
-                         <h5 className="text-[10px] font-black text-amber-800 uppercase tracking-widest">PSC Declarations</h5>
+                    <div className="bg-amber-500/5 border-t border-border">
+                      <div className="px-5 py-3 border-b border-border bg-amber-500/10">
+                         <h5 className="text-[10px] font-black text-amber-500 uppercase tracking-widest">PSC Declarations</h5>
                       </div>
                       <TableRow label="Politically Exposed Person?" value={officer.pscDetails.isPep} />
                       <TableRow label="Has Affiliations?" value={officer.pscDetails.hasAffiliation} />
@@ -317,18 +317,18 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
               </div>
             );
           })}
-          {officers.length === 0 && <p className="text-sm font-bold text-slate-500 italic p-4 text-center border-2 border-slate-300 border-dashed rounded-xl bg-white">No officers added.</p>}
+          {officers.length === 0 && <p className="text-sm font-bold text-muted-foreground italic p-4 text-center border-2 border-border border-dashed rounded-xl bg-card">No officers added.</p>}
         </div>
 
         {/* SECTION 4: Compliance, Declarants, Witness */}
-        <h3 className="bg-slate-900 border-t border-slate-800 text-white px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
-          <span className="bg-indigo-500 text-white h-5 w-5 rounded-full flex items-center justify-center text-[10px]">4</span>
+        <h3 className="bg-secondary/50 border-y border-border text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
+          <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">4</span>
           Statutory Details
         </h3>
         <div>
           {/* Witness Details */}
-          <div className="bg-slate-200 border-b border-slate-300 px-5 py-3">
-             <h5 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Witness to Articles</h5>
+          <div className="bg-secondary border-b border-border px-5 py-3">
+             <h5 className="text-[10px] font-black text-foreground uppercase tracking-widest">Witness to Articles</h5>
           </div>
           {witness.firstName ? (
             <>
@@ -345,8 +345,8 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           )}
 
           {/* Declarant Details */}
-          <div className="bg-slate-200 border-y border-slate-300 px-5 py-3 mt-2">
-             <h5 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Deponent / Declarant</h5>
+          <div className="bg-secondary border-y border-border px-5 py-3 mt-2">
+             <h5 className="text-[10px] font-black text-foreground uppercase tracking-widest">Deponent / Declarant</h5>
           </div>
           {declarant.firstName ? (
             <>
@@ -361,22 +361,22 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
         </div>
 
         {/* SECTION 5: Uploads */}
-        <h3 className="bg-slate-900 border-t border-slate-800 text-white px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
-          <span className="bg-indigo-500 text-white h-5 w-5 rounded-full flex items-center justify-center text-[10px]">5</span>
+        <h3 className="bg-secondary/50 border-y border-border text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
+          <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">5</span>
           Uploaded Documents
         </h3>
-        <div className="p-6 bg-slate-50 border-t border-slate-300">
+        <div className="p-6 bg-secondary/30 border-t border-border">
           {Object.keys(uploads).length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {Object.entries(uploads).map(([key, url]) => (
-                <div key={key} className="flex flex-col p-4 rounded-xl border border-slate-300 bg-white shadow-sm hover:border-indigo-400 transition-colors">
+                <div key={key} className="flex flex-col p-4 rounded-xl border border-border bg-card shadow-sm hover:border-primary/50 transition-colors">
                   <div className="flex items-start gap-3 mb-4">
                     <CheckCircle weight="fill" className="text-emerald-500 h-6 w-6 shrink-0" />
-                    <span className="text-xs font-black text-slate-700 leading-snug">{getUploadLabel(key)}</span>
+                    <span className="text-xs font-black text-foreground leading-snug">{getUploadLabel(key)}</span>
                   </div>
                   <button 
                     onClick={(e) => { e.preventDefault(); setPreviewDoc({ url: url as string, label: getUploadLabel(key) }); }}
-                    className="mt-auto w-full text-[10px] font-black uppercase tracking-widest text-indigo-800 bg-indigo-50 hover:bg-indigo-100 py-2.5 rounded-lg transition-colors border border-indigo-200"
+                    className="mt-auto w-full text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 hover:bg-primary/20 py-2.5 rounded-lg transition-colors border border-primary/20 cursor-pointer"
                   >
                     View Document
                   </button>
@@ -384,7 +384,7 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
               ))}
             </div>
           ) : (
-            <div className="flex justify-center items-center gap-2 text-amber-700 bg-amber-50 p-6 rounded-xl text-sm border border-amber-300 font-bold">
+            <div className="flex justify-center items-center gap-2 text-amber-500 bg-amber-500/10 p-6 rounded-xl text-sm border border-amber-500/20 font-bold">
               <WarningCircle weight="fill" className="h-6 w-6" />
               No documents have been uploaded yet.
             </div>
@@ -395,33 +395,33 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
 
       {/* BOTTOM CENTERED PAYMENT CARD */}
       <div className="max-w-2xl mx-auto pt-6 pb-12">
-        <div className="bg-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-2xl border border-slate-800">
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-800 pb-5">
+        <div className="bg-card rounded-3xl p-6 md:p-8 text-foreground shadow-2xl border border-border">
+          <div className="flex items-center gap-3 mb-6 border-b border-border pb-5">
              <div className="h-12 w-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                <CreditCard weight="fill" className="text-emerald-400 h-6 w-6" />
+                <CreditCard weight="fill" className="text-emerald-500 h-6 w-6" />
              </div>
              <div>
                 <h3 className="text-xl font-black tracking-wide">Payment Checkout</h3>
-                <p className="text-xs text-slate-400 mt-1 font-medium">Final confirmation and fee breakdown</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">Final confirmation and fee breakdown</p>
              </div>
           </div>
 
           {isLoadingPricing ? (
             <div className="space-y-5 animate-pulse">
-              <div className="h-4 bg-slate-800 rounded w-full"></div>
-              <div className="h-4 bg-slate-800 rounded w-3/4"></div>
-              <div className="h-14 bg-slate-800 rounded-xl w-full mt-8"></div>
+              <div className="h-4 bg-secondary rounded w-full"></div>
+              <div className="h-4 bg-secondary rounded w-3/4"></div>
+              <div className="h-14 bg-secondary rounded-xl w-full mt-8"></div>
             </div>
           ) : pricingError ? (
             <div className="space-y-4">
-              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-400 text-sm font-bold flex items-start gap-2">
+              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-500 text-sm font-bold flex items-start gap-2">
                 <WarningCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
                 {pricingError}
               </div>
               <Button 
                 onClick={fetchPricing}
                 variant="outline"
-                className="w-full bg-transparent border-slate-700 text-white hover:bg-slate-800 font-bold rounded-xl h-12"
+                className="w-full bg-transparent border-border text-foreground hover:bg-secondary font-bold rounded-xl h-12 cursor-pointer"
               >
                 Retry Loading Pricing
               </Button>
@@ -429,14 +429,14 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           ) : pricing ? (
             <div className="space-y-4 text-sm">
               
-              <div className="flex justify-between items-center text-slate-300">
+              <div className="flex justify-between items-center text-muted-foreground">
                 <span className="font-medium text-sm">Base Registration Fee</span>
-                <span className="font-black text-white">{formatCurrency(pricing.baseFee)}</span>
+                <span className="font-black text-foreground">{formatCurrency(pricing.baseFee)}</span>
               </div>
               
               {/* Dynamically adds extra fee line if shares demand it */}
               {Number(pricing.extraSharesFee) > 0 && (
-                <div className="flex justify-between items-center text-amber-200/80 bg-amber-500/10 -mx-4 px-4 py-2.5 rounded-lg border border-amber-500/20">
+                <div className="flex justify-between items-center text-amber-500 bg-amber-500/10 -mx-4 px-4 py-2.5 rounded-lg border border-amber-500/20">
                   <span className="font-bold text-xs flex items-center gap-1 uppercase tracking-widest">
                     Extra Shares Add-on
                   </span>
@@ -444,9 +444,9 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
                 </div>
               )}
 
-              <div className="flex justify-between items-end pt-3 mb-8 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Due</span>
-                <span className="text-3xl font-black text-emerald-400 leading-none">{formatCurrency(pricing.total)}</span>
+              <div className="flex justify-between items-end pt-3 mb-8 bg-secondary/50 p-4 rounded-xl border border-border">
+                <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">Total Due</span>
+                <span className="text-3xl font-black text-emerald-500 leading-none">{formatCurrency(pricing.total)}</span>
               </div>
 
               {/* Submit & Back Buttons Group */}
@@ -455,14 +455,14 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
                   onClick={onBack}
                   disabled={isSubmitting}
                   variant="ghost"
-                  className="w-full sm:w-1/3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl h-14"
+                  className="w-full sm:w-1/3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl h-14 cursor-pointer"
                 >
                   <ArrowLeft className="h-5 w-5 mr-2" weight="bold" /> Go Back
                 </Button>
                 <Button 
                   onClick={handleProceedToPayment}
                   disabled={isSubmitting}
-                  className="w-full sm:w-2/3 bg-indigo-600 hover:bg-indigo-500 text-white h-14 rounded-xl font-black text-base shadow-[0_0_0_4px_rgba(79,70,229,0.2)] transition-all"
+                  className="w-full sm:w-2/3 bg-primary hover:opacity-90 text-primary-foreground h-14 rounded-xl font-black text-base shadow-[0_0_0_4px_rgba(79,70,229,0.2)] transition-all cursor-pointer"
                 >
                   {isSubmitting ? 'Processing...' : 'Pay & Submit Application'}
                   {!isSubmitting && <ArrowRight className="ml-2 h-5 w-5" weight="bold" />}
@@ -475,22 +475,22 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
 
       {/* MODAL: DOCUMENT VIEWER */}
       {previewDoc && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm sm:p-4">
-          <div className="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:rounded-2xl sm:max-w-5xl flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm sm:p-4">
+          <div className="bg-card w-full h-full sm:h-auto sm:max-h-[90vh] sm:rounded-2xl sm:max-w-5xl flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-secondary/50 shrink-0">
               <div className="flex items-center gap-2.5">
-                <FilePdf weight="fill" className="text-indigo-600 h-6 w-6" />
-                <h3 className="font-black text-slate-800 truncate pr-4">{previewDoc.label}</h3>
+                <FilePdf weight="fill" className="text-primary h-6 w-6" />
+                <h3 className="font-black text-foreground truncate pr-4">{previewDoc.label}</h3>
               </div>
               <button 
                 onClick={() => setPreviewDoc(null)} 
-                className="text-slate-400 hover:text-slate-900 p-2 -mr-2 rounded-full hover:bg-slate-200 transition-colors"
+                className="text-muted-foreground hover:text-foreground p-2 -mr-2 rounded-full hover:bg-secondary transition-colors cursor-pointer"
                 aria-label="Close modal"
               >
                 <X weight="bold" className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 bg-slate-200 overflow-hidden relative w-full h-full min-h-[60vh]">
+            <div className="flex-1 bg-secondary/30 overflow-hidden relative w-full h-full min-h-[60vh]">
                <iframe 
                  src={previewDoc.url} 
                  className="w-full h-full border-0 absolute inset-0" 
