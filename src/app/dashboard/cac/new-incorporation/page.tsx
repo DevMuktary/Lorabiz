@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   Plus, 
@@ -18,7 +18,10 @@ import {
 import RegistrationsTable from "@/components/features/cac/new-incorporation/RegistrationsTable";
 import ReceiptModal from "@/components/features/cac/new-incorporation/ReceiptModal";
 
-export default function RegistrationsHubPage() {
+// ==========================================
+// INNER COMPONENT (Uses useSearchParams)
+// ==========================================
+function RegistrationsHubContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -336,5 +339,21 @@ export default function RegistrationsHubPage() {
       )}
 
     </div>
+  );
+}
+
+// ==========================================
+// WRAPPER COMPONENT WITH SUSPENSE
+// ==========================================
+export default function RegistrationsHubPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+        <Spinner className="animate-spin h-8 w-8 text-primary" weight="bold" />
+        <p className="text-sm font-bold text-muted-foreground">Loading dashboard...</p>
+      </div>
+    }>
+      <RegistrationsHubContent />
+    </Suspense>
   );
 }
