@@ -6,9 +6,9 @@ import { ShieldCheck, WarningCircle, User, PencilSimple, Trash, CaretDown, Caret
 import { EditPscModal, StandalonePscModal } from "./PscModals";
 
 const DetailRow = ({ label, value }: { label: string, value: string }) => (
-  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start py-2.5 border-b border-slate-200/60 last:border-0 gap-1 sm:gap-4">
-    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0 mt-0.5">{label}</span>
-    <span className="text-[13px] font-black text-slate-900 sm:text-right break-words">{value || "-"}</span>
+  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start py-2.5 border-b border-border/60 last:border-0 gap-1 sm:gap-4">
+    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest shrink-0 mt-0.5">{label}</span>
+    <span className="text-[13px] font-black text-foreground sm:text-right break-words">{value || "-"}</span>
   </div>
 );
 
@@ -153,26 +153,26 @@ export default function PscStep({ data, updateData, showErrors }: any) {
       <section>
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <div className="h-12 w-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
               <ShieldCheck className="h-6 w-6" weight="fill" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900">Persons with Significant Control</h2>
-              <p className="text-sm font-medium text-slate-500 mt-1">
+              <h2 className="text-xl font-black text-foreground">Persons with Significant Control</h2>
+              <p className="text-sm font-medium text-muted-foreground mt-1">
                 Anyone holding 5% or more shares is auto-listed. You can also add non-shareholding PSCs.
               </p>
             </div>
           </div>
-          <Button onClick={() => setShowAddModal(true)} className="h-10 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md shrink-0">
+          <Button onClick={() => setShowAddModal(true)} className="h-10 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md shrink-0 cursor-pointer">
             <UserPlus weight="bold" className="mr-2 h-4 w-4" /> Add Standalone PSC
           </Button>
         </div>
 
         <div className="space-y-4 mt-8">
           {pscList.length === 0 ? (
-            <div className="text-center py-10 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl mx-1 sm:mx-0">
-              <WarningCircle className="h-10 w-10 text-slate-300 mx-auto mb-3" weight="duotone" />
-              <p className="text-sm font-medium text-slate-500">No PSCs detected.</p>
+            <div className="text-center py-10 bg-secondary/30 border-2 border-dashed border-border rounded-3xl mx-1 sm:mx-0">
+              <WarningCircle className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" weight="duotone" />
+              <p className="text-sm font-medium text-muted-foreground">No PSCs detected.</p>
               <p className="text-xs font-bold text-amber-500 mt-1 uppercase tracking-widest">Ensure shares were distributed in Step 5.</p>
             </div>
           ) : (
@@ -183,41 +183,41 @@ export default function PscStep({ data, updateData, showErrors }: any) {
               const isExpanded = expandedIds.includes(person.id);
 
               return (
-                <div key={person.id} className={`bg-white border rounded-2xl transition-colors shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden ${isComplete ? 'border-emerald-200 hover:border-emerald-300' : 'border-amber-300 ring-2 ring-amber-50'}`}>
+                <div key={person.id} className={`bg-card border rounded-2xl transition-colors shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden ${isComplete ? 'border-border hover:border-emerald-500/50' : 'border-amber-500 ring-2 ring-amber-500/20'}`}>
                   
                   {/* ACCORDION HEADER */}
-                  <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50" onClick={() => toggleAccordion(person.id)}>
+                  <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => toggleAccordion(person.id)}>
                     <div className="flex items-center gap-4">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${isComplete ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'}`}>
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${isComplete ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
                         <User className="h-5 w-5" weight="fill" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-black text-slate-900">{person.firstName} {person.surname}</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                        <h3 className="text-sm font-black text-foreground">{person.firstName} {person.surname}</h3>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
                           S/N: {idx + 1} | {isAutoPsc ? "AUTO-DETECTED PSC" : "STANDALONE PSC"}
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 md:border-l border-slate-100 pt-3 md:pt-0 md:pl-4 w-full md:w-auto">
+                    <div className="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 md:border-l border-border pt-3 md:pt-0 md:pl-4 w-full md:w-auto">
                       {showErrors && !isComplete && (
-                         <div className="text-[10px] font-bold text-red-600 flex items-center gap-1.5 mr-auto md:mr-2 px-2 py-1 bg-red-50 rounded-lg">
+                         <div className="text-[10px] font-bold text-red-500 flex items-center gap-1.5 mr-auto md:mr-2 px-2 py-1 bg-red-500/10 rounded-lg">
                            <WarningCircle weight="fill" /> Missing details
                          </div>
                       )}
 
-                      <div className={`hidden sm:flex items-center gap-1.5 font-bold text-xs px-3 py-2 rounded-lg transition-colors ${isExpanded ? 'bg-slate-200 text-slate-700' : 'bg-slate-100 text-slate-600'}`}>
+                      <div className={`hidden sm:flex items-center gap-1.5 font-bold text-xs px-3 py-2 rounded-lg transition-colors ${isExpanded ? 'bg-secondary text-foreground' : 'bg-secondary/50 text-muted-foreground'}`}>
                         {isExpanded ? "Hide" : "View"} {isExpanded ? <CaretUp weight="bold" /> : <CaretDown weight="bold" />}
                       </div>
 
-                      <button onClick={(e) => { e.stopPropagation(); setEditingOfficer(person); setShowEditModal(true); }} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors z-10 relative flex items-center gap-1.5 shadow-sm ${isComplete ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}>
+                      <button onClick={(e) => { e.stopPropagation(); setEditingOfficer(person); setShowEditModal(true); }} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors z-10 relative flex items-center gap-1.5 shadow-sm cursor-pointer ${isComplete ? 'bg-secondary text-foreground hover:bg-secondary/80' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}>
                         <PencilSimple weight="bold" /> Edit
                       </button>
 
                       <button 
                         onClick={(e) => isAutoPsc ? e.stopPropagation() : removeStandalonePsc(e, person.id)} 
                         disabled={isAutoPsc}
-                        className={`p-2 rounded-lg transition-colors z-10 relative flex items-center justify-center ${isAutoPsc ? 'text-slate-300 bg-slate-50 cursor-not-allowed' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}`}
+                        className={`p-2 rounded-lg transition-colors z-10 relative flex items-center justify-center cursor-pointer ${isAutoPsc ? 'text-muted-foreground/30 bg-secondary/30 cursor-not-allowed' : 'text-muted-foreground hover:text-red-500 hover:bg-red-500/10'}`}
                         title={isAutoPsc ? "Cannot delete an auto-detected PSC here. Adjust their shares in Step 5." : "Delete PSC"}
                       >
                         {isAutoPsc ? <LockKey className="h-5 w-5" weight="fill" /> : <Trash className="h-5 w-5" weight="bold" />}
@@ -227,11 +227,11 @@ export default function PscStep({ data, updateData, showErrors }: any) {
 
                   {/* ACCORDION BODY */}
                   {isExpanded && (
-                    <div className="p-5 sm:p-6 border-t border-slate-200 bg-slate-50/50 animate-in slide-in-from-top-2 fade-in duration-200">
+                    <div className="p-5 sm:p-6 border-t border-border bg-secondary/30 animate-in slide-in-from-top-2 fade-in duration-200">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                         
                         <div className="space-y-1">
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1">Personal Details</h4>
+                          <h4 className="text-[10px] font-black text-primary uppercase tracking-widest mb-3 border-b border-border pb-1">Personal Details</h4>
                           <DetailRow label="Surname" value={person.surname} />
                           <DetailRow label="First Name" value={person.firstName} />
                           <DetailRow label="Other Name" value={person.otherName} />
@@ -242,7 +242,7 @@ export default function PscStep({ data, updateData, showErrors }: any) {
                         </div>
                         
                         <div className="space-y-1">
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1">Contact & ID</h4>
+                          <h4 className="text-[10px] font-black text-primary uppercase tracking-widest mb-3 border-b border-border pb-1">Contact & ID</h4>
                           <DetailRow label="Phone" value={`${person.phoneCode} ${person.phone}`} />
                           <DetailRow label="Email" value={person.email} />
                           <DetailRow label="ID Type" value={person.idType} />
@@ -250,7 +250,7 @@ export default function PscStep({ data, updateData, showErrors }: any) {
                         </div>
 
                         <div className="md:col-span-2 space-y-1">
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1">Residential Address</h4>
+                          <h4 className="text-[10px] font-black text-primary uppercase tracking-widest mb-3 border-b border-border pb-1">Residential Address</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-1">
                             <DetailRow label="State / Province" value={person.residentialAddress?.state} />
                             <DetailRow label="LGA / County" value={person.residentialAddress?.lga} />
@@ -259,14 +259,14 @@ export default function PscStep({ data, updateData, showErrors }: any) {
                           </div>
                         </div>
 
-                        <div className="md:col-span-2 space-y-1 bg-white p-5 rounded-xl border border-slate-200 shadow-sm mt-2">
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1">Details of PSC Affiliation</h4>
+                        <div className="md:col-span-2 space-y-1 bg-background p-5 rounded-xl border border-border shadow-sm mt-2">
+                          <h4 className="text-[10px] font-black text-primary uppercase tracking-widest mb-3 border-b border-border pb-1">Details of PSC Affiliation</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-1">
                             <DetailRow label="Politically Exposed Person (PEP)?" value={details.isPep} />
                             <DetailRow label="Has Affiliation?" value={details.hasAffiliation} />
                           </div>
                           
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-indigo-100 pb-1 mt-6">Details of Interest Held</h4>
+                          <h4 className="text-[10px] font-black text-primary uppercase tracking-widest mb-3 border-b border-border pb-1 mt-6">Details of Interest Held</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-1">
                             <DetailRow label="Directly holds >= 5% shares?" value={details.holdsSharesDirect} />
                             <DetailRow label="Indirectly holds >= 5% shares?" value={details.holdsSharesIndirect} />
