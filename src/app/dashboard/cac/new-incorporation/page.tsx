@@ -12,7 +12,8 @@ import {
   CheckCircle,
   ArrowLeft,
   Trash,
-  X
+  X,
+  ArrowRight
 } from "@phosphor-icons/react";
 
 import RegistrationsTable from "@/components/features/cac/new-incorporation/RegistrationsTable";
@@ -35,11 +36,12 @@ function RegistrationsHubContent() {
 
   const [receiptData, setReceiptData] = useState<any>(null);
 
-  // Custom Delete Modals State
+  // Custom Modals State
   const [deleteContext, setDeleteContext] = useState<{ isOpen: boolean, id: string | null, isLoading: boolean, error: string | null }>({
     isOpen: false, id: null, isLoading: false, error: null
   });
   const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [queryReasonData, setQueryReasonData] = useState<any>(null); // For the Side Modal
   
   // Custom Payment Success Alert
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
@@ -117,35 +119,32 @@ function RegistrationsHubContent() {
   const handleExecuteAction = (action: string, id: string) => {
     const normalizedAction = action.toLowerCase();
     
-    // Find the exact registration record to check its type and status
+    // Find the exact registration record to check its type
     const reg = dashboardData?.tableData?.find((r: any) => r.id === id);
 
     if (normalizedAction.includes("delete")) {
       setDeleteContext({ isOpen: true, id: id, isLoading: false, error: null });
     } 
     else if (normalizedAction.includes("receipt")) {
-      if (reg) {
-        setReceiptData(reg); 
-      }
+      if (reg) setReceiptData(reg); 
     } 
-    // FIXED: Catch "Reason", "Resolve", or any general View on a QUERIED app
-    else if (
-      normalizedAction.includes("reason") || 
-      normalizedAction.includes("resolve") || 
-      (normalizedAction.includes("view") && reg?.status === "QUERIED")
-    ) {
+    else if (normalizedAction.includes("reason") || normalizedAction.includes("view_reason")) {
+      // Open the Query Reason Side Modal
+      if (reg) setQueryReasonData(reg);
+    }
+    else if (normalizedAction.includes("view")) {
+      router.push(`/dashboard/cac/register/view/${id}`);
+    } 
+    else if (normalizedAction.includes("resolve") || normalizedAction.includes("query")) {
+      // DYNAMIC ROUTING: Route to the query resolution wizard
       if (reg?._appType === "LLC") {
         router.push(`/dashboard/cac/llc/${id}/queries`);
       } else {
         router.push(`/dashboard/cac/businesses/${id}/queries`);
       }
     }
-    // Standard Read-Only View (For Approved/Pending apps)
-    else if (normalizedAction.includes("view")) {
-      router.push(`/dashboard/cac/register/view/${id}`);
-    } 
     else {
-      // Normal Edit/Continue for unsubmitted drafts
+      // DYNAMIC ROUTING: Edit / Continue goes to the normal details wizard
       if (reg?._appType === "LLC") {
         router.push(`/dashboard/cac/register/llc/details/${id}`);
       } else {
@@ -157,7 +156,7 @@ function RegistrationsHubContent() {
   const stats = dashboardData?.stats || { unsubmitted: 0, pending: 0, queried: 0, approved: 0 };
 
   return (
-    <div className="space-y-10 relative">
+    <div className="space-y-10 relative overflow-x-hidden">
       
       {/* ========================================== */}
       {/* 1. PAYMENT SUCCESS ALERT NOTIFICATION        */}
@@ -165,9 +164,7 @@ function RegistrationsHubContent() {
       {showPaymentSuccess && (
         <div className="fixed top-24 right-4 sm:right-10 z-[999] animate-in slide-in-from-top-10 fade-in duration-500">
           <div className="bg-card border-2 border-emerald-500 shadow-[0_10px_40px_rgba(16,185,129,0.2)] rounded-2xl p-4 sm:p-5 flex items-start gap-4 max-w-sm relative overflow-hidden">
-            {/* Progress bar animation */}
             <div className="absolute bottom-0 left-0 h-1.5 bg-emerald-500 animate-[shrink_10s_linear_forwards]" style={{ width: '100%' }} />
-            
             <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
               <CheckCircle className="h-6 w-6" weight="fill" />
             </div>
@@ -183,6 +180,64 @@ function RegistrationsHubContent() {
             >
               <X weight="bold" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* 2. QUERY REASON SIDE MODAL                   */}
+      {/* ========================================== */}
+      {queryReasonData && (
+        <div className="fixed inset-0 z-[300] flex justify-end">
+          <div 
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity" 
+            onClick={() => setQueryReasonData(null)}
+          />
+          <div className="relative w-full max-w-md bg-card h-full shadow-2xl border-l border-border flex flex-col animate-in slide-in-from-right duration-300">
+            
+            <div className="px-6 py-5 border-b border-border flex justify-between items-center bg-secondary/50 shrink-0">
+              <h3 className="font-black text-lg text-foreground flex items-center gap-2">
+                <WarningCircle className="h-6 w-6 text-amber-500" weight="fill" />
+                Query Feedback
+              </h3>
+              <button onClick={() => setQueryReasonData(null)} className="p-2 hover:bg-secondary rounded-full text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                <X weight="bold" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 bg-background space-y-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Business Name</p>
+                <p className="text-base font-black text-foreground">{queryReasonData.proposedName || "Unnamed Registration"}</p>
+              </div>
+
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 border-b border-amber-500/10 pb-2">CAC Examiner Notes</p>
+                <p className="text-sm font-medium text-foreground leading-relaxed whitespace-pre-wrap">
+                  {queryReasonData.queryReason || "No specific reason provided by the examiner. Please review your application thoroughly."}
+                </p>
+              </div>
+
+              <div className="bg-secondary/30 border border-border p-4 rounded-xl">
+                <p className="text-xs font-medium text-muted-foreground leading-relaxed">
+                  To resolve this, click the button below to enter the resolution wizard. You will not be charged again.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-border bg-secondary/30 shrink-0">
+              <Button 
+                onClick={() => {
+                  const id = queryReasonData.id;
+                  setQueryReasonData(null);
+                  handleExecuteAction("resolve", id);
+                }}
+                className="w-full h-14 bg-primary text-primary-foreground hover:opacity-90 font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              >
+                Go to Resolve <ArrowRight weight="bold" className="h-5 w-5" />
+              </Button>
+            </div>
+
           </div>
         </div>
       )}
