@@ -72,7 +72,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
         if (json.success && json.data.status !== "UNSUBMITTED") {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
-          setTimeout(() => router.push("/dashboard?success=true"), 2500);
+          setTimeout(() => router.push("/dashboard/cac/new-incorporation?success=true"), 2500);
         }
       } catch (e) {
         // Silent catch: ignore network errors while polling
