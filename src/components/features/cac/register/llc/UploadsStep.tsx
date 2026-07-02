@@ -39,7 +39,7 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
     const hasError = showErrors && !uploads[docKey];
     
     return (
-      <div className={`relative mb-6 ${hasError ? 'rounded-xl ring-2 ring-red-400 p-1 bg-red-50/50' : ''}`}>
+      <div className={`relative mb-6 transition-colors ${hasError ? 'rounded-xl ring-2 ring-red-500/50 p-1 bg-red-500/10' : ''}`}>
         <FileUpload
           label={label}
           description={description}
@@ -50,7 +50,7 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
           onRemove={handleRemove(docKey)}
         />
         {hasError && (
-          <div className="absolute -bottom-6 left-2 text-[11px] font-bold text-red-600 flex items-center gap-1">
+          <div className="absolute -bottom-6 left-2 text-[11px] font-bold text-red-500 flex items-center gap-1">
             <WarningCircle weight="fill" /> Document is required
           </div>
         )}
@@ -63,12 +63,12 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
       
       <section>
         <div className="mb-6 flex items-start gap-4">
-          <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <FilePdf className="h-6 w-6" weight="fill" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900">Document Uploads</h2>
-            <p className="text-sm font-medium text-slate-500 mt-1">
+            <h2 className="text-xl font-black text-foreground">Document Uploads</h2>
+            <p className="text-sm font-medium text-muted-foreground mt-1">
               Please upload clear, legible copies of the required identification and signatures.
             </p>
           </div>
@@ -78,7 +78,7 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
           
           {/* IDENTIFICATION */}
           <div>
-            <h3 className="text-sm font-black text-slate-900 border-b border-slate-200 pb-2 mb-4 uppercase tracking-widest mt-8">Means of Identification</h3>
+            <h3 className="text-sm font-black text-foreground border-b border-border pb-2 mb-4 uppercase tracking-widest mt-8">Means of Identification</h3>
             <div className="space-y-6">
               {officers.map((officer: any) => (
                 <RequiredUpload
@@ -95,7 +95,7 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
 
           {/* SIGNATURES */}
           <div>
-            <h3 className="text-sm font-black text-slate-900 border-b border-slate-200 pb-2 mb-4 mt-10 uppercase tracking-widest">Signatures</h3>
+            <h3 className="text-sm font-black text-foreground border-b border-border pb-2 mb-4 mt-10 uppercase tracking-widest">Signatures</h3>
             <div className="space-y-6">
               {/* Witness Signature */}
               {witness.firstName && (
@@ -135,7 +135,7 @@ export default function UploadsStep({ data, updateData, showErrors }: any) {
 
           {/* OPTIONAL DOCS */}
           <div>
-            <h3 className="text-sm font-black text-slate-900 border-b border-slate-200 pb-2 mb-4 mt-10 uppercase tracking-widest">Additional Documents (Optional)</h3>
+            <h3 className="text-sm font-black text-foreground border-b border-border pb-2 mb-4 mt-10 uppercase tracking-widest">Additional Documents (Optional)</h3>
             <div className="space-y-6">
               <FileUpload
                 label="REASON FOR RESTRICTION OF RESIDENTIAL ADDRESS"
