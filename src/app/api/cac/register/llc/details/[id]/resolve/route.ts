@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma"; // Adjust import to match your database client
+import { prisma } from "@/lib/prisma"; // Adjust import to match your database client
 
 export async function POST(
   req: NextRequest,
