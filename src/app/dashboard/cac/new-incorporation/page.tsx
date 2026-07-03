@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { 
   Plus, 
   Spinner, 
@@ -13,16 +12,13 @@ import {
   CheckCircle,
   ArrowLeft,
   Trash,
-  X,
-  ArrowRight
+  X
 } from "@phosphor-icons/react";
 
 import RegistrationsTable from "@/components/features/cac/new-incorporation/RegistrationsTable";
 import ReceiptModal from "@/components/features/cac/new-incorporation/ReceiptModal";
+import QueryReasonModal from "@/components/features/cac/new-incorporation/QueryReasonModal";
 
-// ==========================================
-// INNER COMPONENT (Uses useSearchParams)
-// ==========================================
 function RegistrationsHubContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,15 +48,11 @@ function RegistrationsHubContent() {
     if (searchParams.get("success") === "true") {
       setShowPaymentSuccess(true);
       
-      // Clean up the URL so it doesn't stay there on refresh
+      // Clean up the URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
 
-      // Auto-hide the alert after 10 seconds
-      const timer = setTimeout(() => {
-        setShowPaymentSuccess(false);
-      }, 10000);
-
+      const timer = setTimeout(() => setShowPaymentSuccess(false), 10000);
       return () => clearTimeout(timer);
     }
   }, [searchParams]);
@@ -86,9 +78,7 @@ function RegistrationsHubContent() {
   };
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      fetchDashboardData();
-    }, 300);
+    const timeoutId = setTimeout(() => fetchDashboardData(), 300);
     return () => clearTimeout(timeoutId);
   }, [page, search, statusFilter, typeFilter]);
 
@@ -105,23 +95,23 @@ function RegistrationsHubContent() {
       if (data.success) {
         setDeleteContext({ isOpen: false, id: null, isLoading: false, error: null });
         setSuccessModalOpen(true);
-        fetchDashboardData(); // Refresh table
+        fetchDashboardData(); 
       } else {
         setDeleteContext(prev => ({ ...prev, isLoading: false, error: data.message || "Failed to delete the registration." }));
       }
     } catch (error) {
-      setDeleteContext(prev => ({ ...prev, isLoading: false, error: "A network error occurred. Please check your connection." }));
+      setDeleteContext(prev => ({ ...prev, isLoading: false, error: "A network error occurred." }));
     }
   };
 
   // ==========================================
   // SMART ACTION HANDLER (WITH DYNAMIC ROUTING)
   // ==========================================
-  const handleExecuteAction = (action: string, id: string) => {
+  const handleExecuteAction = (action: string, id: string, rowData?: any) => {
     const normalizedAction = action.toLowerCase();
     
-    // Find the exact registration record to check its type
-    const reg = dashboardData?.tableData?.find((r: any) => r.id === id);
+    // Use rowData passed directly from ActionMenu if available, fallback to searching dashboardData
+    const reg = rowData || dashboardData?.tableData?.find((r: any) => r.id === id);
 
     if (normalizedAction.includes("delete")) {
       setDeleteContext({ isOpen: true, id: id, isLoading: false, error: null });
@@ -130,14 +120,13 @@ function RegistrationsHubContent() {
       if (reg) setReceiptData(reg); 
     } 
     else if (normalizedAction.includes("reason") || normalizedAction.includes("view_reason")) {
-      // Open the Query Reason Side Modal
       if (reg) setQueryReasonData(reg);
     }
     else if (normalizedAction.includes("view")) {
       router.push(`/dashboard/cac/register/view/${id}`);
     } 
     else if (normalizedAction.includes("resolve") || normalizedAction.includes("query")) {
-      // DYNAMIC ROUTING: Route to the query resolution wizard
+      // Route correctly based on _appType
       if (reg?._appType === "LLC") {
         router.push(`/dashboard/cac/llc/${id}/queries`);
       } else {
@@ -145,7 +134,6 @@ function RegistrationsHubContent() {
       }
     }
     else {
-      // DYNAMIC ROUTING: Edit / Continue goes to the normal details wizard
       if (reg?._appType === "LLC") {
         router.push(`/dashboard/cac/register/llc/details/${id}`);
       } else {
@@ -159,9 +147,7 @@ function RegistrationsHubContent() {
   return (
     <div className="space-y-10 relative overflow-x-hidden">
       
-      {/* ========================================== */}
-      {/* 1. PAYMENT SUCCESS ALERT NOTIFICATION        */}
-      {/* ========================================== */}
+      {/* 1. PAYMENT SUCCESS ALERT NOTIFICATION */}
       {showPaymentSuccess && (
         <div className="fixed top-24 right-4 sm:right-10 z-[999] animate-in slide-in-from-top-10 fade-in duration-500">
           <div className="bg-card border-2 border-emerald-500 shadow-[0_10px_40px_rgba(16,185,129,0.2)] rounded-2xl p-4 sm:p-5 flex items-start gap-4 max-w-sm relative overflow-hidden">
@@ -175,72 +161,28 @@ function RegistrationsHubContent() {
                 Your application has been submitted and is now <span className="font-bold text-blue-500">Pending</span> review.
               </p>
             </div>
-            <button 
-              onClick={() => setShowPaymentSuccess(false)}
-              className="absolute top-4 right-4 p-1 rounded-full text-muted-foreground hover:bg-secondary transition-colors cursor-pointer"
-            >
+            <button onClick={() => setShowPaymentSuccess(false)} className="absolute top-4 right-4 p-1 rounded-full text-muted-foreground hover:bg-secondary transition-colors cursor-pointer">
               <X weight="bold" />
             </button>
           </div>
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* 2. QUERY REASON SIDE MODAL                   */}
-      {/* ========================================== */}
+      {/* 2. QUERY REASON SIDE MODAL */}
       {queryReasonData && (
-        <div className="fixed inset-0 z-[300] flex justify-end">
-          <div 
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity" 
-            onClick={() => setQueryReasonData(null)}
-          />
-          <div className="relative w-full max-w-md bg-card h-full shadow-2xl border-l border-border flex flex-col animate-in slide-in-from-right duration-300">
-            
-            <div className="px-6 py-5 border-b border-border flex justify-between items-center bg-secondary/50 shrink-0">
-              <h3 className="font-black text-lg text-foreground flex items-center gap-2">
-                <WarningCircle className="h-6 w-6 text-amber-500" weight="fill" />
-                Query Feedback
-              </h3>
-              <button onClick={() => setQueryReasonData(null)} className="p-2 hover:bg-secondary rounded-full text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                <X weight="bold" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 bg-background space-y-6">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Business Name</p>
-                <p className="text-base font-black text-foreground">{queryReasonData.proposedName || "Unnamed Registration"}</p>
-              </div>
-
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 border-b border-amber-500/10 pb-2">CAC Examiner Notes</p>
-                <p className="text-sm font-medium text-foreground leading-relaxed whitespace-pre-wrap">
-                  {queryReasonData.queryReason || "No specific reason provided by the examiner. Please review your application thoroughly."}
-                </p>
-              </div>
-
-              <div className="bg-secondary/30 border border-border p-4 rounded-xl">
-                <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                  To resolve this, click the button below to enter the resolution wizard. You will not be charged again.
-                </p>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-border bg-secondary/30 shrink-0">
-              <Button 
-                onClick={() => {
-                  const id = queryReasonData.id;
-                  setQueryReasonData(null);
-                  handleExecuteAction("resolve", id);
-                }}
-                className="w-full h-14 bg-primary text-primary-foreground hover:opacity-90 font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Go to Resolve <ArrowRight weight="bold" className="h-5 w-5" />
-              </Button>
-            </div>
-
-          </div>
-        </div>
+        <QueryReasonModal 
+          businessName={queryReasonData.proposedName || "Unnamed Registration"}
+          reason={queryReasonData.queryReason || "No specific reason provided."}
+          status={queryReasonData.status}
+          date={queryReasonData.updatedAt || new Date().toISOString()}
+          onClose={() => setQueryReasonData(null)}
+          onResolve={() => {
+            const id = queryReasonData.id;
+            const rowData = queryReasonData;
+            setQueryReasonData(null);
+            handleExecuteAction("resolve", id, rowData);
+          }}
+        />
       )}
 
       {/* CUSTOM DELETE CONFIRMATION MODAL */}
@@ -262,18 +204,10 @@ function RegistrationsHubContent() {
             )}
 
             <div className="flex flex-col gap-3">
-              <button
-                onClick={executeDelete}
-                disabled={deleteContext.isLoading}
-                className="w-full h-14 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center disabled:opacity-50 cursor-pointer shadow-lg shadow-red-500/20"
-              >
+              <button onClick={executeDelete} disabled={deleteContext.isLoading} className="w-full h-14 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center disabled:opacity-50 cursor-pointer shadow-lg shadow-red-500/20">
                 {deleteContext.isLoading ? <Spinner className="animate-spin h-5 w-5" /> : "Yes, Delete It"}
               </button>
-              <button
-                onClick={() => setDeleteContext({ isOpen: false, id: null, isLoading: false, error: null })}
-                disabled={deleteContext.isLoading}
-                className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80 transition-colors cursor-pointer"
-              >
+              <button onClick={() => setDeleteContext({ isOpen: false, id: null, isLoading: false, error: null })} disabled={deleteContext.isLoading} className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80 transition-colors cursor-pointer">
                 Cancel
               </button>
             </div>
@@ -292,10 +226,7 @@ function RegistrationsHubContent() {
             <p className="text-sm text-muted-foreground font-medium mb-8">
               The application has been permanently removed from your records.
             </p>
-            <button
-              onClick={() => setSuccessModalOpen(false)}
-              className="w-full h-14 bg-foreground text-background font-bold rounded-xl hover:opacity-90 transition-colors cursor-pointer shadow-lg"
-            >
+            <button onClick={() => setSuccessModalOpen(false)} className="w-full h-14 bg-foreground text-background font-bold rounded-xl hover:opacity-90 transition-colors cursor-pointer shadow-lg">
               Continue
             </button>
           </div>
@@ -306,10 +237,7 @@ function RegistrationsHubContent() {
       {/* MAIN DASHBOARD CONTENT */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-5">
-          <Link 
-            href="/dashboard/cac"
-            className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-lg"
-          >
+          <Link href="/dashboard/cac" className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-lg">
             <ArrowLeft weight="bold" className="h-4 w-4" />
             Back to CAC Hub
           </Link>
@@ -321,10 +249,7 @@ function RegistrationsHubContent() {
           </div>
         </div>
 
-        <Link 
-          href="/dashboard/cac/new-incorporation/new"
-          className="flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-primary-foreground rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 shrink-0 shadow-lg shadow-primary/20"
-        >
+        <Link href="/dashboard/cac/new-incorporation/new" className="flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-primary-foreground rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 shrink-0 shadow-lg shadow-primary/20">
           <Plus weight="bold" className="h-4 w-4" />
           Start New Registration
         </Link>
@@ -411,9 +336,6 @@ function RegistrationsHubContent() {
   );
 }
 
-// ==========================================
-// WRAPPER COMPONENT WITH SUSPENSE
-// ==========================================
 export default function RegistrationsHubPage() {
   return (
     <Suspense fallback={
