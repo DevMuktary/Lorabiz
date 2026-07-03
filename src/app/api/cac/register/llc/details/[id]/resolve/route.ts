@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // Adjust import to match your database client
+import { prisma } from "@/lib/prisma";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> } // Note: In Next.js 15+, params is a Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -15,11 +15,11 @@ export async function POST(
       );
     }
 
-    // Example database update: clear query status and move to PENDING/RESUBMITTED
-    const updatedRegistration = await prisma.registration.update({
+    // Update the LLC registration status back to PENDING after query resolution
+    const updatedRegistration = await prisma.llcRegistration.update({
       where: { id },
       data: {
-        status: "PENDING", // Or whatever status indicates resolution
+        status: "PENDING",
         queryReason: null,
       },
     });
@@ -30,7 +30,7 @@ export async function POST(
       data: updatedRegistration,
     });
   } catch (error: any) {
-    console.error("Error resolving query:", error);
+    console.error("Error resolving LLC query:", error);
     return NextResponse.json(
       { success: false, message: error.message || "Internal Server Error" },
       { status: 500 }
