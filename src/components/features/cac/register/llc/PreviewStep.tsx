@@ -72,7 +72,7 @@ const formatFlatAddress = (obj: any) => {
   return parts.length > 0 ? parts.join(', ') : null;
 };
 
-export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitting }: any) {
+export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitting, isQueryResolution = false, onQuerySubmit }: any) {
   const [pricing, setPricing] = useState<any>(null);
   const [isLoadingPricing, setIsLoadingPricing] = useState(true);
   const [pricingError, setPricingError] = useState<string | null>(null);
@@ -108,10 +108,13 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
     ? (CAMA_ARTICLES_DEFAULT && CAMA_ARTICLES_DEFAULT.length > 0 ? CAMA_ARTICLES_DEFAULT : FALLBACK_CAMA_ARTICLES) 
     : customArticles;
 
-  // Extract Registration ID safely
   const registrationId = draft?.id || data?.id || data?.companyDetails?.id;
 
   const fetchPricing = async () => {
+    if (isQueryResolution) {
+      setIsLoadingPricing(false);
+      return;
+    }
     setIsLoadingPricing(true);
     setPricingError(null);
     try {
@@ -149,8 +152,7 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
   return (
     <div className="py-4 space-y-10 animate-in fade-in duration-500 max-w-5xl mx-auto">
       
-      {/* Payment Modal Override */}
-      {showPaymentModal && pricing && (
+      {showPaymentModal && pricing && !isQueryResolution && (
         <PaymentModal
           registrationId={registrationId}
           proposedName={proposedName1 || "LLC Registration"}
@@ -159,7 +161,6 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
         />
       )}
 
-      {/* Header */}
       <div className="flex items-center gap-3 border-b border-border pb-4">
         <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
            <ShieldCheck className="h-5 w-5" weight="fill" />
@@ -170,10 +171,8 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
         </div>
       </div>
 
-      {/* FULL WIDTH DETAILS CARD */}
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         
-        {/* SECTION 1: Company Information */}
         <h3 className="bg-secondary/50 text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2 border-b border-border">
           <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">1</span>
           Company Information
@@ -190,7 +189,6 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           <TableRow label="Head Office Address" value={formatFlatAddress(headOfficeAddress) || "Same as Registered Address"} isLast />
         </div>
 
-        {/* SECTION 2: Share Capital & Objects */}
         <h3 className="bg-secondary/50 border-y border-border text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
           <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">2</span>
           Capital, Objects & Articles
@@ -258,7 +256,6 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           />
         </div>
 
-        {/* SECTION 3: Officers */}
         <h3 className="bg-secondary/50 border-y border-border text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">3</span>
@@ -320,13 +317,11 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           {officers.length === 0 && <p className="text-sm font-bold text-muted-foreground italic p-4 text-center border-2 border-border border-dashed rounded-xl bg-card">No officers added.</p>}
         </div>
 
-        {/* SECTION 4: Compliance, Declarants, Witness */}
         <h3 className="bg-secondary/50 border-y border-border text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
           <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">4</span>
           Statutory Details
         </h3>
         <div>
-          {/* Witness Details */}
           <div className="bg-secondary border-b border-border px-5 py-3">
              <h5 className="text-[10px] font-black text-foreground uppercase tracking-widest">Witness to Articles</h5>
           </div>
@@ -344,7 +339,6 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
             <TableRow label="Witness Details" value="Using Default Articles (No Witness Required)" />
           )}
 
-          {/* Declarant Details */}
           <div className="bg-secondary border-y border-border px-5 py-3 mt-2">
              <h5 className="text-[10px] font-black text-foreground uppercase tracking-widest">Deponent / Declarant</h5>
           </div>
@@ -360,7 +354,6 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
           )}
         </div>
 
-        {/* SECTION 5: Uploads */}
         <h3 className="bg-secondary/50 border-y border-border text-foreground px-6 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2">
           <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full flex items-center justify-center text-[10px]">5</span>
           Uploaded Documents
@@ -393,87 +386,116 @@ export default function PreviewStep({ data, draft, onComplete, onBack, isSubmitt
 
       </div>
 
-      {/* BOTTOM CENTERED PAYMENT CARD */}
+      {/* BOTTOM CARD: CONDITIONAL FOR QUERY RESOLUTION vs NEW SUBMISSION */}
       <div className="max-w-2xl mx-auto pt-6 pb-12">
-        <div className="bg-card rounded-3xl p-6 md:p-8 text-foreground shadow-2xl border border-border">
-          <div className="flex items-center gap-3 mb-6 border-b border-border pb-5">
-             <div className="h-12 w-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                <CreditCard weight="fill" className="text-emerald-500 h-6 w-6" />
-             </div>
-             <div>
-                <h3 className="text-xl font-black tracking-wide">Payment Checkout</h3>
-                <p className="text-xs text-muted-foreground mt-1 font-medium">Final confirmation and fee breakdown</p>
-             </div>
-          </div>
-
-          {isLoadingPricing ? (
-            <div className="space-y-5 animate-pulse">
-              <div className="h-4 bg-secondary rounded w-full"></div>
-              <div className="h-4 bg-secondary rounded w-3/4"></div>
-              <div className="h-14 bg-secondary rounded-xl w-full mt-8"></div>
-            </div>
-          ) : pricingError ? (
-            <div className="space-y-4">
-              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-500 text-sm font-bold flex items-start gap-2">
-                <WarningCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
-                {pricingError}
+        {isQueryResolution ? (
+          <div className="bg-card rounded-3xl p-6 md:p-8 text-foreground shadow-xl border-2 border-primary/20">
+            <div className="flex items-center gap-3 mb-6 border-b border-border pb-5">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <CheckCircle weight="fill" className="text-primary h-6 w-6" />
               </div>
+              <div>
+                <h3 className="text-xl font-black tracking-wide">Ready to Submit Resolution?</h3>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">Verify your corrections above. No payment is required to resubmit a query.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button 
-                onClick={fetchPricing}
-                variant="outline"
-                className="w-full bg-transparent border-border text-foreground hover:bg-secondary font-bold rounded-xl h-12 cursor-pointer"
+                onClick={onBack}
+                disabled={isSubmitting}
+                variant="ghost"
+                className="w-full sm:w-1/3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl h-14 cursor-pointer font-bold"
               >
-                Retry Loading Pricing
+                <ArrowLeft className="h-5 w-5 mr-2" weight="bold" /> Go Back
+              </Button>
+              <Button 
+                onClick={onQuerySubmit}
+                disabled={isSubmitting}
+                className="w-full sm:w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white h-14 rounded-xl font-black text-base shadow-lg transition-all cursor-pointer"
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Resolution to CAC'}
+                {!isSubmitting && <ArrowRight className="ml-2 h-5 w-5" weight="bold" />}
               </Button>
             </div>
-          ) : pricing ? (
-            <div className="space-y-4 text-sm">
-              
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span className="font-medium text-sm">Base Registration Fee</span>
-                <span className="font-black text-foreground">{formatCurrency(pricing.baseFee)}</span>
-              </div>
-              
-              {/* Dynamically adds extra fee line if shares demand it */}
-              {Number(pricing.extraSharesFee) > 0 && (
-                <div className="flex justify-between items-center text-amber-500 bg-amber-500/10 -mx-4 px-4 py-2.5 rounded-lg border border-amber-500/20">
-                  <span className="font-bold text-xs flex items-center gap-1 uppercase tracking-widest">
-                    Extra Shares Add-on
-                  </span>
-                  <span className="font-black">{formatCurrency(pricing.extraSharesFee)}</span>
-                </div>
-              )}
-
-              <div className="flex justify-between items-end pt-3 mb-8 bg-secondary/50 p-4 rounded-xl border border-border">
-                <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">Total Due</span>
-                <span className="text-3xl font-black text-emerald-500 leading-none">{formatCurrency(pricing.total)}</span>
-              </div>
-
-              {/* Submit & Back Buttons Group */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button 
-                  onClick={onBack}
-                  disabled={isSubmitting}
-                  variant="ghost"
-                  className="w-full sm:w-1/3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl h-14 cursor-pointer"
-                >
-                  <ArrowLeft className="h-5 w-5 mr-2" weight="bold" /> Go Back
-                </Button>
-                <Button 
-                  onClick={handleProceedToPayment}
-                  disabled={isSubmitting}
-                  className="w-full sm:w-2/3 bg-primary hover:opacity-90 text-primary-foreground h-14 rounded-xl font-black text-base shadow-[0_0_0_4px_rgba(79,70,229,0.2)] transition-all cursor-pointer"
-                >
-                  {isSubmitting ? 'Processing...' : 'Pay & Submit Application'}
-                  {!isSubmitting && <ArrowRight className="ml-2 h-5 w-5" weight="bold" />}
-                </Button>
-              </div>
+          </div>
+        ) : (
+          <div className="bg-card rounded-3xl p-6 md:p-8 text-foreground shadow-2xl border border-border">
+            <div className="flex items-center gap-3 mb-6 border-b border-border pb-5">
+               <div className="h-12 w-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                  <CreditCard weight="fill" className="text-emerald-500 h-6 w-6" />
+               </div>
+               <div>
+                  <h3 className="text-xl font-black tracking-wide">Payment Checkout</h3>
+                  <p className="text-xs text-muted-foreground mt-1 font-medium">Final confirmation and fee breakdown</p>
+               </div>
             </div>
-          ) : null}
-        </div>
+
+            {isLoadingPricing ? (
+              <div className="space-y-5 animate-pulse">
+                <div className="h-4 bg-secondary rounded w-full"></div>
+                <div className="h-4 bg-secondary rounded w-3/4"></div>
+                <div className="h-14 bg-secondary rounded-xl w-full mt-8"></div>
+              </div>
+            ) : pricingError ? (
+              <div className="space-y-4">
+                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-500 text-sm font-bold flex items-start gap-2">
+                  <WarningCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
+                  {pricingError}
+                </div>
+                <Button 
+                  onClick={fetchPricing}
+                  variant="outline"
+                  className="w-full bg-transparent border-border text-foreground hover:bg-secondary font-bold rounded-xl h-12 cursor-pointer"
+                >
+                  Retry Loading Pricing
+                </Button>
+              </div>
+            ) : pricing ? (
+              <div className="space-y-4 text-sm">
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span className="font-medium text-sm">Base Registration Fee</span>
+                  <span className="font-black text-foreground">{formatCurrency(pricing.baseFee)}</span>
+                </div>
+                
+                {Number(pricing.extraSharesFee) > 0 && (
+                  <div className="flex justify-between items-center text-amber-500 bg-amber-500/10 -mx-4 px-4 py-2.5 rounded-lg border border-amber-500/20">
+                    <span className="font-bold text-xs flex items-center gap-1 uppercase tracking-widest">
+                      Extra Shares Add-on
+                    </span>
+                    <span className="font-black">{formatCurrency(pricing.extraSharesFee)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-end pt-3 mb-8 bg-secondary/50 p-4 rounded-xl border border-border">
+                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">Total Due</span>
+                  <span className="text-3xl font-black text-emerald-500 leading-none">{formatCurrency(pricing.total)}</span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button 
+                    onClick={onBack}
+                    disabled={isSubmitting}
+                    variant="ghost"
+                    className="w-full sm:w-1/3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl h-14 cursor-pointer font-bold"
+                  >
+                    <ArrowLeft className="h-5 w-5 mr-2" weight="bold" /> Go Back
+                  </Button>
+                  <Button 
+                    onClick={handleProceedToPayment}
+                    disabled={isSubmitting}
+                    className="w-full sm:w-2/3 bg-primary hover:opacity-90 text-primary-foreground h-14 rounded-xl font-black text-base shadow-[0_0_0_4px_rgba(79,70,229,0.2)] transition-all cursor-pointer"
+                  >
+                    {isSubmitting ? 'Processing...' : 'Pay & Submit Application'}
+                    {!isSubmitting && <ArrowRight className="ml-2 h-5 w-5" weight="bold" />}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
-      {/* MODAL: DOCUMENT VIEWER */}
       {previewDoc && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm sm:p-4">
           <div className="bg-card w-full h-full sm:h-auto sm:max-h-[90vh] sm:rounded-2xl sm:max-w-5xl flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
