@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DESIGNATED_COMPANIES } from "@/lib/share-capital-data";
 
-// Import all 8 LLC Steps (Skipping Preview/Payment)
+// Import all 9 LLC Steps
 import CompanyDetailsStep from "@/components/features/cac/register/llc/CompanyDetailsStep";
 import ArticlesStep from "@/components/features/cac/register/llc/ArticlesStep";
 import MemorandumStep from "@/components/features/cac/register/llc/MemorandumStep";
@@ -17,6 +17,7 @@ import ShareCapitalStep from "@/components/features/cac/register/llc/ShareCapita
 import PscStep from "@/components/features/cac/register/llc/PscStep";
 import ComplianceStep from "@/components/features/cac/register/llc/ComplianceStep";
 import UploadsStep from "@/components/features/cac/register/llc/UploadsStep";
+import PreviewStep from "@/components/features/cac/register/llc/PreviewStep";
 
 export default function LlcQueryResolutionPage() {
   const params = useParams();
@@ -69,7 +70,6 @@ export default function LlcQueryResolutionPage() {
         const json = await res.json();
         
         if (json.success) {
-          // LOCKOUT CHECK: If already resolved on another tab/device
           if (json.data.status !== "QUERIED") {
             setIsAlreadyResolved(true);
             setTimeout(() => router.push("/dashboard/cac/new-incorporation"), 3000);
@@ -111,7 +111,6 @@ export default function LlcQueryResolutionPage() {
 
     fetchDetails();
 
-    // BACKGROUND POLLING: Check every 5 seconds if someone else fixed it
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/cac/register/llc/details/${id}`);
@@ -169,7 +168,6 @@ export default function LlcQueryResolutionPage() {
 
     const d = companyDetails;
 
-    // STEP 1
     if (currentStep === 1) {
       const rAddr = d.registeredAddress;
       const hAddr = d.headOfficeAddress;
@@ -193,7 +191,6 @@ export default function LlcQueryResolutionPage() {
       if (firstError) return triggerError(`Please provide the ${firstError.name}.`, firstError.id);
     }
 
-    // STEP 2 
     if (currentStep === 2) {
       const w = d.witnessDetails;
       if (!d.customArticles || d.customArticles.length === 0) return triggerError("You must provide at least one Article of Association to proceed.");
@@ -222,13 +219,9 @@ export default function LlcQueryResolutionPage() {
       if (w.phone.replace(/\D/g, '').length < 5) return triggerError("Please provide a valid Witness Phone Number.", "field-w-phone");
     }
 
-    // STEP 3 
     if (currentStep === 3 && d.memorandumObjects.length === 0) return triggerError("Please add at least one Object of Memorandum.");
-    
-    // STEP 4 
     if (currentStep === 4 && d.officers.filter(o => o.roles.includes("DIRECTOR")).length === 0) return triggerError("You must add at least one Director.");
 
-    // STEP 5 
     if (currentStep === 5) {
       const sc = d.shareCapital || {};
       const companyType = sc.companyType || "ENTITY WITH SHARES BELOW FIVE MILLION";
@@ -253,13 +246,11 @@ export default function LlcQueryResolutionPage() {
       if (remainingAllotmentUnits < 0) return triggerError(`You have over-distributed your shares by ${Math.abs(remainingAllotmentUnits).toLocaleString()} units. Please correct the allotments.`);
     }
 
-    // STEP 6
     if (currentStep === 6) {
         const incompletePsc = d.officers.filter(o => o.roles.includes("PSC")).find((p: any) => !p.pscDetails?.isPep || !p.pscDetails?.hasAffiliation);
         if (incompletePsc) return triggerError(`Please complete the details for PSC: ${incompletePsc.firstName} ${incompletePsc.surname}`);
     }
 
-    // STEP 7
     if (currentStep === 7) {
         const dec = d.declarantDetails || {};
         if (!dec.surname || !dec.firstName || !dec.phone || !dec.email || !dec.state || !dec.lga || !dec.city || !dec.street) return triggerError("Please fill in all required fields for the Declarant.");
@@ -268,7 +259,6 @@ export default function LlcQueryResolutionPage() {
         if (!dec.isAcknowledged) return triggerError("You must acknowledge the Statement of Compliance to proceed.");
     }
 
-    // STEP 8
     if (currentStep === 8) {
       const u = d.uploads || {};
       const missingDocs: string[] = [];
@@ -284,10 +274,6 @@ export default function LlcQueryResolutionPage() {
         const errorText = missingDocs.length === 1 ? `Missing required upload: ${missingDocs[0]}` : `Missing required uploads: ${missingDocs[0]} (+${missingDocs.length - 1} more)`;
         return triggerError(errorText);
       }
-
-      // If validation passes on Step 8, show the Confirm Submission Modal
-      setShowConfirmModal(true);
-      return;
     }
     
     // SUCCESS! Proceed to next step
@@ -325,7 +311,6 @@ export default function LlcQueryResolutionPage() {
     }
   };
 
-  // MULTI-TAB LOCKOUT SCREEN
   if (isAlreadyResolved) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
@@ -349,12 +334,11 @@ export default function LlcQueryResolutionPage() {
     );
   }
 
-  const STEPS = ["Company", "Articles", "Objects", "Officers", "Capital", "PSC", "Compliance", "Uploads"];
+  const STEPS = ["Company", "Articles", "Objects", "Officers", "Capital", "PSC", "Compliance", "Uploads", "Preview"];
 
   return (
     <div className="min-h-screen bg-background pb-20 font-sans relative">
       
-      {/* BEAUTIFUL GLOBAL ERROR BADGE */}
       {topError && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[999999] w-[90%] max-w-md animate-in slide-in-from-top-8 fade-in duration-500">
           <div className="bg-destructive text-destructive-foreground px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(220,38,38,0.3)] flex items-center justify-between gap-3 font-bold text-sm border-2 border-destructive/50 overflow-hidden relative">
@@ -387,18 +371,21 @@ export default function LlcQueryResolutionPage() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-8 mt-6 space-y-6 animate-in fade-in duration-500">
         
-        {/* COMPACT CAC QUERY ALERT */}
-        <div className="bg-amber-500/10 border border-amber-500/20 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row gap-4 sm:items-start shadow-sm">
-          <div className="bg-amber-500/20 p-2 rounded-full shrink-0 w-fit">
-            <WarningCircle className="h-6 w-6 text-amber-500" weight="fill" />
+        {/* VIBRANT, SPACIOUS CAC QUERY ALERT */}
+        <div className="bg-amber-500/10 border-2 border-amber-500/30 p-5 sm:p-6 rounded-3xl flex flex-col sm:flex-row gap-4 sm:items-start shadow-md">
+          <div className="bg-amber-500 text-white p-3 rounded-2xl shrink-0 shadow-sm self-start">
+            <WarningCircle className="h-7 w-7" weight="fill" />
           </div>
-          <div>
-            <h2 className="text-sm font-black text-amber-500 mb-1">Official CAC Query Feedback</h2>
-            <p className="text-amber-500/80 font-medium text-sm leading-relaxed mb-2">
-              {draft?.queryReason || "No specific reason provided by CAC."}
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md">Official CAC Feedback</span>
+              <span className="text-xs font-bold text-muted-foreground">Action Required</span>
+            </div>
+            <p className="text-amber-950 dark:text-amber-200 font-extrabold text-base sm:text-lg leading-relaxed pt-1">
+              {draft?.queryReason || "No specific reason provided by CAC. Please review your application step-by-step."}
             </p>
-            <p className="text-[10px] font-black text-amber-500/60 uppercase tracking-widest">
-              Please review your details step-by-step and fix the issues raised above.
+            <p className="text-xs font-semibold text-amber-800/80 dark:text-amber-300/80 pt-2">
+              Navigate through the tabs below to make necessary corrections, then proceed to the final review step.
             </p>
           </div>
         </div>
@@ -450,36 +437,37 @@ export default function LlcQueryResolutionPage() {
           {currentStep === 6 && <PscStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
           {currentStep === 7 && <ComplianceStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
           {currentStep === 8 && <UploadsStep data={companyDetails} updateData={setCompanyDetails} showErrors={showErrors} />}
+          {currentStep === 9 && (
+            <PreviewStep 
+              data={companyDetails} 
+              draft={draft} 
+              isQueryResolution={true} 
+              onQuerySubmit={() => setShowConfirmModal(true)} 
+              onBack={() => setCurrentStep(8)} 
+              isSubmitting={submitState === "submitting"} 
+            />
+          )}
 
           {/* WIZARD FOOTER NAVIGATION */}
-          <div className="bg-secondary/30 border-t border-border p-4 sm:p-6 flex justify-between items-center gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => { setCurrentStep(p => p - 1); setTopError(null); }} 
-              disabled={currentStep === 1 || submitState !== "idle"} 
-              className="h-12 px-4 sm:px-6 rounded-xl font-bold bg-background border-border text-foreground hover:bg-secondary shrink-0 text-sm sm:text-base cursor-pointer"
-            >
-              Back
-            </Button>
-            
-            {currentStep < 8 ? (
-               <Button 
-                 onClick={handleValidateStep} 
-                 className="h-12 px-6 sm:px-8 bg-primary text-primary-foreground hover:opacity-90 font-bold rounded-xl shadow-md shrink-0 text-sm sm:text-base cursor-pointer"
-               >
-                 Save & Continue
-               </Button>
-            ) : (
-               <Button 
-                  onClick={handleValidateStep}
-                  disabled={submitState !== "idle"} 
-                  className="h-12 px-5 sm:px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 shrink-0 text-sm sm:text-base cursor-pointer"
-                >
-                 <CheckCircle weight="bold" className="h-5 w-5 hidden sm:block" /> 
-                 Submit Resolution
-               </Button>
-            )}
-          </div>
+          {currentStep < 9 && (
+            <div className="bg-secondary/30 border-t border-border p-4 sm:p-6 flex justify-between items-center gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => { setCurrentStep(p => p - 1); setTopError(null); }} 
+                disabled={currentStep === 1 || submitState !== "idle"} 
+                className="h-12 px-4 sm:px-6 rounded-xl font-bold bg-background border-border text-foreground hover:bg-secondary shrink-0 text-sm sm:text-base cursor-pointer"
+              >
+                Back
+              </Button>
+              
+              <Button 
+                onClick={handleValidateStep} 
+                className="h-12 px-6 sm:px-8 bg-primary text-primary-foreground hover:opacity-90 font-bold rounded-xl shadow-md shrink-0 text-sm sm:text-base cursor-pointer"
+              >
+                Save & Continue
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -489,7 +477,6 @@ export default function LlcQueryResolutionPage() {
           <div className="bg-card rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-border">
             
             {submitState === "success" ? (
-              // --- BEAUTIFUL SUCCESS UI ---
               <div className="p-8 text-center animate-in zoom-in-95 duration-300">
                 <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-emerald-500 mb-6 shadow-[0_0_40px_rgba(16,185,129,0.4)] animate-bounce">
                   <CheckCircle className="h-10 w-10 text-white" weight="bold" />
@@ -503,7 +490,6 @@ export default function LlcQueryResolutionPage() {
                 </div>
               </div>
             ) : (
-              // --- STANDARD CONFIRMATION UI ---
               <div className="p-8 text-center relative">
                 <button 
                   onClick={() => submitState === "idle" && setShowConfirmModal(false)}
