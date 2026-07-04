@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { dispatchNotification, NotificationEvent } from "@/services/notifications";
 
 export async function POST(req: Request) {
   try {
@@ -73,6 +74,7 @@ export async function POST(req: Request) {
       // ==========================================
       if (reference.startsWith("ONL_")) {
         const registrationId = reference.split("_")[1];
+        let notificationPayload: NotificationEvent | null = null;
 
         await prisma.$transaction(async (tx: any) => {
           const user = await tx.user.findUnique({ 
@@ -155,12 +157,29 @@ export async function POST(req: Request) {
               data: { status: "PENDING" } 
             });
           }
+
+          // D: Capture user details for non-blocking notification dispatch
+          const userPhone = user.phone || user.phoneNumber || "";
+          const userName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
+
+          notificationPayload = {
+            type: "APPLICATION_SUBMITTED",
+            phone: userPhone,
+            email: userEmail,
+            name: userName,
+            businessName: regName,
+            regId: registrationId,
+          };
         });
+
+        // Fire Email & WhatsApp asynchronously after successful DB commit
+        if (notificationPayload) {
+          dispatchNotification(notificationPayload);
+        }
 
         return NextResponse.json({ received: true });
       }
 
-      // If it's a random Paystack charge we didn't initiate
       return NextResponse.json({ received: true });
     }
 
