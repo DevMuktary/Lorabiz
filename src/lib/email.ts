@@ -25,7 +25,7 @@ export async function sendEmail({
       "Authorization": token,
     },
     body: JSON.stringify({
-      from: { address: sender, name: "Lumebiz" },
+      from: { address: sender, name: "LoraBiz" },
       to: [{ email_address: { address: to } }],
       subject: subject,
       htmlbody: htmlBody,
@@ -41,27 +41,146 @@ export async function sendEmail({
   return res.json();
 }
 
-// Reusable template specifically for OTPs
+// Reusable template layout wrapper
+function getBaseLayout(content: string) {
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f5f7; padding: 40px 16px; color: #1e293b;">
+      <div style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); border: 1px solid #e2e8f0;">
+        
+        <div style="background-color: #0f172a; padding: 28px 32px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">LoraBiz<span style="color: #ff3f7a;">.</span></h1>
+        </div>
+
+        <div style="padding: 32px;">
+          ${content}
+        </div>
+
+        <div style="background-color: #f8fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #f1f5f9;">
+          <p style="color: #64748b; font-size: 12px; margin: 0; line-height: 1.6;">
+            You received this email because of an active registration on LoraBiz.<br/>
+            &copy; ${new Date().getFullYear()} LoraBiz Corporate Services. All rights reserved.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
 export async function sendVerificationOTP(to: string, otpCode: string) {
-  const subject = "Your Lumebiz Verification Code";
-  const htmlBody = `
-    <div style="font-family: sans-serif; max-w: 500px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-      <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="color: #111; margin: 0;">Verify your email</h2>
-      </div>
-      <p style="color: #555; line-height: 1.6;">
-        Use the secure code below to complete your registration on Lumebiz. 
-        <strong>This code expires in 10 minutes.</strong>
-      </p>
-      <div style="background: #f9f9f9; padding: 20px; text-align: center; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #ff3f7a; border-radius: 8px; margin: 24px 0; border: 1px dashed #ff3f7a40;">
-        ${otpCode}
-      </div>
-      <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
-        If you didn't request this code, please ignore this email. <br/>
-        &copy; ${new Date().getFullYear()} Quadrox Technologies Limited
-      </p>
+  const subject = "Your LoraBiz Verification Code";
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px;">Verify your email address</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 24px; font-size: 15px;">
+      Use the secure verification code below to complete your registration on LoraBiz. 
+      <strong>This code expires in 10 minutes.</strong>
+    </p>
+    <div style="background: #f8fafc; padding: 24px; text-align: center; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #ff3f7a; border-radius: 12px; border: 2px dashed #e2e8f0; margin-bottom: 24px;">
+      ${otpCode}
+    </div>
+    <p style="color: #94a3b8; font-size: 13px; margin: 0;">If you did not request this verification, please safely ignore this email.</p>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
+}
+
+export async function sendApplicationSubmittedEmail({
+  to,
+  name,
+  businessName,
+  regId,
+}: {
+  to: string;
+  name: string;
+  businessName: string;
+  regId: string;
+}) {
+  const subject = `Application Received: ${businessName}`;
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px;">We've received your filing! 📄</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px;">
+      Hello <strong>${name}</strong>,<br/>
+      Your incorporation filing for <strong>${businessName}</strong> has been received and payment confirmed. Our compliance engine is currently processing your documents with the Corporate Affairs Commission (CAC).
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Registration Details</p>
+      <p style="margin: 0; font-size: 15px; color: #0f172a;"><strong>Entity Name:</strong> ${businessName}</p>
+      <p style="margin: 6px 0 0; font-size: 15px; color: #0f172a;"><strong>Tracking Ref:</strong> ${regId}</p>
+    </div>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/cac/register/view/${regId}" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">Track Application Status</a>
     </div>
   `;
 
-  return sendEmail({ to, subject, htmlBody });
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
+}
+
+export async function sendApplicationQueriedEmail({
+  to,
+  name,
+  businessName,
+  queryReason,
+  regId,
+  entitySlug,
+}: {
+  to: string;
+  name: string;
+  businessName: string;
+  queryReason: string;
+  regId: string;
+  entitySlug: "llc" | "businesses";
+}) {
+  const subject = `Action Required: CAC Query on ${businessName}`;
+  const content = `
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px;">Action Required: CAC Query ⚠️</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px;">
+      Hello <strong>${name}</strong>,<br/>
+      The Corporate Affairs Commission (CAC) examiner has paused your registration for <strong>${businessName}</strong> and requested corrections.
+    </p>
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 28px;">
+      <p style="margin: 0 0 8px; font-size: 12px; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Examiner Notes</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6; white-space: pre-wrap;">"${queryReason}"</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px;">
+      Please resolve this issue immediately using our interactive wizard. You will not be charged any additional fee to resubmit your corrections.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/cac/${entitySlug}/${regId}/queries" style="display: inline-block; background-color: #f59e0b; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">Resolve Query Now</a>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
+}
+
+export async function sendApplicationApprovedEmail({
+  to,
+  name,
+  businessName,
+  rcNumber,
+}: {
+  to: string;
+  name: string;
+  businessName: string;
+  rcNumber: string;
+}) {
+  const subject = `Incorporation Approved: ${businessName} 🎉`;
+  const content = `
+    <h2 style="color: #15803d; margin: 0 0 16px; font-size: 20px;">Incorporation Approved! 🎉</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px;">
+      Congratulations <strong>${name}</strong>,<br/>
+      Your business <strong>${businessName}</strong> has been officially approved and registered by the Corporate Affairs Commission.
+    </p>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 28px;">
+      <p style="margin: 0 0 6px; font-size: 13px; color: #166534; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Official Registration Number</p>
+      <p style="margin: 0; font-size: 28px; font-weight: 800; color: #15803d; letter-spacing: 1px;">${rcNumber}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px;">
+      Your statutory CAC Certificate, Status Report, and official documents are ready for download in your portal.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/cac/new-incorporation" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">Download Official Documents</a>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
 }
