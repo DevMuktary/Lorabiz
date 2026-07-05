@@ -72,12 +72,13 @@ model User {
 
   registrations    BusinessRegistration[]
   llcRegistrations LlcRegistration[]
+  ninRequests      NinRequestLog[]
   wallet           Wallet?
   waitlists        Waitlist[]
 }
 
 // ==========================================
-// BUSINESS NAME REGISTRATION (Existing)
+// BUSINESS NAME REGISTRATION
 // ==========================================
 
 model BusinessRegistration {
@@ -221,6 +222,32 @@ model CompanyOfficer {
 }
 
 // ==========================================
+// NIMC / NIN SLIP SERVICES
+// ==========================================
+
+model NinSlipPricing {
+  id          String   @id @default(cuid())
+  slipType    String   @unique // "nin_regular", "nin_standard", "nin_premium"
+  displayName String   // "Regular Slip", "Standard Slip", "Premium Card Slip"
+  price       Decimal  @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+}
+
+model NinRequestLog {
+  id            String   @id @default(cuid())
+  userId        String
+  ninMasked     String   // Storing masked NIN (e.g., "********123") for privacy & audit
+  slipType      String
+  amountCharged Decimal  @db.Decimal(10, 2)
+  status        String   // "SUCCESS" | "FAILED"
+  reference     String   @unique // Links to Wallet Transaction reference
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
 // SYSTEM AUTH, LEDGER & WAITLIST
 // ==========================================
 
@@ -233,13 +260,13 @@ model OtpCode {
 }
 
 model Wallet {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  balance   Decimal  @default(0.00) 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String        @id @default(cuid())
+  userId      String        @unique
+  balance     Decimal       @default(0.00) 
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
 }
 
