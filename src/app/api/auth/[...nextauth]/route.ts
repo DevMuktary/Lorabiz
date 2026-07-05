@@ -43,7 +43,9 @@ async function clearFailedAttempts(identifier: string): Promise<void> {
   await redis.del(`lockout:${identifier}`);
 }
 
-// Helper: Log security events asynchronously into PostgreSQL
+// ============================================================================
+// AUDIT LOGGING HELPER
+// ============================================================================
 async function logSecurityEvent(data: {
   email: string;
   role?: string;
@@ -64,11 +66,13 @@ async function logSecurityEvent(data: {
       },
     });
   } catch (err) {
-    console.error("Failed to write audit log to database:", err);
+    console.error("Failed to write security audit log to PostgreSQL:", err);
   }
 }
-// ============================================================================
 
+// ============================================================================
+// NEXTAUTH OPTIONS CONFIGURATION
+// ============================================================================
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -83,21 +87,28 @@ export const authOptions: NextAuthOptions = {
         }
 
         const normalizedEmail = credentials.email.toLowerCase().trim();
-        
-        // Extract client network & device information
-        const ipAddress = req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
-        const userAgent = req?.headers?.["user-agent"] || "Unknown Browser";
+
+        // Extract client network & device telemetry from headers
+        const ipAddress =
+          req?.headers?.["x-forwarded-for"] ||
+          req?.headers?.["x-real-ip"] ||
+          "Unknown IP";
+        const userAgent =
+          req?.headers?.["user-agent"] || "Unknown Browser";
+
+        const clientIp = Array.isArray(ipAddress) ? ipAddress[0] : ipAddress;
+        const clientDevice = Array.isArray(userAgent) ? userAgent[0] : userAgent;
 
         try {
-          // 1. Check Rate Limiter
+          // 1. Check Rate Limiter (Throws error if locked out in Redis)
           await checkRateLimit(normalizedEmail);
         } catch (lockoutError: any) {
           // Record brute force lockout attempt in audit logs
           await logSecurityEvent({
             email: normalizedEmail,
             event: "BRUTE_FORCE_LOCKOUT",
-            ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress,
-            userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
+            ipAddress: clientIp,
+            userAgent: clientDevice,
             details: lockoutError.message,
           });
           throw lockoutError;
@@ -108,20 +119,20 @@ export const authOptions: NextAuthOptions = {
           where: { email: normalizedEmail },
         });
 
-        // 3. If account doesn't exist
+        // 3. Reject if account doesn't exist
         if (!user || !user.passwordHash) {
           await recordFailedAttempt(normalizedEmail);
           await logSecurityEvent({
             email: normalizedEmail,
             event: "LOGIN_FAILED",
-            ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress,
-            userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
-            details: "Account not found or missing password hash",
+            ipAddress: clientIp,
+            userAgent: clientDevice,
+            details: "Account not found or missing credentials hash",
           });
           return null;
         }
 
-        // 4. Verify password
+        // 4. Compare typed password against DB hash
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.passwordHash
@@ -133,45 +144,63 @@ export const authOptions: NextAuthOptions = {
             email: normalizedEmail,
             role: user.role,
             event: "LOGIN_FAILED",
-            ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress,
-            userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
+            ipAddress: clientIp,
+            userAgent: clientDevice,
             details: "Invalid password provided",
           });
           return null;
         }
 
-        // 5. Success! Clear lockout counters & record audit entry
+        // 5. Success! Clear rate limit records and log success
         await clearFailedAttempts(normalizedEmail);
         await logSecurityEvent({
           email: normalizedEmail,
           role: user.role,
           event: "LOGIN_SUCCESS",
-          ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress,
-          userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
-          details: `Authenticated successfully as ${user.role}`,
+          ipAddress: clientIp,
+          userAgent: clientDevice,
+          details: `Authenticated Phase 1 successfully as ${user.role}`,
         });
 
+        // Return user context along with 2FA status to seed the JWT
         return {
           id: user.id,
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
           role: user.role,
+          twoFactorEnabled: user.twoFactorEnabled,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    // 1. Mutate the JSON Web Token (JWT) on sign-in and manual updates
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.twoFactorEnabled = (user as any).twoFactorEnabled || false;
+
+        // MFA Gate Rule:
+        // If 2FA is disabled on account -> considered verified (true) immediately
+        // If 2FA is enabled -> starts unverified (false) until OTP challenge passed
+        token.mfaVerified = !((user as any).twoFactorEnabled);
       }
+
+      // Allow frontend OTP verification pages to call `update({ mfaVerified: true })`
+      if (trigger === "update" && session?.mfaVerified !== undefined) {
+        token.mfaVerified = session.mfaVerified;
+      }
+
       return token;
     },
+    // 2. Expose JWT properties to client-side session and middleware guards
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role as string;
+        (session.user as any).twoFactorEnabled = token.twoFactorEnabled as boolean;
+        (session.user as any).mfaVerified = token.mfaVerified as boolean;
       }
       return session;
     },
@@ -186,5 +215,6 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
+// Cast handler to any to resolve strict Next.js 16 async route handler constraints
 const handler = NextAuth(authOptions) as any;
 export { handler as GET, handler as POST };
