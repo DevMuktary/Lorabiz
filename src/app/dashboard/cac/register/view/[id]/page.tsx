@@ -76,14 +76,25 @@ const SummaryItem = ({ label, value, highlight = false }: { label: string, value
 async function getRegistrationData(id: string) {
   let type = "BUSINESS_NAME";
   
-  let reg: any = await prisma.businessRegistration.findUnique({ 
-    where: { id },
+  // Look up by trackingId OR CUID
+  let reg: any = await prisma.businessRegistration.findFirst({ 
+    where: { 
+      OR: [
+        { trackingId: id },
+        { id: id }
+      ]
+    },
     include: { proprietors: true } 
   });
   
   if (!reg) {
-    reg = await prisma.llcRegistration.findUnique({ 
-      where: { id },
+    reg = await prisma.llcRegistration.findFirst({ 
+      where: { 
+        OR: [
+          { trackingId: id },
+          { id: id }
+        ]
+      },
       include: { officers: true }
     });
     type = "LLC";
@@ -177,7 +188,7 @@ export default async function ViewRegistrationPage({ params }: { params: Promise
               </h1>
             </div>
             <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              REF: {reg.id.split('-')[0]} • {isLLC ? 'Company (LLC)' : 'Business Name'}
+              REF: {reg.trackingId || reg.id.split('-')[0]} • {isLLC ? 'Company (LLC)' : 'Business Name'}
             </p>
           </div>
         </div>
