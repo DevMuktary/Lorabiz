@@ -32,6 +32,7 @@ export function dispatchNotification(event: NotificationEvent): void {
             recipientPhone: event.phone,
             templateName: "cac_application_submitted",
             variables: [event.name, event.businessName, event.regId],
+            buttonUrlVariable: event.regId, // FIX: Added the missing URL parameter!
           });
           await sendApplicationSubmittedEmail({
             to: event.email,
@@ -57,6 +58,7 @@ export function dispatchNotification(event: NotificationEvent): void {
             recipientPhone: event.phone,
             templateName: "cac_application_queried",
             variables: [event.name, event.businessName, event.queryReason],
+            buttonUrlVariable: `${event.entitySlug}/${event.regId}/queries`, // FIX: Added the missing URL parameter!
           });
           await sendApplicationQueriedEmail({
             to: event.email,
@@ -84,6 +86,7 @@ export function dispatchNotification(event: NotificationEvent): void {
             recipientPhone: event.phone,
             templateName: "cac_application_approved",
             variables: [event.name, event.businessName, event.rcNumber],
+            buttonUrlVariable: event.rcNumber, // FIX: Added the missing URL parameter!
           });
           await sendApplicationApprovedEmail({
             to: event.email,
