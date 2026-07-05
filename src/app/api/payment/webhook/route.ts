@@ -167,9 +167,9 @@ export async function POST(req: Request) {
             });
           }
 
-          // D: Capture user details for background dispatch
-          const userPhone = user.phone || user.phoneNumber || "";
-          const userName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
+          // D: Capture user details for background dispatch (FIXED STRICT TYPING)
+          const userPhone = user.phone || "";
+          const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
 
           notificationPayload = {
             userId: user.id,
