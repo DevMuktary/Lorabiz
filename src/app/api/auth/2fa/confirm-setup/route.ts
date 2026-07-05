@@ -38,10 +38,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "No authenticator secret pending verification." }, { status: 400 });
       }
 
-      const isValid = verify({
+      // Await verify to resolve async Promise return types in modern otplib
+      const verificationResult = await verify({
         token: code,
         secret: user.twoFactorSecret,
       });
+
+      // Handle both boolean true and object VerifyResult { delta: number } returns
+      const isValid = typeof verificationResult === "boolean" ? verificationResult : !!verificationResult;
 
       if (!isValid) {
         return NextResponse.json({ error: "Invalid authenticator code. Please check your app clock." }, { status: 400 });
