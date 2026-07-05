@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { dispatchNotification, NotificationEvent } from "@/services/notifications";
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
       // SCENARIO 1: DIRECT WALLET FUNDING
       // ==========================================
       if (reference.startsWith("FW_")) {
-        await prisma.$transaction(async (tx: any) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           const user = await tx.user.findUnique({ 
             where: { email: userEmail }, 
             include: { wallet: true } 
@@ -42,27 +43,27 @@ export async function POST(req: Request) {
           const existingTx = await tx.transaction.findUnique({ where: { reference } });
           if (existingTx && existingTx.status === "SUCCESS") return;
 
-          const currentBalance = Number(user.wallet.balance);
-          const newBalance = currentBalance + amountPaid;
+          // 1. Atomically increment wallet balance in PostgreSQL to avoid race conditions
+          const updatedWallet = await tx.wallet.update({
+            where: { id: user.wallet.id },
+            data: { balance: { increment: amountPaid } }
+          });
 
-          // 1. Create Ledger entry
+          const newBalance = Number(updatedWallet.balance);
+          const previousBalance = newBalance - amountPaid;
+
+          // 2. Create Ledger entry with precise atomic balances
           await tx.transaction.create({
             data: {
               walletId: user.wallet.id,
               amount: amountPaid,
-              balanceBefore: currentBalance,
+              balanceBefore: previousBalance,
               balanceAfter: newBalance,
               type: "CREDIT",
               status: "SUCCESS",
               reference: reference, 
               description: "Wallet Funding via Paystack"
             }
-          });
-
-          // 2. Add Money to Wallet
-          await tx.wallet.update({
-            where: { id: user.wallet.id },
-            data: { balance: newBalance } 
           });
         });
 
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
         const registrationId = reference.split("_")[1];
         let notificationPayload: NotificationEvent | null = null;
 
-        await prisma.$transaction(async (tx: any) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           const user = await tx.user.findUnique({ 
             where: { email: userEmail }, 
             include: { wallet: true } 
@@ -111,16 +112,20 @@ export async function POST(req: Request) {
 
           if (!serviceType) return; 
 
-          const currentBalance = Number(user.wallet.balance);
-          const newBalanceAfterFunding = currentBalance + amountPaid;
+          // A: Atomically Fund Wallet
+          const fundedWallet = await tx.wallet.update({
+            where: { id: user.wallet.id },
+            data: { balance: { increment: amountPaid } }
+          });
+          const balanceAfterCredit = Number(fundedWallet.balance);
+          const balanceBeforeCredit = balanceAfterCredit - amountPaid;
 
-          // A: Fund Wallet
           await tx.transaction.create({
             data: {
               walletId: user.wallet.id,
               amount: amountPaid,
-              balanceBefore: currentBalance,
-              balanceAfter: newBalanceAfterFunding,
+              balanceBefore: balanceBeforeCredit,
+              balanceAfter: balanceAfterCredit,
               type: "CREDIT",
               status: "SUCCESS",
               reference: reference, 
@@ -128,14 +133,19 @@ export async function POST(req: Request) {
             }
           });
 
-          // B: Instantly Debit for Service
-          const newBalanceAfterPayment = newBalanceAfterFunding - amountPaid;
+          // B: Atomically Debit Wallet for Service
+          const debitedWallet = await tx.wallet.update({
+            where: { id: user.wallet.id },
+            data: { balance: { decrement: amountPaid } }
+          });
+          const balanceAfterDebit = Number(debitedWallet.balance);
+
           await tx.transaction.create({
             data: {
               walletId: user.wallet.id,
               amount: amountPaid,
-              balanceBefore: newBalanceAfterFunding,
-              balanceAfter: newBalanceAfterPayment,
+              balanceBefore: balanceAfterCredit,
+              balanceAfter: balanceAfterDebit,
               type: "DEBIT",
               status: "SUCCESS",
               reference: `SRV_PAY_${registrationId}_${Date.now()}`,
@@ -143,12 +153,7 @@ export async function POST(req: Request) {
             }
           });
 
-          // C: Save balances & mark service as pending
-          await tx.wallet.update({
-            where: { id: user.wallet.id },
-            data: { balance: newBalanceAfterPayment } 
-          });
-
+          // C: Mark service as pending
           if (serviceType === "business") {
             await tx.businessRegistration.update({
               where: { id: registrationId },
