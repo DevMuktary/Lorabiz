@@ -323,3 +323,18 @@ model Waitlist {
 
   @@unique([userId, service])
 }
+
+model SecurityAuditLog {
+  id          String   @id @default(cuid())
+  email       String   // Attempted email address
+  role        String?  // User role if account exists (ADMIN, STAFF, USER)
+  event       String   // LOGIN_SUCCESS, LOGIN_FAILED, BRUTE_FORCE_LOCKOUT, UNAUTHORIZED_PORTAL_ACCESS
+  ipAddress   String?  // Client IP address
+  userAgent   String?  // Device / Browser string
+  details     String?  // Failure reason or success metadata
+  createdAt   DateTime @default(now())
+
+  @@index([email])
+  @@index([event])
+  @@index([createdAt])
+}
