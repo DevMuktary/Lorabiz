@@ -14,7 +14,6 @@ async function checkRateLimit(identifier: string): Promise<void> {
   const lockoutKey = `lockout:${identifier}`;
   const lockoutTTL = await redis.ttl(lockoutKey);
 
-  // If ttl > 0, the user is actively locked out
   if (lockoutTTL > 0) {
     const minutesRemaining = Math.ceil(lockoutTTL / 60);
     throw new Error(
@@ -27,15 +26,12 @@ async function recordFailedAttempt(identifier: string): Promise<void> {
   const attemptsKey = `attempts:${identifier}`;
   const lockoutKey = `lockout:${identifier}`;
 
-  // Increment the failed attempts counter
   const attempts = await redis.incr(attemptsKey);
 
-  // If this is the first failed attempt, set an expiry window of 15 minutes for the attempt counter
   if (attempts === 1) {
     await redis.expire(attemptsKey, LOCKOUT_DURATION_SECONDS);
   }
 
-  // If attempts exceed our limit, trigger the lockout and clear the counter
   if (attempts >= MAX_FAILED_ATTEMPTS) {
     await redis.set(lockoutKey, "LOCKED", "EX", LOCKOUT_DURATION_SECONDS);
     await redis.del(attemptsKey);
@@ -45,6 +41,31 @@ async function recordFailedAttempt(identifier: string): Promise<void> {
 async function clearFailedAttempts(identifier: string): Promise<void> {
   await redis.del(`attempts:${identifier}`);
   await redis.del(`lockout:${identifier}`);
+}
+
+// Helper: Log security events asynchronously into PostgreSQL
+async function logSecurityEvent(data: {
+  email: string;
+  role?: string;
+  event: string;
+  ipAddress?: string;
+  userAgent?: string;
+  details?: string;
+}) {
+  try {
+    await prisma.securityAuditLog.create({
+      data: {
+        email: data.email,
+        role: data.role || null,
+        event: data.event,
+        ipAddress: data.ipAddress || "Unknown IP",
+        userAgent: data.userAgent || "Unknown Device",
+        details: data.details || null,
+      },
+    });
+  } catch (err) {
+    console.error("Failed to write audit log to database:", err);
+  }
 }
 // ============================================================================
 
@@ -56,28 +77,51 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
         const normalizedEmail = credentials.email.toLowerCase().trim();
+        
+        // Extract client network & device information
+        const ipAddress = req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
+        const userAgent = req?.headers?.["user-agent"] || "Unknown Browser";
 
-        // 1. Check Rate Limiter (Throws error if currently locked out in Redis)
-        await checkRateLimit(normalizedEmail);
+        try {
+          // 1. Check Rate Limiter
+          await checkRateLimit(normalizedEmail);
+        } catch (lockoutError: any) {
+          // Record brute force lockout attempt in audit logs
+          await logSecurityEvent({
+            email: normalizedEmail,
+            event: "BRUTE_FORCE_LOCKOUT",
+            ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress,
+            userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
+            details: lockoutError.message,
+          });
+          throw lockoutError;
+        }
 
-        // 2. Find the user in the PostgreSQL database
+        // 2. Find user in database
         const user = await prisma.user.findUnique({
           where: { email: normalizedEmail },
         });
 
-        // 3. If no user exists, record attempt in Redis and reject
+        // 3. If account doesn't exist
         if (!user || !user.passwordHash) {
           await recordFailedAttempt(normalizedEmail);
+          await logSecurityEvent({
+            email: normalizedEmail,
+            event: "LOGIN_FAILED",
+            ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress,
+            userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
+            details: "Account not found or missing password hash",
+          });
           return null;
         }
 
-        // 4. Compare the typed password with the DB hash
+        // 4. Verify password
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.passwordHash
@@ -85,36 +129,49 @@ export const authOptions: NextAuthOptions = {
 
         if (!isPasswordValid) {
           await recordFailedAttempt(normalizedEmail);
+          await logSecurityEvent({
+            email: normalizedEmail,
+            role: user.role,
+            event: "LOGIN_FAILED",
+            ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress,
+            userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
+            details: "Invalid password provided",
+          });
           return null;
         }
 
-        // 5. Success! Clear rate limit records in Redis
+        // 5. Success! Clear lockout counters & record audit entry
         await clearFailedAttempts(normalizedEmail);
+        await logSecurityEvent({
+          email: normalizedEmail,
+          role: user.role,
+          event: "LOGIN_SUCCESS",
+          ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress,
+          userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
+          details: `Authenticated successfully as ${user.role}`,
+        });
 
-        // Return core context + the essential Role tag for token mutation
         return {
           id: user.id,
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
-          role: user.role, // Explicitly return enum role (USER, STAFF, ADMIN)
+          role: user.role,
         };
       },
     }),
   ],
   callbacks: {
-    // 1. Mutate the JSON Web Token (JWT) at sign-in
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role; // Permanently bake user role into token
+        token.role = (user as any).role;
       }
       return token;
     },
-    // 2. Pass JWT properties into the browser session context
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id as string;
-        (session.user as any).role = token.role as string; // Expose role to frontend & layout checks
+        (session.user as any).role = token.role as string;
       }
       return session;
     },
@@ -129,6 +186,5 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-// Cast handler to any to resolve strict Next.js 16 async route handler type constraints
 const handler = NextAuth(authOptions) as any;
 export { handler as GET, handler as POST };
