@@ -1,5 +1,3 @@
-import { formatWhatsAppPhone } from "@/utils/phone";
-
 // Meta WhatsApp Cloud API Configuration
 const WHATSAPP_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN!;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!;
@@ -12,6 +10,19 @@ interface SendTemplateParams {
   buttonUrlVariable?: string; // Passes dynamic ID slug to the CTA button URL
 }
 
+// 🛡️ BULLETPROOF META FORMATTER
+// Meta strictly requires "23480XXXXXXXX" (No +, No leading 0)
+function formatMetaPhone(phone: string): string | null {
+  if (!phone) return null;
+  let clean = phone.replace(/\D/g, ""); // Remove +, spaces, hyphens
+  
+  if (clean.startsWith("234")) return clean;
+  if (clean.startsWith("0")) return "234" + clean.slice(1);
+  if (clean.length === 10) return "234" + clean;
+  
+  return clean; // Fallback
+}
+
 export async function sendWhatsAppTemplate({
   recipientPhone,
   templateName,
@@ -19,13 +30,16 @@ export async function sendWhatsAppTemplate({
   buttonUrlVariable,
 }: SendTemplateParams): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log(`💬 Attempting WhatsApp dispatch to ${recipientPhone} via template: ${templateName}`);
+
     if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
-      console.warn("⚠️ WhatsApp API environment variables missing. Skipping notification.");
+      console.error("❌ WhatsApp Dispatch Aborted: Missing WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID in .env");
       return { success: false, error: "Missing API credentials" };
     }
 
-    const formattedPhone = formatWhatsAppPhone(recipientPhone);
+    const formattedPhone = formatMetaPhone(recipientPhone);
     if (!formattedPhone) {
+      console.error(`❌ WhatsApp Dispatch Aborted: Phone number format invalid -> [${recipientPhone}]`);
       return { success: false, error: "Invalid phone number provided" };
     }
 
@@ -47,7 +61,7 @@ export async function sendWhatsAppTemplate({
       components.push({
         type: "button",
         sub_type: "url",
-        index: "0", // First button
+        index: "0", 
         parameters: [
           {
             type: "text",
@@ -64,7 +78,7 @@ export async function sendWhatsAppTemplate({
       template: {
         name: templateName,
         language: {
-          code: "en_GB", // Matches your English (UK) template submission
+          code: "en_GB", 
         },
         components,
       },
@@ -85,13 +99,14 @@ export async function sendWhatsAppTemplate({
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("❌ Meta API Error:", JSON.stringify(data, null, 2));
+      console.error(`❌ Meta API Error for ${formattedPhone}:`, JSON.stringify(data, null, 2));
       return { success: false, error: data.error?.message || "Meta API failure" };
     }
 
+    console.log(`✅ WhatsApp sent successfully to ${formattedPhone}`);
     return { success: true };
   } catch (error: any) {
-    console.error("❌ WhatsApp Dispatch Error:", error.message);
+    console.error("❌ WhatsApp Dispatch Catch Error:", error.message);
     return { success: false, error: error.message };
   }
 }
