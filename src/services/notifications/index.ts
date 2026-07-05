@@ -16,7 +16,6 @@ export function dispatchNotification(event: NotificationEvent): void {
     try {
       switch (event.type) {
         case "APPLICATION_SUBMITTED": {
-          // 1. Database In-App Alert
           await prisma.inAppNotification.create({
             data: {
               userId: event.userId,
@@ -27,13 +26,14 @@ export function dispatchNotification(event: NotificationEvent): void {
             },
           });
 
-          // 2. WhatsApp & 3. Email
-          await sendWhatsAppTemplate({
+          const wa = await sendWhatsAppTemplate({
             recipientPhone: event.phone,
             templateName: "cac_application_submitted",
             variables: [event.name, event.businessName, event.regId],
-            buttonUrlVariable: event.regId, // Fixed: Meta requires this for the URL Button
+            buttonUrlVariable: event.regId, 
           });
+          if (!wa.success) console.error("⚠️ WhatsApp Sub Failed:", wa.error);
+
           await sendApplicationSubmittedEmail({
             to: event.email,
             name: event.name,
@@ -54,12 +54,14 @@ export function dispatchNotification(event: NotificationEvent): void {
             },
           });
 
-          await sendWhatsAppTemplate({
+          const wa = await sendWhatsAppTemplate({
             recipientPhone: event.phone,
             templateName: "cac_application_queried",
             variables: [event.name, event.businessName, event.queryReason],
-            buttonUrlVariable: event.regId, // Fixed: Meta requires this for the URL Button
+            buttonUrlVariable: event.regId, 
           });
+          if (!wa.success) console.error("⚠️ WhatsApp Query Failed:", wa.error);
+
           await sendApplicationQueriedEmail({
             to: event.email,
             name: event.name,
@@ -82,12 +84,14 @@ export function dispatchNotification(event: NotificationEvent): void {
             },
           });
 
-          await sendWhatsAppTemplate({
+          const wa = await sendWhatsAppTemplate({
             recipientPhone: event.phone,
             templateName: "cac_application_approved",
             variables: [event.name, event.businessName, event.rcNumber],
-            buttonUrlVariable: "cac", // Fallback URL slug in case this template also has a dynamic button
+            buttonUrlVariable: "cac",
           });
+          if (!wa.success) console.error("⚠️ WhatsApp Appr Failed:", wa.error);
+
           await sendApplicationApprovedEmail({
             to: event.email,
             name: event.name,
@@ -98,7 +102,7 @@ export function dispatchNotification(event: NotificationEvent): void {
         }
       }
     } catch (err) {
-      console.error(`❌ Dispatch Notification Error [${event.type}]:`, err);
+      console.error(`❌ Dispatch Notification Catch Error [${event.type}]:`, err);
     }
   }, 0);
 }
