@@ -1,5 +1,4 @@
-// src/services/notifications/index.ts
-
+import { prisma } from "@/lib/prisma";
 import { sendWhatsAppTemplate } from "./whatsapp";
 import {
   sendApplicationSubmittedEmail,
@@ -8,50 +7,32 @@ import {
 } from "@/lib/email";
 
 export type NotificationEvent =
-  | {
-      type: "APPLICATION_SUBMITTED";
-      phone: string;
-      email: string;
-      name: string;
-      businessName: string;
-      regId: string;
-    }
-  | {
-      type: "APPLICATION_QUERIED";
-      phone: string;
-      email: string;
-      name: string;
-      businessName: string;
-      queryReason: string;
-      regId: string;
-      entitySlug: "llc" | "businesses";
-    }
-  | {
-      type: "APPLICATION_APPROVED";
-      phone: string;
-      email: string;
-      name: string;
-      businessName: string;
-      rcNumber: string;
-    };
+  | { type: "APPLICATION_SUBMITTED"; userId: string; phone: string; email: string; name: string; businessName: string; regId: string }
+  | { type: "APPLICATION_QUERIED"; userId: string; phone: string; email: string; name: string; businessName: string; queryReason: string; regId: string; entitySlug: "llc" | "businesses" }
+  | { type: "APPLICATION_APPROVED"; userId: string; phone: string; email: string; name: string; businessName: string; rcNumber: string };
 
-/**
- * Fires notifications asynchronously across Email & WhatsApp without blocking API handlers
- */
 export function dispatchNotification(event: NotificationEvent): void {
   setTimeout(async () => {
     try {
       switch (event.type) {
         case "APPLICATION_SUBMITTED": {
-          // 1. WhatsApp
+          // 1. Database In-App Alert
+          await prisma.inAppNotification.create({
+            data: {
+              userId: event.userId,
+              title: "Application Received 📄",
+              message: `Payment confirmed for ${event.businessName}. Your filing is under review.`,
+              type: "info",
+              link: `/dashboard/cac/register/view/${event.regId}`,
+            },
+          });
+
+          // 2. WhatsApp & 3. Email
           await sendWhatsAppTemplate({
             recipientPhone: event.phone,
             templateName: "cac_application_submitted",
             variables: [event.name, event.businessName, event.regId],
-            buttonUrlVariable: `register/view/${event.regId}`,
           });
-
-          // 2. Email
           await sendApplicationSubmittedEmail({
             to: event.email,
             name: event.name,
@@ -62,15 +43,21 @@ export function dispatchNotification(event: NotificationEvent): void {
         }
 
         case "APPLICATION_QUERIED": {
-          // 1. WhatsApp
+          await prisma.inAppNotification.create({
+            data: {
+              userId: event.userId,
+              title: "Action Required: CAC Query ⚠️",
+              message: `Examiner feedback on ${event.businessName}: "${event.queryReason}"`,
+              type: "warning",
+              link: `/dashboard/cac/${event.entitySlug}/${event.regId}/queries`,
+            },
+          });
+
           await sendWhatsAppTemplate({
             recipientPhone: event.phone,
             templateName: "cac_application_queried",
             variables: [event.name, event.businessName, event.queryReason],
-            buttonUrlVariable: `${event.entitySlug}/${event.regId}/queries`,
           });
-
-          // 2. Email
           await sendApplicationQueriedEmail({
             to: event.email,
             name: event.name,
@@ -83,14 +70,21 @@ export function dispatchNotification(event: NotificationEvent): void {
         }
 
         case "APPLICATION_APPROVED": {
-          // 1. WhatsApp
+          await prisma.inAppNotification.create({
+            data: {
+              userId: event.userId,
+              title: "Incorporation Approved 🎉",
+              message: `Congratulations! ${event.businessName} is registered (RC/BN: ${event.rcNumber}). Documents are ready.`,
+              type: "success",
+              link: `/dashboard/cac`,
+            },
+          });
+
           await sendWhatsAppTemplate({
             recipientPhone: event.phone,
             templateName: "cac_application_approved",
             variables: [event.name, event.businessName, event.rcNumber],
           });
-
-          // 2. Email
           await sendApplicationApprovedEmail({
             to: event.email,
             name: event.name,
