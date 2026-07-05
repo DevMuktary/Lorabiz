@@ -42,9 +42,9 @@ export default function NinResultModal({
           <div className="py-6 space-y-4">
             <CircleNotch size={56} className="animate-spin text-[#ff3f7a] mx-auto" weight="bold" />
             <div className="space-y-1">
-              <h3 className="text-xl font-black text-foreground">Connecting to NIMC Repository</h3>
+              <h3 className="text-xl font-black text-foreground">Connecting to NIMC Database</h3>
               <p className="text-xs font-medium text-muted-foreground">
-                Retrieving parameters for NIN: <span className="font-bold text-foreground">{nin}</span>
+                Processing parameters for NIN: <span className="font-bold text-foreground">{nin}</span>
               </p>
             </div>
             <div className="bg-secondary/50 p-3 rounded-xl border border-border text-[11px] text-muted-foreground font-semibold">
@@ -98,7 +98,7 @@ export default function NinResultModal({
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-xl font-black text-foreground">Retrieval Unsuccessful</h3>
+              <h3 className="text-xl font-black text-foreground">Generation Unsuccessful</h3>
               <p className="text-xs text-muted-foreground leading-relaxed px-2">{errorMsg}</p>
             </div>
 
