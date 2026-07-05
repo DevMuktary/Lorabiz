@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -17,6 +17,9 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isRegistered = searchParams.get("registered") === "true";
+  
+  // Grab callbackUrl to support deep-linking from Email/WhatsApp notifications
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -44,10 +47,11 @@ function LoginContent() {
       });
 
       if (res?.error) {
-        setError("Invalid email or password. Please try again.");
+        // Displays exact error if locked out by brute-force protection, otherwise generic message
+        setError(res.error === "CredentialsSignin" ? "Invalid email or password. Please try again." : res.error);
         setLoading(false);
       } else {
-        router.push("/dashboard");
+        router.push(callbackUrl);
         router.refresh();
       }
     } catch (err) {
@@ -57,7 +61,7 @@ function LoginContent() {
   };
 
   return (
-    <div className="fixed inset-0 w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
+    <div className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden transition-colors duration-300">
       
       {/* LEFT PANEL - Fixed Branding */}
       <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden">
@@ -66,7 +70,7 @@ function LoginContent() {
 
         <div className="relative z-10 text-white space-y-6 max-w-lg mx-auto">
           <h1 className="text-5xl font-bold leading-[1.1] tracking-tight">
-            Welcome back to Lumebiz.
+            Welcome back to LoraBiz.
           </h1>
           <p className="text-lg text-white/90 leading-relaxed">
             Log in to manage your registrations, track CAC approval status, and access your verified business documents.
@@ -75,7 +79,7 @@ function LoginContent() {
           <div className="pt-8 space-y-4">
             <div className="flex items-center gap-3 text-white font-medium">
               <ShieldCheck weight="fill" className="h-6 w-6 text-white/80" />
-              <span>Secure Session Management</span>
+              <span>Secure Session & Brute-Force Protection</span>
             </div>
             <div className="flex items-center gap-3 text-white font-medium">
               <RocketLaunch weight="fill" className="h-6 w-6 text-white/80" />
@@ -92,48 +96,48 @@ function LoginContent() {
       </div>
 
       {/* RIGHT PANEL - Login Form */}
-      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-white">
+      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-background">
         <div className="w-full max-w-md mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-4 sm:mt-10">
           
           <div className="mb-8 flex justify-center lg:justify-start">
             <Image 
               src="/logo.png" 
-              alt="Lumebiz Logo" 
+              alt="LoraBiz Logo" 
               width={340} 
               height={120} 
-              className="object-contain h-20 lg:h-24 w-auto"
+              className="object-contain h-20 lg:h-24 w-auto dark:brightness-110"
               priority
             />
           </div>
 
           <div className="mb-8 text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Log in</h2>
-            <p className="text-gray-500 mt-2 text-[16px]">Enter your credentials to access your dashboard.</p>
+            <h2 className="text-3xl font-bold text-foreground tracking-tight">Log in</h2>
+            <p className="text-muted-foreground mt-2 text-[16px]">Enter your credentials to access your portal.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* Success Message from Registration */}
             {isRegistered && !error && (
-              <div className="p-4 bg-green-50 text-green-700 text-sm font-medium rounded-lg border border-green-200 flex items-start gap-3 animate-in fade-in">
+              <div className="p-4 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium rounded-lg border border-emerald-500/20 flex items-start gap-3 animate-in fade-in">
                 <CheckCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
-                <p>Account created successfully! Please log in below to access your dashboard.</p>
+                <p>Account created successfully! Please log in below to continue.</p>
               </div>
             )}
 
             {/* Error Message */}
             {error && (
-              <div className="p-4 bg-red-50 text-red-600 text-sm font-medium rounded-lg border border-red-100 flex items-center gap-2 animate-in shake">
+              <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-lg border border-destructive/20 flex items-center gap-2 animate-in shake">
                 <Info weight="bold" className="h-5 w-5 shrink-0" />
-                {error}
+                <span>{error}</span>
               </div>
             )}
 
             <div className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700 font-medium">Email Address</Label>
+                <Label htmlFor="email" className="text-foreground font-medium">Email Address</Label>
                 <div className="relative">
-                  <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
+                  <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                   <Input 
                     id="email" 
                     type="email" 
@@ -141,20 +145,20 @@ function LoginContent() {
                     onChange={handleChange}
                     required 
                     placeholder="you@example.com" 
-                    className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] transition-all" 
+                    className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a] transition-all" 
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
+                  <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
                   <Link href="/auth/forgot-password" className="text-sm font-semibold text-[#ff3f7a] hover:underline transition-all">
                     Forgot password?
                   </Link>
                 </div>
                 <div className="relative">
-                  <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
+                  <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                   <Input 
                     id="password" 
                     type={showPassword ? "text" : "password"} 
@@ -162,12 +166,12 @@ function LoginContent() {
                     onChange={handleChange}
                     required 
                     placeholder="••••••••" 
-                    className="pl-11 pr-10 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a] transition-all" 
+                    className="pl-11 pr-10 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a] transition-all" 
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(!showPassword)} 
-                    className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                    className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground focus:outline-none transition-colors cursor-pointer"
                   >
                     {showPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -179,7 +183,7 @@ function LoginContent() {
               <Button 
                 type="submit" 
                 disabled={loading} 
-                className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all flex items-center justify-center gap-2"
+                className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <Spinner className="animate-spin h-6 w-6" weight="bold" />
@@ -189,8 +193,8 @@ function LoginContent() {
               </Button>
             </div>
 
-            <div className="text-center text-gray-500 mt-6">
-              Don't have an account?{" "}
+            <div className="text-center text-muted-foreground mt-6">
+              Don&apos;t have an account?{" "}
               <Link href="/auth/register" className="font-semibold text-[#ff3f7a] hover:underline transition-all">
                 Register here
               </Link>
@@ -198,7 +202,7 @@ function LoginContent() {
           </form>
 
           <div className="lg:hidden mt-12 text-center pb-8">
-             <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
+             <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
               Powered by Quadrox Technologies Ltd
             </p>
           </div>
@@ -212,7 +216,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen w-full flex items-center justify-center bg-white">
+      <div className="min-h-screen w-full flex items-center justify-center bg-background">
         <Spinner className="animate-spin h-8 w-8 text-[#ff3f7a]" weight="bold" />
       </div>
     }>
