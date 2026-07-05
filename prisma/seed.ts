@@ -5,6 +5,7 @@ const prisma = new PrismaClient()
 async function main() {
   console.log("Seeding pricing data...")
 
+  // 1. CAC & Statutory Services Pricing
   const prices = [
     {
       serviceKey: "BUSINESS_NAME",
@@ -13,13 +14,13 @@ async function main() {
     },
     {
       serviceKey: "LLC",
-      title: "Limited Liability Company (LTD) - Up to 1M Shares", // ALL-INCLUSIVE Base Price (CAC + Stamp + Processing)
+      title: "Limited Liability Company (LTD) - Up to 1M Shares", // ALL-INCLUSIVE Base Price
       price: 35000.00, 
     },
     {
       serviceKey: "LLC_EXTRA_MILLION",
       title: "LLC Additional Fee per 1M Shares", // Multiplier fee for > 1M shares
-      price: 15000.00, // Adjust this to what you want to charge per extra million
+      price: 15000.00,
     },
     {
       serviceKey: "NGO",
@@ -39,6 +40,40 @@ async function main() {
         serviceKey: p.serviceKey,
         title: p.title,
         price: p.price
+      },
+    })
+  }
+
+  // 2. NIMC / NIN Slip Printing Pricing
+  const ninPrices = [
+    {
+      slipType: "nin_regular",
+      displayName: "Regular Official Slip",
+      price: 500.00,
+    },
+    {
+      slipType: "nin_standard",
+      displayName: "Standard Biometric Slip",
+      price: 700.00,
+    },
+    {
+      slipType: "nin_premium",
+      displayName: "Premium Card Layout",
+      price: 1000.00,
+    }
+  ]
+
+  for (const np of ninPrices) {
+    await prisma.ninSlipPricing.upsert({
+      where: { slipType: np.slipType },
+      update: {
+        displayName: np.displayName,
+        price: np.price,
+      },
+      create: {
+        slipType: np.slipType,
+        displayName: np.displayName,
+        price: np.price,
       },
     })
   }
