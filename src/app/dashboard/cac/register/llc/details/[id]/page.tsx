@@ -16,11 +16,11 @@ import PscStep from "@/components/features/cac/register/llc/PscStep";
 import ComplianceStep from "@/components/features/cac/register/llc/ComplianceStep";
 import UploadsStep from "@/components/features/cac/register/llc/UploadsStep";
 import PreviewStep from "@/components/features/cac/register/llc/PreviewStep";
-import PaymentModal from "@/components/features/cac/register/biz-name/PaymentModal"; // Ensure path is correct
+import PaymentModal from "@/components/features/cac/register/biz-name/PaymentModal";
 
 export default function LlcRegistrationDetailsPage() {
   const params = useParams();
-  const id = params?.id as string;
+  const id = params?.id as string; // Internal CUID for secure API database updates
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -110,7 +110,6 @@ export default function LlcRegistrationDetailsPage() {
     const activeBtn = document.getElementById(`nav-step-${currentStep}`);
     
     if (container && activeBtn) {
-      // Mathematically perfectly center the active button in the viewport
       const scrollLeft = activeBtn.offsetLeft - container.offsetWidth / 2 + activeBtn.offsetWidth / 2;
       container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
     }
@@ -381,7 +380,10 @@ export default function LlcRegistrationDetailsPage() {
       {/* Header & Clickable Stepper */}
       <div className="mb-8 border-b border-border pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="w-full overflow-hidden">
-          <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5">Completing Application For</p>
+          {/* UPDATED: Displays Tracking ID instead of CUID substring if available! */}
+          <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5">
+            Completing Application For {draft ? `• REF: ${draft.trackingId || draft.id?.substring(0, 8)}` : ""}
+          </p>
           <h1 className="text-2xl font-black text-foreground mb-6 truncate pr-4">{draft?.proposedName || "Loading..."}</h1>
           
           <div ref={scrollContainerRef} className="flex gap-3 sm:gap-4 overflow-x-auto custom-scrollbar pb-3 w-full max-w-full snap-x scroll-smooth select-none">
