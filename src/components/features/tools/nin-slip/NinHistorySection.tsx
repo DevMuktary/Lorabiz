@@ -31,7 +31,7 @@ export default function NinHistorySection({ history }: NinHistorySectionProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ClockCounterClockwise size={22} className="text-[#ff3f7a]" weight="bold" />
-          <h2 className="text-lg font-black text-foreground">24-Hour Retrieval History</h2>
+          <h2 className="text-lg font-black text-foreground">24-Hour Print History</h2>
         </div>
         <span className="text-xs font-bold text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
           Automated Purge Policy: Files deleted after 24 hours
@@ -41,7 +41,7 @@ export default function NinHistorySection({ history }: NinHistorySectionProps) {
       {history.length === 0 ? (
         <div className="bg-card border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
           <p className="text-sm font-bold text-muted-foreground">No slips generated within the last 24 hours.</p>
-          <p className="text-xs text-muted-foreground/70">Retrieved slips will appear here temporarily for quick re-downloading.</p>
+          <p className="text-xs text-muted-foreground/70">Generated slips will appear here temporarily for quick re-downloading.</p>
         </div>
       ) : (
         <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
