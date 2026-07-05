@@ -49,7 +49,21 @@ function StaffLoginContent() {
         setError(res.error === "CredentialsSignin" ? "Invalid staff clearance credentials." : res.error);
         setLoading(false);
       } else {
-        router.push(callbackUrl);
+        // Fetch fresh session context to inspect Two-Factor clearance state
+        const sessionRes = await fetch("/api/auth/session");
+        const sessionData = await sessionRes.json();
+
+        const isTwoFactorEnabled = sessionData?.user?.twoFactorEnabled;
+        const isMfaVerified = sessionData?.user?.mfaVerified;
+
+        // Route to mandatory 2FA enrollment or daily passkey challenge
+        if (!isTwoFactorEnabled) {
+          router.push(`/quadrox-lorabiz-team/setup-2fa?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        } else if (!isMfaVerified) {
+          router.push(`/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        } else {
+          router.push(callbackUrl);
+        }
         router.refresh();
       }
     } catch (err) {
@@ -91,7 +105,7 @@ function StaffLoginContent() {
             </div>
             <div className="flex items-center gap-3 text-slate-300 text-sm font-medium">
               <StackPlus weight="fill" className="h-5 w-5 text-cyan-400 shrink-0" />
-              <span>Full lifecycle processing & document dispatches audited</span>
+              <span>Full lifecycle processing & document dispatches audited via 2FA</span>
             </div>
           </div>
         </div>
