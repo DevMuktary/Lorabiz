@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { send2FAPasskeyEmail } from "@/lib/email";
-import { authenticator } from "otplib";
+import { generateSecret, keyuri } from "otplib";
 import qrcode from "qrcode";
 
 export async function POST(req: Request) {
@@ -32,8 +32,8 @@ export async function POST(req: Request) {
     // METHOD A: GOOGLE / AUTHY AUTHENTICATOR (TOTP)
     // ========================================================================
     if (method === "AUTHENTICATOR") {
-      // 1. Generate a cryptographic Base32 secret
-      const secret = authenticator.generateSecret();
+      // 1. Generate a cryptographic Base32 secret directly
+      const secret = generateSecret();
 
       // 2. Temporarily store secret in user record until onboarding is confirmed
       await prisma.user.update({
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       });
 
       // 3. Format standard OTPAuth URI: otpauth://totp/LoraBiz (Quadrox Ops):email?secret=...
-      const otpAuthUrl = authenticator.keyuri(
+      const otpAuthUrl = keyuri(
         user.email,
         "LoraBiz (Quadrox Ops)",
         secret
