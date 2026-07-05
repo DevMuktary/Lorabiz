@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { authenticator } from "otplib";
+import { verify } from "otplib";
 
 export async function POST(req: Request) {
   try {
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "No authenticator secret pending verification." }, { status: 400 });
       }
 
-      const isValid = authenticator.verify({
+      const isValid = verify({
         token: code,
         secret: user.twoFactorSecret,
       });
