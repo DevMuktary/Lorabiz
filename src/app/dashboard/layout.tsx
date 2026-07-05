@@ -6,10 +6,11 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import NotificationBell from "@/components/features/notifications/NotificationBell";
 import { 
   SquaresFour, Briefcase, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, CreditCard, 
-  UserCircle, SignOut, Bell, List, X, Info 
+  UserCircle, SignOut, List, X, Info 
 } from "@phosphor-icons/react";
 
 type NavLink = {
@@ -36,6 +37,7 @@ const NAVIGATION: NavCategory[] = [
     category: "Available Services",
     links: [
       { name: "CAC Registration", href: "/dashboard/cac", icon: Buildings },
+      { name: "NIN Services", href: "/dashboard/tools/nin-slip", icon: IdentificationCard }, // Unlocked!
     ]
   },
   {
@@ -44,7 +46,6 @@ const NAVIGATION: NavCategory[] = [
       { name: "SCUML", href: "#", icon: ShieldCheck, isComingSoon: true },
       { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
       { name: "SMEDAN", href: "#", icon: Handshake, isComingSoon: true },
-      { name: "NIN Services", href: "#", icon: IdentificationCard, isComingSoon: true },
       { name: "Utility & Airtime", href: "#", icon: DeviceMobile, isComingSoon: true },
     ]
   },
@@ -114,6 +115,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (found) return found.name;
     }
     if (pathname.includes("/dashboard/cac")) return "CAC Services";
+    if (pathname.includes("/dashboard/tools/nin-slip")) return "NIN Services";
     return "Dashboard";
   };
 
@@ -253,10 +255,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-4">
             <ThemeToggle />
             
-            <button className="relative p-2 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-primary/10 cursor-pointer">
-              <Bell className="h-5 w-5" weight="bold" />
-              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-primary rounded-full border-2 border-background"></span>
-            </button>
+            {/* Integrated Notification Bell */}
+            <NotificationBell />
 
             <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-xs font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity">
               {initials ? (
