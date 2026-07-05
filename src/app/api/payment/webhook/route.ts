@@ -91,18 +91,21 @@ export async function POST(req: Request) {
 
           let serviceType: "business" | "llc" | null = null;
           let regName = "Registration";
+          let displayId = registrationId; // Default fallback to CUID
 
           const bizReg = await tx.businessRegistration.findUnique({ where: { id: registrationId } });
           if (bizReg) {
             if (bizReg.status !== "UNSUBMITTED") return; 
             serviceType = "business";
             regName = bizReg.proposedName;
+            displayId = bizReg.trackingId || registrationId; // Grab the 6-digit ID!
           } else {
             const llcReg = await tx.llcRegistration.findUnique({ where: { id: registrationId } });
             if (llcReg) {
               if (llcReg.status !== "UNSUBMITTED") return; 
               serviceType = "llc";
               regName = llcReg.proposedName || "LLC Application";
+              displayId = llcReg.trackingId || registrationId; // Grab the 6-digit ID!
             }
           }
 
@@ -163,13 +166,13 @@ export async function POST(req: Request) {
           const userName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
 
           notificationPayload = {
-            userId: user.id, // Fixed: Added required userId property
+            userId: user.id,
             type: "APPLICATION_SUBMITTED",
             phone: userPhone,
             email: userEmail,
             name: userName,
             businessName: regName,
-            regId: registrationId,
+            regId: displayId, // Sends clean 6-digit ID to In-App Bell, WhatsApp & Email!
           };
         });
 
