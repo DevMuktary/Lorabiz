@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { generateNumericId } from "@/utils/generateId";
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +22,12 @@ export async function POST(req: Request) {
     }
 
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
+    }
+
+    // Generate a clean 6-digit numeric tracking ID (e.g., "849201")
+    const trackingId = generateNumericId(6);
 
     // ==========================================
     // ROUTE 1: LLC REGISTRATION SAVER
@@ -30,6 +36,7 @@ export async function POST(req: Request) {
       const draft = await prisma.llcRegistration.create({
         data: {
           userId: user.id,
+          trackingId: trackingId,
           proposedName: proposedName.toUpperCase(),
           altName1: altName1 ? altName1.toUpperCase() : null,
           altName2: altName2 ? altName2.toUpperCase() : null,
@@ -40,7 +47,12 @@ export async function POST(req: Request) {
           similarityScore: similarityScore ? similarityScore.toString() : "0",
         }
       });
-      return NextResponse.json({ success: true, draftId: draft.id });
+
+      return NextResponse.json({ 
+        success: true, 
+        draftId: draft.id,       // Internal CUID for backend joins/mutations
+        trackingId: trackingId   // 6-digit ID for URL redirects and UI display
+      });
     } 
     
     // ==========================================
@@ -48,12 +60,13 @@ export async function POST(req: Request) {
     // ==========================================
     else {
       if (!ownershipType) {
-         return NextResponse.json({ success: false, message: "Ownership type is required for Business Names." }, { status: 400 });
+        return NextResponse.json({ success: false, message: "Ownership type is required for Business Names." }, { status: 400 });
       }
 
       const draft = await prisma.businessRegistration.create({
         data: {
           userId: user.id,
+          trackingId: trackingId,
           proposedName: proposedName.toUpperCase(),
           altName1: altName1 ? altName1.toUpperCase() : null,
           altName2: altName2 ? altName2.toUpperCase() : null,
@@ -65,7 +78,12 @@ export async function POST(req: Request) {
           similarityScore: similarityScore ? similarityScore.toString() : "0",
         }
       });
-      return NextResponse.json({ success: true, draftId: draft.id });
+
+      return NextResponse.json({ 
+        success: true, 
+        draftId: draft.id,       // Internal CUID for backend joins/mutations
+        trackingId: trackingId   // 6-digit ID for URL redirects and UI display
+      });
     }
 
   } catch (error) {
