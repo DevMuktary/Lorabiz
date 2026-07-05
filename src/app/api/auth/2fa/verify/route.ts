@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { authenticator } from "otplib";
+import { verify } from "otplib";
 
 export async function POST(req: Request) {
   try {
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       if (!user.twoFactorSecret) {
         return NextResponse.json({ error: "Missing account authenticator secret." }, { status: 500 });
       }
-      isValid = authenticator.verify({
+      isValid = verify({
         token: code,
         secret: user.twoFactorSecret,
       });
