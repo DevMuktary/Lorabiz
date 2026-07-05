@@ -38,10 +38,14 @@ export async function POST(req: Request) {
       if (!user.twoFactorSecret) {
         return NextResponse.json({ error: "Missing account authenticator secret." }, { status: 500 });
       }
-      isValid = verify({
+
+      // Await verify to resolve async Promise return types in modern otplib
+      const verificationResult = await verify({
         token: code,
         secret: user.twoFactorSecret,
       });
+
+      isValid = typeof verificationResult === "boolean" ? verificationResult : !!verificationResult;
     }
 
     // ========================================================================
