@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
-  User, EnvelopeSimple, Phone, LockKey, Spinner, CheckCircle, ShieldCheck, 
-  RocketLaunch, CalendarBlank, GenderIntersex, MapPin, Buildings, WhatsappLogo,
+  User, EnvelopeSimple, LockKey, Spinner, CheckCircle, ShieldCheck, 
+  RocketLaunch, GenderIntersex, MapPin, Buildings, WhatsappLogo,
   Eye, EyeSlash
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ export default function RegisterPage() {
   const [sameAsPhone, setSameAsPhone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false); // LIVE VERIFICATION STATE
+  const [isVerifying, setIsVerifying] = useState(false);
   
   // Form Data States
   const [formData, setFormData] = useState({
@@ -108,7 +108,6 @@ export default function RegisterPage() {
     }
   }, [formData.phone, sameAsPhone]);
 
-  // Handle Input Changes with Real-time Masking
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { id, value } = e.target;
     if (id === "whatsapp" || id === "phone") {
@@ -135,7 +134,6 @@ export default function RegisterPage() {
     return () => clearInterval(interval);
   }, [otpTimer, otpStep]);
 
-  // TRIGGERS ZEPTOMAIL & STARTS 30 SEC TIMER
   const handleSendOTP = async () => {
     if (!formData.email || !formData.email.includes("@")) {
       setErrors({ email: "Please enter a valid email address first." });
@@ -153,7 +151,7 @@ export default function RegisterPage() {
 
       if (res.ok) {
         setOtpStep("sent");
-        setOtpTimer(30); // Changed to 30 seconds
+        setOtpTimer(30);
       } else {
         const data = await res.json();
         setErrors({ email: data.message || "Failed to send code." });
@@ -163,7 +161,6 @@ export default function RegisterPage() {
     }
   };
 
-  // LIVE DATABASE OTP VERIFICATION
   const handleVerifyOTP = async () => {
     if (otpCode.length !== 6) { 
       setErrors({ email: "Invalid OTP Code. Must be 6 digits." });
@@ -193,7 +190,6 @@ export default function RegisterPage() {
     }
   };
 
-  // Final Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -227,13 +223,12 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/cac/register", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          otpCode, // Still sending to backend for the final atomic transaction
-          fullName: [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(" ")
+          otpCode,
         }),
       });
 
@@ -256,7 +251,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="fixed inset-0 w-full flex bg-white font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
+    <div className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden transition-colors duration-300">
       
       {/* LEFT PANEL */}
       <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden">
@@ -265,10 +260,10 @@ export default function RegisterPage() {
 
         <div className="relative z-10 text-white space-y-6 max-w-lg mx-auto">
           <h1 className="text-5xl font-bold leading-[1.1] tracking-tight">
-            Launch your dream business today.
+            Welcome to LoraBiz.
           </h1>
           <p className="text-lg text-white/90 leading-relaxed">
-            Skip the legal jargon and the expensive agents. Register your business instantly with our seamless, automated CAC platform.
+            Skip the legal jargon and expensive agents. Register and manage your business instantly with our seamless, automated platform.
           </p>
           
           <div className="pt-8 space-y-4">
@@ -295,72 +290,72 @@ export default function RegisterPage() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-white">
+      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-background">
         <div className="w-full max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           
           <div className="mb-8 flex justify-center lg:justify-start mt-2 sm:mt-0">
             <Image 
               src="/logo.png" 
-              alt="Lumebiz Logo" 
+              alt="LoraBiz Logo" 
               width={340} 
               height={120} 
-              className="object-contain h-20 lg:h-24 w-auto"
+              className="object-contain h-20 lg:h-24 w-auto dark:brightness-110"
               priority
             />
           </div>
 
           <div className="mb-8 text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Create an account</h2>
-            <p className="text-gray-500 mt-2 text-[16px]">Enter your details to create your account.</p>
+            <h2 className="text-3xl font-bold text-foreground tracking-tight">Create an account</h2>
+            <p className="text-muted-foreground mt-2 text-[16px]">Enter your details to create your portal account.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             
             {errors.form && (
-              <div className="p-4 bg-red-50 text-red-600 text-sm font-medium rounded-lg border border-red-100 flex items-center gap-2">
+              <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-lg border border-destructive/20 flex items-center gap-2">
                 <CheckCircle weight="bold" className="h-5 w-5 shrink-0" />
-                {errors.form}
+                <span>{errors.form}</span>
               </div>
             )}
 
             {/* SECTION 1: Personal Details */}
             <div className="space-y-5">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">1. Personal Identity</h3>
+              <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">1. Personal Identity</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName" className="text-gray-700 font-medium">First Name</Label>
+                  <Label htmlFor="firstName" className="text-foreground font-medium">First Name</Label>
                   <div className="relative">
-                    <User className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <Input id="firstName" value={formData.firstName} onChange={handleChange} required placeholder="John" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                    <User className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <Input id="firstName" value={formData.firstName} onChange={handleChange} required placeholder="John" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="lastName" className="text-gray-700 font-medium">Last Name</Label>
+                  <Label htmlFor="lastName" className="text-foreground font-medium">Last Name</Label>
                   <div className="relative">
-                    <User className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <Input id="lastName" value={formData.lastName} onChange={handleChange} required placeholder="Doe" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                    <User className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <Input id="lastName" value={formData.lastName} onChange={handleChange} required placeholder="Doe" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="middleName" className="text-gray-700 font-medium">
-                    Middle Name <span className="text-gray-400 font-normal">(Optional)</span>
+                  <Label htmlFor="middleName" className="text-foreground font-medium">
+                    Middle Name <span className="text-muted-foreground font-normal">(Optional)</span>
                   </Label>
                   <div className="relative">
-                    <User className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <Input id="middleName" value={formData.middleName} onChange={handleChange} placeholder="Smith" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                    <User className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <Input id="middleName" value={formData.middleName} onChange={handleChange} placeholder="Smith" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="gender" className="text-gray-700 font-medium">Gender</Label>
+                  <Label htmlFor="gender" className="text-foreground font-medium">Gender</Label>
                   <div className="relative">
-                    <GenderIntersex className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <select id="gender" value={formData.gender} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a]">
+                    <GenderIntersex className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <select id="gender" value={formData.gender} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a]">
                       <option value="" disabled>Select Gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -373,67 +368,67 @@ export default function RegisterPage() {
 
             {/* SECTION 2: Contact & Security */}
             <div className="space-y-5">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">2. Contact & Security</h3>
+              <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">2. Contact & Security</h3>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700 font-medium">Email Address</Label>
+                <Label htmlFor="email" className="text-foreground font-medium">Email Address</Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <Input id="email" type="email" disabled={otpStep === "verified"} value={formData.email} onChange={handleChange} required placeholder="you@example.com" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                    <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <Input id="email" type="email" disabled={otpStep === "verified"} value={formData.email} onChange={handleChange} required placeholder="you@example.com" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
                   </div>
                   {otpStep === "idle" && (
-                    <Button type="button" onClick={handleSendOTP} className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white px-6 transition-all">Verify</Button>
+                    <Button type="button" onClick={handleSendOTP} className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white px-6 transition-all cursor-pointer">Verify</Button>
                   )}
                   {otpStep === "verified" && (
-                    <Button type="button" disabled className="h-12 bg-green-100 text-green-700 border border-green-200 px-6">Verified ✓</Button>
+                    <Button type="button" disabled className="h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-6">Verified ✓</Button>
                   )}
                 </div>
                 
                 {otpStep === "sent" && (
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 mt-2 flex gap-2 animate-in fade-in zoom-in-95">
-                    <Input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} maxLength={6} placeholder="Enter 6-digit OTP" className="h-12 text-center text-lg tracking-widest bg-white" />
-                    <Button type="button" onClick={handleVerifyOTP} disabled={isVerifying} className="h-12 bg-[#ff3f7a] text-white min-w-[100px]">
+                  <div className="p-4 bg-secondary/40 rounded-lg border border-border mt-2 flex gap-2 animate-in fade-in zoom-in-95">
+                    <Input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} maxLength={6} placeholder="Enter 6-digit OTP" className="h-12 text-center text-lg tracking-widest bg-background border-border text-foreground" />
+                    <Button type="button" onClick={handleVerifyOTP} disabled={isVerifying} className="h-12 bg-[#ff3f7a] text-white min-w-[100px] cursor-pointer">
                       {isVerifying ? <Spinner className="animate-spin h-5 w-5 mx-auto" /> : "Confirm"}
                     </Button>
                     {otpTimer > 0 ? (
-                      <div className="h-12 px-4 flex items-center justify-center bg-gray-200 rounded-md text-gray-600 font-mono font-medium">{otpTimer}s</div>
+                      <div className="h-12 px-4 flex items-center justify-center bg-secondary border border-border rounded-md text-muted-foreground font-mono font-medium">{otpTimer}s</div>
                     ) : (
-                      <Button type="button" onClick={handleSendOTP} variant="outline" className="h-12">Resend</Button>
+                      <Button type="button" onClick={handleSendOTP} variant="outline" className="h-12 border-border text-foreground hover:bg-secondary cursor-pointer">Resend</Button>
                     )}
                   </div>
                 )}
-                {errors.email && <p className="text-sm text-red-500 font-medium mt-1">{errors.email}</p>}
+                {errors.email && <p className="text-sm text-destructive font-medium mt-1">{errors.email}</p>}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-gray-700 font-medium">Phone Number</Label>
+                  <Label htmlFor="phone" className="text-foreground font-medium">Phone Number</Label>
                   <div className="flex items-center">
-                    <div className="flex items-center justify-center h-12 px-3 border border-r-0 border-gray-200 bg-gray-100 rounded-l-md text-[16px] font-medium text-gray-700">
+                    <div className="flex items-center justify-center h-12 px-3 border border-r-0 border-border bg-secondary/60 rounded-l-md text-[16px] font-medium text-foreground">
                       <span className="mr-2 text-lg">🇳🇬</span> +234
                     </div>
-                    <Input id="phone" type="tel" maxLength={11} value={formData.phone} onChange={handleChange} required placeholder="800 000 0000" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 rounded-l-none focus-visible:ring-[#ff3f7a]" />
+                    <Input id="phone" type="tel" maxLength={11} value={formData.phone} onChange={handleChange} required placeholder="800 000 0000" className="h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground rounded-l-none focus-visible:ring-[#ff3f7a]" />
                   </div>
-                  {errors.phone && <p className="text-sm text-red-500 font-medium mt-1">{errors.phone}</p>}
+                  {errors.phone && <p className="text-sm text-destructive font-medium mt-1">{errors.phone}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="whatsapp" className="text-gray-700 font-medium">WhatsApp Number</Label>
-                    <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer font-medium hover:text-[#ff3f7a] transition-colors">
+                    <Label htmlFor="whatsapp" className="text-foreground font-medium">WhatsApp Number</Label>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer font-medium hover:text-[#ff3f7a] transition-colors select-none">
                       <input 
                         type="checkbox" 
                         checked={sameAsPhone}
                         onChange={(e) => setSameAsPhone(e.target.checked)}
-                        className="h-3.5 w-3.5 accent-[#ff3f7a] rounded border-gray-300 cursor-pointer"
+                        className="h-3.5 w-3.5 accent-[#ff3f7a] rounded border-border cursor-pointer"
                       />
                       Same as Phone
                     </label>
                   </div>
                   <div className="flex items-center relative">
-                    <div className="flex items-center justify-center h-12 px-3 border border-r-0 border-gray-200 bg-gray-100 rounded-l-md text-[16px] font-medium text-gray-700">
-                      <WhatsappLogo className="h-5 w-5 text-green-500 mr-2" weight="fill" /> +234
+                    <div className="flex items-center justify-center h-12 px-3 border border-r-0 border-border bg-secondary/60 rounded-l-md text-[16px] font-medium text-foreground">
+                      <WhatsappLogo className="h-5 w-5 text-emerald-500 mr-2" weight="fill" /> +234
                     </div>
                     <Input 
                       id="whatsapp" 
@@ -444,18 +439,18 @@ export default function RegisterPage() {
                       required 
                       disabled={sameAsPhone}
                       placeholder="800 000 0000" 
-                      className="h-12 text-[16px] bg-gray-50/50 border-gray-200 rounded-l-none focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed" 
+                      className="h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground rounded-l-none focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed" 
                     />
                   </div>
-                  {errors.whatsapp && <p className="text-sm text-red-500 font-medium mt-1">{errors.whatsapp}</p>}
+                  {errors.whatsapp && <p className="text-sm text-destructive font-medium mt-1">{errors.whatsapp}</p>}
                 </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-gray-700 font-medium">Create Password</Label>
+                  <Label htmlFor="password" className="text-foreground font-medium">Create Password</Label>
                   <div className="relative">
-                    <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
+                    <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                     <Input 
                       id="password" 
                       type={showPassword ? "text" : "password"} 
@@ -463,12 +458,12 @@ export default function RegisterPage() {
                       onChange={handleChange} 
                       required 
                       placeholder="••••••••" 
-                      className="pl-11 pr-10 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" 
+                      className="pl-11 pr-10 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" 
                     />
                     <button 
                       type="button" 
                       onClick={() => setShowPassword(!showPassword)} 
-                      className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                      className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground focus:outline-none transition-colors cursor-pointer"
                     >
                       {showPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
@@ -477,17 +472,17 @@ export default function RegisterPage() {
                   {formData.password && (
                     <div className="flex gap-1 mt-2">
                       {[1, 2, 3, 4].map((level) => (
-                        <div key={level} className={`h-1.5 w-full rounded-full transition-all duration-300 ${passScore >= level ? (passScore < 3 ? 'bg-yellow-400' : 'bg-green-500') : 'bg-gray-200'}`} />
+                        <div key={level} className={`h-1.5 w-full rounded-full transition-all duration-300 ${passScore >= level ? (passScore < 3 ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-secondary'}`} />
                       ))}
                     </div>
                   )}
-                  {errors.password && <p className="text-sm text-red-500 font-medium mt-1">{errors.password}</p>}
+                  {errors.password && <p className="text-sm text-destructive font-medium mt-1">{errors.password}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-gray-700 font-medium">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword" className="text-foreground font-medium">Confirm Password</Label>
                   <div className="relative">
-                    <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
+                    <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                     <Input 
                       id="confirmPassword" 
                       type={showConfirmPassword ? "text" : "password"} 
@@ -495,92 +490,92 @@ export default function RegisterPage() {
                       onChange={handleChange} 
                       required 
                       placeholder="••••••••" 
-                      className="pl-11 pr-10 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" 
+                      className="pl-11 pr-10 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" 
                     />
                     <button 
                       type="button" 
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
-                      className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                      className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground focus:outline-none transition-colors cursor-pointer"
                     >
                       {showConfirmPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
-                  {errors.confirmPassword && <p className="text-sm text-red-500 font-medium mt-1">{errors.confirmPassword}</p>}
+                  {errors.confirmPassword && <p className="text-sm text-destructive font-medium mt-1">{errors.confirmPassword}</p>}
                 </div>
               </div>
             </div>
 
             {/* SECTION 3: Office Address */}
             <div className="space-y-5">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">3. Office Address</h3>
+              <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">3. Office Address</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="state" className="text-gray-700 font-medium">State</Label>
+                  <Label htmlFor="state" className="text-foreground font-medium">State</Label>
                   <div className="relative">
-                    <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <select id="state" value={formData.state} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a]">
+                    <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <select id="state" value={formData.state} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a]">
                       <option value="" disabled>Select State</option>
                       {NIGERIA_DATA.map((s) => (
                         <option key={s.state} value={s.state}>{s.state} State</option>
                       ))}
                     </select>
                   </div>
-                  {errors.state && <p className="text-sm text-red-500 font-medium mt-1">{errors.state}</p>}
+                  {errors.state && <p className="text-sm text-destructive font-medium mt-1">{errors.state}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="lga" className="text-gray-700 font-medium">Local Government (LGA)</Label>
+                  <Label htmlFor="lga" className="text-foreground font-medium">Local Government (LGA)</Label>
                   <div className="relative">
-                    <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <select id="lga" value={formData.lga} onChange={handleChange} required disabled={!formData.state} className="flex h-12 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-11 pr-3 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed">
+                    <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <select id="lga" value={formData.lga} onChange={handleChange} required disabled={!formData.state} className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed">
                       <option value="" disabled>Select LGA</option>
                       {availableLgas.map((lga) => (
                         <option key={lga} value={lga}>{lga}</option>
                       ))}
                     </select>
                   </div>
-                  {errors.lga && <p className="text-sm text-red-500 font-medium mt-1">{errors.lga}</p>}
+                  {errors.lga && <p className="text-sm text-destructive font-medium mt-1">{errors.lga}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-[2fr_1fr] gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="street" className="text-gray-700 font-medium">Street Name</Label>
+                  <Label htmlFor="street" className="text-foreground font-medium">Street Name</Label>
                   <div className="relative">
-                    <Buildings className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
-                    <Input id="street" value={formData.street} onChange={handleChange} required placeholder="e.g. 12 Awolowo Way" className="pl-11 h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                    <Buildings className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <Input id="street" value={formData.street} onChange={handleChange} required placeholder="e.g. 12 Awolowo Way" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="buildingNo" className="text-gray-700 font-medium">Building No.</Label>
-                  <Input id="buildingNo" value={formData.buildingNo} onChange={handleChange} placeholder="Optional" className="h-12 text-[16px] bg-gray-50/50 border-gray-200 focus-visible:ring-[#ff3f7a]" />
+                  <Label htmlFor="buildingNo" className="text-foreground font-medium">Building No.</Label>
+                  <Input id="buildingNo" value={formData.buildingNo} onChange={handleChange} placeholder="Optional" className="h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
                 </div>
               </div>
             </div>
 
             {/* CHECKBOX & SUBMIT CONTAINER */}
-            <div className="pt-6 border-t space-y-4">
+            <div className="pt-6 border-t border-border space-y-4">
               
-              <label className="flex items-start gap-3 p-4 border border-gray-200 bg-gray-50/50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+              <label className="flex items-start gap-3 p-4 border border-border bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors select-none">
                 <input 
                   type="checkbox" 
                   checked={termsAccepted} 
                   onChange={(e) => setTermsAccepted(e.target.checked)} 
-                  className="mt-0.5 h-5 w-5 accent-[#ff3f7a] rounded border-gray-300 cursor-pointer shrink-0" 
+                  className="mt-0.5 h-5 w-5 accent-[#ff3f7a] rounded border-border cursor-pointer shrink-0" 
                 />
-                <span className="text-sm text-gray-600 leading-relaxed">
-                  I agree to LumeBiz's <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Terms & Conditions</Link>, <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Acceptable Use</Link> and <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Privacy Policy</Link>.
+                <span className="text-sm text-muted-foreground leading-relaxed">
+                  I agree to LoraBiz&apos;s <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Terms & Conditions</Link>, <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Acceptable Use</Link> and <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Privacy Policy</Link>.
                 </span>
               </label>
               
-              {errors.terms && <p className="text-sm text-red-500 font-medium pl-1">{errors.terms}</p>}
+              {errors.terms && <p className="text-sm text-destructive font-medium pl-1">{errors.terms}</p>}
 
               <Button 
                 type="submit" 
                 disabled={loading} 
-                className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all"
+                className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all cursor-pointer"
               >
                 {loading ? (
                   <Spinner className="animate-spin h-6 w-6" weight="bold" />
@@ -590,7 +585,7 @@ export default function RegisterPage() {
               </Button>
             </div>
 
-            <div className="text-center text-gray-500 mt-6">
+            <div className="text-center text-muted-foreground mt-6">
               Already have an account?{" "}
               <Link href="/auth/login" className="font-semibold text-[#ff3f7a] hover:underline transition-all">
                 Sign in
