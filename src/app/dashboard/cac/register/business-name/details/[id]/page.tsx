@@ -36,7 +36,7 @@ export default function RegistrationDetailsPage() {
   };
 
   // Added trackingId to the draft state
-  const [draft, setDraft] = useState({ trackingId: "", proposedName: "LOADING...", ownershipType: "SOLE", specificNature: "LOADING..." });
+  const [draft, setDraft] = useState({ trackingId: "", proposedName: "LOADING...", ownershipType: "SOLE", specificNature: "LOADING...", id: "" });
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({ email: "", state: "", city: "", streetNo: "", address: "", commencementDate: "" });
   const [proprietors, setProprietors] = useState<Proprietor[]>([]);
 
@@ -197,45 +197,54 @@ export default function RegistrationDetailsPage() {
         </div>
       )}
 
-      {/* STICKY TEXT-BASED STEPPER */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md pb-4 pt-4 mb-8 border-b border-border flex justify-between items-end">
-        <div ref={scrollContainerRef} className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full md:w-auto scroll-smooth">
-          {[ 
-            { step: 1, title: "Company Information" }, 
-            { step: 2, title: "Proprietor Information" }, 
-            { step: 3, title: "Document Uploads" }, 
-            { step: 4, title: "Preview" }
-          ].map((s) => {
-            const isAccessible = s.step <= highestStepReached;
-            const isActive = currentStep === s.step;
-            const isPast = currentStep > s.step;
+      {/* STATIC TEXT-BASED STEPPER (Sticky removed!) */}
+      <div className="pb-4 pt-4 mb-8 border-b border-border flex flex-col md:flex-row md:items-end justify-between gap-4">
+        
+        <div className="w-full overflow-hidden">
+          <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5">
+            Completing Application For {draft?.trackingId ? `• REF: ${draft.trackingId}` : (draft?.id ? `• REF: ${draft.id.substring(0,8)}` : "")}
+          </p>
+          <h1 className="text-2xl font-black text-foreground mb-6 truncate pr-4">{draft?.proposedName || "Loading..."}</h1>
+          
+          <div ref={scrollContainerRef} className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full max-w-full scroll-smooth">
+            {[ 
+              { step: 1, title: "Company Information" }, 
+              { step: 2, title: "Proprietor Information" }, 
+              { step: 3, title: "Document Uploads" }, 
+              { step: 4, title: "Preview" }
+            ].map((s) => {
+              const isAccessible = s.step <= highestStepReached;
+              const isActive = currentStep === s.step;
+              const isPast = currentStep > s.step;
 
-            return (
-              <button 
-                key={s.step} 
-                id={`step-btn-${s.step}`}
-                onClick={() => isAccessible && setCurrentStep(s.step)}
-                disabled={!isAccessible}
-                className={`flex items-center gap-2 whitespace-nowrap text-sm transition-colors ${
-                  isActive ? "text-primary font-black" : 
-                  isPast ? "text-foreground font-bold hover:text-primary cursor-pointer" : 
-                  isAccessible ? "text-muted-foreground font-medium hover:text-foreground cursor-pointer" : 
-                  "text-muted-foreground/40 font-medium cursor-not-allowed"
-                }`}
-              >
-                <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold transition-colors ${
-                  isActive ? "bg-primary text-primary-foreground" : 
-                  isPast ? "bg-secondary text-foreground border border-border" : 
-                  "bg-secondary/50 text-muted-foreground/50"
-                }`}>
-                  {s.step}
-                </span>
-                {s.title}
-              </button>
-            );
-          })}
+              return (
+                <button 
+                  key={s.step} 
+                  id={`step-btn-${s.step}`}
+                  onClick={() => isAccessible && setCurrentStep(s.step)}
+                  disabled={!isAccessible}
+                  className={`flex items-center gap-2 whitespace-nowrap text-sm transition-colors ${
+                    isActive ? "text-primary font-black" : 
+                    isPast ? "text-foreground font-bold hover:text-primary cursor-pointer" : 
+                    isAccessible ? "text-muted-foreground font-medium hover:text-foreground cursor-pointer" : 
+                    "text-muted-foreground/40 font-medium cursor-not-allowed"
+                  }`}
+                >
+                  <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold transition-colors ${
+                    isActive ? "bg-primary text-primary-foreground" : 
+                    isPast ? "bg-secondary text-foreground border border-border" : 
+                    "bg-secondary/50 text-muted-foreground/50"
+                  }`}>
+                    {s.step}
+                  </span>
+                  {s.title}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="hidden md:block text-xs font-bold text-muted-foreground">
+
+        <div className="hidden md:block text-xs font-bold text-muted-foreground shrink-0 mb-2">
           {saveStatus === "saving" && "Saving draft..."}
           {saveStatus === "saved" && "Saved"}
           {saveStatus === "error" && <span className="text-red-500">Save failed</span>}
