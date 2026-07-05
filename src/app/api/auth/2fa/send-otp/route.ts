@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { send2FAPasskeyEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -45,8 +46,9 @@ export async function POST(req: Request) {
       },
     });
 
-    // TODO: Connect your email sending helper / BullMQ worker here
-    console.log(`[MFA DISPATCH] Sent daily passkey ${otpCode} to ${user.email}`);
+    // 4. Dispatch daily login passkey via ZeptoMail
+    await send2FAPasskeyEmail(user.email, otpCode, user.role);
+    console.log(`[MFA DISPATCH] Sent daily passkey to ${user.email}`);
 
     return NextResponse.json({
       success: true,
