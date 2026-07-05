@@ -17,7 +17,7 @@ const SERVICES = [
   },
   {
     title: "NIMC Services",
-    description: "Generate and print verified NIN slips directly from the dashboard.",
+    description: "Generate and print NIN slips directly from the dashboard.",
     logo: "/nimc.png",
     href: "/dashboard/tools/nin-slip",
     active: true, // Activated!
