@@ -32,7 +32,7 @@ export function dispatchNotification(event: NotificationEvent): void {
             recipientPhone: event.phone,
             templateName: "cac_application_submitted",
             variables: [event.name, event.businessName, event.regId],
-            buttonUrlVariable: event.regId, // FIX: Added the missing URL parameter!
+            buttonUrlVariable: event.regId, // Fixed: Meta requires this for the URL Button
           });
           await sendApplicationSubmittedEmail({
             to: event.email,
@@ -58,7 +58,7 @@ export function dispatchNotification(event: NotificationEvent): void {
             recipientPhone: event.phone,
             templateName: "cac_application_queried",
             variables: [event.name, event.businessName, event.queryReason],
-            buttonUrlVariable: `${event.entitySlug}/${event.regId}/queries`, // FIX: Added the missing URL parameter!
+            buttonUrlVariable: event.regId, // Fixed: Meta requires this for the URL Button
           });
           await sendApplicationQueriedEmail({
             to: event.email,
@@ -86,7 +86,7 @@ export function dispatchNotification(event: NotificationEvent): void {
             recipientPhone: event.phone,
             templateName: "cac_application_approved",
             variables: [event.name, event.businessName, event.rcNumber],
-            buttonUrlVariable: event.rcNumber, // FIX: Added the missing URL parameter!
+            buttonUrlVariable: "cac", // Fallback URL slug in case this template also has a dynamic button
           });
           await sendApplicationApprovedEmail({
             to: event.email,
