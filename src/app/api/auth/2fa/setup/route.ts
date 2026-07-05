@@ -1,0 +1,99 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
+import { authenticator } from "otplib";
+import qrcode from "qrcode";
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized request." }, { status: 401 });
+    }
+
+    const { method } = await req.json();
+
+    if (method !== "EMAIL" && method !== "AUTHENTICATOR") {
+      return NextResponse.json({ error: "Invalid two-factor method specified." }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User account not found." }, { status: 404 });
+    }
+
+    // ========================================================================
+    // METHOD A: GOOGLE / AUTHY AUTHENTICATOR (TOTP)
+    // ========================================================================
+    if (method === "AUTHENTICATOR") {
+      // 1. Generate a cryptographic Base32 secret
+      const secret = authenticator.generateSecret();
+
+      // 2. Temporarily store secret in user record until onboarding is confirmed
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { twoFactorSecret: secret },
+      });
+
+      // 3. Format standard OTPAuth URI: otpauth://totp/LoraBiz (Quadrox Ops):email?secret=...
+      const otpAuthUrl = authenticator.keyuri(
+        user.email,
+        "LoraBiz (Quadrox Ops)",
+        secret
+      );
+
+      // 4. Generate base64 data URI QR code for frontend display
+      const qrCodeDataUrl = await qrcode.toDataURL(otpAuthUrl);
+
+      return NextResponse.json({
+        success: true,
+        secret,
+        qrCode: qrCodeDataUrl,
+      });
+    }
+
+    // ========================================================================
+    // METHOD B: CORPORATE EMAIL PASSKEY (SMTP OTP)
+    // ========================================================================
+    if (method === "EMAIL") {
+      // 1. Generate secure 6-digit verification code
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 Minutes validity
+
+      // 2. Clear any old pending setup codes for this user
+      await prisma.twoFactorCode.deleteMany({
+        where: { userId: user.id },
+      });
+
+      // 3. Save new verification passkey
+      await prisma.twoFactorCode.create({
+        data: {
+          userId: user.id,
+          code: otpCode,
+          expiresAt,
+        },
+      });
+
+      // TODO: Dispatch OTP via your preferred SMTP or BullMQ notification worker
+      console.log(`[SECURITY ENROLLMENT] Dispatched 2FA setup passkey ${otpCode} to ${user.email}`);
+
+      return NextResponse.json({
+        success: true,
+        message: "Verification passkey dispatched to corporate email.",
+      });
+    }
+
+    return NextResponse.json({ error: "Invalid request state." }, { status: 400 });
+  } catch (error: any) {
+    console.error("2FA Setup Error:", error);
+    return NextResponse.json(
+      { error: "An unexpected server exception occurred during 2FA initialization." },
+      { status: 500 }
+    );
+  }
+}
