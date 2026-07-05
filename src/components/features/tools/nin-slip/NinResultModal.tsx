@@ -24,7 +24,6 @@ export default function NinResultModal({
 }: NinResultModalProps) {
   if (!isOpen) return null;
 
-  // Trigger Client-Side PDF Download Helper
   const triggerPdfDownload = (base64Data: string, ninNum: string) => {
     const linkSource = `data:application/pdf;base64,${base64Data}`;
     const downloadLink = document.createElement("a");
@@ -39,7 +38,6 @@ export default function NinResultModal({
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center relative space-y-6">
         
-        {/* LOADING STATE */}
         {status === "loading" && (
           <div className="py-6 space-y-4">
             <CircleNotch size={56} className="animate-spin text-[#ff3f7a] mx-auto" weight="bold" />
@@ -55,7 +53,6 @@ export default function NinResultModal({
           </div>
         )}
 
-        {/* SUCCESS STATE */}
         {status === "success" && (
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
             <div className="h-16 w-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
@@ -94,7 +91,6 @@ export default function NinResultModal({
           </div>
         )}
 
-        {/* ERROR STATE */}
         {status === "error" && (
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
             <div className="h-16 w-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto border border-destructive/20">
