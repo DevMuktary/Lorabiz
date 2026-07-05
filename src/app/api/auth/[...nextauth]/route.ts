@@ -1,4 +1,4 @@
-import NextAuth, { NextAuthOptions } from "next";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
@@ -14,6 +14,7 @@ async function checkRateLimit(identifier: string): Promise<void> {
   const lockoutKey = `lockout:${identifier}`;
   const lockoutTTL = await redis.ttl(lockoutKey);
 
+  // If ttl > 0, the user is actively locked out
   if (lockoutTTL > 0) {
     const minutesRemaining = Math.ceil(lockoutTTL / 60);
     throw new Error(
@@ -26,12 +27,15 @@ async function recordFailedAttempt(identifier: string): Promise<void> {
   const attemptsKey = `attempts:${identifier}`;
   const lockoutKey = `lockout:${identifier}`;
 
+  // Increment the failed attempts counter
   const attempts = await redis.incr(attemptsKey);
 
+  // If this is the first failed attempt, set an expiry window of 15 minutes for the attempt counter
   if (attempts === 1) {
     await redis.expire(attemptsKey, LOCKOUT_DURATION_SECONDS);
   }
 
+  // If attempts exceed our limit, trigger the lockout and clear the counter
   if (attempts >= MAX_FAILED_ATTEMPTS) {
     await redis.set(lockoutKey, "LOCKED", "EX", LOCKOUT_DURATION_SECONDS);
     await redis.del(attemptsKey);
@@ -46,7 +50,6 @@ async function clearFailedAttempts(identifier: string): Promise<void> {
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    // Standard Credentials Provider
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -93,7 +96,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
-          role: user.role, // 👈 Fetches ENUM role (USER, STAFF, ADMIN)
+          role: user.role, // Explicitly return enum role (USER, STAFF, ADMIN)
         };
       },
     }),
@@ -103,7 +106,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role; // 👈 Permanently bake user role into token
+        token.role = (user as any).role; // Permanently bake user role into token
       }
       return token;
     },
@@ -111,13 +114,12 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id as string;
-        (session.user as any).role = token.role as string; // 👈 Expose it to application hooks
+        (session.user as any).role = token.role as string; // Expose role to frontend & layout checks
       }
       return session;
     },
   },
   pages: {
-    // Default fallback routing context configuration
     signIn: "/auth/login",
     newUser: "/auth/register",
   },
@@ -127,5 +129,6 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-const handler = NextAuth(authOptions);
+// Cast handler to any to resolve strict Next.js 16 async route handler type constraints
+const handler = NextAuth(authOptions) as any;
 export { handler as GET, handler as POST };
