@@ -73,6 +73,7 @@ model User {
   registrations    BusinessRegistration[]
   llcRegistrations LlcRegistration[]
   ninRequests      NinRequestLog[]
+  notifications    InAppNotification[]
   wallet           Wallet?
   waitlists        Waitlist[]
 }
@@ -248,8 +249,23 @@ model NinRequestLog {
 }
 
 // ==========================================
-// SYSTEM AUTH, LEDGER & WAITLIST
+// SYSTEM AUTH, NOTIFICATIONS, LEDGER & WAITLIST
 // ==========================================
+
+model InAppNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("info") // "info" | "success" | "warning"
+  link      String?  // Deep link (e.g., "/dashboard/cac/register/view/123")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
 
 model OtpCode {
   id        String   @id @default(cuid())
@@ -302,6 +318,5 @@ model Waitlist {
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Ensures a user can't join the waitlist for the same service twice
   @@unique([userId, service])
 }
