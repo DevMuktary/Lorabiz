@@ -50,7 +50,7 @@ export default function NinSlipPage() {
     document.body.removeChild(downloadLink);
   };
 
-  const handleRetrieveSlip = async (e: React.FormEvent) => {
+  const handleGenerateSlip = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{11}$/.test(nin)) {
       setError("NIN must be exactly 11 digits.");
@@ -88,7 +88,7 @@ export default function NinSlipPage() {
         setResultModal({
           isOpen: true,
           status: "error",
-          errorMsg: data.message || "Could not retrieve slip details from repository."
+          errorMsg: data.message || "Could not generate slip details from database."
         });
         return;
       }
@@ -141,7 +141,7 @@ export default function NinSlipPage() {
           <Image src="/nimc.png" width={44} height={44} alt="NIMC Logo" className="object-contain" priority />
         </div>
         <div>
-          <h1 className="text-2xl font-black text-foreground">NIN Slip Retrieval & Printing Tool</h1>
+          <h1 className="text-2xl font-black text-foreground">NIN Slip Generation & Printing Tool</h1>
           <p className="text-sm font-medium text-muted-foreground mt-0.5">Direct query connection to generate standardized identity slips.</p>
         </div>
       </div>
@@ -149,7 +149,7 @@ export default function NinSlipPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
         
         {/* CONFIGURATION FORM */}
-        <form onSubmit={handleRetrieveSlip} className="md:col-span-2 space-y-6">
+        <form onSubmit={handleGenerateSlip} className="md:col-span-2 space-y-6">
           
           {error && (
             <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl text-destructive text-sm font-bold flex items-center gap-2.5 animate-in shake">
@@ -228,7 +228,7 @@ export default function NinSlipPage() {
                   className="mt-1 accent-[#ff3f7a] h-4 w-4 shrink-0 rounded border-border"
                 />
                 <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground transition-colors leading-relaxed">
-                  I authorize LoraBiz to look up and retrieve my identification parameters strictly for corporate compliance and documentation onboarding.
+                  I authorize LoraBiz to process and format my identification parameters strictly for corporate compliance and documentation onboarding.
                 </span>
               </label>
 
@@ -251,7 +251,7 @@ export default function NinSlipPage() {
             disabled={!attestation1 || !attestation2 || nin.length !== 11}
             className="w-full h-14 font-black bg-[#ff3f7a] text-white hover:bg-[#e02b62] rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#ff3f7a]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            <DownloadSimple size={20} weight="bold" /> Retrieve & Generate Slip
+            <DownloadSimple size={20} weight="bold" /> Generate & Print Slip
           </Button>
 
         </form>
