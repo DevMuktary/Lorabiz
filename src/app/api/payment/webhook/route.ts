@@ -163,6 +163,7 @@ export async function POST(req: Request) {
           const userName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
 
           notificationPayload = {
+            userId: user.id, // Fixed: Added required userId property
             type: "APPLICATION_SUBMITTED",
             phone: userPhone,
             email: userEmail,
@@ -172,7 +173,7 @@ export async function POST(req: Request) {
           };
         });
 
-        // Fire Email & WhatsApp asynchronously after successful DB commit
+        // Fire In-App, Email & WhatsApp asynchronously after successful DB commit
         if (notificationPayload) {
           dispatchNotification(notificationPayload);
         }
