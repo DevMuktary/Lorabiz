@@ -49,27 +49,38 @@ enum OfficerRole {
   PSC
 }
 
+enum TwoFactorMethod {
+  EMAIL
+  AUTHENTICATOR
+}
+
 // ==========================================
 // MODELS
 // ==========================================
 
 model User {
-  id            String   @id @default(cuid())
-  role          Role     @default(USER)
-  firstName     String
-  middleName    String?
-  lastName      String
-  email         String   @unique
-  phone         String
-  whatsapp      String
-  passwordHash  String
-  gender        Gender
-  state         String
-  lga           String
-  street        String
-  buildingNo    String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String           @id @default(cuid())
+  role            Role             @default(USER)
+  firstName       String
+  middleName      String?
+  lastName        String
+  email           String           @unique
+  phone           String
+  whatsapp        String
+  passwordHash    String
+  gender          Gender
+  state           String
+  lga             String
+  street          String
+  buildingNo      String?
+  
+  // Two-Factor Authentication (MFA) Fields
+  twoFactorEnabled Boolean         @default(false)
+  twoFactorMethod  TwoFactorMethod?
+  twoFactorSecret  String?         // Stores encrypted Base32 TOTP secret for Google Authenticator
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   registrations    BusinessRegistration[]
   llcRegistrations LlcRegistration[]
@@ -77,6 +88,8 @@ model User {
   notifications    InAppNotification[]
   wallet           Wallet?
   waitlists        Waitlist[]
+  twoFactorCodes   TwoFactorCode[]
+  staffActions     StaffActionLog[]
 }
 
 // ==========================================
@@ -113,32 +126,32 @@ model BusinessRegistration {
   updatedAt         DateTime           @updatedAt
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  proprietors       Proprietor[]     
+  proprietors       Proprietor[]      
 }
 
 model Proprietor {
-  id              String   @id @default(cuid())
-  registrationId  String
-  surname         String
-  firstName       String
-  otherName       String?
-  email           String?
-  phoneCode       String   @default("+234") 
-  phone           String
-  gender          Gender
-  dob             String
-  state           String
-  lga             String
-  city            String
-  streetNo        String?
-  serviceAddress  String
+  id             String               @id @default(cuid())
+  registrationId String
+  surname        String
+  firstName      String
+  otherName      String?
+  email          String?
+  phoneCode      String               @default("+234") 
+  phone          String
+  gender         Gender
+  dob            String
+  state          String
+  lga            String
+  city           String
+  streetNo       String?
+  serviceAddress String
 
   // Embedded Document Cloudinary URLs
-  ninUrl          String?
-  passportUrl     String?
-  signatureUrl    String?
+  ninUrl         String?
+  passportUrl    String?
+  signatureUrl   String?
   
-  registration    BusinessRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registration   BusinessRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 }
 
 // ==========================================
@@ -161,8 +174,8 @@ model LlcRegistration {
   specificActivity    String?
   description         String?            @db.Text
   
-  registeredAddress   Json?    
-  headOfficeAddress   Json?    
+  registeredAddress   Json?     
+  headOfficeAddress   Json?     
   
   useDefaultArticles  Boolean            @default(true)
   customArticles      Json?
@@ -191,38 +204,38 @@ model LlcRegistration {
 }
 
 model CompanyOfficer {
-  id                  String   @id @default(cuid())
-  registrationId      String
+  id                 String          @id @default(cuid())
+  registrationId     String
   
-  roles               OfficerRole[] 
+  roles              OfficerRole[] 
   
-  surname             String
-  firstName           String
-  otherName           String?
-  dob                 String
-  gender              String
-  nationality         String
-  formerName          String?
-  formerNationality   String?
-  occupation          String
-  phone               String
-  email               String
+  surname            String
+  firstName          String
+  otherName          String?
+  dob                String
+  gender             String
+  nationality        String
+  formerName         String?
+  formerNationality  String?
+  occupation         String
+  phone              String
+  email              String
   
-  idType              String?
-  idNumber            String?
-  taxResidency        String?
-  tin                 String?
+  idType             String?
+  idNumber           String?
+  taxResidency       String?
+  tin                String?
   
-  residentialAddress  Json?
-  serviceAddress      Json?
+  residentialAddress Json?
+  serviceAddress     Json?
   
-  sharesAllotted      Float?   
-  pscDetails          Json?    
+  sharesAllotted     Float?    
+  pscDetails         Json?     
   
-  idDocumentUrl       String?
-  signatureUrl        String?
+  idDocumentUrl      String?
+  signatureUrl       String?
   
-  registration        LlcRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registration       LlcRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 }
 
 // ==========================================
@@ -305,12 +318,12 @@ model Transaction {
   balanceAfter  Decimal            
   type          TransactionType    
   status        TransactionStatus  @default(PENDING) 
-  reference     String            @unique 
-  description   String            
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  reference     String             @unique 
+  description   String             
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
-  wallet        Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  wallet        Wallet             @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }
 
 model Waitlist {
@@ -322,6 +335,39 @@ model Waitlist {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, service])
+}
+
+// ==========================================
+// TWO-FACTOR AUTHENTICATION & SECURITY AUDIT TRAILS
+// ==========================================
+
+model TwoFactorCode {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String   // Hashed 6-digit verification code
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model StaffActionLog {
+  id          String   @id @default(cuid())
+  userId      String   // ID of the Staff or MD performing the action
+  action      String   // e.g., "QUERIED_CAC_APPLICATION", "APPROVED_LLC", "UPDATED_PRICING"
+  targetId    String?  // ID of the affected registration, wallet, or user
+  details     String?  // JSON string or summary of exact changes made
+  ipAddress   String?  // Client IP address
+  userAgent   String?  // Browser/Device string
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model SecurityAuditLog {
