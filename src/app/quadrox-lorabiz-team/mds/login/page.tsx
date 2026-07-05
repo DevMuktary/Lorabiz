@@ -48,7 +48,21 @@ function AdminLoginContent() {
         setError(res.error === "CredentialsSignin" ? "Invalid administrative credentials." : res.error);
         setLoading(false);
       } else {
-        router.push(callbackUrl);
+        // Fetch fresh session context to inspect Two-Factor clearance state
+        const sessionRes = await fetch("/api/auth/session");
+        const sessionData = await sessionRes.json();
+
+        const isTwoFactorEnabled = sessionData?.user?.twoFactorEnabled;
+        const isMfaVerified = sessionData?.user?.mfaVerified;
+
+        // Route to mandatory 2FA enrollment or daily passkey challenge
+        if (!isTwoFactorEnabled) {
+          router.push(`/quadrox-lorabiz-team/setup-2fa?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        } else if (!isMfaVerified) {
+          router.push(`/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        } else {
+          router.push(callbackUrl);
+        }
         router.refresh();
       }
     } catch (err) {
@@ -90,7 +104,7 @@ function AdminLoginContent() {
             </div>
             <div className="flex items-center gap-3 text-slate-300 text-sm font-medium">
               <ShieldCheck weight="fill" className="h-5 w-5 text-[#ff3f7a] shrink-0" />
-              <span>Zero-trust isolated session boundaries</span>
+              <span>Zero-trust isolated session boundaries with mandatory 2FA</span>
             </div>
           </div>
         </div>
@@ -122,7 +136,7 @@ function AdminLoginContent() {
               <CrownSimple weight="bold" className="h-3.5 w-3.5" /> MD Authentication
             </div>
             <h2 className="text-3xl font-bold text-white tracking-tight">Executive Sign In</h2>
-            <p className="text-slate-400 mt-2 text-sm">Enter your administrative credentials to verify your identity.</p>
+            <p className="text-slate-400 mt-2 text-sm">Enter your administrative credentials to begin security challenge.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
