@@ -84,6 +84,7 @@ model User {
 
 model BusinessRegistration {
   id                String             @id @default(cuid())
+  trackingId        String?            @unique // Short numeric ID (e.g., "482910")
   userId            String
   proposedName      String
   altName1          String?
@@ -145,6 +146,7 @@ model Proprietor {
 
 model LlcRegistration {
   id                  String             @id @default(cuid())
+  trackingId          String?            @unique // Short numeric ID (e.g., "839201")
   userId              String
   status              RegistrationStatus @default(UNSUBMITTED)
   currentStep         Int                @default(1)
