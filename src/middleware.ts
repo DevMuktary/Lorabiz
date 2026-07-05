@@ -6,21 +6,34 @@ export default withAuth(
     const token = req.nextauth.token;
     const pathname = req.nextUrl.pathname;
     const role = token?.role as string | undefined;
+    const mfaVerified = token?.mfaVerified as boolean | undefined;
+
+    // =========================================================================
+    // 0. ALLOW PUBLIC MFA & LOGIN PATHS TO PREVENT REDIRECTION LOOPS
+    // =========================================================================
+    const isAuthCheckpoint = 
+      pathname === "/quadrox-lorabiz-team/mds/login" ||
+      pathname === "/quadrox-lorabiz-team/staff/login" ||
+      pathname.startsWith("/quadrox-lorabiz-team/verify-2fa") ||
+      pathname.startsWith("/quadrox-lorabiz-team/setup-2fa");
+
+    if (isAuthCheckpoint) {
+      return NextResponse.next();
+    }
 
     // =========================================================================
     // 1. MANAGING DIRECTOR (ADMIN) PORTAL: /quadrox-lorabiz-team/mds/*
     // =========================================================================
     if (pathname.startsWith("/quadrox-lorabiz-team/mds")) {
-      // Allow access to the login page itself without redirecting loops
-      if (pathname === "/quadrox-lorabiz-team/mds/login") {
-        return NextResponse.next();
-      }
-      
-      // If logged in but NOT an ADMIN, kick them to their own correct portal
       if (role !== "ADMIN") {
         if (role === "STAFF") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff", req.url));
         if (role === "USER") return NextResponse.redirect(new URL("/dashboard", req.url));
         return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds/login", req.url));
+      }
+
+      // MFA Gate: Enforce 2FA completion before granting access to executive routes
+      if (mfaVerified === false) {
+        return NextResponse.redirect(new URL(`/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
       }
     }
 
@@ -28,15 +41,15 @@ export default withAuth(
     // 2. STAFF PORTAL: /quadrox-lorabiz-team/staff/*
     // =========================================================================
     if (pathname.startsWith("/quadrox-lorabiz-team/staff")) {
-      if (pathname === "/quadrox-lorabiz-team/staff/login") {
-        return NextResponse.next();
-      }
-
-      // If logged in but NOT a STAFF member, kick them to their correct portal
       if (role !== "STAFF") {
         if (role === "ADMIN") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds", req.url));
         if (role === "USER") return NextResponse.redirect(new URL("/dashboard", req.url));
         return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff/login", req.url));
+      }
+
+      // MFA Gate: Enforce 2FA completion before granting access to staff operational desk
+      if (mfaVerified === false) {
+        return NextResponse.redirect(new URL(`/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
       }
     }
 
@@ -44,7 +57,6 @@ export default withAuth(
     // 3. CLIENT USER PORTAL: /dashboard/*
     // =========================================================================
     if (pathname.startsWith("/dashboard")) {
-      // Prevent internal staff or admins from browsing regular user dashboards
       if (role !== "USER") {
         if (role === "ADMIN") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds", req.url));
         if (role === "STAFF") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff", req.url));
@@ -56,18 +68,14 @@ export default withAuth(
   },
   {
     callbacks: {
-      // By returning true here, we let our custom routing logic inside middleware() 
-      // handle exact redirects based on path and role rather than a single default fallback.
       authorized: () => true,
     },
   }
 );
 
 export const config = {
-  // Inspect all paths inside the three secured domains
   matcher: [
     "/dashboard/:path*",
-    "/quadrox-lorabiz-team/mds/:path*",
-    "/quadrox-lorabiz-team/staff/:path*",
+    "/quadrox-lorabiz-team/:path*",
   ],
 };
