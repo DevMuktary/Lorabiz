@@ -16,6 +16,7 @@ export function dispatchNotification(event: NotificationEvent): void {
     try {
       switch (event.type) {
         case "APPLICATION_SUBMITTED": {
+          // 1. Database In-App Alert
           await prisma.inAppNotification.create({
             data: {
               userId: event.userId,
@@ -26,14 +27,19 @@ export function dispatchNotification(event: NotificationEvent): void {
             },
           });
 
+          // 2. WhatsApp
           const wa = await sendWhatsAppTemplate({
             recipientPhone: event.phone,
             templateName: "cac_application_submitted",
             variables: [event.name, event.businessName, event.regId],
-            buttonUrlVariable: event.regId, 
+            // 👇 FIX: Appending the missing path before the ID
+            // If your Meta base URL is "https://lorabiz.com/dashboard/cac/", this makes it perfect.
+            // If your Meta base URL is just "https://lorabiz.com/", change this to: `dashboard/cac/register/view/${event.regId}`
+            buttonUrlVariable: `register/view/${event.regId}`, 
           });
           if (!wa.success) console.error("⚠️ WhatsApp Sub Failed:", wa.error);
 
+          // 3. Email
           await sendApplicationSubmittedEmail({
             to: event.email,
             name: event.name,
@@ -58,7 +64,8 @@ export function dispatchNotification(event: NotificationEvent): void {
             recipientPhone: event.phone,
             templateName: "cac_application_queried",
             variables: [event.name, event.businessName, event.queryReason],
-            buttonUrlVariable: event.regId, 
+            // 👇 FIX: Appending the dynamic entity slug and queries route
+            buttonUrlVariable: `${event.entitySlug}/${event.regId}/queries`, 
           });
           if (!wa.success) console.error("⚠️ WhatsApp Query Failed:", wa.error);
 
@@ -88,7 +95,7 @@ export function dispatchNotification(event: NotificationEvent): void {
             recipientPhone: event.phone,
             templateName: "cac_application_approved",
             variables: [event.name, event.businessName, event.rcNumber],
-            buttonUrlVariable: "cac",
+            buttonUrlVariable: "", // Send blank if the approved template just goes to /dashboard/cac
           });
           if (!wa.success) console.error("⚠️ WhatsApp Appr Failed:", wa.error);
 
