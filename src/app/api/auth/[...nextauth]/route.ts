@@ -1,53 +1,48 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 import bcrypt from "bcryptjs";
 
 // ============================================================================
-// BRUTE-FORCE PROTECTION ENGINE (Sliding Window Rate Limiter)
+// BRUTE-FORCE PROTECTION ENGINE (Redis-Backed Distributed Rate Limiter)
 // ============================================================================
-interface LoginAttempt {
-  count: number;
-  lockoutUntil: number | null;
-}
-
-// In-memory store: Tracks failed attempts across requests
-const failedAttemptsStore = new Map<string, LoginAttempt>();
-
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 Minutes
+const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 Minutes in seconds
 
-function checkRateLimit(identifier: string): void {
-  const record = failedAttemptsStore.get(identifier);
-  if (!record) return;
+async function checkRateLimit(identifier: string): Promise<void> {
+  const lockoutKey = `lockout:${identifier}`;
+  const lockoutTTL = await redis.ttl(lockoutKey);
 
-  const now = Date.now();
-
-  // If currently locked out
-  if (record.lockoutUntil && now < record.lockoutUntil) {
-    const minutesRemaining = Math.ceil((record.lockoutUntil - now) / 60000);
+  // If ttl > 0, the user is actively locked out
+  if (lockoutTTL > 0) {
+    const minutesRemaining = Math.ceil(lockoutTTL / 60);
     throw new Error(`Account temporarily locked due to multiple failed login attempts. Try again in ${minutesRemaining} minute(s).`);
   }
+}
 
-  // If lockout expired, reset the attempt counter
-  if (record.lockoutUntil && now >= record.lockoutUntil) {
-    failedAttemptsStore.delete(identifier);
+async function recordFailedAttempt(identifier: string): Promise<void> {
+  const attemptsKey = `attempts:${identifier}`;
+  const lockoutKey = `lockout:${identifier}`;
+
+  // Increment the failed attempts counter
+  const attempts = await redis.incr(attemptsKey);
+
+  // If this is the first failed attempt, set an expiry window of 15 minutes for the attempt counter
+  if (attempts === 1) {
+    await redis.expire(attemptsKey, LOCKOUT_DURATION_SECONDS);
+  }
+
+  // If attempts exceed our limit, trigger the lockout and clear the counter
+  if (attempts >= MAX_FAILED_ATTEMPTS) {
+    await redis.set(lockoutKey, "LOCKED", "EX", LOCKOUT_DURATION_SECONDS);
+    await redis.del(attemptsKey);
   }
 }
 
-function recordFailedAttempt(identifier: string): void {
-  const record = failedAttemptsStore.get(identifier) || { count: 0, lockoutUntil: null };
-  record.count += 1;
-
-  if (record.count >= MAX_FAILED_ATTEMPTS) {
-    record.lockoutUntil = Date.now() + LOCKOUT_DURATION_MS;
-  }
-
-  failedAttemptsStore.set(identifier, record);
-}
-
-function clearFailedAttempts(identifier: string): void {
-  failedAttemptsStore.delete(identifier);
+async function clearFailedAttempts(identifier: string): Promise<void> {
+  await redis.del(`attempts:${identifier}`);
+  await redis.del(`lockout:${identifier}`);
 }
 // ============================================================================
 
@@ -66,17 +61,17 @@ export const authOptions: NextAuthOptions = {
 
         const normalizedEmail = credentials.email.toLowerCase().trim();
 
-        // 1. Check Rate Limiter (Throws error if currently locked out)
-        checkRateLimit(normalizedEmail);
+        // 1. Check Rate Limiter (Throws error if currently locked out in Redis)
+        await checkRateLimit(normalizedEmail);
 
-        // 2. Find the user in the database
+        // 2. Find the user in the PostgreSQL database
         const user = await prisma.user.findUnique({
           where: { email: normalizedEmail }
         });
 
-        // 3. If no user exists, record attempt and reject
+        // 3. If no user exists, record attempt in Redis and reject
         if (!user || !user.passwordHash) {
-          recordFailedAttempt(normalizedEmail);
+          await recordFailedAttempt(normalizedEmail);
           return null;
         }
 
@@ -84,12 +79,12 @@ export const authOptions: NextAuthOptions = {
         const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
 
         if (!isPasswordValid) {
-          recordFailedAttempt(normalizedEmail);
+          await recordFailedAttempt(normalizedEmail);
           return null; // Triggers "CredentialsSignin" fallback error on client
         }
 
-        // 5. Success! Clear rate limit records and return session object
-        clearFailedAttempts(normalizedEmail);
+        // 5. Success! Clear rate limit records in Redis and return session object
+        await clearFailedAttempts(normalizedEmail);
 
         return {
           id: user.id,
