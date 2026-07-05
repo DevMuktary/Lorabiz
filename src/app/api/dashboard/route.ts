@@ -55,7 +55,8 @@ export async function GET(req: Request) {
     // 4. APPLY FILTERS
     if (search) {
       allRegs = allRegs.filter(reg => 
-        reg.proposedName?.toLowerCase().includes(search)
+        reg.proposedName?.toLowerCase().includes(search) ||
+        (reg.trackingId && reg.trackingId.includes(search))
       );
     }
 
@@ -82,16 +83,19 @@ export async function GET(req: Request) {
 
     // 7. ENRICH: Attach secure transaction details from the ledger
     const enrichedRegistrations = paginatedRegs.map((reg) => {
+      // The displayed ID favors the 6-digit trackingId, falling back to CUID substring
+      const displayId = reg.trackingId || reg.id.substring(0, 8).toUpperCase();
+      
       const relatedTx = transactions.find(tx => 
         tx.reference.includes(reg.id) || 
         tx.description.includes(reg.id) || 
-        tx.reference.includes(reg.id.substring(0, 8).toUpperCase())
+        (reg.trackingId && tx.reference.includes(reg.trackingId))
       );
 
       return {
         ...reg,
         amountPaid: relatedTx ? Number(relatedTx.amount) : 0,
-        transactionRef: relatedTx ? relatedTx.reference : `SRV_${reg.id.substring(0, 8).toUpperCase()}`
+        transactionRef: relatedTx ? relatedTx.reference : `SRV_${displayId}`
       };
     });
 
