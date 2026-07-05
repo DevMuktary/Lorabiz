@@ -1,8 +1,8 @@
 import { Queue } from "bullmq";
 import { redis } from "@/lib/redis";
-import { NotificationEvent } from "@/services/notifications";
 
-// Initialize the notifications queue using our Redis connection
-export const notificationQueue = new Queue<NotificationEvent>("notifications", {
+// We initialize the Queue without payload inspection so BullMQ v5 doesn't 
+// mistake the customer 'name' field in NotificationEvent for a Job Definition name.
+export const notificationQueue = new Queue("notifications", {
   connection: redis,
 });
