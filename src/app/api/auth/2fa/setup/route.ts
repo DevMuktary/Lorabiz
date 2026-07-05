@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { send2FAPasskeyEmail } from "@/lib/email";
-import { generateSecret, keyuri } from "otplib";
+import { generateSecret } from "otplib";
 import qrcode from "qrcode";
 
 export async function POST(req: Request) {
@@ -41,12 +41,9 @@ export async function POST(req: Request) {
         data: { twoFactorSecret: secret },
       });
 
-      // 3. Format standard OTPAuth URI: otpauth://totp/LoraBiz (Quadrox Ops):email?secret=...
-      const otpAuthUrl = keyuri(
-        user.email,
-        "LoraBiz (Quadrox Ops)",
-        secret
-      );
+      // 3. Construct standard RFC 6238 OTPAuth URI cleanly without reliance on helper exports
+      const issuer = "LoraBiz (Quadrox Ops)";
+      const otpAuthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(user.email)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
 
       // 4. Generate base64 data URI QR code for frontend display
       const qrCodeDataUrl = await qrcode.toDataURL(otpAuthUrl);
