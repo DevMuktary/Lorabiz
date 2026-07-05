@@ -2,7 +2,8 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { dispatchNotification, NotificationEvent } from "@/services/notifications";
+import { NotificationEvent } from "@/services/notifications";
+import { notificationQueue } from "@/lib/queue";
 
 export async function POST(req: Request) {
   try {
@@ -99,14 +100,14 @@ export async function POST(req: Request) {
             if (bizReg.status !== "UNSUBMITTED") return; 
             serviceType = "business";
             regName = bizReg.proposedName;
-            displayId = bizReg.trackingId || registrationId; // Grab the 6-digit ID!
+            displayId = bizReg.trackingId || registrationId; // Grab the 6-digit ID
           } else {
             const llcReg = await tx.llcRegistration.findUnique({ where: { id: registrationId } });
             if (llcReg) {
               if (llcReg.status !== "UNSUBMITTED") return; 
               serviceType = "llc";
               regName = llcReg.proposedName || "LLC Application";
-              displayId = llcReg.trackingId || registrationId; // Grab the 6-digit ID!
+              displayId = llcReg.trackingId || registrationId; // Grab the 6-digit ID
             }
           }
 
@@ -166,7 +167,7 @@ export async function POST(req: Request) {
             });
           }
 
-          // D: Capture user details for non-blocking notification dispatch
+          // D: Capture user details for background dispatch
           const userPhone = user.phone || user.phoneNumber || "";
           const userName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
 
@@ -177,13 +178,20 @@ export async function POST(req: Request) {
             email: userEmail,
             name: userName,
             businessName: regName,
-            regId: displayId, // Sends clean 6-digit ID to In-App Bell, WhatsApp & Email!
+            regId: displayId,
           };
         });
 
-        // Fire In-App, Email & WhatsApp asynchronously after successful DB commit
+        // Push job to Redis in <2ms with automatic retry strategies
         if (notificationPayload) {
-          dispatchNotification(notificationPayload);
+          await notificationQueue.add("send-application-notification", notificationPayload, {
+            attempts: 3, // Automatically retry up to 3 times if email/WhatsApp fails
+            backoff: {
+              type: "exponential",
+              delay: 5000, // Wait 5s, then 10s, then 20s between retry attempts
+            },
+            removeOnComplete: true, // Keep Redis clean by removing successful jobs
+          });
         }
 
         return NextResponse.json({ received: true });
