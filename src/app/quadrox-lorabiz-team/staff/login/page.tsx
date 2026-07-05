@@ -6,7 +6,8 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   EnvelopeSimple, LockKey, SignIn, Spinner, 
-  ShieldCheck, Eye, EyeSlash, Info, Briefcase, IdentificationBadge
+  ShieldCheck, Eye, EyeSlash, Info, Briefcase, IdentificationBadge,
+  StackPlus
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,7 @@ function StaffLoginContent() {
       });
 
       if (res?.error) {
-        setError(res.error === "CredentialsSignin" ? "Invalid staff credentials." : res.error);
+        setError(res.error === "CredentialsSignin" ? "Invalid staff clearance credentials." : res.error);
         setLoading(false);
       } else {
         router.push(callbackUrl);
@@ -60,7 +61,7 @@ function StaffLoginContent() {
   return (
     <div className="fixed inset-0 w-full flex bg-slate-950 font-sans selection:bg-teal-500 selection:text-black overflow-hidden transition-colors duration-300">
       
-      {/* LEFT PANEL - Staff Operations Branding */}
+      {/* LEFT PANEL - Comprehensive Staff Operations Branding */}
       <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-12 flex-col justify-between relative overflow-hidden border-r border-slate-800/80">
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-teal-500/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
@@ -68,7 +69,7 @@ function StaffLoginContent() {
         <div className="relative z-10 flex items-center gap-3">
           <div className="h-2.5 w-2.5 rounded-full bg-teal-400 animate-pulse shadow-lg shadow-teal-500/50" />
           <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">
-            Operations & Compliance Division
+            Operations & Compliance Directorate
           </span>
         </div>
 
@@ -77,27 +78,27 @@ function StaffLoginContent() {
             <IdentificationBadge weight="fill" className="h-8 w-8 text-teal-400" />
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold leading-[1.1] tracking-tight text-white">
-            Staff Operations Portal
+            Staff Operations Desk
           </h1>
           <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-            Authorized compliance personnel only. Review pending Corporate Affairs Commission applications, resolve filing queries, and verify NIMC identity slips.
+            Authorized processing personnel only. Access your queue to process CAC Business & LLC filings, TIN registrations, SCUML compliance, Trademark & Intellectual Property filings, NIMC identity slips, and upcoming regulatory suites.
           </p>
           
           <div className="pt-6 space-y-4 border-t border-slate-800/80">
             <div className="flex items-center gap-3 text-slate-300 text-sm font-medium">
               <Briefcase weight="fill" className="h-5 w-5 text-teal-400 shrink-0" />
-              <span>Isolated compliance workflow environment</span>
+              <span>Multi-service regulatory compliance engine</span>
             </div>
             <div className="flex items-center gap-3 text-slate-300 text-sm font-medium">
-              <ShieldCheck weight="fill" className="h-5 w-5 text-cyan-400 shrink-0" />
-              <span>All application reviews and edits are audited</span>
+              <StackPlus weight="fill" className="h-5 w-5 text-cyan-400 shrink-0" />
+              <span>Full lifecycle processing & document dispatches audited</span>
             </div>
           </div>
         </div>
 
         <div className="relative z-10">
           <p className="text-xs font-semibold tracking-widest text-slate-500 uppercase">
-            Quadrox Technologies Limited &bull; Staff Access
+            Quadrox Technologies Limited &bull; Enterprise Operations
           </p>
         </div>
       </div>
@@ -122,7 +123,7 @@ function StaffLoginContent() {
               <IdentificationBadge weight="bold" className="h-3.5 w-3.5" /> Staff Clearance Required
             </div>
             <h2 className="text-3xl font-bold text-white tracking-tight">Staff Sign In</h2>
-            <p className="text-slate-400 mt-2 text-sm">Enter your staff email and password to open the operational queue.</p>
+            <p className="text-slate-400 mt-2 text-sm">Enter your staff credentials to access operational processing queues.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -194,14 +195,14 @@ function StaffLoginContent() {
 
             <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 text-center">
               <p className="text-xs text-slate-500 leading-relaxed">
-                <strong className="text-slate-400">Notice:</strong> Action taken inside this portal is logged against your officer ID for CAC filing accountability.
+                <strong className="text-slate-400">Compliance Audit:</strong> All actions across CAC, TIN, SCUML, Trademark, and NIMC processing queues are cryptographically logged against your staff clearance ID.
               </p>
             </div>
           </form>
 
           <div className="lg:hidden mt-12 text-center pb-8">
              <p className="text-[10px] font-semibold tracking-widest text-slate-600 uppercase">
-              Quadrox Technologies Ltd &bull; Compliance Desk
+              Quadrox Technologies Ltd &bull; Operations Desk
             </p>
           </div>
 
