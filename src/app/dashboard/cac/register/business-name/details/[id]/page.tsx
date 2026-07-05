@@ -13,7 +13,7 @@ import { CompanyInfo, Proprietor, isValidEmail, isValidPhone, calculateAge } fro
 
 export default function RegistrationDetailsPage() {
   const params = useParams();
-  const id = params?.id as string;
+  const id = params?.id as string; // This remains the internal CUID to keep API calls bulletproof
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -28,7 +28,6 @@ export default function RegistrationDetailsPage() {
   
   const [toast, setToast] = useState<{show: boolean, msg: string, type: "error" | "success"}>({ show: false, msg: "", type: "success" });
   
-  // NEW: Ref to target the scrollable stepper container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const showToast = (msg: string, type: "error" | "success" = "error") => {
@@ -36,7 +35,8 @@ export default function RegistrationDetailsPage() {
     setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 4000);
   };
 
-  const [draft, setDraft] = useState({ proposedName: "LOADING...", ownershipType: "SOLE", specificNature: "LOADING..." });
+  // Added trackingId to the draft state
+  const [draft, setDraft] = useState({ trackingId: "", proposedName: "LOADING...", ownershipType: "SOLE", specificNature: "LOADING..." });
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({ email: "", state: "", city: "", streetNo: "", address: "", commencementDate: "" });
   const [proprietors, setProprietors] = useState<Proprietor[]>([]);
 
@@ -46,7 +46,6 @@ export default function RegistrationDetailsPage() {
     const activeBtn = document.getElementById(`step-btn-${currentStep}`);
     
     if (container && activeBtn) {
-      // Mathematically perfectly center the active button in the viewport
       const scrollLeft = activeBtn.offsetLeft - container.offsetWidth / 2 + activeBtn.offsetWidth / 2;
       container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
     }
@@ -200,7 +199,6 @@ export default function RegistrationDetailsPage() {
 
       {/* STICKY TEXT-BASED STEPPER */}
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md pb-4 pt-4 mb-8 border-b border-border flex justify-between items-end">
-        {/* WE ADDED scrollContainerRef HERE */}
         <div ref={scrollContainerRef} className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full md:w-auto scroll-smooth">
           {[ 
             { step: 1, title: "Company Information" }, 
@@ -215,7 +213,7 @@ export default function RegistrationDetailsPage() {
             return (
               <button 
                 key={s.step} 
-                id={`step-btn-${s.step}`} // WE ADDED THE ID HERE SO WE CAN TARGET IT
+                id={`step-btn-${s.step}`}
                 onClick={() => isAccessible && setCurrentStep(s.step)}
                 disabled={!isAccessible}
                 className={`flex items-center gap-2 whitespace-nowrap text-sm transition-colors ${
