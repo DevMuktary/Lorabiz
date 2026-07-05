@@ -13,11 +13,12 @@ export const notificationWorker = new Worker<NotificationEvent>(
     console.log(`✅ Completed notification job [ID: ${job.id}]`);
   },
   {
-    connection: redis,
+    // Cast to any to resolve duplicate ioredis type definitions between root and bullmq
+    connection: redis as any,
     concurrency: 5, // Process up to 5 notifications concurrently
   }
 );
 
 notificationWorker.on("failed", (job, err) => {
-  console.error(`❌ Notification job [ID: ${job?.id}] failed after all retry attempts:`, err.message);
+  console.error(`❌ Notification job [ID: ${job?.id}] failed after all retry attempts:`, err?.message || err);
 });
