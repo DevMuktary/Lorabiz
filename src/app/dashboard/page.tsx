@@ -19,7 +19,8 @@ const SERVICES = [
     title: "NIMC Services",
     description: "Generate and print verified NIN slips directly from the dashboard.",
     logo: "/nimc.png",
-    active: false,
+    href: "/dashboard/tools/nin-slip",
+    active: true, // Activated!
   },
   {
     title: "SCUML Certificate",
@@ -142,20 +143,14 @@ export default function DashboardPage() {
             isOpen={isWalletModalOpen} 
             onClose={() => setIsWalletModalOpen(false)} 
             onSuccess={(amount) => {
-              // 1. Optimistically update the UI balance
               setBalance((prev) => (Number(prev) + amount).toString());
-              
-              // 2. Show the Success Notification!
               setAlertInfo({ 
                 title: "Payment Successful 🎉", 
                 message: `Your wallet was successfully funded with ₦${amount.toLocaleString()}.` 
               });
-
-              // 3. Fetch from DB silently to ensure perfect sync
               setTimeout(fetchBalance, 3000); 
             }}
             onFailure={(message) => {
-              // 1. Show the Failure Notification
               setAlertInfo({ 
                 title: "Payment Failed", 
                 message: message 
