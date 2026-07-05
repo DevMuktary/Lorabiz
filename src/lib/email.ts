@@ -67,6 +67,7 @@ function getBaseLayout(content: string) {
   `;
 }
 
+// Standard Client Registration OTP
 export async function sendVerificationOTP(to: string, otpCode: string) {
   const subject = "Your LoraBiz Verification Code";
   const content = `
@@ -79,6 +80,37 @@ export async function sendVerificationOTP(to: string, otpCode: string) {
       ${otpCode}
     </div>
     <p style="color: #94a3b8; font-size: 13px; margin: 0;">If you did not request this verification, please safely ignore this email.</p>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
+}
+
+// ============================================================================
+// NEW: INTERNAL STAFF & MD TWO-FACTOR AUTHENTICATION PASSKEY
+// ============================================================================
+export async function send2FAPasskeyEmail(to: string, otpCode: string, role?: string) {
+  const isExecutive = role === "ADMIN";
+  const portalName = isExecutive ? "Managing Director Executive Control Plane" : "Staff Operations & Compliance Desk";
+  const accentColor = isExecutive ? "#d97706" : "#0d9488"; // Executive Amber vs Staff Teal
+
+  const subject = `[SECURITY] Your 2FA Verification Passkey - LoraBiz Ops`;
+  const content = `
+    <div style="display: inline-block; background-color: #0f172a; color: ${accentColor}; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 6px 12px; border-radius: 9999px; margin-bottom: 16px; border: 1px solid #334155;">
+      🔒 Zero-Trust Identity Verification
+    </div>
+    <h2 style="color: #0f172a; margin: 0 0 12px; font-size: 20px;">Authorize Portal Access</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 24px; font-size: 14px;">
+      An authentication attempt was initiated for your clearance tier on the <strong>${portalName}</strong>.<br/>
+      Input the 6-digit cryptographic passkey below to verify your session. <strong>Valid for 10 minutes.</strong>
+    </p>
+    <div style="background: #0f172a; padding: 24px; text-align: center; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: ${accentColor}; border-radius: 12px; border: 1px solid #334155; margin-bottom: 24px; font-family: monospace;">
+      ${otpCode}
+    </div>
+    <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+      <p style="margin: 0; font-size: 12px; color: #991b1b; line-height: 1.5;">
+        <strong>Security Warning:</strong> LoraBiz IT personnel will never ask for this passkey. If you did not initiate this sign-in attempt, your administrative credentials may be compromised. Report this event to security operations immediately.
+      </p>
+    </div>
   `;
 
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
