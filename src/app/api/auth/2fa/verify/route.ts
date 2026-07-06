@@ -39,13 +39,20 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Missing account authenticator secret." }, { status: 500 });
       }
 
-      // Await verify to resolve async Promise return types in modern otplib
       const verificationResult = await verify({
         token: code,
         secret: user.twoFactorSecret,
       });
 
-      isValid = typeof verificationResult === "boolean" ? verificationResult : !!verificationResult;
+      // Strictly inspect boolean properties inside the result object
+      if (typeof verificationResult === "boolean") {
+        isValid = verificationResult === true;
+      } else if (verificationResult && typeof verificationResult === "object") {
+        isValid = Boolean(
+          (verificationResult as any).valid === true || 
+          (verificationResult as any).isValid === true
+        );
+      }
     }
 
     // ========================================================================
