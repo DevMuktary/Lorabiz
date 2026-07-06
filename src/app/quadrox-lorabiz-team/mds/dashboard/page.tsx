@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, Clock, Activity, Power } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Clock, Activity } from 'lucide-react';
 
 // Mock Data for Visualization
 const revenueData = [
@@ -57,7 +57,11 @@ export default function MdsDashboardPage() {
                 <RechartsTooltip 
                   contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#f4f4f5' }}
                   itemStyle={{ color: '#818cf8' }}
-                  formatter={(value: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)}
+                  formatter={(value: any) => {
+                    const numValue = Number(value);
+                    if (isNaN(numValue)) return '₦0.00';
+                    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(numValue);
+                  }}
                 />
                 <Line type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1', strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} />
               </LineChart>
