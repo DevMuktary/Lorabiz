@@ -16,7 +16,6 @@ function AdminLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Default callback locked to the Managing Directors control panel
   const callbackUrl = searchParams.get("callbackUrl") || "/quadrox-lorabiz-team/mds";
 
   const [loading, setLoading] = useState(false);
@@ -48,14 +47,12 @@ function AdminLoginContent() {
         setError(res.error === "CredentialsSignin" ? "Invalid administrative credentials." : res.error);
         setLoading(false);
       } else {
-        // Fetch fresh session context to inspect Two-Factor clearance state
         const sessionRes = await fetch("/api/auth/session");
         const sessionData = await sessionRes.json();
 
         const isTwoFactorEnabled = sessionData?.user?.twoFactorEnabled;
         const isMfaVerified = sessionData?.user?.mfaVerified;
 
-        // Route to mandatory 2FA enrollment or daily passkey challenge
         if (!isTwoFactorEnabled) {
           router.push(`/quadrox-lorabiz-team/setup-2fa?callbackUrl=${encodeURIComponent(callbackUrl)}`);
         } else if (!isMfaVerified) {
@@ -72,38 +69,38 @@ function AdminLoginContent() {
   };
 
   return (
-    <div className="fixed inset-0 w-full flex bg-slate-950 font-sans selection:bg-amber-500 selection:text-black overflow-hidden transition-colors duration-300">
+    <div className="fixed inset-0 w-full flex bg-slate-950 font-sans selection:bg-teal-500 selection:text-black overflow-hidden transition-colors duration-300">
       
-      {/* LEFT PANEL - Executive Security Branding */}
-      <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-gradient-to-br from-slate-900 via-slate-900 to-black p-12 flex-col justify-between relative overflow-hidden border-r border-slate-800/80">
-        <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-[#ff3f7a]/10 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+      {/* LEFT PANEL */}
+      <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-12 flex-col justify-between relative overflow-hidden border-r border-slate-800/80">
+        <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-teal-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
         <div className="relative z-10 flex items-center gap-3">
-          <div className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shadow-lg shadow-amber-500/50" />
+          <div className="h-2.5 w-2.5 rounded-full bg-teal-400 animate-pulse shadow-lg shadow-teal-500/50" />
           <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">
             Executive Control Plane
           </span>
         </div>
 
         <div className="relative z-10 text-white space-y-6 max-w-lg mx-auto my-auto">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-2">
-            <CrownSimple weight="fill" className="h-8 w-8 text-amber-400" />
+          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-teal-500/10 border border-teal-500/20 mb-2">
+            <CrownSimple weight="fill" className="h-8 w-8 text-teal-400" />
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold leading-[1.1] tracking-tight text-white">
             Managing Director Portal
           </h1>
           <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-            Authorized executive access only. Oversee Corporate Affairs Commission filings, review financial ledgers, and manage operational compliance across LoraBiz.
+            Authorized executive access only. Oversee platform filings, review financial ledgers, and manage operational compliance across LoraBiz.
           </p>
           
           <div className="pt-6 space-y-4 border-t border-slate-800/80">
             <div className="flex items-center gap-3 text-slate-300 text-sm font-medium">
-              <Fingerprint weight="fill" className="h-5 w-5 text-amber-400 shrink-0" />
+              <Fingerprint weight="fill" className="h-5 w-5 text-teal-400 shrink-0" />
               <span>Full cryptographic audit logging active</span>
             </div>
             <div className="flex items-center gap-3 text-slate-300 text-sm font-medium">
-              <ShieldCheck weight="fill" className="h-5 w-5 text-[#ff3f7a] shrink-0" />
+              <ShieldCheck weight="fill" className="h-5 w-5 text-cyan-400 shrink-0" />
               <span>Zero-trust isolated session boundaries with mandatory 2FA</span>
             </div>
           </div>
@@ -116,7 +113,7 @@ function AdminLoginContent() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - Authentication Form */}
+      {/* RIGHT PANEL */}
       <div className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-slate-950 text-slate-100">
         <div className="w-full max-w-md mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-6 sm:mt-12">
           
@@ -132,7 +129,7 @@ function AdminLoginContent() {
           </div>
 
           <div className="mb-8 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-teal-400 text-xs font-semibold uppercase tracking-wider mb-3">
               <CrownSimple weight="bold" className="h-3.5 w-3.5" /> MD Authentication
             </div>
             <h2 className="text-3xl font-bold text-white tracking-tight">Executive Sign In</h2>
@@ -141,7 +138,6 @@ function AdminLoginContent() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Error Message */}
             {error && (
               <div className="p-4 bg-rose-500/10 text-rose-400 text-sm font-medium rounded-lg border border-rose-500/20 flex items-center gap-2 animate-in shake">
                 <Info weight="bold" className="h-5 w-5 shrink-0" />
@@ -160,8 +156,8 @@ function AdminLoginContent() {
                     value={formData.email}
                     onChange={handleChange}
                     required 
-                    placeholder="md@quadrox.io" 
-                    className="pl-11 h-12 text-sm bg-slate-900/80 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-amber-500 transition-all" 
+                    placeholder="example@quadrox.io" 
+                    className="pl-11 h-12 text-sm bg-slate-900/80 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-teal-500 transition-all" 
                   />
                 </div>
               </div>
@@ -179,7 +175,7 @@ function AdminLoginContent() {
                     onChange={handleChange}
                     required 
                     placeholder="••••••••••••" 
-                    className="pl-11 pr-10 h-12 text-sm bg-slate-900/80 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-amber-500 transition-all" 
+                    className="pl-11 pr-10 h-12 text-sm bg-slate-900/80 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-teal-500 transition-all" 
                   />
                   <button 
                     type="button" 
@@ -196,7 +192,7 @@ function AdminLoginContent() {
               <Button 
                 type="submit" 
                 disabled={loading} 
-                className="w-full h-14 text-base font-semibold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black shadow-lg shadow-amber-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full h-14 text-base font-semibold bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-black shadow-lg shadow-teal-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <Spinner className="animate-spin h-6 w-6 text-black" weight="bold" />
@@ -229,7 +225,7 @@ export default function AdminLoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen w-full flex items-center justify-center bg-slate-950">
-        <Spinner className="animate-spin h-8 w-8 text-amber-500" weight="bold" />
+        <Spinner className="animate-spin h-8 w-8 text-teal-500" weight="bold" />
       </div>
     }>
       <AdminLoginContent />
