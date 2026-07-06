@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script"; // <-- Added Next.js Script import
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { ArrowRight, Sparkle, X, Info, Plus, Spinner } from "@phosphor-icons/react";
@@ -20,7 +21,7 @@ const SERVICES = [
     description: "Generate and print NIN slips directly from the dashboard.",
     logo: "/nimc.png",
     href: "/dashboard/tools/nin-slip",
-    active: true, // Activated!
+    active: true,
   },
   {
     title: "SCUML Certificate",
@@ -108,6 +109,17 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 relative">
       
+      {/* ZOHO SALESIQ SCRIPTS */}
+      <Script id="zoho-init" strategy="afterInteractive">
+        {`window.$zoho=window.$zoho || {};$zoho.salesiq=$zoho.salesiq||{ready:function(){}}`}
+      </Script>
+      <Script 
+        id="zsiqscript" 
+        src="https://salesiq.zoho.com/widget?wc=siqd92cfee3d96399a843e398203c959cc436421b42947c56b618bfe512049ccb45" 
+        strategy="afterInteractive" 
+      />
+      {/* END ZOHO SCRIPTS */}
+
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
