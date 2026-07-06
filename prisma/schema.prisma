@@ -33,6 +33,8 @@ enum RegistrationStatus {
 enum TransactionType {
   CREDIT
   DEBIT
+  REFUND
+  ADJUSTMENT
 }
 
 enum TransactionStatus {
@@ -124,6 +126,7 @@ model BusinessRegistration {
 
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  processedAt       DateTime?          // Used for Staff TAT (Turnaround Time) tracking
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   proprietors       Proprietor[]      
@@ -174,8 +177,8 @@ model LlcRegistration {
   specificActivity    String?
   description         String?            @db.Text
   
-  registeredAddress   Json?     
-  headOfficeAddress   Json?     
+  registeredAddress   Json?      
+  headOfficeAddress   Json?      
   
   useDefaultArticles  Boolean            @default(true)
   customArticles      Json?
@@ -198,6 +201,7 @@ model LlcRegistration {
   
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
+  processedAt         DateTime?          // Used for Staff TAT (Turnaround Time) tracking
   
   user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   officers            CompanyOfficer[]
@@ -303,11 +307,24 @@ model Wallet {
 }
 
 model ServicePricing {
-  id         String   @id @default(cuid())
-  serviceKey String   @unique 
-  title      String   
-  price      Decimal  @default(0.00)
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  serviceKey     String   @unique 
+  title          String   
+  price          Decimal  @default(0.00)
+  isActive       Boolean  @default(true) // MDS Kill Switch
+  maintenanceMsg String?  // Custom banner text e.g., "CAC Portal is down"
+  updatedAt      DateTime @updatedAt
+}
+
+model PromoCode {
+  id            String    @id @default(cuid())
+  code          String    @unique // e.g., "LAUNCH20"
+  discountPct   Float?    // Percentage discount
+  fixedAmount   Decimal?  // Or fixed amount discount
+  usageLimit    Int?      // Max number of times it can be used
+  timesUsed     Int       @default(0)
+  expiresAt     DateTime?
+  isActive      Boolean   @default(true)
 }
 
 model Transaction {
