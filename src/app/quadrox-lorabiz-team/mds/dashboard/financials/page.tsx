@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { 
-  Download, Search, Filter, RefreshCw, CheckCircle2, XCircle, Clock, Eye, X, Receipt 
+  Download, Search, Filter, RefreshCw, CheckCircle2, XCircle, Clock, Eye, X, Receipt, CornerUpLeft, AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Papa from 'papaparse';
@@ -13,18 +13,10 @@ import Papa from 'papaparse';
 export default function FinancialAnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<any>(null);
-  
-  // Table Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
-
-  // Drawer State
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
-
-  useEffect(() => {
-    fetchFinancialData();
-  }, []);
 
   const fetchFinancialData = async () => {
     setIsLoading(true);
@@ -40,7 +32,10 @@ export default function FinancialAnalyticsPage() {
     }
   };
 
-  // Memoized filtering logic for high performance
+  useEffect(() => {
+    fetchFinancialData();
+  }, []);
+
   const filteredLedger = useMemo(() => {
     if (!data?.ledger) return [];
     return data.ledger.filter((tx: any) => {
@@ -58,7 +53,6 @@ export default function FinancialAnalyticsPage() {
 
   const exportToCSV = () => {
     if (!filteredLedger.length) return;
-    
     const exportData = filteredLedger.map((tx: any) => ({
       Date: format(new Date(tx.date), 'yyyy-MM-dd HH:mm'),
       Reference: tx.reference,
@@ -71,7 +65,6 @@ export default function FinancialAnalyticsPage() {
       'Balance After': tx.balanceAfter,
       Status: tx.status
     }));
-
     const csv = Papa.unparse(exportData);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -141,7 +134,6 @@ export default function FinancialAnalyticsPage() {
 
       {/* Master Ledger Table */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
-        
         {/* Table Filters */}
         <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4 justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
           <div className="relative flex-1 max-w-md">
@@ -244,19 +236,21 @@ export default function FinancialAnalyticsPage() {
             </tbody>
           </table>
         </div>
-        
         <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-xs text-zinc-500 flex justify-between items-center">
           <span>Showing {filteredLedger.length} transaction(s).</span>
         </div>
       </div>
 
-      {/* Transaction Detail Drawer */}
+      {/* Transaction Detail Drawer with Refund Logic */}
       <TransactionDrawer 
         tx={selectedTx} 
         onClose={() => setSelectedTx(null)} 
-        formatCurrency={formatCurrency} 
+        formatCurrency={formatCurrency}
+        onRefundSuccess={() => {
+          setSelectedTx(null);
+          fetchFinancialData(); // Refresh the ledger table immediately
+        }}
       />
-
     </div>
   );
 }
@@ -299,26 +293,71 @@ function StatusBadge({ status }: { status: string }) {
         </span>
       );
     default:
-      return (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-400">
-          {status}
-        </span>
-      );
+      return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-400">{status}</span>;
   }
 }
 
-function TransactionDrawer({ tx, onClose, formatCurrency }: { tx: any, onClose: () => void, formatCurrency: (v: number) => string }) {
+function TransactionDrawer({ tx, onClose, formatCurrency, onRefundSuccess }: { tx: any, onClose: () => void, formatCurrency: (v: number) => string, onRefundSuccess: () => void }) {
+  const [isRefunding, setIsRefunding] = useState(false);
+  const [showRefundForm, setShowRefundForm] = useState(false);
+  const [refundAmount, setRefundAmount] = useState<number | string>("");
+  const [refundReason, setRefundReason] = useState("");
+  const [error, setError] = useState("");
+
+  // Reset state when a new transaction is opened
+  useEffect(() => {
+    if (tx) {
+      setShowRefundForm(false);
+      setRefundAmount(tx.amount); // Default to full amount
+      setRefundReason("");
+      setError("");
+    }
+  }, [tx]);
+
   if (!tx) return null;
+
+  const handleProcessRefund = async () => {
+    if (!refundAmount || Number(refundAmount) <= 0 || Number(refundAmount) > tx.amount) {
+      setError(`Amount must be between 1 and ${tx.amount}`);
+      return;
+    }
+    if (!refundReason.trim() || refundReason.length < 5) {
+      setError("Please provide a detailed reason for this refund.");
+      return;
+    }
+
+    setIsRefunding(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/mds/financials/refund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transactionId: tx.id,
+          refundAmount: Number(refundAmount),
+          reason: refundReason
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to process refund");
+
+      // Success
+      onRefundSuccess();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsRefunding(false);
+    }
+  };
+
+  const isRefundable = tx.type === "DEBIT" && tx.status === "SUCCESS";
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-zinc-900/60 transition-opacity animate-in fade-in duration-200" 
-        onClick={onClose}
-      ></div>
+      <div className="absolute inset-0 bg-zinc-900/60 transition-opacity animate-in fade-in duration-200" onClick={onClose}></div>
       
-      {/* Drawer Panel */}
       <div className="relative w-full max-w-md h-full bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right duration-300 flex flex-col">
         
         <div className="flex items-center justify-between mb-6">
@@ -326,16 +365,12 @@ function TransactionDrawer({ tx, onClose, formatCurrency }: { tx: any, onClose: 
             <Receipt size={20} className="mr-2 text-indigo-500" />
             Transaction Details
           </h3>
-          <button 
-            onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
-          >
+          <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
             <X size={20} />
           </button>
         </div>
 
         <div className="space-y-6 flex-1">
-          {/* Amount Header */}
           <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-xl text-center border border-zinc-200 dark:border-zinc-800">
             <p className="text-sm font-medium text-zinc-500 uppercase mb-2">{tx.type}</p>
             <p className={`text-4xl font-bold tabular-nums ${tx.type === 'CREDIT' || tx.type === 'REFUND' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
@@ -346,7 +381,6 @@ function TransactionDrawer({ tx, onClose, formatCurrency }: { tx: any, onClose: 
             </div>
           </div>
 
-          {/* Details List */}
           <div className="space-y-4">
             <DetailRow label="Reference ID" value={<span className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">{tx.reference}</span>} />
             <DetailRow label="Date & Time" value={format(new Date(tx.date), 'MMMM do, yyyy • h:mm a')} />
@@ -355,7 +389,6 @@ function TransactionDrawer({ tx, onClose, formatCurrency }: { tx: any, onClose: 
 
           <hr className="border-zinc-200 dark:border-zinc-800" />
 
-          {/* Client Info */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Client Information</h4>
             <DetailRow label="Name" value={tx.clientName} />
@@ -364,13 +397,69 @@ function TransactionDrawer({ tx, onClose, formatCurrency }: { tx: any, onClose: 
 
           <hr className="border-zinc-200 dark:border-zinc-800" />
 
-          {/* Wallet Balances */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Wallet Impact</h4>
-            <DetailRow label="Balance Before" value={formatCurrency(tx.balanceBefore)} />
-            <DetailRow label="Balance After" value={formatCurrency(tx.balanceAfter)} />
-          </div>
+          {/* Issue Refund Logic Zone */}
+          {isRefundable && !showRefundForm && (
+            <div className="pt-4">
+              <button 
+                onClick={() => setShowRefundForm(true)}
+                className="w-full flex items-center justify-center py-2.5 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900 font-medium rounded-lg transition-colors text-sm"
+              >
+                <CornerUpLeft size={16} className="mr-2" /> Issue Partial or Full Refund
+              </button>
+            </div>
+          )}
 
+          {isRefundable && showRefundForm && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl space-y-4 animate-in fade-in slide-in-from-top-2">
+              <div>
+                <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-400 flex items-center">
+                  <AlertCircle size={16} className="mr-1.5" /> Process Refund to Wallet
+                </h4>
+                <p className="text-xs text-amber-700 dark:text-amber-500 mt-1">This action is permanent and will instantly credit the user's wallet.</p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-amber-900 dark:text-amber-400 mb-1 block">Amount to Refund (₦)</label>
+                  <input 
+                    type="number" 
+                    max={tx.amount}
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    className="w-full bg-white dark:bg-zinc-900 border border-amber-200 dark:border-amber-500/30 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-amber-900 dark:text-amber-400 mb-1 block">Reason (Required for Audit)</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g., CAC Portal Down, Duplicate Charge"
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    className="w-full bg-white dark:bg-zinc-900 border border-amber-200 dark:border-amber-500/30 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              {error && <p className="text-xs text-red-600 dark:text-red-400 font-medium">{error}</p>}
+
+              <div className="flex gap-2 pt-2">
+                <button 
+                  onClick={() => setShowRefundForm(false)}
+                  className="flex-1 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 text-sm font-medium rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleProcessRefund}
+                  disabled={isRefunding}
+                  className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isRefunding ? <RefreshCw size={16} className="animate-spin" /> : "Confirm Refund"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
