@@ -4,14 +4,17 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { differenceInHours, formatDistanceToNow, format } from 'date-fns';
 import { 
-  ArrowLeft, Search, Filter, RefreshCw, Eye, Clock, CheckCircle2, AlertCircle, XCircle, UserPlus
+  ArrowLeft, Search, RefreshCw, Eye, UserPlus, Briefcase, Building2, Filter
 } from 'lucide-react';
 
 export default function CacPipelinePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [pipeline, setPipeline] = useState<any[]>([]);
+  
+  // Filters
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("ALL"); // ALL, UNASSIGNED, IN_PROGRESS, QUERIED, COMPLETED
+  const [activeTab, setActiveTab] = useState("ALL"); 
+  const [serviceFilter, setServiceFilter] = useState("ALL"); // ALL, BUSINESS_NAME, LLC
 
   const fetchPipeline = async () => {
     setIsLoading(true);
@@ -31,25 +34,27 @@ export default function CacPipelinePage() {
     fetchPipeline();
   }, []);
 
-  // Filter Logic
   const filteredPipeline = useMemo(() => {
     return pipeline.filter((ticket) => {
-      // Search
+      // 1. Search
       const matchesSearch = 
         ticket.proposedName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.trackingId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.clientName.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Tabs
+      // 2. Status Tabs
       let matchesTab = true;
       if (activeTab === "UNASSIGNED") matchesTab = !ticket.assignedStaff && ticket.status === "PENDING";
       if (activeTab === "IN_PROGRESS") matchesTab = ticket.assignedStaff && ticket.status === "PENDING";
       if (activeTab === "QUERIED") matchesTab = ticket.status === "QUERIED";
       if (activeTab === "COMPLETED") matchesTab = ticket.status === "APPROVED" || ticket.status === "FAILED";
 
-      return matchesSearch && matchesTab;
+      // 3. Service Type Filter
+      const matchesService = serviceFilter === "ALL" || ticket.type === serviceFilter;
+
+      return matchesSearch && matchesTab && matchesService;
     });
-  }, [pipeline, searchTerm, activeTab]);
+  }, [pipeline, searchTerm, activeTab, serviceFilter]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -79,16 +84,16 @@ export default function CacPipelinePage() {
         
         {/* Navigation Tabs */}
         <div className="flex overflow-x-auto border-b border-zinc-200 dark:border-zinc-800 scrollbar-hide">
-          <TabButton label="All Tickets" count={pipeline.length} isActive={activeTab === "ALL"} onClick={() => setActiveTab("ALL")} />
-          <TabButton label="Unassigned Pool" count={pipeline.filter(t => !t.assignedStaff && t.status === "PENDING").length} isActive={activeTab === "UNASSIGNED"} onClick={() => setActiveTab("UNASSIGNED")} alert />
-          <TabButton label="In Progress" count={pipeline.filter(t => t.assignedStaff && t.status === "PENDING").length} isActive={activeTab === "IN_PROGRESS"} onClick={() => setActiveTab("IN_PROGRESS")} />
-          <TabButton label="Queried" count={pipeline.filter(t => t.status === "QUERIED").length} isActive={activeTab === "QUERIED"} onClick={() => setActiveTab("QUERIED")} />
-          <TabButton label="Completed" count={pipeline.filter(t => t.status === "APPROVED" || t.status === "FAILED").length} isActive={activeTab === "COMPLETED"} onClick={() => setActiveTab("COMPLETED")} />
+          <TabButton label="All Tickets" count={pipeline.filter(t => serviceFilter === "ALL" || t.type === serviceFilter).length} isActive={activeTab === "ALL"} onClick={() => setActiveTab("ALL")} />
+          <TabButton label="Unassigned Pool" count={pipeline.filter(t => !t.assignedStaff && t.status === "PENDING" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "UNASSIGNED"} onClick={() => setActiveTab("UNASSIGNED")} alert />
+          <TabButton label="In Progress" count={pipeline.filter(t => t.assignedStaff && t.status === "PENDING" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "IN_PROGRESS"} onClick={() => setActiveTab("IN_PROGRESS")} />
+          <TabButton label="Queried" count={pipeline.filter(t => t.status === "QUERIED" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "QUERIED"} onClick={() => setActiveTab("QUERIED")} />
+          <TabButton label="Completed" count={pipeline.filter(t => (t.status === "APPROVED" || t.status === "FAILED") && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "COMPLETED"} onClick={() => setActiveTab("COMPLETED")} />
         </div>
 
-        {/* Search Bar */}
-        <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
-          <div className="relative max-w-md">
+        {/* Search & Service Filter Bar */}
+        <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex flex-col sm:flex-row gap-4 justify-between">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
             <input 
               type="text" 
@@ -97,6 +102,19 @@ export default function CacPipelinePage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
             />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-zinc-500 hidden sm:block" />
+            <select 
+              value={serviceFilter}
+              onChange={(e) => setServiceFilter(e.target.value)}
+              className="w-full sm:w-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-sm font-medium rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">All Services</option>
+              <option value="BUSINESS_NAME">Business Names Only</option>
+              <option value="LLC">LLC Formations Only</option>
+            </select>
           </div>
         </div>
 
@@ -108,7 +126,7 @@ export default function CacPipelinePage() {
                 <th className="px-6 py-4 font-medium">Application Info</th>
                 <th className="px-6 py-4 font-medium">Client</th>
                 <th className="px-6 py-4 font-medium">Staff Assigned</th>
-                <th className="px-6 py-4 font-medium">SLA / Time in Queue</th>
+                <th className="px-6 py-4 font-medium">SLA / Queue Time</th>
                 <th className="px-6 py-4 font-medium text-center">Action</th>
               </tr>
             </thead>
@@ -123,19 +141,30 @@ export default function CacPipelinePage() {
               ) : filteredPipeline.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-zinc-500">
-                    No applications found in this view.
+                    No applications found matching your filters.
                   </td>
                 </tr>
               ) : (
                 filteredPipeline.map((ticket: any) => (
                   <tr key={ticket.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                     
-                    {/* Application Info */}
+                    {/* Application Info with strict visual distinction */}
                     <td className="px-6 py-4">
                       <p className="font-medium text-zinc-900 dark:text-zinc-100 truncate max-w-[250px]">{ticket.proposedName}</p>
-                      <div className="flex items-center text-xs mt-1">
-                        <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-400 mr-2">{ticket.trackingId}</span>
-                        <span className="text-zinc-500 font-medium">{ticket.type}</span>
+                      <div className="flex items-center mt-1.5 gap-2">
+                        <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-400 text-xs">
+                          {ticket.trackingId}
+                        </span>
+                        {/* DISTINCT SERVICE BADGE */}
+                        {ticket.type === "LLC" ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400">
+                            <Building2 size={10} className="mr-1" /> LLC Formation
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+                            <Briefcase size={10} className="mr-1" /> Business Name
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -208,7 +237,6 @@ function TabButton({ label, count, isActive, onClick, alert = false }: { label: 
 }
 
 function SlaIndicator({ createdAt, status }: { createdAt: string, status: string }) {
-  // If it's already resolved, don't show traffic lights
   if (status === "APPROVED" || status === "FAILED") {
     return <span className="text-xs font-medium text-zinc-500">Resolved • {format(new Date(createdAt), 'MMM d')}</span>;
   }
@@ -216,14 +244,14 @@ function SlaIndicator({ createdAt, status }: { createdAt: string, status: string
   const hoursInQueue = differenceInHours(new Date(), new Date(createdAt));
   const timeString = formatDistanceToNow(new Date(createdAt));
 
-  let color = "bg-emerald-500"; // < 24 hours (Green)
+  let color = "bg-emerald-500"; 
   let textColor = "text-emerald-700 dark:text-emerald-400";
   
   if (hoursInQueue >= 48) {
-    color = "bg-red-500 animate-pulse"; // > 48 hours (Red - Urgent)
+    color = "bg-red-500 animate-pulse"; 
     textColor = "text-red-700 dark:text-red-400";
   } else if (hoursInQueue >= 24) {
-    color = "bg-amber-500"; // 24-48 hours (Amber - Warning)
+    color = "bg-amber-500"; 
     textColor = "text-amber-700 dark:text-amber-400";
   }
 
