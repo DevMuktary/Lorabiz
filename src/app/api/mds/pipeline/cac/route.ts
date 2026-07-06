@@ -5,9 +5,10 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    // 1. Fetch Business Names & LLCs in parallel
+    // 1. Fetch Business Names & LLCs in parallel (EXCLUDING UNSUBMITTED DRAFTS)
     const [bizNames, llcs] = await Promise.all([
       prisma.businessRegistration.findMany({
+        where: { status: { not: "UNSUBMITTED" } },
         orderBy: { createdAt: 'desc' },
         include: {
           user: { select: { firstName: true, lastName: true, email: true } },
@@ -15,6 +16,7 @@ export async function GET() {
         }
       }),
       prisma.llcRegistration.findMany({
+        where: { status: { not: "UNSUBMITTED" } },
         orderBy: { createdAt: 'desc' },
         include: {
           user: { select: { firstName: true, lastName: true, email: true } },
@@ -27,7 +29,8 @@ export async function GET() {
     const formattedBizNames = bizNames.map(biz => ({
       id: biz.id,
       trackingId: biz.trackingId || "PENDING-ID",
-      type: "Business Name",
+      type: "BUSINESS_NAME", // Used for strict internal logic
+      displayType: "Business Name",
       proposedName: biz.proposedName,
       status: biz.status,
       createdAt: biz.createdAt,
@@ -41,7 +44,8 @@ export async function GET() {
     const formattedLlcs = llcs.map(llc => ({
       id: llc.id,
       trackingId: llc.trackingId || "PENDING-ID",
-      type: "LLC Formation",
+      type: "LLC", // Used for strict internal logic
+      displayType: "LLC Formation",
       proposedName: llc.proposedName,
       status: llc.status,
       createdAt: llc.createdAt,
