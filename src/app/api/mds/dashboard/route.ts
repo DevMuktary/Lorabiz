@@ -19,6 +19,7 @@ export async function GET() {
       llcsQueried,
       bizNamesApprovedToday,
       llcsApprovedToday,
+      ninSlipsCompletedToday, // Added NIN slips to daily completions
       totalBizNames,
       totalLlcs,
       totalNinSlips,
@@ -34,6 +35,7 @@ export async function GET() {
       prisma.llcRegistration.count({ where: { status: "QUERIED" } }),
       prisma.businessRegistration.count({ where: { status: "APPROVED", updatedAt: { gte: today } } }),
       prisma.llcRegistration.count({ where: { status: "APPROVED", updatedAt: { gte: today } } }),
+      prisma.ninRequestLog.count({ where: { status: "SUCCESS", createdAt: { gte: today } } }),
       
       // Service Distribution
       prisma.businessRegistration.count(),
@@ -97,11 +99,11 @@ export async function GET() {
     }
 
     // 4. Process Service Distribution Percentages
-    const totalServices = totalBizNames + totalLlcs + totalNinSlips || 1; // avoid division by zero
+    const totalServices = totalBizNames + totalLlcs + totalNinSlips || 1; 
     const serviceDistribution = [
       { name: 'Business Names', value: Math.round((totalBizNames / totalServices) * 100) },
       { name: 'LLC Formations', value: Math.round((totalLlcs / totalServices) * 100) },
-      { name: 'NIN Slips', value: Math.round((totalNinSlips / totalServices) * 100) },
+      { name: 'Identity Services', value: Math.round((totalNinSlips / totalServices) * 100) }, // Generalized wording
     ];
 
     // 5. Format Audit Logs
@@ -114,18 +116,18 @@ export async function GET() {
       details: audit.details || "No additional details provided."
     }));
 
-    // Return the perfectly mapped payload
+    // Return the accurately mapped, global payload
     return NextResponse.json({
       kpis: {
         revenue30d,
-        pendingRegistrations: bizNamesPending + llcsPending,
+        pendingOrders: bizNamesPending + llcsPending, // generalized terminology
         avgTat: avgTatFormatted,
         activeUsers: usersCount
       },
       pipeline: {
         pending: bizNamesPending + llcsPending,
         queried: bizNamesQueried + llcsQueried,
-        approvedToday: bizNamesApprovedToday + llcsApprovedToday
+        completedToday: bizNamesApprovedToday + llcsApprovedToday + ninSlipsCompletedToday // Now includes NINs
       },
       charts: {
         revenueData: revenueChartData,
