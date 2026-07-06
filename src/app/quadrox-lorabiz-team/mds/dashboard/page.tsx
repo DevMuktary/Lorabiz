@@ -32,8 +32,8 @@ export default function MdsDashboardPage() {
   }, []);
 
   // Safe defaults if data fails to load
-  const kpis = data?.kpis || { revenue30d: 0, pendingRegistrations: 0, avgTat: "0h 0m", activeUsers: 0 };
-  const pipeline = data?.pipeline || { pending: 0, queried: 0, approvedToday: 0 };
+  const kpis = data?.kpis || { revenue30d: 0, pendingOrders: 0, avgTat: "0h 0m", activeUsers: 0 };
+  const pipeline = data?.pipeline || { pending: 0, queried: 0, completedToday: 0 };
   const revenueData = data?.charts?.revenueData || [];
   const serviceDistribution = data?.charts?.serviceDistribution || [];
   const auditFeed = data?.auditFeed || [];
@@ -54,7 +54,8 @@ export default function MdsDashboardPage() {
         ) : (
           <>
             <KpiCard title="Gross Revenue (30d)" value={formatCurrency(kpis.revenue30d)} trend="Live" positive={true} />
-            <KpiCard title="Pending Registrations" value={kpis.pendingRegistrations.toString()} trend="Active" positive={true} />
+            {/* Generalized wording from "Pending Registrations" */}
+            <KpiCard title="Pending Orders" value={kpis.pendingOrders.toString()} trend="Active" positive={true} />
             <KpiCard title="Average Staff TAT" value={kpis.avgTat} trend="Speed" positive={true} icon={<Clock size={16} />} />
             <KpiCard title="Active Users" value={kpis.activeUsers.toLocaleString()} trend="Total" positive={true} />
           </>
@@ -141,19 +142,19 @@ export default function MdsDashboardPage() {
       {/* Operational Control & Audit Row */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         
-        {/* Filing Pipeline Status */}
+        {/* Generalized Pipeline Status */}
         <div className="bg-white dark:bg-zinc-900/80 backdrop-blur-xl p-4 sm:p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm ring-1 ring-white/5 hover:shadow-md transition-shadow">
           <div className="flex items-center mb-6">
             <Layers className="text-indigo-500 mr-2" size={20} />
-            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Pipeline Status</h2>
+            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Global Order Pipeline</h2>
           </div>
           {isLoading ? (
              <div className="w-full h-32 bg-zinc-100 dark:bg-zinc-800/50 animate-pulse rounded-lg"></div>
           ) : (
             <div className="space-y-6">
-              <PipelineRow label="Pending Review" count={pipeline.pending} color="bg-amber-500" percent={pipeline.pending > 0 ? 65 : 0} />
-              <PipelineRow label="Queried by CAC" count={pipeline.queried} color="bg-red-500" percent={pipeline.queried > 0 ? 15 : 0} />
-              <PipelineRow label="Approved Today" count={pipeline.approvedToday} color="bg-emerald-500" percent={pipeline.approvedToday > 0 ? 100 : 0} />
+              <PipelineRow label="Awaiting Processing" count={pipeline.pending} color="bg-amber-500" percent={pipeline.pending > 0 ? 65 : 0} />
+              <PipelineRow label="Queried / Action Needed" count={pipeline.queried} color="bg-red-500" percent={pipeline.queried > 0 ? 15 : 0} />
+              <PipelineRow label="Completed Today" count={pipeline.completedToday} color="bg-emerald-500" percent={pipeline.completedToday > 0 ? 100 : 0} />
             </div>
           )}
         </div>
