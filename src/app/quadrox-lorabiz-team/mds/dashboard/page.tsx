@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { 
-  Users, Briefcase, ShieldAlert, ArrowUpRight, 
+  Users, Briefcase, ShieldWarning, ArrowUpRight, 
   Lightning, CheckCircle, WarningCircle, Clock
 } from "@phosphor-icons/react/dist/ssr";
 
@@ -191,7 +191,7 @@ export default async function MdsDashboardOverviewPage() {
           <div>
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800/80">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4.5 w-4.5 text-teal-400" />
+                <ShieldWarning className="h-4.5 w-4.5 text-teal-400" />
                 <h3 className="text-sm font-bold text-white">Live Authentication Audit</h3>
               </div>
               <Link href="/quadrox-lorabiz-team/mds/dashboard/audit" className="text-xs text-teal-400 hover:underline font-medium">
