@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, Clock, Activity } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Clock, Layers } from 'lucide-react';
 
 // Mock Data for Visualization
 const revenueData = [
@@ -26,10 +26,10 @@ const COLORS = ['#6366f1', '#14b8a6', '#f59e0b']; // Indigo, Teal, Amber
 
 export default function MdsDashboardPage() {
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
       
       {/* KPI Ribbon */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
         <KpiCard title="Gross Revenue (30d)" value="₦12,450,000" trend="+14.5%" positive={true} />
         <KpiCard title="Pending Registrations" value="142" trend="-5.2%" positive={true} />
         <KpiCard title="Average Staff TAT" value="4h 12m" trend="+1h 5m" positive={false} icon={<Clock size={16} />} />
@@ -37,20 +37,20 @@ export default function MdsDashboardPage() {
       </div>
 
       {/* Analytics Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Revenue Chart */}
-        <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
+        <div className="xl:col-span-2 bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Revenue Trend</h2>
-            <select className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm rounded-md px-3 py-1.5 focus:ring-indigo-500 focus:border-indigo-500">
+            <select className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm rounded-md px-3 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-auto">
               <option>Last 7 Days</option>
               <option>Last 30 Days</option>
             </select>
           </div>
-          <div className="h-[300px] w-full">
+          <div className="h-[250px] sm:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+              <LineChart data={revenueData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.2} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={(value) => `₦${value / 1000}k`} />
@@ -70,10 +70,10 @@ export default function MdsDashboardPage() {
         </div>
 
         {/* Service Distribution */}
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-6">Service Distribution</h2>
           <div className="flex-1 flex flex-col items-center justify-center">
-            <div className="h-[220px] w-full">
+            <div className="h-[200px] sm:h-[220px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={serviceDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
@@ -105,24 +105,23 @@ export default function MdsDashboardPage() {
       </div>
 
       {/* Operational Control & Audit Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         
-        {/* System Controls */}
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+        {/* Filing Pipeline Status */}
+        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
           <div className="flex items-center mb-6">
-            <Activity className="text-indigo-500 mr-2" size={20} />
-            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">System Controls</h2>
+            <Layers className="text-indigo-500 mr-2" size={20} />
+            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Pipeline Status</h2>
           </div>
-          <div className="space-y-4">
-            <ControlToggle label="CAC API Sync" status="Operational" active={true} />
-            <ControlToggle label="NIN Verification" status="Operational" active={true} />
-            <ControlToggle label="Wallet Funding" status="Maintenance" active={false} />
-            <ControlToggle label="New Registrations" status="Operational" active={true} />
+          <div className="space-y-5">
+            <PipelineRow label="Pending Review" count={142} color="bg-amber-500" percent={65} />
+            <PipelineRow label="Queried by CAC" count={28} color="bg-red-500" percent={15} />
+            <PipelineRow label="Approved Today" count={45} color="bg-emerald-500" percent={20} />
           </div>
         </div>
 
         {/* Live Audit Feed */}
-        <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <div className="xl:col-span-2 bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Live Audit Feed</h2>
             <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">View Full Ledger</button>
@@ -144,7 +143,7 @@ export default function MdsDashboardPage() {
 
 function KpiCard({ title, value, trend, positive, icon }: { title: string, value: string, trend: string, positive: boolean, icon?: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between">
+    <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between">
       <div className="flex justify-between items-start mb-4">
         <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
         {icon && <span className="text-zinc-400">{icon}</span>}
@@ -160,30 +159,30 @@ function KpiCard({ title, value, trend, positive, icon }: { title: string, value
   );
 }
 
-function ControlToggle({ label, status, active }: { label: string, status: string, active: boolean }) {
+function PipelineRow({ label, count, color, percent }: { label: string, count: number, color: string, percent: number }) {
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800/50">
-      <div>
-        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{label}</p>
-        <p className={`text-xs mt-0.5 ${active ? 'text-emerald-500' : 'text-amber-500'}`}>{status}</p>
+    <div>
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{label}</span>
+        <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{count}</span>
       </div>
-      <button className={`w-10 h-5 rounded-full relative transition-colors duration-200 ease-in-out ${active ? 'bg-indigo-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}>
-        <span className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform duration-200 ease-in-out ${active ? 'translate-x-5' : 'translate-x-0'}`}></span>
-      </button>
+      <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2">
+        <div className={`${color} h-2 rounded-full`} style={{ width: `${percent}%` }}></div>
+      </div>
     </div>
   );
 }
 
 function AuditRow({ staff, action, target, time }: { staff: string, action: string, target: string, time: string }) {
   return (
-    <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800/50 last:border-0 last:pb-0">
+    <div className="flex items-start sm:items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800/50 last:border-0 last:pb-0 flex-col sm:flex-row gap-2 sm:gap-0">
       <div className="flex flex-col">
         <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
           {staff} <span className="text-zinc-500 dark:text-zinc-400 font-normal">performed</span> {action}
         </p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">Target: {target}</p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1 break-all">Target: {target}</p>
       </div>
-      <span className="text-xs text-zinc-400">{time}</span>
+      <span className="text-xs text-zinc-400 shrink-0">{time}</span>
     </div>
   );
 }
