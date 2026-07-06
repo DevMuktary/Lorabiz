@@ -4,30 +4,42 @@ import { startOfDay, subDays, format } from "date-fns";
 
 const prisma = new PrismaClient();
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    // Parse the requested date range from the URL (default to 30 days)
+    const { searchParams } = new URL(req.url);
+    const days = searchParams.get("days") || "30";
+    
     const today = startOfDay(new Date());
-    const thirtyDaysAgo = subDays(today, 30);
+    let startDate = new Date(0); // Default to beginning of time if "all"
+    if (days !== "all") {
+      startDate = subDays(today, parseInt(days, 10));
+    }
 
-    // 1. Fetch Transactions with User Data
-    const transactions = await prisma.transaction.findMany({
-      take: 200, // Fetch the last 200 for client-side filtering
-      orderBy: { createdAt: "desc" },
-      include: {
-        wallet: {
-          include: {
-            user: { select: { firstName: true, lastName: true, email: true } }
+    // 1. Fetch Data in Parallel
+    const [transactions, walletAgg] = await Promise.all([
+      // Fetch Ledger
+      prisma.transaction.findMany({
+        where: { createdAt: { gte: startDate } },
+        orderBy: { createdAt: "desc" },
+        include: {
+          wallet: {
+            include: { user: { select: { firstName: true, lastName: true, email: true } } }
           }
         }
-      }
-    });
+      }),
+      // Fetch Total Wallet Liabilities (Unspent user deposits)
+      prisma.wallet.aggregate({
+        _sum: { balance: true }
+      })
+    ]);
 
-    // 2. Calculate Revenue Splits (30 Days)
+    // 2. Calculate Revenue Metrics
     let totalRevenue = 0;
     let cacRevenue = 0;
     let ninRevenue = 0;
 
-    // Daily revenue for the chart
+    // Build Chart Data (Last 7 days of the selected range for a cleaner chart)
     const revenueByDay: Record<string, { name: string, CAC: number, NIN: number }> = {};
     for (let i = 6; i >= 0; i--) {
       const dayStr = format(subDays(today, i), 'EEE');
@@ -35,19 +47,15 @@ export async function GET() {
     }
 
     transactions.forEach((tx) => {
-      // Only count successful debits (payments for services) as revenue
-      if (tx.type === "DEBIT" && tx.status === "SUCCESS" && tx.createdAt >= thirtyDaysAgo) {
+      if (tx.type === "DEBIT" && tx.status === "SUCCESS") {
         const amount = Number(tx.amount);
         totalRevenue += amount;
         
         const isNin = tx.description.toLowerCase().includes("nin");
-        if (isNin) {
-          ninRevenue += amount;
-        } else {
-          cacRevenue += amount; // Assumes anything not NIN is a CAC service
-        }
+        if (isNin) ninRevenue += amount;
+        else cacRevenue += amount;
 
-        // Add to chart data if within last 7 days
+        // Chart aggregation
         if (tx.createdAt >= subDays(today, 7)) {
           const dayStr = format(tx.createdAt, 'EEE');
           if (revenueByDay[dayStr]) {
@@ -57,8 +65,6 @@ export async function GET() {
         }
       }
     });
-
-    const chartData = Object.values(revenueByDay);
 
     // 3. Format the Ledger for the UI
     const ledger = transactions.map(tx => ({
@@ -71,8 +77,8 @@ export async function GET() {
       amount: Number(tx.amount),
       balanceBefore: Number(tx.balanceBefore),
       balanceAfter: Number(tx.balanceAfter),
-      type: tx.type, // CREDIT, DEBIT, REFUND
-      status: tx.status // SUCCESS, PENDING, FAILED
+      type: tx.type, 
+      status: tx.status 
     }));
 
     return NextResponse.json({
@@ -80,8 +86,9 @@ export async function GET() {
         totalRevenue,
         cacRevenue,
         ninRevenue,
+        totalLiabilities: Number(walletAgg._sum.balance || 0) // New Metric
       },
-      chartData,
+      chartData: Object.values(revenueByDay),
       ledger
     });
 
