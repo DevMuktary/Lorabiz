@@ -120,6 +120,10 @@ model BusinessRegistration {
   queryReason       String?            @db.Text
   queryStatus       String?            @default("UNRESOLVED")
   queryDate         DateTime?
+  registrationNumber String?    // BN Number
+  taxId              String?    // TIN
+  certificateUrl     String?    // PDF URL
+  statusReportUrl    String?    // PDF URL
   
   // --- COMPANY INFORMATION ---
   companyEmail      String?
@@ -202,6 +206,11 @@ model LlcRegistration {
   
   queryReason         String?            @db.Text
   queryStatus         String?            @default("UNRESOLVED")
+  registrationNumber String?    // RC Number
+  taxId              String?    // TIN
+  certificateUrl     String?    // PDF URL
+  statusReportUrl    String?    // PDF URL
+  memorandumUrl      String?    // PDF URL (LLC Only)
 
   witnessSignatureUrl   String?
   declarantSignatureUrl String?
