@@ -19,7 +19,7 @@ export async function GET() {
       llcsQueried,
       bizNamesApprovedToday,
       llcsApprovedToday,
-      ninSlipsCompletedToday, // Added NIN slips to daily completions
+      ninSlipsCompletedToday, 
       totalBizNames,
       totalLlcs,
       totalNinSlips,
@@ -37,7 +37,7 @@ export async function GET() {
       prisma.llcRegistration.count({ where: { status: "APPROVED", updatedAt: { gte: today } } }),
       prisma.ninRequestLog.count({ where: { status: "SUCCESS", createdAt: { gte: today } } }),
       
-      // Service Distribution
+      // Service Distribution Totals
       prisma.businessRegistration.count(),
       prisma.llcRegistration.count(),
       prisma.ninRequestLog.count({ where: { status: "SUCCESS" } }),
@@ -71,7 +71,7 @@ export async function GET() {
     // 2. Process Revenue Chart Data (Last 7 Days)
     const revenueByDay: Record<string, number> = {};
     for (let i = 6; i >= 0; i--) {
-      revenueByDay[format(subDays(today, i), 'EEE')] = 0; // Initialize e.g., 'Mon': 0
+      revenueByDay[format(subDays(today, i), 'EEE')] = 0;
     }
     
     let revenue30d = 0;
@@ -98,12 +98,13 @@ export async function GET() {
       avgTatFormatted = `${hours}h ${minutes}m`;
     }
 
-    // 4. Process Service Distribution Percentages
-    const totalServices = totalBizNames + totalLlcs + totalNinSlips || 1; 
+    // 4. Process Service Distribution Percentages (MACRO LEVEL)
+    const totalCacServices = totalBizNames + totalLlcs;
+    const totalServices = totalCacServices + totalNinSlips || 1; 
+    
     const serviceDistribution = [
-      { name: 'Business Names', value: Math.round((totalBizNames / totalServices) * 100) },
-      { name: 'LLC Formations', value: Math.round((totalLlcs / totalServices) * 100) },
-      { name: 'Identity Services', value: Math.round((totalNinSlips / totalServices) * 100) }, // Generalized wording
+      { name: 'CAC Services', value: Math.round((totalCacServices / totalServices) * 100) || 0 },
+      { name: 'NIN Slip Services', value: Math.round((totalNinSlips / totalServices) * 100) || 0 },
     ];
 
     // 5. Format Audit Logs
@@ -116,18 +117,17 @@ export async function GET() {
       details: audit.details || "No additional details provided."
     }));
 
-    // Return the accurately mapped, global payload
     return NextResponse.json({
       kpis: {
         revenue30d,
-        pendingOrders: bizNamesPending + llcsPending, // generalized terminology
+        pendingOrders: bizNamesPending + llcsPending,
         avgTat: avgTatFormatted,
         activeUsers: usersCount
       },
       pipeline: {
         pending: bizNamesPending + llcsPending,
         queried: bizNamesQueried + llcsQueried,
-        completedToday: bizNamesApprovedToday + llcsApprovedToday + ninSlipsCompletedToday // Now includes NINs
+        completedToday: bizNamesApprovedToday + llcsApprovedToday + ninSlipsCompletedToday
       },
       charts: {
         revenueData: revenueChartData,
