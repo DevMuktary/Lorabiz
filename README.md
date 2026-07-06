@@ -1,6 +1,6 @@
-# Lumebiz 🚀
+# LoraBiz 🚀
 
-Lumebiz is a comprehensive, automated business registration and management platform built to streamline Corporate Affairs Commission (CAC) processes. It provides an intuitive dashboard for users to register business names, manage internal wallets, and track applications with the help of AI-driven categorization.
+Lorabiz is a comprehensive, automated business registration and management platform built to streamline Corporate Affairs Commission (CAC) processes. It provides an intuitive dashboard for users to register business names, manage internal wallets, and track applications with the help of AI-driven categorization.
 
 ## 🛠 Tech Stack
 
