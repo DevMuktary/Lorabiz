@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, Clock, Layers, X, FileText, Activity } from 'lucide-react';
 
-const COLORS = ['#6366f1', '#14b8a6', '#f59e0b'];
+const COLORS = ['#6366f1', '#14b8a6']; // Indigo (CAC), Teal (NIN)
 
 export default function MdsDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +35,13 @@ export default function MdsDashboardPage() {
   const kpis = data?.kpis || { revenue30d: 0, pendingOrders: 0, avgTat: "0h 0m", activeUsers: 0 };
   const pipeline = data?.pipeline || { pending: 0, queried: 0, completedToday: 0 };
   const revenueData = data?.charts?.revenueData || [];
-  const serviceDistribution = data?.charts?.serviceDistribution || [];
+  
+  // Default fallback mock matching the new 2-category structure
+  const serviceDistribution = data?.charts?.serviceDistribution || [
+    { name: 'CAC Services', value: 80 },
+    { name: 'NIN Slip Services', value: 20 },
+  ];
+  
   const auditFeed = data?.auditFeed || [];
 
   const formatCurrency = (amount: number) => {
@@ -54,7 +60,6 @@ export default function MdsDashboardPage() {
         ) : (
           <>
             <KpiCard title="Gross Revenue (30d)" value={formatCurrency(kpis.revenue30d)} trend="Live" positive={true} />
-            {/* Generalized wording from "Pending Registrations" */}
             <KpiCard title="Pending Orders" value={kpis.pendingOrders.toString()} trend="Active" positive={true} />
             <KpiCard title="Average Staff TAT" value={kpis.avgTat} trend="Speed" positive={true} icon={<Clock size={16} />} />
             <KpiCard title="Active Users" value={kpis.activeUsers.toLocaleString()} trend="Total" positive={true} />
