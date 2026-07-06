@@ -133,7 +133,7 @@ function AdminLoginContent() {
               <CrownSimple weight="bold" className="h-3.5 w-3.5" /> MD Authentication
             </div>
             <h2 className="text-3xl font-bold text-white tracking-tight">Executive Sign In</h2>
-            <p className="text-slate-400 mt-2 text-sm">Enter your administrative credentials to begin security challenge.</p>
+            <p className="text-slate-400 mt-2 text-sm">Enter your administrative credentials to access your dashboard</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
