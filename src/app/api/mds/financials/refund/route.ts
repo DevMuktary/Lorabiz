@@ -12,6 +12,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
 
+    // --- THE FIX: Find the actual Admin user to tie the log to ---
+    const mdsAdmin = await prisma.user.findFirst({
+      where: { role: "ADMIN" }
+    });
+
+    if (!mdsAdmin) {
+      return NextResponse.json({ error: "System Error: No Admin account found to authorize this action." }, { status: 500 });
+    }
+    // -----------------------------------------------------------
+
     // 1. Fetch the original transaction to validate
     const originalTx = await prisma.transaction.findUnique({
       where: { id: transactionId },
@@ -55,15 +65,14 @@ export async function POST(req: Request) {
           type: "REFUND",
           status: "SUCCESS",
           reference: refundRef,
-          // Explicitly tying the reason to the original transaction
           description: `Refund for [${originalTx.reference}] - Reason: ${reason}` 
         }
       });
 
-      // C. Log the MDS Action
+      // C. Log the MDS Action using the REAL Admin ID
       await tx.staffActionLog.create({
         data: {
-          userId: "SYSTEM_MDS", // Ideally, pull the actual MDS ID from NextAuth session
+          userId: mdsAdmin.id, // <-- Fixed: Now using a valid User ID
           action: "ISSUED_REFUND",
           targetId: refundRef,
           details: `Issued ₦${refundAmount} refund for original TX ${originalTx.reference}. Reason: ${reason}`
