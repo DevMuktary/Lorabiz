@@ -26,7 +26,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User account not found." }, { status: 404 });
     }
 
-    // Extract network telemetry for audit logs
     const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "Unknown IP";
     const userAgent = req.headers.get("user-agent") || "Unknown Device";
 
@@ -38,14 +37,21 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "No authenticator secret pending verification." }, { status: 400 });
       }
 
-      // Await verify to resolve async Promise return types in modern otplib
       const verificationResult = await verify({
         token: code,
         secret: user.twoFactorSecret,
       });
 
-      // Handle both boolean true and object VerifyResult { delta: number } returns
-      const isValid = typeof verificationResult === "boolean" ? verificationResult : !!verificationResult;
+      // Strictly inspect boolean properties inside the result object
+      let isValid = false;
+      if (typeof verificationResult === "boolean") {
+        isValid = verificationResult === true;
+      } else if (verificationResult && typeof verificationResult === "object") {
+        isValid = Boolean(
+          (verificationResult as any).valid === true || 
+          (verificationResult as any).isValid === true
+        );
+      }
 
       if (!isValid) {
         return NextResponse.json({ error: "Invalid authenticator code. Please check your app clock." }, { status: 400 });
@@ -68,7 +74,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Verification passkey is invalid or has expired." }, { status: 400 });
       }
 
-      // Cleanup used passkey
       await prisma.twoFactorCode.deleteMany({
         where: { userId: user.id },
       });
@@ -85,7 +90,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Write permanent audit trail record
     await prisma.securityAuditLog.create({
       data: {
         email: user.email,
