@@ -6,6 +6,7 @@ import { differenceInHours, formatDistanceToNow, format } from 'date-fns';
 import { 
   ArrowLeft, Search, RefreshCw, Eye, UserPlus, Briefcase, Building2, Filter
 } from 'lucide-react';
+import ApplicationDrawer from '@/components/mds/ApplicationDrawer';
 
 export default function CacPipelinePage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -15,6 +16,9 @@ export default function CacPipelinePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("ALL"); 
   const [serviceFilter, setServiceFilter] = useState("ALL"); // ALL, BUSINESS_NAME, LLC
+  
+  // Drawer State
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
 
   const fetchPipeline = async () => {
     setIsLoading(true);
@@ -195,6 +199,7 @@ export default function CacPipelinePage() {
                     {/* Actions */}
                     <td className="px-6 py-4 text-center">
                       <button 
+                        onClick={() => setSelectedTicket(ticket)}
                         className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-zinc-800 rounded-md transition-colors"
                         title="Inspect Application"
                       >
@@ -208,6 +213,16 @@ export default function CacPipelinePage() {
           </table>
         </div>
       </div>
+
+      {/* Drawer Rendering */}
+      <ApplicationDrawer 
+        ticket={selectedTicket} 
+        onClose={() => setSelectedTicket(null)} 
+        onUpdateSuccess={() => {
+          setSelectedTicket(null);
+          fetchPipeline(); // Instantly refresh table data
+        }} 
+      />
     </div>
   );
 }
