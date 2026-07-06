@@ -28,6 +28,7 @@ enum RegistrationStatus {
   PENDING
   QUERIED
   APPROVED
+  FAILED      // Added FAILED status for global tracking
 }
 
 enum TransactionType {
@@ -92,6 +93,10 @@ model User {
   waitlists        Waitlist[]
   twoFactorCodes   TwoFactorCode[]
   staffActions     StaffActionLog[]
+  
+  // --- STAFF ASSIGNMENTS ---
+  assignedBiz      BusinessRegistration[] @relation("BizStaffAssignment")
+  assignedLlcs     LlcRegistration[]      @relation("LlcStaffAssignment")
 }
 
 // ==========================================
@@ -127,6 +132,10 @@ model BusinessRegistration {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   processedAt       DateTime?          // Used for Staff TAT (Turnaround Time) tracking
+  
+  // --- STAFF ASSIGNMENT ---
+  assignedToId      String?
+  assignedStaff     User?              @relation("BizStaffAssignment", fields: [assignedToId], references: [id])
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   proprietors       Proprietor[]      
@@ -202,6 +211,10 @@ model LlcRegistration {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   processedAt         DateTime?          // Used for Staff TAT (Turnaround Time) tracking
+  
+  // --- STAFF ASSIGNMENT ---
+  assignedToId        String?
+  assignedStaff       User?              @relation("LlcStaffAssignment", fields: [assignedToId], references: [id])
   
   user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   officers            CompanyOfficer[]
