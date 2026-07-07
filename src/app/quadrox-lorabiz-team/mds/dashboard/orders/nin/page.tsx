@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { 
-  ArrowLeft, Search, RefreshCw, Eye, CheckCircle2, XCircle, Zap, DollarSign, X, Receipt, CornerUpLeft, AlertCircle
+  ArrowLeft, Search, RefreshCw, Eye, CheckCircle2, XCircle, Zap, X, CornerUpLeft, AlertCircle
 } from 'lucide-react';
 
 export default function NinPipelinePage() {
@@ -172,6 +172,7 @@ export default function NinPipelinePage() {
         </div>
       </div>
 
+      {/* Drawer */}
       <NinInspectionDrawer 
         log={selectedLog} 
         onClose={() => setSelectedLog(null)} 
@@ -233,7 +234,7 @@ function NinInspectionDrawer({ log, onClose, formatCurrency }: { log: any, onClo
     setError("");
 
     try {
-      // Re-uses the existing financial refund API we built earlier!
+      // Re-uses the existing financial refund API we built earlier
       const res = await fetch("/api/mds/financials/refund", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -248,7 +249,6 @@ function NinInspectionDrawer({ log, onClose, formatCurrency }: { log: any, onClo
       
       // Close drawer after success
       onClose();
-      // Normally we would refetch, but since we close the drawer, they can just refresh the page if needed.
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -288,8 +288,12 @@ function NinInspectionDrawer({ log, onClose, formatCurrency }: { log: any, onClo
                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(new Date(log.createdAt), 'MMM do, yyyy • h:mm a')}</span>
               </div>
               <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                <span className="text-zinc-500 font-medium">Client</span>
+                <span className="text-zinc-500 font-medium">Client Name</span>
                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">{log.clientName}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                <span className="text-zinc-500 font-medium">Client Email</span>
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">{log.clientEmail}</span>
               </div>
               <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
                 <span className="text-zinc-500 font-medium">Wallet Transaction Ref</span>
