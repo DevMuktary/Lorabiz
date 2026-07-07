@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const { 
       ticketId, ticketType, actionType, reason, 
       registrationNumber, taxId, certificateUrl, statusReportUrl, memorandumUrl,
-      issueRefund, refundAmount // New Refund Fields
+      issueRefund, refundAmount, staffId // NEW: staffId for assignment
     } = body;
 
     if (!ticketId || !ticketType || !actionType) {
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
       };
       
       if (actionType === "UNASSIGN") updateData.assignedToId = null;
+      if (actionType === "ASSIGN" && staffId) updateData.assignedToId = staffId; // Handle new ASSIGN action
 
       // Attach deliverables
       if (actionType === "APPROVE") {
@@ -38,7 +39,6 @@ export async function POST(req: Request) {
         if (ticketType === "LLC") updateData.memorandumUrl = memorandumUrl;
       }
 
-      // Update the specific ticket
       if (ticketType === "BUSINESS_NAME") {
         const updated = await tx.businessRegistration.update({ where: { id: ticketId }, data: updateData });
         targetRef = updated.trackingId || ticketId;
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
         clientId = updated.userId;
       }
 
-      // PROCESS REFUND IF REQUESTED (Only on Fail)
+      // PROCESS REFUND
       if (actionType === "FAIL" && issueRefund && refundAmount) {
         const wallet = await tx.wallet.findUnique({ where: { userId: clientId } });
         if (wallet) {
@@ -57,33 +57,23 @@ export async function POST(req: Request) {
           const balanceAfter = Number(balanceBefore) + Number(refundAmount);
           const refundRef = `REF-${Math.floor(Math.random() * 1000000000)}`;
 
-          await tx.wallet.update({
-            where: { id: wallet.id },
-            data: { balance: balanceAfter }
-          });
-
+          await tx.wallet.update({ where: { id: wallet.id }, data: { balance: balanceAfter } });
           await tx.transaction.create({
             data: {
-              walletId: wallet.id,
-              amount: refundAmount,
-              balanceBefore,
-              balanceAfter,
-              type: "REFUND",
-              status: "SUCCESS",
-              reference: refundRef,
+              walletId: wallet.id, amount: refundAmount, balanceBefore, balanceAfter,
+              type: "REFUND", status: "SUCCESS", reference: refundRef,
               description: `Refund for Failed Application [${targetRef}]. Reason: ${reason}`
             }
           });
         }
       }
 
-      // Log action
       await tx.staffActionLog.create({
         data: {
           userId: mdsAdmin.id,
           action: `ADMIN_${actionType}`,
           targetId: targetRef,
-          details: `Admin executed ${actionType} on ${ticketType}. ${issueRefund ? `Issued ₦${refundAmount} refund.` : ''} Reason: ${reason}`
+          details: `Admin executed ${actionType} on ${ticketType}. ${actionType === "ASSIGN" ? `Assigned to staff ${staffId}.` : ''} Reason: ${reason || 'N/A'}`
         }
       });
     });
