@@ -11,6 +11,7 @@ import ApplicationDrawer from '@/components/mds/ApplicationDrawer';
 export default function CacPipelinePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [pipeline, setPipeline] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]); // NEW: Store staff for assignments
   
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,6 +28,7 @@ export default function CacPipelinePage() {
       if (!res.ok) throw new Error("Failed to fetch");
       const result = await res.json();
       setPipeline(result.pipeline);
+      setStaffList(result.staff || []); // NEW: Save the staff list
     } catch (error) {
       console.error("Pipeline error:", error);
     } finally {
@@ -217,6 +219,7 @@ export default function CacPipelinePage() {
       {/* Drawer Rendering */}
       <ApplicationDrawer 
         ticket={selectedTicket} 
+        staffList={staffList} // Pass staff to the drawer
         onClose={() => setSelectedTicket(null)} 
         onUpdateSuccess={() => {
           setSelectedTicket(null);
