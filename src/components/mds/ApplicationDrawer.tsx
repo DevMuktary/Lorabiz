@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { X, FileText, CheckCircle2, RefreshCw, Clock, XCircle, AlertCircle, Building, Users, UploadCloud, Download, Eye, DollarSign, Printer, Copy, Check } from 'lucide-react';
+import { X, FileText, CheckCircle2, RefreshCw, Clock, XCircle, AlertCircle, Building, Users, UploadCloud, Download, Eye, DollarSign, Printer, Copy, Check, Mail } from 'lucide-react';
 
 export function StatusPill({ status }: { status: string }) {
   if (status === 'APPROVED') return <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700"><CheckCircle2 size={12} className="mr-1" /> Approved</span>;
@@ -40,7 +40,6 @@ export default function ApplicationDrawer({ ticket, staffList, onClose, onUpdate
   const [refundAmount, setRefundAmount] = useState("");
   const [error, setError] = useState("");
 
-  // Inline Viewer State
   const [viewingDoc, setViewingDoc] = useState<{url: string, type: string} | null>(null);
 
   if (!ticket) return null;
@@ -97,7 +96,7 @@ export default function ApplicationDrawer({ ticket, staffList, onClose, onUpdate
           .label { font-weight: bold; color: #555; }
         </style></head><body>
           <h2>${ticket.displayType} Application: ${ticket.proposedName} (TRK: ${ticket.trackingId})</h2>
-          ${printContent.innerHTML.replace(/<button[^>]*>.*?<\/button>/gi, '')} <!-- Strips buttons -->
+          ${printContent.innerHTML.replace(/<button[^>]*>.*?<\/button>/gi, '')}
         </body></html>
       `);
       printWindow.document.close();
@@ -146,6 +145,18 @@ export default function ApplicationDrawer({ ticket, staffList, onClose, onUpdate
               <p className="text-xs text-zinc-500 mt-1 font-mono">TRK: {ticket.trackingId}</p>
             </div>
             <StatusPill status={ticket.status} />
+          </div>
+
+          {/* NEW: Explicit Submitter Information Card */}
+          <div className="mt-5 p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+            <div>
+              <span className="text-[10px] font-bold uppercase text-zinc-500 block mb-0.5">Submitted By (Account Holder)</span>
+              <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{ticket.clientName}</span>
+            </div>
+            <div className="sm:text-right">
+              <span className="text-[10px] font-bold uppercase text-zinc-500 block mb-0.5">Contact Email</span>
+              <EmailCopyDisplay email={ticket.clientEmail} />
+            </div>
           </div>
 
           <div className="flex gap-4 mt-6 border-b border-zinc-200 dark:border-zinc-800">
@@ -361,6 +372,25 @@ export default function ApplicationDrawer({ ticket, staffList, onClose, onUpdate
 }
 
 // Sub-components
+function EmailCopyDisplay({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: any) => {
+    e.preventDefault();
+    navigator.clipboard.writeText(email);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="flex items-center sm:justify-end gap-2 group">
+      <a href={`mailto:${email}`} className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline flex items-center">
+        <Mail size={14} className="mr-1.5" /> {email}
+      </a>
+      <button onClick={handleCopy} title="Copy Email" className="text-zinc-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
+        {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+      </button>
+    </div>
+  );
+}
+
 function DetailRow({ label, value }: { label: string, value: string | undefined | null }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
@@ -386,7 +416,7 @@ function DetailRow({ label, value }: { label: string, value: string | undefined 
 function DocLink({ label, url, onOpen }: { label: string, url: string | undefined | null, onOpen: (doc: {url: string, type: string}) => void }) {
   if (!url) return null;
   const isPdf = url.toLowerCase().includes('.pdf');
-  const downloadUrl = url.replace('/upload/', '/upload/fl_attachment/'); // Forces Cloudinary to trigger download
+  const downloadUrl = url.replace('/upload/', '/upload/fl_attachment/'); 
   
   return (
     <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-md overflow-hidden bg-white dark:bg-zinc-900">
