@@ -8,21 +8,12 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { 
       ticketId, ticketType, actionType, reason, 
-      registrationNumber, taxId, certificateUrl, statusReportUrl, memorandumUrl 
+      registrationNumber, taxId, certificateUrl, statusReportUrl, memorandumUrl,
+      issueRefund, refundAmount // New Refund Fields
     } = body;
 
     if (!ticketId || !ticketType || !actionType) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
-    }
-
-    // Require deliverables if approving
-    if (actionType === "APPROVE") {
-      if (!registrationNumber || !taxId || !certificateUrl || !statusReportUrl) {
-        return NextResponse.json({ error: "Approval requires BN/RC Number, TIN, Certificate, and Status Report." }, { status: 400 });
-      }
-      if (ticketType === "LLC" && !memorandumUrl) {
-        return NextResponse.json({ error: "LLC Approval requires a Memorandum of Association." }, { status: 400 });
-      }
     }
 
     const mdsAdmin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
@@ -30,11 +21,15 @@ export async function POST(req: Request) {
 
     await prisma.$transaction(async (tx) => {
       let targetRef = "";
-      const updateData: any = { status: actionType === "APPROVE" ? "APPROVED" : actionType === "FAIL" ? "FAILED" : actionType === "QUERY" ? "QUERIED" : undefined };
+      let clientId = "";
+      
+      const updateData: any = { 
+        status: actionType === "APPROVE" ? "APPROVED" : actionType === "FAIL" ? "FAILED" : actionType === "QUERY" ? "QUERIED" : undefined 
+      };
       
       if (actionType === "UNASSIGN") updateData.assignedToId = null;
 
-      // Attach deliverables if approving
+      // Attach deliverables
       if (actionType === "APPROVE") {
         updateData.registrationNumber = registrationNumber;
         updateData.taxId = taxId;
@@ -43,20 +38,52 @@ export async function POST(req: Request) {
         if (ticketType === "LLC") updateData.memorandumUrl = memorandumUrl;
       }
 
+      // Update the specific ticket
       if (ticketType === "BUSINESS_NAME") {
         const updated = await tx.businessRegistration.update({ where: { id: ticketId }, data: updateData });
         targetRef = updated.trackingId || ticketId;
+        clientId = updated.userId;
       } else if (ticketType === "LLC") {
         const updated = await tx.llcRegistration.update({ where: { id: ticketId }, data: updateData });
         targetRef = updated.trackingId || ticketId;
+        clientId = updated.userId;
       }
 
+      // PROCESS REFUND IF REQUESTED (Only on Fail)
+      if (actionType === "FAIL" && issueRefund && refundAmount) {
+        const wallet = await tx.wallet.findUnique({ where: { userId: clientId } });
+        if (wallet) {
+          const balanceBefore = wallet.balance;
+          const balanceAfter = Number(balanceBefore) + Number(refundAmount);
+          const refundRef = `REF-${Math.floor(Math.random() * 1000000000)}`;
+
+          await tx.wallet.update({
+            where: { id: wallet.id },
+            data: { balance: balanceAfter }
+          });
+
+          await tx.transaction.create({
+            data: {
+              walletId: wallet.id,
+              amount: refundAmount,
+              balanceBefore,
+              balanceAfter,
+              type: "REFUND",
+              status: "SUCCESS",
+              reference: refundRef,
+              description: `Refund for Failed Application [${targetRef}]. Reason: ${reason}`
+            }
+          });
+        }
+      }
+
+      // Log action
       await tx.staffActionLog.create({
         data: {
           userId: mdsAdmin.id,
           action: `ADMIN_${actionType}`,
           targetId: targetRef,
-          details: `Admin executed ${actionType} on ${ticketType}. ${reason ? `Reason: ${reason}` : 'No reason provided.'}`
+          details: `Admin executed ${actionType} on ${ticketType}. ${issueRefund ? `Issued ₦${refundAmount} refund.` : ''} Reason: ${reason}`
         }
       });
     });
