@@ -14,17 +14,27 @@ export async function GET() {
       prisma.user.count({ where: { role: "USER", createdAt: { gte: thirtyDaysAgo } } }),
       prisma.wallet.aggregate({ _sum: { balance: true } }),
       prisma.user.count({ 
-        where: { role: "USER", transactions: { some: {} } } // Active = has at least 1 transaction
+        where: { 
+          role: "USER", 
+          // FIX: Query transactions through the wallet relation
+          wallet: {
+            transactions: { some: {} } 
+          }
+        } 
       })
     ]);
 
-    // 2. Fetch Master Client List (with nested data for the Drawer)
+    // 2. Fetch Master Client List
     const clients = await prisma.user.findMany({
       where: { role: "USER" },
       orderBy: { createdAt: 'desc' },
       include: {
-        wallet: true,
-        transactions: { orderBy: { createdAt: 'desc' }, take: 10 }, // Last 10 txns
+        // FIX: Include transactions nested inside the wallet
+        wallet: {
+          include: {
+            transactions: { orderBy: { createdAt: 'desc' }, take: 10 }
+          }
+        },
         registrations: { orderBy: { createdAt: 'desc' } }, // Biz Names
         llcRegistrations: { orderBy: { createdAt: 'desc' } }, // LLCs
         ninRequests: { orderBy: { createdAt: 'desc' } } // NINs
@@ -38,7 +48,14 @@ export async function GET() {
       active: activeClients
     };
 
-    return NextResponse.json({ metrics, clients });
+    // FIX: Flatten the transactions array back to the root of the client object
+    // so the UI drawer component doesn't break when looking for `client.transactions`
+    const formattedClients = clients.map(client => ({
+      ...client,
+      transactions: client.wallet?.transactions || []
+    }));
+
+    return NextResponse.json({ metrics, clients: formattedClients });
   } catch (error) {
     console.error("Clients API Error:", error);
     return NextResponse.json({ error: "Failed to fetch clients data" }, { status: 500 });
