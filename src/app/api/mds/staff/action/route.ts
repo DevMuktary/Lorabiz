@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs"; // You already have this installed for Auth
+import bcrypt from "bcryptjs"; 
 
 const prisma = new PrismaClient();
 
@@ -31,8 +31,17 @@ export async function POST(req: Request) {
           lastName,
           email,
           phone: phone || "",
-          password: hashedPassword,
-          role: "STAFF"
+          role: "STAFF",
+          
+          // FIX 1: Use the correct schema field name
+          passwordHash: hashedPassword, 
+          
+          // FIX 2: Fill in the remaining required User fields with defaults
+          whatsapp: phone || "",
+          gender: "OTHER",
+          state: "N/A",
+          lga: "N/A",
+          street: "N/A"
         }
       });
 
