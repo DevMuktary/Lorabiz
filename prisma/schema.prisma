@@ -82,6 +82,7 @@ model User {
   twoFactorMethod  TwoFactorMethod?
   twoFactorSecret  String?         // Stores encrypted Base32 TOTP secret for Google Authenticator
   
+  isSuspended   Boolean   @default(false) // Allows MD to lock out malicious users
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
