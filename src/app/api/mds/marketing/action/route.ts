@@ -11,27 +11,25 @@ export async function POST(req: Request) {
     const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
     if (!admin) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-    // 1. CREATE PROMO CODE
     if (actionType === "CREATE") {
-      const { code, type, value, usageLimit, expiresAt } = data;
+      const { code, type, value, usageLimit, perUserLimit, expiresAt } = data;
       
       if (!code || !type || !value) {
         return NextResponse.json({ error: "Code, Type, and Value are required." }, { status: 400 });
       }
 
-      // Format code: Uppercase, remove spaces
       const formattedCode = String(code).trim().toUpperCase().replace(/\s+/g, '');
-
       const existing = await prisma.promoCode.findUnique({ where: { code: formattedCode } });
       if (existing) return NextResponse.json({ error: "This promo code already exists." }, { status: 400 });
 
       await prisma.$transaction(async (tx) => {
-        const newPromo = await tx.promoCode.create({
+        await tx.promoCode.create({
           data: {
             code: formattedCode,
             discountPct: type === "PERCENTAGE" ? Number(value) : null,
             fixedAmount: type === "FIXED" ? Number(value) : null,
             usageLimit: usageLimit ? Number(usageLimit) : null,
+            perUserLimit: perUserLimit ? Number(perUserLimit) : 1, // Default to 1 per user
             expiresAt: expiresAt ? new Date(expiresAt) : null,
           }
         });
@@ -49,16 +47,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: "Promo code generated." });
     }
 
-    // 2. TOGGLE PROMO STATUS
     if (actionType === "TOGGLE_STATUS") {
       const { id, isActive, code } = data;
-      
       await prisma.$transaction(async (tx) => {
-        await tx.promoCode.update({
-          where: { id },
-          data: { isActive }
-        });
-
+        await tx.promoCode.update({ where: { id }, data: { isActive } });
         await tx.staffActionLog.create({
           data: {
             userId: admin.id,
@@ -68,7 +60,6 @@ export async function POST(req: Request) {
           }
         });
       });
-
       return NextResponse.json({ success: true });
     }
 
