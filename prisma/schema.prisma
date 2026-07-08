@@ -94,6 +94,7 @@ model User {
   waitlists        Waitlist[]
   twoFactorCodes   TwoFactorCode[]
   staffActions     StaffActionLog[]
+  promoUsages      PromoUsage[]
   
   // --- STAFF ASSIGNMENTS ---
   assignedBiz      BusinessRegistration[] @relation("BizStaffAssignment")
@@ -337,17 +338,6 @@ model ServicePricing {
   isActive       Boolean  @default(true) // MDS Kill Switch
   maintenanceMsg String?  // Custom banner text e.g., "CAC Portal is down"
   updatedAt      DateTime @updatedAt
-}
-
-model PromoCode {
-  id            String    @id @default(cuid())
-  code          String    @unique // e.g., "LAUNCH20"
-  discountPct   Float?    // Percentage discount
-  fixedAmount   Decimal?  // Or fixed amount discount
-  usageLimit    Int?      // Max number of times it can be used
-  timesUsed     Int       @default(0)
-  expiresAt     DateTime?
-  isActive      Boolean   @default(true)
 }
 
 model Transaction {
