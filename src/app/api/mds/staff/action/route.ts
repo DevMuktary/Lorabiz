@@ -27,21 +27,17 @@ export async function POST(req: Request) {
 
       await prisma.user.create({
         data: {
+          role: "STAFF",
           firstName,
           lastName,
           email,
           phone: phone || "",
-          role: "STAFF",
-          
-          // FIX 1: Use the correct schema field name
-          passwordHash: hashedPassword, 
-          
-          // FIX 2: Fill in the remaining required User fields with defaults
-          whatsapp: phone || "",
-          gender: "OTHER",
-          state: "N/A",
-          lga: "N/A",
-          street: "N/A"
+          whatsapp: phone || "",          // Required by your schema
+          passwordHash: hashedPassword,   // Exact schema field name
+          gender: "OTHER",                // Required by your schema
+          state: "N/A",                   // Required by your schema
+          lga: "N/A",                     // Required by your schema
+          street: "N/A"                   // Required by your schema
         }
       });
 
