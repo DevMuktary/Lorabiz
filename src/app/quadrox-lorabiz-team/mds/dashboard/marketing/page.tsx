@@ -3,15 +3,21 @@
 import { useState, useEffect } from 'react';
 import { format, isPast } from 'date-fns';
 import { 
-  Ticket, Tag, Activity, Plus, RefreshCw, X, Copy, Check, Percent, DollarSign, Eye, Users, Trash2
+  Ticket, Tag, Activity, Plus, RefreshCw, X, Copy, Check, Percent, DollarSign, Eye, Users, Trash2, AlertTriangle
 } from 'lucide-react';
 
 export default function MarketingDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [promos, setPromos] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({ total: 0, active: 0, totalUses: 0 });
+  
+  // Modals & Drawers State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState<any | null>(null);
+  
+  // Custom Delete State
+  const [promoToDelete, setPromoToDelete] = useState<{id: string, code: string} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPromos = async () => {
     setIsLoading(true);
@@ -39,28 +45,38 @@ export default function MarketingDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ actionType: "TOGGLE_STATUS", id, code, isActive: !currentStatus })
       });
-      if (res.ok) fetchPromos();
+      if (res.ok) fetchPromos(); // Instantly refresh table
     } catch (err) {
       alert("Failed to update status.");
     }
   };
 
-  const deletePromo = async (id: string, code: string) => {
-    if (!window.confirm(`Are you absolutely sure you want to delete the code ${code}? This cannot be undone.`)) return;
+  // Trigger Custom Delete Modal
+  const handleDeleteClick = (id: string, code: string) => {
+    setPromoToDelete({ id, code });
+  };
+
+  // Execute the actual deletion
+  const confirmDelete = async () => {
+    if (!promoToDelete) return;
+    setIsDeleting(true);
     
     try {
       const res = await fetch('/api/mds/marketing/action', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionType: "DELETE", id, code })
+        body: JSON.stringify({ actionType: "DELETE", id: promoToDelete.id, code: promoToDelete.code })
       });
       if (res.ok) {
-        fetchPromos();
+        setPromoToDelete(null);
+        fetchPromos(); // Instantly refresh table upon successful deletion
       } else {
         alert("Failed to delete promo code.");
       }
     } catch (err) {
       alert("An error occurred while deleting.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -169,7 +185,7 @@ export default function MarketingDashboard() {
                           {p.isActive ? 'Turn Off' : 'Turn On'}
                         </button>
                         <button 
-                          onClick={() => deletePromo(p.id, p.code)}
+                          onClick={() => handleDeleteClick(p.id, p.code)}
                           className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400 rounded-md transition-colors"
                           title="Delete Code"
                         >
@@ -185,12 +201,50 @@ export default function MarketingDashboard() {
         </div>
       </div>
 
+      {/* --- MODALS & DRAWERS --- */}
+
+      {/* 1. Custom Delete Confirmation Modal */}
+      {promoToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-zinc-900/60 transition-opacity animate-in fade-in duration-200" onClick={() => !isDeleting && setPromoToDelete(null)}></div>
+          <div className="relative bg-white dark:bg-zinc-950 w-full max-w-sm rounded-xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 border border-zinc-200 dark:border-zinc-800">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-500">
+                <AlertTriangle size={24} />
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-center text-zinc-900 dark:text-zinc-100 mb-2">Delete Promo Code?</h3>
+            <p className="text-sm text-center text-zinc-500 dark:text-zinc-400 mb-6">
+              Are you sure you want to permanently delete <strong className="text-zinc-900 dark:text-white">{promoToDelete.code}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setPromoToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 px-4 rounded-lg font-bold text-sm border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 px-4 rounded-lg font-bold text-sm bg-red-600 hover:bg-red-700 text-white transition-colors flex justify-center items-center disabled:opacity-50"
+              >
+                {isDeleting ? <RefreshCw size={18} className="animate-spin" /> : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Create Drawer */}
       <CreatePromoDrawer 
         isOpen={isDrawerOpen} 
         onClose={() => setIsDrawerOpen(false)} 
-        onSuccess={() => { setIsDrawerOpen(false); fetchPromos(); }}
+        onSuccess={() => { setIsDrawerOpen(false); fetchPromos(); }} // Instantly refreshes on creation
       />
       
+      {/* 3. Inspection Drawer */}
       <PromoInspectionDrawer 
         promo={selectedPromo}
         onClose={() => setSelectedPromo(null)}
