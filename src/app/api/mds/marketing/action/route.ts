@@ -11,6 +11,7 @@ export async function POST(req: Request) {
     const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
     if (!admin) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
+    // 1. CREATE PROMO CODE
     if (actionType === "CREATE") {
       const { code, type, value, usageLimit, perUserLimit, expiresAt } = data;
       
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: "Promo code generated." });
     }
 
+    // 2. TOGGLE PROMO STATUS
     if (actionType === "TOGGLE_STATUS") {
       const { id, isActive, code } = data;
       await prisma.$transaction(async (tx) => {
@@ -60,6 +62,28 @@ export async function POST(req: Request) {
           }
         });
       });
+      return NextResponse.json({ success: true });
+    }
+
+    // 3. DELETE PROMO CODE
+    if (actionType === "DELETE") {
+      const { id, code } = data;
+      
+      await prisma.$transaction(async (tx) => {
+        await tx.promoCode.delete({
+          where: { id }
+        });
+
+        await tx.staffActionLog.create({
+          data: {
+            userId: admin.id,
+            action: "DELETED_PROMO",
+            targetId: code,
+            details: `MD permanently deleted promo code ${code}`
+          }
+        });
+      });
+
       return NextResponse.json({ success: true });
     }
 
