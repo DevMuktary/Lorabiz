@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { format, isPast } from 'date-fns';
 import { 
-  Ticket, Tag, Activity, Plus, RefreshCw, X, Copy, Check, AlertCircle, Percent, DollarSign
+  Ticket, Tag, Activity, Plus, RefreshCw, X, Copy, Check, Percent, DollarSign, Eye, Users
 } from 'lucide-react';
 
 export default function MarketingDashboard() {
@@ -11,6 +11,7 @@ export default function MarketingDashboard() {
   const [promos, setPromos] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({ total: 0, active: 0, totalUses: 0 });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedPromo, setSelectedPromo] = useState<any | null>(null);
 
   const fetchPromos = async () => {
     setIsLoading(true);
@@ -60,11 +61,10 @@ export default function MarketingDashboard() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Marketing & Campaigns</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Generate and monitor promotional discount codes.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Generate codes, set global limits, and track redemptions.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={fetchPromos} className="flex items-center px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-50 transition-colors">
@@ -76,32 +76,29 @@ export default function MarketingDashboard() {
         </div>
       </div>
 
-      {/* Metrics Ribbon */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricCard title="Total Codes Created" value={metrics.total} icon={<Ticket size={20} className="text-indigo-500" />} isLoading={isLoading} />
         <MetricCard title="Currently Active" value={metrics.active} icon={<Activity size={20} className="text-emerald-500" />} isLoading={isLoading} />
         <MetricCard title="Global Redemptions" value={metrics.totalUses} icon={<Tag size={20} className="text-amber-500" />} isLoading={isLoading} highlight />
       </div>
 
-      {/* Main Table */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 text-xs uppercase tracking-wider">
               <tr>
                 <th className="px-6 py-4 font-medium">Promo Code</th>
-                <th className="px-6 py-4 font-medium">Discount Value</th>
-                <th className="px-6 py-4 font-medium text-center">Usage Stats</th>
-                <th className="px-6 py-4 font-medium">Expiry Date</th>
+                <th className="px-6 py-4 font-medium">Discount Rules</th>
+                <th className="px-6 py-4 font-medium text-center">Global Usage</th>
                 <th className="px-6 py-4 font-medium text-center">Status</th>
-                <th className="px-6 py-4 font-medium text-center">Toggle</th>
+                <th className="px-6 py-4 font-medium text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {isLoading ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-zinc-500"><RefreshCw className="animate-spin mx-auto mb-3 text-indigo-500" size={24} />Loading campaigns...</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-zinc-500"><RefreshCw className="animate-spin mx-auto mb-3 text-indigo-500" size={24} />Loading campaigns...</td></tr>
               ) : promos.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-zinc-500">No promo codes created yet.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-zinc-500">No promo codes created yet.</td></tr>
               ) : (
                 promos.map((p: any) => {
                   const isExpired = p.expiresAt && isPast(new Date(p.expiresAt));
@@ -115,6 +112,7 @@ export default function MarketingDashboard() {
                           <span className="font-mono font-bold text-lg text-zinc-900 dark:text-zinc-100 tracking-wider">{p.code}</span>
                           <CopyBtn text={p.code} />
                         </div>
+                        {p.expiresAt && <span className="block text-xs text-zinc-500 mt-1">Exp: {format(new Date(p.expiresAt), 'MMM do, yyyy')}</span>}
                       </td>
                       <td className="px-6 py-4">
                         {p.discountPct ? (
@@ -122,30 +120,34 @@ export default function MarketingDashboard() {
                         ) : (
                           <span className="inline-flex items-center font-bold text-emerald-600 dark:text-emerald-400"><DollarSign size={14} className="mr-1"/> ₦{Number(p.fixedAmount).toLocaleString()} OFF</span>
                         )}
+                        <span className="block text-xs text-zinc-500 mt-1">Limit: {p.perUserLimit} per user</span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex flex-col items-center">
-                          <span className="font-bold text-zinc-900 dark:text-zinc-100">{p.timesUsed} {p.usageLimit ? `/ ${p.usageLimit}` : 'uses'}</span>
-                          {isMaxedOut && <span className="text-[10px] text-amber-600 font-bold uppercase mt-0.5">Limit Reached</span>}
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">{p.timesUsed} {p.usageLimit ? `/ ${p.usageLimit}` : 'total'}</span>
+                          {isMaxedOut && <span className="text-[10px] text-amber-600 font-bold uppercase mt-0.5">Global Limit Reached</span>}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-zinc-500">
-                        {p.expiresAt ? format(new Date(p.expiresAt), 'MMM do, yyyy • h:mm a') : 'Never'}
-                        {isExpired && <span className="block text-[10px] text-red-500 font-bold uppercase mt-0.5">Expired</span>}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isTrulyActive ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'}`}>
-                          {isTrulyActive ? 'Active' : 'Inactive'}
+                          {isTrulyActive ? 'Active' : (isExpired ? 'Expired' : 'Inactive')}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-6 py-4 text-center space-x-2">
+                        <button 
+                          onClick={() => setSelectedPromo(p)}
+                          className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+                          title="View Redeemers"
+                        >
+                          <Eye size={18} />
+                        </button>
                         <button 
                           onClick={() => toggleStatus(p.id, p.code, p.isActive)}
                           className={`text-xs font-bold px-3 py-1.5 rounded-md border transition-colors ${
                             p.isActive ? 'border-red-200 text-red-700 hover:bg-red-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
                           }`}
                         >
-                          {p.isActive ? 'Deactivate' : 'Activate'}
+                          {p.isActive ? 'Turn Off' : 'Turn On'}
                         </button>
                       </td>
                     </tr>
@@ -161,6 +163,11 @@ export default function MarketingDashboard() {
         isOpen={isDrawerOpen} 
         onClose={() => setIsDrawerOpen(false)} 
         onSuccess={() => { setIsDrawerOpen(false); fetchPromos(); }}
+      />
+      
+      <PromoInspectionDrawer 
+        promo={selectedPromo}
+        onClose={() => setSelectedPromo(null)}
       />
     </div>
   );
@@ -183,7 +190,7 @@ function MetricCard({ title, value, icon, isLoading, highlight }: any) {
 }
 
 function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClose: () => void, onSuccess: () => void }) {
-  const [formData, setFormData] = useState({ code: "", type: "PERCENTAGE", value: "", usageLimit: "", expiresAt: "" });
+  const [formData, setFormData] = useState({ code: "", type: "PERCENTAGE", value: "", usageLimit: "", perUserLimit: "1", expiresAt: "" });
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
 
@@ -203,7 +210,7 @@ function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
-      setFormData({ code: "", type: "PERCENTAGE", value: "", usageLimit: "", expiresAt: "" });
+      setFormData({ code: "", type: "PERCENTAGE", value: "", usageLimit: "", perUserLimit: "1", expiresAt: "" });
       onSuccess();
     } catch (err: any) {
       setError(err.message);
@@ -216,7 +223,6 @@ function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-zinc-900/60 transition-opacity animate-in fade-in duration-200" onClick={onClose}></div>
       <div className="relative w-full max-w-md h-full bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-        
         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
           <h3 className="text-lg font-bold flex items-center text-zinc-900 dark:text-zinc-100">
             <Plus size={20} className="mr-2 text-indigo-500" /> New Promo Code
@@ -226,7 +232,6 @@ function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
 
         <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
           <form onSubmit={handleSubmit} className="space-y-5">
-            
             <div>
               <label className="text-xs font-bold uppercase text-zinc-500 mb-1 block">Promo Code Name</label>
               <input required type="text" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase().replace(/\s/g, '')})} placeholder="e.g. WELCOME50" className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-3 py-2 text-sm font-mono tracking-wider focus:ring-2 focus:ring-indigo-500" />
@@ -246,9 +251,17 @@ function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-bold uppercase text-zinc-500 mb-1 flex items-center">Usage Limit <span className="text-[10px] text-zinc-400 font-normal ml-2">(Optional)</span></label>
-              <input type="number" min="1" value={formData.usageLimit} onChange={e => setFormData({...formData, usageLimit: e.target.value})} placeholder="How many total times can this be used?" className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-500 mb-1 block">Per-User Limit</label>
+                <input required type="number" min="1" value={formData.perUserLimit} onChange={e => setFormData({...formData, perUserLimit: e.target.value})} placeholder="e.g. 1" className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                <p className="text-[10px] text-zinc-400 mt-1">Times 1 user can apply this.</p>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-500 mb-1 block">Global Limit <span className="font-normal lowercase">(Optional)</span></label>
+                <input type="number" min="1" value={formData.usageLimit} onChange={e => setFormData({...formData, usageLimit: e.target.value})} placeholder="Total for all users" className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                <p className="text-[10px] text-zinc-400 mt-1">Max total uses globally.</p>
+              </div>
             </div>
 
             <div>
@@ -264,6 +277,55 @@ function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// NEW: INSPECTION DRAWER TO SEE USERS
+// ----------------------------------------------------------------------
+
+function PromoInspectionDrawer({ promo, onClose }: { promo: any, onClose: () => void }) {
+  if (!promo) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-zinc-900/60 transition-opacity animate-in fade-in duration-200" onClick={onClose}></div>
+      <div className="relative w-full max-w-md h-full bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+        
+        <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-bold flex items-center text-zinc-900 dark:text-zinc-100">
+              <Users size={20} className="mr-2 text-indigo-500" /> Redemption Ledger
+            </h3>
+            <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-900 bg-white dark:bg-zinc-800 rounded-full shadow-sm"><X size={18} /></button>
+          </div>
+          <p className="font-mono text-xl font-bold text-zinc-800 dark:text-zinc-200 tracking-wider">{promo.code}</p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+          <h4 className="text-xs font-bold uppercase text-zinc-500 mb-4">Users who redeemed this code</h4>
+          
+          <div className="space-y-3">
+            {!promo.usages || promo.usages.length === 0 ? (
+              <p className="text-sm text-zinc-500 italic">No one has used this code yet.</p>
+            ) : (
+              promo.usages.map((usage: any) => (
+                <div key={usage.id} className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{usage.user.firstName} {usage.user.lastName}</p>
+                    <p className="text-xs text-zinc-500">{usage.user.email}</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-zinc-400 text-right">
+                    {format(new Date(usage.usedAt), 'MMM d, yyyy')}<br/>
+                    {format(new Date(usage.usedAt), 'h:mm a')}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
