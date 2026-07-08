@@ -8,11 +8,17 @@ const prisma = new PrismaClient();
 export async function GET() {
   try {
     const promos = await prisma.promoCode.findMany({
-      // FIXED: Using 'id' for chronological sorting since 'createdAt' doesn't exist on this model
-      orderBy: { id: 'desc' } 
+      orderBy: { createdAt: 'desc' }, // We added createdAt to schema!
+      include: {
+        usages: {
+          orderBy: { usedAt: 'desc' },
+          include: {
+            user: { select: { firstName: true, lastName: true, email: true } } // Fetch the user data
+          }
+        }
+      }
     });
 
-    // Calculate Metrics
     const now = new Date();
     const activePromos = promos.filter(p => 
       p.isActive && 
