@@ -421,6 +421,7 @@ model PromoCode {
   discountPct   Float?       
   fixedAmount   Decimal?     
   usageLimit    Int?         // Total available for ALL users globally
+  restrictedServices String[] // e.g., ["LLC", "BUSINESS_NAME"] or ["ALL"]
   perUserLimit  Int          @default(1) // Max times a SINGLE user can use it
   timesUsed     Int          @default(0)
   expiresAt     DateTime?
