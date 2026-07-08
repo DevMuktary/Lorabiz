@@ -424,3 +424,31 @@ model SecurityAuditLog {
   @@index([event])
   @@index([createdAt])
 }
+model PromoCode {
+  id            String       @id @default(cuid())
+  code          String       @unique
+  discountPct   Float?       
+  fixedAmount   Decimal?     
+  usageLimit    Int?         // Total available for ALL users globally
+  perUserLimit  Int          @default(1) // Max times a SINGLE user can use it
+  timesUsed     Int          @default(0)
+  expiresAt     DateTime?
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now()) // Added so chronological sorting works perfectly
+
+  usages        PromoUsage[] // Tracks who used it
+}
+
+// NEW TABLE: The Redemption Ledger
+model PromoUsage {
+  id          String    @id @default(cuid())
+  promoId     String
+  userId      String
+  usedAt      DateTime  @default(now())
+
+  promo       PromoCode @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([promoId])
+  @@index([userId])
+}
