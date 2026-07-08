@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { 
-  Users, ShieldAlert, RefreshCw, Activity, UserPlus, X, Lock, CheckCircle2, XCircle
+  Users, Activity, RefreshCw, UserPlus, X, Lock
 } from 'lucide-react';
 
 export default function StaffManagementPage() {
@@ -105,8 +105,8 @@ export default function StaffManagementPage() {
                         <p className="text-xs text-zinc-500">{s.phone || 'No phone'}</p>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold text-xs">
-                          {s._count.staffActionLogs}
+                        <span className="inline-flex items-center justify-center min-w-[32px] h-8 px-2 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold text-xs">
+                          {s._count.staffActions} {/* FIXED: Reads exact property from Prisma */}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -158,8 +158,8 @@ export default function StaffManagementPage() {
                         {format(new Date(log.createdAt), 'MMM do, yyyy • h:mm a')}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-bold text-zinc-900 dark:text-zinc-100">{log.user.firstName} {log.user.lastName}</span>
-                        <span className="ml-2 text-[10px] uppercase font-bold text-zinc-400">{log.user.role}</span>
+                        <span className="font-bold text-zinc-900 dark:text-zinc-100">{log.user?.firstName} {log.user?.lastName}</span>
+                        <span className="ml-2 text-[10px] uppercase font-bold text-zinc-400">{log.user?.role}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="font-mono text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded">
@@ -167,7 +167,7 @@ export default function StaffManagementPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate max-w-sm">Ref: {log.targetId}</p>
+                        <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate max-w-sm">Ref: {log.targetId || 'N/A'}</p>
                         <p className="text-xs text-zinc-500 truncate max-w-sm" title={log.details}>{log.details}</p>
                       </td>
                     </tr>
@@ -179,7 +179,6 @@ export default function StaffManagementPage() {
         )}
       </div>
 
-      {/* CREATE STAFF DRAWER */}
       <CreateStaffDrawer 
         isOpen={isDrawerOpen} 
         onClose={() => setIsDrawerOpen(false)} 
@@ -251,7 +250,7 @@ function CreateStaffDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
           <h3 className="text-lg font-bold flex items-center text-zinc-900 dark:text-zinc-100">
             <UserPlus size={20} className="mr-2 text-indigo-500" /> Provision New Staff
           </h3>
-          <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-900 bg-white dark:bg-zinc-800 rounded-full shadow-sm"><X size={18} /></button>
+          <button type="button" onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-900 bg-white dark:bg-zinc-800 rounded-full shadow-sm"><X size={18} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
@@ -279,7 +278,7 @@ function CreateStaffDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
             </div>
 
             <div className="pt-2">
-              <label className="text-xs font-bold uppercase text-zinc-500 mb-1 block flex items-center"><Lock size={12} className="mr-1"/> Initial Password</label>
+              <label className="text-xs font-bold uppercase text-zinc-500 mb-1 flex items-center"><Lock size={12} className="mr-1"/> Initial Password</label>
               <input required type="text" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Provide a temporary password..." className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 font-mono" />
               <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1">Make sure to securely share this temporary password with the new staff member.</p>
             </div>
