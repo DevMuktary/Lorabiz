@@ -8,7 +8,8 @@ const prisma = new PrismaClient();
 export async function GET() {
   try {
     const promos = await prisma.promoCode.findMany({
-      orderBy: { createdAt: 'desc' } // Assuming you have a createdAt, if not we'll order by code. Let's just fetch all.
+      // FIXED: Using 'id' for chronological sorting since 'createdAt' doesn't exist on this model
+      orderBy: { id: 'desc' } 
     });
 
     // Calculate Metrics
