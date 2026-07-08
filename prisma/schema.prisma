@@ -424,6 +424,7 @@ model SecurityAuditLog {
   @@index([event])
   @@index([createdAt])
 }
+
 model PromoCode {
   id            String       @id @default(cuid())
   code          String       @unique
