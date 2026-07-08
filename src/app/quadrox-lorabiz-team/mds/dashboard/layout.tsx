@@ -58,7 +58,7 @@ export default function MdsDashboardLayout({
       title: "Management",
       links: [
         { href: "/quadrox-lorabiz-team/mds/dashboard/orders", icon: <Layers size={20} />, label: "Order Pipeline" },
-        { href: "/quadrox-lorabiz-team/mds/dashboard/clients", icon: <UserSquare2 size={20} />, label: "Client Directory" },
+        { href: "/quadrox-lorabiz-team/mds/dashboard/users", icon: <UserSquare2 size={20} />, label: "Users Directory" },
         { href: "/quadrox-lorabiz-team/mds/dashboard/staff", icon: <Users size={20} />, label: "Staff Operations" },
       ]
     },
