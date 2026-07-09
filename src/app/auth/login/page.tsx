@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect, Suspense } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   EnvelopeSimple, LockKey, SignIn, Spinner, 
@@ -13,27 +13,94 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const ESCALATING_TIMEOUTS = [30, 60, 300, 600, 1800]; // 30s, 60s, 5m, 10m, 30m
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isRegistered = searchParams.get("registered") === "true";
+  const { data: session, update } = useSession();
   
+  const isRegistered = searchParams.get("registered") === "true";
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
+  // Login States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
-    if (error) setError("");
+  // OTP Modal & Timer States
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  
+  const [resendTimer, setResendTimer] = useState(0);
+  const [timerLevel, setTimerLevel] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+
+  // Auto-trigger modal if user is authenticated but MFA is false (e.g., they refreshed the page)
+  useEffect(() => {
+    if (session?.user) {
+      const user = session.user as any;
+      if (!user.mfaVerified) {
+        setFormData(prev => ({ ...prev, email: user.email }));
+        setShowOtpModal(true);
+      } else {
+        router.push(callbackUrl);
+      }
+    }
+  }, [session, router, callbackUrl]);
+
+  // Persistent Timer Logic
+  useEffect(() => {
+    if (!showOtpModal || !formData.email) return;
+
+    const storageKey = `login_otp_${formData.email}`;
+    const stored = localStorage.getItem(storageKey);
+    const now = Date.now();
+
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      
+      // Check for 1-hour cooldown reset
+      if (now - parsed.lastRequestedAt > 3600000) {
+        localStorage.removeItem(storageKey);
+        updateStorage(0, now + ESCALATING_TIMEOUTS[0] * 1000);
+      } else {
+        setTimerLevel(parsed.level);
+        if (parsed.level >= ESCALATING_TIMEOUTS.length) {
+          setIsLocked(true);
+        } else {
+          const remaining = Math.floor((parsed.nextAllowedAt - now) / 1000);
+          setResendTimer(remaining > 0 ? remaining : 0);
+        }
+      }
+    } else {
+      // First time modal opens
+      updateStorage(0, now + ESCALATING_TIMEOUTS[0] * 1000);
+    }
+
+    const interval = setInterval(() => {
+      setResendTimer(prev => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [showOtpModal, formData.email]);
+
+  const updateStorage = (level: number, nextAllowedAt: number) => {
+    setTimerLevel(level);
+    const remaining = Math.floor((nextAllowedAt - Date.now()) / 1000);
+    setResendTimer(remaining > 0 ? remaining : 0);
+    localStorage.setItem(`login_otp_${formData.email}`, JSON.stringify({
+      level,
+      nextAllowedAt,
+      lastRequestedAt: Date.now()
+    }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -43,21 +110,86 @@ function LoginContent() {
         redirect: false,
         email: formData.email,
         password: formData.password,
-        // NEW: This explicitly tags this attempt as originating from the User portal
         portal: "user", 
       });
 
       if (res?.error) {
-        // Handles NextAuth native rejection vs our custom strict Error strings
         setError(res.error === "CredentialsSignin" ? "Invalid email or password. Please try again." : res.error);
         setLoading(false);
       } else {
-        router.push(`/auth/verify-login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        // Success: Trigger the Modal instead of redirecting
+        setShowOtpModal(true);
+        setLoading(false);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       setLoading(false);
     }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otpCode.length !== 6) return;
+
+    setVerifying(true);
+    setOtpError("");
+
+    try {
+      const res = await fetch("/api/auth/verify-login-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, otpCode }),
+      });
+
+      if (res.ok) {
+        await update({ mfaVerified: true });
+        router.push(callbackUrl);
+        router.refresh();
+      } else {
+        const data = await res.json();
+        setOtpError(data.message || "Invalid code provided.");
+        setVerifying(false);
+      }
+    } catch (err) {
+      setOtpError("Network error. Please try again.");
+      setVerifying(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (isLocked || resendTimer > 0) return;
+    setIsResending(true);
+    setOtpError("");
+
+    try {
+      const res = await fetch("/api/auth/resend-login-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      if (res.ok) {
+        const nextLevel = timerLevel + 1;
+        if (nextLevel >= ESCALATING_TIMEOUTS.length) {
+          setIsLocked(true);
+          updateStorage(nextLevel, Date.now() + 3600000); // Lock for 1 hour
+        } else {
+          updateStorage(nextLevel, Date.now() + ESCALATING_TIMEOUTS[nextLevel] * 1000);
+        }
+      } else {
+        setOtpError("Failed to resend. Please try again.");
+      }
+    } catch (e) {
+      setOtpError("Network error.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m > 0 ? `${m}m ` : ''}${s}s`;
   };
 
   return (
@@ -75,7 +207,6 @@ function LoginContent() {
           <p className="text-lg text-white/90 leading-relaxed">
             Log in to manage your registrations, track CAC approval status, and access your verified business documents.
           </p>
-          
           <div className="pt-8 space-y-4">
             <div className="flex items-center gap-3 text-white font-medium">
               <ShieldCheck weight="fill" className="h-6 w-6 text-white/80" />
@@ -100,14 +231,7 @@ function LoginContent() {
         <div className="w-full max-w-md mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-4 sm:mt-10">
           
           <div className="mb-8 flex justify-center lg:justify-start">
-            <Image 
-              src="/logo.png" 
-              alt="LoraBiz Logo" 
-              width={340} 
-              height={120} 
-              className="object-contain h-20 lg:h-24 w-auto dark:brightness-110"
-              priority
-            />
+            <Image src="/logo.png" alt="LoraBiz Logo" width={340} height={120} className="object-contain h-20 lg:h-24 w-auto dark:brightness-110" priority />
           </div>
 
           <div className="mb-8 text-center lg:text-left">
@@ -115,8 +239,7 @@ function LoginContent() {
             <p className="text-muted-foreground mt-2 text-[16px]">Enter your credentials to access your portal.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
+          <form onSubmit={handleLoginSubmit} className="space-y-6">
             {isRegistered && !error && (
               <div className="p-4 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium rounded-lg border border-emerald-500/20 flex items-start gap-3 animate-in fade-in">
                 <CheckCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
@@ -137,13 +260,9 @@ function LoginContent() {
                 <div className="relative">
                   <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                   <Input 
-                    id="email" 
-                    type="email" 
-                    value={formData.email}
-                    onChange={handleChange}
-                    required 
-                    placeholder="you@example.com" 
-                    className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a] transition-all" 
+                    id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    required placeholder="you@example.com" 
+                    className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground focus-visible:ring-[#ff3f7a]" 
                   />
                 </div>
               </div>
@@ -151,26 +270,16 @@ function LoginContent() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
-                  <Link href="/auth/forgot-password" className="text-sm font-semibold text-[#ff3f7a] hover:underline transition-all">
-                    Forgot password?
-                  </Link>
+                  <Link href="/auth/forgot-password" className="text-sm font-semibold text-[#ff3f7a] hover:underline transition-all">Forgot password?</Link>
                 </div>
                 <div className="relative">
                   <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                   <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    value={formData.password}
-                    onChange={handleChange}
-                    required 
-                    placeholder="••••••••" 
-                    className="pl-11 pr-10 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a] transition-all" 
+                    id="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    required placeholder="••••••••" 
+                    className="pl-11 pr-10 h-12 text-[16px] bg-secondary/40 border-border text-foreground focus-visible:ring-[#ff3f7a]" 
                   />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)} 
-                    className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground focus:outline-none transition-colors cursor-pointer"
-                  >
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground">
                     {showPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
@@ -178,46 +287,95 @@ function LoginContent() {
             </div>
 
             <div className="pt-2">
-              <Button 
-                type="submit" 
-                disabled={loading} 
-                className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {loading ? (
-                  <Spinner className="animate-spin h-6 w-6" weight="bold" />
-                ) : (
-                  <>Log In <SignIn className="h-5 w-5" weight="bold" /></>
-                )}
+              <Button type="submit" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25">
+                {loading ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : <>Log In <SignIn className="h-5 w-5 ml-2" weight="bold" /></>}
               </Button>
             </div>
 
             <div className="text-center text-muted-foreground mt-6">
-              Don&apos;t have an account?{" "}
-              <Link href="/auth/register" className="font-semibold text-[#ff3f7a] hover:underline transition-all">
-                Register here
-              </Link>
+              Don&apos;t have an account? <Link href="/auth/register" className="font-semibold text-[#ff3f7a] hover:underline">Register here</Link>
             </div>
           </form>
 
-          <div className="lg:hidden mt-12 text-center pb-8">
-             <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-              Powered by Quadrox Technologies Ltd
-            </p>
-          </div>
-
         </div>
       </div>
+
+      {/* OTP OVERLAY MODAL */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-secondary/30 p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
+            
+            <div className="text-center mb-6">
+              <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4">
+                <ShieldCheck weight="fill" className="h-6 w-6" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground">2-Step Verification</h2>
+              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                We've sent a secure 6-digit authorization code to <br/>
+                <span className="font-medium text-foreground">{formData.email}</span>.
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifyOtp} className="space-y-6">
+              {otpError && (
+                <div className="p-3 bg-destructive/10 text-destructive text-sm font-medium rounded-lg text-center animate-in shake">
+                  {otpError}
+                </div>
+              )}
+
+              {isLocked && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm font-medium rounded-lg text-center">
+                  Too many resend attempts. For your security, this action has been temporarily blocked. Please contact customer support or try again later.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Input 
+                  value={otpCode}
+                  onChange={(e) => {
+                    setOtpCode(e.target.value.replace(/\D/g, ""));
+                    setOtpError("");
+                  }}
+                  maxLength={6}
+                  placeholder="000000"
+                  className="h-14 sm:h-16 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2">
+                <Button 
+                  type="submit" 
+                  disabled={verifying || otpCode.length < 6} 
+                  className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white"
+                >
+                  {verifying ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : "Verify & Access"}
+                </Button>
+
+                {!isLocked && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleResendOtp}
+                    disabled={isResending || resendTimer > 0}
+                    className="w-full h-12 font-medium bg-transparent border-border text-foreground hover:bg-secondary/50 disabled:opacity-50"
+                  >
+                    {isResending ? <Spinner className="animate-spin h-5 w-5" /> : 
+                     resendTimer > 0 ? `Resend code in ${formatTime(resendTimer)}` : "Resend Code"}
+                  </Button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        <Spinner className="animate-spin h-8 w-8 text-[#ff3f7a]" weight="bold" />
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-screen w-full flex items-center justify-center bg-background"><Spinner className="animate-spin h-8 w-8 text-[#ff3f7a]" weight="bold" /></div>}>
       <LoginContent />
     </Suspense>
   );
