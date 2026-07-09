@@ -316,6 +316,9 @@ model OtpCode {
   id        String   @id @default(cuid())
   email     String   @unique 
   code      String
+  resendCount         Int       @default(0)
+  nextResendAllowedAt DateTime?
+  lockedUntil         DateTime?
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
