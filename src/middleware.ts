@@ -24,9 +24,9 @@ export default withAuth(
     // =========================================================================
     // 1. MANAGING DIRECTOR (ADMIN) PORTAL: /quadrox-lorabiz-team/mds/*
     // =========================================================================
-    if (pathname.startsWith("/quadrox-lorabiz-team/mds")) {
+    if (pathname.startsWith("/quadrox-lorabiz-team/mds/dashboard")) {
       if (role !== "ADMIN") {
-        if (role === "STAFF") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff", req.url));
+        if (role === "STAFF") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff/dashboard", req.url));
         if (role === "USER") return NextResponse.redirect(new URL("/dashboard", req.url));
         return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds/login", req.url));
       }
@@ -40,9 +40,9 @@ export default withAuth(
     // =========================================================================
     // 2. STAFF PORTAL: /quadrox-lorabiz-team/staff/*
     // =========================================================================
-    if (pathname.startsWith("/quadrox-lorabiz-team/staff")) {
+    if (pathname.startsWith("/quadrox-lorabiz-team/staff/dashboard")) {
       if (role !== "STAFF") {
-        if (role === "ADMIN") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds", req.url));
+        if (role === "ADMIN") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds/dashboard", req.url));
         if (role === "USER") return NextResponse.redirect(new URL("/dashboard", req.url));
         return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff/login", req.url));
       }
@@ -58,8 +58,8 @@ export default withAuth(
     // =========================================================================
     if (pathname.startsWith("/dashboard")) {
       if (role !== "USER") {
-        if (role === "ADMIN") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds", req.url));
-        if (role === "STAFF") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff", req.url));
+        if (role === "ADMIN") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds/dashboard", req.url));
+        if (role === "STAFF") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff/dashboard", req.url));
         return NextResponse.redirect(new URL("/auth/login", req.url));
       }
     }
