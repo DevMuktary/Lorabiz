@@ -76,6 +76,7 @@ model User {
   lga             String
   street          String
   buildingNo      String?
+  ipAddress       String?          // Tracks registration IP
   
   // Two-Factor Authentication (MFA) Fields
   twoFactorEnabled Boolean         @default(false)
