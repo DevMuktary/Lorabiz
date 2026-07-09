@@ -18,7 +18,6 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const isRegistered = searchParams.get("registered") === "true";
   
-  // Grab callbackUrl to support deep-linking from Email/WhatsApp notifications
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const [loading, setLoading] = useState(false);
@@ -47,12 +46,12 @@ function LoginContent() {
       });
 
       if (res?.error) {
-        // Displays exact error if locked out by brute-force protection, otherwise generic message
+        // Handle native NextAuth errors vs our custom thrown errors (Suspended, Rate Limit)
         setError(res.error === "CredentialsSignin" ? "Invalid email or password. Please try again." : res.error);
         setLoading(false);
       } else {
-        router.push(callbackUrl);
-        router.refresh();
+        // Password was correct, redirect to the new 2FA screen
+        router.push(`/auth/verify-login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -125,7 +124,7 @@ function LoginContent() {
               </div>
             )}
 
-            {/* Error Message */}
+            {/* Error Message (Handles Suspension / Rate Limits / Invalid Creds) */}
             {error && (
               <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-lg border border-destructive/20 flex items-center gap-2 animate-in shake">
                 <Info weight="bold" className="h-5 w-5 shrink-0" />
