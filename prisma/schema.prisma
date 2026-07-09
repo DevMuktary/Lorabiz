@@ -68,8 +68,8 @@ model User {
   middleName      String?
   lastName        String
   email           String           @unique
-  phone           String
-  whatsapp        String
+  phone           String           @unique
+  whatsapp        String           @unique
   passwordHash    String
   gender          Gender
   state           String
