@@ -57,7 +57,7 @@ function VerifyLoginContent() {
 
   return (
     <div className="min-h-[100dvh] w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white justify-center items-center p-4">
-      <div className="w-full max-w-md bg-secondary/20 p-8 rounded-2xl border border-border shadow-xl">
+      <div className="w-full max-w-md bg-secondary/20 p-6 sm:p-8 rounded-2xl border border-border shadow-xl">
         
         <div className="flex justify-center mb-6">
           <Image src="/logo.png" alt="LoraBiz Logo" width={180} height={60} className="dark:brightness-110" priority />
@@ -67,7 +67,7 @@ function VerifyLoginContent() {
           <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4">
             <ShieldCheck weight="fill" className="h-6 w-6" />
           </div>
-          <h2 className="text-2xl font-bold text-foreground">2-Step Verification</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">2-Step Verification</h2>
           <p className="text-muted-foreground mt-2 text-sm">
             We've sent a 6-digit authorization code to your email. Enter it below to access your dashboard.
           </p>
@@ -81,6 +81,7 @@ function VerifyLoginContent() {
           )}
 
           <div className="space-y-2">
+            {/* FIX: Adjusted Tracking and Text Size for Mobile screens */}
             <Input 
               value={otpCode}
               onChange={(e) => {
@@ -88,8 +89,8 @@ function VerifyLoginContent() {
                 setError("");
               }}
               maxLength={6}
-              placeholder="0 0 0 0 0 0"
-              className="h-16 text-center text-3xl tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]"
+              placeholder="000000"
+              className="h-14 sm:h-16 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]"
             />
           </div>
 
