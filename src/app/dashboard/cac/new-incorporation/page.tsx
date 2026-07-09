@@ -189,7 +189,7 @@ function RegistrationsHubContent() {
             <ul className="list-disc pl-5 text-sm text-foreground font-medium mb-8 space-y-1">
               {completenessError.fields.map(field => <li key={field}>{field}</li>)}
             </ul>
-            <button onClick={() => setCompletenessError({ isOpen: false, fields: [] })} className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80 transition-colors">
+            <button onClick={() => setCompletenessError({ isOpen: false, fields: [] })} className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80 transition-colors cursor-pointer">
               Got it
             </button>
           </div>
@@ -201,10 +201,9 @@ function RegistrationsHubContent() {
       
       {substituteData && <SubstituteNameModal reg={substituteData} onClose={() => setSubstituteData(null)} />}
 
-      {/* PAYMENT MODALS FOR UNSUBMITTED PAY_DRAFT */}
+      {/* PAYMENT MODALS FOR UNSUBMITTED PAY_DRAFT (isOpen prop removed for TS) */}
       {paymentData?._appType === "BUSINESS_NAME" && (
         <BizPaymentModal 
-          isOpen={true} 
           onClose={() => setPaymentData(null)} 
           regId={paymentData.id} 
           proposedName={paymentData.proposedName} 
@@ -213,7 +212,6 @@ function RegistrationsHubContent() {
 
       {paymentData?._appType === "LLC" && (
         <LlcPaymentModal 
-          isOpen={true} 
           onClose={() => setPaymentData(null)} 
           regId={paymentData.id} 
           proposedName={paymentData.proposedName} 
@@ -253,10 +251,10 @@ function RegistrationsHubContent() {
               </div>
             )}
             <div className="flex flex-col gap-3">
-              <button onClick={executeDelete} disabled={deleteContext.isLoading} className="w-full h-14 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl flex items-center justify-center disabled:opacity-50">
+              <button onClick={executeDelete} disabled={deleteContext.isLoading} className="w-full h-14 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl flex items-center justify-center disabled:opacity-50 cursor-pointer">
                 {deleteContext.isLoading ? <Spinner className="animate-spin h-5 w-5" /> : "Yes, Delete It"}
               </button>
-              <button onClick={() => setDeleteContext({ isOpen: false, id: null, isLoading: false, error: null })} disabled={deleteContext.isLoading} className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80">
+              <button onClick={() => setDeleteContext({ isOpen: false, id: null, isLoading: false, error: null })} disabled={deleteContext.isLoading} className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80 cursor-pointer">
                 Cancel
               </button>
             </div>
@@ -274,7 +272,7 @@ function RegistrationsHubContent() {
             <p className="text-sm text-muted-foreground font-medium mb-8">
               The application has been permanently removed from your records.
             </p>
-            <button onClick={() => setSuccessModalOpen(false)} className="w-full h-14 bg-foreground text-background font-bold rounded-xl hover:opacity-90">
+            <button onClick={() => setSuccessModalOpen(false)} className="w-full h-14 bg-foreground text-background font-bold rounded-xl hover:opacity-90 cursor-pointer">
               Continue
             </button>
           </div>
