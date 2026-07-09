@@ -3,57 +3,61 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import bcrypt from "bcryptjs";
+import { sendUserLoginOTP } from "@/lib/email";
 
 // ============================================================================
-// BRUTE-FORCE PROTECTION ENGINE (Redis-Backed Distributed Rate Limiter)
+// DUAL-LAYER BRUTE-FORCE PROTECTION ENGINE (IP + Email Tracking)
 // ============================================================================
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 Minutes in seconds
+const MAX_FAILED_ATTEMPTS_PER_EMAIL = 5;
+const MAX_FAILED_ATTEMPTS_PER_IP = 20; 
+const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 Minutes
 
-async function checkRateLimit(identifier: string): Promise<void> {
-  const lockoutKey = `lockout:${identifier}`;
-  const lockoutTTL = await redis.ttl(lockoutKey);
+async function checkRateLimit(email: string, ip: string): Promise<void> {
+  const emailLockoutTTL = await redis.ttl(`lockout:email:${email}`);
+  if (emailLockoutTTL > 0) {
+    throw new Error(`Account temporarily locked for security. Try again in ${Math.ceil(emailLockoutTTL / 60)} minute(s).`);
+  }
 
-  if (lockoutTTL > 0) {
-    const minutesRemaining = Math.ceil(lockoutTTL / 60);
-    throw new Error(
-      `Account temporarily locked due to multiple failed login attempts. Try again in ${minutesRemaining} minute(s).`
-    );
+  const ipLockoutTTL = await redis.ttl(`lockout:ip:${ip}`);
+  if (ipLockoutTTL > 0) {
+    throw new Error(`Too many failed attempts from this network. Try again in ${Math.ceil(ipLockoutTTL / 60)} minute(s).`);
   }
 }
 
-async function recordFailedAttempt(identifier: string): Promise<void> {
-  const attemptsKey = `attempts:${identifier}`;
-  const lockoutKey = `lockout:${identifier}`;
+async function recordFailedAttempt(email: string, ip: string): Promise<void> {
+  const emailKey = `attempts:email:${email}`;
+  const ipKey = `attempts:ip:${ip}`;
 
-  const attempts = await redis.incr(attemptsKey);
+  const [emailAttempts, ipAttempts] = await Promise.all([
+    redis.incr(emailKey),
+    redis.incr(ipKey),
+  ]);
 
-  if (attempts === 1) {
-    await redis.expire(attemptsKey, LOCKOUT_DURATION_SECONDS);
+  // Set expiration on the first attempt
+  if (emailAttempts === 1) await redis.expire(emailKey, LOCKOUT_DURATION_SECONDS);
+  if (ipAttempts === 1) await redis.expire(ipKey, LOCKOUT_DURATION_SECONDS);
+
+  // Trigger Lockouts if limits exceeded
+  if (emailAttempts >= MAX_FAILED_ATTEMPTS_PER_EMAIL) {
+    await redis.set(`lockout:email:${email}`, "LOCKED", "EX", LOCKOUT_DURATION_SECONDS);
+    await redis.del(emailKey);
   }
-
-  if (attempts >= MAX_FAILED_ATTEMPTS) {
-    await redis.set(lockoutKey, "LOCKED", "EX", LOCKOUT_DURATION_SECONDS);
-    await redis.del(attemptsKey);
+  
+  if (ipAttempts >= MAX_FAILED_ATTEMPTS_PER_IP) {
+    await redis.set(`lockout:ip:${ip}`, "LOCKED", "EX", LOCKOUT_DURATION_SECONDS);
+    await redis.del(ipKey);
   }
 }
 
-async function clearFailedAttempts(identifier: string): Promise<void> {
-  await redis.del(`attempts:${identifier}`);
-  await redis.del(`lockout:${identifier}`);
+async function clearFailedAttempts(email: string, ip: string): Promise<void> {
+  await redis.del(`attempts:email:${email}`, `lockout:email:${email}`);
+  await redis.del(`attempts:ip:${ip}`, `lockout:ip:${ip}`);
 }
 
 // ============================================================================
 // AUDIT LOGGING HELPER
 // ============================================================================
-async function logSecurityEvent(data: {
-  email: string;
-  role?: string;
-  event: string;
-  ipAddress?: string;
-  userAgent?: string;
-  details?: string;
-}) {
+async function logSecurityEvent(data: { email: string; role?: string; event: string; ipAddress?: string; userAgent?: string; details?: string; }) {
   try {
     await prisma.securityAuditLog.create({
       data: {
@@ -66,12 +70,12 @@ async function logSecurityEvent(data: {
       },
     });
   } catch (err) {
-    console.error("Failed to write security audit log to PostgreSQL:", err);
+    console.error("Failed to write security audit log:", err);
   }
 }
 
 // ============================================================================
-// NEXTAUTH OPTIONS CONFIGURATION
+// NEXTAUTH CONFIGURATION
 // ============================================================================
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -82,124 +86,98 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const normalizedEmail = credentials.email.toLowerCase().trim();
-
-        // Extract client network & device telemetry from headers
-        const ipAddress =
-          req?.headers?.["x-forwarded-for"] ||
-          req?.headers?.["x-real-ip"] ||
-          "Unknown IP";
-        const userAgent =
-          req?.headers?.["user-agent"] || "Unknown Browser";
-
-        const clientIp = Array.isArray(ipAddress) ? ipAddress[0] : ipAddress;
-        const clientDevice = Array.isArray(userAgent) ? userAgent[0] : userAgent;
+        
+        // Extract IP safely
+        const rawIp = req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
+        const clientIp = Array.isArray(rawIp) ? rawIp[0].split(',')[0].trim() : rawIp.split(',')[0].trim();
+        
+        const rawUa = req?.headers?.["user-agent"] || "Unknown Browser";
+        const clientDevice = Array.isArray(rawUa) ? rawUa[0] : rawUa;
 
         try {
-          // 1. Check Rate Limiter (Throws error if locked out in Redis)
-          await checkRateLimit(normalizedEmail);
+          // 1. Dual-Layer Rate Limiting
+          await checkRateLimit(normalizedEmail, clientIp);
         } catch (lockoutError: any) {
-          // Record brute force lockout attempt in audit logs
           await logSecurityEvent({
-            email: normalizedEmail,
-            event: "BRUTE_FORCE_LOCKOUT",
-            ipAddress: clientIp,
-            userAgent: clientDevice,
-            details: lockoutError.message,
+            email: normalizedEmail, event: "BRUTE_FORCE_LOCKOUT", ipAddress: clientIp, userAgent: clientDevice, details: lockoutError.message,
           });
           throw lockoutError;
         }
 
-        // 2. Find user in database
         const user = await prisma.user.findUnique({
           where: { email: normalizedEmail },
         });
 
-        // 3. Reject if account doesn't exist
         if (!user || !user.passwordHash) {
-          await recordFailedAttempt(normalizedEmail);
-          await logSecurityEvent({
-            email: normalizedEmail,
-            event: "LOGIN_FAILED",
-            ipAddress: clientIp,
-            userAgent: clientDevice,
-            details: "Account not found or missing credentials hash",
-          });
-          return null;
+          await recordFailedAttempt(normalizedEmail, clientIp);
+          return null; // Don't leak whether account exists
         }
 
-        // 4. Compare typed password against DB hash
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        );
+        // 2. Suspension Check
+        if (user.isSuspended) {
+          await logSecurityEvent({
+            email: normalizedEmail, role: user.role, event: "LOGIN_FAILED_SUSPENDED", ipAddress: clientIp, userAgent: clientDevice, details: "Attempted login on suspended account",
+          });
+          throw new Error("Your account has been suspended. Please contact customer support.");
+        }
+
+        // 3. Verify Password
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
 
         if (!isPasswordValid) {
-          await recordFailedAttempt(normalizedEmail);
+          await recordFailedAttempt(normalizedEmail, clientIp);
           await logSecurityEvent({
-            email: normalizedEmail,
-            role: user.role,
-            event: "LOGIN_FAILED",
-            ipAddress: clientIp,
-            userAgent: clientDevice,
-            details: "Invalid password provided",
+            email: normalizedEmail, role: user.role, event: "LOGIN_FAILED", ipAddress: clientIp, userAgent: clientDevice, details: "Invalid password",
           });
           return null;
         }
 
-        // 5. Success! Clear rate limit records and log success
-        await clearFailedAttempts(normalizedEmail);
-        await logSecurityEvent({
-          email: normalizedEmail,
-          role: user.role,
-          event: "LOGIN_SUCCESS",
-          ipAddress: clientIp,
-          userAgent: clientDevice,
-          details: `Authenticated Phase 1 successfully as ${user.role}`,
+        // 4. Success Phase 1 - Clear counters and trigger OTP
+        await clearFailedAttempts(normalizedEmail, clientIp);
+        
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        await prisma.otpCode.upsert({
+          where: { email: normalizedEmail },
+          update: { code: otpCode, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+          create: { email: normalizedEmail, code: otpCode, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
         });
 
-        // Return user context along with 2FA status to seed the JWT
+        // Fire & forget email
+        sendUserLoginOTP(normalizedEmail, otpCode).catch((err) => console.error("Failed to send 2FA OTP:", err));
+
+        await logSecurityEvent({
+          email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, OTP sent for 2FA.`,
+        });
+
         return {
           id: user.id,
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
           role: user.role,
-          twoFactorEnabled: user.twoFactorEnabled,
         };
       },
     }),
   ],
   callbacks: {
-    // 1. Mutate the JSON Web Token (JWT) on sign-in and manual updates
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
-        token.twoFactorEnabled = (user as any).twoFactorEnabled || false;
-
-        // MFA Gate Rule:
-        // If 2FA is disabled on account -> considered verified (true) immediately
-        // If 2FA is enabled -> starts unverified (false) until OTP challenge passed
-        token.mfaVerified = !((user as any).twoFactorEnabled);
+        token.mfaVerified = false; // Lock the session until OTP is provided
       }
-
-      // Allow frontend OTP verification pages to call `update({ mfaVerified: true })`
       if (trigger === "update" && session?.mfaVerified !== undefined) {
         token.mfaVerified = session.mfaVerified;
       }
-
       return token;
     },
-    // 2. Expose JWT properties to client-side session and middleware guards
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role as string;
-        (session.user as any).twoFactorEnabled = token.twoFactorEnabled as boolean;
         (session.user as any).mfaVerified = token.mfaVerified as boolean;
       }
       return session;
@@ -211,10 +189,10 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 Hours absolute limit before cookie expires
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-// Cast handler to any to resolve strict Next.js 16 async route handler constraints
 const handler = NextAuth(authOptions) as any;
 export { handler as GET, handler as POST };
