@@ -65,6 +65,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [supportNumber, setSupportNumber] = useState<string | null>(null);
   
   // Form Data States
   const [formData, setFormData] = useState({
@@ -88,6 +89,22 @@ export default function RegisterPage() {
   const [otpTimer, setOtpTimer] = useState(0);
 
   const availableLgas = NIGERIA_DATA.find(s => s.state === formData.state)?.lgas || [];
+
+  // Fetch Global Settings (Support WhatsApp)
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const res = await fetch('/api/settings/global');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.SUPPORT_WHATSAPP) setSupportNumber(data.SUPPORT_WHATSAPP);
+        }
+      } catch (e) {
+        console.error("Failed to fetch support config");
+      }
+    }
+    fetchSettings();
+  }, []);
 
   // Password Strength
   const getPasswordStrength = () => {
@@ -355,7 +372,13 @@ export default function RegisterPage() {
                   <Label htmlFor="gender" className="text-foreground font-medium">Gender</Label>
                   <div className="relative">
                     <GenderIntersex className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
-                    <select id="gender" value={formData.gender} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a]">
+                    <select 
+                      id="gender" 
+                      value={formData.gender} 
+                      onChange={handleChange} 
+                      required 
+                      className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] [&>option]:bg-background [&>option]:text-foreground dark:bg-[#121212]"
+                    >
                       <option value="" disabled>Select Gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -514,7 +537,13 @@ export default function RegisterPage() {
                   <Label htmlFor="state" className="text-foreground font-medium">State</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
-                    <select id="state" value={formData.state} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a]">
+                    <select 
+                      id="state" 
+                      value={formData.state} 
+                      onChange={handleChange} 
+                      required 
+                      className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] [&>option]:bg-background [&>option]:text-foreground dark:bg-[#121212]"
+                    >
                       <option value="" disabled>Select State</option>
                       {NIGERIA_DATA.map((s) => (
                         <option key={s.state} value={s.state}>{s.state} State</option>
@@ -528,7 +557,14 @@ export default function RegisterPage() {
                   <Label htmlFor="lga" className="text-foreground font-medium">Local Government (LGA)</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
-                    <select id="lga" value={formData.lga} onChange={handleChange} required disabled={!formData.state} className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed">
+                    <select 
+                      id="lga" 
+                      value={formData.lga} 
+                      onChange={handleChange} 
+                      required 
+                      disabled={!formData.state} 
+                      className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] disabled:opacity-50 disabled:cursor-not-allowed [&>option]:bg-background [&>option]:text-foreground dark:bg-[#121212]"
+                    >
                       <option value="" disabled>Select LGA</option>
                       {availableLgas.map((lga) => (
                         <option key={lga} value={lga}>{lga}</option>
@@ -566,7 +602,7 @@ export default function RegisterPage() {
                   className="mt-0.5 h-5 w-5 accent-[#ff3f7a] rounded border-border cursor-pointer shrink-0" 
                 />
                 <span className="text-sm text-muted-foreground leading-relaxed">
-                  I agree to LoraBiz&apos;s <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Terms & Conditions</Link>, <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Acceptable Use</Link> and <Link href="#" className="text-[#ff3f7a] font-semibold hover:underline">Privacy Policy</Link>.
+                  I agree to LoraBiz&apos;s <Link href="/terms" className="text-[#ff3f7a] font-semibold hover:underline">Terms & Conditions</Link>, <Link href="/acceptable-use" className="text-[#ff3f7a] font-semibold hover:underline">Acceptable Use</Link> and <Link href="/privacy" className="text-[#ff3f7a] font-semibold hover:underline">Privacy Policy</Link>.
                 </span>
               </label>
               
@@ -597,6 +633,22 @@ export default function RegisterPage() {
 
         </div>
       </div>
+
+      {/* DYNAMIC WHATSAPP SUPPORT ICON */}
+      {supportNumber && (
+        <a 
+          href={`https://wa.me/${supportNumber}`}
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 bg-[#25D366] rounded-full shadow-lg shadow-black/20 hover:bg-[#1EBE5D] hover:scale-105 transition-all duration-300 group"
+        >
+          <WhatsappLogo className="h-8 w-8 text-white" weight="fill" />
+          <span className="absolute right-16 bg-foreground text-background text-sm font-medium px-4 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
+            Need Help? Chat with Support
+          </span>
+        </a>
+      )}
+
     </div>
   );
 }
