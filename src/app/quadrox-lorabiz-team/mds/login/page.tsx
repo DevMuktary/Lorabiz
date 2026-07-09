@@ -221,3 +221,15 @@ function AdminLoginContent() {
     </div>
   );
 }
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen w-full flex items-center justify-center bg-slate-950">
+        <Spinner className="animate-spin h-8 w-8 text-teal-500" weight="bold" />
+      </div>
+    }>
+      <AdminLoginContent />
+    </Suspense>
+  );
+}
