@@ -33,11 +33,9 @@ async function recordFailedAttempt(email: string, ip: string): Promise<void> {
     redis.incr(ipKey),
   ]);
 
-  // Set expiration on the first attempt
   if (emailAttempts === 1) await redis.expire(emailKey, LOCKOUT_DURATION_SECONDS);
   if (ipAttempts === 1) await redis.expire(ipKey, LOCKOUT_DURATION_SECONDS);
 
-  // Trigger Lockouts if limits exceeded
   if (emailAttempts >= MAX_FAILED_ATTEMPTS_PER_EMAIL) {
     await redis.set(`lockout:email:${email}`, "LOCKED", "EX", LOCKOUT_DURATION_SECONDS);
     await redis.del(emailKey);
@@ -54,9 +52,6 @@ async function clearFailedAttempts(email: string, ip: string): Promise<void> {
   await redis.del(`attempts:ip:${ip}`, `lockout:ip:${ip}`);
 }
 
-// ============================================================================
-// AUDIT LOGGING HELPER
-// ============================================================================
 async function logSecurityEvent(data: { email: string; role?: string; event: string; ipAddress?: string; userAgent?: string; details?: string; }) {
   try {
     await prisma.securityAuditLog.create({
@@ -84,13 +79,13 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        portal: { label: "Portal", type: "text" }, // New field added
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const normalizedEmail = credentials.email.toLowerCase().trim();
         
-        // Extract IP safely
         const rawIp = req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
         const clientIp = Array.isArray(rawIp) ? rawIp[0].split(',')[0].trim() : rawIp.split(',')[0].trim();
         
@@ -98,7 +93,6 @@ export const authOptions: NextAuthOptions = {
         const clientDevice = Array.isArray(rawUa) ? rawUa[0] : rawUa;
 
         try {
-          // 1. Dual-Layer Rate Limiting
           await checkRateLimit(normalizedEmail, clientIp);
         } catch (lockoutError: any) {
           await logSecurityEvent({
@@ -113,10 +107,28 @@ export const authOptions: NextAuthOptions = {
 
         if (!user || !user.passwordHash) {
           await recordFailedAttempt(normalizedEmail, clientIp);
-          return null; // Don't leak whether account exists
+          return null; 
         }
 
-        // 2. Suspension Check
+        // ---> NEW: STRICT ROLE-BASED PORTAL SEPARATION
+        const requestedPortal = credentials.portal || "user";
+        
+        // Block Admin/Staff trying to log into the User Portal
+        if (requestedPortal === "user" && user.role !== "USER") {
+          await logSecurityEvent({
+            email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Admin/Staff attempted to access Client Portal."
+          });
+          throw new Error("Account does not exist in this portal.");
+        }
+
+        // Block Users trying to log into the MDS / Admin / Staff Portal
+        if ((requestedPortal === "mds" || requestedPortal === "admin" || requestedPortal === "staff") && user.role === "USER") {
+          await logSecurityEvent({
+            email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Client attempted to access Staff/Admin Portal."
+          });
+          throw new Error("Account does not exist in this portal.");
+        }
+
         if (user.isSuspended) {
           await logSecurityEvent({
             email: normalizedEmail, role: user.role, event: "LOGIN_FAILED_SUSPENDED", ipAddress: clientIp, userAgent: clientDevice, details: "Attempted login on suspended account",
@@ -124,7 +136,6 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Your account has been suspended. Please contact customer support.");
         }
 
-        // 3. Verify Password
         const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
 
         if (!isPasswordValid) {
@@ -135,7 +146,6 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // 4. Success Phase 1 - Clear counters and trigger OTP
         await clearFailedAttempts(normalizedEmail, clientIp);
         
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -146,7 +156,6 @@ export const authOptions: NextAuthOptions = {
           create: { email: normalizedEmail, code: otpCode, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
         });
 
-        // Fire & forget email
         sendUserLoginOTP(normalizedEmail, otpCode).catch((err) => console.error("Failed to send 2FA OTP:", err));
 
         await logSecurityEvent({
@@ -167,7 +176,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
-        token.mfaVerified = false; // Lock the session until OTP is provided
+        token.mfaVerified = false; 
       }
       if (trigger === "update" && session?.mfaVerified !== undefined) {
         token.mfaVerified = session.mfaVerified;
@@ -189,7 +198,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 Hours absolute limit before cookie expires
+    maxAge: 24 * 60 * 60, // 24 Hours Absolute Lifespan
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
