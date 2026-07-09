@@ -16,7 +16,7 @@ function AdminLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const callbackUrl = searchParams.get("callbackUrl") || "/quadrox-lorabiz-team/mds";
+  const callbackUrl = searchParams.get("callbackUrl") || "/quadrox-lorabiz-team/mds/dashboard";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +41,7 @@ function AdminLoginContent() {
         redirect: false,
         email: formData.email,
         password: formData.password,
+        portal: "mds", // Explicitly tags this as an MDS portal login attempt
       });
 
       if (res?.error) {
@@ -218,17 +219,5 @@ function AdminLoginContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function AdminLoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen w-full flex items-center justify-center bg-slate-950">
-        <Spinner className="animate-spin h-8 w-8 text-teal-500" weight="bold" />
-      </div>
-    }>
-      <AdminLoginContent />
-    </Suspense>
   );
 }
