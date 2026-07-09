@@ -6,12 +6,44 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // Destructure all the fields coming from our advanced frontend form
+    // --- IP TRACKING & SECURITY ---
+    const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || 
+                      req.headers.get("x-real-ip") || 
+                      "unknown";
+
+    if (ipAddress !== "unknown") {
+      // 1. Check permanent blocklist
+      const isBlocked = await prisma.blockedIp.findUnique({ where: { ip: ipAddress } });
+      if (isBlocked) {
+        return NextResponse.json(
+          { message: "Access denied from this network. Please contact customer support." }, 
+          { status: 403 }
+        );
+      }
+
+      // 2. Check 7-Day Registration Cooldown
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const recentRegistration = await prisma.user.findFirst({
+        where: {
+          ipAddress,
+          createdAt: { gte: sevenDaysAgo },
+        },
+      });
+
+      if (recentRegistration) {
+        return NextResponse.json(
+          { message: "Recent registration detected from your network. Please wait 7 days or contact support to open another account." }, 
+          { status: 429 }
+        );
+      }
+    }
+    
+    // Destructure fields, renaming email to rawEmail so we can sanitize it
     const { 
       firstName, 
       middleName, 
       lastName, 
-      email, 
+      email: rawEmail, 
       phone, 
       whatsapp,
       password,
@@ -20,18 +52,27 @@ export async function POST(req: Request) {
       lga,
       street,
       buildingNo,
-      otpCode // Required from the ZeptoMail verification step
+      otpCode 
     } = body;
 
-    // 1. Strict Basic Validation (making sure no required field is empty)
-    if (!firstName || !lastName || !email || !password || !phone || !whatsapp || !gender || !state || !lga || !street || !otpCode) {
+    // 1. Strict Basic Validation
+    if (!firstName || !lastName || !rawEmail || !password || !phone || !whatsapp || !gender || !state || !lga || !street || !otpCode) {
       return NextResponse.json(
         { message: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // 2. VERY SECURE: Check the OTP directly in the database
+    // --- MASKED EMAIL SUBADDRESS FILTERING ---
+    // Converts "user+alias@gmail.com" to "user@gmail.com" and forces lowercase
+    let email = rawEmail.toLowerCase().trim();
+    if (email.includes('@')) {
+      const [localPart, domain] = email.split('@');
+      const cleanLocal = localPart.split('+')[0]; // Strip everything after '+'
+      email = `${cleanLocal}@${domain}`;
+    }
+
+    // 2. VERY SECURE: Check the OTP directly in the database using the sanitized email
     const validOtp = await prisma.otpCode.findUnique({
       where: { email },
     });
@@ -57,30 +98,35 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Check if the user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    // 3. Check if the user already exists with this clean email, phone, or whatsapp
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email },
+          { phone },
+          { whatsapp }
+        ]
+      },
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { message: "An account with this email already exists." },
-        { status: 409 }
-      );
+      if (existingUser.email === email) {
+        return NextResponse.json({ message: "An account with this email already exists." }, { status: 409 });
+      }
+      return NextResponse.json({ message: "An account with this phone or WhatsApp number already exists." }, { status: 409 });
     }
 
     // 4. Hash the password securely
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 5. ATOMIC TRANSACTION: Create User, Initialize Wallet, AND Delete OTP simultaneously
-    // This guarantees a single OTP can never be used twice (Zero Race Condition)
     const [newUser] = await prisma.$transaction([
       prisma.user.create({
         data: {
           firstName,
           middleName: middleName || null, 
           lastName,
-          email,
+          email, 
           phone,
           whatsapp,
           passwordHash: hashedPassword,
@@ -89,8 +135,9 @@ export async function POST(req: Request) {
           lga,
           street,
           buildingNo: buildingNo || null, 
+          ipAddress,
           wallet: {
-            create: { balance: 0.00 } // Initialize the wallet balance on account creation
+            create: { balance: 0.00 } 
           }
         },
       }),
