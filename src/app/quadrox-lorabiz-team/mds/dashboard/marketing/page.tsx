@@ -45,7 +45,7 @@ export default function MarketingDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ actionType: "TOGGLE_STATUS", id, code, isActive: !currentStatus })
       });
-      if (res.ok) fetchPromos(); // Instantly refresh table
+      if (res.ok) fetchPromos(); 
     } catch (err) {
       alert("Failed to update status.");
     }
@@ -69,7 +69,7 @@ export default function MarketingDashboard() {
       });
       if (res.ok) {
         setPromoToDelete(null);
-        fetchPromos(); // Instantly refresh table upon successful deletion
+        fetchPromos(); 
       } else {
         alert("Failed to delete promo code.");
       }
@@ -155,6 +155,7 @@ export default function MarketingDashboard() {
                         ) : (
                           <span className="inline-flex items-center font-bold text-emerald-600 dark:text-emerald-400"><DollarSign size={14} className="mr-1"/> ₦{Number(p.fixedAmount).toLocaleString()} OFF</span>
                         )}
+                        <span className="block text-[10px] text-zinc-500 mt-1 uppercase tracking-wider font-bold">Applies to: {p.restrictedServices?.join(", ") || "ALL"}</span>
                         <span className="block text-xs text-zinc-500 mt-1">Limit: {p.perUserLimit} per user</span>
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -241,7 +242,7 @@ export default function MarketingDashboard() {
       <CreatePromoDrawer 
         isOpen={isDrawerOpen} 
         onClose={() => setIsDrawerOpen(false)} 
-        onSuccess={() => { setIsDrawerOpen(false); fetchPromos(); }} // Instantly refreshes on creation
+        onSuccess={() => { setIsDrawerOpen(false); fetchPromos(); }}
       />
       
       {/* 3. Inspection Drawer */}
@@ -271,26 +272,47 @@ function MetricCard({ title, value, icon, isLoading, highlight }: any) {
 
 function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClose: () => void, onSuccess: () => void }) {
   const [formData, setFormData] = useState({ code: "", type: "PERCENTAGE", value: "", usageLimit: "", perUserLimit: "1", expiresAt: "" });
+  const [selectedServices, setSelectedServices] = useState<string[]>(["ALL"]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
 
   if (!isOpen) return null;
+
+  const toggleService = (service: string) => {
+    if (service === "ALL") {
+      setSelectedServices(["ALL"]);
+    } else {
+      const filtered = selectedServices.filter(s => s !== "ALL");
+      if (filtered.includes(service)) {
+        setSelectedServices(filtered.filter(s => s !== service));
+      } else {
+        setSelectedServices([...filtered, service]);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsProcessing(true);
 
+    if (selectedServices.length === 0) {
+      setError("Please select at least one service.");
+      setIsProcessing(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/mds/marketing/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionType: "CREATE", ...formData })
+        body: JSON.stringify({ actionType: "CREATE", ...formData, restrictedServices: selectedServices })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
       setFormData({ code: "", type: "PERCENTAGE", value: "", usageLimit: "", perUserLimit: "1", expiresAt: "" });
+      setSelectedServices(["ALL"]);
       onSuccess();
     } catch (err: any) {
       setError(err.message);
@@ -318,7 +340,7 @@ function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
               <input required type="text" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase().replace(/\s/g, '')})} placeholder="e.g. WELCOME50" className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-3 py-2 text-sm font-mono tracking-wider focus:ring-2 focus:ring-indigo-500" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 border-t border-b border-zinc-100 dark:border-zinc-800 py-4">
+            <div className="grid grid-cols-2 gap-4 border-t border-zinc-100 dark:border-zinc-800 pt-4">
               <div>
                 <label className="text-xs font-bold uppercase text-zinc-500 mb-1 block">Discount Type</label>
                 <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
@@ -329,6 +351,26 @@ function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
               <div>
                 <label className="text-xs font-bold uppercase text-zinc-500 mb-1 block">Value</label>
                 <input required type="number" min="1" max={formData.type === 'PERCENTAGE' ? "100" : undefined} value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} placeholder={formData.type === 'PERCENTAGE' ? "e.g. 20" : "e.g. 5000"} className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+
+            <div className="border-t border-b border-zinc-100 dark:border-zinc-800 py-4">
+              <label className="text-xs font-bold uppercase text-zinc-500 mb-3 block">Apply to Services</label>
+              <div className="grid grid-cols-2 gap-2">
+                {["ALL", "LLC", "BUSINESS_NAME", "NIN"].map(s => (
+                  <button 
+                    key={s}
+                    type="button"
+                    onClick={() => toggleService(s)}
+                    className={`px-3 py-2 text-xs font-bold rounded-md border transition-colors ${
+                      selectedServices.includes(s) 
+                        ? "bg-indigo-600 text-white border-indigo-600" 
+                        : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-indigo-300"
+                    }`}
+                  >
+                    {s === "ALL" ? "All Services" : s.replace('_', ' ')}
+                  </button>
+                ))}
               </div>
             </div>
 
