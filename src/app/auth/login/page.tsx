@@ -3,11 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, Suspense } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   EnvelopeSimple, LockKey, SignIn, Spinner, 
-  RocketLaunch, CheckCircle, ShieldCheck, Eye, EyeSlash, Info
+  RocketLaunch, CheckCircle, ShieldCheck, Eye, EyeSlash, Info, X
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,8 +43,6 @@ function LoginContent() {
       if (!user.mfaVerified) {
         setFormData(prev => ({ ...prev, email: user.email }));
         setShowOtpModal(true);
-        // We do not set the initial 30s timer here because they might be returning hours later
-        // They can immediately click "Resend" if they need a new code, which checks the DB.
       } else {
         router.push(callbackUrl);
       }
@@ -151,6 +149,15 @@ function LoginContent() {
     } finally {
       setIsResending(false);
     }
+  };
+
+  // Securely cancel the login process and clear the partial session
+  const handleCloseModal = async () => {
+    await signOut({ redirect: false });
+    setShowOtpModal(false);
+    setOtpCode("");
+    setOtpError("");
+    setFormData(prev => ({ ...prev, password: "" })); // Clear password for security
   };
 
   const formatTime = (seconds: number) => {
@@ -271,7 +278,16 @@ function LoginContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
           <div className="w-full max-w-md bg-secondary/50 p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
             
-            <div className="text-center mb-6">
+            {/* CLOSE BUTTON */}
+            <button 
+              onClick={handleCloseModal}
+              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-colors"
+              aria-label="Close Verification"
+            >
+              <X className="h-5 w-5" weight="bold" />
+            </button>
+
+            <div className="text-center mb-6 mt-2">
               <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4">
                 <ShieldCheck weight="fill" className="h-6 w-6" />
               </div>
