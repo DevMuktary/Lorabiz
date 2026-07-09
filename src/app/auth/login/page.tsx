@@ -43,14 +43,15 @@ function LoginContent() {
         redirect: false,
         email: formData.email,
         password: formData.password,
+        // NEW: This explicitly tags this attempt as originating from the User portal
+        portal: "user", 
       });
 
       if (res?.error) {
-        // Handle native NextAuth errors vs our custom thrown errors (Suspended, Rate Limit)
+        // Handles NextAuth native rejection vs our custom strict Error strings
         setError(res.error === "CredentialsSignin" ? "Invalid email or password. Please try again." : res.error);
         setLoading(false);
       } else {
-        // Password was correct, redirect to the new 2FA screen
         router.push(`/auth/verify-login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
       }
     } catch (err) {
@@ -116,7 +117,6 @@ function LoginContent() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Success Message from Registration */}
             {isRegistered && !error && (
               <div className="p-4 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium rounded-lg border border-emerald-500/20 flex items-start gap-3 animate-in fade-in">
                 <CheckCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
@@ -124,7 +124,6 @@ function LoginContent() {
               </div>
             )}
 
-            {/* Error Message (Handles Suspension / Rate Limits / Invalid Creds) */}
             {error && (
               <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-lg border border-destructive/20 flex items-center gap-2 animate-in shake">
                 <Info weight="bold" className="h-5 w-5 shrink-0" />
