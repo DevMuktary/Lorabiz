@@ -216,3 +216,27 @@ export async function sendApplicationApprovedEmail({
 
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
 }
+
+// ============================================================================
+// NEW: STANDARD USER LOGIN 2FA
+// ============================================================================
+export async function sendUserLoginOTP(to: string, otpCode: string) {
+  const subject = "Login Verification Code - LoraBiz";
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px;">Verify your login attempt</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 24px; font-size: 15px;">
+      A successful password entry was detected for your account. Please use the secure authorization code below to complete your login and access your dashboard. 
+      <strong>This code expires in 10 minutes.</strong>
+    </p>
+    <div style="background: #f8fafc; padding: 24px; text-align: center; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #ff3f7a; border-radius: 12px; border: 2px dashed #e2e8f0; margin-bottom: 24px;">
+      ${otpCode}
+    </div>
+    <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+      <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;">
+        <strong>Security Notice:</strong> If you did not attempt to log in, your password may be compromised. Please reset your password immediately.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
+}
