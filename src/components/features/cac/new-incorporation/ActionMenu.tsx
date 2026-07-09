@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { 
   Play, Trash, Eye, FileText, WarningCircle, 
-  Archive, IdentificationCard, DotsThreeVertical
+  Archive, IdentificationCard, DotsThreeVertical, CreditCard, TextAa
 } from "@phosphor-icons/react";
 
 interface ActionMenuProps {
@@ -26,7 +26,6 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
 
   const toggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
     if (!isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       setCoords({
@@ -73,6 +72,9 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
     >
         {reg.status === 'UNSUBMITTED' && (
           <>
+            <button onClick={(e) => handleAction(e, "PAY_DRAFT")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 flex items-center gap-3 border-l-2 border-emerald-500 cursor-pointer">
+              <CreditCard className="h-4 w-4" weight="fill" /> Complete Payment
+            </button>
             <button onClick={(e) => handleAction(e, "CONTINUE")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary flex items-center gap-3 cursor-pointer">
               <Play className="h-4 w-4 text-primary" weight="fill" /> Continue Draft
             </button>
@@ -98,6 +100,9 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
             <button onClick={(e) => handleAction(e, "RESOLVE")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 bg-red-500/5 hover:bg-red-500/10 flex items-center gap-3 border-l-2 border-red-500 cursor-pointer">
               <WarningCircle className="h-4 w-4" weight="fill" /> Resolve Query
             </button>
+            <button onClick={(e) => handleAction(e, "SUBSTITUTE_NAME")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-amber-500 hover:bg-amber-500/10 flex items-center gap-3 cursor-pointer">
+              <TextAa className="h-4 w-4" weight="fill" /> Substitute Name
+            </button>
             <button onClick={(e) => handleAction(e, "VIEW_REASON")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary flex items-center gap-3 cursor-pointer">
               <FileText className="h-4 w-4 text-amber-500" weight="fill" /> View Query Reason
             </button>
@@ -109,26 +114,11 @@ export default function ActionMenu({ reg, onExecute }: ActionMenuProps) {
 
         {reg.status === 'APPROVED' && (
           <>
-            <div className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 mb-1">Official Documents</div>
-            <button onClick={(e) => handleAction(e, "DOWNLOAD_CERT")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-foreground hover:bg-secondary flex items-center gap-3 cursor-pointer">
-              <Archive className="h-4 w-4 text-emerald-500" weight="fill" /> CAC Certificate
+            <button onClick={(e) => handleAction(e, "VIEW_APPROVED_DETAILS")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center gap-3 border-l-2 border-emerald-500 cursor-pointer">
+              <Archive className="h-4 w-4" weight="fill" /> View Approved Docs
             </button>
-            <button onClick={(e) => handleAction(e, "DOWNLOAD_STATUS")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary flex items-center gap-3 cursor-pointer">
-              <FileText className="h-4 w-4 text-muted-foreground" weight="fill" /> Status Report
-            </button>
-            {(reg.entityType?.includes('LLC') || reg.entityType?.includes('Limited') || reg._appType === "LLC") && (
-              <button onClick={(e) => handleAction(e, "DOWNLOAD_MEMART")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary flex items-center gap-3 cursor-pointer">
-                <FileText className="h-4 w-4 text-muted-foreground" weight="fill" /> Download MEMART
-              </button>
-            )}
-            {reg.entityType?.includes('NGO') && (
-              <button onClick={(e) => handleAction(e, "DOWNLOAD_CONSTITUTION")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary flex items-center gap-3 cursor-pointer">
-                <FileText className="h-4 w-4 text-muted-foreground" weight="fill" /> Download Constitution
-              </button>
-            )}
-            <div className="border-t border-border my-1"></div>
-            <button onClick={(e) => handleAction(e, "VIEW_TIN")} className="w-full text-left px-4 py-2.5 text-sm font-bold text-primary hover:bg-primary/10 flex items-center gap-3 cursor-pointer">
-              <IdentificationCard className="h-4 w-4" weight="fill" /> View JTB TIN
+            <button onClick={(e) => handleAction(e, "VIEW")} className="w-full text-left px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary flex items-center gap-3 cursor-pointer">
+              <Eye className="h-4 w-4 text-blue-500" weight="fill" /> Original Application
             </button>
           </>
         )}
