@@ -77,8 +77,30 @@ async function main() {
       },
     })
   }
-
+  
   console.log("Pricing seeded successfully.")
+
+  // 3. Global Settings (Support Contacts, etc.)
+  console.log("Seeding Global Settings...")
+  
+  const settings = [
+    {
+      key: "SUPPORT_WHATSAPP",
+      // Be sure to change this to your actual live WhatsApp number
+      value: "2348000000000", 
+      description: "Global Customer Support WhatsApp Number",
+    }
+  ]
+
+  for (const s of settings) {
+    await prisma.globalSetting.upsert({
+      where: { key: s.key },
+      update: { value: s.value, description: s.description },
+      create: { key: s.key, value: s.value, description: s.description },
+    })
+  }
+  
+  console.log("Global settings seeded successfully.")
 }
 
 main()
