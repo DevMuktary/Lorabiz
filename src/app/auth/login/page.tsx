@@ -32,11 +32,14 @@ function LoginContent() {
   const [otpCode, setOtpCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
+  
+  // UI states synced with the server
   const [resendTimer, setResendTimer] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isSyncingTimer, setIsSyncingTimer] = useState(false);
 
-  // Re-trigger modal if user refreshed the page but hasn't entered the OTP yet
+  // Auto-trigger modal if user refreshed the page but hasn't entered the OTP yet
   useEffect(() => {
     if (session?.user) {
       const user = session.user as any;
@@ -48,6 +51,38 @@ function LoginContent() {
       }
     }
   }, [session, router, callbackUrl]);
+
+  // ---> NEW: Sync frontend timer with the Database Backend the moment the modal opens
+  useEffect(() => {
+    let mounted = true;
+    
+    async function syncTimerWithServer() {
+      if (!showOtpModal || !formData.email) return;
+      setIsSyncingTimer(true);
+      
+      try {
+        const res = await fetch("/api/auth/otp-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: formData.email })
+        });
+        
+        if (res.ok && mounted) {
+          const data = await res.json();
+          setIsLocked(data.isLocked);
+          setResendTimer(data.remainingSeconds);
+        }
+      } catch (err) {
+        console.error("Failed to sync timer with server");
+      } finally {
+        if (mounted) setIsSyncingTimer(false);
+      }
+    }
+    
+    syncTimerWithServer();
+    
+    return () => { mounted = false; };
+  }, [showOtpModal, formData.email]);
 
   // Standard React interval tick for the UI countdown
   useEffect(() => {
@@ -77,8 +112,9 @@ function LoginContent() {
         setError(res.error === "CredentialsSignin" ? "Invalid email or password. Please try again." : res.error);
         setLoading(false);
       } else {
+        // We do NOT hardcode a timer here anymore. 
+        // Showing the modal triggers the useEffect above, which asks the DB for the exact time.
         setShowOtpModal(true);
-        setResendTimer(30); 
         setLoading(false);
       }
     } catch (err) {
@@ -150,7 +186,7 @@ function LoginContent() {
   };
 
   const handleCloseModal = async () => {
-    // Destroy the pending session cookie so they can log into another account
+    // Safely clear the pending Phase 1 NextAuth session
     if (session?.user) {
       await signOut({ redirect: false });
     }
@@ -276,12 +312,11 @@ function LoginContent() {
       {/* OTP OVERLAY MODAL */}
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-secondary/50 p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
+          <div className="w-full max-w-md bg-secondary p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
             
-            {/* CLOSE BUTTON */}
             <button 
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-colors focus:outline-none"
+              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-full transition-colors focus:outline-none"
               aria-label="Close"
             >
               <X className="h-5 w-5" weight="bold" />
@@ -320,6 +355,7 @@ function LoginContent() {
                   }}
                   maxLength={6}
                   placeholder="000000"
+                  disabled={isSyncingTimer}
                   className="h-14 sm:h-16 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]"
                 />
               </div>
@@ -327,7 +363,7 @@ function LoginContent() {
               <div className="flex flex-col gap-3 pt-2">
                 <Button 
                   type="submit" 
-                  disabled={verifying || otpCode.length < 6} 
+                  disabled={verifying || otpCode.length < 6 || isSyncingTimer} 
                   className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white"
                 >
                   {verifying ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : "Verify & Access"}
@@ -338,10 +374,11 @@ function LoginContent() {
                     type="button"
                     variant="outline"
                     onClick={handleResendOtp}
-                    disabled={isResending || resendTimer > 0}
-                    className="w-full h-12 font-medium bg-transparent border-border text-foreground hover:bg-secondary/50 disabled:opacity-50"
+                    disabled={isResending || resendTimer > 0 || isSyncingTimer}
+                    className="w-full h-12 font-medium bg-transparent border-border text-foreground hover:bg-background disabled:opacity-50"
                   >
-                    {isResending ? <Spinner className="animate-spin h-5 w-5" /> : 
+                    {isSyncingTimer ? <Spinner className="animate-spin h-5 w-5" /> : 
+                     isResending ? <Spinner className="animate-spin h-5 w-5" /> : 
                      resendTimer > 0 ? `Resend code in ${formatTime(resendTimer)}` : "Resend Code"}
                   </Button>
                 )}
