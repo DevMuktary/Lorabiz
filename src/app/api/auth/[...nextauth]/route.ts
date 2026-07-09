@@ -79,7 +79,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        portal: { label: "Portal", type: "text" }, // Indicates which login screen requested access
+        portal: { label: "Portal", type: "text" }, 
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -113,26 +113,18 @@ export const authOptions: NextAuthOptions = {
         // ---> STRICT ROLE-BASED PORTAL SEPARATION
         const requestedPortal = credentials.portal || "user";
         
-        // Block Admin/Staff trying to log into the User Portal
         if (requestedPortal === "user" && user.role !== "USER") {
-          await logSecurityEvent({
-            email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Admin/Staff attempted to access Client Portal."
-          });
+          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Admin/Staff attempted to access Client Portal." });
           throw new Error("Account does not exist in this portal.");
         }
 
-        // Block Users trying to log into the Admin / Staff Portal
         if ((requestedPortal === "mds" || requestedPortal === "admin" || requestedPortal === "staff") && user.role === "USER") {
-          await logSecurityEvent({
-            email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Client attempted to access Staff/Admin Portal."
-          });
+          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Client attempted to access Staff/Admin Portal." });
           throw new Error("Account does not exist in this portal.");
         }
 
         if (user.isSuspended) {
-          await logSecurityEvent({
-            email: normalizedEmail, role: user.role, event: "LOGIN_FAILED_SUSPENDED", ipAddress: clientIp, userAgent: clientDevice, details: "Attempted login on suspended account",
-          });
+          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "LOGIN_FAILED_SUSPENDED", ipAddress: clientIp, userAgent: clientDevice, details: "Attempted login on suspended account" });
           throw new Error("Your account has been suspended. Please contact customer support.");
         }
 
@@ -140,42 +132,49 @@ export const authOptions: NextAuthOptions = {
 
         if (!isPasswordValid) {
           await recordFailedAttempt(normalizedEmail, clientIp);
-          await logSecurityEvent({
-            email: normalizedEmail, role: user.role, event: "LOGIN_FAILED", ipAddress: clientIp, userAgent: clientDevice, details: "Invalid password",
-          });
+          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "LOGIN_FAILED", ipAddress: clientIp, userAgent: clientDevice, details: "Invalid password" });
           return null;
         }
 
         await clearFailedAttempts(normalizedEmail, clientIp);
         
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min expiry
-        const nextResend = new Date(Date.now() + 30 * 1000);     // 30s initial cooldown
-        
-        // Initialize DB Server Rate Limiter states 
-        await prisma.otpCode.upsert({
-          where: { email: normalizedEmail },
-          update: { 
-            code: otpCode, 
-            expiresAt, 
-            resendCount: 0, 
-            nextResendAllowedAt: nextResend, 
-            lockedUntil: null 
-          },
-          create: { 
-            email: normalizedEmail, 
-            code: otpCode, 
-            expiresAt, 
-            resendCount: 0, 
-            nextResendAllowedAt: nextResend 
-          },
+        // ====================================================================
+        // ---> THE FIX: CHECK DB STATE BEFORE GENERATING/SENDING A NEW OTP
+        // ====================================================================
+        const now = new Date();
+        const existingOtp = await prisma.otpCode.findUnique({
+          where: { email: normalizedEmail }
         });
 
-        sendUserLoginOTP(normalizedEmail, otpCode).catch((err) => console.error("Failed to send 2FA OTP:", err));
+        // 1. If they are hard-locked from too many resends, block Phase 1 too
+        if (existingOtp?.lockedUntil && existingOtp.lockedUntil > now) {
+          throw new Error("Too many code requests. Account temporarily blocked from generating codes for 1 hour.");
+        }
 
-        await logSecurityEvent({
-          email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, OTP sent for 2FA.`,
-        });
+        // 2. Only generate and send a new OTP if they are OUTSIDE the active cooldown window
+        if (!existingOtp?.nextResendAllowedAt || existingOtp.nextResendAllowedAt <= now) {
+          const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+          const expiresAt = new Date(now.getTime() + 10 * 60 * 1000); // 10 min expiry
+          const nextResend = new Date(now.getTime() + 30 * 1000);     // 30s initial cooldown
+          
+          await prisma.otpCode.upsert({
+            where: { email: normalizedEmail },
+            update: { code: otpCode, expiresAt, resendCount: 0, nextResendAllowedAt: nextResend, lockedUntil: null },
+            create: { email: normalizedEmail, code: otpCode, expiresAt, resendCount: 0, nextResendAllowedAt: nextResend },
+          });
+
+          sendUserLoginOTP(normalizedEmail, otpCode).catch((err) => console.error("Failed to send 2FA OTP:", err));
+
+          await logSecurityEvent({
+            email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, fresh OTP sent via email.`,
+          });
+        } else {
+          // Cooldown is active. Do NOT send an email. Do NOT touch the database.
+          // Just let them through to the frontend modal so they can enter the code they already have.
+          await logSecurityEvent({
+            email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, reused existing active OTP (cooldown enforcement).`,
+          });
+        }
 
         return {
           id: user.id,
@@ -191,7 +190,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
-        token.mfaVerified = false; // Requires OTP to flip to true
+        token.mfaVerified = false; 
       }
       if (trigger === "update" && session?.mfaVerified !== undefined) {
         token.mfaVerified = session.mfaVerified;
@@ -213,7 +212,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 Hours absolute limit before cookie expires
+    maxAge: 24 * 60 * 60, // 24 Hours
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
