@@ -18,7 +18,7 @@ function Verify2FAContent() {
   
   const userRole = (session?.user as any)?.role || "STAFF";
   const callbackUrl = searchParams.get("callbackUrl") || 
-    (userRole === "ADMIN" ? "/quadrox-lorabiz-team/mds" : "/quadrox-lorabiz-team/staff");
+    (userRole === "ADMIN" ? "/quadrox-lorabiz-team/mds/dashboard" : "/quadrox-lorabiz-team/staff/dashboard");
 
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
