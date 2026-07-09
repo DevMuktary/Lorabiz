@@ -104,7 +104,6 @@ function RegistrationsHubContent() {
       setDeleteContext({ isOpen: true, id: id, isLoading: false, error: null });
     } 
     else if (action === "PAY_DRAFT") {
-      // 1. Check Completeness via API
       try {
         const check = await fetch("/api/cac/check-completeness", {
           method: "POST",
@@ -116,7 +115,7 @@ function RegistrationsHubContent() {
         if (!result.isComplete) {
           setCompletenessError({ isOpen: true, fields: result.missingFields });
         } else {
-          setPaymentData(reg); // Opens appropriate Payment Modal
+          setPaymentData(reg); 
         }
       } catch (err) {
         console.error("Completeness check failed");
@@ -145,6 +144,20 @@ function RegistrationsHubContent() {
       if (reg._appType === "LLC") router.push(`/dashboard/cac/register/llc/details/${id}`);
       else router.push(`/dashboard/cac/register/business-name/details/${id}`);
     }
+  };
+
+  // Helper to accurately calculate LLC pricing based on the "Extra Millions" condition
+  const calculateLlcTotalAmount = (capital: number | null | undefined) => {
+    const basePrice = 35000;
+    const extraPerMillionFee = 15000;
+    const threshold = 1000000;
+
+    if (!capital || capital <= threshold) {
+      return basePrice;
+    }
+
+    const extraMillions = Math.ceil((capital - threshold) / threshold);
+    return basePrice + (extraMillions * extraPerMillionFee);
   };
 
   const stats = dashboardData?.stats || { unsubmitted: 0, pending: 0, queried: 0, approved: 0 };
@@ -201,11 +214,11 @@ function RegistrationsHubContent() {
       
       {substituteData && <SubstituteNameModal reg={substituteData} onClose={() => setSubstituteData(null)} />}
 
-      {/* PAYMENT MODALS FOR UNSUBMITTED PAY_DRAFT (isOpen prop removed for TS) */}
+      {/* PAYMENT MODALS (TS Fixed: Removed isOpen, corrected registrationId, handled LLC totalAmount) */}
       {paymentData?._appType === "BUSINESS_NAME" && (
         <BizPaymentModal 
           onClose={() => setPaymentData(null)} 
-          regId={paymentData.id} 
+          registrationId={paymentData.id} 
           proposedName={paymentData.proposedName} 
         />
       )}
@@ -213,8 +226,9 @@ function RegistrationsHubContent() {
       {paymentData?._appType === "LLC" && (
         <LlcPaymentModal 
           onClose={() => setPaymentData(null)} 
-          regId={paymentData.id} 
+          registrationId={paymentData.id} 
           proposedName={paymentData.proposedName} 
+          totalAmount={paymentData.totalAmount ?? calculateLlcTotalAmount(paymentData.totalShareCapital)}
         />
       )}
 
