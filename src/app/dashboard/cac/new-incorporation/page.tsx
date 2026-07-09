@@ -204,19 +204,18 @@ function RegistrationsHubContent() {
       {/* PAYMENT MODALS FOR UNSUBMITTED PAY_DRAFT */}
       {paymentData?._appType === "BUSINESS_NAME" && (
         <BizPaymentModal 
-          isOpen={true} 
           onClose={() => setPaymentData(null)} 
-          regId={paymentData.id} 
+          registrationId={paymentData.id} 
           proposedName={paymentData.proposedName} 
         />
       )}
 
       {paymentData?._appType === "LLC" && (
         <LlcPaymentModal 
-          isOpen={true} 
           onClose={() => setPaymentData(null)} 
-          regId={paymentData.id} 
+          registrationId={paymentData.id} 
           proposedName={paymentData.proposedName} 
+          totalAmount={paymentData.totalAmount ?? 0} 
         />
       )}
 
