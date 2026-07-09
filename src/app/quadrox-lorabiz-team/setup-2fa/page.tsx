@@ -16,7 +16,7 @@ function Setup2FAContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || 
-    ((session?.user as any)?.role === "ADMIN" ? "/quadrox-lorabiz-team/mds" : "/quadrox-lorabiz-team/staff");
+    ((session?.user as any)?.role === "ADMIN" ? "/quadrox-lorabiz-team/mds/dashboard" : "/quadrox-lorabiz-team/staff");
 
   const [method, setMethod] = useState<"EMAIL" | "AUTHENTICATOR">("EMAIL");
   const [step, setStep] = useState<"SELECT" | "VERIFY">("SELECT");
