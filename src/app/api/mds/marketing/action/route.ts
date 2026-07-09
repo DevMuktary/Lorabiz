@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
     // 1. CREATE PROMO CODE
     if (actionType === "CREATE") {
-      const { code, type, value, usageLimit, perUserLimit, expiresAt } = data;
+      const { code, type, value, usageLimit, perUserLimit, expiresAt, restrictedServices } = data;
       
       if (!code || !type || !value) {
         return NextResponse.json({ error: "Code, Type, and Value are required." }, { status: 400 });
@@ -32,6 +32,7 @@ export async function POST(req: Request) {
             usageLimit: usageLimit ? Number(usageLimit) : null,
             perUserLimit: perUserLimit ? Number(perUserLimit) : 1, // Default to 1 per user
             expiresAt: expiresAt ? new Date(expiresAt) : null,
+            restrictedServices: restrictedServices && restrictedServices.length > 0 ? restrictedServices : ["ALL"],
           }
         });
 
