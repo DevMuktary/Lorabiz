@@ -13,8 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const ESCALATING_TIMEOUTS = [30, 60, 300, 600, 1800]; // 30s, 60s, 5m, 10m, 30m
-
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -23,7 +21,7 @@ function LoginContent() {
   const isRegistered = searchParams.get("registered") === "true";
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
-  // Login States
+  // Login Form States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,71 +32,35 @@ function LoginContent() {
   const [otpCode, setOtpCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
-  
   const [resendTimer, setResendTimer] = useState(0);
-  const [timerLevel, setTimerLevel] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
-  // Auto-trigger modal if user is authenticated but MFA is false (e.g., they refreshed the page)
+  // Re-trigger modal if user refreshed the page but hasn't entered the OTP yet
   useEffect(() => {
     if (session?.user) {
       const user = session.user as any;
       if (!user.mfaVerified) {
         setFormData(prev => ({ ...prev, email: user.email }));
         setShowOtpModal(true);
+        // We do not set the initial 30s timer here because they might be returning hours later
+        // They can immediately click "Resend" if they need a new code, which checks the DB.
       } else {
         router.push(callbackUrl);
       }
     }
   }, [session, router, callbackUrl]);
 
-  // Persistent Timer Logic
+  // Standard React interval tick for the UI countdown
   useEffect(() => {
-    if (!showOtpModal || !formData.email) return;
-
-    const storageKey = `login_otp_${formData.email}`;
-    const stored = localStorage.getItem(storageKey);
-    const now = Date.now();
-
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      
-      // Check for 1-hour cooldown reset
-      if (now - parsed.lastRequestedAt > 3600000) {
-        localStorage.removeItem(storageKey);
-        updateStorage(0, now + ESCALATING_TIMEOUTS[0] * 1000);
-      } else {
-        setTimerLevel(parsed.level);
-        if (parsed.level >= ESCALATING_TIMEOUTS.length) {
-          setIsLocked(true);
-        } else {
-          const remaining = Math.floor((parsed.nextAllowedAt - now) / 1000);
-          setResendTimer(remaining > 0 ? remaining : 0);
-        }
-      }
-    } else {
-      // First time modal opens
-      updateStorage(0, now + ESCALATING_TIMEOUTS[0] * 1000);
+    let interval: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => (prev <= 1 ? 0 : prev - 1));
+      }, 1000);
     }
-
-    const interval = setInterval(() => {
-      setResendTimer(prev => (prev <= 1 ? 0 : prev - 1));
-    }, 1000);
-
     return () => clearInterval(interval);
-  }, [showOtpModal, formData.email]);
-
-  const updateStorage = (level: number, nextAllowedAt: number) => {
-    setTimerLevel(level);
-    const remaining = Math.floor((nextAllowedAt - Date.now()) / 1000);
-    setResendTimer(remaining > 0 ? remaining : 0);
-    localStorage.setItem(`login_otp_${formData.email}`, JSON.stringify({
-      level,
-      nextAllowedAt,
-      lastRequestedAt: Date.now()
-    }));
-  };
+  }, [resendTimer]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,15 +72,16 @@ function LoginContent() {
         redirect: false,
         email: formData.email,
         password: formData.password,
-        portal: "user", 
+        portal: "user", // Strict Tagging
       });
 
       if (res?.error) {
         setError(res.error === "CredentialsSignin" ? "Invalid email or password. Please try again." : res.error);
         setLoading(false);
       } else {
-        // Success: Trigger the Modal instead of redirecting
+        // Success Phase 1: Show modal and force a 30s wait before they can request another code
         setShowOtpModal(true);
+        setResendTimer(30); 
         setLoading(false);
       }
     } catch (err) {
@@ -168,16 +131,20 @@ function LoginContent() {
         body: JSON.stringify({ email: formData.email }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
-        const nextLevel = timerLevel + 1;
-        if (nextLevel >= ESCALATING_TIMEOUTS.length) {
+        setResendTimer(data.remainingSeconds);
+      } else if (res.status === 429) {
+        // Enforce Server-Side Rate Limits
+        if (data.isLocked) {
           setIsLocked(true);
-          updateStorage(nextLevel, Date.now() + 3600000); // Lock for 1 hour
-        } else {
-          updateStorage(nextLevel, Date.now() + ESCALATING_TIMEOUTS[nextLevel] * 1000);
+        } else if (data.remainingSeconds) {
+          setResendTimer(data.remainingSeconds);
         }
+        setOtpError(data.message);
       } else {
-        setOtpError("Failed to resend. Please try again.");
+        setOtpError(data.message || "Failed to resend. Please try again.");
       }
     } catch (e) {
       setOtpError("Network error.");
@@ -195,7 +162,7 @@ function LoginContent() {
   return (
     <div className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden transition-colors duration-300">
       
-      {/* LEFT PANEL - Fixed Branding */}
+      {/* LEFT PANEL */}
       <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-[#ff3f7a] p-12 flex-col justify-center relative overflow-hidden">
         <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-black/10 rounded-full blur-[80px] pointer-events-none"></div>
@@ -296,14 +263,13 @@ function LoginContent() {
               Don&apos;t have an account? <Link href="/auth/register" className="font-semibold text-[#ff3f7a] hover:underline">Register here</Link>
             </div>
           </form>
-
         </div>
       </div>
 
       {/* OTP OVERLAY MODAL */}
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-secondary/30 p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
+          <div className="w-full max-w-md bg-secondary/50 p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
             
             <div className="text-center mb-6">
               <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4">
