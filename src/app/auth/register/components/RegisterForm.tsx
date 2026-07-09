@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NIGERIA_DATA } from "@/lib/nigeria-states";
+import { NIGERIA_STATES_LGA } from "@/lib/nigeria-states";
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -34,7 +34,13 @@ export default function RegisterForm() {
   const [otpCode, setOtpCode] = useState("");
   const [otpTimer, setOtpTimer] = useState(0);
 
-  const availableLgas = NIGERIA_DATA.find(s => s.state === formData.state)?.lgas || [];
+  // Safely fetch the LGAs from the Record object using the selected state key
+  const availableLgas = formData.state ? NIGERIA_STATES_LGA[formData.state] || [] : [];
+
+  // Helper to nicely format the uppercase state keys (e.g., "AKWA IBOM" -> "Akwa Ibom")
+  const formatStateName = (name: string) => {
+    return name.split(' ').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ');
+  };
 
   const getPasswordStrength = () => {
     let score = 0;
@@ -161,10 +167,17 @@ export default function RegisterForm() {
     setLoading(true);
 
     try {
+      // Store the formatted state name in the database instead of the ALL CAPS key
+      const payload = {
+        ...formData,
+        state: formatStateName(formData.state), 
+        otpCode
+      };
+
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, otpCode }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -349,7 +362,9 @@ export default function RegisterForm() {
                 <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                 <select id="state" value={formData.state} onChange={handleChange} required className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] [&>option]:bg-background [&>option]:text-foreground dark:bg-[#121212]">
                   <option value="" disabled>Select State</option>
-                  {NIGERIA_DATA.map((s) => <option key={s.state} value={s.state}>{s.state} State</option>)}
+                  {Object.keys(NIGERIA_STATES_LGA).map((stateKey) => (
+                    <option key={stateKey} value={stateKey}>{formatStateName(stateKey)} State</option>
+                  ))}
                 </select>
               </div>
               {errors.state && <p className="text-sm text-destructive font-medium mt-1">{errors.state}</p>}
