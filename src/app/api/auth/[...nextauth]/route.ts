@@ -79,7 +79,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        portal: { label: "Portal", type: "text" }, // New field added
+        portal: { label: "Portal", type: "text" }, // Indicates which login screen requested access
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -110,7 +110,7 @@ export const authOptions: NextAuthOptions = {
           return null; 
         }
 
-        // ---> NEW: STRICT ROLE-BASED PORTAL SEPARATION
+        // ---> STRICT ROLE-BASED PORTAL SEPARATION
         const requestedPortal = credentials.portal || "user";
         
         // Block Admin/Staff trying to log into the User Portal
@@ -121,7 +121,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Account does not exist in this portal.");
         }
 
-        // Block Users trying to log into the MDS / Admin / Staff Portal
+        // Block Users trying to log into the Admin / Staff Portal
         if ((requestedPortal === "mds" || requestedPortal === "admin" || requestedPortal === "staff") && user.role === "USER") {
           await logSecurityEvent({
             email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Client attempted to access Staff/Admin Portal."
@@ -149,11 +149,26 @@ export const authOptions: NextAuthOptions = {
         await clearFailedAttempts(normalizedEmail, clientIp);
         
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min expiry
+        const nextResend = new Date(Date.now() + 30 * 1000);     // 30s initial cooldown
         
+        // Initialize DB Server Rate Limiter states 
         await prisma.otpCode.upsert({
           where: { email: normalizedEmail },
-          update: { code: otpCode, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
-          create: { email: normalizedEmail, code: otpCode, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+          update: { 
+            code: otpCode, 
+            expiresAt, 
+            resendCount: 0, 
+            nextResendAllowedAt: nextResend, 
+            lockedUntil: null 
+          },
+          create: { 
+            email: normalizedEmail, 
+            code: otpCode, 
+            expiresAt, 
+            resendCount: 0, 
+            nextResendAllowedAt: nextResend 
+          },
         });
 
         sendUserLoginOTP(normalizedEmail, otpCode).catch((err) => console.error("Failed to send 2FA OTP:", err));
@@ -176,7 +191,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
-        token.mfaVerified = false; 
+        token.mfaVerified = false; // Requires OTP to flip to true
       }
       if (trigger === "update" && session?.mfaVerified !== undefined) {
         token.mfaVerified = session.mfaVerified;
@@ -198,7 +213,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 Hours Absolute Lifespan
+    maxAge: 24 * 60 * 60, // 24 Hours absolute limit before cookie expires
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
