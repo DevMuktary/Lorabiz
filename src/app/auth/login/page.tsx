@@ -328,7 +328,7 @@ function LoginContent() {
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-foreground">2-Step Verification</h2>
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                We've sent a secure 6-digit authorization code to <br/>
+                We've sent a 6-digit authorization code to <br/>
                 <span className="font-medium text-foreground">{formData.email}</span>.
               </p>
             </div>
