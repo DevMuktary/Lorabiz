@@ -70,14 +70,13 @@ function LoginContent() {
         redirect: false,
         email: formData.email,
         password: formData.password,
-        portal: "user", // Strict Tagging
+        portal: "user", 
       });
 
       if (res?.error) {
         setError(res.error === "CredentialsSignin" ? "Invalid email or password. Please try again." : res.error);
         setLoading(false);
       } else {
-        // Success Phase 1: Show modal and force a 30s wait before they can request another code
         setShowOtpModal(true);
         setResendTimer(30); 
         setLoading(false);
@@ -134,7 +133,6 @@ function LoginContent() {
       if (res.ok) {
         setResendTimer(data.remainingSeconds);
       } else if (res.status === 429) {
-        // Enforce Server-Side Rate Limits
         if (data.isLocked) {
           setIsLocked(true);
         } else if (data.remainingSeconds) {
@@ -151,13 +149,15 @@ function LoginContent() {
     }
   };
 
-  // Securely cancel the login process and clear the partial session
   const handleCloseModal = async () => {
-    await signOut({ redirect: false });
+    // Destroy the pending session cookie so they can log into another account
+    if (session?.user) {
+      await signOut({ redirect: false });
+    }
     setShowOtpModal(false);
     setOtpCode("");
     setOtpError("");
-    setFormData(prev => ({ ...prev, password: "" })); // Clear password for security
+    setFormData(prev => ({ ...prev, password: "" }));
   };
 
   const formatTime = (seconds: number) => {
@@ -281,14 +281,14 @@ function LoginContent() {
             {/* CLOSE BUTTON */}
             <button 
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-colors"
-              aria-label="Close Verification"
+              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-colors focus:outline-none"
+              aria-label="Close"
             >
               <X className="h-5 w-5" weight="bold" />
             </button>
 
-            <div className="text-center mb-6 mt-2">
-              <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4 mt-2">
                 <ShieldCheck weight="fill" className="h-6 w-6" />
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-foreground">2-Step Verification</h2>
