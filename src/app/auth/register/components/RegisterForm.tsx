@@ -22,6 +22,9 @@ export default function RegisterForm() {
   const [sameAsPhone, setSameAsPhone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Loading states for OTP specific actions
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -89,8 +92,9 @@ export default function RegisterForm() {
       setErrors({ email: "Please enter a valid email address first." });
       return;
     }
+    
     setErrors({ email: "" });
-    setOtpStep("idle");
+    setIsSendingOtp(true);
 
     try {
       const res = await fetch("/api/auth/send-otp", {
@@ -105,9 +109,13 @@ export default function RegisterForm() {
       } else {
         const data = await res.json();
         setErrors({ email: data.message || "Failed to send code." });
+        setOtpStep("idle"); // Reset if failed so they can try again
       }
     } catch (err) {
       setErrors({ email: "Network error. Try again." });
+      setOtpStep("idle");
+    } finally {
+      setIsSendingOtp(false);
     }
   };
 
@@ -167,7 +175,6 @@ export default function RegisterForm() {
     setLoading(true);
 
     try {
-      // Store the formatted state name in the database instead of the ALL CAPS key
       const payload = {
         ...formData,
         state: formatStateName(formData.state), 
@@ -276,8 +283,21 @@ export default function RegisterForm() {
                 <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                 <Input id="email" type="email" disabled={otpStep === "verified"} value={formData.email} onChange={handleChange} required placeholder="you@example.com" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
               </div>
-              {otpStep === "idle" && <Button type="button" onClick={handleSendOTP} className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white px-6 transition-all cursor-pointer">Verify</Button>}
-              {otpStep === "verified" && <Button type="button" disabled className="h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-6">Verified ✓</Button>}
+              
+              {otpStep === "idle" && (
+                <Button 
+                  type="button" 
+                  onClick={handleSendOTP} 
+                  disabled={isSendingOtp}
+                  className="h-12 bg-[#ff3f7a] hover:bg-[#e02b62] text-white px-6 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed min-w-[100px]"
+                >
+                  {isSendingOtp ? <Spinner className="animate-spin h-5 w-5" /> : "Verify"}
+                </Button>
+              )}
+              
+              {otpStep === "verified" && (
+                <Button type="button" disabled className="h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-6 min-w-[100px]">Verified ✓</Button>
+              )}
             </div>
             
             {otpStep === "sent" && (
@@ -287,9 +307,17 @@ export default function RegisterForm() {
                   {isVerifying ? <Spinner className="animate-spin h-5 w-5 mx-auto" /> : "Confirm"}
                 </Button>
                 {otpTimer > 0 ? (
-                  <div className="h-12 px-4 flex items-center justify-center bg-secondary border border-border rounded-md text-muted-foreground font-mono font-medium">{otpTimer}s</div>
+                  <div className="h-12 px-4 flex items-center justify-center bg-secondary border border-border rounded-md text-muted-foreground font-mono font-medium min-w-[80px]">{otpTimer}s</div>
                 ) : (
-                  <Button type="button" onClick={handleSendOTP} variant="outline" className="h-12 border-border text-foreground hover:bg-secondary cursor-pointer">Resend</Button>
+                  <Button 
+                    type="button" 
+                    onClick={handleSendOTP} 
+                    variant="outline" 
+                    disabled={isSendingOtp}
+                    className="h-12 border-border text-foreground hover:bg-secondary cursor-pointer disabled:opacity-50 min-w-[80px]"
+                  >
+                    {isSendingOtp ? <Spinner className="animate-spin h-5 w-5 mx-auto" /> : "Resend"}
+                  </Button>
                 )}
               </div>
             )}
