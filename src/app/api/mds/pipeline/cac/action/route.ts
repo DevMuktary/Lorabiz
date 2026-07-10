@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       };
       
       if (actionType === "UNASSIGN") updateData.assignedToId = null;
-      if (actionType === "ASSIGN" && staffId) updateData.assignedToId = staffId; // Handle new ASSIGN action
+      if (actionType === "ASSIGN" && staffId) updateData.assignedToId = staffId;
 
       // Attach deliverables
       if (actionType === "APPROVE") {
@@ -37,6 +37,18 @@ export async function POST(req: Request) {
         updateData.certificateUrl = certificateUrl;
         updateData.statusReportUrl = statusReportUrl;
         if (ticketType === "LLC") updateData.memorandumUrl = memorandumUrl;
+      }
+
+      // ==========================================
+      // THE FIX: SAVE THE QUERY REASON TO THE DB
+      // ==========================================
+      if (actionType === "QUERY") {
+        updateData.queryReason = reason;
+        updateData.queryStatus = "UNRESOLVED";
+        // BusinessRegistration has queryDate in Prisma schema
+        if (ticketType === "BUSINESS_NAME") {
+          updateData.queryDate = new Date();
+        }
       }
 
       if (ticketType === "BUSINESS_NAME") {
