@@ -11,18 +11,27 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { reference } = body;
 
-    if (!reference || !reference.startsWith("ONL_")) {
-      return NextResponse.json({ message: "Invalid transaction reference" }, { status: 400 });
+    // =====================================================================
+    // SSRF FIX: STRICT INPUT VALIDATION & SANITIZATION
+    // Only allow alphanumeric characters, hyphens, and underscores.
+    // =====================================================================
+    if (!reference || typeof reference !== "string" || !/^[a-zA-Z0-9_-]+$/.test(reference)) {
+      return NextResponse.json({ message: "Invalid transaction reference format" }, { status: 400 });
     }
 
-    // Extract the registration ID from our custom reference format: ONL_{registrationId}_{timestamp}
+    if (!reference.startsWith("ONL_")) {
+      return NextResponse.json({ message: "Invalid transaction type for this endpoint" }, { status: 400 });
+    }
+
+    // Safely encode the reference before injecting it into the URL
+    const safeReference = encodeURIComponent(reference);
     const registrationId = reference.split("_")[1];
 
     // 1. Verify Payment Server-to-Server with Paystack
-    const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+    const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${safeReference}`, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, // Must be in .env
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, 
       },
     });
 
@@ -33,23 +42,20 @@ export async function POST(req: Request) {
     }
 
     const amountPaid = Number(paystackData.data.amount) / 100; // Convert Kobo back to Naira
-
-    // Store the email safely outside the callback so TypeScript remembers it is a string
     const userEmail = session.user.email as string;
 
     // 2. ATOMIC TRANSACTION TO PREVENT RACE CONDITIONS
     await prisma.$transaction(async (tx) => {
-      // Find the user and wallet using the strictly typed email
       const user = await tx.user.findUnique({ 
         where: { email: userEmail }, 
         include: { wallet: true } 
       });
       if (!user || !user.wallet) throw new Error("User or wallet missing");
 
-      // IDEMPOTENCY CHECK: Ensure we haven't already processed this exact reference!
+      // IDEMPOTENCY CHECK
       const existingTx = await tx.transaction.findUnique({ where: { reference } });
       if (existingTx && existingTx.status === "SUCCESS") {
-        return; // Break out safely. It was already handled by another rapid request.
+        return; 
       }
 
       const registration = await tx.businessRegistration.findUnique({ where: { id: registrationId } });
@@ -57,7 +63,7 @@ export async function POST(req: Request) {
         throw new Error("Application already submitted or invalid");
       }
 
-      // STEP A: FUND THE WALLET (The virtual deposit from Paystack)
+      // STEP A: FUND THE WALLET
       let currentBalance = Number(user.wallet.balance);
       let newBalanceAfterFunding = currentBalance + amountPaid;
 
@@ -69,12 +75,12 @@ export async function POST(req: Request) {
           balanceAfter: newBalanceAfterFunding,
           type: "CREDIT",
           status: "SUCCESS",
-          reference: reference, // Save the paystack reference here to lock it
+          reference: reference, 
           description: "Paystack Online Funding"
         }
       });
 
-      // STEP B: EXACT SIMULTANEOUS DEBIT (Pay for the service)
+      // STEP B: EXACT SIMULTANEOUS DEBIT 
       let newBalanceAfterPayment = newBalanceAfterFunding - amountPaid;
 
       await tx.transaction.create({
@@ -93,17 +99,15 @@ export async function POST(req: Request) {
       // STEP C: UPDATE WALLET BALANCE
       await tx.wallet.update({
         where: { id: user.wallet.id },
-        data: { balance: newBalanceAfterPayment } // Mathematically, this equals the original currentBalance
+        data: { balance: newBalanceAfterPayment } 
       });
 
       // STEP D: UPDATE REGISTRATION STATUS
       await tx.businessRegistration.update({
         where: { id: registrationId },
-        data: { status: "PENDING" } // Application officially submitted!
+        data: { status: "PENDING" } 
       });
     });
-
-    // TODO: Trigger Email/SMS notification here since payment is fully secured.
 
     return NextResponse.json({ success: true, message: "Payment verified and application submitted!" });
 
