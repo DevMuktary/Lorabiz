@@ -110,16 +110,26 @@ export const authOptions: NextAuthOptions = {
           return null; 
         }
 
-        // ---> STRICT ROLE-BASED PORTAL SEPARATION
+        // ====================================================================
+        // ---> STRICT ROLE-BASED PORTAL SEPARATION (Pre-Login Checks)
+        // ====================================================================
         const requestedPortal = credentials.portal || "user";
         
+        // 1. Customer (USER) trying to access via Customer portal
         if (requestedPortal === "user" && user.role !== "USER") {
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Admin/Staff attempted to access Client Portal." });
           throw new Error("Account does not exist in this portal.");
         }
 
-        if ((requestedPortal === "mds" || requestedPortal === "admin" || requestedPortal === "staff") && user.role === "USER") {
-          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Client attempted to access Staff/Admin Portal." });
+        // 2. MDS trying to access via MDS Portal (Prisma role must be ADMIN)
+        if (requestedPortal === "mds" && user.role !== "ADMIN") {
+          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: `${user.role} attempted to access MDS (Admin) Portal.` });
+          throw new Error("Account does not exist in this portal.");
+        }
+
+        // 3. Staff trying to access via Staff Portal
+        if (requestedPortal === "staff" && user.role !== "STAFF") {
+          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: `${user.role} attempted to access Staff Portal.` });
           throw new Error("Account does not exist in this portal.");
         }
 
@@ -139,7 +149,7 @@ export const authOptions: NextAuthOptions = {
         await clearFailedAttempts(normalizedEmail, clientIp);
         
         // ====================================================================
-        // ---> THE FIX: CHECK DB STATE BEFORE GENERATING/SENDING A NEW OTP
+        // CHECK DB STATE BEFORE GENERATING/SENDING A NEW OTP
         // ====================================================================
         const now = new Date();
         const existingOtp = await prisma.otpCode.findUnique({
@@ -169,8 +179,6 @@ export const authOptions: NextAuthOptions = {
             email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, fresh OTP sent via email.`,
           });
         } else {
-          // Cooldown is active. Do NOT send an email. Do NOT touch the database.
-          // Just let them through to the frontend modal so they can enter the code they already have.
           await logSecurityEvent({
             email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, reused existing active OTP (cooldown enforcement).`,
           });
@@ -187,17 +195,49 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
+      // 1. Initial Login Injection
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
         token.mfaVerified = false; 
       }
+
+      // 2. Continuous Database Verification (Kills Ghost Sessions & Dynamic Role Syncing)
+      if (token?.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { id: true, role: true, isSuspended: true }
+          });
+
+          // If the user was deleted, or suspended by MDS, immediately destroy the token.
+          if (!dbUser || dbUser.isSuspended) {
+            return {} as any; // Returning empty object permanently kills the session.
+          }
+
+          // If MDS upgraded a STAFF to ADMIN (or vice versa), sync their session role instantly.
+          if (dbUser.role !== token.role) {
+            token.role = dbUser.role;
+          }
+        } catch (error) {
+          console.error("Database session verification failed:", error);
+        }
+      }
+
+      // 3. MFA State Update
       if (trigger === "update" && session?.mfaVerified !== undefined) {
         token.mfaVerified = session.mfaVerified;
       }
       return token;
     },
+    
     async session({ session, token }) {
+      // If the token was nuked in the jwt callback (because they are a ghost/suspended), 
+      // trigger an intentional session failure to force the frontend to log them out.
+      if (!token?.id) {
+        return { ...session, error: "SessionTerminated" } as any; 
+      }
+
       if (session.user) {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role as string;
