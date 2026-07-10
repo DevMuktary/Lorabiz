@@ -73,6 +73,7 @@ function RegistrationsHubContent() {
   useEffect(() => {
     const timeoutId = setTimeout(() => fetchDashboardData(), 300);
     return () => clearTimeout(timeoutId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search, statusFilter, typeFilter]);
 
   const executeDelete = async () => {
@@ -136,9 +137,16 @@ function RegistrationsHubContent() {
     else if (action === "VIEW") {
       router.push(`/dashboard/cac/register/view/${id}`);
     } 
+    // ============================================================
+    // THE FIX: Dynamic Resolution Routing (Dropdown Button)
+    // ============================================================
     else if (action === "RESOLVE") {
-      if (reg._appType === "LLC") router.push(`/dashboard/cac/llc/${id}/queries`);
-      else router.push(`/dashboard/cac/businesses/${id}/queries`);
+      const isLlc = reg._appType === "LLC" || reg.memorandumObjects !== undefined;
+      if (isLlc) {
+        router.push(`/dashboard/cac/llc/${id}/queries`);
+      } else {
+        router.push(`/dashboard/cac/businesses/${id}/queries`);
+      }
     }
     else if (action === "CONTINUE") {
       if (reg._appType === "LLC") router.push(`/dashboard/cac/register/llc/details/${id}`);
@@ -146,7 +154,6 @@ function RegistrationsHubContent() {
     }
   };
 
-  // Helper to accurately calculate LLC pricing based on the "Extra Millions" condition
   const calculateLlcTotalAmount = (capital: number | null | undefined) => {
     const basePrice = 35000;
     const extraPerMillionFee = 15000;
@@ -214,7 +221,7 @@ function RegistrationsHubContent() {
       
       {substituteData && <SubstituteNameModal reg={substituteData} onClose={() => setSubstituteData(null)} />}
 
-      {/* PAYMENT MODALS (TS Fixed: Removed isOpen, corrected registrationId, handled LLC totalAmount) */}
+      {/* PAYMENT MODALS */}
       {paymentData?._appType === "BUSINESS_NAME" && (
         <BizPaymentModal 
           onClose={() => setPaymentData(null)} 
@@ -232,7 +239,9 @@ function RegistrationsHubContent() {
         />
       )}
 
-      {/* EXISTING MODALS */}
+      {/* ============================================================ */}
+      {/* THE FIX: Dynamic Resolution Routing (Modal 'Go to Resolve' Button) */}
+      {/* ============================================================ */}
       {queryReasonData && (
         <QueryReasonModal 
           businessName={queryReasonData.proposedName || "Unnamed Registration"}
@@ -242,9 +251,17 @@ function RegistrationsHubContent() {
           onClose={() => setQueryReasonData(null)}
           onResolve={() => {
             const id = queryReasonData.id;
-            const rowData = queryReasonData;
-            setQueryReasonData(null);
-            handleExecuteAction("resolve", id, rowData);
+            const appType = queryReasonData._appType;
+            const hasMemObjects = queryReasonData.memorandumObjects !== undefined;
+            
+            setQueryReasonData(null); // Close the modal first
+            
+            const isLlc = appType === "LLC" || hasMemObjects;
+            if (isLlc) {
+              router.push(`/dashboard/cac/llc/${id}/queries`);
+            } else {
+              router.push(`/dashboard/cac/businesses/${id}/queries`);
+            }
           }}
         />
       )}
