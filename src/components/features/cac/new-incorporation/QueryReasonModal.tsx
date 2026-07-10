@@ -43,16 +43,18 @@ export default function QueryReasonModal({ businessName, reason, status, date, o
             <p className="text-base font-black text-foreground">{businessName || "Unnamed Registration"}</p>
           </div>
 
-          <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 shadow-sm relative">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 shadow-sm relative">
             <ChatCircleText className="absolute top-5 right-5 h-6 w-6 text-amber-500/20" weight="fill" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 border-b border-amber-500/10 pb-2">CAC Examiner Notes</p>
-            <p className="text-sm font-medium text-foreground leading-relaxed whitespace-pre-wrap">
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-3 border-b border-amber-500/20 pb-2">
+              CAC Examiner Notes
+            </p>
+            <p className="text-sm font-bold text-amber-950 dark:text-amber-100 leading-relaxed whitespace-pre-wrap">
               {reason || "No specific reason provided by the examiner. Please review your application thoroughly."}
             </p>
           </div>
 
           {!isResolved && (
-            <div className="bg-secondary/30 border border-border p-4 rounded-xl">
+            <div className="bg-secondary/50 border border-border p-4 rounded-xl">
               <p className="text-xs font-medium text-muted-foreground leading-relaxed">
                 To resolve this, click the button below to enter the resolution wizard. You will not be charged again.
               </p>
