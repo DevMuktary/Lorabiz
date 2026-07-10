@@ -42,17 +42,15 @@ export default function QueryResolutionPage() {
         const json = await res.json();
         
         if (json.success) {
-          // LOCKOUT CHECK: If already resolved on another tab/device
           if (json.data.status !== "QUERIED") {
             setIsAlreadyResolved(true);
-            setTimeout(() => router.push("/dashboard"), 3000);
+            setTimeout(() => router.push("/dashboard/cac/new-incorporation"), 3000);
             setLoading(false);
             return;
           }
 
           setData(json.data);
           
-          // Hydrate Company Info
           setCompanyInfo({
             email: json.data.companyEmail || "", 
             state: json.data.companyState || "", 
@@ -62,7 +60,6 @@ export default function QueryResolutionPage() {
             commencementDate: json.data.commencementDate || ""
           });
 
-          // Hydrate Proprietor Info
           if (json.data.proprietors?.length > 0) {
             setProprietors(json.data.proprietors.map((p: any) => ({
               ...p, 
@@ -83,18 +80,15 @@ export default function QueryResolutionPage() {
 
     fetchDetails();
 
-    // BACKGROUND POLLING: Check every 5 seconds if someone else fixed it
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/cac/register/business-name/details/${id}`);
         const json = await res.json();
         if (json.success && json.data.status !== "QUERIED") {
           setIsAlreadyResolved(true);
-          setTimeout(() => router.push("/dashboard"), 3000);
+          setTimeout(() => router.push("/dashboard/cac/new-incorporation"), 3000);
         }
-      } catch (err) {
-        // Silent fail for background check
-      }
+      } catch (err) {}
     }, 5000);
 
     return () => clearInterval(interval);
@@ -111,7 +105,7 @@ export default function QueryResolutionPage() {
       const saveRes = await fetch(`/api/cac/register/business-name/details/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyInfo, proprietors, isDraft: true })
+        body: JSON.stringify({ companyInfo, proprietors, isDraft: false })
       });
 
       if (!saveRes.ok) throw new Error("Failed to save changes");
@@ -124,7 +118,7 @@ export default function QueryResolutionPage() {
       
       setTimeout(() => { 
         setShowConfirmModal(false);
-        router.push("/dashboard");
+        router.push("/dashboard/cac/new-incorporation?success=true");
       }, 2500);
 
     } catch (error) {
@@ -133,16 +127,15 @@ export default function QueryResolutionPage() {
     }
   };
 
-  // MULTI-TAB LOCKOUT SCREEN
   if (isAlreadyResolved) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50/50">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
         <CheckCircle className="h-28 w-28 text-emerald-500 mb-8" weight="fill" />
-        <h2 className="text-3xl font-black text-slate-900 mb-3 text-center">Query Already Fixed</h2>
-        <p className="text-slate-500 font-medium text-lg text-center max-w-md">
+        <h2 className="text-3xl font-black text-foreground mb-3 text-center">Query Already Fixed</h2>
+        <p className="text-muted-foreground font-medium text-lg text-center max-w-md">
           This query has already been resolved and submitted.
         </p>
-        <p className="text-sm font-bold tracking-widest uppercase text-slate-400 mt-8 animate-pulse">
+        <p className="text-sm font-bold tracking-widest uppercase text-muted-foreground mt-8 animate-pulse">
           Redirecting to Dashboard...
         </p>
       </div>
@@ -151,21 +144,21 @@ export default function QueryResolutionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center bg-slate-50">
-        <CircleDashed className="animate-spin h-12 w-12 text-[#ff3f7a]" weight="bold" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <CircleDashed className="animate-spin h-12 w-12 text-primary" weight="bold" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 font-sans">
+    <div className="min-h-screen bg-background pb-20 font-sans">
       
       {/* COMPACT HEADER */}
-      <div className="bg-white border-b border-slate-100 px-4 py-3 sm:px-8">
+      <div className="bg-card border-b border-border px-4 py-3 sm:px-8">
         <div className="max-w-4xl mx-auto flex items-center">
           <button 
-            onClick={() => router.push("/dashboard")}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold transition-colors px-2 py-2 rounded-lg hover:bg-slate-50 -ml-2"
+            onClick={() => router.push("/dashboard/cac/new-incorporation")}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-bold transition-colors px-2 py-2 rounded-lg hover:bg-secondary -ml-2 cursor-pointer"
           >
             <ArrowLeft weight="bold" className="h-5 w-5" /> Back to Dashboard
           </button>
@@ -174,51 +167,66 @@ export default function QueryResolutionPage() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-8 mt-6 space-y-6 animate-in fade-in duration-500">
         
-        {/* COMPACT CAC QUERY ALERT */}
-        <div className="bg-amber-50 border border-amber-200 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row gap-4 sm:items-start shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-          <div className="bg-amber-100 p-2 rounded-full shrink-0 w-fit">
-            <WarningCircle className="h-6 w-6 text-amber-600" weight="fill" />
+        {/* VIBRANT CAC QUERY ALERT (Dark Mode Safe) */}
+        <div className="bg-amber-500/10 border-2 border-amber-500/30 p-5 sm:p-6 rounded-3xl flex flex-col sm:flex-row gap-4 sm:items-start shadow-md">
+          <div className="bg-amber-500 text-white p-3 rounded-2xl shrink-0 shadow-sm self-start">
+            <WarningCircle className="h-7 w-7" weight="fill" />
           </div>
-          <div>
-            <h2 className="text-sm font-black text-amber-900 mb-1">Official CAC Query Feedback</h2>
-            <p className="text-amber-800 font-medium text-sm leading-relaxed mb-2">
-              {data?.queryReason || "No specific reason provided by CAC."}
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md">Official CAC Feedback</span>
+              <span className="text-xs font-bold text-muted-foreground">Action Required</span>
+            </div>
+            <p className="text-amber-950 dark:text-amber-200 font-extrabold text-base sm:text-lg leading-relaxed pt-1">
+              {data?.queryReason || "No specific reason provided by CAC. Please review your application step-by-step."}
             </p>
-            <p className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest">
+            <p className="text-xs font-semibold text-amber-800/80 dark:text-amber-300/80 pt-2">
               Please review your details step-by-step and fix the issues raised above.
             </p>
           </div>
         </div>
 
         {/* STEPPER INDICATOR */}
-        <div className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full">
+        <div className="flex gap-6 overflow-x-auto custom-scrollbar pb-2 w-full border-b border-border">
           {[ 
             { step: 1, title: "Company Information" }, 
             { step: 2, title: "Proprietor Information" }, 
             { step: 3, title: "Document Uploads" }
-          ].map((s) => (
-            <div key={s.step} className={`flex items-center gap-2 whitespace-nowrap text-sm ${currentStep === s.step ? "text-[#ff3f7a] font-black" : currentStep > s.step ? "text-slate-800 font-bold" : "text-slate-400 font-medium"}`}>
-              <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold ${currentStep === s.step ? "bg-[#ff3f7a] text-white" : currentStep > s.step ? "bg-slate-200 text-slate-800" : "bg-slate-100"}`}>
-                {s.step}
-              </span>
-              {s.title}
-            </div>
-          ))}
+          ].map((s) => {
+             const isActive = currentStep === s.step;
+             const isCompleted = currentStep > s.step;
+             return (
+              <div key={s.step} className={`flex items-center gap-2 whitespace-nowrap text-sm px-2 py-1 rounded-lg transition-colors ${
+                isActive ? "text-primary font-black bg-primary/10" : 
+                isCompleted ? "text-foreground font-bold hover:bg-secondary cursor-pointer" : 
+                "text-muted-foreground font-medium opacity-60 cursor-not-allowed"
+              }`}>
+                <span className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold transition-colors ${
+                  isActive ? "bg-primary text-primary-foreground shadow-sm" : 
+                  isCompleted ? "bg-secondary border border-border text-foreground" : 
+                  "bg-secondary/50 border border-border/50 text-muted-foreground/50"
+                }`}>
+                  {s.step}
+                </span>
+                {s.title}
+              </div>
+            )
+          })}
         </div>
 
         {/* WIZARD MOUNTING AREA */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+        <div className="bg-card rounded-3xl border border-border shadow-xl overflow-hidden">
           {currentStep === 1 && <CompanyStep draft={data} companyInfo={companyInfo} setCompanyInfo={setCompanyInfo} />}
           {currentStep === 2 && <ProprietorStep proprietors={proprietors} setProprietors={setProprietors} isSoleProprietor={data?.ownershipType === "SOLE"} />}
           {currentStep === 3 && <DocumentStep proprietors={proprietors} setProprietors={setProprietors} />}
 
           {/* WIZARD FOOTER NAVIGATION */}
-          <div className="bg-slate-50 border-t border-slate-200 p-4 sm:p-6 flex justify-between items-center gap-3">
+          <div className="bg-secondary/30 border-t border-border p-4 sm:p-6 flex justify-between items-center gap-3">
             <Button 
               variant="outline" 
               onClick={() => setCurrentStep(p => p - 1)} 
               disabled={currentStep === 1 || submitState !== "idle"} 
-              className="h-12 px-4 sm:px-6 rounded-xl font-bold bg-white shrink-0 text-sm sm:text-base"
+              className="h-12 px-4 sm:px-6 rounded-xl font-bold bg-background border-border text-foreground hover:bg-secondary shrink-0 text-sm sm:text-base cursor-pointer"
             >
               Back
             </Button>
@@ -226,15 +234,15 @@ export default function QueryResolutionPage() {
             {currentStep < 3 ? (
                <Button 
                  onClick={handleNextStep} 
-                 className="h-12 px-6 sm:px-8 bg-[#ff3f7a] text-white font-bold rounded-xl shadow-md hover:bg-[#e02b62] shrink-0 text-sm sm:text-base"
+                 className="h-12 px-6 sm:px-8 bg-primary text-primary-foreground hover:opacity-90 font-bold rounded-xl shadow-md shrink-0 text-sm sm:text-base cursor-pointer"
                >
-                 Continue
+                 Save & Continue
                </Button>
             ) : (
                <Button 
                   onClick={() => setShowConfirmModal(true)}
                   disabled={submitState !== "idle"} 
-                  className="h-12 px-5 sm:px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 shrink-0 text-sm sm:text-base"
+                  className="h-12 px-5 sm:px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 shrink-0 text-sm sm:text-base cursor-pointer"
                 >
                  <CheckCircle weight="bold" className="h-5 w-5 hidden sm:block" /> 
                  Submit Resolution
@@ -246,40 +254,38 @@ export default function QueryResolutionPage() {
 
       {/* CONFIRMATION / SUCCESS MODAL */}
       {showConfirmModal && (
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-[0_20px_60px_rgb(0,0,0,0.1)] animate-in zoom-in-95 duration-200 border border-slate-100">
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-card rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-border">
             
             {submitState === "success" ? (
-              // --- BEAUTIFUL SUCCESS UI ---
               <div className="p-8 text-center animate-in zoom-in-95 duration-300">
                 <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-emerald-500 mb-6 shadow-[0_0_40px_rgba(16,185,129,0.4)] animate-bounce">
                   <CheckCircle className="h-10 w-10 text-white" weight="bold" />
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Query Resolved!</h3>
-                <p className="text-sm font-medium text-slate-500 mb-8 leading-relaxed">
+                <h3 className="text-2xl font-black text-foreground mb-2 tracking-tight">Query Resolved!</h3>
+                <p className="text-sm font-medium text-muted-foreground mb-8 leading-relaxed">
                   Your application updates have been submitted to the registry.
                 </p>
-                <div className="flex items-center justify-center gap-2 text-sm font-bold text-slate-400 animate-pulse">
+                <div className="flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground animate-pulse">
                   <CircleNotch className="animate-spin h-4 w-4" weight="bold" /> Redirecting to dashboard...
                 </div>
               </div>
             ) : (
-              // --- STANDARD CONFIRMATION UI ---
               <div className="p-8 text-center relative">
                 <button 
                   onClick={() => submitState === "idle" && setShowConfirmModal(false)}
                   disabled={submitState === "submitting"}
-                  className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50"
+                  className="absolute top-5 right-5 p-2 text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 rounded-full transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   <X weight="bold" size={16} />
                 </button>
                 
-                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-emerald-50 mb-6 border border-emerald-100">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-emerald-500/10 mb-6 border border-emerald-500/20">
                   <CheckCircle className="h-7 w-7 text-emerald-500" weight="fill" />
                 </div>
                 
-                <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Submit Resolution?</h3>
-                <p className="text-sm font-medium text-slate-500 mb-8 px-2 leading-relaxed">
+                <h3 className="text-xl font-black text-foreground mb-2 tracking-tight">Submit Resolution?</h3>
+                <p className="text-sm font-medium text-muted-foreground mb-8 px-2 leading-relaxed">
                   Are you absolutely sure you have resolved all the issues raised by the CAC? Submitting incomplete fixes may lead to further delays.
                 </p>
                 
@@ -288,14 +294,14 @@ export default function QueryResolutionPage() {
                     variant="outline" 
                     onClick={() => setShowConfirmModal(false)}
                     disabled={submitState === "submitting"}
-                    className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900"
+                    className="flex-1 h-12 rounded-xl font-bold border-border text-foreground bg-background hover:bg-secondary cursor-pointer"
                   >
                     Cancel
                   </Button>
                   <Button 
                     onClick={handleSubmitResolution}
                     disabled={submitState === "submitting"}
-                    className="flex-1 h-12 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_4px_14px_rgba(5,150,105,0.3)] flex items-center justify-center"
+                    className="flex-1 h-12 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_4px_14px_rgba(5,150,105,0.3)] flex items-center justify-center cursor-pointer"
                   >
                     {submitState === "submitting" ? <CircleNotch className="animate-spin h-5 w-5" weight="bold" /> : "Yes, Submit"}
                   </Button>
