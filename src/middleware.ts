@@ -1,10 +1,20 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
+// Helper to destroy session cookies and force a logout
+function forceLogoutAndRedirect(req: any, path: string) {
+  const response = NextResponse.redirect(new URL(path, req.url));
+  response.cookies.delete("next-auth.session-token");
+  response.cookies.delete("__Secure-next-auth.session-token");
+  return response;
+}
+
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const pathname = req.nextUrl.pathname;
+    
+    // If there's no token at all, NextAuth handles it, but we can safely extract properties
     const role = token?.role as string | undefined;
     const mfaVerified = token?.mfaVerified as boolean | undefined;
 
@@ -26,12 +36,10 @@ export default withAuth(
     // =========================================================================
     if (pathname.startsWith("/quadrox-lorabiz-team/mds/dashboard")) {
       if (role !== "ADMIN") {
-        if (role === "STAFF") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff/dashboard", req.url));
-        if (role === "USER") return NextResponse.redirect(new URL("/dashboard", req.url));
-        return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds/login", req.url));
+        if (role === "USER") return NextResponse.redirect(new URL("/dashboard", req.url)); // Send users back to safety
+        return forceLogoutAndRedirect(req, "/quadrox-lorabiz-team/mds/login"); // Spoil Staff cookie
       }
 
-      // MFA Gate: Enforce 2FA completion before granting access to executive routes
       if (mfaVerified === false) {
         return NextResponse.redirect(new URL(`/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
       }
@@ -42,12 +50,10 @@ export default withAuth(
     // =========================================================================
     if (pathname.startsWith("/quadrox-lorabiz-team/staff/dashboard")) {
       if (role !== "STAFF") {
-        if (role === "ADMIN") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds/dashboard", req.url));
-        if (role === "USER") return NextResponse.redirect(new URL("/dashboard", req.url));
-        return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff/login", req.url));
+        if (role === "USER") return NextResponse.redirect(new URL("/dashboard", req.url)); // Send users back to safety
+        return forceLogoutAndRedirect(req, "/quadrox-lorabiz-team/staff/login"); // Spoil Admin cookie
       }
 
-      // MFA Gate: Enforce 2FA completion before granting access to staff operational desk
       if (mfaVerified === false) {
         return NextResponse.redirect(new URL(`/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
       }
@@ -58,9 +64,8 @@ export default withAuth(
     // =========================================================================
     if (pathname.startsWith("/dashboard")) {
       if (role !== "USER") {
-        if (role === "ADMIN") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds/dashboard", req.url));
-        if (role === "STAFF") return NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff/dashboard", req.url));
-        return NextResponse.redirect(new URL("/auth/login", req.url));
+        // If Staff or Admin tries to access the user dashboard, spoil cookies and kick to user login
+        return forceLogoutAndRedirect(req, "/auth/login");
       }
     }
 
@@ -68,7 +73,7 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: () => true,
+      authorized: ({ token }) => !!token,
     },
   }
 );
