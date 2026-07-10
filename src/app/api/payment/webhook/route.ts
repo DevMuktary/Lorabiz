@@ -40,11 +40,9 @@ export async function POST(req: Request) {
           
           if (!user || !user.wallet) return;
 
-          // Idempotency check: Don't double-fund if Webhook fires twice
           const existingTx = await tx.transaction.findUnique({ where: { reference } });
           if (existingTx && existingTx.status === "SUCCESS") return;
 
-          // 1. Atomically increment wallet balance in PostgreSQL to avoid race conditions
           const updatedWallet = await tx.wallet.update({
             where: { id: user.wallet.id },
             data: { balance: { increment: amountPaid } }
@@ -53,17 +51,10 @@ export async function POST(req: Request) {
           const newBalance = Number(updatedWallet.balance);
           const previousBalance = newBalance - amountPaid;
 
-          // 2. Create Ledger entry with precise atomic balances
           await tx.transaction.create({
             data: {
-              walletId: user.wallet.id,
-              amount: amountPaid,
-              balanceBefore: previousBalance,
-              balanceAfter: newBalance,
-              type: "CREDIT",
-              status: "SUCCESS",
-              reference: reference, 
-              description: "Wallet Funding via Paystack"
+              walletId: user.wallet.id, amount: amountPaid, balanceBefore: previousBalance, balanceAfter: newBalance,
+              type: "CREDIT", status: "SUCCESS", reference: reference, description: "Wallet Funding via Paystack"
             }
           });
         });
@@ -79,41 +70,34 @@ export async function POST(req: Request) {
         let notificationPayload: NotificationEvent | null = null;
 
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-          const user = await tx.user.findUnique({ 
-            where: { email: userEmail }, 
-            include: { wallet: true } 
-          });
-          
+          const user = await tx.user.findUnique({ where: { email: userEmail }, include: { wallet: true } });
           if (!user || !user.wallet) return; 
 
           const existingTx = await tx.transaction.findUnique({ where: { reference } });
-          if (existingTx && existingTx.status === "SUCCESS") {
-            return; 
-          }
+          if (existingTx && existingTx.status === "SUCCESS") return; 
 
           let serviceType: "business" | "llc" | null = null;
           let regName = "Registration";
-          let displayId = registrationId; // Default fallback to CUID
+          let displayId = registrationId; 
 
           const bizReg = await tx.businessRegistration.findUnique({ where: { id: registrationId } });
           if (bizReg) {
             if (bizReg.status !== "UNSUBMITTED") return; 
             serviceType = "business";
             regName = bizReg.proposedName;
-            displayId = bizReg.trackingId || registrationId; // Grab the 6-digit ID
+            displayId = bizReg.trackingId || registrationId; 
           } else {
             const llcReg = await tx.llcRegistration.findUnique({ where: { id: registrationId } });
             if (llcReg) {
               if (llcReg.status !== "UNSUBMITTED") return; 
               serviceType = "llc";
               regName = llcReg.proposedName || "LLC Application";
-              displayId = llcReg.trackingId || registrationId; // Grab the 6-digit ID
+              displayId = llcReg.trackingId || registrationId; 
             }
           }
 
           if (!serviceType) return; 
 
-          // A: Atomically Fund Wallet
           const fundedWallet = await tx.wallet.update({
             where: { id: user.wallet.id },
             data: { balance: { increment: amountPaid } }
@@ -123,18 +107,11 @@ export async function POST(req: Request) {
 
           await tx.transaction.create({
             data: {
-              walletId: user.wallet.id,
-              amount: amountPaid,
-              balanceBefore: balanceBeforeCredit,
-              balanceAfter: balanceAfterCredit,
-              type: "CREDIT",
-              status: "SUCCESS",
-              reference: reference, 
-              description: "Paystack Online Funding (Webhook)"
+              walletId: user.wallet.id, amount: amountPaid, balanceBefore: balanceBeforeCredit, balanceAfter: balanceAfterCredit,
+              type: "CREDIT", status: "SUCCESS", reference: reference, description: "Paystack Online Funding (Webhook)"
             }
           });
 
-          // B: Atomically Debit Wallet for Service
           const debitedWallet = await tx.wallet.update({
             where: { id: user.wallet.id },
             data: { balance: { decrement: amountPaid } }
@@ -143,57 +120,104 @@ export async function POST(req: Request) {
 
           await tx.transaction.create({
             data: {
-              walletId: user.wallet.id,
-              amount: amountPaid,
-              balanceBefore: balanceAfterCredit,
-              balanceAfter: balanceAfterDebit,
-              type: "DEBIT",
-              status: "SUCCESS",
-              reference: `SRV_PAY_${registrationId}_${Date.now()}`,
-              description: `Payment for Registration (${regName})`
+              walletId: user.wallet.id, amount: amountPaid, balanceBefore: balanceAfterCredit, balanceAfter: balanceAfterDebit,
+              type: "DEBIT", status: "SUCCESS", reference: `SRV_PAY_${registrationId}_${Date.now()}`, description: `Payment for Registration (${regName})`
             }
           });
 
-          // C: Mark service as pending
           if (serviceType === "business") {
-            await tx.businessRegistration.update({
-              where: { id: registrationId },
-              data: { status: "PENDING" } 
-            });
+            await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           } else if (serviceType === "llc") {
-            await tx.llcRegistration.update({
-              where: { id: registrationId },
-              data: { status: "PENDING" } 
-            });
+            await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           }
 
-          // D: Capture user details for background dispatch (FIXED STRICT TYPING)
           const userPhone = user.phone || "";
           const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
 
           notificationPayload = {
-            userId: user.id,
-            type: "APPLICATION_SUBMITTED",
-            phone: userPhone,
-            email: userEmail,
-            name: userName,
-            businessName: regName,
-            regId: displayId,
+            userId: user.id, type: "APPLICATION_SUBMITTED", phone: userPhone, email: userEmail,
+            name: userName, businessName: regName, regId: displayId,
           };
         });
 
-        // Push job to Redis in <2ms with automatic retry strategies
         if (notificationPayload) {
           await notificationQueue.add("send-application-notification", notificationPayload, {
-            attempts: 3, // Automatically retry up to 3 times if email/WhatsApp fails
-            backoff: {
-              type: "exponential",
-              delay: 5000, // Wait 5s, then 10s, then 20s between retry attempts
-            },
-            removeOnComplete: true, // Keep Redis clean by removing successful jobs
+            attempts: 3, backoff: { type: "exponential", delay: 5000 }, removeOnComplete: true,
           });
         }
 
+        return NextResponse.json({ received: true });
+      }
+
+      // ==========================================
+      // SCENARIO 3: NAME SUBSTITUTION CHECKOUT
+      // ==========================================
+      if (reference.startsWith("NSUB-ONL-")) {
+        const parts = reference.split("-");
+        // parts structure: ["NSUB", "ONL", id, safeEncodedPayload]
+        if (parts.length >= 4) {
+          const registrationId = parts[2];
+          const safeEncodedPayload = parts.slice(3).join("-");
+
+          try {
+            // Reverse safe base64 encoding to extract the data payload
+            const base64 = safeEncodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+            const paddedBase64 = base64 + '=='.substring(0, (3 * base64.length) % 4);
+            const payloadStr = Buffer.from(paddedBase64, 'base64').toString('utf-8');
+            const { proposedName, altName1, altName2, type } = JSON.parse(payloadStr);
+
+            await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+              const user = await tx.user.findUnique({ where: { email: userEmail }, include: { wallet: true } });
+              if (!user || !user.wallet) return;
+
+              const existingTx = await tx.transaction.findUnique({ where: { reference } });
+              if (existingTx && existingTx.status === "SUCCESS") return;
+
+              // 1. Fund Wallet
+              const fundedWallet = await tx.wallet.update({
+                where: { id: user.wallet.id },
+                data: { balance: { increment: amountPaid } }
+              });
+              const balanceAfterCredit = Number(fundedWallet.balance);
+
+              await tx.transaction.create({
+                data: {
+                  walletId: user.wallet.id, amount: amountPaid, balanceBefore: balanceAfterCredit - amountPaid, balanceAfter: balanceAfterCredit,
+                  type: "CREDIT", status: "SUCCESS", reference: reference, description: "Paystack Online Funding (Webhook)"
+                }
+              });
+
+              // 2. Debit Wallet
+              const debitedWallet = await tx.wallet.update({
+                where: { id: user.wallet.id },
+                data: { balance: { decrement: amountPaid } }
+              });
+              const balanceAfterDebit = Number(debitedWallet.balance);
+
+              await tx.transaction.create({
+                data: {
+                  walletId: user.wallet.id, amount: amountPaid, balanceBefore: balanceAfterCredit, balanceAfter: balanceAfterDebit,
+                  type: "DEBIT", status: "SUCCESS", reference: `NSUB_PAY_${registrationId}_${Date.now()}`, description: `Payment for Name Substitution`
+                }
+              });
+
+              // 3. Update Names directly in DB
+              if (type === "BUSINESS_NAME") {
+                await tx.businessRegistration.update({
+                  where: { id: registrationId },
+                  data: { proposedName, altName1, altName2 }
+                });
+              } else {
+                await tx.llcRegistration.update({
+                  where: { id: registrationId },
+                  data: { proposedName, altName1, altName2 }
+                });
+              }
+            });
+          } catch (e) {
+            console.error("Failed to parse/execute NSUB payload:", e);
+          }
+        }
         return NextResponse.json({ received: true });
       }
 
