@@ -1,54 +1,93 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Wallet, PlusCircle, Headset, CheckCircle, WarningCircle, CaretDown, Spinner, Archive } from "@phosphor-icons/react";
+import { useState, useEffect, useRef } from "react";
+import { 
+  Wallet, PlusCircle, WhatsappLogo, CheckCircle, 
+  CaretDown, Spinner, Archive, CircleNotch 
+} from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 
 export default function WalletPage() {
   const [balance, setBalance] = useState<number | null>(null);
   const [fundingHistory, setFundingHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  
+  // Polling & Webhook States
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const supportNumber = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "2348000000000"; 
 
-  const supportNumber = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "2348000000000"; // Fallback if env is missing
-
-  // Fetch Wallet Balance and Funding History
-  const fetchWalletData = async () => {
+  const fetchBalance = async () => {
     try {
-      // 1. Fetch Balance
-      const balanceRes = await fetch("/api/user/wallet");
-      const balanceData = await balanceRes.json();
-      if (balanceData.success) {
-        setBalance(balanceData.wallet.balance);
-      }
-
-      // 2. Fetch Transactions (Server-side filtering via query params!)
-      const txRes = await fetch("/api/user/transactions?type=CREDIT&status=SUCCESS");
-      const txData = await txRes.json();
-      if (txData.success) {
-        setFundingHistory(txData.transactions);
-      }
+      const res = await fetch("/api/user/wallet");
+      const data = await res.json();
+      if (data.success) setBalance(data.wallet.balance);
+      return data.wallet?.balance;
     } catch (err) {
-      console.error("Failed to load wallet data", err);
-    } finally {
-      setLoading(false);
+      console.error("Failed to load balance", err);
+      return null;
     }
   };
 
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch("/api/user/transactions?type=CREDIT&status=SUCCESS");
+      const data = await res.json();
+      if (data.success) setFundingHistory(data.transactions);
+    } catch (err) {
+      console.error("Failed to load history", err);
+    }
+  };
+
+  // Initial Load
   useEffect(() => {
-    fetchWalletData();
+    Promise.all([fetchBalance(), fetchHistory()]).then(() => {
+      setLoadingInitial(false);
+    });
+
+    return () => {
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    };
   }, []);
 
+  // Webhook Polling Engine
+  const startBalancePolling = (oldBalance: number, amountAdded: number) => {
+    setIsVerifying(true);
+    let attempts = 0;
+    const maxAttempts = 15; // 30 seconds total (15 * 2s)
+
+    pollingIntervalRef.current = setInterval(async () => {
+      attempts++;
+      const currentBalance = await fetchBalance();
+
+      // If the webhook updated the DB, the balance will be higher than before!
+      if (currentBalance !== null && currentBalance > oldBalance) {
+        if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+        
+        // Refresh the table silently
+        fetchHistory();
+        
+        setIsVerifying(false);
+        setSuccessMessage(`₦${amountAdded.toLocaleString()} successfully added to your wallet!`);
+        
+        setTimeout(() => setSuccessMessage(null), 6000);
+      } else if (attempts >= maxAttempts) {
+        // Timeout: Webhook is delayed or failed
+        if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+        setIsVerifying(false);
+        setSuccessMessage("Payment received, but there's a slight delay in updating your balance. Please check back in a few minutes.");
+        setTimeout(() => setSuccessMessage(null), 8000);
+      }
+    }, 2000);
+  };
+
   const handleFundSuccess = (amount: number) => {
-    setSuccessMessage(`Successfully funded ₦${amount.toLocaleString()}!`);
-    fetchWalletData(); // Refresh the balance and history
-    
-    // Clear the success message after 5 seconds
-    setTimeout(() => {
-      setSuccessMessage(null);
-    }, 5000);
+    setIsFundModalOpen(false);
+    // Start silently polling for the webhook to finish its job
+    startBalancePolling(balance || 0, amount);
   };
 
   return (
@@ -56,77 +95,75 @@ export default function WalletPage() {
       
       {/* SUCCESS TOAST */}
       {successMessage && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl flex items-start gap-3 animate-in slide-in-from-top-4">
+        <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-4">
           <CheckCircle className="h-6 w-6 text-emerald-500 shrink-0" weight="fill" />
+          <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{successMessage}</p>
+        </div>
+      )}
+
+      {/* VERIFYING OVERLAY */}
+      {isVerifying && (
+        <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl flex items-center gap-3 animate-in fade-in">
+          <CircleNotch className="h-6 w-6 text-blue-500 shrink-0 animate-spin" weight="bold" />
           <div>
-            <h4 className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Payment Successful</h4>
-            <p className="text-sm text-emerald-600 dark:text-emerald-500/80 mt-0.5">{successMessage}</p>
+            <p className="text-sm font-bold text-blue-700 dark:text-blue-400">Verifying Payment...</p>
+            <p className="text-xs text-blue-600/80 dark:text-blue-400/80 mt-0.5">Please wait while we securely confirm your transaction with the bank.</p>
           </div>
         </div>
       )}
 
-      {/* HEADER & BALANCE CARD */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* UNIFIED WALLET DASHBOARD CARD */}
+      <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-8 relative overflow-hidden">
         
-        {/* Balance Display */}
-        <div className="md:col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-          {/* Decorative shapes */}
-          <div className="absolute -right-10 -top-10 h-40 w-40 bg-white/5 rounded-full blur-2xl"></div>
-          <div className="absolute -bottom-10 right-20 h-32 w-32 bg-primary/20 rounded-full blur-xl"></div>
+        {/* Left: Balance Info */}
+        <div className="relative z-10 space-y-2">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Wallet className="h-5 w-5" weight="duotone" />
+            <span className="text-sm font-black uppercase tracking-widest">Available Balance</span>
+          </div>
           
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 text-white/70 mb-2">
-              <Wallet className="h-5 w-5" weight="duotone" />
-              <span className="text-sm font-bold uppercase tracking-widest">Available Balance</span>
-            </div>
-            
-            <h2 className="text-4xl sm:text-5xl font-black mb-8 tracking-tight">
-              {balance !== null ? `₦${balance.toLocaleString()}` : "₦---"}
-            </h2>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button 
-                onClick={() => setIsFundModalOpen(true)}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform active:scale-95 shadow-lg shadow-primary/20 cursor-pointer"
-              >
-                <PlusCircle className="h-5 w-5" weight="bold" />
-                Fund Wallet
-              </button>
-            </div>
+          <div className="h-12 flex items-center">
+            {loadingInitial ? (
+              <div className="h-10 w-48 bg-secondary rounded-lg animate-pulse"></div>
+            ) : (
+              <h2 className="text-4xl sm:text-5xl font-black text-foreground tracking-tight">
+                ₦{balance?.toLocaleString() || "0"}
+              </h2>
+            )}
           </div>
         </div>
 
-        {/* Support Card */}
-        <div className="bg-amber-500/5 border-2 border-amber-500/20 rounded-3xl p-6 flex flex-col justify-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-            <WarningCircle className="h-6 w-6" weight="fill" />
-          </div>
-          <div>
-            <h3 className="font-black text-lg text-foreground">Payment Issue?</h3>
-            <p className="text-sm font-medium text-muted-foreground mt-1 leading-relaxed">
-              If your wallet wasn't credited after a successful deduction, contact our support team immediately.
-            </p>
-          </div>
+        {/* Right: Quick Actions */}
+        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <button 
+            onClick={() => setIsFundModalOpen(true)}
+            disabled={isVerifying || loadingInitial}
+            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-md shadow-primary/20 disabled:opacity-50 cursor-pointer"
+          >
+            <PlusCircle className="h-5 w-5" weight="bold" />
+            Fund Wallet
+          </button>
+
           <a 
-            href={`https://wa.me/${supportNumber.replace(/\+/g, '')}?text=Hello LoraBiz Support, I have an issue with my recent wallet funding.`}
+            href={`https://wa.me/${supportNumber.replace(/\+/g, '')}?text=Hello LoraBiz Support, I need assistance with my wallet.`}
             target="_blank"
             rel="noreferrer"
-            className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors mt-auto shadow-md shadow-[#25D366]/20 cursor-pointer"
+            className="w-full sm:w-auto bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/20 px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
-            <Headset className="h-5 w-5" weight="fill" />
-            Chat on WhatsApp
+            <WhatsappLogo className="h-5 w-5" weight="fill" />
+            Support
           </a>
         </div>
       </div>
 
       {/* FUNDING HISTORY */}
       <div className="space-y-4">
-        <h3 className="text-lg font-black text-foreground flex items-center gap-2 px-1">
-          Funding History <CaretDown className="h-4 w-4 text-muted-foreground" weight="bold" />
+        <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2 px-1">
+          Recent Deposits <CaretDown className="h-4 w-4" weight="bold" />
         </h3>
 
         <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
-          {loading ? (
+          {loadingInitial ? (
             <div className="py-20 text-center">
               <Spinner className="animate-spin h-8 w-8 text-primary mx-auto" />
               <p className="text-sm font-bold text-muted-foreground mt-3">Loading history...</p>
@@ -134,8 +171,8 @@ export default function WalletPage() {
           ) : fundingHistory.length === 0 ? (
             <div className="py-20 text-center text-muted-foreground">
               <Archive className="h-12 w-12 mx-auto mb-3 opacity-20" weight="duotone" />
-              <p className="font-bold text-base">No funding records found</p>
-              <p className="text-sm font-medium mt-1">Your successful deposits will appear here.</p>
+              <p className="font-bold text-base text-foreground">No deposits yet</p>
+              <p className="text-sm mt-1">Your successful wallet fundings will appear here.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
