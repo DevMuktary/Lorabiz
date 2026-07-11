@@ -55,7 +55,6 @@ export default function TransactionsPage() {
       matchesDate = matchesDate && txDate >= new Date(startDate).getTime();
     }
     if (endDate) {
-      // Set to end of the day for the end date
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
       matchesDate = matchesDate && txDate <= end.getTime();
@@ -87,7 +86,7 @@ export default function TransactionsPage() {
           <Input 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by ID or description..." 
+            placeholder="Search ID or description..." 
             className="pl-11 h-12 bg-secondary/50 border-border rounded-xl font-medium"
           />
         </div>
@@ -109,103 +108,144 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* TRANSACTIONS TABLE */}
+      {/* RESPONSIVE LAYOUT CONTAINER */}
       <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead>
-              <tr className="bg-secondary/50 text-muted-foreground border-b border-border">
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Transaction Details</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Date & Time</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center">
-                    <Spinner className="animate-spin h-8 w-8 text-primary mx-auto" />
-                  </td>
-                </tr>
-              ) : filteredTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center text-muted-foreground">
-                    <Archive className="h-12 w-12 mx-auto mb-3 opacity-20" weight="duotone" />
-                    <p className="font-bold text-base">No transactions found</p>
-                    <p className="text-xs mt-1">Try adjusting your filters.</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-secondary/30 transition-colors group">
-                    
-                    {/* DETAILS & ID */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${
-                          tx.type === "CREDIT" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
-                        }`}>
-                          {tx.type === "CREDIT" ? <ArrowDownLeft weight="bold" className="h-5 w-5" /> : <ArrowUpRight weight="bold" className="h-5 w-5" />}
-                        </div>
-                        <div>
-                          <p className="font-bold text-foreground truncate max-w-[200px] sm:max-w-xs">{tx.description}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-xs font-medium text-muted-foreground font-mono">{tx.reference}</span>
-                            <button 
-                              onClick={(e) => handleCopy(e, tx.reference)}
-                              className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                            >
-                              {copiedId === tx.reference ? <Check weight="bold" className="text-emerald-500" /> : <Copy weight="bold" />}
-                            </button>
-                          </div>
-                        </div>
+        
+        {loading ? (
+          <div className="py-20 text-center">
+            <Spinner className="animate-spin h-8 w-8 text-primary mx-auto" />
+          </div>
+        ) : filteredTransactions.length === 0 ? (
+          <div className="py-20 text-center text-muted-foreground">
+            <Archive className="h-12 w-12 mx-auto mb-3 opacity-20" weight="duotone" />
+            <p className="font-bold text-base">No transactions found</p>
+            <p className="text-xs mt-1">Try adjusting your filters.</p>
+          </div>
+        ) : (
+          <>
+            {/* 📱 MOBILE VIEW (Card Layout) */}
+            <div className="block md:hidden divide-y divide-border/50">
+              {filteredTransactions.map((tx) => (
+                <div key={tx.id} className="p-4 hover:bg-secondary/30 transition-colors">
+                  <div className="flex justify-between items-start mb-4 gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className={`h-10 w-10 mt-0.5 rounded-full flex items-center justify-center shrink-0 ${
+                        tx.type === "CREDIT" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                      }`}>
+                        {tx.type === "CREDIT" ? <ArrowDownLeft weight="bold" className="h-5 w-5" /> : <ArrowUpRight weight="bold" className="h-5 w-5" />}
                       </div>
-                    </td>
-
-                    {/* AMOUNT */}
-                    <td className="px-6 py-4">
-                      <span className={`font-black ${tx.type === "CREDIT" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
-                        {tx.type === "CREDIT" ? "+" : "-"}₦{Number(tx.amount).toLocaleString()}
+                      <div className="min-w-0">
+                        <p className="font-bold text-foreground text-sm line-clamp-2 leading-snug mb-1">{tx.description}</p>
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          {new Date(tx.createdAt).toLocaleDateString()} • {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                    <span className={`font-black text-sm shrink-0 ${tx.type === "CREDIT" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
+                      {tx.type === "CREDIT" ? "+" : "-"}₦{Number(tx.amount).toLocaleString()}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center pl-13">
+                    <div className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-lg">
+                      <span className="text-[10px] font-bold text-muted-foreground font-mono truncate max-w-[100px] sm:max-w-[150px]">
+                        {tx.reference.substring(0, 15)}...
                       </span>
-                    </td>
-
-                    {/* DATE */}
-                    <td className="px-6 py-4">
-                      <p className="font-bold text-foreground">{new Date(tx.createdAt).toLocaleDateString()}</p>
-                      <p className="text-xs font-medium text-muted-foreground">{new Date(tx.createdAt).toLocaleTimeString()}</p>
-                    </td>
-
-                    {/* STATUS */}
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${
+                      <button onClick={(e) => handleCopy(e, tx.reference)} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+                        {copiedId === tx.reference ? <Check weight="bold" className="text-emerald-500 h-3.5 w-3.5" /> : <Copy weight="bold" className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
                         tx.status === "SUCCESS" ? "bg-emerald-500/10 text-emerald-600" : 
                         tx.status === "PENDING" ? "bg-amber-500/10 text-amber-600" : 
                         "bg-red-500/10 text-red-600"
                       }`}>
                         {tx.status}
                       </span>
-                    </td>
-
-                    {/* VIEW ACTION */}
-                    <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => setViewTransaction(tx)}
-                        className="p-2 bg-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                        className="p-1.5 bg-secondary text-muted-foreground rounded-lg transition-colors cursor-pointer"
                       >
-                        <Eye weight="bold" className="h-5 w-5" />
+                        <Eye weight="bold" className="h-4 w-4" />
                       </button>
-                    </td>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 💻 DESKTOP VIEW (Table Layout) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="bg-secondary/50 text-muted-foreground border-b border-border">
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Transaction Details</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Date & Time</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Action</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {filteredTransactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-secondary/30 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${
+                            tx.type === "CREDIT" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                          }`}>
+                            {tx.type === "CREDIT" ? <ArrowDownLeft weight="bold" className="h-5 w-5" /> : <ArrowUpRight weight="bold" className="h-5 w-5" />}
+                          </div>
+                          <div>
+                            <p className="font-bold text-foreground truncate max-w-xs">{tx.description}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-xs font-medium text-muted-foreground font-mono">{tx.reference}</span>
+                              <button 
+                                onClick={(e) => handleCopy(e, tx.reference)}
+                                className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                              >
+                                {copiedId === tx.reference ? <Check weight="bold" className="text-emerald-500" /> : <Copy weight="bold" />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`font-black ${tx.type === "CREDIT" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
+                          {tx.type === "CREDIT" ? "+" : "-"}₦{Number(tx.amount).toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-foreground">{new Date(tx.createdAt).toLocaleDateString()}</p>
+                        <p className="text-xs font-medium text-muted-foreground">{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${
+                          tx.status === "SUCCESS" ? "bg-emerald-500/10 text-emerald-600" : 
+                          tx.status === "PENDING" ? "bg-amber-500/10 text-amber-600" : "bg-red-500/10 text-red-600"
+                        }`}>
+                          {tx.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => setViewTransaction(tx)}
+                          className="p-2 bg-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                        >
+                          <Eye weight="bold" className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* VIEW MODAL */}
+      {/* VIEW MODAL (Unchanged, already responsive) */}
       {viewTransaction && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-card border border-border rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 relative overflow-hidden">
@@ -235,19 +275,19 @@ export default function TransactionsPage() {
                   <span className="font-medium text-muted-foreground">Type</span>
                   <span className="font-bold text-foreground">{viewTransaction.type}</span>
                 </div>
-                <div className="flex justify-between items-center border-t border-border pt-3">
-                  <span className="font-medium text-muted-foreground">Description</span>
-                  <span className="font-bold text-foreground text-right max-w-[180px] truncate">{viewTransaction.description}</span>
+                <div className="flex justify-between items-center border-t border-border pt-3 gap-4">
+                  <span className="font-medium text-muted-foreground shrink-0">Description</span>
+                  <span className="font-bold text-foreground text-right line-clamp-2">{viewTransaction.description}</span>
                 </div>
                 <div className="flex justify-between items-center border-t border-border pt-3">
                   <span className="font-medium text-muted-foreground">Date</span>
                   <span className="font-bold text-foreground">{new Date(viewTransaction.createdAt).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between items-center border-t border-border pt-3">
+                <div className="flex justify-between items-center border-t border-border pt-3 gap-2">
                   <span className="font-medium text-muted-foreground">Reference</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground font-mono">{viewTransaction.reference}</span>
-                    <button onClick={(e) => handleCopy(e, viewTransaction.reference)} className="text-primary cursor-pointer">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-bold text-foreground font-mono truncate">{viewTransaction.reference}</span>
+                    <button onClick={(e) => handleCopy(e, viewTransaction.reference)} className="text-primary cursor-pointer shrink-0">
                       {copiedId === viewTransaction.reference ? <Check weight="bold" /> : <Copy weight="bold" />}
                     </button>
                   </div>
