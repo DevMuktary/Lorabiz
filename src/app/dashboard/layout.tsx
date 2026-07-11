@@ -30,7 +30,7 @@ const NAVIGATION: NavCategory[] = [
     category: "Main",
     links: [
       { name: "Service Hub", href: "/dashboard", icon: SquaresFour },
-      { name: "Transactions", href: "/dashboard/transactions", icon: Receipt }, // Updated
+      { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
     ]
   },
   {
@@ -103,9 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return "Dashboard";
   };
 
-  // Robust Initials Extraction
   const getUserInitials = () => {
-    // 1. Try name first
     if (session?.user?.name && session.user.name.trim() !== "") {
       const names = session.user.name.trim().split(/\s+/);
       if (names.length >= 2) {
@@ -113,19 +111,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
       return names[0].substring(0, 2).toUpperCase();
     }
-    // 2. Fallback to email if name is undefined or empty
     if (session?.user?.email) {
       return session.user.email.substring(0, 2).toUpperCase();
     }
-    // 3. Absolute fallback
     return "U";
   };
 
   const initials = getUserInitials();
 
   return (
-    // FIX: App-like layout structure
-    <div className="h-[100dvh] w-full bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground flex overflow-hidden">
+    // THE FIX: Changed to min-h-screen and removed overflow-hidden to allow native Safari scrolling
+    <div className="min-h-screen w-full bg-secondary/10 text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground">
       
       {isMobileMenuOpen && (
         <div 
@@ -136,7 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* SIDEBAR */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-[99995] w-[260px] bg-card border-r border-border 
+        fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[260px] h-screen bg-card border-r border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
         ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:translate-x-0 lg:flex"}
@@ -217,10 +213,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col min-w-0 h-full relative">
+      <div className="flex-1 flex flex-col min-w-0 relative">
         
-        {/* HEADER */}
-        <header className="sticky top-0 z-10 h-16 bg-background/95 backdrop-blur-md border-b border-border flex items-center justify-between px-4 lg:px-6 shrink-0">
+        {/* HEADER - Kept Sticky */}
+        <header className="sticky top-0 z-40 h-16 bg-background/95 backdrop-blur-md border-b border-border flex items-center justify-between px-4 lg:px-6 shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
             <button 
               className="lg:hidden p-1.5 -ml-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
@@ -251,8 +247,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* SCROLLABLE MAIN SECTION */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6 custom-scrollbar bg-secondary/10">
+        {/* MAIN BODY - No fixed height, allows natural scrolling */}
+        <main className="flex-1 p-4 lg:p-6 pb-24">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
             {children}
           </div>
