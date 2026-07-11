@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { 
   Wallet, PlusCircle, Headset, CheckCircle, 
-  CaretDown, Spinner, Archive, ArrowsClockwise, WhatsappLogo
+  CaretDown, Spinner, Archive, ArrowsClockwise, WhatsappLogo,
+  MagnifyingGlass, Funnel
 } from "@phosphor-icons/react";
+import { Input } from "@/components/ui/input";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 
 export default function WalletPage() {
@@ -12,9 +14,15 @@ export default function WalletPage() {
   const [fundingHistory, setFundingHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Modals & Status
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const supportNumber = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "2348000000000";
 
@@ -45,10 +53,26 @@ export default function WalletPage() {
     fetchWalletData();
   }, []);
 
-  // ============================================================================
+  // Filter Logic
+  const filteredHistory = fundingHistory.filter((tx) => {
+    const matchesSearch = tx.reference.toLowerCase().includes(search.toLowerCase());
+    
+    let matchesDate = true;
+    const txDate = new Date(tx.createdAt).getTime();
+
+    if (startDate) {
+      matchesDate = matchesDate && txDate >= new Date(startDate).getTime();
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      matchesDate = matchesDate && txDate <= end.getTime();
+    }
+
+    return matchesSearch && matchesDate;
+  });
+
   // SMART WEBHOOK POLLING
-  // Waits for the backend webhook to actually update the DB before refreshing UI
-  // ============================================================================
   const handleFundSuccess = async (amount: number) => {
     setVerifyingPayment(true);
     const startingBalance = balance || 0;
@@ -60,11 +84,9 @@ export default function WalletPage() {
         const balanceRes = await fetch("/api/user/wallet");
         const balanceData = await balanceRes.json();
         
-        // If the balance has increased, the webhook was successful!
         if (balanceData.success && balanceData.wallet.balance > startingBalance) {
           clearInterval(pollInterval);
           
-          // Silently refresh history and state
           setBalance(balanceData.wallet.balance);
           const txRes = await fetch("/api/user/transactions?type=CREDIT&status=SUCCESS");
           const txData = await txRes.json();
@@ -74,7 +96,6 @@ export default function WalletPage() {
           setSuccessMessage(`Successfully funded ₦${amount.toLocaleString()}!`);
           setTimeout(() => setSuccessMessage(null), 5000);
         } else if (attempts >= 15) { 
-          // Timeout after 30 seconds to prevent infinite polling
           clearInterval(pollInterval);
           setVerifyingPayment(false);
           setSuccessMessage(`Payment received. Balance will update shortly.`);
@@ -112,7 +133,6 @@ export default function WalletPage() {
 
       {/* BEAUTIFUL HERO BALANCE CARD */}
       <div className="relative overflow-hidden rounded-[2rem] bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 p-8 sm:p-10 shadow-2xl">
-        {/* Abstract Gradient Backgrounds */}
         <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/20 blur-[80px] pointer-events-none"></div>
         <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-blue-500/20 blur-[80px] pointer-events-none"></div>
         
@@ -174,17 +194,46 @@ export default function WalletPage() {
           Funding History <CaretDown className="h-4 w-4 text-muted-foreground" weight="bold" />
         </h3>
 
+        {/* FILTER TOOLBAR */}
+        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col md:flex-row gap-4 shadow-sm">
+          <div className="relative flex-1">
+            <MagnifyingGlass className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" weight="bold" />
+            <Input 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by reference..." 
+              className="pl-11 h-12 bg-secondary/50 border-border rounded-xl font-medium"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Funnel className="h-5 w-5 text-muted-foreground hidden sm:block" weight="bold" />
+            <Input 
+              type="date" 
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-12 bg-secondary/50 border-border rounded-xl font-medium w-full sm:w-auto"
+            />
+            <span className="text-muted-foreground font-bold">-</span>
+            <Input 
+              type="date" 
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-12 bg-secondary/50 border-border rounded-xl font-medium w-full sm:w-auto"
+            />
+          </div>
+        </div>
+
         <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
           {loading ? (
             <div className="py-24 text-center">
               <Spinner className="animate-spin h-8 w-8 text-primary mx-auto" />
               <p className="text-sm font-bold text-muted-foreground mt-4">Loading your records...</p>
             </div>
-          ) : fundingHistory.length === 0 ? (
+          ) : filteredHistory.length === 0 ? (
             <div className="py-24 text-center text-muted-foreground">
               <Archive className="h-12 w-12 mx-auto mb-4 opacity-20" weight="duotone" />
               <p className="font-bold text-base text-foreground">No funding records found</p>
-              <p className="text-sm font-medium mt-1">Your successful deposits will appear here.</p>
+              <p className="text-sm font-medium mt-1">Adjust your filters or make a deposit.</p>
             </div>
           ) : (
             <div className="overflow-x-auto custom-scrollbar">
@@ -198,7 +247,7 @@ export default function WalletPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                  {fundingHistory.map((tx) => (
+                  {filteredHistory.map((tx) => (
                     <tr key={tx.id} className="hover:bg-secondary/30 transition-colors">
                       <td className="px-6 py-4">
                         <p className="font-bold text-foreground">{new Date(tx.createdAt).toLocaleDateString()}</p>
