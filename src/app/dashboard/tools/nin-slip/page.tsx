@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { 
   ShieldWarning, DownloadSimple, WarningCircle, 
-  Eye, MagnifyingGlass, Check, X
+  Eye, MagnifyingGlass, Check, X, ArrowLeft
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,8 +134,19 @@ export default function NinSlipPage() {
   ];
 
   return (
-    <div className="space-y-12 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24">
+    <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24">
       
+      {/* NAVIGATION: BACK TO DASHBOARD */}
+      <div>
+        <Link 
+          href="/dashboard" 
+          className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 hover:bg-secondary px-3.5 py-2 rounded-xl cursor-pointer"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" />
+          Back to Dashboard
+        </Link>
+      </div>
+
       {/* HEADER SECTION WITH NIMC LOGO */}
       <div className="flex items-center gap-4 border-b border-border pb-5">
         <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center p-2.5 border border-border shrink-0 shadow-sm">
