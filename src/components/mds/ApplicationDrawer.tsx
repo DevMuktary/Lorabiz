@@ -11,15 +11,30 @@ export function StatusPill({ status }: { status: string }) {
   return <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase bg-zinc-100 text-zinc-700">{status}</span>;
 }
 
+// ============================================================================
+// REFACTORED TO USE YOUR INTERNAL SERVER-SIDE ROUTE (/api/upload)
+// This avoids Cloudinary unsigned preset errors and properly handles PDFs.
+// ============================================================================
 const uploadToCloudinary = async (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'quadrox_preset');
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, { method: 'POST', body: formData });
-  if (!res.ok) throw new Error("Failed to upload file to Cloudinary");
+  
+  const res = await fetch('/api/upload', { 
+    method: 'POST', 
+    body: formData 
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to upload document to server");
+  }
+
   const data = await res.json();
-  return data.secure_url;
+  if (!data.success || !data.url) {
+    throw new Error("Invalid response received from upload server");
+  }
+
+  return data.url;
 };
 
 export default function ApplicationDrawer({ ticket, staffList, onClose, onUpdateSuccess }: { ticket: any, staffList: any[], onClose: () => void, onUpdateSuccess: () => void }) {
