@@ -125,7 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     // FIX: App-like layout structure
-    <div className="h-screen w-full bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground flex overflow-hidden">
+    <div className="h-[100dvh] w-full bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground flex overflow-hidden">
       
       {isMobileMenuOpen && (
         <div 
