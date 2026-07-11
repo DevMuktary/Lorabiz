@@ -11,7 +11,6 @@ export async function POST(req: Request) {
     const userEmail = session.user.email;
     const { id, type, paymentMethod, proposedName, altName1, altName2 } = await req.json();
 
-    // 1. Fetch Pricing
     const pricing = await prisma.servicePricing.findUnique({ where: { serviceKey: "NAME_SUBSTITUTION" } });
     const fee = pricing?.price ? Number(pricing.price) : 5000;
 
@@ -61,18 +60,8 @@ export async function POST(req: Request) {
     if (paymentMethod === "ONLINE") {
       if (!userEmail) return NextResponse.json({ message: "User email required for online payment" }, { status: 400 });
 
-      // We MUST store the pending name updates somewhere so the webhook can apply them later.
-      // A common pattern is to encode it into the reference OR temporarily store it in a PendingAction table.
-      // For simplicity and avoiding schema changes, we encode the essential data into the reference string.
-      // Format: NSUB-ONL-{registrationId}-base64EncodedNames
-      
-      const payload = JSON.stringify({ proposedName, altName1, altName2, type });
-      const encodedPayload = Buffer.from(payload).toString('base64');
-      const safeEncodedPayload = encodedPayload.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-      // Ensure the reference isn't too long for Paystack (max 100 chars usually)
-      // If it is, we would strictly need a new DB table for pending actions. 
-      const reference = `NSUB-ONL-${id}-${safeEncodedPayload}`.substring(0, 100); 
+      // Clean, short reference
+      const reference = `NSUB-ONL-${id}-${Date.now()}`; 
 
       return NextResponse.json({ 
         success: true, 
@@ -80,6 +69,14 @@ export async function POST(req: Request) {
           email: userEmail,
           amount: fee * 100, // Paystack uses Kobo
           reference: reference,
+          // THE FIX: Pass the names safely in the metadata object
+          metadata: {
+            registrationId: id,
+            type,
+            proposedName,
+            altName1,
+            altName2
+          },
           publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
         }
       });
