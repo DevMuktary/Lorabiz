@@ -10,15 +10,12 @@ import { Label } from "@/components/ui/label";
 export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClose: () => void }) {
   const router = useRouter();
   
-  // 1: Input, 2: Payment Choice, 3: Processing/Success
   const [step, setStep] = useState<1 | 2 | 3>(1); 
-  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Payment States
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [substitutionFee, setSubstitutionFee] = useState(5000); // Default, fetch live if needed
+  const [substitutionFee, setSubstitutionFee] = useState(5000); 
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -28,7 +25,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     altName2: reg.altName2 || ""
   });
 
-  // Fetch Wallet Balance on mount
   useEffect(() => {
     const fetchWallet = async () => {
       try {
@@ -37,9 +33,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         if (data.success && data.wallet) {
           setWalletBalance(Number(data.wallet.balance));
         }
-      } catch (err) {
-        console.error("Failed to fetch wallet");
-      }
+      } catch (err) {}
     };
     fetchWallet();
 
@@ -71,7 +65,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     
     pollingIntervalRef.current = setInterval(async () => {
       try {
-        // Poll the specific registration details to see if the name changed
         const endpoint = reg._appType === "LLC" 
             ? `/api/cac/register/llc/details/${reg.id}`
             : `/api/cac/register/business-name/details/${reg.id}`;
@@ -79,22 +72,19 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         const res = await fetch(endpoint);
         const json = await res.json();
         
-        // If the proposed name in DB matches our local formData, payment was processed!
         if (json.success && json.data.proposedName === formData.proposedName) {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
         }
-      } catch (e) {
-        // Silent catch
-      }
+      } catch (e) {}
     }, 2000);
 
     setTimeout(() => {
       if (pollingIntervalRef.current && processingState !== "success") {
         clearInterval(pollingIntervalRef.current);
-        setError("Payment confirmation is taking longer than usual. Please check your dashboard later.");
+        setError("Payment received, but confirmation is delayed. Please check your dashboard later.");
         setProcessingState("idle");
-        setStep(2); // Go back to payment selection if it fails
+        setStep(2); 
       }
     }, 30000);
   };
@@ -110,10 +100,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: reg.id,
-          type: reg._appType,
-          paymentMethod: method,
-          ...formData
+          id: reg.id, type: reg._appType, paymentMethod: method, ...formData
         })
       });
 
@@ -131,9 +118,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
       } else if (method === "ONLINE") {
         if (!data.paystackData?.publicKey) {
           setError("Server error: Paystack configuration missing.");
-          setStep(2);
-          setProcessingState("idle");
-          return;
+          setStep(2); setProcessingState("idle"); return;
         }
 
         try {
@@ -142,6 +127,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
             email: data.paystackData.email,
             amount: data.paystackData.amount,
             ref: data.paystackData.reference,
+            metadata: data.paystackData.metadata, // <--- THE FIX IS PASSED HERE
             callback: function () {
               startWebhookPolling();
             },
@@ -153,14 +139,12 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
           handler.openIframe();
         } catch (err) {
           setError("Payment gateway is loading. Try again.");
-          setStep(2);
-          setProcessingState("idle");
+          setStep(2); setProcessingState("idle");
         }
       }
     } catch (e) {
       setError("A network error occurred.");
-      setStep(2);
-      setProcessingState("idle");
+      setStep(2); setProcessingState("idle");
     } finally {
       setLoading(false);
     }
@@ -181,12 +165,16 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     }
   };
 
+  // =========================================
+  // ROUTING FIX: Takes user to the Queries page!
+  // =========================================
   const handleContinueEditing = () => {
     if (reg._appType === "LLC") {
-      router.push(`/dashboard/cac/register/llc/details/${reg.id}`);
+      router.push(`/dashboard/cac/llc/${reg.id}/queries`);
     } else {
-      router.push(`/dashboard/cac/register/business-name/details/${reg.id}`);
+      router.push(`/dashboard/cac/businesses/${reg.id}/queries`);
     }
+    onClose();
   };
 
   const isWalletInsufficient = walletBalance !== null && walletBalance < substitutionFee;
@@ -197,7 +185,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
       <div className="bg-card border border-border rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
         
-        {/* MODAL HEADER */}
         <div className="px-6 py-5 border-b border-border flex justify-between items-center bg-secondary/50">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center">
@@ -222,7 +209,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
             </div>
           )}
 
-          {/* STEP 1: INPUT FORM */}
           {step === 1 && (
             <div className="space-y-6">
               <p className="text-sm font-medium text-muted-foreground">Substitution Fee: <span className="font-bold text-foreground">₦{substitutionFee.toLocaleString()}</span></p>
@@ -248,7 +234,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
             </div>
           )}
 
-          {/* STEP 2: PAYMENT CHOICE */}
           {step === 2 && (
             <div className="space-y-6">
                <div className="text-center mb-6">
@@ -272,10 +257,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
                     </div>
                   </div>
                 </button>
-                
-                {isWalletInsufficient && (
-                  <p className="text-xs text-red-500 font-bold text-center px-4">Insufficient balance. Please fund your wallet or pay online.</p>
-                )}
 
                 <button 
                   onClick={() => handlePayment("ONLINE")}
@@ -299,7 +280,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
             </div>
           )}
 
-          {/* STEP 3: PROCESSING / SUCCESS & RESOLUTION */}
           {step === 3 && (
             <div className="text-center py-4">
                {processingState === "success" ? (
@@ -309,7 +289,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
                     </div>
                     <h3 className="text-xl font-black text-foreground mb-2">Names Substituted!</h3>
                     <p className="text-sm text-muted-foreground font-medium mb-8">
-                      Your new names have been saved. Is your query fully resolved, or do you still need to edit other details (like addresses or IDs)?
+                      Your new names have been saved. Is your query fully resolved, or do you still need to edit other details?
                     </p>
                     
                     <div className="flex flex-col gap-3">
