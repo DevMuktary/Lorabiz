@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, UploadSimple, Spinner, CheckCircle } from "@phosphor-icons/react";
-// Import Next.js Image for safer, optimized rendering
+import { X, UploadSimple, Spinner } from "@phosphor-icons/react";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 
 interface AvatarUploadModalProps {
   isOpen: boolean;
@@ -13,6 +13,8 @@ interface AvatarUploadModalProps {
 }
 
 export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuccess }: AvatarUploadModalProps) {
+  const { update } = useSession(); // <--- THE FIX: Get the update function from NextAuth
+
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
   const [uploading, setUploading] = useState(false);
@@ -29,7 +31,6 @@ export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuc
       }
       setError(null);
       setFile(selected);
-      // Create object URL and store it safely
       const objectUrl = URL.createObjectURL(selected);
       setPreview(objectUrl);
     }
@@ -60,6 +61,10 @@ export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuc
       if (!saveRes.ok) throw new Error("Failed to save profile picture.");
 
       onSuccess(uploadData.url);
+      
+      // <--- THE FIX: Force NextAuth to reload the session, instantly updating the header!
+      await update(); 
+      
       onClose();
     } catch (err: any) {
       setError(err.message || "An error occurred during upload.");
@@ -81,8 +86,6 @@ export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuc
         <div className="flex flex-col items-center gap-4">
           <div className="h-28 w-28 rounded-full border-2 border-dashed border-border overflow-hidden flex items-center justify-center bg-secondary/50 relative group">
             {preview ? (
-              // SECURE FIX: Replaced raw <img> with Next.js <Image> component
-              // using fill and objectFit to safely render the preview
               <div className="relative w-full h-full">
                  <Image 
                    src={preview} 
