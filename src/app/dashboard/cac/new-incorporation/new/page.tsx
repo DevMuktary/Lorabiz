@@ -19,7 +19,6 @@ const REGISTRATION_TYPES = [
   {
     id: "business-name",
     dbKey: "BUSINESS_NAME",
-    settingKey: "bnEnabled", // Maps to globalSettings.bnEnabled
     title: "Business Name",
     description: "The fastest and most affordable way to register a small business. Register as a sole proprietor or as a partnership.",
     estimatedTime: "30 Mins - 1 Hour",
@@ -30,12 +29,10 @@ const REGISTRATION_TYPES = [
     bg: "bg-blue-50 dark:bg-blue-500/10",
     border: "border-border hover:border-blue-300 dark:hover:border-blue-700/50",
     badge: null,
-    active: true,
   },
   {
     id: "llc",
     dbKey: "LLC",
-    settingKey: "llcEnabled", // Maps to globalSettings.llcEnabled
     title: "Limited Liability (LTD)",
     description: "A separate legal entity from its owners. Protects personal assets, allows you to issue shares, and bid for contracts.",
     estimatedTime: "24 - 72 Working Hours",
@@ -46,12 +43,10 @@ const REGISTRATION_TYPES = [
     bg: "bg-primary/10",
     border: "border-primary/30 hover:border-primary/60 ring-1 ring-primary/5 shadow-sm",
     badge: "Most Popular",
-    active: true,
   },
   {
     id: "ngo",
     dbKey: "NGO",
-    settingKey: "ngoEnabled",
     title: "Incorporated Trustees",
     description: "Strictly for non-profit organizations. Registers a board of trustees to manage assets, operations, and charitable goals.",
     estimatedTime: "Name Approval: < 1 Week",
@@ -63,26 +58,27 @@ const REGISTRATION_TYPES = [
     bg: "bg-emerald-50 dark:bg-emerald-500/10",
     border: "border-border",
     badge: "Mandatory 28-Day Pub.",
-    active: false, 
+    // Note: NGO is currently marked inactive in your UI logic, so we keep that true
   }
 ];
 
 export default async function NewRegistrationPage() {
-  // Fetch pricing and global maintenance settings simultaneously on the server
-  const [pricingData, globalSettings] = await Promise.all([
+  // Fetch pricing and service status directly from the MDS-managed tables
+  const [pricingData] = await Promise.all([
     prisma.servicePricing.findMany(),
-    prisma.globalSettings.findFirst()
   ]);
   
   const priceMap = pricingData.reduce((acc, item) => {
-    acc[item.serviceKey] = Number(item.price);
+    acc[item.serviceKey] = {
+      price: Number(item.price),
+      isActive: item.isActive
+    };
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, { price: number, isActive: boolean }>);
 
   return (
     <div className="max-w-7xl mx-auto pb-12 antialiased animate-in fade-in duration-500">
       
-      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pt-2">
         <Link 
           href="/dashboard/cac/new-incorporation" 
@@ -97,28 +93,20 @@ export default async function NewRegistrationPage() {
             What would you like to register?
           </h1>
           <p className="text-sm text-muted-foreground font-medium mt-1">
-            Select the entity type below. We've simplified the legal jargon.
+            Select the entity type below.
           </p>
         </div>
       </div>
 
-      <div className="md:hidden flex justify-center mb-6 text-muted-foreground animate-bounce">
-        <CaretDown className="h-5 w-5" weight="bold" />
-      </div>
-
-      {/* CARDS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
         {REGISTRATION_TYPES.map((type) => {
-          const livePrice = priceMap[type.dbKey];
-          const formattedPrice = livePrice ? `₦${livePrice.toLocaleString()}` : "Pricing via Admin";
-
-          // Server-side check: Evaluate if this specific service is enabled in DB
-          const isServiceEnabled = globalSettings && type.settingKey in globalSettings 
-            ? (globalSettings as any)[type.settingKey] !== false 
-            : type.active;
-
-          // If disabled by admin, override active state
-          const isCurrentlyActive = type.active && isServiceEnabled;
+          const serviceInfo = priceMap[type.dbKey];
+          const livePrice = serviceInfo ? `₦${serviceInfo.price.toLocaleString()}` : "Contact Admin";
+          
+          // Determine if active: 
+          // 1. Must be in our pricing table AND active
+          // 2. OR, if it's the NGO (not in pricing table), keep it disabled
+          const isCurrentlyActive = serviceInfo?.isActive === true;
 
           const cardClasses = `
             relative flex flex-col h-full bg-card p-6 sm:p-8 rounded-3xl border transition-all duration-300 
@@ -128,21 +116,11 @@ export default async function NewRegistrationPage() {
 
           const CardInnerContent = (
             <>
-              {/* MAINTENANCE / COMING SOON OVERLAY */}
               {!isCurrentlyActive && (
                  <div className="absolute inset-0 bg-background/20 backdrop-blur-[2px] z-20 rounded-3xl flex items-center justify-center p-4 text-center">
                     <span className="bg-secondary text-foreground font-black text-xs uppercase tracking-widest px-4 py-2.5 rounded-full border border-border shadow-xl flex items-center gap-2">
-                      {!type.active ? (
-                        <>
-                          <Sparkle weight="fill" className="h-4 w-4 text-primary" />
-                          Coming Soon
-                        </>
-                      ) : (
-                        <>
-                          <Wrench weight="fill" className="h-4 w-4 text-amber-500" />
-                          Under Maintenance
-                        </>
-                      )}
+                      <Wrench weight="fill" className="h-4 w-4 text-amber-500" />
+                      {serviceInfo ? "Temporarily Disabled" : "Coming Soon"}
                     </span>
                  </div>
               )}
@@ -170,7 +148,7 @@ export default async function NewRegistrationPage() {
               <div className="flex flex-col gap-2 py-4 mb-2 border-y border-border">
                  <div className="flex items-center gap-2 text-sm font-black text-foreground">
                     <Wallet className="h-4 w-4 text-muted-foreground" weight="fill" />
-                    {formattedPrice}
+                    {livePrice}
                  </div>
                  
                  <div className="flex items-start gap-2 text-xs font-bold text-muted-foreground">
@@ -178,10 +156,7 @@ export default async function NewRegistrationPage() {
                     <div className="flex flex-col">
                       <span>{type.estimatedTime}</span>
                       {type.secondaryTime && (
-                        <span 
-                          className="text-muted-foreground/70 font-medium mt-0.5 flex items-center gap-1"
-                          title="Requires a 28-day public newspaper publication before final approval."
-                        >
+                        <span className="text-muted-foreground/70 font-medium mt-0.5 flex items-center gap-1">
                            {type.secondaryTime}
                            <Info className="h-3.5 w-3.5" />
                         </span>
@@ -211,30 +186,24 @@ export default async function NewRegistrationPage() {
                     : 'bg-foreground text-background shadow-md group-hover:opacity-90'
                   }
                 `}>
-                  {isCurrentlyActive ? "Start Application" : (!type.active ? "Coming Soon" : "Temporarily Disabled")}
+                  {isCurrentlyActive ? "Start Application" : "Currently Unavailable"}
                   {isCurrentlyActive && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" weight="bold" />}
                 </div>
               </div>
             </>
           );
 
-          // Render a Link if active, and a non-clickable div if inactive/maintenance
-          if (isCurrentlyActive) {
-            return (
-              <Link key={type.id} href={type.href} className={cardClasses}>
-                {CardInnerContent}
-              </Link>
-            );
-          } else {
-            return (
-              <div key={type.id} className={cardClasses}>
-                {CardInnerContent}
-              </div>
-            );
-          }
+          return isCurrentlyActive ? (
+            <Link key={type.id} href={type.href} className={cardClasses}>
+              {CardInnerContent}
+            </Link>
+          ) : (
+            <div key={type.id} className={cardClasses}>
+              {CardInnerContent}
+            </div>
+          );
         })}
       </div>
-
     </div>
   );
 }
