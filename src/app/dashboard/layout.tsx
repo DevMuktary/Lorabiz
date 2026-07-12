@@ -10,7 +10,7 @@ import NotificationBell from "@/components/features/notifications/NotificationBe
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
-  UserCircle, SignOut, List, X, Info, Receipt
+  UserCircle, SignOut, List, X, Info, Receipt, Article, Cards
 } from "@phosphor-icons/react";
 
 type NavLink = {
@@ -45,6 +45,9 @@ const NAVIGATION: NavCategory[] = [
   {
     category: "Upcoming Services",
     links: [
+      { name: "Tax ID (TIN)", href: "#", icon: Cards, isComingSoon: true, showSoonBadge: true },
+      { name: "Change of Name", href: "#", icon: Article, isComingSoon: true },
+      { name: "Post Incorporation", href: "#", icon: Buildings, isComingSoon: true },
       { name: "SCUML", href: "#", icon: ShieldCheck, isComingSoon: true },
       { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
       { name: "SMEDAN", href: "#", icon: Handshake, isComingSoon: true },
@@ -61,7 +64,8 @@ const NAVIGATION: NavCategory[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  // Call update so we have access to it to force session refreshes if needed later
+  const { data: session, update } = useSession();
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
@@ -130,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      {/* SIDEBAR */}
+      {/* SIDEBAR - Fixed layout so it stays put while scrolling the main area */}
       <aside className={`
         fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[280px] h-screen bg-card border-r border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
@@ -154,6 +158,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
+        {/* Scrollable inner navigation */}
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-7 custom-scrollbar">
           {NAVIGATION.map((group) => (
             <div key={group.category} className="space-y-2">
@@ -211,7 +216,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button 
             type="button"
             onClick={() => {
-              // Clears session cache & forces immediate hard redirect to login
               signOut({ callbackUrl: "/auth/login", redirect: true });
             }}
             className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-[14px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 group cursor-pointer"
@@ -251,8 +255,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <ThemeToggle />
             <NotificationBell />
 
-            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[13px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20">
-              {initials}
+            {/* THE FIX: Dynamic Profile Picture with Initials Fallback */}
+            <div className="h-10 w-10 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[13px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0">
+              {session?.user?.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img 
+                  src={session.user.image} 
+                  alt="Profile" 
+                  className="h-full w-full object-cover" 
+                  onError={(e) => {
+                    // Fallback to initials if image fails to load
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).parentElement!.innerHTML = initials;
+                  }}
+                />
+              ) : (
+                initials
+              )}
             </div>
           </div>
         </header>
