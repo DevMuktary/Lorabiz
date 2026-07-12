@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { prisma } from "@/lib/prisma";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -9,7 +10,32 @@ export async function POST(req: Request) {
   try {
     const { proposedName, lineOfBusiness, entityType, mode } = await req.json();
 
-    if (!lineOfBusiness || !entityType) {
+    if (!entityType) {
+      return NextResponse.json({ success: false, message: "Missing required entity type." }, { status: 400 });
+    }
+
+    // ==========================================
+    // LAYER 3 API GATEKEEPER (Global Maintenance Check)
+    // ==========================================
+    const settings = await prisma.globalSettings.findFirst();
+    if (settings) {
+      let isEnabled = true;
+      if (entityType === "Company (LLC)" && settings.llcEnabled === false) isEnabled = false;
+      else if (entityType === "Business Name" && settings.bnEnabled === false) isEnabled = false;
+      else if ((entityType === "NGO" || entityType === "Incorporated Trustees") && (settings as any).ngoEnabled === false) isEnabled = false;
+
+      if (!isEnabled) {
+        return NextResponse.json({
+          success: false,
+          isBlocked: true,
+          rejectionType: "SERVICE_DISABLED",
+          reasonMessage: settings.maintenanceReason || "This registration service is currently disabled for scheduled maintenance.",
+          message: settings.maintenanceReason || "This registration service is currently disabled for scheduled maintenance."
+        }, { status: 403 });
+      }
+    }
+
+    if (!lineOfBusiness && mode === "SUGGEST") {
       return NextResponse.json({ success: false, message: "Missing required metadata parameters." }, { status: 400 });
     }
 
@@ -30,17 +56,21 @@ export async function POST(req: Request) {
           model: "gpt-4o-mini",
           messages: [
             {
+              // SECURE: System prompt is completely static and trusted
               role: "system",
               content: `You are a Senior Corporate Naming Specialist under the Nigerian Companies and Allied Matters Act (CAMA).
-              Generate exactly ONE highly professional, creative, and unique alternative name for a "${entityType}".
-              Base theme to modify: "${proposedName}". 
-              Industry vertical: "${lineOfBusiness}".
+              Generate exactly ONE highly professional, creative, and unique alternative name based on the user's provided entity type, proposed name, and industry vertical.
               
               CRITICAL CAC RULES:
               - DO NOT just append a word to the exact same highly unique root (e.g., if QUADROX failed, change the root to QUADRA, NEXUS, or VORTEX).
               - IF entityType is 'Company (LLC)': The name MUST end with exactly the word "LIMITED" or "LTD".
               - IF entityType is 'Business Name': The name MUST end with a qualifier like VENTURES, CONCEPTS, SERVICES, GLOBAL (DO NOT USE LTD OR LIMITED).
               - Output ONLY the raw name string. Do not use quotes.`
+            },
+            {
+              // SECURE: User variables are isolated inside the user role
+              role: "user",
+              content: `Entity Type: ${entityType}\nProposed Name: ${proposedName}\nIndustry Vertical: ${lineOfBusiness}`
             }
           ],
           temperature: 0.9, 
@@ -113,9 +143,10 @@ export async function POST(req: Request) {
       model: "gpt-4o-mini",
       messages: [
         {
+          // SECURE: System prompt is completely static and trusted
           role: "system",
           content: `You are a legal compliance gatekeeper for the Nigerian Corporate Affairs Commission (CAC).
-          Analyze the user's proposed name for a "${entityType}":
+          Analyze the user's proposed name based on their declared entity type:
           
           1. LLC COMPLIANCE: If entityType is 'Company (LLC)', the name MUST end with 'LTD', 'LIMITED', 'PLC', 'GTE', or 'ULC'. If it doesn't, return status "MISSING_LLC_SUFFIX" and reason "A Company must end with LIMITED or LTD."
           2. BUSINESS NAME COMPLIANCE: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC', return status "ILLEGAL_SUFFIX".
@@ -124,7 +155,11 @@ export async function POST(req: Request) {
           5. MISSING SUFFIX (Business Name): If 'Business Name' lacks a standard descriptor at the end, flag as "MISSING_SUFFIX".
           6. If it passes all rules, flag as "PASSED".`
         },
-        { role: "user", content: `Name: "${uppercaseName}"` }
+        { 
+          // SECURE: User data isolated in user role
+          role: "user", 
+          content: `Entity Type: ${entityType}\nProposed Name: "${uppercaseName}"` 
+        }
       ],
       response_format: {
         type: "json_schema",
@@ -157,7 +192,7 @@ export async function POST(req: Request) {
         isBlocked: true,
         rejectionType: preFlightResult.status,
         reasonMessage: preFlightResult.reason,
-        conflicts: [], // No conflict here, just a rule violation
+        conflicts: [], 
         data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
       });
     }
@@ -203,7 +238,7 @@ export async function POST(req: Request) {
         isBlocked: true,
         rejectionType: "EXACT_MATCH",
         reasonMessage: "This exact name is already registered by another business.",
-        conflicts: [uppercaseName], // We push the exact name to the frontend
+        conflicts: [uppercaseName], 
         data: { mostSimilarName: uppercaseName, cleansedNameUsed: uppercaseName }
       });
     }
@@ -267,7 +302,7 @@ export async function POST(req: Request) {
       rejectionType: finalIsBlocked ? "SEMANTIC_CONFLICT" : "PASSED",
       reasonMessage: finalReasonMessage,
       warningMessage: uiWarningMessage, 
-      conflicts: finalIsBlocked ? [mostSimilarName] : [], // If blocked semantically, push the similar name to the UI!
+      conflicts: finalIsBlocked ? [mostSimilarName] : [], 
       data: {
         mostSimilarName: mostSimilarName,
         cleansedNameUsed: uppercaseName
