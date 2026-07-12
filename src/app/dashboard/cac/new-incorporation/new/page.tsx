@@ -11,13 +11,15 @@ import {
   Wallet,
   Info,
   CaretDown,
-  Sparkle
+  Sparkle,
+  Wrench
 } from "@phosphor-icons/react/dist/ssr";
 
 const REGISTRATION_TYPES = [
   {
     id: "business-name",
     dbKey: "BUSINESS_NAME",
+    settingKey: "bnEnabled", // Maps to globalSettings.bnEnabled
     title: "Business Name",
     description: "The fastest and most affordable way to register a small business. Register as a sole proprietor or as a partnership.",
     estimatedTime: "30 Mins - 1 Hour",
@@ -33,6 +35,7 @@ const REGISTRATION_TYPES = [
   {
     id: "llc",
     dbKey: "LLC",
+    settingKey: "llcEnabled", // Maps to globalSettings.llcEnabled
     title: "Limited Liability (LTD)",
     description: "A separate legal entity from its owners. Protects personal assets, allows you to issue shares, and bid for contracts.",
     estimatedTime: "24 - 72 Working Hours",
@@ -48,6 +51,7 @@ const REGISTRATION_TYPES = [
   {
     id: "ngo",
     dbKey: "NGO",
+    settingKey: "ngoEnabled",
     title: "Incorporated Trustees",
     description: "Strictly for non-profit organizations. Registers a board of trustees to manage assets, operations, and charitable goals.",
     estimatedTime: "Name Approval: < 1 Week",
@@ -64,7 +68,11 @@ const REGISTRATION_TYPES = [
 ];
 
 export default async function NewRegistrationPage() {
-  const pricingData = await prisma.servicePricing.findMany();
+  // Fetch pricing and global maintenance settings simultaneously on the server
+  const [pricingData, globalSettings] = await Promise.all([
+    prisma.servicePricing.findMany(),
+    prisma.globalSettings.findFirst()
+  ]);
   
   const priceMap = pricingData.reduce((acc, item) => {
     acc[item.serviceKey] = Number(item.price);
@@ -104,25 +112,42 @@ export default async function NewRegistrationPage() {
           const livePrice = priceMap[type.dbKey];
           const formattedPrice = livePrice ? `₦${livePrice.toLocaleString()}` : "Pricing via Admin";
 
+          // Server-side check: Evaluate if this specific service is enabled in DB
+          const isServiceEnabled = globalSettings && type.settingKey in globalSettings 
+            ? (globalSettings as any)[type.settingKey] !== false 
+            : type.active;
+
+          // If disabled by admin, override active state
+          const isCurrentlyActive = type.active && isServiceEnabled;
+
           const cardClasses = `
             relative flex flex-col h-full bg-card p-6 sm:p-8 rounded-3xl border transition-all duration-300 
-            ${type.active ? 'hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]' : 'grayscale opacity-70 cursor-not-allowed'}
+            ${isCurrentlyActive ? 'hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]' : 'grayscale opacity-75 cursor-not-allowed'}
             group ${type.border}
           `;
 
           const CardInnerContent = (
             <>
-              {/* Coming Soon Overlay for Inactive */}
-              {!type.active && (
-                 <div className="absolute inset-0 bg-background/10 backdrop-blur-[1px] z-20 rounded-3xl flex items-center justify-center">
-                    <span className="bg-secondary text-foreground font-black text-xs uppercase tracking-widest px-4 py-2 rounded-full border border-border shadow-lg flex items-center gap-2">
-                      <Sparkle weight="fill" className="h-4 w-4" />
-                      Coming Soon
+              {/* MAINTENANCE / COMING SOON OVERLAY */}
+              {!isCurrentlyActive && (
+                 <div className="absolute inset-0 bg-background/20 backdrop-blur-[2px] z-20 rounded-3xl flex items-center justify-center p-4 text-center">
+                    <span className="bg-secondary text-foreground font-black text-xs uppercase tracking-widest px-4 py-2.5 rounded-full border border-border shadow-xl flex items-center gap-2">
+                      {!type.active ? (
+                        <>
+                          <Sparkle weight="fill" className="h-4 w-4 text-primary" />
+                          Coming Soon
+                        </>
+                      ) : (
+                        <>
+                          <Wrench weight="fill" className="h-4 w-4 text-amber-500" />
+                          Under Maintenance
+                        </>
+                      )}
                     </span>
                  </div>
               )}
 
-              {type.badge && type.active && (
+              {type.badge && isCurrentlyActive && (
                 <div className="absolute -top-3.5 inset-x-0 flex justify-center z-10">
                   <span className={`text-white text-[10px] font-black uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md ${type.id === 'ngo' ? 'bg-slate-800' : 'bg-primary shadow-primary/20'}`}>
                     {type.badge}
@@ -180,21 +205,21 @@ export default async function NewRegistrationPage() {
 
                 <div className={`
                   w-full py-3.5 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all
-                  ${!type.active ? 'bg-secondary text-muted-foreground' : 
+                  ${!isCurrentlyActive ? 'bg-secondary text-muted-foreground' : 
                     type.id === 'llc' 
                     ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 group-hover:opacity-90' 
                     : 'bg-foreground text-background shadow-md group-hover:opacity-90'
                   }
                 `}>
-                  {type.active ? "Start Application" : "Coming Soon"}
-                  {type.active && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" weight="bold" />}
+                  {isCurrentlyActive ? "Start Application" : (!type.active ? "Coming Soon" : "Temporarily Disabled")}
+                  {isCurrentlyActive && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" weight="bold" />}
                 </div>
               </div>
             </>
           );
 
-          // Render a Link if active, and a disabled div if inactive
-          if (type.active) {
+          // Render a Link if active, and a non-clickable div if inactive/maintenance
+          if (isCurrentlyActive) {
             return (
               <Link key={type.id} href={type.href} className={cardClasses}>
                 {CardInnerContent}
