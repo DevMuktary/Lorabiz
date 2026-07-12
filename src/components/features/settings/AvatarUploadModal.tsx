@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, UploadCloud, Spinner, CheckCircle } from "@phosphor-icons/react";
+// FIX: Changed UploadCloud to UploadSimple
+import { X, UploadSimple, Spinner, CheckCircle } from "@phosphor-icons/react";
 
 interface AvatarUploadModalProps {
   isOpen: boolean;
@@ -81,7 +82,8 @@ export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuc
             {preview ? (
               <img src={preview} alt="Preview" className="h-full w-full object-cover" />
             ) : (
-              <UploadCloud size={32} className="text-muted-foreground" />
+              // FIX: Using UploadSimple here
+              <UploadSimple size={32} className="text-muted-foreground" />
             )}
             <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white font-bold text-xs">
               Change
