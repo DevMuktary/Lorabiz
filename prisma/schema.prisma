@@ -72,6 +72,7 @@ model User {
   whatsapp        String           @unique
   oldPhone        String?   // Tracks previous number in case of fraud
   phoneChangedAt  DateTime? // Tracks when they last changed it
+  image          String?   // Added for profile picture
   passwordHash    String
   gender          Gender
   state           String
