@@ -1,0 +1,98 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Wrench, ArrowLeft, WarningCircle, Spinner } from "@phosphor-icons/react";
+import Link from "next/link";
+
+interface ServiceGuardProps {
+  serviceKey: "bnEnabled" | "llcEnabled" | "ninEnabled";
+  serviceName: string;
+  children: React.ReactNode;
+}
+
+export default function ServiceGuard({ serviceKey, serviceName, children }: ServiceGuardProps) {
+  const [status, setStatus] = useState<{
+    loading: boolean;
+    enabled: boolean;
+    reason: string;
+  }>({
+    loading: true,
+    enabled: true,
+    reason: "Service is down for maintenance.",
+  });
+
+  useEffect(() => {
+    const checkServiceStatus = async () => {
+      try {
+        const res = await fetch("/api/settings/global");
+        const data = await res.json();
+        
+        if (data.success && data.settings) {
+          setStatus({
+            loading: false,
+            enabled: data.settings[serviceKey], // Checks bnEnabled, llcEnabled, etc.
+            reason: data.settings.maintenanceReason || "This service is currently unavailable.",
+          });
+        } else {
+          setStatus(prev => ({ ...prev, loading: false })); // Default to allow if DB fails
+        }
+      } catch (err) {
+        setStatus(prev => ({ ...prev, loading: false })); // Default to allow on network error
+      }
+    };
+
+    checkServiceStatus();
+  }, [serviceKey]);
+
+  if (status.loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] animate-in fade-in">
+        <Spinner className="animate-spin h-10 w-10 text-primary mb-4" weight="bold" />
+        <p className="text-sm font-bold text-muted-foreground">Checking service availability...</p>
+      </div>
+    );
+  }
+
+  // If the service is enabled, render the actual page (the form)
+  if (status.enabled) {
+    return <>{children}</>;
+  }
+
+  // If the service is disabled, intercept and show the Maintenance Screen
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in zoom-in-95 duration-500 max-w-lg mx-auto text-center px-4">
+      <div className="h-24 w-24 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mb-6 relative">
+        <Wrench className="h-12 w-12" weight="duotone" />
+        <div className="absolute top-0 right-0 h-8 w-8 bg-background rounded-full flex items-center justify-center">
+          <WarningCircle className="h-6 w-6 text-amber-500" weight="fill" />
+        </div>
+      </div>
+      
+      <h1 className="text-3xl font-black text-foreground mb-3 tracking-tight">
+        {serviceName} Unavailable
+      </h1>
+      
+      <p className="text-base font-medium text-muted-foreground mb-8 leading-relaxed">
+        {status.reason}
+      </p>
+
+      <div className="bg-secondary/50 border border-border p-4 rounded-2xl mb-8 w-full text-left flex items-start gap-3">
+        <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" weight="fill" />
+        <div>
+          <p className="text-sm font-bold text-foreground">Good News!</p>
+          <p className="text-xs font-medium text-muted-foreground mt-0.5">
+            If you already have a drafted application, query, or pending payment for this service, you can still access and complete it from your Dashboard.
+          </p>
+        </div>
+      </div>
+
+      <Link 
+        href="/dashboard/cac/new-incorporation"
+        className="h-12 px-6 bg-foreground text-background hover:opacity-90 font-bold rounded-xl flex items-center gap-2 transition-opacity"
+      >
+        <ArrowLeft className="h-5 w-5" weight="bold" />
+        Return to Applications
+      </Link>
+    </div>
+  );
+}
