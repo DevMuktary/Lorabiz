@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wrench, ArrowLeft, WarningCircle, Spinner } from "@phosphor-icons/react";
+import { Wrench, ArrowLeft, WarningCircle, Spinner, Info } from "@phosphor-icons/react";
 import Link from "next/link";
 
 interface ServiceGuardProps {
@@ -28,10 +28,13 @@ export default function ServiceGuard({ serviceKey, serviceName, children }: Serv
         const data = await res.json();
         
         if (data.success && data.settings) {
+          // Dynamically map the key to the reason (e.g., "llcEnabled" -> "llcReason")
+          const reasonKey = serviceKey.replace("Enabled", "Reason"); 
+
           setStatus({
             loading: false,
-            enabled: data.settings[serviceKey], // Checks bnEnabled, llcEnabled, etc.
-            reason: data.settings.maintenanceReason || "This service is currently unavailable.",
+            enabled: data.settings[serviceKey], 
+            reason: data.settings[reasonKey] || "This service is currently unavailable.",
           });
         } else {
           setStatus(prev => ({ ...prev, loading: false })); // Default to allow if DB fails
