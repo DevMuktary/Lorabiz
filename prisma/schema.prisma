@@ -70,6 +70,8 @@ model User {
   email           String           @unique
   phone           String           @unique
   whatsapp        String           @unique
+  oldPhone        String?   // Tracks previous number in case of fraud
+  phoneChangedAt  DateTime? // Tracks when they last changed it
   passwordHash    String
   gender          Gender
   state           String
