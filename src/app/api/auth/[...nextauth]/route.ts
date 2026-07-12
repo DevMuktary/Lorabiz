@@ -115,19 +115,16 @@ export const authOptions: NextAuthOptions = {
         // ====================================================================
         const requestedPortal = credentials.portal || "user";
         
-        // 1. Customer (USER) trying to access via Customer portal
         if (requestedPortal === "user" && user.role !== "USER") {
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Admin/Staff attempted to access Client Portal." });
           throw new Error("Account does not exist in this portal.");
         }
 
-        // 2. MDS trying to access via MDS Portal (Prisma role must be ADMIN)
         if (requestedPortal === "mds" && user.role !== "ADMIN") {
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: `${user.role} attempted to access MDS (Admin) Portal.` });
           throw new Error("Account does not exist in this portal.");
         }
 
-        // 3. Staff trying to access via Staff Portal
         if (requestedPortal === "staff" && user.role !== "STAFF") {
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: `${user.role} attempted to access Staff Portal.` });
           throw new Error("Account does not exist in this portal.");
@@ -156,16 +153,14 @@ export const authOptions: NextAuthOptions = {
           where: { email: normalizedEmail }
         });
 
-        // 1. If they are hard-locked from too many resends, block Phase 1 too
         if (existingOtp?.lockedUntil && existingOtp.lockedUntil > now) {
           throw new Error("Too many code requests. Account temporarily blocked from generating codes for 1 hour.");
         }
 
-        // 2. Only generate and send a new OTP if they are OUTSIDE the active cooldown window
         if (!existingOtp?.nextResendAllowedAt || existingOtp.nextResendAllowedAt <= now) {
           const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-          const expiresAt = new Date(now.getTime() + 10 * 60 * 1000); // 10 min expiry
-          const nextResend = new Date(now.getTime() + 30 * 1000);     // 30s initial cooldown
+          const expiresAt = new Date(now.getTime() + 10 * 60 * 1000); 
+          const nextResend = new Date(now.getTime() + 30 * 1000);     
           
           await prisma.otpCode.upsert({
             where: { email: normalizedEmail },
@@ -189,6 +184,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
           role: user.role,
+          image: user.image, // Ensure image is passed from the authorize step
         };
       },
     }),
@@ -199,41 +195,49 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.picture = user.image; // Assign image to token
         token.mfaVerified = false; 
       }
 
-      // 2. Continuous Database Verification (Kills Ghost Sessions & Dynamic Role Syncing)
+      // 2. Continuous Database Verification
       if (token?.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { id: true, role: true, isSuspended: true }
+            select: { id: true, role: true, isSuspended: true, image: true }
           });
 
-          // If the user was deleted, or suspended by MDS, immediately destroy the token.
           if (!dbUser || dbUser.isSuspended) {
-            return {} as any; // Returning empty object permanently kills the session.
+            return {} as any; 
           }
 
-          // If MDS upgraded a STAFF to ADMIN (or vice versa), sync their session role instantly.
           if (dbUser.role !== token.role) {
             token.role = dbUser.role;
           }
+          
+          // Keep image in sync with DB on every background refresh
+          if (dbUser.image !== token.picture) {
+             token.picture = dbUser.image;
+          }
+
         } catch (error) {
           console.error("Database session verification failed:", error);
         }
       }
 
-      // 3. MFA State Update
-      if (trigger === "update" && session?.mfaVerified !== undefined) {
-        token.mfaVerified = session.mfaVerified;
+      // 3. MFA & Explicit Session Updates (Like Avatar Upload)
+      if (trigger === "update" && session) {
+        if (session.mfaVerified !== undefined) {
+          token.mfaVerified = session.mfaVerified;
+        }
+        if (session.image !== undefined) {
+          token.picture = session.image; // Catch the avatar upload trigger
+        }
       }
       return token;
     },
     
     async session({ session, token }) {
-      // If the token was nuked in the jwt callback (because they are a ghost/suspended), 
-      // trigger an intentional session failure to force the frontend to log them out.
       if (!token?.id) {
         return { ...session, error: "SessionTerminated" } as any; 
       }
@@ -242,6 +246,8 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role as string;
         (session.user as any).mfaVerified = token.mfaVerified as boolean;
+        // Pass the picture from the token back to the client session
+        session.user.image = token.picture as string | null | undefined; 
       }
       return session;
     },
