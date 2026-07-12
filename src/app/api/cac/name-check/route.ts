@@ -16,23 +16,41 @@ export async function POST(req: Request) {
 
     // ==========================================
     // LAYER 3 API GATEKEEPER (Global Maintenance Check)
+    // Synchronized with MDS ServicePricing Toggles
     // ==========================================
-    const settings = await prisma.globalSettings.findFirst();
-    if (settings) {
-      let isEnabled = true;
-      if (entityType === "Company (LLC)" && settings.llcEnabled === false) isEnabled = false;
-      else if (entityType === "Business Name" && settings.bnEnabled === false) isEnabled = false;
-      else if ((entityType === "NGO" || entityType === "Incorporated Trustees") && (settings as any).ngoEnabled === false) isEnabled = false;
+    const cacServices = await prisma.servicePricing.findMany();
+    
+    let isEnabled = true;
+    let maintenanceReason = "This registration service is currently disabled for scheduled maintenance.";
 
-      if (!isEnabled) {
-        return NextResponse.json({
-          success: false,
-          isBlocked: true,
-          rejectionType: "SERVICE_DISABLED",
-          reasonMessage: settings.maintenanceReason || "This registration service is currently disabled for scheduled maintenance.",
-          message: settings.maintenanceReason || "This registration service is currently disabled for scheduled maintenance."
-        }, { status: 403 });
+    if (entityType === "Company (LLC)") {
+      const llcSetting = cacServices.find(s => s.serviceKey === "LLC");
+      if (llcSetting && llcSetting.isActive === false) {
+        isEnabled = false;
+        maintenanceReason = llcSetting.maintenanceMsg || maintenanceReason;
       }
+    } else if (entityType === "Business Name") {
+      const bnSetting = cacServices.find(s => s.serviceKey === "BUSINESS_NAME");
+      if (bnSetting && bnSetting.isActive === false) {
+        isEnabled = false;
+        maintenanceReason = bnSetting.maintenanceMsg || maintenanceReason;
+      }
+    } else if (entityType === "NGO" || entityType === "Incorporated Trustees") {
+      const ngoSetting = cacServices.find(s => s.serviceKey === "NGO");
+      if (ngoSetting && ngoSetting.isActive === false) {
+        isEnabled = false;
+        maintenanceReason = ngoSetting.maintenanceMsg || maintenanceReason;
+      }
+    }
+
+    if (!isEnabled) {
+      return NextResponse.json({
+        success: false,
+        isBlocked: true,
+        rejectionType: "SERVICE_DISABLED",
+        reasonMessage: maintenanceReason,
+        message: maintenanceReason
+      }, { status: 403 });
     }
 
     if (!lineOfBusiness && mode === "SUGGEST") {
@@ -56,7 +74,6 @@ export async function POST(req: Request) {
           model: "gpt-4o-mini",
           messages: [
             {
-              // SECURE: System prompt is completely static and trusted
               role: "system",
               content: `You are a Senior Corporate Naming Specialist under the Nigerian Companies and Allied Matters Act (CAMA).
               Generate exactly ONE highly professional, creative, and unique alternative name based on the user's provided entity type, proposed name, and industry vertical.
@@ -68,7 +85,6 @@ export async function POST(req: Request) {
               - Output ONLY the raw name string. Do not use quotes.`
             },
             {
-              // SECURE: User variables are isolated inside the user role
               role: "user",
               content: `Entity Type: ${entityType}\nProposed Name: ${proposedName}\nIndustry Vertical: ${lineOfBusiness}`
             }
@@ -143,7 +159,6 @@ export async function POST(req: Request) {
       model: "gpt-4o-mini",
       messages: [
         {
-          // SECURE: System prompt is completely static and trusted
           role: "system",
           content: `You are a legal compliance gatekeeper for the Nigerian Corporate Affairs Commission (CAC).
           Analyze the user's proposed name based on their declared entity type:
@@ -156,7 +171,6 @@ export async function POST(req: Request) {
           6. If it passes all rules, flag as "PASSED".`
         },
         { 
-          // SECURE: User data isolated in user role
           role: "user", 
           content: `Entity Type: ${entityType}\nProposed Name: "${uppercaseName}"` 
         }
