@@ -13,7 +13,7 @@ interface AvatarUploadModalProps {
 }
 
 export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuccess }: AvatarUploadModalProps) {
-  const { update } = useSession(); // <--- THE FIX: Get the update function from NextAuth
+  const { update } = useSession();
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
@@ -62,8 +62,8 @@ export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuc
 
       onSuccess(uploadData.url);
       
-      // <--- THE FIX: Force NextAuth to reload the session, instantly updating the header!
-      await update(); 
+      // Explicitly tell NextAuth to update the image in the token
+      await update({ image: uploadData.url }); 
       
       onClose();
     } catch (err: any) {
