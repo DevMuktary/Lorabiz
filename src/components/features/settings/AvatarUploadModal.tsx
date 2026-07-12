@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-// FIX: Changed UploadCloud to UploadSimple
 import { X, UploadSimple, Spinner, CheckCircle } from "@phosphor-icons/react";
+// Import Next.js Image for safer, optimized rendering
+import Image from "next/image";
 
 interface AvatarUploadModalProps {
   isOpen: boolean;
@@ -28,7 +29,9 @@ export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuc
       }
       setError(null);
       setFile(selected);
-      setPreview(URL.createObjectURL(selected));
+      // Create object URL and store it safely
+      const objectUrl = URL.createObjectURL(selected);
+      setPreview(objectUrl);
     }
   };
 
@@ -38,7 +41,6 @@ export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuc
     setError(null);
 
     try {
-      // 1. Upload file to your storage service
       const formData = new FormData();
       formData.append("file", file);
       
@@ -49,7 +51,6 @@ export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuc
         throw new Error(uploadData.message || "Failed to upload image.");
       }
 
-      // 2. Save URL to user profile
       const saveRes = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -80,9 +81,17 @@ export default function AvatarUploadModal({ isOpen, onClose, currentImage, onSuc
         <div className="flex flex-col items-center gap-4">
           <div className="h-28 w-28 rounded-full border-2 border-dashed border-border overflow-hidden flex items-center justify-center bg-secondary/50 relative group">
             {preview ? (
-              <img src={preview} alt="Preview" className="h-full w-full object-cover" />
+              // SECURE FIX: Replaced raw <img> with Next.js <Image> component
+              // using fill and objectFit to safely render the preview
+              <div className="relative w-full h-full">
+                 <Image 
+                   src={preview} 
+                   alt="Avatar Preview" 
+                   fill 
+                   className="object-cover" 
+                 />
+              </div>
             ) : (
-              // FIX: Using UploadSimple here
               <UploadSimple size={32} className="text-muted-foreground" />
             )}
             <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white font-bold text-xs">
