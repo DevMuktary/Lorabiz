@@ -240,3 +240,51 @@ export async function sendUserLoginOTP(to: string, otpCode: string) {
 
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
 }
+
+// ============================================================================
+// PROFILE SETTINGS & SECURITY OTPs
+// ============================================================================
+
+export async function sendPhoneChangeOTP(to: string, otpCode: string, newPhone: string) {
+  const subject = "Verification Code for Phone Number Update - LoraBiz";
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px;">Verify your new phone number</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 24px; font-size: 15px;">
+      You requested to change your account's primary phone number to <strong>${newPhone}</strong>. 
+      Please use the authorization code below to confirm this change. 
+      <strong>This code expires in 10 minutes.</strong>
+    </p>
+    <div style="background: #f8fafc; padding: 24px; text-align: center; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #ff3f7a; border-radius: 12px; border: 2px dashed #e2e8f0; margin-bottom: 24px;">
+      ${otpCode}
+    </div>
+    <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+      <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;">
+        <strong>Security Notice:</strong> You can only change your phone number once every 30 days. If you did not request this, please secure your account immediately.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
+}
+
+export async function sendPasswordChangeOTP(to: string, otpCode: string) {
+  const subject = "Verification Code for Password Update - LoraBiz";
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px;">Verify your password change</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 24px; font-size: 15px;">
+      You recently requested to update your account password. 
+      Please use the secure authorization code below to confirm this critical security change. 
+      <strong>This code expires in 10 minutes.</strong>
+    </p>
+    <div style="background: #f8fafc; padding: 24px; text-align: center; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #ff3f7a; border-radius: 12px; border: 2px dashed #e2e8f0; margin-bottom: 24px;">
+      ${otpCode}
+    </div>
+    <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+      <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;">
+        <strong>Security Notice:</strong> If you did not request a password change, please contact LoraBiz support immediately to lock down your account.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content) });
+}
