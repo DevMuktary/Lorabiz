@@ -29,6 +29,7 @@ const REGISTRATION_TYPES = [
     bg: "bg-blue-50 dark:bg-blue-500/10",
     border: "border-border hover:border-blue-300 dark:hover:border-blue-700/50",
     badge: null,
+    active: true,
   },
   {
     id: "llc",
@@ -43,6 +44,7 @@ const REGISTRATION_TYPES = [
     bg: "bg-primary/10",
     border: "border-primary/30 hover:border-primary/60 ring-1 ring-primary/5 shadow-sm",
     badge: "Most Popular",
+    active: true,
   },
   {
     id: "ngo",
@@ -58,15 +60,13 @@ const REGISTRATION_TYPES = [
     bg: "bg-emerald-50 dark:bg-emerald-500/10",
     border: "border-border",
     badge: "Mandatory 28-Day Pub.",
-    // Note: NGO is currently marked inactive in your UI logic, so we keep that true
+    active: false, 
   }
 ];
 
 export default async function NewRegistrationPage() {
-  // Fetch pricing and service status directly from the MDS-managed tables
-  const [pricingData] = await Promise.all([
-    prisma.servicePricing.findMany(),
-  ]);
+  // Fetch pricing and service status directly from MDS (No globalSettings)
+  const pricingData = await prisma.servicePricing.findMany();
   
   const priceMap = pricingData.reduce((acc, item) => {
     acc[item.serviceKey] = {
@@ -74,11 +74,12 @@ export default async function NewRegistrationPage() {
       isActive: item.isActive
     };
     return acc;
-  }, {} as Record<string, { price: number, isActive: boolean }>);
+  }, {} as Record<string, { price: number; isActive: boolean }>);
 
   return (
     <div className="max-w-7xl mx-auto pb-12 antialiased animate-in fade-in duration-500">
       
+      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pt-2">
         <Link 
           href="/dashboard/cac/new-incorporation" 
@@ -93,39 +94,64 @@ export default async function NewRegistrationPage() {
             What would you like to register?
           </h1>
           <p className="text-sm text-muted-foreground font-medium mt-1">
-            Select the entity type below.
+            Select the entity type below. We've simplified the legal jargon.
           </p>
         </div>
       </div>
 
+      <div className="md:hidden flex justify-center mb-6 text-muted-foreground animate-bounce">
+        <CaretDown className="h-5 w-5" weight="bold" />
+      </div>
+
+      {/* CARDS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
         {REGISTRATION_TYPES.map((type) => {
           const serviceInfo = priceMap[type.dbKey];
-          const livePrice = serviceInfo ? `₦${serviceInfo.price.toLocaleString()}` : "Contact Admin";
-          
-          // Determine if active: 
-          // 1. Must be in our pricing table AND active
-          // 2. OR, if it's the NGO (not in pricing table), keep it disabled
-          const isCurrentlyActive = serviceInfo?.isActive === true;
+          const livePrice = serviceInfo?.price;
+          const formattedPrice = livePrice ? `₦${livePrice.toLocaleString()}` : "Pricing via Admin";
+
+          // Calculate interaction states
+          let isClickable = true;
+          let overlayType: 'coming-soon' | 'maintenance' | null = null;
+
+          if (!type.active) {
+            // Hardcoded inactive (Incorporated Trustees)
+            isClickable = false;
+            overlayType = 'coming-soon';
+          } else if (serviceInfo && serviceInfo.isActive === false) {
+            // MDS Admin toggled it off
+            isClickable = false;
+            overlayType = 'maintenance';
+          }
 
           const cardClasses = `
             relative flex flex-col h-full bg-card p-6 sm:p-8 rounded-3xl border transition-all duration-300 
-            ${isCurrentlyActive ? 'hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]' : 'grayscale opacity-75 cursor-not-allowed'}
+            ${isClickable ? 'hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]' : 'grayscale opacity-75 cursor-not-allowed'}
             group ${type.border}
           `;
 
           const CardInnerContent = (
             <>
-              {!isCurrentlyActive && (
+              {/* MAINTENANCE / COMING SOON OVERLAY */}
+              {overlayType && (
                  <div className="absolute inset-0 bg-background/20 backdrop-blur-[2px] z-20 rounded-3xl flex items-center justify-center p-4 text-center">
                     <span className="bg-secondary text-foreground font-black text-xs uppercase tracking-widest px-4 py-2.5 rounded-full border border-border shadow-xl flex items-center gap-2">
-                      <Wrench weight="fill" className="h-4 w-4 text-amber-500" />
-                      {serviceInfo ? "Temporarily Disabled" : "Coming Soon"}
+                      {overlayType === 'coming-soon' ? (
+                        <>
+                          <Sparkle weight="fill" className="h-4 w-4 text-primary" />
+                          Coming Soon
+                        </>
+                      ) : (
+                        <>
+                          <Wrench weight="fill" className="h-4 w-4 text-amber-500" />
+                          Under Maintenance
+                        </>
+                      )}
                     </span>
                  </div>
               )}
 
-              {type.badge && isCurrentlyActive && (
+              {type.badge && isClickable && (
                 <div className="absolute -top-3.5 inset-x-0 flex justify-center z-10">
                   <span className={`text-white text-[10px] font-black uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md ${type.id === 'ngo' ? 'bg-slate-800' : 'bg-primary shadow-primary/20'}`}>
                     {type.badge}
@@ -148,7 +174,7 @@ export default async function NewRegistrationPage() {
               <div className="flex flex-col gap-2 py-4 mb-2 border-y border-border">
                  <div className="flex items-center gap-2 text-sm font-black text-foreground">
                     <Wallet className="h-4 w-4 text-muted-foreground" weight="fill" />
-                    {livePrice}
+                    {formattedPrice}
                  </div>
                  
                  <div className="flex items-start gap-2 text-xs font-bold text-muted-foreground">
@@ -156,7 +182,10 @@ export default async function NewRegistrationPage() {
                     <div className="flex flex-col">
                       <span>{type.estimatedTime}</span>
                       {type.secondaryTime && (
-                        <span className="text-muted-foreground/70 font-medium mt-0.5 flex items-center gap-1">
+                        <span 
+                          className="text-muted-foreground/70 font-medium mt-0.5 flex items-center gap-1"
+                          title="Requires a 28-day public newspaper publication before final approval."
+                        >
                            {type.secondaryTime}
                            <Info className="h-3.5 w-3.5" />
                         </span>
@@ -180,28 +209,32 @@ export default async function NewRegistrationPage() {
 
                 <div className={`
                   w-full py-3.5 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all
-                  ${!isCurrentlyActive ? 'bg-secondary text-muted-foreground' : 
+                  ${!isClickable ? 'bg-secondary text-muted-foreground' : 
                     type.id === 'llc' 
                     ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 group-hover:opacity-90' 
                     : 'bg-foreground text-background shadow-md group-hover:opacity-90'
                   }
                 `}>
-                  {isCurrentlyActive ? "Start Application" : "Currently Unavailable"}
-                  {isCurrentlyActive && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" weight="bold" />}
+                  {isClickable ? "Start Application" : (overlayType === 'coming-soon' ? "Coming Soon" : "Temporarily Disabled")}
+                  {isClickable && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" weight="bold" />}
                 </div>
               </div>
             </>
           );
 
-          return isCurrentlyActive ? (
-            <Link key={type.id} href={type.href} className={cardClasses}>
-              {CardInnerContent}
-            </Link>
-          ) : (
-            <div key={type.id} className={cardClasses}>
-              {CardInnerContent}
-            </div>
-          );
+          if (isClickable) {
+            return (
+              <Link key={type.id} href={type.href} className={cardClasses}>
+                {CardInnerContent}
+              </Link>
+            );
+          } else {
+            return (
+              <div key={type.id} className={cardClasses}>
+                {CardInnerContent}
+              </div>
+            );
+          }
         })}
       </div>
     </div>
