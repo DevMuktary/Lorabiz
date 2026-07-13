@@ -15,6 +15,10 @@ import {
   Wrench
 } from "@phosphor-icons/react/dist/ssr";
 
+// FORCE NEXT.JS TO NEVER CACHE THIS PAGE (Always fetch live toggles)
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const REGISTRATION_TYPES = [
   {
     id: "business-name",
@@ -60,21 +64,22 @@ const REGISTRATION_TYPES = [
     bg: "bg-emerald-50 dark:bg-emerald-500/10",
     border: "border-border",
     badge: "Mandatory 28-Day Pub.",
-    active: false, 
+    active: false, // Hardcoded false for "Coming Soon"
   }
 ];
 
 export default async function NewRegistrationPage() {
-  // Fetch pricing and service status directly from MDS (No globalSettings)
+  // Fetch pricing directly from MDS ServicePricing (NO globalSettings)
   const pricingData = await prisma.servicePricing.findMany();
   
   const priceMap = pricingData.reduce((acc, item) => {
     acc[item.serviceKey] = {
       price: Number(item.price),
-      isActive: item.isActive
+      isActive: item.isActive,
+      maintenanceMsg: item.maintenanceMsg
     };
     return acc;
-  }, {} as Record<string, { price: number; isActive: boolean }>);
+  }, {} as Record<string, { price: number; isActive: boolean; maintenanceMsg: string | null }>);
 
   return (
     <div className="max-w-7xl mx-auto pb-12 antialiased animate-in fade-in duration-500">
@@ -110,18 +115,21 @@ export default async function NewRegistrationPage() {
           const livePrice = serviceInfo?.price;
           const formattedPrice = livePrice ? `₦${livePrice.toLocaleString()}` : "Pricing via Admin";
 
-          // Calculate interaction states
+          // Calculate Interaction States
           let isClickable = true;
           let overlayType: 'coming-soon' | 'maintenance' | null = null;
+          let overlayMessage = "";
 
           if (!type.active) {
-            // Hardcoded inactive (Incorporated Trustees)
+            // Priority 1: Hardcoded "Coming Soon" (Incorporated Trustees)
             isClickable = false;
             overlayType = 'coming-soon';
+            overlayMessage = "Coming Soon";
           } else if (serviceInfo && serviceInfo.isActive === false) {
-            // MDS Admin toggled it off
+            // Priority 2: Admin toggled it off in MDS
             isClickable = false;
             overlayType = 'maintenance';
+            overlayMessage = serviceInfo.maintenanceMsg || "Temporarily Unavailable";
           }
 
           const cardClasses = `
@@ -135,18 +143,13 @@ export default async function NewRegistrationPage() {
               {/* MAINTENANCE / COMING SOON OVERLAY */}
               {overlayType && (
                  <div className="absolute inset-0 bg-background/20 backdrop-blur-[2px] z-20 rounded-3xl flex items-center justify-center p-4 text-center">
-                    <span className="bg-secondary text-foreground font-black text-xs uppercase tracking-widest px-4 py-2.5 rounded-full border border-border shadow-xl flex items-center gap-2">
+                    <span className="bg-secondary text-foreground font-black text-xs uppercase tracking-widest px-4 py-2.5 rounded-full border border-border shadow-xl flex items-center gap-2 max-w-[90%]">
                       {overlayType === 'coming-soon' ? (
-                        <>
-                          <Sparkle weight="fill" className="h-4 w-4 text-primary" />
-                          Coming Soon
-                        </>
+                        <Sparkle weight="fill" className="h-4 w-4 text-primary shrink-0" />
                       ) : (
-                        <>
-                          <Wrench weight="fill" className="h-4 w-4 text-amber-500" />
-                          Under Maintenance
-                        </>
+                        <Wrench weight="fill" className="h-4 w-4 text-amber-500 shrink-0" />
                       )}
+                      <span className="truncate">{overlayMessage}</span>
                     </span>
                  </div>
               )}
