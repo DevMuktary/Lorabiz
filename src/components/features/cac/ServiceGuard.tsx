@@ -28,7 +28,6 @@ export default function ServiceGuard({ serviceKey, serviceName, children }: Serv
         const data = await res.json();
         
         if (data.success && data.settings) {
-          // Dynamically map the key to the reason (e.g., "llcEnabled" -> "llcReason")
           const reasonKey = serviceKey.replace("Enabled", "Reason"); 
 
           setStatus({
@@ -37,10 +36,10 @@ export default function ServiceGuard({ serviceKey, serviceName, children }: Serv
             reason: data.settings[reasonKey] || "This service is currently unavailable.",
           });
         } else {
-          setStatus(prev => ({ ...prev, loading: false })); // Default to allow if DB fails
+          setStatus(prev => ({ ...prev, loading: false })); 
         }
       } catch (err) {
-        setStatus(prev => ({ ...prev, loading: false })); // Default to allow on network error
+        setStatus(prev => ({ ...prev, loading: false })); 
       }
     };
 
@@ -56,12 +55,10 @@ export default function ServiceGuard({ serviceKey, serviceName, children }: Serv
     );
   }
 
-  // If the service is enabled, render the actual page (the form)
   if (status.enabled) {
     return <>{children}</>;
   }
 
-  // If the service is disabled, intercept and show the Maintenance Screen
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in zoom-in-95 duration-500 max-w-lg mx-auto text-center px-4">
       <div className="h-24 w-24 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mb-6 relative">
