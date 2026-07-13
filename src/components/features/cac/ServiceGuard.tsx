@@ -24,7 +24,8 @@ export default function ServiceGuard({ serviceKey, serviceName, children }: Serv
   useEffect(() => {
     const checkServiceStatus = async () => {
       try {
-        const res = await fetch("/api/settings/global");
+        // FORCE the browser to ignore cache and fetch the absolutely newest data
+        const res = await fetch("/api/settings/global", { cache: "no-store" });
         const data = await res.json();
         
         if (data.success && data.settings) {
