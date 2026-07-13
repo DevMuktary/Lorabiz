@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import NinResultModal from "@/components/features/tools/nin-slip/NinResultModal";
 import NinHistorySection, { SlipHistoryItem } from "@/components/features/tools/nin-slip/NinHistorySection";
-import ServiceGuard from "@/components/features/cac/ServiceGuard";
 
 export default function NinSlipPage() {
   const [nin, setNin] = useState("");
@@ -135,205 +134,203 @@ export default function NinSlipPage() {
   ];
 
   return (
-    <ServiceGuard serviceKey="ninEnabled" serviceName="NIN Slip Generation">
-      <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24">
-        
-        {/* NAVIGATION: BACK TO DASHBOARD */}
+    <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24">
+      
+      {/* NAVIGATION: BACK TO DASHBOARD */}
+      <div>
+        <Link 
+          href="/dashboard" 
+          className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 hover:bg-secondary px-3.5 py-2 rounded-xl cursor-pointer"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" />
+          Back to Dashboard
+        </Link>
+      </div>
+
+      {/* HEADER SECTION WITH NIMC LOGO */}
+      <div className="flex items-center gap-4 border-b border-border pb-5">
+        <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center p-2.5 border border-border shrink-0 shadow-sm">
+          <Image src="/nimc.png" width={44} height={44} alt="NIMC Logo" className="object-contain" priority />
+        </div>
         <div>
-          <Link 
-            href="/dashboard" 
-            className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 hover:bg-secondary px-3.5 py-2 rounded-xl cursor-pointer"
-          >
-            <ArrowLeft weight="bold" className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
+          <h1 className="text-2xl font-black text-foreground">NIN Slip Generation & Printing Tool</h1>
+          <p className="text-sm font-medium text-muted-foreground mt-0.5">Direct query connection to generate standardized identity slips.</p>
         </div>
+      </div>
 
-        {/* HEADER SECTION WITH NIMC LOGO */}
-        <div className="flex items-center gap-4 border-b border-border pb-5">
-          <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center p-2.5 border border-border shrink-0 shadow-sm">
-            <Image src="/nimc.png" width={44} height={44} alt="NIMC Logo" className="object-contain" priority />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-foreground">NIN Slip Generation & Printing Tool</h1>
-            <p className="text-sm font-medium text-muted-foreground mt-0.5">Direct query connection to generate standardized identity slips.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+        
+        {/* CONFIGURATION FORM */}
+        <form onSubmit={handleGenerateSlip} className="md:col-span-2 space-y-6">
           
-          {/* CONFIGURATION FORM */}
-          <form onSubmit={handleGenerateSlip} className="md:col-span-2 space-y-6">
-            
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl text-destructive text-sm font-bold flex items-center gap-2.5 animate-in shake">
-                <WarningCircle weight="fill" size={20} className="shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-2 shadow-sm">
-              <label htmlFor="nin" className="text-sm font-black text-foreground uppercase tracking-wider">National Identity Number (NIN)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-3.5 text-muted-foreground font-bold text-sm select-none">NIN</span>
-                <Input
-                  id="nin"
-                  type="text"
-                  maxLength={11}
-                  value={nin}
-                  onChange={(e) => {
-                    setNin(e.target.value.replace(/\D/g, ""));
-                    if (error) setError(null);
-                  }}
-                  placeholder="Enter 11-digit identification number"
-                  className="pl-14 h-12 text-base tracking-[3px] font-black bg-secondary/30 border-border text-foreground focus-visible:ring-[#ff3f7a]"
-                />
-              </div>
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl text-destructive text-sm font-bold flex items-center gap-2.5 animate-in shake">
+              <WarningCircle weight="fill" size={20} className="shrink-0" />
+              <span>{error}</span>
             </div>
+          )}
 
-            {/* SLIP TYPE SELECTION */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-foreground uppercase tracking-widest border-b border-border pb-2">Select Preferred Slip Print Format</h3>
-              <div className="space-y-3">
-                {SLIP_OPTIONS.map((opt) => (
-                  <div 
-                    key={opt.id}
-                    onClick={() => setSlipType(opt.id)}
-                    className={`border-2 rounded-2xl p-4 flex items-center justify-between gap-4 transition-all duration-200 bg-card ${slipType === opt.id ? "border-[#ff3f7a] shadow-md shadow-[#ff3f7a]/5" : "border-border hover:border-muted-foreground/30 cursor-pointer"}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${slipType === opt.id ? "border-[#ff3f7a] bg-[#ff3f7a] text-white" : "border-muted-foreground"}`}>
-                        {slipType === opt.id && <Check weight="bold" size={12} />}
-                      </div>
-                      <div>
-                        <h4 className="font-black text-sm text-foreground">{opt.label}</h4>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed font-medium max-w-md">{opt.desc}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLightbox({ isOpen: true, src: opt.img, label: opt.label });
-                      }}
-                      className="p-2 bg-secondary border border-border text-muted-foreground hover:text-foreground rounded-xl transition-colors cursor-pointer"
-                      title="View Example Format"
-                    >
-                      <Eye size={18} weight="bold" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-2 shadow-sm">
+            <label htmlFor="nin" className="text-sm font-black text-foreground uppercase tracking-wider">National Identity Number (NIN)</label>
+            <div className="relative">
+              <span className="absolute left-4 top-3.5 text-muted-foreground font-bold text-sm select-none">NIN</span>
+              <Input
+                id="nin"
+                type="text"
+                maxLength={11}
+                value={nin}
+                onChange={(e) => {
+                  setNin(e.target.value.replace(/\D/g, ""));
+                  if (error) setError(null);
+                }}
+                placeholder="Enter 11-digit identification number"
+                className="pl-14 h-12 text-base tracking-[3px] font-black bg-secondary/30 border-border text-foreground focus-visible:ring-[#ff3f7a]"
+              />
             </div>
+          </div>
 
-            {/* STATUTORY ATTESTATIONS */}
-            <div className="bg-amber-500/5 border-2 border-amber-500/20 rounded-3xl p-5 space-y-4 shadow-sm">
-              <div className="flex items-center gap-2 border-b border-amber-500/10 pb-2">
-                <ShieldWarning size={20} className="text-amber-500" weight="fill" />
-                <h3 className="text-xs font-black text-amber-500 uppercase tracking-widest">Statutory Attestation & Consent</h3>
-              </div>
-              
-              <div className="space-y-4">
-                <label className="flex items-start gap-3 cursor-pointer group select-none">
-                  <input 
-                    type="checkbox"
-                    checked={attestation1}
-                    onChange={(e) => setAttestation1(e.target.checked)}
-                    className="mt-1 accent-[#ff3f7a] h-4 w-4 shrink-0 rounded border-border"
-                  />
-                  <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground transition-colors leading-relaxed">
-                    I authorize LoraBiz to process and format my identification parameters strictly for corporate compliance and documentation onboarding.
-                  </span>
-                </label>
-
-                <label className="flex items-start gap-3 cursor-pointer group select-none">
-                  <input 
-                    type="checkbox"
-                    checked={attestation2}
-                    onChange={(e) => setAttestation2(e.target.checked)}
-                    className="mt-1 accent-[#ff3f7a] h-4 w-4 shrink-0 rounded border-border"
-                  />
-                  <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground transition-colors leading-relaxed">
-                    I clarify that I am the rightful holder of this identification number or possess clear third-party consent. I fully indemnify LoraBiz against external liability arising from unauthorized database queries.
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={!attestation1 || !attestation2 || nin.length !== 11}
-              className="w-full h-14 font-black bg-[#ff3f7a] text-white hover:bg-[#e02b62] rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#ff3f7a]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              <DownloadSimple size={20} weight="bold" /> Generate & Print Slip
-            </Button>
-
-          </form>
-
-          {/* SIDE BAR PREVIEWS */}
-          <div className="space-y-4 hidden md:block">
-            <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Layout Specimens</h3>
-            <div className="space-y-4">
+          {/* SLIP TYPE SELECTION */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-black text-foreground uppercase tracking-widest border-b border-border pb-2">Select Preferred Slip Print Format</h3>
+            <div className="space-y-3">
               {SLIP_OPTIONS.map((opt) => (
                 <div 
                   key={opt.id}
-                  onClick={() => setLightbox({ isOpen: true, src: opt.img, label: opt.label })}
-                  className="bg-card border border-border rounded-2xl p-3 shadow-sm hover:border-primary/40 group transition-all duration-200 cursor-pointer overflow-hidden text-center relative"
+                  onClick={() => setSlipType(opt.id)}
+                  className={`border-2 rounded-2xl p-4 flex items-center justify-between gap-4 transition-all duration-200 bg-card ${slipType === opt.id ? "border-[#ff3f7a] shadow-md shadow-[#ff3f7a]/5" : "border-border hover:border-muted-foreground/30 cursor-pointer"}`}
                 >
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 text-white font-bold gap-2 text-xs">
-                    <MagnifyingGlass weight="bold" /> Enlarge Layout
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${slipType === opt.id ? "border-[#ff3f7a] bg-[#ff3f7a] text-white" : "border-muted-foreground"}`}>
+                      {slipType === opt.id && <Check weight="bold" size={12} />}
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-foreground">{opt.label}</h4>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed font-medium max-w-md">{opt.desc}</p>
+                    </div>
                   </div>
-                  <div className="relative w-full h-28 rounded-lg bg-secondary/50 border border-border overflow-hidden mb-2">
-                    <Image src={opt.img} alt={opt.label} fill className="object-cover blur-[0.5px] brightness-95" />
-                  </div>
-                  <span className="text-xs font-black text-foreground">{opt.label}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightbox({ isOpen: true, src: opt.img, label: opt.label });
+                    }}
+                    className="p-2 bg-secondary border border-border text-muted-foreground hover:text-foreground rounded-xl transition-colors cursor-pointer"
+                    title="View Example Format"
+                  >
+                    <Eye size={18} weight="bold" />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* STATUTORY ATTESTATIONS */}
+          <div className="bg-amber-500/5 border-2 border-amber-500/20 rounded-3xl p-5 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-amber-500/10 pb-2">
+              <ShieldWarning size={20} className="text-amber-500" weight="fill" />
+              <h3 className="text-xs font-black text-amber-500 uppercase tracking-widest">Statutory Attestation & Consent</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <label className="flex items-start gap-3 cursor-pointer group select-none">
+                <input 
+                  type="checkbox"
+                  checked={attestation1}
+                  onChange={(e) => setAttestation1(e.target.checked)}
+                  className="mt-1 accent-[#ff3f7a] h-4 w-4 shrink-0 rounded border-border"
+                />
+                <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground transition-colors leading-relaxed">
+                  I authorize LoraBiz to process and format my identification parameters strictly for corporate compliance and documentation onboarding.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer group select-none">
+                <input 
+                  type="checkbox"
+                  checked={attestation2}
+                  onChange={(e) => setAttestation2(e.target.checked)}
+                  className="mt-1 accent-[#ff3f7a] h-4 w-4 shrink-0 rounded border-border"
+                />
+                <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground transition-colors leading-relaxed">
+                  I clarify that I am the rightful holder of this identification number or possess clear third-party consent. I fully indemnify LoraBiz against external liability arising from unauthorized database queries.
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={!attestation1 || !attestation2 || nin.length !== 11}
+            className="w-full h-14 font-black bg-[#ff3f7a] text-white hover:bg-[#e02b62] rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#ff3f7a]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <DownloadSimple size={20} weight="bold" /> Generate & Print Slip
+          </Button>
+
+        </form>
+
+        {/* SIDE BAR PREVIEWS */}
+        <div className="space-y-4 hidden md:block">
+          <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Layout Specimens</h3>
+          <div className="space-y-4">
+            {SLIP_OPTIONS.map((opt) => (
+              <div 
+                key={opt.id}
+                onClick={() => setLightbox({ isOpen: true, src: opt.img, label: opt.label })}
+                className="bg-card border border-border rounded-2xl p-3 shadow-sm hover:border-primary/40 group transition-all duration-200 cursor-pointer overflow-hidden text-center relative"
+              >
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 text-white font-bold gap-2 text-xs">
+                  <MagnifyingGlass weight="bold" /> Enlarge Layout
+                </div>
+                <div className="relative w-full h-28 rounded-lg bg-secondary/50 border border-border overflow-hidden mb-2">
+                  <Image src={opt.img} alt={opt.label} fill className="object-cover blur-[0.5px] brightness-95" />
+                </div>
+                <span className="text-xs font-black text-foreground">{opt.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* ISOLATED HISTORY COMPONENT */}
-        <NinHistorySection history={history} />
+      </div>
 
-        {/* ISOLATED RESULT MODAL COMPONENT */}
-        <NinResultModal
-          isOpen={resultModal.isOpen}
-          status={resultModal.status}
-          nin={resultModal.nin}
-          slipLabel={resultModal.slipLabel}
-          pdfBase64={resultModal.pdfBase64}
-          errorMsg={resultModal.errorMsg}
-          onClose={() => setResultModal({ isOpen: false, status: "loading" })}
-        />
+      {/* ISOLATED HISTORY COMPONENT */}
+      <NinHistorySection history={history} />
 
-        {/* LIGHTBOX PREVIEW OVERLAY */}
-        {lightbox.isOpen && (
-          <div 
-            className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-            onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
-          >
-            <div className="relative w-full max-w-xl flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-              <div className="w-full bg-card border border-border px-5 py-3 rounded-t-2xl flex items-center justify-between">
-                <span className="text-sm font-black text-foreground">{lightbox.label} Specimen Format</span>
-                <button 
-                  onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
-                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full cursor-pointer transition-colors"
-                >
-                  <X weight="bold" size={16} />
-                </button>
-              </div>
-              <div className="relative w-full h-[65vh] bg-card border-x border-b border-border rounded-b-2xl overflow-hidden p-4 flex items-center justify-center">
-                <div className="relative w-full h-full">
-                  <Image src={lightbox.src} alt={lightbox.label} fill className="object-contain" priority />
-                </div>
+      {/* ISOLATED RESULT MODAL COMPONENT */}
+      <NinResultModal
+        isOpen={resultModal.isOpen}
+        status={resultModal.status}
+        nin={resultModal.nin}
+        slipLabel={resultModal.slipLabel}
+        pdfBase64={resultModal.pdfBase64}
+        errorMsg={resultModal.errorMsg}
+        onClose={() => setResultModal({ isOpen: false, status: "loading" })}
+      />
+
+      {/* LIGHTBOX PREVIEW OVERLAY */}
+      {lightbox.isOpen && (
+        <div 
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
+        >
+          <div className="relative w-full max-w-xl flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full bg-card border border-border px-5 py-3 rounded-t-2xl flex items-center justify-between">
+              <span className="text-sm font-black text-foreground">{lightbox.label} Specimen Format</span>
+              <button 
+                onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
+                className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full cursor-pointer transition-colors"
+              >
+                <X weight="bold" size={16} />
+              </button>
+            </div>
+            <div className="relative w-full h-[65vh] bg-card border-x border-b border-border rounded-b-2xl overflow-hidden p-4 flex items-center justify-center">
+              <div className="relative w-full h-full">
+                <Image src={lightbox.src} alt={lightbox.label} fill className="object-contain" priority />
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-      </div>
-    </ServiceGuard>
+    </div>
   );
 }
