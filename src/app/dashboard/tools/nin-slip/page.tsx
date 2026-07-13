@@ -135,36 +135,31 @@ export default function NinSlipPage() {
   ];
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24">
-      
-      {/* NAVIGATION: BACK TO DASHBOARD */}
-      <div>
-        <Link 
-          href="/dashboard" 
-          className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 hover:bg-secondary px-3.5 py-2 rounded-xl cursor-pointer"
-        >
-          <ArrowLeft weight="bold" className="h-4 w-4" />
-          Back to Dashboard
-        </Link>
-      </div>
-
-      {/* HEADER SECTION WITH NIMC LOGO */}
-      <div className="flex items-center gap-4 border-b border-border pb-5">
-        <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center p-2.5 border border-border shrink-0 shadow-sm">
-          <Image src="/nimc.png" width={44} height={44} alt="NIMC Logo" className="object-contain" priority />
-        </div>
+    <ServiceGuard serviceKey="ninEnabled" serviceName="NIN Slip Generation">
+      <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24">
+        
+        {/* NAVIGATION: BACK TO DASHBOARD */}
         <div>
-          <h1 className="text-2xl font-black text-foreground">NIN Slip Generation & Printing Tool</h1>
-          <p className="text-sm font-medium text-muted-foreground mt-0.5">Direct query connection to generate standardized identity slips.</p>
+          <Link 
+            href="/dashboard" 
+            className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 hover:bg-secondary px-3.5 py-2 rounded-xl cursor-pointer"
+          >
+            <ArrowLeft weight="bold" className="h-4 w-4" />
+            Back to Dashboard
+          </Link>
         </div>
-      </div>
 
-      {/* ====================================================
-        SERVICE GUARD: Protects the generation tools
-        Will dynamically check MDS Admin toggles
-        ====================================================
-      */}
-      <ServiceGuard serviceKey="ninEnabled" serviceName="NIN Slip Generation">
+        {/* HEADER SECTION WITH NIMC LOGO */}
+        <div className="flex items-center gap-4 border-b border-border pb-5">
+          <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center p-2.5 border border-border shrink-0 shadow-sm">
+            <Image src="/nimc.png" width={44} height={44} alt="NIMC Logo" className="object-contain" priority />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-foreground">NIN Slip Generation & Printing Tool</h1>
+            <p className="text-sm font-medium text-muted-foreground mt-0.5">Direct query connection to generate standardized identity slips.</p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
           
           {/* CONFIGURATION FORM */}
@@ -298,47 +293,47 @@ export default function NinSlipPage() {
           </div>
 
         </div>
-      </ServiceGuard>
 
-      {/* ISOLATED HISTORY COMPONENT (Remains visible even if service is down) */}
-      <NinHistorySection history={history} />
+        {/* ISOLATED HISTORY COMPONENT */}
+        <NinHistorySection history={history} />
 
-      {/* ISOLATED RESULT MODAL COMPONENT */}
-      <NinResultModal
-        isOpen={resultModal.isOpen}
-        status={resultModal.status}
-        nin={resultModal.nin}
-        slipLabel={resultModal.slipLabel}
-        pdfBase64={resultModal.pdfBase64}
-        errorMsg={resultModal.errorMsg}
-        onClose={() => setResultModal({ isOpen: false, status: "loading" })}
-      />
+        {/* ISOLATED RESULT MODAL COMPONENT */}
+        <NinResultModal
+          isOpen={resultModal.isOpen}
+          status={resultModal.status}
+          nin={resultModal.nin}
+          slipLabel={resultModal.slipLabel}
+          pdfBase64={resultModal.pdfBase64}
+          errorMsg={resultModal.errorMsg}
+          onClose={() => setResultModal({ isOpen: false, status: "loading" })}
+        />
 
-      {/* LIGHTBOX PREVIEW OVERLAY */}
-      {lightbox.isOpen && (
-        <div 
-          className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-          onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
-        >
-          <div className="relative w-full max-w-xl flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full bg-card border border-border px-5 py-3 rounded-t-2xl flex items-center justify-between">
-              <span className="text-sm font-black text-foreground">{lightbox.label} Specimen Format</span>
-              <button 
-                onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
-                className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full cursor-pointer transition-colors"
-              >
-                <X weight="bold" size={16} />
-              </button>
-            </div>
-            <div className="relative w-full h-[65vh] bg-card border-x border-b border-border rounded-b-2xl overflow-hidden p-4 flex items-center justify-center">
-              <div className="relative w-full h-full">
-                <Image src={lightbox.src} alt={lightbox.label} fill className="object-contain" priority />
+        {/* LIGHTBOX PREVIEW OVERLAY */}
+        {lightbox.isOpen && (
+          <div 
+            className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+            onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
+          >
+            <div className="relative w-full max-w-xl flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <div className="w-full bg-card border border-border px-5 py-3 rounded-t-2xl flex items-center justify-between">
+                <span className="text-sm font-black text-foreground">{lightbox.label} Specimen Format</span>
+                <button 
+                  onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
+                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full cursor-pointer transition-colors"
+                >
+                  <X weight="bold" size={16} />
+                </button>
+              </div>
+              <div className="relative w-full h-[65vh] bg-card border-x border-b border-border rounded-b-2xl overflow-hidden p-4 flex items-center justify-center">
+                <div className="relative w-full h-full">
+                  <Image src={lightbox.src} alt={lightbox.label} fill className="object-contain" priority />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-    </div>
+      </div>
+    </ServiceGuard>
   );
 }
