@@ -49,8 +49,11 @@ export default function ServiceGuard({ serviceKey, serviceName, children }: Serv
 
   if (status.loading) {
     return (
-      <div className="flex items-center justify-center py-12 animate-in fade-in">
-        <Spinner className="animate-spin h-5 w-5 text-primary" weight="bold" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in duration-300">
+        <div className="flex items-center gap-3 animate-pulse">
+          <Spinner className="animate-spin h-8 w-8 text-primary" weight="bold" />
+          <span className="text-2xl font-black tracking-tight text-foreground">LoraBiz</span>
+        </div>
       </div>
     );
   }
