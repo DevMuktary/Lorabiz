@@ -5,7 +5,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    // 1. Fetch live toggles from MDS Service Pricing
     const cacServices = await prisma.servicePricing.findMany();
     const ninServices = await prisma.ninSlipPricing.findMany();
 
@@ -13,16 +12,27 @@ export async function GET() {
     
     const bn = getCac("BUSINESS_NAME");
     const llc = getCac("LLC");
+    
+    // Fetch individual NIN toggles
     const ninRegular = ninServices.find(s => s.slipType === "nin_regular");
+    const ninStandard = ninServices.find(s => s.slipType === "nin_standard");
+    const ninPremium = ninServices.find(s => s.slipType === "nin_premium");
 
-    // 2. Map them to what ServiceGuard expects
+    const isAnyNinActive = (ninRegular?.isActive || ninStandard?.isActive || ninPremium?.isActive);
+
     const settings = {
       bnEnabled: bn?.isActive ?? true,
       bnReason: bn?.maintenanceMsg || "Business Name registration is currently down for maintenance.",
       llcEnabled: llc?.isActive ?? true,
       llcReason: llc?.maintenanceMsg || "Company incorporation is currently down for maintenance.",
-      ninEnabled: ninRegular?.isActive ?? true,
-      ninReason: "NIN Slip generation is currently down for maintenance."
+      
+      ninEnabled: isAnyNinActive ?? true,
+      ninReason: "NIN Slip generation is currently down for maintenance.",
+      ninOptions: {
+        nin_regular: ninRegular?.isActive ?? true,
+        nin_standard: ninStandard?.isActive ?? true,
+        nin_premium: ninPremium?.isActive ?? true,
+      }
     };
 
     return NextResponse.json({ success: true, settings });
