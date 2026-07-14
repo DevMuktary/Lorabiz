@@ -49,9 +49,8 @@ export default function ServiceGuard({ serviceKey, serviceName, children }: Serv
 
   if (status.loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] animate-in fade-in">
-        <Spinner className="animate-spin h-10 w-10 text-primary mb-4" weight="bold" />
-        <p className="text-sm font-bold text-muted-foreground">Checking service availability...</p>
+      <div className="flex items-center justify-center py-12 animate-in fade-in">
+        <Spinner className="animate-spin h-5 w-5 text-primary" weight="bold" />
       </div>
     );
   }
