@@ -25,7 +25,7 @@ const SERVICES = [
   },
   {
     title: "Airtime",
-    description: "Seamlessly purchase airtime and data directly from your wallet.",
+    description: "Seamlessly purchase airtime directly from your wallet.",
     logo: "/airtime.png",
     href: "/dashboard/airtime",
     active: true,
