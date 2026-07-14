@@ -24,6 +24,13 @@ const SERVICES = [
     active: true,
   },
   {
+    title: "Airtime",
+    description: "Seamlessly purchase airtime and data directly from your wallet.",
+    logo: "/airtime.png",
+    href: "/dashboard/airtime",
+    active: true,
+  },
+  {
     title: "SCUML Certificate",
     description: "Special Control Unit Against Money Laundering registration & compliance.",
     logo: "/scuml.png",
@@ -42,9 +49,9 @@ const SERVICES = [
     active: false,
   },
   {
-    title: "Utility & Airtime",
-    description: "Seamlessly pay for data, airtime, and utility bills.",
-    logo: "/airtime.png",
+    title: "TAX ID",
+    description: "Easily process and manage your Tax Identification Number (TIN).",
+    logo: "/nrs.png",
     active: false,
   },
 ];
