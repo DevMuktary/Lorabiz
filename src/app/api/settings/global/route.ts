@@ -13,7 +13,7 @@ export async function GET() {
     const bn = getCac("BUSINESS_NAME");
     const llc = getCac("LLC");
     
-    // Fetch individual NIN toggles
+    // Fetch individual NIN toggles and prices
     const ninRegular = ninServices.find(s => s.slipType === "nin_regular");
     const ninStandard = ninServices.find(s => s.slipType === "nin_standard");
     const ninPremium = ninServices.find(s => s.slipType === "nin_premium");
@@ -32,6 +32,11 @@ export async function GET() {
         nin_regular: ninRegular?.isActive ?? true,
         nin_standard: ninStandard?.isActive ?? true,
         nin_premium: ninPremium?.isActive ?? true,
+      },
+      ninPrices: {
+        nin_regular: Number(ninRegular?.price || 0),
+        nin_standard: Number(ninStandard?.price || 0),
+        nin_premium: Number(ninPremium?.price || 0),
       }
     };
 
