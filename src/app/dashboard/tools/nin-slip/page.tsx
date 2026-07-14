@@ -16,13 +16,15 @@ export default function NinSlipPage() {
   const [nin, setNin] = useState("");
   const [slipType, setSlipType] = useState<"nin_premium" | "nin_standard" | "nin_regular">("nin_regular");
   
-  // Status state for individual NIN options from Admin Panel
+  // Status state for individual NIN options and prices from Admin Panel
   const [ninStatuses, setNinStatuses] = useState<{
     loading: boolean;
     options: Record<string, boolean>;
+    prices: Record<string, number>;
   }>({
     loading: true,
-    options: { nin_regular: true, nin_standard: true, nin_premium: true }
+    options: { nin_regular: true, nin_standard: true, nin_premium: true },
+    prices: { nin_regular: 0, nin_standard: 0, nin_premium: 0 }
   });
 
   const [attestation1, setAttestation1] = useState(false);
@@ -44,7 +46,7 @@ export default function NinSlipPage() {
 
   const [history, setHistory] = useState<SlipHistoryItem[]>([]);
 
-  // Fetch Live Toggles from MDS Database
+  // Fetch Live Toggles & Pricing from Database
   useEffect(() => {
     const fetchStatuses = async () => {
       try {
@@ -53,9 +55,12 @@ export default function NinSlipPage() {
         
         if (data.success && data.settings?.ninOptions) {
           const opts = data.settings.ninOptions;
+          const prcs = data.settings.ninPrices || { nin_regular: 0, nin_standard: 0, nin_premium: 0 };
+
           setNinStatuses({
             loading: false,
-            options: opts
+            options: opts,
+            prices: prcs
           });
           
           // Auto-select the first active option if current is disabled
@@ -165,6 +170,7 @@ export default function NinSlipPage() {
   // Helper variables for component states
   const isSelectedActive = ninStatuses.loading ? true : ninStatuses.options[slipType];
   const allDisabled = !ninStatuses.loading && !Object.values(ninStatuses.options).some(v => v);
+  const currentPrice = ninStatuses.loading ? null : ninStatuses.prices[slipType];
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24">
@@ -236,6 +242,7 @@ export default function NinSlipPage() {
             <div className="space-y-3">
               {SLIP_OPTIONS.map((opt) => {
                 const isActive = ninStatuses.loading ? true : ninStatuses.options[opt.id];
+                const price = ninStatuses.loading ? null : ninStatuses.prices[opt.id];
 
                 return (
                 <div 
@@ -258,8 +265,13 @@ export default function NinSlipPage() {
                       {slipType === opt.id && isActive && <Check weight="bold" size={12} />}
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-black text-sm text-foreground">{opt.label}</h4>
+                        {price !== null && isActive && (
+                          <span className="bg-[#ff3f7a]/10 text-[#ff3f7a] px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">
+                            ₦{price.toLocaleString()}
+                          </span>
+                        )}
                         {!isActive && !ninStatuses.loading && (
                           <span className="text-[9px] uppercase tracking-wider font-bold bg-amber-500/10 border border-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded shadow-sm">Maintenance</span>
                         )}
@@ -322,7 +334,8 @@ export default function NinSlipPage() {
             disabled={!attestation1 || !attestation2 || nin.length !== 11 || !isSelectedActive || allDisabled}
             className="w-full h-14 font-black bg-[#ff3f7a] text-white hover:bg-[#e02b62] rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#ff3f7a]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            <DownloadSimple size={20} weight="bold" /> Generate & Print Slip
+            <DownloadSimple size={20} weight="bold" /> 
+            Generate & Print Slip {currentPrice !== null && isSelectedActive ? `(₦${currentPrice.toLocaleString()})` : ""}
           </Button>
 
         </form>
