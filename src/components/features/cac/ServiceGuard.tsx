@@ -8,9 +8,19 @@ interface ServiceGuardProps {
   serviceKey: "bnEnabled" | "llcEnabled" | "ninEnabled";
   serviceName: string;
   children: React.ReactNode;
+  returnLink?: string;
+  returnText?: string;
+  showGoodNews?: boolean;
 }
 
-export default function ServiceGuard({ serviceKey, serviceName, children }: ServiceGuardProps) {
+export default function ServiceGuard({ 
+  serviceKey, 
+  serviceName, 
+  children,
+  returnLink = "/dashboard/cac/new-incorporation",
+  returnText = "Return to Applications",
+  showGoodNews = true
+}: ServiceGuardProps) {
   const [status, setStatus] = useState<{
     loading: boolean;
     enabled: boolean;
@@ -24,7 +34,6 @@ export default function ServiceGuard({ serviceKey, serviceName, children }: Serv
   useEffect(() => {
     const checkServiceStatus = async () => {
       try {
-        // FORCE the browser to ignore cache and fetch the absolutely newest data
         const res = await fetch("/api/settings/global", { cache: "no-store" });
         const data = await res.json();
         
@@ -79,22 +88,24 @@ export default function ServiceGuard({ serviceKey, serviceName, children }: Serv
         {status.reason}
       </p>
 
-      <div className="bg-secondary/50 border border-border p-4 rounded-2xl mb-8 w-full text-left flex items-start gap-3">
-        <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" weight="fill" />
-        <div>
-          <p className="text-sm font-bold text-foreground">Good News!</p>
-          <p className="text-xs font-medium text-muted-foreground mt-0.5">
-            If you already have a drafted application, query, or pending payment for this service, you can still access and complete it from your Dashboard.
-          </p>
+      {showGoodNews && (
+        <div className="bg-secondary/50 border border-border p-4 rounded-2xl mb-8 w-full text-left flex items-start gap-3">
+          <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" weight="fill" />
+          <div>
+            <p className="text-sm font-bold text-foreground">Good News!</p>
+            <p className="text-xs font-medium text-muted-foreground mt-0.5">
+              If you already have a drafted application, query, or pending payment for this service, you can still access and complete it from your Dashboard.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <Link 
-        href="/dashboard/cac/new-incorporation"
+        href={returnLink}
         className="h-12 px-6 bg-foreground text-background hover:opacity-90 font-bold rounded-xl flex items-center gap-2 transition-opacity"
       >
         <ArrowLeft className="h-5 w-5" weight="bold" />
-        Return to Applications
+        {returnText}
       </Link>
     </div>
   );
