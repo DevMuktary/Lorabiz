@@ -36,7 +36,7 @@ export default function NinSlipPage() {
     isOpen: false, src: "", label: ""
   });
 
-  // NEW: Confirmation Modal State
+  // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     nin: string;
@@ -56,16 +56,17 @@ export default function NinSlipPage() {
 
   const [history, setHistory] = useState<SlipHistoryItem[]>([]);
 
-  // Fetch Live Toggles & Pricing from Database
+  // Fetch Live Toggles, Pricing & 24-Hour History from Database
   useEffect(() => {
-    const fetchStatuses = async () => {
+    const fetchInitialData = async () => {
       try {
-        const res = await fetch("/api/settings/global", { cache: "no-store" });
-        const data = await res.json();
+        // 1. Fetch Admin Settings & Pricing
+        const settingsRes = await fetch("/api/settings/global", { cache: "no-store" });
+        const settingsData = await settingsRes.json();
         
-        if (data.success && data.settings?.ninOptions) {
-          const opts = data.settings.ninOptions;
-          const prcs = data.settings.ninPrices || { nin_regular: 0, nin_standard: 0, nin_premium: 0 };
+        if (settingsData.success && settingsData.settings?.ninOptions) {
+          const opts = settingsData.settings.ninOptions;
+          const prcs = settingsData.settings.ninPrices || { nin_regular: 0, nin_standard: 0, nin_premium: 0 };
 
           setNinStatuses({
             loading: false,
@@ -81,11 +82,19 @@ export default function NinSlipPage() {
         } else {
           setNinStatuses(p => ({ ...p, loading: false }));
         }
+
+        // 2. Fetch User's Real 24-Hour Print History
+        const historyRes = await fetch("/api/tools/nin-slip/history", { cache: "no-store" });
+        const historyData = await historyRes.json();
+        if (historyData.success && historyData.history) {
+          setHistory(historyData.history);
+        }
+
       } catch (err) {
         setNinStatuses(p => ({ ...p, loading: false }));
       }
     };
-    fetchStatuses();
+    fetchInitialData();
   }, [slipType]);
 
   const triggerPdfDownload = (base64Data: string, ninNum: string) => {
@@ -174,7 +183,8 @@ export default function NinSlipPage() {
           ninMasked: `${nin.slice(0, 3)}*****${nin.slice(-3)}`,
           slipType: selectedOption?.label || "Regular Slip",
           createdAt: "Just now",
-          pdfBase64: data.pdfBase64
+          pdfBase64: data.pdfBase64,
+          pdfUrl: data.pdfUrl
         },
         ...prev
       ]);
@@ -405,7 +415,7 @@ export default function NinSlipPage() {
         onClose={() => setResultModal({ isOpen: false, status: "loading" })}
       />
 
-      {/* NEW: BEAUTIFUL CUSTOM CONFIRMATION MODAL */}
+      {/* BEAUTIFUL CUSTOM CONFIRMATION MODAL */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="bg-card border border-border w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
