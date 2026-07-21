@@ -291,6 +291,7 @@ model NinRequestLog {
   amountCharged Decimal  @db.Decimal(10, 2)
   status        String   // "SUCCESS" | "FAILED"
   reference     String   @unique // Links to Wallet Transaction reference
+  pdfUrl        String?
   createdAt     DateTime @default(now())
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
