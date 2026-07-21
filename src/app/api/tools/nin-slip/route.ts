@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { v2 as cloudinary } from "cloudinary";
+
+// Configure Cloudinary as done in your upload routes
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(req: NextRequest) {
   try {
@@ -87,7 +95,22 @@ export async function POST(req: NextRequest) {
       }, { status: 422 });
     }
 
-    // 6. Atomic Transaction: Debit Wallet + Create Ledger Record + Log NIN Request
+    // 6. NEW STEP: Upload Base64 PDF directly to Cloudinary
+    const dataUri = `data:application/pdf;base64,${data.pdf_base64}`;
+    let securePdfUrl: string | null = null;
+
+    try {
+      const uploadResult = await cloudinary.uploader.upload(dataUri, {
+        folder: "lumebiz_nin_slips",
+        resource_type: "auto",
+      });
+      securePdfUrl = uploadResult.secure_url;
+    } catch (cloudErr) {
+      console.error("❌ Cloudinary PDF Upload Warning (proceeding without URL save):", cloudErr);
+      // We don't abort the user's purchase if Cloudinary storage fails temporarily; they still get their immediate base64 download
+    }
+
+    // 7. Atomic Transaction: Debit Wallet + Create Ledger Record + Log NIN Request with Cloudinary URL
     const maskedNin = `${nin.slice(0, 3)}*****${nin.slice(-3)}`;
     const reference = `NIN_${slipType.toUpperCase()}_${Date.now()}`;
     const newBalance = currentBalance - requiredAmount;
@@ -113,7 +136,7 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // Log verification audit trail
+      // Log verification audit trail along with the Cloudinary URL
       await tx.ninRequestLog.create({
         data: {
           userId: user.id,
@@ -121,15 +144,17 @@ export async function POST(req: NextRequest) {
           slipType: slipType,
           amountCharged: requiredAmount,
           status: "SUCCESS",
-          reference: reference
+          reference: reference,
+          pdfUrl: securePdfUrl // <-- PERSISTED HERE
         }
       });
     });
 
-    // 7. Return PDF document payload to client
+    // 8. Return PDF document payload and saved Cloudinary URL to client
     return NextResponse.json({
       success: true,
-      pdfBase64: data.pdf_base64
+      pdfBase64: data.pdf_base64,
+      pdfUrl: securePdfUrl
     });
 
   } catch (error: any) {
