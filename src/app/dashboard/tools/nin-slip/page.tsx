@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   ShieldWarning, DownloadSimple, WarningCircle, 
-  Eye, MagnifyingGlass, Check, X, ArrowLeft, Wrench
+  Eye, MagnifyingGlass, Check, X, ArrowLeft, Wrench,
+  Wallet, Sparkle, Question
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,15 @@ export default function NinSlipPage() {
   const [lightbox, setLightbox] = useState<{ isOpen: boolean; src: string; label: string }>({
     isOpen: false, src: "", label: ""
   });
+
+  // NEW: Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    nin: string;
+    slipLabel: string;
+    price: number;
+    imgUrl: string;
+  }>({ isOpen: false, nin: "", slipLabel: "", price: 0, imgUrl: "" });
 
   const [resultModal, setResultModal] = useState<{
     isOpen: boolean;
@@ -88,7 +98,8 @@ export default function NinSlipPage() {
     document.body.removeChild(downloadLink);
   };
 
-  const handleGenerateSlip = async (e: React.FormEvent) => {
+  // Intercept form submission to open confirmation modal
+  const handleGenerateSlip = (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{11}$/.test(nin)) {
       setError("NIN must be exactly 11 digits.");
@@ -100,6 +111,22 @@ export default function NinSlipPage() {
     }
 
     setError(null);
+    const selectedOption = SLIP_OPTIONS.find(o => o.id === slipType);
+    const price = ninStatuses.prices[slipType] || 0;
+
+    // Open Confirmation Alert instead of firing API immediately
+    setConfirmModal({
+      isOpen: true,
+      nin,
+      slipLabel: selectedOption?.label || "NIN Slip",
+      price,
+      imgUrl: selectedOption?.img || "/examples/nin_regular_example.png"
+    });
+  };
+
+  // Actual API execution after user confirms in the modal
+  const executeSlipGeneration = async () => {
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
     const selectedOption = SLIP_OPTIONS.find(o => o.id === slipType);
 
     setResultModal({
@@ -377,6 +404,91 @@ export default function NinSlipPage() {
         errorMsg={resultModal.errorMsg}
         onClose={() => setResultModal({ isOpen: false, status: "loading" })}
       />
+
+      {/* NEW: BEAUTIFUL CUSTOM CONFIRMATION MODAL */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="bg-[#ff3f7a]/10 border-b border-[#ff3f7a]/20 p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-[#ff3f7a] text-white flex items-center justify-center shadow-md shadow-[#ff3f7a]/20">
+                  <Question size={20} weight="bold" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-foreground">Confirm Slip Generation</h3>
+                  <p className="text-xs text-muted-foreground font-medium">Please review before charging your wallet</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="p-1.5 text-muted-foreground hover:text-foreground rounded-full hover:bg-secondary transition-colors"
+              >
+                <X size={18} weight="bold" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5">
+              
+              {/* Slip Specimen Preview */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Selected Layout Specimen</span>
+                <div className="relative w-full h-36 rounded-2xl bg-secondary/50 border border-border overflow-hidden flex items-center justify-center p-2">
+                  <Image src={confirmModal.imgUrl} alt={confirmModal.slipLabel} fill className="object-contain drop-shadow-md" />
+                </div>
+              </div>
+
+              {/* Transaction Summary Box */}
+              <div className="bg-secondary/40 border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-muted-foreground">Target NIN:</span>
+                  <span className="text-foreground tracking-widest font-mono font-black text-sm">{confirmModal.nin}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-muted-foreground">Slip Format:</span>
+                  <span className="text-foreground">{confirmModal.slipLabel}</span>
+                </div>
+                <div className="border-t border-border/60 pt-2.5 flex items-center justify-between">
+                  <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                    <Wallet size={16} className="text-[#ff3f7a]" weight="fill" /> Wallet Deduction:
+                  </span>
+                  <span className="text-base font-black text-[#ff3f7a]">
+                    ₦{confirmModal.price.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground font-medium text-center leading-relaxed">
+                By confirming, <strong className="text-foreground">₦{confirmModal.price.toLocaleString()}</strong> will be debited from your wallet balance immediately to query the NIMC database.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="h-12 rounded-xl font-bold border-border bg-transparent hover:bg-secondary cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="button"
+                  onClick={executeSlipGeneration}
+                  className="h-12 rounded-xl font-black bg-[#ff3f7a] text-white hover:bg-[#e02b62] shadow-lg shadow-[#ff3f7a]/25 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkle size={18} weight="fill" />
+                  Confirm & Pay
+                </Button>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* LIGHTBOX PREVIEW OVERLAY */}
       {lightbox.isOpen && (
