@@ -13,7 +13,7 @@ import { CompanyInfo, Proprietor, isValidEmail, isValidPhone, calculateAge } fro
 
 export default function RegistrationDetailsPage() {
   const params = useParams();
-  const id = params?.id as string; // This remains the internal CUID to keep API calls bulletproof
+  const id = params?.id as string; 
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -35,12 +35,10 @@ export default function RegistrationDetailsPage() {
     setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 4000);
   };
 
-  // Added trackingId to the draft state
   const [draft, setDraft] = useState({ trackingId: "", proposedName: "LOADING...", ownershipType: "SOLE", specificNature: "LOADING...", id: "" });
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({ email: "", state: "", city: "", streetNo: "", address: "", commencementDate: "" });
   const [proprietors, setProprietors] = useState<Proprietor[]>([]);
 
-  // AUTO-SCROLL HORIZONTAL STEPPER ON MOBILE
   useEffect(() => {
     const container = scrollContainerRef.current;
     const activeBtn = document.getElementById(`step-btn-${currentStep}`);
@@ -51,7 +49,6 @@ export default function RegistrationDetailsPage() {
     }
   }, [currentStep]);
 
-  // AUTO-SAVE LOGIC
   const saveDraftToDB = useCallback(async () => {
     if (!id || loading || lockedStatus) return; 
     setSaveStatus("saving");
@@ -73,12 +70,23 @@ export default function RegistrationDetailsPage() {
     return () => clearTimeout(timer);
   }, [companyInfo, proprietors, saveDraftToDB]);
 
-  // INITIAL FETCH
+  // INITIAL FETCH WITH PAYSTACK RETURN DETECTOR
   useEffect(() => {
     if (!id) return;
+    
+    // Check if returning from Paystack checkout
+    const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const isReturningFromPaystack = searchParams?.get("verifying") === "true" || searchParams?.get("paid") === "true" || searchParams?.has("trxref");
+
     fetch(`/api/cac/register/business-name/details/${id}`).then(res => res.json()).then(json => {
       if (json.success) {
-        if (json.data.status !== "UNSUBMITTED") {
+        
+        // If returning from Paystack, ALWAYS open the payment modal to show verification & checkmark!
+        if (isReturningFromPaystack) {
+          setShowPaymentModal(true);
+        }
+        // Only show static lockout screen if NOT actively verifying payment
+        else if (json.data.status !== "UNSUBMITTED") {
           setLockedStatus(json.data.status);
           setTimeout(() => router.push("/dashboard/cac/new-incorporation"), 3500);
           setLoading(false);
@@ -100,7 +108,6 @@ export default function RegistrationDetailsPage() {
     });
   }, [id, router]);
 
-  // VALIDATION & PROGRESSION PIPELINE
   const handleNextStep = () => {
     if (currentStep === 1) {
       if (!companyInfo.email || !companyInfo.state || !companyInfo.city || !companyInfo.streetNo || !companyInfo.address || !companyInfo.commencementDate) {
@@ -163,7 +170,6 @@ export default function RegistrationDetailsPage() {
     }
   };
 
-  // MULTI-TAB / ALREADY SUBMITTED LOCKOUT SCREEN
   if (lockedStatus) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
@@ -179,7 +185,6 @@ export default function RegistrationDetailsPage() {
     );
   }
 
-  // BIG ZIGZAG LOADER FOR INITIAL PAGE LOAD
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -197,9 +202,7 @@ export default function RegistrationDetailsPage() {
         </div>
       )}
 
-      {/* STATIC TEXT-BASED STEPPER (Sticky removed!) */}
       <div className="pb-4 pt-4 mb-8 border-b border-border flex flex-col md:flex-row md:items-end justify-between gap-4">
-        
         <div className="w-full overflow-hidden">
           <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5">
             Completing Application For {draft?.trackingId ? `• REF: ${draft.trackingId}` : (draft?.id ? `• REF: ${draft.id.substring(0,8)}` : "")}
@@ -221,6 +224,7 @@ export default function RegistrationDetailsPage() {
                 <button 
                   key={s.step} 
                   id={`step-btn-${s.step}`}
+                  type="button"
                   onClick={() => isAccessible && setCurrentStep(s.step)}
                   disabled={!isAccessible}
                   className={`flex items-center gap-2 whitespace-nowrap text-sm transition-colors ${
@@ -258,15 +262,16 @@ export default function RegistrationDetailsPage() {
         {currentStep === 4 && <PreviewStep draft={draft} companyInfo={companyInfo} proprietors={proprietors} setCurrentStep={setCurrentStep} />}
 
         <div className="bg-secondary/30 border-t border-border p-6 flex justify-between">
-          <Button variant="outline" onClick={() => setCurrentStep(p => p - 1)} disabled={currentStep === 1 || isSubmitting} className="h-12 px-6 rounded-xl font-bold bg-background text-foreground border-border hover:bg-secondary cursor-pointer">
+          <Button type="button" variant="outline" onClick={() => setCurrentStep(p => p - 1)} disabled={currentStep === 1 || isSubmitting} className="h-12 px-6 rounded-xl font-bold bg-background text-foreground border-border hover:bg-secondary cursor-pointer">
             Back
           </Button>
           {currentStep < 4 ? (
-             <Button onClick={handleNextStep} className="h-12 px-8 bg-primary text-primary-foreground font-bold rounded-xl shadow-md hover:opacity-90 cursor-pointer">
+             <Button type="button" onClick={handleNextStep} className="h-12 px-8 bg-primary text-primary-foreground font-bold rounded-xl shadow-md hover:opacity-90 cursor-pointer">
                Continue
              </Button>
           ) : (
              <Button 
+                type="button"
                 onClick={handleOpenPayment} 
                 disabled={isSubmitting} 
                 className="h-12 px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl shadow-lg flex items-center cursor-pointer"
