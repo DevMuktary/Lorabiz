@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, Wallet, Spinner, Lock, ShieldCheck, Sparkle, MusicNotes } from "@phosphor-icons/react";
+import { X, Wallet, Spinner, Sparkle, MusicNotes, ArrowRight } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSession } from "next-auth/react";
-import { usePaystackPayment } from "react-paystack";
 
 interface FundWalletModalProps {
   isOpen: boolean;
@@ -17,124 +15,102 @@ interface FundWalletModalProps {
 const QUICK_AMOUNTS = [1000, 5000, 10000];
 
 export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure }: FundWalletModalProps) {
-  const { data: session } = useSession();
   const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  // NEW: Controls our full-screen Dancing Doll / Security Gateway overlay
   const [gatewayLoading, setGatewayLoading] = useState(false);
-  
-  const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY as string;
-
-  const config = {
-    reference: `FW_${Date.now()}_${Math.floor(Math.random() * 1000000)}`,
-    email: session?.user?.email || "customer@lorabiz.com",
-    amount: Number(amount) * 100, 
-    publicKey: paystackKey,
-  };
-
-  const initializePayment = usePaystackPayment(config);
 
   if (!isOpen) return null;
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!amount || Number(amount) < 100) return alert("Minimum amount is ₦100");
     
-    // 1. Immediately show our Dancing Doll / Security Overlay on the screen
+    // 1. Immediately show our friendly Dancing Baby Doll overlay
     setIsProcessing(true);
     setGatewayLoading(true);
     
-    // 2. Give the browser 600ms to render our beautiful animation smoothly BEFORE 
-    // calling Paystack, preventing the iframe creation from freezing the DOM thread!
-    setTimeout(() => {
-      initializePayment({
-        onSuccess: () => {
-          setIsProcessing(false);
-          setGatewayLoading(false);
-          onSuccess(Number(amount));
-          onClose();
-        },
-        onClose: () => {
-          setIsProcessing(false);
-          setGatewayLoading(false);
-          onFailure("The payment process was cancelled or failed.");
-          onClose();
-        }
+    try {
+      // 2. Request the native Paystack browser checkout link from our backend
+      const res = await fetch("/api/payment/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          service: "wallet_funding",
+          amount: Number(amount),
+          paymentMethod: "ONLINE"
+        })
       });
 
-      // 3. Auto-hide our overlay after 2.5 seconds. By this time, Paystack's iframe 
-      // is completely loaded and ready over the page, zero white flash!
-      setTimeout(() => {
-        setGatewayLoading(false);
-      }, 2500);
+      const data = await res.json();
 
-    }, 600); 
+      if (!data.success || !data.authorizationUrl) {
+        setIsProcessing(false);
+        setGatewayLoading(false);
+        onFailure(data.message || "Could not initialize payment. Please try again.");
+        return;
+      }
+
+      // 3. Native Browser Redirect! Zero iframes, zero white flashes.
+      // The dancing doll stays smoothly on screen until the browser navigates to Paystack.
+      window.location.href = data.authorizationUrl;
+
+    } catch (error) {
+      setIsProcessing(false);
+      setGatewayLoading(false);
+      onFailure("Network connection error. Please verify your internet and try again.");
+    }
   };
 
   return (
     <>
       {/* =========================================================================
-          LAYER 3: THE DANCING SECURITY DOLL / GATEWAY OVERLAY
-          Masks the Paystack white flash with a playful, high-tech CSS animation
+          FRIENDLY DANCING BABY DOLL OVERLAY
+          No security vocabulary, just pure delightful animation while navigating!
       ========================================================================= */}
       {gatewayLoading && (
         <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-300 select-none p-6 text-center">
           
-          {/* ANIMATED DANCING DOLL / ROBOT RADAR CONTAINER */}
+          {/* ANIMATED DANCING BABY DOLL CONTAINER */}
           <div className="relative flex items-center justify-center mb-8 w-40 h-40">
             
-            {/* Outer pulsing radar ring */}
-            <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/15 animate-ping opacity-75" />
+            {/* Outer soft pulsing pink glow */}
+            <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/20 animate-ping opacity-75" />
             
-            {/* Middle spinning dashed security border */}
-            <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/60 animate-[spin_6s_linear_infinite]" />
+            {/* Middle spinning accent circle */}
+            <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/50 animate-[spin_8s_linear_infinite]" />
             
-            {/* Inner reverse-spinning accent ring */}
-            <div className="absolute inset-6 rounded-full border border-dotted border-amber-400/50 animate-[spin_4s_linear_infinite_reverse]" />
+            {/* Inner reverse-spinning golden ring */}
+            <div className="absolute inset-6 rounded-full border border-dotted border-amber-400/60 animate-[spin_5s_linear_infinite_reverse]" />
             
-            {/* Floating Music Notes & Sparkles around the dancing doll */}
-            <div className="absolute -top-2 -right-2 text-amber-400 animate-bounce delay-100">
-              <MusicNotes size={24} weight="fill" />
+            {/* Floating Music Notes & Sparkles */}
+            <div className="absolute -top-1 -right-2 text-amber-400 animate-bounce delay-100">
+              <MusicNotes size={26} weight="fill" />
             </div>
             <div className="absolute -bottom-1 -left-2 text-[#ff3f7a] animate-bounce delay-300">
-              <Sparkle size={22} weight="fill" />
-            </div>
-            <div className="absolute top-2 -left-3 text-emerald-400 animate-pulse">
-              <ShieldCheck size={20} weight="fill" />
+              <Sparkle size={24} weight="fill" />
             </div>
 
-            {/* THE DANCING DOLL / BOT FIGURE (Pure CSS bounce & wiggle animation) */}
-            <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-tr from-[#ff3f7a] via-[#e02b62] to-amber-500 flex items-center justify-center shadow-2xl shadow-[#ff3f7a]/40 border border-white/20 animate-bounce animate-[wiggle_1s_ease-in-out_infinite]">
-              {/* Using a cute robot/doll emoji figure that dances */}
-              <span className="text-4xl drop-shadow-md select-none transform hover:scale-110 transition-transform">
-                🤖
+            {/* THE DANCING BABY DOLL (Pure CSS bounce & wiggle animation) */}
+            <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-tr from-[#ff3f7a] via-[#e02b62] to-amber-400 flex items-center justify-center shadow-2xl shadow-[#ff3f7a]/40 border border-white/20 animate-bounce">
+              <span className="text-4xl drop-shadow-md select-none transform hover:scale-110 transition-transform animate-[pulse_1s_ease-in-out_infinite]">
+                🧸
               </span>
-              {/* Mini security lock badge on the doll */}
-              <div className="absolute -bottom-1 -right-1 bg-slate-900 border border-white/20 rounded-full p-1 text-emerald-400 shadow-sm">
-                <Lock size={12} weight="bold" />
-              </div>
             </div>
 
           </div>
 
-          {/* BRANDED TEXT DISPLAY */}
-          <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2 flex items-center justify-center gap-2">
-            <span>Connecting to Payment Gateway...</span>
-            <span className="animate-pulse">🔒</span>
+          {/* FRIENDLY, SEAMLESS TEXT (No "Security" or "Encryption" words!) */}
+          <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
+            Connecting to Paystack...
           </h3>
           
           <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
-            Please wait while our security bot establishes an encrypted 256-bit session with Paystack.
+            Please wait a moment while we prepare your checkout page.
           </p>
 
-          {/* FUTURISTIC PROGRESS BAR */}
+          {/* SMOOTH PROGRESS BAR */}
           <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
-            <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-emerald-400 rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
+            <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-[#ff3f7a] rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
           </div>
-
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-4">
-            LoraBiz Security Guard • Zero-Latency Routing
-          </span>
 
         </div>
       )}
@@ -204,12 +180,12 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
               {isProcessing ? (
                 <>
                   <Spinner className="animate-spin h-5 w-5" weight="bold" />
-                  <span>Securing Session...</span>
+                  <span>Connecting...</span>
                 </>
               ) : (
                 <>
-                  <Lock size={18} weight="bold" />
                   <span>Proceed to Pay ₦{amount ? Number(amount).toLocaleString() : "0"}</span>
+                  <ArrowRight size={18} weight="bold" />
                 </>
               )}
             </Button>
