@@ -24,12 +24,18 @@ export async function POST(req: Request) {
     const event = JSON.parse(body);
 
     if (event.event === "charge.success") {
-      const reference = event.data.reference;
-      const amountPaid = Number(event.data.amount) / 100; // Convert Kobo to Naira
-      const userEmail = event.data.customer.email;
+      const reference = event.data?.reference;
+      const amountPaid = Number(event.data?.amount) / 100; // Convert Kobo to Naira (Ground Truth!)
+      const userEmail = event.data?.customer?.email;
+      const metadata = event.data?.metadata || {};
+      const expectedAmount = metadata.expectedAmount ? Number(metadata.expectedAmount) : null;
 
-      // ==========================================
-      // SCENARIO 1: DIRECT WALLET FUNDING
+      if (!reference || !userEmail) {
+        return NextResponse.json({ message: "Invalid payload data" }, { status: 400 });
+      }
+
+      // =========================================================================
+      // SCENARIO 1: DIRECT WALLET FUNDING ("FW_...")
       // ==========================================
       if (reference.startsWith("FW_")) {
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -40,6 +46,7 @@ export async function POST(req: Request) {
           
           if (!user || !user.wallet) return;
 
+          // Idempotency check: prevent double crediting if webhook fires twice
           const existingTx = await tx.transaction.findUnique({ where: { reference } });
           if (existingTx && existingTx.status === "SUCCESS") return;
 
@@ -53,8 +60,14 @@ export async function POST(req: Request) {
 
           await tx.transaction.create({
             data: {
-              walletId: user.wallet.id, amount: amountPaid, balanceBefore: previousBalance, balanceAfter: newBalance,
-              type: "CREDIT", status: "SUCCESS", reference: reference, description: "Wallet Funding via Paystack"
+              walletId: user.wallet.id, 
+              amount: amountPaid, 
+              balanceBefore: previousBalance, 
+              balanceAfter: newBalance,
+              type: "CREDIT", 
+              status: "SUCCESS", 
+              reference: reference, 
+              description: "Wallet Funding via Paystack Gateway"
             }
           });
         });
@@ -62,9 +75,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
-      // ==========================================
-      // SCENARIO 2: ONLINE SERVICE CHECKOUT 
-      // ==========================================
+      // =========================================================================
+      // SCENARIO 2: ONLINE SERVICE CHECKOUT ("ONL_...")
+      // =========================================================================
       if (reference.startsWith("ONL_")) {
         const registrationId = reference.split("_")[1];
         let notificationPayload: NotificationEvent | null = null;
@@ -98,6 +111,35 @@ export async function POST(req: Request) {
 
           if (!serviceType) return; 
 
+          // ---------------------------------------------------------------------
+          // SECURITY GUARD: STRICT AMOUNT VERIFICATION
+          // If expectedAmount exists and user underpaid, credit wallet ONLY and abort!
+          // ---------------------------------------------------------------------
+          if (expectedAmount && amountPaid < expectedAmount) {
+            console.warn(`🚨 UNDERPAYMENT DETECTED for ${reference}: Paid ₦${amountPaid}, Required ₦${expectedAmount}. Crediting wallet balance only.`);
+            
+            const updatedWallet = await tx.wallet.update({
+              where: { id: user.wallet.id },
+              data: { balance: { increment: amountPaid } }
+            });
+            const newBalance = Number(updatedWallet.balance);
+
+            await tx.transaction.create({
+              data: {
+                walletId: user.wallet.id, 
+                amount: amountPaid, 
+                balanceBefore: newBalance - amountPaid, 
+                balanceAfter: newBalance,
+                type: "CREDIT", 
+                status: "SUCCESS", 
+                reference: reference, 
+                description: `Partial Online Payment (Underpaid for ${regName} - Credited to Wallet)`
+              }
+            });
+            return; // Abort without updating registration status!
+          }
+
+          // Step A: Record incoming online funds into wallet ledger
           const fundedWallet = await tx.wallet.update({
             where: { id: user.wallet.id },
             data: { balance: { increment: amountPaid } }
@@ -107,11 +149,18 @@ export async function POST(req: Request) {
 
           await tx.transaction.create({
             data: {
-              walletId: user.wallet.id, amount: amountPaid, balanceBefore: balanceBeforeCredit, balanceAfter: balanceAfterCredit,
-              type: "CREDIT", status: "SUCCESS", reference: reference, description: "Paystack Online Funding (Webhook)"
+              walletId: user.wallet.id, 
+              amount: amountPaid, 
+              balanceBefore: balanceBeforeCredit, 
+              balanceAfter: balanceAfterCredit,
+              type: "CREDIT", 
+              status: "SUCCESS", 
+              reference: reference, 
+              description: "Paystack Online Funding (Webhook)"
             }
           });
 
+          // Step B: Debit the wallet for the actual service fee
           const debitedWallet = await tx.wallet.update({
             where: { id: user.wallet.id },
             data: { balance: { decrement: amountPaid } }
@@ -120,11 +169,18 @@ export async function POST(req: Request) {
 
           await tx.transaction.create({
             data: {
-              walletId: user.wallet.id, amount: amountPaid, balanceBefore: balanceAfterCredit, balanceAfter: balanceAfterDebit,
-              type: "DEBIT", status: "SUCCESS", reference: `SRV_PAY_${registrationId}_${Date.now()}`, description: `Payment for Registration (${regName})`
+              walletId: user.wallet.id, 
+              amount: amountPaid, 
+              balanceBefore: balanceAfterCredit, 
+              balanceAfter: balanceAfterDebit,
+              type: "DEBIT", 
+              status: "SUCCESS", 
+              reference: `SRV_PAY_${registrationId}_${Date.now()}`, 
+              description: `Payment for Registration (${regName})`
             }
           });
 
+          // Step C: Unlock application status for CAC processing
           if (serviceType === "business") {
             await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           } else if (serviceType === "llc") {
@@ -135,32 +191,37 @@ export async function POST(req: Request) {
           const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
 
           notificationPayload = {
-            userId: user.id, type: "APPLICATION_SUBMITTED", phone: userPhone, email: userEmail,
-            name: userName, businessName: regName, regId: displayId,
+            userId: user.id, 
+            type: "APPLICATION_SUBMITTED", 
+            phone: userPhone, 
+            email: userEmail,
+            name: userName, 
+            businessName: regName, 
+            regId: displayId,
           };
         });
 
         if (notificationPayload) {
           await notificationQueue.add("send-application-notification", notificationPayload, {
-            attempts: 3, backoff: { type: "exponential", delay: 5000 }, removeOnComplete: true,
+            attempts: 3, 
+            backoff: { type: "exponential", delay: 5000 }, 
+            removeOnComplete: true,
           });
         }
 
         return NextResponse.json({ received: true });
       }
 
-      // ==========================================
-      // SCENARIO 3: NAME SUBSTITUTION CHECKOUT
-      // ==========================================
+      // =========================================================================
+      // SCENARIO 3: NAME SUBSTITUTION CHECKOUT ("NSUB-ONL-...")
+      // =========================================================================
       if (reference.startsWith("NSUB-ONL-")) {
         const parts = reference.split("-");
-        // parts structure: ["NSUB", "ONL", id, safeEncodedPayload]
         if (parts.length >= 4) {
           const registrationId = parts[2];
           const safeEncodedPayload = parts.slice(3).join("-");
 
           try {
-            // Reverse safe base64 encoding to extract the data payload
             const base64 = safeEncodedPayload.replace(/-/g, '+').replace(/_/g, '/');
             const paddedBase64 = base64 + '=='.substring(0, (3 * base64.length) % 4);
             const payloadStr = Buffer.from(paddedBase64, 'base64').toString('utf-8');
@@ -173,7 +234,31 @@ export async function POST(req: Request) {
               const existingTx = await tx.transaction.findUnique({ where: { reference } });
               if (existingTx && existingTx.status === "SUCCESS") return;
 
-              // 1. Fund Wallet
+              // SECURITY GUARD: Enforce underpayment protection on Name Substitution
+              if (expectedAmount && amountPaid < expectedAmount) {
+                console.warn(`🚨 UNDERPAYMENT DETECTED for Name Sub ${reference}: Paid ₦${amountPaid}, Required ₦${expectedAmount}.`);
+                const updatedWallet = await tx.wallet.update({
+                  where: { id: user.wallet.id },
+                  data: { balance: { increment: amountPaid } }
+                });
+                const newBalance = Number(updatedWallet.balance);
+
+                await tx.transaction.create({
+                  data: {
+                    walletId: user.wallet.id, 
+                    amount: amountPaid, 
+                    balanceBefore: newBalance - amountPaid, 
+                    balanceAfter: newBalance,
+                    type: "CREDIT", 
+                    status: "SUCCESS", 
+                    reference: reference, 
+                    description: "Partial Online Payment (Underpaid Name Substitution - Credited to Wallet)"
+                  }
+                });
+                return; // Abort without updating names!
+              }
+
+              // Step 1: Fund Wallet
               const fundedWallet = await tx.wallet.update({
                 where: { id: user.wallet.id },
                 data: { balance: { increment: amountPaid } }
@@ -182,12 +267,18 @@ export async function POST(req: Request) {
 
               await tx.transaction.create({
                 data: {
-                  walletId: user.wallet.id, amount: amountPaid, balanceBefore: balanceAfterCredit - amountPaid, balanceAfter: balanceAfterCredit,
-                  type: "CREDIT", status: "SUCCESS", reference: reference, description: "Paystack Online Funding (Webhook)"
+                  walletId: user.wallet.id, 
+                  amount: amountPaid, 
+                  balanceBefore: balanceAfterCredit - amountPaid, 
+                  balanceAfter: balanceAfterCredit,
+                  type: "CREDIT", 
+                  status: "SUCCESS", 
+                  reference: reference, 
+                  description: "Paystack Online Funding (Webhook)"
                 }
               });
 
-              // 2. Debit Wallet
+              // Step 2: Debit Wallet
               const debitedWallet = await tx.wallet.update({
                 where: { id: user.wallet.id },
                 data: { balance: { decrement: amountPaid } }
@@ -196,12 +287,18 @@ export async function POST(req: Request) {
 
               await tx.transaction.create({
                 data: {
-                  walletId: user.wallet.id, amount: amountPaid, balanceBefore: balanceAfterCredit, balanceAfter: balanceAfterDebit,
-                  type: "DEBIT", status: "SUCCESS", reference: `NSUB_PAY_${registrationId}_${Date.now()}`, description: `Payment for Name Substitution`
+                  walletId: user.wallet.id, 
+                  amount: amountPaid, 
+                  balanceBefore: balanceAfterCredit, 
+                  balanceAfter: balanceAfterDebit,
+                  type: "DEBIT", 
+                  status: "SUCCESS", 
+                  reference: `NSUB_PAY_${registrationId}_${Date.now()}`, 
+                  description: "Payment for Name Substitution"
                 }
               });
 
-              // 3. Update Names directly in DB
+              // Step 3: Apply Name Changes in Database
               if (type === "BUSINESS_NAME") {
                 await tx.businessRegistration.update({
                   where: { id: registrationId },
