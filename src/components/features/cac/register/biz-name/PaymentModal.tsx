@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X, Wallet, CreditCard, CircleDashed, CheckCircle, Sparkle, MusicNotes } from "@phosphor-icons/react";
 
@@ -20,9 +20,10 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // NEW: Controls our friendly Dancing Baby Doll overlay during native online redirect
   const [gatewayLoading, setGatewayLoading] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 1. Fetch Wallet & Live Pricing
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -47,9 +48,64 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
       }
     };
     fetchData();
+
+    return () => {
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    };
   }, []);
 
-  // Prevent bfcache freeze if user presses browser Back from Paystack checkout page
+  // 2. NEW: AUTO-START VERIFICATION POLLING WHEN RETURNING FROM PAYSTACK ONLINE
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const isReturningFromPaystack = params.get("verifying") === "true" || params.get("paid") === "true" || params.has("trxref");
+      
+      if (isReturningFromPaystack && processingState === "idle") {
+        startWebhookPolling();
+      }
+    }
+  }, [registrationId, processingState]);
+
+  // 3. Webhook Polling Logic
+  const startWebhookPolling = () => {
+    setProcessingState("verifying");
+    
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/cac/register/business-name/details/${registrationId}`);
+        const json = await res.json();
+        
+        // Once Webhook updates status from UNSUBMITTED to PENDING, show success and redirect!
+        if (json.success && json.data.status !== "UNSUBMITTED") {
+          if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+          setProcessingState("success");
+          
+          // Clean URL parameters
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+
+          setTimeout(() => {
+            router.push("/dashboard/cac/new-incorporation?success=true");
+          }, 2500);
+        }
+      } catch (e) {
+        // Silent catch while polling
+      }
+    }, 1500);
+
+    // Escape hatch after 30 seconds
+    setTimeout(() => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        if (processingState !== "success") {
+          setErrorMsg("Payment received, but confirmation is taking slightly longer than usual. Please check your dashboard in a moment.");
+          setProcessingState("idle");
+        }
+      }
+    }, 30000);
+  };
+
+  // Prevent bfcache freeze if user presses browser Back
   useEffect(() => {
     const handlePageRestore = (event: PageTransitionEvent) => {
       if (event.persisted) {
@@ -78,7 +134,6 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
     setProcessingState("initializing");
     setErrorMsg(null);
 
-    // If online, trigger our friendly dancing baby doll overlay immediately!
     if (method === "ONLINE") {
       setGatewayLoading(true);
     }
@@ -113,7 +168,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
           return;
         }
 
-        // Native Browser Redirect: Zero iframes, zero white flash!
+        // Native Browser Redirect
         window.location.href = data.authorizationUrl;
       }
     } catch (error) {
@@ -127,13 +182,9 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
 
   return (
     <>
-      {/* =========================================================================
-          FRIENDLY DANCING BABY DOLL OVERLAY
-          Delightful animation while the browser navigates natively to Paystack!
-      ========================================================================= */}
+      {/* Friendly Dancing Baby Doll Overlay */}
       {gatewayLoading && (
         <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-300 select-none p-6 text-center">
-          
           <div className="relative flex items-center justify-center mb-8 w-40 h-40">
             <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/20 animate-ping opacity-75" />
             <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/50 animate-[spin_8s_linear_infinite]" />
@@ -156,7 +207,6 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
           <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
             Connecting to Paystack...
           </h3>
-          
           <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
             Please wait a moment while we prepare your checkout page.
           </p>
@@ -165,7 +215,6 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
             <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-[#ff3f7a] rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
           </div>
 
-          {/* Escape hatch for slow internet connections */}
           <button
             type="button"
             onClick={() => {
@@ -176,17 +225,13 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
           >
             Cancel / Go Back
           </button>
-
         </div>
       )}
 
-      {/* =========================================================================
-          MAIN MODAL CONTENT
-      ========================================================================= */}
+      {/* Main Modal Content */}
       <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
         <div className="bg-card border border-border rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
           
-          {/* HEADER */}
           <div className="px-6 py-5 border-b border-border flex justify-between items-center bg-secondary/50">
             <h3 className="font-black text-xl text-foreground">Complete Application</h3>
             {processingState === "idle" && !gatewayLoading && (
@@ -196,26 +241,27 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
             )}
           </div>
 
-          {/* PROCESSING STATES (WALLET PAYMENT OR LOADING) */}
+          {/* PROCESSING STATES (VERIFYING OR SUCCESS) */}
           {processingState !== "idle" && !gatewayLoading ? (
             <div className="p-10 flex flex-col items-center justify-center text-center h-[350px]">
               {processingState === "success" ? (
                 <div className="animate-in zoom-in duration-500 flex flex-col items-center">
                   <CheckCircle className="h-28 w-28 text-emerald-500 mb-6 drop-shadow-lg" weight="fill" />
                   <h3 className="font-black text-2xl text-foreground mb-2">Application Submitted!</h3>
-                  <p className="text-muted-foreground font-medium">Payment secured from wallet. Redirecting...</p>
+                  <p className="text-muted-foreground font-medium">Payment secured. Redirecting to your dashboard...</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
                   <CircleDashed className="animate-spin h-28 w-28 text-primary mb-8" weight="bold" />
-                  <h3 className="font-black text-xl text-foreground mb-2">Processing Wallet Payment...</h3>
+                  <h3 className="font-black text-xl text-foreground mb-2">
+                    {processingState === "initializing" ? "Initializing Gateway..." : "Verifying with Bank..."}
+                  </h3>
                   <p className="text-muted-foreground font-medium mb-6 text-sm">Please do not close this window.</p>
                 </div>
               )}
             </div>
           ) : (
             
-            /* PAYMENT OPTIONS UI */
             <div className="p-6">
               <div className="text-center mb-8">
                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Fee</p>
