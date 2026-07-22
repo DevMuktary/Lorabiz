@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import Script from "next/script"; // <-- Added Next.js Script import
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { ArrowRight, Sparkle, X, Info, Plus, Spinner } from "@phosphor-icons/react";
@@ -87,6 +86,36 @@ export default function DashboardPage() {
     fetchBalance();
   }, []);
 
+  // NEW: Detect Paystack redirection parameters and fire dashboard alerts
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      
+      if (params.get("funded") === "true") {
+        setAlertInfo({
+          title: "Payment Successful 🎉",
+          message: "Your wallet has been funded successfully! Balance is updating..."
+        });
+        setTimeout(fetchBalance, 1500);
+        
+        // Clean URL bar without reloading the page
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      } 
+      else if (params.get("cancelled") === "true" || params.get("trxref")) {
+        const status = params.get("status");
+        if (status === "cancelled" || status === "failed") {
+          setAlertInfo({
+            title: "Payment Cancelled ⚠️",
+            message: "You cancelled the payment transaction. No funds were debited."
+          });
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        }
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (alertInfo) {
       const timer = setTimeout(() => setAlertInfo(null), 4000);
@@ -115,18 +144,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 relative">
-      
-      {/* ZOHO SALESIQ SCRIPTS */}
-      <Script id="zoho-init" strategy="afterInteractive">
-        {`window.$zoho=window.$zoho || {};$zoho.salesiq=$zoho.salesiq||{ready:function(){}}`}
-      </Script>
-      <Script 
-        id="zsiqscript" 
-        src="https://salesiq.zoho.com/widget?wc=siqd92cfee3d96399a843e398203c959cc436421b42947c56b618bfe512049ccb45" 
-        strategy="afterInteractive" 
-      />
-      {/* END ZOHO SCRIPTS */}
-
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
@@ -181,7 +198,6 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {SERVICES.map((service) => {
-          
           const CardTopContent = (
             <>
               {!service.active && (
@@ -269,7 +285,6 @@ export default function DashboardPage() {
           </button>
         </div>
       )}
-
     </div>
   );
 }
