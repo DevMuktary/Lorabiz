@@ -60,7 +60,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "This application has already been submitted or paid for." }, { status: 400 });
       }
 
-      // Fetch official pricing from database
       const prices = await prisma.servicePricing.findMany();
       const pricingMap = prices.reduce((acc: Record<string, number>, item) => { 
         acc[item.serviceKey] = Number(item.price); 
@@ -75,7 +74,9 @@ export async function POST(req: Request) {
       amountToPay = baseLLCFee + extraSharesFee;
       description = `Payment for LLC Registration (${registration.proposedName || "Draft"})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
-      callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?paid=true`;
+      
+      // RETURNS TO LLC DETAILS PAGE IN VERIFICATION MODE
+      callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?verifying=true`;
 
     // CASE C: BUSINESS NAME REGISTRATION (DEFAULT SERVICE)
     } else {
@@ -99,7 +100,9 @@ export async function POST(req: Request) {
       amountToPay = Number(servicePriceRecord.price);
       description = `Payment for Business Registration (${registration.proposedName})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
-      callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?paid=true`;
+      
+      // RETURNS TO BUSINESS NAME DETAILS PAGE IN VERIFICATION MODE
+      callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?verifying=true`;
     }
 
     if (amountToPay <= 0) {
@@ -162,7 +165,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      // We call Paystack directly from our server. We NEVER expose public keys or let the frontend decide prices!
       const paystackResponse = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
@@ -171,14 +173,14 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           email: user.email,
-          amount: Math.round(amountToPay * 100), // Convert exact Naira fee to Kobo (integers only)
+          amount: Math.round(amountToPay * 100), 
           reference: reference,
           callback_url: `${appUrl}${callbackPath}`,
           metadata: {
             userId: user.id,
             service: service || "business",
             registrationId: registrationId || null,
-            expectedAmount: amountToPay, // Webhook uses this as ground truth!
+            expectedAmount: amountToPay, 
             description: description
           }
         }),
@@ -194,7 +196,6 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
 
-      // Return ONLY the native browser redirect URL and reference!
       return NextResponse.json({ 
         success: true, 
         authorizationUrl: paystackData.data.authorization_url,
