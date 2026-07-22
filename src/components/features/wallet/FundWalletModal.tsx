@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Wallet, Spinner, Sparkle, MusicNotes, ArrowRight } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,17 +19,41 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
   const [isProcessing, setIsProcessing] = useState(false);
   const [gatewayLoading, setGatewayLoading] = useState(false);
 
+  // NEW: Prevent bfcache "stuck animation" freeze if user cancels or presses Back
+  useEffect(() => {
+    const handlePageRestore = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setIsProcessing(false);
+        setGatewayLoading(false);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && gatewayLoading) {
+        // Reset state when user navigates back to the tab
+        setIsProcessing(false);
+        setGatewayLoading(false);
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageRestore);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageRestore);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [gatewayLoading]);
+
   if (!isOpen) return null;
 
   const handlePay = async () => {
     if (!amount || Number(amount) < 100) return alert("Minimum amount is ₦100");
     
-    // 1. Immediately show our friendly Dancing Baby Doll overlay
     setIsProcessing(true);
     setGatewayLoading(true);
     
     try {
-      // 2. Request the native Paystack browser checkout link from our backend
       const res = await fetch("/api/payment/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -49,8 +73,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
         return;
       }
 
-      // 3. Native Browser Redirect! Zero iframes, zero white flashes.
-      // The dancing doll stays smoothly on screen until the browser navigates to Paystack.
+      // Native browser redirect
       window.location.href = data.authorizationUrl;
 
     } catch (error) {
@@ -62,26 +85,14 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
 
   return (
     <>
-      {/* =========================================================================
-          FRIENDLY DANCING BABY DOLL OVERLAY
-          No security vocabulary, just pure delightful animation while navigating!
-      ========================================================================= */}
+      {/* Friendly Dancing Baby Doll Overlay */}
       {gatewayLoading && (
         <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-300 select-none p-6 text-center">
-          
-          {/* ANIMATED DANCING BABY DOLL CONTAINER */}
           <div className="relative flex items-center justify-center mb-8 w-40 h-40">
-            
-            {/* Outer soft pulsing pink glow */}
             <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/20 animate-ping opacity-75" />
-            
-            {/* Middle spinning accent circle */}
             <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/50 animate-[spin_8s_linear_infinite]" />
-            
-            {/* Inner reverse-spinning golden ring */}
             <div className="absolute inset-6 rounded-full border border-dotted border-amber-400/60 animate-[spin_5s_linear_infinite_reverse]" />
             
-            {/* Floating Music Notes & Sparkles */}
             <div className="absolute -top-1 -right-2 text-amber-400 animate-bounce delay-100">
               <MusicNotes size={26} weight="fill" />
             </div>
@@ -89,35 +100,39 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
               <Sparkle size={24} weight="fill" />
             </div>
 
-            {/* THE DANCING BABY DOLL (Pure CSS bounce & wiggle animation) */}
             <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-tr from-[#ff3f7a] via-[#e02b62] to-amber-400 flex items-center justify-center shadow-2xl shadow-[#ff3f7a]/40 border border-white/20 animate-bounce">
               <span className="text-4xl drop-shadow-md select-none transform hover:scale-110 transition-transform animate-[pulse_1s_ease-in-out_infinite]">
                 🧸
               </span>
             </div>
-
           </div>
 
-          {/* FRIENDLY, SEAMLESS TEXT (No "Security" or "Encryption" words!) */}
           <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
             Connecting to Paystack...
           </h3>
-          
           <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
             Please wait a moment while we prepare your checkout page.
           </p>
 
-          {/* SMOOTH PROGRESS BAR */}
           <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
             <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-[#ff3f7a] rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
           </div>
 
+          {/* NEW: Explicit Escape Hatch for users if their network stalls */}
+          <button
+            type="button"
+            onClick={() => {
+              setGatewayLoading(false);
+              setIsProcessing(false);
+            }}
+            className="mt-8 text-xs text-slate-400 hover:text-white underline underline-offset-4 transition-colors cursor-pointer"
+          >
+            Cancel / Go Back
+          </button>
         </div>
       )}
 
-      {/* =========================================================================
-          MAIN MODAL CONTENT
-      ========================================================================= */}
+      {/* Main Modal Content */}
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
         <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 relative border border-slate-100">
           <button 
