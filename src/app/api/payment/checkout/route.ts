@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       amountToPay = Math.round(Number(amount));
       description = "Wallet Funding via Online Gateway";
       reference = `FW_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
-      callbackPath = "/dashboard/wallet?funded=true";
+      callbackPath = "/dashboard?funded=true";
 
     // CASE B: LLC (LIMITED LIABILITY COMPANY) REGISTRATION
     } else if (service === "llc") {
