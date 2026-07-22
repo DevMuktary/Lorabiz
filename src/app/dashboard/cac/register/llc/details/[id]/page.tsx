@@ -16,7 +16,9 @@ import PscStep from "@/components/features/cac/register/llc/PscStep";
 import ComplianceStep from "@/components/features/cac/register/llc/ComplianceStep";
 import UploadsStep from "@/components/features/cac/register/llc/UploadsStep";
 import PreviewStep from "@/components/features/cac/register/llc/PreviewStep";
-import PaymentModal from "@/components/features/cac/register/biz-name/PaymentModal";
+
+// FIXED IMPORT: Pointing to the LLC Payment Modal, NOT the Biz Name one!
+import PaymentModal from "@/components/features/cac/register/llc/PaymentModal";
 
 export default function LlcRegistrationDetailsPage() {
   const params = useParams();
@@ -34,7 +36,10 @@ export default function LlcRegistrationDetailsPage() {
   const [showErrors, setShowErrors] = useState(false);
   const [topError, setTopError] = useState<string | null>(null);
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
+  
+  // NEW STATES FOR CHECKOUT RETURN LOGIC
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [lockedStatus, setLockedStatus] = useState<string | null>(null);
 
   const errorTimerRef = useRef<NodeJS.Timeout | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null); // For horizontal stepper scrolling
@@ -58,19 +63,32 @@ export default function LlcRegistrationDetailsPage() {
   });
 
   // ==========================================
-  // FETCH INITIAL DATA
+  // FETCH INITIAL DATA & HANDLE CHECKOUT RETURN
   // ==========================================
   useEffect(() => {
     if (!id) return;
     
+    // Check if returning from Paystack checkout native redirect
+    const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const isReturningFromPaystack = searchParams?.get("verifying") === "true" || searchParams?.get("paid") === "true" || searchParams?.has("trxref");
+
     fetch(`/api/cac/register/llc/details/${id}`)
       .then(res => res.json())
       .then(json => {
         if (json.success) {
-          if (json.data.status !== "UNSUBMITTED" && json.data.status !== "QUERIED") {
-            router.push("/dashboard/cac/new-incorporation"); 
+          
+          // If returning from Paystack, ALWAYS open the payment modal to show verification & checkmark!
+          if (isReturningFromPaystack) {
+            setShowPaymentModal(true);
+          } 
+          // Only show static lockout screen if NOT actively verifying payment
+          else if (json.data.status !== "UNSUBMITTED" && json.data.status !== "QUERIED") {
+            setLockedStatus(json.data.status);
+            setTimeout(() => router.push("/dashboard/cac/new-incorporation"), 3500);
+            setLoading(false);
             return;
           }
+
           setDraft(json.data);
           
           const rAddr = json.data.registeredAddress || companyDetails.registeredAddress;
@@ -124,7 +142,8 @@ export default function LlcRegistrationDetailsPage() {
       isFirstRender.current = false;
       return;
     }
-    if (loading || !id || !draft) return; 
+    // Prevent autosaving if locked or loading
+    if (loading || !id || !draft || lockedStatus) return; 
 
     setSaveStatus("saving");
     const timer = setTimeout(() => {
@@ -138,8 +157,7 @@ export default function LlcRegistrationDetailsPage() {
     }, 2000); 
 
     return () => clearTimeout(timer);
-  }, [companyDetails, id, loading, draft]);
-
+  }, [companyDetails, id, loading, draft, lockedStatus]);
 
   // ==========================================
   // ERROR BANNER MANAGER
@@ -164,7 +182,6 @@ export default function LlcRegistrationDetailsPage() {
       }, 100);
     }
   };
-
 
   // ==========================================
   // SMART VALIDATION & NEXT STEP
@@ -329,7 +346,9 @@ export default function LlcRegistrationDetailsPage() {
         body: JSON.stringify({ ...companyDetails, headOfficeSameAsRegistered: false, isDraft: false })
       });
       
-      if (res.ok) setShowPaymentModal(true); 
+      if (res.ok) {
+        setShowPaymentModal(true); 
+      }
       else {
         const errorData = await res.json();
         triggerError(errorData.message || "Please complete all mandatory fields before submitting.");
@@ -341,6 +360,30 @@ export default function LlcRegistrationDetailsPage() {
       setIsSubmittingFinal(false);
     }
   };
+
+  // Helper to calculate exact Total Fee for LLC Checkout
+  const calculateTotalFee = () => {
+    const totalShares = Number(companyDetails.shareCapital?.totalIssuedCapital) || 1000000;
+    const baseLLCFee = 35000;
+    const extraMillionFee = 15000;
+    const extraSharesFee = Math.max(0, Math.ceil((totalShares - 1000000) / 1000000)) * extraMillionFee;
+    return baseLLCFee + extraSharesFee;
+  };
+
+  if (lockedStatus) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+        <CircleDashed className="animate-spin h-28 w-28 text-primary mb-8" weight="bold" />
+        <h2 className="text-3xl font-black text-foreground mb-3 text-center">Application Locked</h2>
+        <p className="text-muted-foreground font-medium text-lg text-center max-w-md">
+          This application is already submitted and is currently in <span className="font-bold text-primary">{lockedStatus}</span> status.
+        </p>
+        <p className="text-sm font-bold tracking-widest uppercase text-muted-foreground/50 mt-8 animate-pulse">
+          Redirecting to Dashboard...
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -471,6 +514,7 @@ export default function LlcRegistrationDetailsPage() {
         <PaymentModal 
           registrationId={id} 
           proposedName={draft?.proposedName || ""} 
+          totalAmount={calculateTotalFee()}
           onClose={() => setShowPaymentModal(false)} 
         />
       )}
