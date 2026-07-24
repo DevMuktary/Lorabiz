@@ -25,10 +25,11 @@ export async function POST(req: Request) {
 
     if (event.event === "charge.success") {
       const reference = event.data?.reference;
-      const amountPaid = Number(event.data?.amount) / 100; // Convert Kobo to Naira (Ground Truth!)
+      const amountPaid = Number(event.data?.amount) / 100; // Convert Kobo to Naira
       const userEmail = event.data?.customer?.email;
       const metadata = event.data?.metadata || {};
       const expectedAmount = metadata.expectedAmount ? Number(metadata.expectedAmount) : null;
+      const appliedPromoId = metadata.appliedPromoId || null;
 
       if (!reference || !userEmail) {
         return NextResponse.json({ message: "Invalid payload data" }, { status: 400 });
@@ -46,7 +47,6 @@ export async function POST(req: Request) {
           
           if (!user || !user.wallet) return;
 
-          // Idempotency check: prevent double crediting if webhook fires twice
           const existingTx = await tx.transaction.findUnique({ where: { reference } });
           if (existingTx && existingTx.status === "SUCCESS") return;
 
@@ -113,7 +113,6 @@ export async function POST(req: Request) {
 
           // ---------------------------------------------------------------------
           // SECURITY GUARD: STRICT AMOUNT VERIFICATION
-          // If expectedAmount exists and user underpaid, credit wallet ONLY and abort!
           // ---------------------------------------------------------------------
           if (expectedAmount && amountPaid < expectedAmount) {
             console.warn(`🚨 UNDERPAYMENT DETECTED for ${reference}: Paid ₦${amountPaid}, Required ₦${expectedAmount}. Crediting wallet balance only.`);
@@ -136,7 +135,7 @@ export async function POST(req: Request) {
                 description: `Partial Online Payment (Underpaid for ${regName} - Credited to Wallet)`
               }
             });
-            return; // Abort without updating registration status!
+            return; // Abort without updating registration status or burning promo!
           }
 
           // Step A: Record incoming online funds into wallet ledger
@@ -187,6 +186,17 @@ export async function POST(req: Request) {
             await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           }
 
+          // Step D: Burn Promo Code officially in the ledger
+          if (appliedPromoId) {
+            await tx.promoCode.update({
+              where: { id: appliedPromoId },
+              data: { timesUsed: { increment: 1 } }
+            });
+            await tx.promoUsage.create({
+              data: { promoId: appliedPromoId, userId: user.id }
+            });
+          }
+
           const userPhone = user.phone || "";
           const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
 
@@ -234,7 +244,6 @@ export async function POST(req: Request) {
               const existingTx = await tx.transaction.findUnique({ where: { reference } });
               if (existingTx && existingTx.status === "SUCCESS") return;
 
-              // SECURITY GUARD: Enforce underpayment protection on Name Substitution
               if (expectedAmount && amountPaid < expectedAmount) {
                 console.warn(`🚨 UNDERPAYMENT DETECTED for Name Sub ${reference}: Paid ₦${amountPaid}, Required ₦${expectedAmount}.`);
                 const updatedWallet = await tx.wallet.update({
@@ -258,7 +267,6 @@ export async function POST(req: Request) {
                 return; // Abort without updating names!
               }
 
-              // Step 1: Fund Wallet
               const fundedWallet = await tx.wallet.update({
                 where: { id: user.wallet.id },
                 data: { balance: { increment: amountPaid } }
@@ -278,7 +286,6 @@ export async function POST(req: Request) {
                 }
               });
 
-              // Step 2: Debit Wallet
               const debitedWallet = await tx.wallet.update({
                 where: { id: user.wallet.id },
                 data: { balance: { decrement: amountPaid } }
@@ -298,7 +305,6 @@ export async function POST(req: Request) {
                 }
               });
 
-              // Step 3: Apply Name Changes in Database
               if (type === "BUSINESS_NAME") {
                 await tx.businessRegistration.update({
                   where: { id: registrationId },
