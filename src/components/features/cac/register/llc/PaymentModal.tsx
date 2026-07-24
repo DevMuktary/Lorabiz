@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X, Wallet, CreditCard, CircleDashed, CheckCircle, Sparkle, MusicNotes } from "@phosphor-icons/react";
+import { X, Wallet, CreditCard, CircleDashed, CheckCircle, Sparkle, MusicNotes, Tag, Spinner } from "@phosphor-icons/react";
 
 interface PaymentModalProps {
   registrationId: string;
@@ -22,6 +22,14 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
   
   // Controls our friendly Dancing Baby Doll overlay during native online redirect
   const [gatewayLoading, setGatewayLoading] = useState(false);
+
+  // =====================================================================
+  // PROMO CODE STATES
+  // =====================================================================
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string, discountAmount: number, finalAmount: number } | null>(null);
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -126,6 +134,53 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
     }, 30000);
   };
 
+  // =====================================================================
+  // PROMO HANDLERS
+  // =====================================================================
+  const handleApplyPromo = async () => {
+    if (!promoCodeInput.trim() || !totalAmount) return;
+    
+    setPromoLoading(true);
+    setPromoError(null);
+    
+    try {
+      const res = await fetch("/api/payment/promo/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          code: promoCodeInput, 
+          service: "LLC", 
+          originalAmount: totalAmount 
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setAppliedPromo({
+          code: data.data.code,
+          discountAmount: data.data.discountAmount,
+          finalAmount: data.data.finalAmount
+        });
+        setPromoCodeInput("");
+      } else {
+        setPromoError(data.message);
+      }
+    } catch (err) {
+      setPromoError("Network error validating promo code.");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCodeInput("");
+    setPromoError(null);
+  };
+
+  // =====================================================================
+  // PAYMENT HANDLER
+  // =====================================================================
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
     setProcessingState("initializing");
     setErrorMsg(null);
@@ -142,7 +197,8 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
         body: JSON.stringify({ 
           registrationId, 
           paymentMethod: method,
-          service: "llc" // Identifies LLC in the backend routing
+          service: "llc", // Identifies LLC in the backend routing
+          promoCode: appliedPromo?.code // Pass promo code safely to the backend
         })
       });
       const data = await res.json();
@@ -175,7 +231,8 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
     }
   };
 
-  const isWalletInsufficient = walletBalance !== null && totalAmount !== null && walletBalance < totalAmount;
+  const displayPrice = appliedPromo ? appliedPromo.finalAmount : totalAmount;
+  const isWalletInsufficient = walletBalance !== null && displayPrice !== null && walletBalance < displayPrice;
 
   return (
     <>
@@ -269,20 +326,77 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
             </div>
           ) : (
             
-            /* PAYMENT OPTIONS UI */
             <div className="p-6">
-              <div className="text-center mb-8">
+              {/* Dynamic Price Display */}
+              <div className="text-center mb-6">
                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Fee</p>
-                <h2 className="text-4xl font-black text-foreground">₦{totalAmount.toLocaleString()}</h2>
+                {appliedPromo ? (
+                  <div className="flex flex-col items-center animate-in zoom-in duration-200">
+                    <h2 className="text-4xl font-black text-emerald-500">₦{displayPrice?.toLocaleString()}</h2>
+                    <p className="text-sm text-muted-foreground font-bold line-through mt-1">₦{totalAmount?.toLocaleString()}</p>
+                  </div>
+                ) : (
+                  <h2 className="text-4xl font-black text-foreground">₦{displayPrice?.toLocaleString() || "..."}</h2>
+                )}
                 <p className="text-muted-foreground text-sm font-medium mt-2">Registration for: <span className="font-bold text-foreground">{proposedName}</span></p>
               </div>
 
               {errorMsg && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-sm font-bold flex items-center mb-6">
+                <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-sm font-bold flex items-center mb-6 animate-in fade-in">
                   <span className="mr-2">⚠️</span> {errorMsg}
                 </div>
               )}
 
+              {/* ================= PROMO CODE UI ================= */}
+              {!appliedPromo ? (
+                <div className="mb-6 bg-secondary/30 p-3 rounded-2xl border border-border">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="absolute left-3.5 top-3 text-muted-foreground" size={18} weight="bold" />
+                      <input
+                        type="text"
+                        placeholder="Have a promo code?"
+                        value={promoCodeInput}
+                        onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                        disabled={loading || promoLoading}
+                        className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-background text-sm font-bold focus:ring-2 focus:ring-primary outline-none uppercase placeholder:normal-case placeholder:font-medium disabled:opacity-50 transition-all"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleApplyPromo}
+                      disabled={promoLoading || !promoCodeInput.trim() || loading}
+                      className="h-11 px-5 bg-foreground text-background font-bold text-sm rounded-xl disabled:opacity-50 transition-all hover:opacity-90 cursor-pointer flex items-center justify-center"
+                    >
+                      {promoLoading ? <Spinner className="animate-spin h-5 w-5" weight="bold" /> : "Apply"}
+                    </button>
+                  </div>
+                  {promoError && (
+                    <p className="text-xs font-bold text-red-500 mt-2.5 ml-1 animate-in slide-in-from-top-1">{promoError}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="mb-6 bg-emerald-500/10 p-3.5 rounded-2xl border border-emerald-500/20 flex items-center justify-between animate-in zoom-in-95 duration-200">
+                  <div className="flex flex-col">
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5">
+                      <Sparkle weight="fill" /> Promo Applied
+                    </p>
+                    <p className="text-sm font-black text-emerald-700 mt-0.5">
+                      {appliedPromo.code} <span className="text-emerald-600/80 font-bold text-xs ml-1">(-₦{appliedPromo.discountAmount.toLocaleString()})</span>
+                    </p>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={handleRemovePromo} 
+                    className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl text-emerald-600 transition-colors cursor-pointer"
+                    title="Remove Promo"
+                  >
+                    <X size={16} weight="bold" />
+                  </button>
+                </div>
+              )}
+
+              {/* ================= PAYMENT BUTTONS ================= */}
               <div className="space-y-4">
                 <button 
                   type="button"
