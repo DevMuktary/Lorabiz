@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { registrationId, paymentMethod, service, amount } = body; 
+    const { registrationId, paymentMethod, service, amount, promoCode } = body; 
 
     // 1. Fetch User & Wallet from Database
     const user = await prisma.user.findUnique({
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "User account or wallet not found." }, { status: 404 });
     }
 
-    let amountToPay = 0;
+    let baseAmountToPay = 0;
     let description = "";
     let reference = "";
     let callbackPath = "/dashboard";
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Cannot fund wallet using wallet balance." }, { status: 400 });
       }
 
-      amountToPay = Math.round(Number(amount));
+      baseAmountToPay = Math.round(Number(amount));
       description = "Wallet Funding via Online Gateway";
       reference = `FW_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
       callbackPath = "/dashboard?funded=true";
@@ -71,11 +71,10 @@ export async function POST(req: Request) {
       const totalShares = Number(registration.totalShareCapital) || 1000000;
       
       const extraSharesFee = Math.max(0, Math.ceil((totalShares - 1000000) / 1000000)) * extraMillionFee;
-      amountToPay = baseLLCFee + extraSharesFee;
+      baseAmountToPay = baseLLCFee + extraSharesFee;
       description = `Payment for LLC Registration (${registration.proposedName || "Draft"})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
       
-      // RETURNS TO LLC DETAILS PAGE IN VERIFICATION MODE
       callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?verifying=true`;
 
     // CASE C: BUSINESS NAME REGISTRATION (DEFAULT SERVICE)
@@ -97,16 +96,54 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Pricing configuration missing from system." }, { status: 500 });
       }
       
-      amountToPay = Number(servicePriceRecord.price);
+      baseAmountToPay = Number(servicePriceRecord.price);
       description = `Payment for Business Registration (${registration.proposedName})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
       
-      // RETURNS TO BUSINESS NAME DETAILS PAGE IN VERIFICATION MODE
       callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?verifying=true`;
     }
 
-    if (amountToPay <= 0) {
+    if (baseAmountToPay <= 0) {
       return NextResponse.json({ success: false, message: "Invalid payment amount calculated." }, { status: 400 });
+    }
+
+    // =========================================================================
+    // 3. PROMO CODE VALIDATION & DISCOUNT CALCULATION
+    // =========================================================================
+    let amountToPay = baseAmountToPay;
+    let appliedPromoId: string | null = null;
+
+    if (promoCode && service !== "wallet_funding") {
+      const normalizedCode = promoCode.toUpperCase().trim();
+      const promo = await prisma.promoCode.findUnique({ where: { code: normalizedCode } });
+
+      if (promo) {
+        const isAllowedService = promo.restrictedServices.includes("ALL") || promo.restrictedServices.includes(service.toUpperCase());
+        const userUsagesCount = await prisma.promoUsage.count({ where: { promoId: promo.id, userId: user.id } });
+
+        if (
+          promo.isActive &&
+          (!promo.expiresAt || new Date(promo.expiresAt) >= new Date()) &&
+          (promo.usageLimit === null || promo.timesUsed < promo.usageLimit) &&
+          isAllowedService &&
+          userUsagesCount < promo.perUserLimit
+        ) {
+          // Calculate discount
+          let discountAmount = 0;
+          if (promo.fixedAmount) discountAmount = Number(promo.fixedAmount);
+          else if (promo.discountPct) discountAmount = (baseAmountToPay * Number(promo.discountPct)) / 100;
+          
+          if (discountAmount > baseAmountToPay) discountAmount = baseAmountToPay;
+          
+          amountToPay = Math.round(baseAmountToPay - discountAmount);
+          appliedPromoId = promo.id;
+          description += ` (Promo Applied: ${promo.code})`;
+        } else {
+          return NextResponse.json({ success: false, message: "Invalid, expired, or fully exhausted promo code." }, { status: 400 });
+        }
+      } else {
+        return NextResponse.json({ success: false, message: "Invalid promo code." }, { status: 400 });
+      }
     }
 
     // =========================================================================
@@ -142,6 +179,17 @@ export async function POST(req: Request) {
             description: description
           }
         });
+
+        // BURN PROMO CODE IF APPLIED
+        if (appliedPromoId) {
+          await tx.promoCode.update({
+            where: { id: appliedPromoId },
+            data: { timesUsed: { increment: 1 } }
+          });
+          await tx.promoUsage.create({
+            data: { promoId: appliedPromoId, userId: user.id }
+          });
+        }
 
         if (service === "llc" && registrationId) {
           await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
@@ -181,7 +229,8 @@ export async function POST(req: Request) {
             service: service || "business",
             registrationId: registrationId || null,
             expectedAmount: amountToPay, 
-            description: description
+            description: description,
+            appliedPromoId: appliedPromoId // Passed securely to Webhook!
           }
         }),
       });
