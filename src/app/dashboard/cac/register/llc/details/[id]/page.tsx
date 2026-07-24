@@ -423,7 +423,7 @@ export default function LlcRegistrationDetailsPage() {
       {/* Header & Clickable Stepper */}
       <div className="mb-8 border-b border-border pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="w-full overflow-hidden">
-          {/* UPDATED: Displays Tracking ID instead of CUID substring if available! */}
+          {/* Displays Tracking ID instead of CUID substring if available! */}
           <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5">
             Completing Application For {draft ? `• REF: ${draft.trackingId || draft.id?.substring(0, 8)}` : ""}
           </p>
