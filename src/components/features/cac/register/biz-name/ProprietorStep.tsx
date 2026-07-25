@@ -65,6 +65,11 @@ export default function ProprietorStep({
     setProprietors([...proprietors, { ...defaultPropForm, id: newId }]);
     setExpandedId(newId);
     setValidationError(null);
+
+    // NEW: Smoothly auto-scroll the user to the newly created proprietor box!
+    setTimeout(() => {
+      document.getElementById(`proprietor-${newId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
   };
 
   const isProprietorValid = (prop: Proprietor) => {
@@ -98,8 +103,8 @@ export default function ProprietorStep({
       <div className="flex justify-between items-center mb-6 border-b border-border pb-4">
         <h2 className="text-2xl font-black text-foreground">Proprietors</h2>
         {!isSoleProprietor && (
-          <Button onClick={handleAddPartner} className="bg-foreground hover:opacity-90 text-background font-bold rounded-xl cursor-pointer transition-opacity">
-            + Add Partner
+          <Button type="button" onClick={handleAddPartner} className="bg-foreground hover:opacity-90 text-background font-bold rounded-xl cursor-pointer transition-opacity shadow-md">
+            + Add New Proprietor
           </Button>
         )}
       </div>
@@ -114,7 +119,7 @@ export default function ProprietorStep({
           const pCode = prop.phoneCode || "+234"; 
 
           return (
-            <div key={prop.id} className="border border-border rounded-2xl bg-card overflow-hidden shadow-sm transition-colors duration-300">
+            <div key={prop.id} id={`proprietor-${prop.id}`} className="border border-border rounded-2xl bg-card overflow-hidden shadow-sm transition-colors duration-300 scroll-mt-24">
               
               {/* --- THE SHARP LINE-BY-LINE VIEW (COLLAPSED) --- */}
               {!isOpen && (
@@ -122,9 +127,9 @@ export default function ProprietorStep({
                   <div className="bg-secondary/50 px-5 py-4 border-b border-border flex justify-between items-center">
                      <span className="font-black text-foreground text-lg">{idx + 1} | Proprietor ({prop.surname || "Pending"} {prop.firstName})</span>
                      <div className="flex gap-4">
-                        <button onClick={() => setExpandedId(prop.id)} className="text-primary font-bold text-sm hover:underline cursor-pointer">Edit</button>
+                        <button type="button" onClick={() => setExpandedId(prop.id)} className="text-primary font-bold text-sm hover:underline cursor-pointer">Edit</button>
                         {proprietors.length > 1 && (
-                          <button onClick={() => removeProprietor(prop.id)} className="text-red-500 font-bold text-sm hover:underline cursor-pointer">Remove</button>
+                          <button type="button" onClick={() => removeProprietor(prop.id)} className="text-red-500 font-bold text-sm hover:underline cursor-pointer">Remove</button>
                         )}
                      </div>
                   </div>
@@ -134,7 +139,6 @@ export default function ProprietorStep({
                      <FieldRow label="First Name" value={prop.firstName} />
                      {prop.otherName && <FieldRow label="Other Name" value={prop.otherName} />}
                      <FieldRow label="Email" value={prop.email} />
-                     {/* FIXED THE UNDEFINED COUNTRY CODE HERE */}
                      <FieldRow label="Phone Number" value={`${getFlag(pCode)} ${pCode} ${prop.phone || ""}`} />
                      <FieldRow label="Gender" value={prop.gender} />
                      <FieldRow label="Date of Birth" value={prop.dob} />
@@ -153,7 +157,7 @@ export default function ProprietorStep({
                   <div className="flex justify-between items-center pb-4 border-b border-border">
                     <h3 className="font-black text-xl text-foreground">Editing Proprietor {idx + 1}</h3>
                     {proprietors.length > 1 && (
-                      <button onClick={() => removeProprietor(prop.id)} className="text-red-500 font-bold text-sm hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">Remove</button>
+                      <button type="button" onClick={() => removeProprietor(prop.id)} className="text-red-500 font-bold text-sm hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">Remove</button>
                     )}
                   </div>
 
@@ -254,8 +258,13 @@ export default function ProprietorStep({
                   )}
 
                   <div className="pt-6 flex justify-end border-t border-border">
-                    <Button onClick={() => handleSaveAndCollapse(prop)} className="bg-primary hover:opacity-90 text-primary-foreground h-12 px-8 rounded-xl font-bold shadow-md shadow-primary/20 transition-all cursor-pointer">
-                      Save & Collapse
+                    {/* CHANGED: Save & Collapse is now visually distinct from the global Save & Continue */}
+                    <Button 
+                      type="button" 
+                      onClick={() => handleSaveAndCollapse(prop)} 
+                      className="bg-secondary hover:bg-secondary/80 text-foreground border border-border h-12 px-8 rounded-xl font-bold transition-all cursor-pointer"
+                    >
+                      Save
                     </Button>
                   </div>
                 </div>
