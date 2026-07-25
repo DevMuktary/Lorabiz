@@ -27,6 +27,7 @@ export async function POST(req: Request) {
     let description = "";
     let reference = "";
     let callbackPath = "/dashboard";
+    let promoServiceKey = ""; // NEW: Strictly aligns with database enum names
 
     // =========================================================================
     // 2. IDENTIFY SERVICE & EXCLUSIVELY CALCULATE PRICE ON THE SERVER
@@ -48,6 +49,8 @@ export async function POST(req: Request) {
 
     // CASE B: LLC (LIMITED LIABILITY COMPANY) REGISTRATION
     } else if (service === "llc") {
+      promoServiceKey = "LLC"; // Strict DB match
+      
       if (!registrationId) {
         return NextResponse.json({ success: false, message: "Registration ID is required." }, { status: 400 });
       }
@@ -79,6 +82,8 @@ export async function POST(req: Request) {
 
     // CASE C: BUSINESS NAME REGISTRATION (DEFAULT SERVICE)
     } else {
+      promoServiceKey = "BUSINESS_NAME"; // Strict DB match
+      
       if (!registrationId) {
         return NextResponse.json({ success: false, message: "Registration ID is required." }, { status: 400 });
       }
@@ -118,15 +123,19 @@ export async function POST(req: Request) {
       const promo = await prisma.promoCode.findUnique({ where: { code: normalizedCode } });
 
       if (promo) {
-        const isAllowedService = promo.restrictedServices.includes("ALL") || promo.restrictedServices.includes(service.toUpperCase());
+        // FIX: Match against promoServiceKey (e.g., "BUSINESS_NAME") instead of the raw frontend string
+        const isAllowedService = promo.restrictedServices.includes("ALL") || promo.restrictedServices.includes(promoServiceKey);
         const userUsagesCount = await prisma.promoUsage.count({ where: { promoId: promo.id, userId: user.id } });
+        
+        // FIX: Safe fallback if perUserLimit is null in the database
+        const hasNotExceededUserLimit = promo.perUserLimit === null || userUsagesCount < promo.perUserLimit;
 
         if (
           promo.isActive &&
           (!promo.expiresAt || new Date(promo.expiresAt) >= new Date()) &&
           (promo.usageLimit === null || promo.timesUsed < promo.usageLimit) &&
           isAllowedService &&
-          userUsagesCount < promo.perUserLimit
+          hasNotExceededUserLimit
         ) {
           // Calculate discount
           let discountAmount = 0;
@@ -191,7 +200,7 @@ export async function POST(req: Request) {
           });
         }
 
-        if (service === "llc" && registrationId) {
+        if (promoServiceKey === "LLC" && registrationId) {
           await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
         } else if (registrationId) {
           await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
