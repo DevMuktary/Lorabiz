@@ -6,6 +6,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Fast, zero-cost JS dictionaries for the Gatekeeper
+const RESTRICTED_WORDS = ["FEDERAL", "NATIONAL", "GOVERNMENT", "STATE", "REGIONAL", "COOPERATIVE", "CHAMBER OF COMMERCE", "NIGERIAN"];
+const LLC_SUFFIXES = ["LTD", "LIMITED", "PLC", "GTE", "ULC"];
+const BN_QUALIFIERS = ["VENTURES", "ENTERPRISES", "SERVICES", "CONCEPTS", "HUB", "GLOBAL", "SYNERGY", "SOLUTIONS", "CONSULTS", "FARMS", "TRADING", "AGENCY", "BUSINESS", "LOGISTICS", "GROUP", "CLINIC", "STORE", "STORES", "MERCHANTS"];
+
 export async function POST(req: Request) {
   try {
     const { proposedName, lineOfBusiness, entityType, mode } = await req.json();
@@ -15,8 +20,7 @@ export async function POST(req: Request) {
     }
 
     // ==========================================
-    // LAYER 3 API GATEKEEPER (Global Maintenance Check)
-    // Synchronized with MDS ServicePricing Toggles
+    // LAYER 1: API GATEKEEPER (Global Maintenance Check)
     // ==========================================
     const cacServices = await prisma.servicePricing.findMany();
     
@@ -53,275 +57,180 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
 
-    if (!lineOfBusiness && mode === "SUGGEST") {
-      return NextResponse.json({ success: false, message: "Missing required metadata parameters." }, { status: 400 });
-    }
-
-    const cacApiKey = process.env.CAC_API_KEY;
-    if (!cacApiKey) throw new Error("Missing CAC API Key.");
-
     // ==========================================
-    // MODE: INSTANT SUGGESTION GENERATOR (PRE-VERIFIED LOOP)
+    // MODE: INSTANT SUGGESTION GENERATOR (NO LOOPS)
+    // Generates 4 distinct names instantly for the UI
     // ==========================================
     if (mode === "SUGGEST") {
-      let attempts = 0;
-      let validAlternative = "";
+      if (!lineOfBusiness || !proposedName) {
+        return NextResponse.json({ success: false, message: "Missing required metadata parameters for suggestions." }, { status: 400 });
+      }
 
-      while (attempts < 3) {
-        attempts++;
-        
-        const aiSuggestion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: `You are a Senior Corporate Naming Specialist under the Nigerian Companies and Allied Matters Act (CAMA).
-              Generate exactly ONE highly professional, creative, and unique alternative name based on the user's provided entity type, proposed name, and industry vertical.
-              
-              CRITICAL CAC RULES:
-              - DO NOT just append a word to the exact same highly unique root (e.g., if QUADROX failed, change the root to QUADRA, NEXUS, or VORTEX).
-              - IF entityType is 'Company (LLC)': The name MUST end with exactly the word "LIMITED" or "LTD".
-              - IF entityType is 'Business Name': The name MUST end with a qualifier like VENTURES, CONCEPTS, SERVICES, GLOBAL (DO NOT USE LTD OR LIMITED).
-              - Output ONLY the raw name string. Do not use quotes.`
-            },
-            {
-              role: "user",
-              content: `Entity Type: ${entityType}\nProposed Name: ${proposedName}\nIndustry Vertical: ${lineOfBusiness}`
-            }
-          ],
-          temperature: 0.9, 
-        });
+      const suffixRule = entityType === "Company (LLC)" 
+        ? "MUST end with 'LIMITED' or 'LTD'." 
+        : "MUST end with a qualifier like 'VENTURES', 'CONCEPTS', or 'SERVICES'. DO NOT use 'LIMITED'.";
 
-        const generatedName = (aiSuggestion.choices[0].message.content || "").trim().toUpperCase();
-
-        const cacVerify = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
-          method: "POST",
-          headers: { "Accept": "application/json", "Content-Type": "application/json", "X_API_KEY": cacApiKey },
-          body: JSON.stringify({ proposedName: generatedName, lineOfBusiness }),
-        });
-
-        if (cacVerify.ok) {
-          const verifyJson = await cacVerify.json();
-          
-          if (verifyJson.message !== "Name exist") {
-            const simStr = verifyJson.data?.similarityScore || "0%";
-            const simVal = parseInt(simStr);
-            const mostSim = verifyJson.data?.mostSimilarName || "N/A";
-
-            if (simVal < 75) {
-              validAlternative = generatedName;
-              break;
-            } else {
-              const semanticCheck = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [
-                  {
-                    role: "system",
-                    content: `You are a CAC Examiner. Are these names confusingly similar based on unique root word collision?
-                    - If they share a highly unique root, return isConflict: true.
-                    - If they only share generic words/prefixes, return isConflict: false.`
-                  },
-                  { role: "user", content: `Proposed: "${generatedName}"\nConflict: "${mostSim}"` }
-                ],
-                response_format: { type: "json_schema", json_schema: { name: "check", schema: { type: "object", properties: { isConflict: { type: "boolean" } }, required: ["isConflict"], additionalProperties: false }, strict: true } },
-                temperature: 0.1,
-              });
-
-              const semanticResult = JSON.parse(semanticCheck.choices[0].message.content || "{}");
-              if (!semanticResult.isConflict) {
-                validAlternative = generatedName;
-                break;
-              }
-            }
+      const aiSuggestion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Corporate Naming Specialist. The user's proposed name was taken. 
+            Generate exactly 4 highly distinct, creative, and professional alternative names for their business.
+            - Change the root word entirely (e.g., if they asked for 'QUADROX', suggest 'NEXUS', 'VORTEX', 'SYNTHESIS').
+            - ${suffixRule}
+            - Output ONLY a JSON array of strings. No markdown, no explanations.`
+          },
+          {
+            role: "user",
+            content: `Entity Type: ${entityType}\nRejected Name: ${proposedName}\nIndustry Vertical: ${lineOfBusiness}`
           }
-        }
-      }
+        ],
+        response_format: { type: "json_schema", json_schema: { name: "suggestions", schema: { type: "object", properties: { names: { type: "array", items: { type: "string" } } }, required: ["names"], additionalProperties: false }, strict: true } },
+        temperature: 0.9, 
+      });
 
-      if (!validAlternative) {
-         const fallbackRoot = proposedName.split(" ")[0].substring(0, 5);
-         const fallbackSuffix = entityType === "Company (LLC)" ? "LIMITED" : "CONCEPTS";
-         validAlternative = `${fallbackRoot} ${Math.floor(Math.random() * 900 + 100)} ${fallbackSuffix}`.toUpperCase();
-      }
+      const parsedResponse = JSON.parse(aiSuggestion.choices[0].message.content || '{"names": []}');
+      
+      // Fallback just in case OpenAI fails
+      const fallbackSuffix = entityType === "Company (LLC)" ? "LIMITED" : "CONCEPTS";
+      const root = proposedName.split(" ")[0].substring(0, 5);
+      const safeNames = parsedResponse.names.length > 0 ? parsedResponse.names : [
+        `${root} ${Math.floor(Math.random() * 900 + 100)} ${fallbackSuffix}`.toUpperCase()
+      ];
 
-      return NextResponse.json({ success: true, alternativeName: validAlternative });
+      return NextResponse.json({ success: true, suggestions: safeNames });
     }
 
     // ==========================================
-    // MODE: STANDARD CHECK (Pre-Flight Gatekeeper)
+    // MODE: STANDARD CHECK (Blazing Fast Regex Gatekeeper)
     // ==========================================
     if (!proposedName) {
       return NextResponse.json({ success: false, message: "Proposed name is required." }, { status: 400 });
     }
 
     const uppercaseName = proposedName.trim().toUpperCase();
+    const wordsInName = uppercaseName.split(" ");
+    const lastWord = wordsInName[wordsInName.length - 1];
 
-    const preFlightCheck = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a legal compliance gatekeeper for the Nigerian Corporate Affairs Commission (CAC).
-          Analyze the user's proposed name based on their declared entity type:
-          
-          1. LLC COMPLIANCE: If entityType is 'Company (LLC)', the name MUST end with 'LTD', 'LIMITED', 'PLC', 'GTE', or 'ULC'. If it doesn't, return status "MISSING_LLC_SUFFIX" and reason "A Company must end with LIMITED or LTD."
-          2. BUSINESS NAME COMPLIANCE: If entityType is 'Business Name' and contains 'LTD', 'LIMITED', 'PLC', 'INCORPORATED', or 'INC', return status "ILLEGAL_SUFFIX".
-          3. RESTRICTED WORD: If it contains 'FEDERAL', 'NATIONAL', 'GOVERNMENT', 'STATE', 'REGIONAL', 'COOPERATIVE', 'CHAMBER OF COMMERCE', or 'NIGERIAN'. NOTE: 'NIGERIA' is ALLOWED. Only block 'NIGERIAN'.
-          4. DANGEROUS WORD: If it contains offensive, illicit, or globally sanctioned terminology.
-          5. MISSING SUFFIX (Business Name): If 'Business Name' lacks a standard descriptor at the end, flag as "MISSING_SUFFIX".
-          6. If it passes all rules, flag as "PASSED".`
-        },
-        { 
-          role: "user", 
-          content: `Entity Type: ${entityType}\nProposed Name: "${uppercaseName}"` 
-        }
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "pre_flight_assessment",
-          schema: {
-            type: "object",
-            properties: {
-              status: { type: "string", enum: ["MISSING_LLC_SUFFIX", "ILLEGAL_SUFFIX", "RESTRICTED_WORD", "DANGEROUS_WORD", "MISSING_SUFFIX", "PASSED"] },
-              reason: { type: "string" }
-            },
-            required: ["status", "reason"],
-            additionalProperties: false
-          },
-          strict: true
-        }
-      },
-      temperature: 0.1,
-    });
-
-    const preFlightResult = JSON.parse(preFlightCheck.choices[0].message.content || "{}");
+    let isBlocked = false;
+    let rejectionType = "PASSED";
+    let reasonMessage = "Name is available and ready for registration.";
     let uiWarningMessage = "";
 
-    if (preFlightResult.status === "MISSING_SUFFIX") {
-      uiWarningMessage = "This name might not have a good suffix to be acceptable by CAC. While we keep on working to improve on our name search engine, if the name is queried by CAC, you will receive an SMS/email to update the name.";
-    } 
-    else if (preFlightResult.status !== "PASSED") {
+    // Rule 1: Restricted Government/Global Words
+    if (RESTRICTED_WORDS.some(restricted => uppercaseName.includes(restricted))) {
       return NextResponse.json({
-        success: true,
-        isBlocked: true,
-        rejectionType: preFlightResult.status,
-        reasonMessage: preFlightResult.reason,
-        conflicts: [], 
+        success: true, isBlocked: true, rejectionType: "RESTRICTED_WORD", conflicts: [],
+        reasonMessage: "This name contains restricted terminology (e.g., Federal, National, State) and requires special consent from the CAC.",
         data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
       });
+    }
+
+    // Rule 2: LLC Suffix Check
+    if (entityType === "Company (LLC)") {
+      const hasLlcSuffix = LLC_SUFFIXES.includes(lastWord);
+      if (!hasLlcSuffix) {
+        return NextResponse.json({
+          success: true, isBlocked: true, rejectionType: "MISSING_LLC_SUFFIX", conflicts: [],
+          reasonMessage: "A Limited Liability Company must end with 'LTD', 'LIMITED', 'PLC', or 'GTE'.",
+          data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
+        });
+      }
+    }
+
+    // Rule 3: Business Name Rules (Illegal Suffixes & Missing Qualifiers)
+    if (entityType === "Business Name") {
+      const hasIllegalLlcSuffix = LLC_SUFFIXES.includes(lastWord);
+      if (hasIllegalLlcSuffix) {
+        return NextResponse.json({
+          success: true, isBlocked: true, rejectionType: "ILLEGAL_SUFFIX", conflicts: [],
+          reasonMessage: "A Business Name cannot end with 'LTD', 'LIMITED', or 'PLC'.",
+          data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
+        });
+      }
+
+      // Check for valid qualifiers. If missing, DO NOT block. Just warn.
+      const hasValidQualifier = BN_QUALIFIERS.includes(lastWord);
+      if (!hasValidQualifier) {
+        uiWarningMessage = "Tip: Unless you are registering your exact personal legal name, CAC usually requires a qualifier like 'Ventures', 'Services', or 'Enterprises' at the end of a Business Name.";
+      }
     }
 
     // ==========================================
     // PHASE 2: CAC LIVE REGISTRY FETCH
     // ==========================================
-    const cacResponse = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
-      method: "POST",
-      headers: { "Accept": "application/json", "Content-Type": "application/json", "X_API_KEY": cacApiKey },
-      body: JSON.stringify({ proposedName: uppercaseName, lineOfBusiness }),
-    });
+    const cacApiKey = process.env.CAC_API_KEY;
+    if (!cacApiKey) throw new Error("Missing CAC API Key.");
 
-    if (!cacResponse.ok) {
+    try {
+      // AbortController to ensure we don't hold the user hostage if CAC is down
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const cacResponse = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
+        method: "POST",
+        headers: { "Accept": "application/json", "Content-Type": "application/json", "X_API_KEY": cacApiKey },
+        body: JSON.stringify({ proposedName: uppercaseName, lineOfBusiness }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!cacResponse.ok) {
+        throw new Error("Registry HTTP Error");
+      }
+
+      const cacJson = await cacResponse.json();
+
+      // EXACT MATCH FOUND -> BLOCK
+      if (cacJson.message === "Name exist") {
+        return NextResponse.json({
+          success: true,
+          isBlocked: true,
+          rejectionType: "EXACT_MATCH",
+          reasonMessage: "This exact name is already registered by another business.",
+          conflicts: [uppercaseName], 
+          data: { mostSimilarName: uppercaseName, cleansedNameUsed: uppercaseName }
+        });
+      }
+
+      // If CAC returns a highly similar name but it's not exact -> APPROVE (Let the human examiner decide later)
+      const similarityStr = cacJson.data?.similarityScore || "0%";
+      const similarityVal = parseInt(similarityStr);
+      const mostSimilarName = cacJson.data?.mostSimilarName || "N/A";
+
+      if (similarityVal > 0 && mostSimilarName !== "N/A") {
+        uiWarningMessage = uiWarningMessage 
+          ? `${uiWarningMessage} Also, a similarly named business (${mostSimilarName}) exists, which may cause a CAC query.`
+          : `Note: A similarly named business (${mostSimilarName}) exists. We will submit your application, but CAC may query it if the root words conflict.`;
+      }
+
       return NextResponse.json({
         success: true,
         isBlocked: false,
-        reasonMessage: "Registry connection is slow. Proceed, and we will verify manually.",
+        rejectionType: "PASSED",
+        reasonMessage: "Name appears to be available for registration.",
+        warningMessage: uiWarningMessage, 
+        conflicts: similarityVal > 0 ? [mostSimilarName] : [], 
+        data: {
+          mostSimilarName: mostSimilarName,
+          cleansedNameUsed: uppercaseName
+        }
+      });
+
+    } catch (networkError) {
+      // FAIL-OPEN: If CAC is offline, do NOT block the user. Take the payment and verify manually.
+      return NextResponse.json({
+        success: true,
+        isBlocked: false,
+        rejectionType: "PASSED",
+        reasonMessage: "Registry connection is currently slow. You may proceed, and we will verify your name manually during processing.",
         warningMessage: uiWarningMessage, 
         conflicts: [],
         data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
       });
     }
-
-    const cacJson = await cacResponse.json();
-
-    if (cacJson.success === false || cacJson.message?.includes("QUALIFIER") || cacJson.error?.includes("QUALIFIER")) {
-        return NextResponse.json({
-          success: true,
-          isBlocked: false, 
-          rejectionType: "PASSED_WITH_WARNING",
-          reasonMessage: "Name is available and ready for registration.",
-          warningMessage: uiWarningMessage || "Proceed with caution. The CAC examiner might query the chosen words.",
-          conflicts: [],
-          data: { mostSimilarName: "N/A", cleansedNameUsed: uppercaseName }
-        });
-    }
-    
-    // EXACT MATCH FOUND
-    if (cacJson.message === "Name exist") {
-      return NextResponse.json({
-        success: true,
-        isBlocked: true,
-        rejectionType: "EXACT_MATCH",
-        reasonMessage: "This exact name is already registered by another business.",
-        conflicts: [uppercaseName], 
-        data: { mostSimilarName: uppercaseName, cleansedNameUsed: uppercaseName }
-      });
-    }
-
-    const similarityStr = cacJson.data?.similarityScore || "0%";
-    const similarityVal = parseInt(similarityStr);
-    const mostSimilarName = cacJson.data?.mostSimilarName || "N/A";
-
-    // ==========================================
-    // PHASE 3: THE AI SEMANTIC ARBITER
-    // ==========================================
-    let finalIsBlocked = false;
-    let finalReasonMessage = "Name is available and ready for registration.";
-
-    if (similarityVal >= 75 && mostSimilarName !== "N/A") {
-      const semanticCheck = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are a Senior Examiner at the Nigerian Corporate Affairs Commission (CAC). A basic text-matching algorithm flagged these two names as highly similar. 
-            Determine if a human examiner would REJECT the proposed name for being confusingly similar to the existing one. Be slightly lenient if the entity type is different, but strict on root words.
-            
-            CRITICAL CAC GUIDELINES:
-            1. UNIQUE ROOT COLLISION (REJECT): If both names share a highly unique, invented, or distinct root word (e.g., 'QUADROX', 'ZINOX', 'XELLER') and only differ by a letter or by adding a word after (e.g., 'HOMES' vs 'TECHNOLOGIES LIMITED'), the CAC WILL REJECT IT. Return isConflict: true.
-            2. GENERIC WORD SHARING (APPROVE): If they share generic everyday words, Islamic/Christian names, or standard nouns (e.g., 'HALAL', 'MUKHTAR', 'OLIVIA', 'SERVICES', 'NIGERIA') but the distinct prefixes or accompanying words differ (e.g., 'NMY HALAH HUB' vs 'HALAL HOMES HUB'), the CAC will APPROVE it. Return isConflict: false.
-            3. EXACT PHONETIC COPY (REJECT): If they are very identical like 99% or pluralized versions of the exact same full name, REJECT IT.`
-          },
-          { role: "user", content: `Proposed Name: "${uppercaseName}"\nExisting Conflict: "${mostSimilarName}"` }
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "semantic_conflict_check",
-            schema: {
-              type: "object",
-              properties: {
-                isConflict: { type: "boolean" },
-                reason: { type: "string" }
-              },
-              required: ["isConflict", "reason"],
-              additionalProperties: false
-            },
-            strict: true
-          }
-        },
-        temperature: 0.1,
-      });
-
-      const semanticResult = JSON.parse(semanticCheck.choices[0].message.content || "{}");
-      finalIsBlocked = semanticResult.isConflict;
-      
-      if (finalIsBlocked) {
-        finalReasonMessage = `This name is too similar to an existing business. ${semanticResult.reason}`;
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      isBlocked: finalIsBlocked,
-      rejectionType: finalIsBlocked ? "SEMANTIC_CONFLICT" : "PASSED",
-      reasonMessage: finalReasonMessage,
-      warningMessage: uiWarningMessage, 
-      conflicts: finalIsBlocked ? [mostSimilarName] : [], 
-      data: {
-        mostSimilarName: mostSimilarName,
-        cleansedNameUsed: uppercaseName
-      }
-    });
 
   } catch (error) {
     console.error("Gateway Error:", error);
