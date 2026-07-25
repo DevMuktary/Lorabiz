@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   ShieldWarning, DownloadSimple, WarningCircle, 
   Eye, MagnifyingGlass, Check, X, ArrowLeft, Wrench,
-  Wallet, Sparkle, Question
+  Wallet, Sparkle, Question, IdentificationCard, DeviceMobile
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +14,12 @@ import NinResultModal from "@/components/features/tools/nin-slip/NinResultModal"
 import NinHistorySection, { SlipHistoryItem } from "@/components/features/tools/nin-slip/NinHistorySection";
 
 export default function NinSlipPage() {
-  const [nin, setNin] = useState("");
+  // NEW: Search Type State
+  const [searchType, setSearchType] = useState<"NIN" | "PHONE">("NIN");
+  const [identifier, setIdentifier] = useState("");
+  
   const [slipType, setSlipType] = useState<"nin_premium" | "nin_standard" | "nin_regular">("nin_regular");
   
-  // Status state for individual NIN options and prices from Admin Panel
   const [ninStatuses, setNinStatuses] = useState<{
     loading: boolean;
     options: Record<string, boolean>;
@@ -36,14 +38,15 @@ export default function NinSlipPage() {
     isOpen: false, src: "", label: ""
   });
 
-  // Confirmation Modal State
+  // Confirmation Modal State updated for dynamic identifier
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
-    nin: string;
+    identifier: string;
+    searchType: "NIN" | "PHONE";
     slipLabel: string;
     price: number;
     imgUrl: string;
-  }>({ isOpen: false, nin: "", slipLabel: "", price: 0, imgUrl: "" });
+  }>({ isOpen: false, identifier: "", searchType: "NIN", slipLabel: "", price: 0, imgUrl: "" });
 
   const [resultModal, setResultModal] = useState<{
     isOpen: boolean;
@@ -56,11 +59,9 @@ export default function NinSlipPage() {
 
   const [history, setHistory] = useState<SlipHistoryItem[]>([]);
 
-  // Fetch Live Toggles, Pricing & 24-Hour History from Database
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        // 1. Fetch Admin Settings & Pricing
         const settingsRes = await fetch("/api/settings/global", { cache: "no-store" });
         const settingsData = await settingsRes.json();
         
@@ -74,7 +75,6 @@ export default function NinSlipPage() {
             prices: prcs
           });
           
-          // Auto-select the first active option if current is disabled
           if (!opts[slipType]) {
             const available = Object.keys(opts).find(k => opts[k]);
             if (available) setSlipType(available as any);
@@ -83,7 +83,6 @@ export default function NinSlipPage() {
           setNinStatuses(p => ({ ...p, loading: false }));
         }
 
-        // 2. Fetch User's Real 24-Hour Print History
         const historyRes = await fetch("/api/tools/nin-slip/history", { cache: "no-store" });
         const historyData = await historyRes.json();
         if (historyData.success && historyData.history) {
@@ -97,21 +96,20 @@ export default function NinSlipPage() {
     fetchInitialData();
   }, [slipType]);
 
-  const triggerPdfDownload = (base64Data: string, ninNum: string) => {
+  const triggerPdfDownload = (base64Data: string, fileIdentifier: string) => {
     const linkSource = `data:application/pdf;base64,${base64Data}`;
     const downloadLink = document.createElement("a");
     downloadLink.href = linkSource;
-    downloadLink.download = `nin_slip_${ninNum}.pdf`;
+    downloadLink.download = `nin_slip_${fileIdentifier}.pdf`;
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
   };
 
-  // Intercept form submission to open confirmation modal
   const handleGenerateSlip = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{11}$/.test(nin)) {
-      setError("NIN must be exactly 11 digits.");
+    if (!/^\d{11}$/.test(identifier)) {
+      setError(`Your ${searchType === "NIN" ? "NIN" : "Phone Number"} must be exactly 11 digits.`);
       return;
     }
     if (!attestation1 || !attestation2) {
@@ -123,17 +121,16 @@ export default function NinSlipPage() {
     const selectedOption = SLIP_OPTIONS.find(o => o.id === slipType);
     const price = ninStatuses.prices[slipType] || 0;
 
-    // Open Confirmation Alert instead of firing API immediately
     setConfirmModal({
       isOpen: true,
-      nin,
+      identifier,
+      searchType,
       slipLabel: selectedOption?.label || "NIN Slip",
       price,
       imgUrl: selectedOption?.img || "/examples/nin_regular_example.png"
     });
   };
 
-  // Actual API execution after user confirms in the modal
   const executeSlipGeneration = async () => {
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
     const selectedOption = SLIP_OPTIONS.find(o => o.id === slipType);
@@ -141,7 +138,7 @@ export default function NinSlipPage() {
     setResultModal({
       isOpen: true,
       status: "loading",
-      nin,
+      nin: identifier,
       slipLabel: selectedOption?.label
     });
 
@@ -150,7 +147,8 @@ export default function NinSlipPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nin,
+          identifier,
+          searchType,
           slipType,
           attestationsAccepted: attestation1 && attestation2
         })
@@ -167,20 +165,20 @@ export default function NinSlipPage() {
         return;
       }
 
-      triggerPdfDownload(data.pdfBase64, nin);
+      triggerPdfDownload(data.pdfBase64, identifier);
 
       setResultModal({
         isOpen: true,
         status: "success",
         pdfBase64: data.pdfBase64,
-        nin,
+        nin: identifier,
         slipLabel: selectedOption?.label
       });
 
       setHistory(prev => [
         {
           id: Date.now().toString(),
-          ninMasked: `${nin.slice(0, 3)}*****${nin.slice(-3)}`,
+          ninMasked: `${identifier.slice(0, 3)}*****${identifier.slice(-3)}`,
           slipType: selectedOption?.label || "Regular Slip",
           createdAt: "Just now",
           pdfBase64: data.pdfBase64,
@@ -204,7 +202,6 @@ export default function NinSlipPage() {
     { id: "nin_standard" as const, label: "Standard Biometric Slip", desc: "Compact layout containing high-density biometric and identification parameters.", img: "/examples/nin_standard_example.png" },
   ];
 
-  // Helper variables for component states
   const isSelectedActive = ninStatuses.loading ? true : ninStatuses.options[slipType];
   const allDisabled = !ninStatuses.loading && !Object.values(ninStatuses.options).some(v => v);
   const currentPrice = ninStatuses.loading ? null : ninStatuses.prices[slipType];
@@ -212,7 +209,6 @@ export default function NinSlipPage() {
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24">
       
-      {/* NAVIGATION: BACK TO DASHBOARD */}
       <div>
         <Link 
           href="/dashboard" 
@@ -223,20 +219,18 @@ export default function NinSlipPage() {
         </Link>
       </div>
 
-      {/* HEADER SECTION WITH NIMC LOGO */}
       <div className="flex items-center gap-4 border-b border-border pb-5">
         <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center p-2.5 border border-border shrink-0 shadow-sm">
           <Image src="/nimc.png" width={44} height={44} alt="NIMC Logo" className="object-contain" priority />
         </div>
         <div>
-          <h1 className="text-2xl font-black text-foreground">NIN Slip Generation & Printing Tool</h1>
-          <p className="text-sm font-medium text-muted-foreground mt-0.5">Direct query connection to generate standardized identity slips.</p>
+          <h1 className="text-2xl font-black text-foreground">NIN Slip Generation & Printing</h1>
+          <p className="text-sm font-medium text-muted-foreground mt-0.5">Generate standardized identity slips via NIN or Phone Number.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
         
-        {/* CONFIGURATION FORM */}
         <form onSubmit={handleGenerateSlip} className="md:col-span-2 space-y-6">
           
           {error && (
@@ -246,7 +240,6 @@ export default function NinSlipPage() {
             </div>
           )}
 
-          {/* GLOBAL MAINTENANCE BANNER IF ALL ARE OFF */}
           {allDisabled && (
             <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl text-amber-600 text-sm font-bold flex items-center gap-3 animate-in fade-in">
               <Wrench weight="fill" size={24} className="shrink-0" />
@@ -254,26 +247,63 @@ export default function NinSlipPage() {
             </div>
           )}
 
-          <div className="bg-card border border-border rounded-2xl p-5 space-y-2 shadow-sm">
-            <label htmlFor="nin" className="text-sm font-black text-foreground uppercase tracking-wider">National Identity Number (NIN)</label>
+          {/* SEARCH METHOD TOGGLE */}
+          <div className="bg-secondary/40 p-1.5 rounded-2xl flex border border-border">
+            <button
+              type="button"
+              onClick={() => { setSearchType("NIN"); setIdentifier(""); setError(null); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-all cursor-pointer ${
+                searchType === "NIN" 
+                  ? "bg-background text-foreground shadow-sm border border-border/50" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+              }`}
+            >
+              <IdentificationCard size={20} weight={searchType === "NIN" ? "fill" : "regular"} />
+              Query by NIN
+            </button>
+            <button
+              type="button"
+              onClick={() => { setSearchType("PHONE"); setIdentifier(""); setError(null); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-all cursor-pointer ${
+                searchType === "PHONE" 
+                  ? "bg-background text-foreground shadow-sm border border-border/50" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+              }`}
+            >
+              <DeviceMobile size={20} weight={searchType === "PHONE" ? "fill" : "regular"} />
+              Query by Phone
+            </button>
+          </div>
+
+          {/* DYNAMIC INPUT FIELD */}
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-2 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+            <label htmlFor="identifier" className="text-sm font-black text-foreground uppercase tracking-wider">
+              {searchType === "NIN" ? "National Identity Number (NIN)" : "Registered Phone Number"}
+            </label>
             <div className="relative">
-              <span className="absolute left-4 top-3.5 text-muted-foreground font-bold text-sm select-none">NIN</span>
+              <span className="absolute left-4 top-3.5 text-muted-foreground font-bold text-sm select-none">
+                {searchType === "NIN" ? "NIN" : "TEL"}
+              </span>
               <Input
-                id="nin"
+                id="identifier"
                 type="text"
                 maxLength={11}
-                value={nin}
+                value={identifier}
                 onChange={(e) => {
-                  setNin(e.target.value.replace(/\D/g, ""));
+                  setIdentifier(e.target.value.replace(/\D/g, ""));
                   if (error) setError(null);
                 }}
-                placeholder="Enter 11-digit identification number"
+                placeholder={searchType === "NIN" ? "Enter 11-digit NIN" : "e.g. 08012345678"}
                 className="pl-14 h-12 text-base tracking-[3px] font-black bg-secondary/30 border-border text-foreground focus-visible:ring-[#ff3f7a]"
               />
             </div>
+            <p className="text-xs text-muted-foreground font-medium pt-1">
+              {searchType === "PHONE" 
+                ? "Enter the exact phone number linked to the NIN profile." 
+                : "Enter the 11-digit number on the applicant's NIN slip."}
+            </p>
           </div>
 
-          {/* SLIP TYPE SELECTION */}
           <div className="space-y-4">
             <h3 className="text-sm font-black text-foreground uppercase tracking-widest border-b border-border pb-2">Select Preferred Slip Print Format</h3>
             <div className="space-y-3">
@@ -332,7 +362,6 @@ export default function NinSlipPage() {
             </div>
           </div>
 
-          {/* STATUTORY ATTESTATIONS */}
           <div className="bg-amber-500/5 border-2 border-amber-500/20 rounded-3xl p-5 space-y-4 shadow-sm">
             <div className="flex items-center gap-2 border-b border-amber-500/10 pb-2">
               <ShieldWarning size={20} className="text-amber-500" weight="fill" />
@@ -368,7 +397,7 @@ export default function NinSlipPage() {
 
           <Button
             type="submit"
-            disabled={!attestation1 || !attestation2 || nin.length !== 11 || !isSelectedActive || allDisabled}
+            disabled={!attestation1 || !attestation2 || identifier.length !== 11 || !isSelectedActive || allDisabled}
             className="w-full h-14 font-black bg-[#ff3f7a] text-white hover:bg-[#e02b62] rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#ff3f7a]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             <DownloadSimple size={20} weight="bold" /> 
@@ -377,7 +406,6 @@ export default function NinSlipPage() {
 
         </form>
 
-        {/* SIDE BAR PREVIEWS */}
         <div className="space-y-4 hidden md:block">
           <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Layout Specimens</h3>
           <div className="space-y-4">
@@ -401,10 +429,8 @@ export default function NinSlipPage() {
 
       </div>
 
-      {/* ISOLATED HISTORY COMPONENT */}
       <NinHistorySection history={history} />
 
-      {/* ISOLATED RESULT MODAL COMPONENT */}
       <NinResultModal
         isOpen={resultModal.isOpen}
         status={resultModal.status}
@@ -415,12 +441,11 @@ export default function NinSlipPage() {
         onClose={() => setResultModal({ isOpen: false, status: "loading" })}
       />
 
-      {/* BEAUTIFUL CUSTOM CONFIRMATION MODAL */}
+      {/* CONFIRMATION MODAL */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="bg-card border border-border w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             
-            {/* Modal Header */}
             <div className="bg-[#ff3f7a]/10 border-b border-[#ff3f7a]/20 p-5 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-xl bg-[#ff3f7a] text-white flex items-center justify-center shadow-md shadow-[#ff3f7a]/20">
@@ -439,10 +464,8 @@ export default function NinSlipPage() {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 space-y-5">
               
-              {/* Slip Specimen Preview */}
               <div className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Selected Layout Specimen</span>
                 <div className="relative w-full h-36 rounded-2xl bg-secondary/50 border border-border overflow-hidden flex items-center justify-center p-2">
@@ -450,11 +473,13 @@ export default function NinSlipPage() {
                 </div>
               </div>
 
-              {/* Transaction Summary Box */}
               <div className="bg-secondary/40 border border-border rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-muted-foreground">Target NIN:</span>
-                  <span className="text-foreground tracking-widest font-mono font-black text-sm">{confirmModal.nin}</span>
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    {confirmModal.searchType === "NIN" ? <IdentificationCard size={16} /> : <DeviceMobile size={16} />}
+                    Target {confirmModal.searchType === "NIN" ? "NIN" : "Phone"}:
+                  </span>
+                  <span className="text-foreground tracking-widest font-mono font-black text-sm">{confirmModal.identifier}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span className="text-muted-foreground">Slip Format:</span>
@@ -474,7 +499,6 @@ export default function NinSlipPage() {
                 By confirming, <strong className="text-foreground">₦{confirmModal.price.toLocaleString()}</strong> will be debited from your wallet balance immediately to query the NIMC database.
               </p>
 
-              {/* Action Buttons */}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <Button 
                   type="button"
