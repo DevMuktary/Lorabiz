@@ -76,7 +76,7 @@ export async function POST(req: Request) {
             role: "system",
             content: `You are a Corporate Naming Specialist. The user's proposed name was taken. 
             Generate exactly 4 highly distinct, creative, and professional alternative names for their business.
-            - Change the root word entirely (e.g., if they asked for 'QUADROX', suggest 'NEXUS', 'VORTEX', 'SYNTHESIS').
+            - Don't Change the root word entirely, just add distiguisher becauuse that root is the most importsant to people (e.g., if they asked for 'VORTEX TECH', suggest 'VORTEX VENNTURES', 'VORTEX ENTERPRISES', 'VORTEX SYNTHESIS').
             - ${suffixRule}
             - Output ONLY a JSON array of strings.`
           },
