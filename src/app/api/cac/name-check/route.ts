@@ -6,10 +6,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Fast, zero-cost JS dictionaries for the Gatekeeper
+// Strict arrays for things that are ILLEGAL by law
 const RESTRICTED_WORDS = ["FEDERAL", "NATIONAL", "GOVERNMENT", "STATE", "REGIONAL", "COOPERATIVE", "CHAMBER OF COMMERCE", "NIGERIAN"];
 const LLC_SUFFIXES = ["LTD", "LIMITED", "PLC", "GTE", "ULC"];
-const BN_QUALIFIERS = ["VENTURES", "ENTERPRISES", "SERVICES", "CONCEPTS", "HUB", "GLOBAL", "SYNERGY", "SOLUTIONS", "CONSULTS", "FARMS", "TRADING", "AGENCY", "BUSINESS", "LOGISTICS", "GROUP", "CLINIC", "STORE", "STORES", "MERCHANTS"];
 
 export async function POST(req: Request) {
   try {
@@ -58,7 +57,7 @@ export async function POST(req: Request) {
     }
 
     // ==========================================
-    // MODE: INSTANT SUGGESTION GENERATOR (NO LOOPS)
+    // MODE: INSTANT SUGGESTION GENERATOR 
     // Generates 4 distinct names instantly for the UI
     // ==========================================
     if (mode === "SUGGEST") {
@@ -68,7 +67,7 @@ export async function POST(req: Request) {
 
       const suffixRule = entityType === "Company (LLC)" 
         ? "MUST end with 'LIMITED' or 'LTD'." 
-        : "MUST end with a qualifier like 'VENTURES', 'CONCEPTS', or 'SERVICES'. DO NOT use 'LIMITED'.";
+        : "MUST end with a generic business qualifier (like VENTURES, STUDIOS, HUB, etc). DO NOT use 'LIMITED'.";
 
       const aiSuggestion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -79,7 +78,7 @@ export async function POST(req: Request) {
             Generate exactly 4 highly distinct, creative, and professional alternative names for their business.
             - Change the root word entirely (e.g., if they asked for 'QUADROX', suggest 'NEXUS', 'VORTEX', 'SYNTHESIS').
             - ${suffixRule}
-            - Output ONLY a JSON array of strings. No markdown, no explanations.`
+            - Output ONLY a JSON array of strings.`
           },
           {
             role: "user",
@@ -92,7 +91,6 @@ export async function POST(req: Request) {
 
       const parsedResponse = JSON.parse(aiSuggestion.choices[0].message.content || '{"names": []}');
       
-      // Fallback just in case OpenAI fails
       const fallbackSuffix = entityType === "Company (LLC)" ? "LIMITED" : "CONCEPTS";
       const root = proposedName.split(" ")[0].substring(0, 5);
       const safeNames = parsedResponse.names.length > 0 ? parsedResponse.names : [
@@ -103,7 +101,7 @@ export async function POST(req: Request) {
     }
 
     // ==========================================
-    // MODE: STANDARD CHECK (Blazing Fast Regex Gatekeeper)
+    // MODE: STANDARD CHECK (Fast Rule Check + AI Qualifier Check)
     // ==========================================
     if (!proposedName) {
       return NextResponse.json({ success: false, message: "Proposed name is required." }, { status: 400 });
@@ -113,12 +111,9 @@ export async function POST(req: Request) {
     const wordsInName = uppercaseName.split(" ");
     const lastWord = wordsInName[wordsInName.length - 1];
 
-    let isBlocked = false;
-    let rejectionType = "PASSED";
-    let reasonMessage = "Name is available and ready for registration.";
     let uiWarningMessage = "";
 
-    // Rule 1: Restricted Government/Global Words
+    // Rule 1: Restricted Government/Global Words (INSTANT REJECT)
     if (RESTRICTED_WORDS.some(restricted => uppercaseName.includes(restricted))) {
       return NextResponse.json({
         success: true, isBlocked: true, rejectionType: "RESTRICTED_WORD", conflicts: [],
@@ -127,7 +122,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Rule 2: LLC Suffix Check
+    // Rule 2: LLC Suffix Check (INSTANT REJECT)
     if (entityType === "Company (LLC)") {
       const hasLlcSuffix = LLC_SUFFIXES.includes(lastWord);
       if (!hasLlcSuffix) {
@@ -139,7 +134,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Rule 3: Business Name Rules (Illegal Suffixes & Missing Qualifiers)
+    // Rule 3: Business Name Rules
     if (entityType === "Business Name") {
       const hasIllegalLlcSuffix = LLC_SUFFIXES.includes(lastWord);
       if (hasIllegalLlcSuffix) {
@@ -150,10 +145,31 @@ export async function POST(req: Request) {
         });
       }
 
-      // Check for valid qualifiers. If missing, DO NOT block. Just warn.
-      const hasValidQualifier = BN_QUALIFIERS.includes(lastWord);
-      if (!hasValidQualifier) {
-        uiWarningMessage = "Tip: Unless you are registering your exact personal legal name, CAC usually requires a qualifier like 'Ventures', 'Services', or 'Enterprises' at the end of a Business Name.";
+      // Fast AI Qualifier Check (Just to toggle the warning message, NEVER to block)
+      try {
+        const qualifierCheck = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: `You are a corporate naming classifier. Determine if the proposed name ends with a valid generic business qualifier/suffix (e.g., Ventures, Enterprises, Services, Studios, Dynamics, Creations, Hub, Clinic, Farms, Global, etc.).
+              If it has a valid business qualifier, return hasQualifier: true.
+              If it is just a pure personal name (e.g., "John Doe") or lacks a descriptor, return hasQualifier: false.`
+            },
+            { role: "user", content: `Proposed Name: "${uppercaseName}"` }
+          ],
+          response_format: { type: "json_schema", json_schema: { name: "qualifier_check", schema: { type: "object", properties: { hasQualifier: { type: "boolean" } }, required: ["hasQualifier"], additionalProperties: false }, strict: true } },
+          temperature: 0.1,
+        });
+
+        const checkResult = JSON.parse(qualifierCheck.choices[0].message.content || '{"hasQualifier": true}');
+        
+        if (!checkResult.hasQualifier) {
+          uiWarningMessage = "Tip: Unless you are registering your exact personal legal name, CAC usually requires a qualifier like 'Ventures' or 'Services' at the end of a Business Name.";
+        }
+      } catch (aiError) {
+        // If OpenAI fails or times out, we just swallow it and move on. Do not interrupt checkout!
+        console.warn("AI Qualifier check skipped due to error.");
       }
     }
 
@@ -164,7 +180,6 @@ export async function POST(req: Request) {
     if (!cacApiKey) throw new Error("Missing CAC API Key.");
 
     try {
-      // AbortController to ensure we don't hold the user hostage if CAC is down
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
 
@@ -195,7 +210,7 @@ export async function POST(req: Request) {
         });
       }
 
-      // If CAC returns a highly similar name but it's not exact -> APPROVE (Let the human examiner decide later)
+      // If highly similar -> APPROVE (Let human examiner decide) but add warning
       const similarityStr = cacJson.data?.similarityScore || "0%";
       const similarityVal = parseInt(similarityStr);
       const mostSimilarName = cacJson.data?.mostSimilarName || "N/A";
@@ -220,7 +235,7 @@ export async function POST(req: Request) {
       });
 
     } catch (networkError) {
-      // FAIL-OPEN: If CAC is offline, do NOT block the user. Take the payment and verify manually.
+      // FAIL-OPEN: If CAC is offline, do NOT block the user.
       return NextResponse.json({
         success: true,
         isBlocked: false,
