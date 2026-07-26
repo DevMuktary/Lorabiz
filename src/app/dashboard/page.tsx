@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { ArrowRight, Sparkle, X, Info, Plus, Spinner } from "@phosphor-icons/react";
@@ -285,6 +286,12 @@ export default function DashboardPage() {
           </button>
         </div>
       )}
+
+      {/* LoraBiz Support Widget Embed */}
+      <Script 
+        src="https://support.lorabiz.com/lorabiz-chat.js" 
+        strategy="afterInteractive" 
+      />
     </div>
   );
 }
