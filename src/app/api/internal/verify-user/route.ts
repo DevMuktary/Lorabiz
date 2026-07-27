@@ -17,9 +17,10 @@ export async function POST(req: Request) {
     }
 
     // 2. CHECK THE MAIN DATABASE
+    // Fix: Using firstName and lastName based on your Prisma schema
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
-      select: { id: true, name: true, email: true }
+      select: { id: true, firstName: true, lastName: true, email: true }
     });
 
     // 3. RETURN THE VERDICT
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ 
         exists: true, 
         userId: user.id, 
-        name: user.name 
+        name: `${user.firstName} ${user.lastName}` // Combine them for the support system
       }, { status: 200 });
     } else {
       return NextResponse.json({ exists: false }, { status: 404 });
