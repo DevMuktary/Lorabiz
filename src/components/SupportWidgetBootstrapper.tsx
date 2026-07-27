@@ -2,10 +2,11 @@
 
 import { useSession } from "next-auth/react";
 import Script from "next/script";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export function SupportWidgetBootstrapper() {
   const { data: session, status } = useSession();
+  const [scriptLoaded, setScriptLoaded] = useState(false);
 
   useEffect(() => {
     console.log(`[LORA: MAIN APP] Session Status: ${status}`);
@@ -24,6 +25,7 @@ export function SupportWidgetBootstrapper() {
     }
 
     if (typeof window !== 'undefined') {
+      // Check if the script has attached our new function to the window
       if ((window as any).LORA_INIT_WIDGET) {
         console.log("[LORA: MAIN APP] Calling LORA_INIT_WIDGET directly.");
         (window as any).LORA_INIT_WIDGET(authData);
@@ -32,13 +34,17 @@ export function SupportWidgetBootstrapper() {
         (window as any).lorabizUserAuthData = authData;
       }
     }
-  }, [session, status]);
+  }, [session, status, scriptLoaded]); // Re-run this when the script successfully loads
 
   return (
     <Script 
-      src="https://support.lorabiz.com/lorabiz-chat.js" 
+      // THE FIX: Adding ?v=2.0 forces the browser to download the NEW script!
+      src="https://support.lorabiz.com/lorabiz-chat.js?v=2.0" 
       strategy="afterInteractive" 
-      onLoad={() => console.log("[LORA: MAIN APP] lorabiz-chat.js Script Loaded successfully.")}
+      onLoad={() => {
+        console.log("[LORA: MAIN APP] lorabiz-chat.js Script Loaded successfully.");
+        setScriptLoaded(true); // Tells the app the script is ready to receive data
+      }}
       onError={() => console.error("[LORA: MAIN APP ERROR] Failed to load lorabiz-chat.js")}
     />
   );
