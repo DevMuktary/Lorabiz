@@ -8,25 +8,20 @@ export function SupportWidgetBootstrapper() {
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    // Wait until NextAuth has fully checked the session
     if (status === "loading") return;
 
     const authData = session?.user ? {
-      userId: (session.user as any).id || session.user.email, 
+      userId: (session.user as any).id || session.user.email,
       name: session.user.name || "",
       email: session.user.email || ""
     } : null;
 
-    (window as any).lorabizUserAuthData = authData;
-
-    // PROACTIVE PUSH: If the iframe loaded faster than NextAuth, 
-    // forcefully push the user data into the widget now!
-    const iframe = document.getElementById('lorabiz-support-iframe') as HTMLIFrameElement;
-    if (iframe && iframe.contentWindow) {
-       iframe.contentWindow.postMessage({ 
-         type: 'LORA_INIT_AUTH', 
-         payload: authData
-       }, '*');
+    // If the external script has already loaded and exposed its init function, call it.
+    if (typeof window !== 'undefined' && (window as any).LORA_INIT_WIDGET) {
+      (window as any).LORA_INIT_WIDGET(authData);
+    } else {
+      // If the script is still downloading, save it here so it can read it immediately when ready
+      (window as any).lorabizUserAuthData = authData;
     }
   }, [session, status]);
 
