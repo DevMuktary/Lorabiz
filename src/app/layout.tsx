@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
-import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper"; // <-- ADD THIS IMPORT
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -31,11 +30,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning is necessary here for next-themes
     <html lang="en" suppressHydrationWarning>
       <body className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-background text-foreground min-h-[100dvh] flex flex-col transition-colors duration-300`}>
         <Providers>
           {children}
-          <SupportWidgetBootstrapper /> {/* <-- ADD THIS LINE HERE */}
         </Providers>
       </body>
     </html>
