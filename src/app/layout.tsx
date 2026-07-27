@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
+import Script from "next/script";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -36,6 +37,12 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+
+        {/* FIX: Use Next.js Script tag so it persists across page navigations */}
+        <Script 
+          src="https://support.lorabiz.com/lorabiz-chat.js" 
+          strategy="afterInteractive" 
+        />
       </body>
     </html>
   );
