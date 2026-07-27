@@ -9,7 +9,6 @@ export function SupportWidgetBootstrapper() {
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
   useEffect(() => {
-    console.log(`[LORA: MAIN APP] Session Status: ${status}`);
     if (status === "loading") return;
 
     let authData = null;
@@ -19,33 +18,22 @@ export function SupportWidgetBootstrapper() {
         name: session.user.name || "",
         email: session.user.email || ""
       };
-      console.log("[LORA: MAIN APP] Auth Data Extracted:", authData);
-    } else {
-      console.log("[LORA: MAIN APP] No user session found. Initializing as anonymous.");
     }
 
     if (typeof window !== 'undefined') {
-      // Check if the script has attached our new function to the window
       if ((window as any).LORA_INIT_WIDGET) {
-        console.log("[LORA: MAIN APP] Calling LORA_INIT_WIDGET directly.");
         (window as any).LORA_INIT_WIDGET(authData);
       } else {
-        console.log("[LORA: MAIN APP] Script not loaded yet. Saving to window.lorabizUserAuthData.");
         (window as any).lorabizUserAuthData = authData;
       }
     }
-  }, [session, status, scriptLoaded]); // Re-run this when the script successfully loads
+  }, [session, status, scriptLoaded]); 
 
   return (
     <Script 
-      // THE FIX: Adding ?v=2.0 forces the browser to download the NEW script!
       src="https://support.lorabiz.com/lorabiz-chat.js?v=2.0" 
       strategy="afterInteractive" 
-      onLoad={() => {
-        console.log("[LORA: MAIN APP] lorabiz-chat.js Script Loaded successfully.");
-        setScriptLoaded(true); // Tells the app the script is ready to receive data
-      }}
-      onError={() => console.error("[LORA: MAIN APP ERROR] Failed to load lorabiz-chat.js")}
+      onLoad={() => setScriptLoaded(true)}
     />
   );
 }
