@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma'; // Adjust this import if your prisma client is located elsewhere
+import { prisma } from '@/lib/prisma'; 
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { email, secret } = body;
 
-    // 1. STRICT SECURITY GATE: Reject anyone without the exact secret key
+    // 1. STRICT SECURITY GATE
     if (secret !== process.env.INTERNAL_API_SECRET) {
       console.warn(`[SECURITY WARNING] Unauthorized access attempt to /api/internal/verify-user`);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
