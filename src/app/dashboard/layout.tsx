@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
+import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper"; // <--- IMPORT ADDED
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
@@ -64,7 +65,6 @@ const NAVIGATION: NavCategory[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  // Call update so we have access to it to force session refreshes if needed later
   const { data: session, update } = useSession();
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -125,7 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = getUserInitials();
 
   return (
-    <div className="min-h-screen w-full bg-secondary/10 text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground">
+    <div className="min-h-screen w-full bg-secondary/10 text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
       
       {isMobileMenuOpen && (
         <div 
@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      {/* SIDEBAR - Fixed layout so it stays put while scrolling the main area */}
+      {/* SIDEBAR */}
       <aside className={`
         fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[280px] h-screen bg-card border-r border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
@@ -158,7 +158,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        {/* Scrollable inner navigation */}
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-7 custom-scrollbar">
           {NAVIGATION.map((group) => (
             <div key={group.category} className="space-y-2">
@@ -228,8 +227,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        
-        {/* HEADER - Kept Sticky */}
         <header className="sticky top-0 z-40 h-20 bg-background/95 backdrop-blur-md border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm">
           <div className="flex items-center gap-4">
             <button 
@@ -255,7 +252,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <ThemeToggle />
             <NotificationBell />
 
-            {/* THE FIX: Dynamic Profile Picture with Initials Fallback */}
             <div className="h-10 w-10 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[13px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0">
               {session?.user?.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -264,7 +260,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   alt="Profile" 
                   className="h-full w-full object-cover" 
                   onError={(e) => {
-                    // Fallback to initials if image fails to load
                     (e.target as HTMLImageElement).style.display = 'none';
                     (e.target as HTMLImageElement).parentElement!.innerHTML = initials;
                   }}
@@ -276,13 +271,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* MAIN BODY - No fixed height, allows natural scrolling */}
-        <main className="flex-1 p-5 lg:p-8 pb-24">
+        <main className="flex-1 p-5 lg:p-8 pb-24 relative">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
             {children}
           </div>
         </main>
-
       </div>
 
       {sidebarAlert && (
@@ -303,6 +296,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
+      {/* SUPPORT WIDGET INSTALLED HERE IN THE DASHBOARD */}
+      <SupportWidgetBootstrapper />
     </div>
   );
 }
