@@ -1,18 +1,23 @@
 @import "tailwindcss";
 
+/* 1. CRITICAL TAILWIND v4 FIX: Tell Tailwind to listen to the .dark class */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
-    --background: 210 40% 98%; /* Crisp slate-50 */
-    --foreground: 222.2 84% 4.9%; /* Deep readable text */
+    color-scheme: light; /* 2. FIX: Tells browser to make native dropdowns/scrollbars light */
     
-    --card: 0 0% 100%; /* Pure white cards */
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+    
+    --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
     
-    --primary: 332 63% 48%; /* Your vibrant Lorabiz pink */
-    --primary-foreground: 210 40% 98%; /* White text on pink buttons */
+    --primary: 332 63% 48%;
+    --primary-foreground: 210 40% 98%;
     
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -34,10 +39,12 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%; /* Deep premium pitch */
-    --foreground: 210 40% 98%; /* Bright white text */
+    color-scheme: dark; /* 2. FIX: Tells browser to make native dropdowns/scrollbars dark */
     
-    --card: 217.2 32.6% 10%; /* Slightly elevated dark cards */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    
+    --card: 217.2 32.6% 10%;
     --card-foreground: 210 40% 98%;
     
     --popover: 217.2 32.6% 10%;
@@ -50,7 +57,7 @@
     --secondary-foreground: 210 40% 98%;
     
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%; /* Readable gray in dark mode */
+    --muted-foreground: 215 20.2% 65.1%;
     
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
