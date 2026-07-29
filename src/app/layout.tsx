@@ -11,10 +11,10 @@ const jetbrainsMono = JetBrains_Mono({
 
 // Heavy SEO Configuration
 export const metadata: Metadata = {
-  metadataBase: new URL("https://lorabiz.com"), // Update this to your actual production domain
+  metadataBase: new URL("https://lorabiz.com"), // Update this to your actual production domain when you launch
   title: {
     default: "LoraBiz | CAC Registration, NIN Slips, SCUML & Airtime",
-    template: "%s | LoraBiz", // Sub-pages will automatically render as "Dashboard | LoraBiz"
+    template: "%s | LoraBiz", 
   },
   description: "Automate your corporate journey with LoraBiz. Seamlessly register your CAC Business Name or LLC, process EFCC SCUML certificates, generate instant NIN slips, and purchase fast airtime. Powered by Quadrox Technologies Limited.",
   keywords: [
@@ -40,14 +40,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    locale: "en_NG", // Specifically targets Nigerian local search
+    locale: "en_NG", 
     url: "/",
     title: "LoraBiz | Business Registration & Identity Services Made Easy",
     description: "Automate your corporate journey with LoraBiz. Seamlessly register your CAC Business Name or LLC, process SCUML certificates, get instant NIN slips, and purchase fast airtime.",
     siteName: "LoraBiz",
     images: [
       {
-        url: "/logo.png", // Next.js will resolve this against metadataBase
+        url: "/logo.png", 
         width: 1200,
         height: 630,
         alt: "LoraBiz Official Brand Logo",
@@ -74,16 +74,12 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
-    apple: "/favicon.ico", // Good for iOS home screen bookmarks
+    apple: "/favicon.ico", 
   },
 };
 
+// themeColor is explicitly removed from here because we are handling it dynamically in providers.tsx
 export const viewport: Viewport = {
-  // Dynamically switch the mobile status bar color based on OS preference
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
-  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1, 
