@@ -47,21 +47,33 @@ export async function POST(req: Request) {
       }, { status: 429 });
     }
 
-    // Generate new OTP and apply the next escalating cooldown
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // 4. THE STICKY OTP LOGIC
+    const isExpired = record.expiresAt < now;
+    
+    // Only generate a new OTP if the old one actually expired
+    const activeOtpCode = isExpired 
+      ? Math.floor(100000 + Math.random() * 900000).toString() 
+      : record.code;
+
+    // Only extend expiration if we generated a new code
+    const activeExpiration = isExpired 
+      ? new Date(now.getTime() + 10 * 60 * 1000) // 10 new mins
+      : record.expiresAt;
+
     const nextCooldownSeconds = ESCALATING_TIMEOUTS[newCount];
     
     await prisma.otpCode.update({
       where: { email },
       data: {
-        code: otpCode,
-        expiresAt: new Date(now.getTime() + 10 * 60 * 1000), // 10 mins
+        code: activeOtpCode,
+        expiresAt: activeExpiration,
         resendCount: newCount,
         nextResendAllowedAt: new Date(now.getTime() + nextCooldownSeconds * 1000),
       }
     });
 
-    await sendUserLoginOTP(email, otpCode);
+    // Send the code (either sticky old code or newly generated code)
+    await sendUserLoginOTP(email, activeOtpCode);
 
     return NextResponse.json({ 
       message: "OTP resent successfully", 
