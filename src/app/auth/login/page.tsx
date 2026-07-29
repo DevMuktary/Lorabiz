@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { 
   LockKey, SignIn, Spinner, CheckCircle, 
   ShieldCheck, Eye, EyeSlash, Info, X,
-  FacebookLogo, GoogleLogo, Lifebuoy, Star, At
+  FacebookLogo, GoogleLogo, Lifebuoy, Star, EnvelopeSimple
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,6 @@ function LoginContent() {
   // Carousel State for Left Panel
   const [currentSlide, setCurrentSlide] = useState(0);
   
-  // Updated to reflect the full suite of LoraBiz Services
   const testimonials = [
     { text: "Got my SCUML certificate in just a few hours. Absolutely lifesaving speed!", name: "Adeola M.", rating: 5 },
     { text: "Registered my CAC Business Name in minutes. The dashboard is incredibly smooth.", name: "Chinedu O.", rating: 5 },
@@ -144,13 +143,13 @@ function LoginContent() {
         email: formData.email,
         password: formData.password,
         portal: "user",
-        // captchaToken: captchaToken // Can be verified on backend in route.ts later
+        captchaToken: captchaToken 
       });
 
       if (res?.error) {
         setError(res.error === "CredentialsSignin" ? "Invalid email or password." : res.error);
         setLoading(false);
-        // Reset turnstile on failure
+        // CRITICAL: Reset Turnstile widget on failure so a retry gets a fresh token
         if ((window as any).turnstile) {
           (window as any).turnstile.reset();
           setCaptchaVerified(false);
@@ -254,10 +253,11 @@ function LoginContent() {
         <Lifebuoy className="h-6 w-6" weight="fill" />
       </a>
 
-      {/* LEFT PANEL - With Testimonials & Services Showcase */}
-      <aside className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-slate-900 relative overflow-hidden flex-col justify-between">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=1632&auto=format&fit=crop')] bg-cover bg-center opacity-30 mix-blend-overlay"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#ff3f7a]/90 via-slate-900/80 to-slate-900/40"></div>
+      {/* LEFT PANEL - With Instant CSS Gradient Background */}
+      <aside className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-slate-950 relative overflow-hidden flex-col justify-between">
+        {/* Instant CSS Radial Gradients (No external image loading delays) */}
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#ff3f7a]/20 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] right-[-20%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
         <div className="relative z-10 p-12">
           <Image src="/logo.png" alt="LoraBiz Official Logo" width={160} height={50} className="brightness-0 invert object-contain" priority />
@@ -265,37 +265,38 @@ function LoginContent() {
 
         <div className="relative z-10 p-12 space-y-8 max-w-xl">
           <h2 className="text-4xl xl:text-5xl font-bold leading-tight tracking-tight text-white">
-            SCUML, CAC, NIN & Airtime in one dashboard.
+            SCUML, CAC, NIN, Airtime, and more.
           </h2>
 
           {/* Testimonial Slider */}
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl min-h-[140px] flex flex-col justify-center transition-all duration-500 ease-in-out">
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl min-h-[140px] flex flex-col justify-center transition-all duration-500 ease-in-out shadow-2xl">
             <div className="flex gap-1 mb-3">
               {[...Array(5)].map((_, i) => (
                 <Star key={i} weight="fill" className="text-amber-400 h-5 w-5" />
               ))}
             </div>
-            <p className="text-white text-lg font-medium leading-relaxed italic">
+            <p className="text-white/90 text-lg font-medium leading-relaxed italic">
               "{testimonials[currentSlide].text}"
             </p>
-            <p className="text-white/70 mt-4 font-semibold">
+            <p className="text-white/60 mt-4 font-semibold">
               — {testimonials[currentSlide].name}
             </p>
           </div>
         </div>
 
-        <div className="relative z-10 p-12 flex flex-wrap gap-x-6 gap-y-2 opacity-60">
+        <div className="relative z-10 p-12 flex flex-wrap gap-x-6 gap-y-2 opacity-50">
            <span className="text-white font-bold tracking-widest uppercase text-sm">CAC Accredited</span>
            <span className="text-white font-bold tracking-widest uppercase text-sm">•</span>
            <span className="text-white font-bold tracking-widest uppercase text-sm">NIMC Partner</span>
            <span className="text-white font-bold tracking-widest uppercase text-sm">•</span>
            <span className="text-white font-bold tracking-widest uppercase text-sm">EFCC / SCUML</span>
+           <span className="text-white font-bold tracking-widest uppercase text-sm">•</span>
+           <span className="text-white font-bold tracking-widest uppercase text-sm">And More</span>
         </div>
       </aside>
 
       {/* RIGHT PANEL - Login Form */}
       <section className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-background">
-        {/* Increased panel size from max-w-md to max-w-lg and xl:max-w-xl for desktop */}
         <article className="w-full max-w-lg xl:max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-2 sm:mt-8">
           
           <div className="mb-8 flex justify-center lg:hidden">
@@ -326,8 +327,8 @@ function LoginContent() {
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground font-medium">Email Address</Label>
                 <div className="relative">
-                  {/* Changed icon to bold 'At' symbol */}
-                  <At className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" weight="bold" />
+                  {/* Changed back to the standard Envelope icon */}
+                  <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" weight="bold" />
                   <Input 
                     id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
                     required placeholder="you@example.com" aria-label="Email Address"
@@ -362,9 +363,10 @@ function LoginContent() {
             <div className="pt-2 flex justify-center lg:justify-start">
                <div 
                  className="cf-turnstile" 
-                 data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"} 
+                 data-sitekey="0x4AAAAAAEA2i2RM9PiSsRCH" 
                  data-callback="onTurnstileSuccess"
-                 data-theme="light" // Or dynamic based on your app theme
+                 data-action="turnstile-spin-v2"
+                 data-theme="light"
                ></div>
             </div>
 
@@ -374,7 +376,7 @@ function LoginContent() {
               </Button>
             </div>
 
-            {/* Social Logins placed BELOW the form, stacking vertically on mobile */}
+            {/* Social Logins */}
             <div className="pt-4 pb-2">
               <div className="relative flex items-center py-2 mb-6">
                 <div className="flex-grow border-t border-border"></div>
@@ -382,7 +384,6 @@ function LoginContent() {
                 <div className="flex-grow border-t border-border"></div>
               </div>
 
-              {/* Flex-col on small screens, flex-row on SM and above */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button type="button" variant="outline" aria-label="Continue with Google" className="w-full h-12 border-border font-medium" onClick={() => showToast("Google login is coming soon!")}>
                   <GoogleLogo className="h-5 w-5 mr-2 text-rose-500" weight="bold" /> Google
