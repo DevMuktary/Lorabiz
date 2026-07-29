@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
-import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper"; // <--- IMPORT ADDED
+import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper";
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
@@ -41,6 +41,8 @@ const NAVIGATION: NavCategory[] = [
     links: [
       { name: "CAC Services", href: "/dashboard/cac", icon: Buildings },
       { name: "NIN Services", href: "/dashboard/tools/nin-slip", icon: IdentificationCard },
+      { name: "SCUML", href: "/dashboard/scuml", icon: ShieldCheck },
+      { name: "Airtime", href: "/dashboard/airtime", icon: DeviceMobile },
     ]
   },
   {
@@ -49,10 +51,8 @@ const NAVIGATION: NavCategory[] = [
       { name: "Tax ID (TIN)", href: "#", icon: Cards, isComingSoon: true, showSoonBadge: true },
       { name: "Change of Name", href: "#", icon: Article, isComingSoon: true },
       { name: "Post Incorporation", href: "#", icon: Buildings, isComingSoon: true },
-      { name: "SCUML", href: "#", icon: ShieldCheck, isComingSoon: true },
       { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
       { name: "SMEDAN", href: "#", icon: Handshake, isComingSoon: true },
-      { name: "Utility & Airtime", href: "#", icon: DeviceMobile, isComingSoon: true, showSoonBadge: true },
     ]
   },
   {
@@ -63,13 +63,19 @@ const NAVIGATION: NavCategory[] = [
   }
 ];
 
+export const dynamic = 'force-dynamic';
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { data: session, update } = useSession();
+  const { data: session } = useSession();
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
   const [sidebarAlert, setSidebarAlert] = useState<{title: string, message: string} | null>(null);
+  
+  // Smart Scroll Header State
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   useEffect(() => {
     if (sidebarAlert) {
@@ -77,6 +83,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return () => clearTimeout(timer);
     }
   }, [sidebarAlert]);
+
+  // Handle Smart Header Hiding
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Prevent bizarre behavior during iOS Safari rubber-band scrolling at the top
+      if (currentScrollY < 0) return;
+      
+      if (currentScrollY > lastScrollY && currentScrollY > 80) {
+        setIsHeaderVisible(false); // Hide when scrolling down
+      } else {
+        setIsHeaderVisible(true);  // Show when scrolling up
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   const handleSidebarWaitlist = async (serviceName: string) => {
     try {
@@ -104,6 +131,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     if (pathname.includes("/dashboard/cac")) return "CAC Services";
     if (pathname.includes("/dashboard/tools/nin-slip")) return "NIN Services";
+    if (pathname.includes("/dashboard/scuml")) return "SCUML";
+    if (pathname.includes("/dashboard/airtime")) return "Utility & Airtime";
     if (pathname.includes("/dashboard/transactions")) return "Transactions";
     return "Dashboard";
   };
@@ -136,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* SIDEBAR */}
       <aside className={`
-        fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[280px] h-screen bg-card border-r border-border 
+        fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[280px] h-[100dvh] bg-card border-r border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
         ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:translate-x-0 lg:flex"}
@@ -227,7 +256,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        <header className="sticky top-0 z-40 h-20 bg-background/95 backdrop-blur-md border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm">
+        <header 
+          className={`sticky top-0 z-40 h-20 bg-background/95 backdrop-blur-md border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm transition-transform duration-300 ease-in-out ${
+            isHeaderVisible ? "translate-y-0" : "-translate-y-full"
+          }`}
+        >
           <div className="flex items-center gap-4">
             <button 
               className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
