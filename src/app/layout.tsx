@@ -11,7 +11,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 // Heavy SEO Configuration
 export const metadata: Metadata = {
-  metadataBase: new URL("https://lorabiz.com"), // Update this to your actual production domain when you launch
+  metadataBase: new URL("https://lorabiz.com"), // Update this to your live domain
   title: {
     default: "LoraBiz | CAC Registration, NIN Slips, SCUML & Airtime",
     template: "%s | LoraBiz", 
@@ -78,8 +78,12 @@ export const metadata: Metadata = {
   },
 };
 
-// themeColor is explicitly removed from here because we are handling it dynamically in providers.tsx
 export const viewport: Viewport = {
+  // CRITICAL NATIVE FIX: The browser handles the mobile status bar instantly based on OS preference
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1, 
