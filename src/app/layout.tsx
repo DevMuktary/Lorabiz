@@ -81,11 +81,11 @@ export const metadata: Metadata = {
   },
 };
 
+// No themeColor here - it is managed dynamically by your Providers
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1, 
-  // themeColor is dynamically injected by Providers.tsx
 };
 
 export default function RootLayout({
