@@ -1,64 +1,52 @@
-import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono } from "next/font/google";
-import { Providers } from "@/components/providers";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next';
+import './globals.css';
+import { Providers } from '@/components/providers';
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
-// Heavy SEO Configuration
+// 1. Comprehensive SEO Metadata Configuration
 export const metadata: Metadata = {
-  metadataBase: new URL("https://lorabiz.com"), // Update this to your actual production domain
+  metadataBase: new URL('https://lorabiz.com'), // Replace with your actual production URL
   title: {
-    default: "LoraBiz | CAC Registration, NIN Slips, SCUML & Airtime",
-    template: "%s | LoraBiz", // Sub-pages will automatically render as "Dashboard | LoraBiz"
+    default: 'Lorabiz | Smart Business Management & Registrations',
+    template: '%s | Lorabiz',
   },
-  description: "Automate your corporate journey with LoraBiz. Seamlessly register your CAC Business Name or LLC, process EFCC SCUML certificates, generate instant NIN slips, and purchase fast airtime. Powered by Quadrox Technologies Limited.",
+  description:
+    'Lorabiz is a powerful platform for seamless business management, offering swift CAC registrations, LLC incorporations, NIN slip verifications, airtime services, and secure financial tools.',
   keywords: [
-    "CAC registration Nigeria",
-    "Business Name registration",
-    "LLC incorporation Nigeria",
-    "Company Registration CAC",
-    "SCUML certificate EFCC",
-    "Instant NIN slip generation",
-    "NIMC verified partner",
-    "Buy cheap airtime Nigeria",
-    "Quadrox Technologies Limited",
-    "LoraBiz dashboard",
-    "Corporate Affairs Commission portal"
+    'Lorabiz',
+    'CAC registration Nigeria',
+    'LLC incorporation',
+    'business name registration',
+    'NIN verification',
+    'airtime top-up',
+    'business management software',
+    'startup compliance',
   ],
-  authors: [{ name: "Quadrox Technologies Limited", url: "https://quadrox.com" }],
-  creator: "Quadrox Technologies Limited",
-  publisher: "LoraBiz",
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
+  authors: [{ name: 'QUADROX TECHNOLOGIES LIMITED' }],
+  creator: 'QUADROX TECHNOLOGIES LIMITED',
+  publisher: 'QUADROX TECHNOLOGIES LIMITED',
   openGraph: {
-    type: "website",
-    locale: "en_NG", // Specifically targets Nigerian local search
-    url: "/",
-    title: "LoraBiz | Business Registration & Identity Services Made Easy",
-    description: "Automate your corporate journey with LoraBiz. Seamlessly register your CAC Business Name or LLC, process SCUML certificates, get instant NIN slips, and purchase fast airtime.",
-    siteName: "LoraBiz",
+    type: 'website',
+    locale: 'en_NG',
+    url: '/',
+    title: 'Lorabiz | Smart Business Management & Registrations',
+    description:
+      'Streamline your business operations with Lorabiz. Expert tools for CAC registrations, identity verification, and financial management.',
+    siteName: 'Lorabiz',
     images: [
       {
-        url: "/logo.png", // Next.js will resolve this against metadataBase
+        url: '/logo.png', // Ensure this points to a high-res OG image in your public folder
         width: 1200,
         height: 630,
-        alt: "LoraBiz Official Brand Logo",
+        alt: 'Lorabiz Platform Logo',
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "LoraBiz | CAC, NIN, SCUML & Airtime Services",
-    description: "Seamlessly register your business, get instant NIN slips, and process SCUML certificates with LoraBiz.",
-    images: ["/logo.png"],
+    card: 'summary_large_image',
+    title: 'Lorabiz | Smart Business Management & Registrations',
+    description:
+      'Streamline your business operations with Lorabiz. Expert tools for CAC registrations, identity verification, and financial management.',
+    images: ['/logo.png'],
   },
   robots: {
     index: true,
@@ -71,34 +59,26 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: "/favicon.ico", // Good for iOS home screen bookmarks
-  },
 };
 
+// 2. Strict Viewport Configuration
+// Notice that `themeColor` is omitted here so our client-side `ThemeColorUpdater` can manage it dynamically.
 export const viewport: Viewport = {
-  // Dynamically switch the mobile status bar color based on OS preference
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
-  ],
-  width: "device-width",
+  width: 'device-width',
   initialScale: 1,
-  maximumScale: 1, 
+  maximumScale: 1,
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    // suppressHydrationWarning is necessary here for next-themes
+    // suppressHydrationWarning is strictly required on the html tag when using next-themes
     <html lang="en" suppressHydrationWarning>
-      <body className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-background text-foreground min-h-[100dvh] flex flex-col transition-colors duration-300`}>
-        <Providers>
+      <body>
+        <Providers attribute="class" defaultTheme="system" enableSystem>
           {children}
         </Providers>
       </body>
