@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import Script from "next/script";
 import { useState, useEffect, Suspense } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
-  EnvelopeSimple, LockKey, SignIn, Spinner, 
-  CheckCircle, ShieldCheck, Eye, EyeSlash, Info, X,
-  FacebookLogo, AppleLogo, Lifebuoy, Star
+  LockKey, SignIn, Spinner, CheckCircle, 
+  ShieldCheck, Eye, EyeSlash, Info, X,
+  FacebookLogo, GoogleLogo, Lifebuoy, Star, At
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +29,9 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
   
-  // Captcha & Toast States
+  // Real Cloudflare Turnstile States
   const [captchaVerified, setCaptchaVerified] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
   // OTP Modal & Timer States
@@ -46,18 +48,29 @@ function LoginContent() {
 
   // Carousel State for Left Panel
   const [currentSlide, setCurrentSlide] = useState(0);
+  
+  // Updated to reflect the full suite of LoraBiz Services
   const testimonials = [
-    { text: "LoraBiz registered my company in 3 days. Unbelievable speed!", name: "Adeola M.", rating: 5 },
-    { text: "The internal wallet makes funding my CAC applications so seamless.", name: "Chinedu O.", rating: 5 },
-    { text: "No more CAC portal headaches. The AI categorization is magic.", name: "Fatima S.", rating: 5 }
+    { text: "Got my SCUML certificate in just a few hours. Absolutely lifesaving speed!", name: "Adeola M.", rating: 5 },
+    { text: "Registered my CAC Business Name in minutes. The dashboard is incredibly smooth.", name: "Chinedu O.", rating: 5 },
+    { text: "Best platform for instant NIN slips. It's cheap, fast, and the airtime top-up is a nice bonus.", name: "Fatima S.", rating: 5 }
   ];
 
   useEffect(() => {
     const slideInterval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
+    }, 6000);
     return () => clearInterval(slideInterval);
   }, [testimonials.length]);
+
+  // Turnstile Callback Registration
+  useEffect(() => {
+    (window as any).onTurnstileSuccess = (token: string) => {
+      setCaptchaToken(token);
+      setCaptchaVerified(true);
+      setError(""); 
+    };
+  }, []);
 
   // Auto-trigger modal if user refreshed the page but hasn't entered the OTP yet
   useEffect(() => {
@@ -116,8 +129,9 @@ function LoginContent() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!captchaVerified) {
-      setError("Please complete the security check.");
+      setError("Please complete the security check to continue.");
       return;
     }
 
@@ -129,12 +143,19 @@ function LoginContent() {
         redirect: false,
         email: formData.email,
         password: formData.password,
-        portal: "user", 
+        portal: "user",
+        // captchaToken: captchaToken // Can be verified on backend in route.ts later
       });
 
       if (res?.error) {
-        setError(res.error === "CredentialsSignin" ? "Invalid email or password. Please try again." : res.error);
+        setError(res.error === "CredentialsSignin" ? "Invalid email or password." : res.error);
         setLoading(false);
+        // Reset turnstile on failure
+        if ((window as any).turnstile) {
+          (window as any).turnstile.reset();
+          setCaptchaVerified(false);
+          setCaptchaToken("");
+        }
       } else {
         setShowOtpModal(true);
         setLoading(false);
@@ -216,9 +237,12 @@ function LoginContent() {
   };
 
   return (
-    <div className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden transition-colors duration-300">
+    <main className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden transition-colors duration-300">
       
-      {/* Toast Notification for Coming Soon */}
+      {/* Cloudflare Turnstile API */}
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+
+      {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background px-6 py-3 rounded-full shadow-lg font-medium animate-in slide-in-from-top-4 flex items-center gap-2">
           🚀 {toastMsg}
@@ -226,24 +250,23 @@ function LoginContent() {
       )}
 
       {/* Support Icon */}
-      <a href="mailto:help@support.lorabiz.com" className="fixed bottom-6 right-6 z-40 bg-[#ff3f7a] text-white p-4 rounded-full shadow-2xl hover:scale-105 transition-transform hover:shadow-[#ff3f7a]/40" title="Need Help?">
+      <a href="mailto:help@support.lorabiz.com" aria-label="Contact Support" className="fixed bottom-6 right-6 z-40 bg-[#ff3f7a] text-white p-4 rounded-full shadow-2xl hover:scale-105 transition-transform hover:shadow-[#ff3f7a]/40" title="Need Help?">
         <Lifebuoy className="h-6 w-6" weight="fill" />
       </a>
 
-      {/* LEFT PANEL - With Testimonials & Images */}
-      <div className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-slate-900 relative overflow-hidden flex-col justify-between">
-        {/* Animated Background Overlay */}
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=1632&auto=format&fit=crop')] bg-cover bg-center opacity-40 mix-blend-overlay"></div>
+      {/* LEFT PANEL - With Testimonials & Services Showcase */}
+      <aside className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-slate-900 relative overflow-hidden flex-col justify-between">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=1632&auto=format&fit=crop')] bg-cover bg-center opacity-30 mix-blend-overlay"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-[#ff3f7a]/90 via-slate-900/80 to-slate-900/40"></div>
 
         <div className="relative z-10 p-12">
-          <Image src="/logo.png" alt="LoraBiz Logo" width={160} height={50} className="brightness-0 invert object-contain" />
+          <Image src="/logo.png" alt="LoraBiz Official Logo" width={160} height={50} className="brightness-0 invert object-contain" priority />
         </div>
 
         <div className="relative z-10 p-12 space-y-8 max-w-xl">
-          <h1 className="text-4xl xl:text-5xl font-bold leading-tight tracking-tight text-white">
-            Join 1,000+ businesses registered seamlessly.
-          </h1>
+          <h2 className="text-4xl xl:text-5xl font-bold leading-tight tracking-tight text-white">
+            SCUML, CAC, NIN & Airtime in one dashboard.
+          </h2>
 
           {/* Testimonial Slider */}
           <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl min-h-[140px] flex flex-col justify-center transition-all duration-500 ease-in-out">
@@ -261,41 +284,28 @@ function LoginContent() {
           </div>
         </div>
 
-        <div className="relative z-10 p-12 flex gap-4 opacity-50">
-           {/* Placeholder for trusted companies passing by */}
-           <div className="text-white font-bold tracking-widest uppercase text-sm">CAC Approved</div>
-           <div className="text-white font-bold tracking-widest uppercase text-sm">•</div>
-           <div className="text-white font-bold tracking-widest uppercase text-sm">NIMC Partner</div>
+        <div className="relative z-10 p-12 flex flex-wrap gap-x-6 gap-y-2 opacity-60">
+           <span className="text-white font-bold tracking-widest uppercase text-sm">CAC Accredited</span>
+           <span className="text-white font-bold tracking-widest uppercase text-sm">•</span>
+           <span className="text-white font-bold tracking-widest uppercase text-sm">NIMC Partner</span>
+           <span className="text-white font-bold tracking-widest uppercase text-sm">•</span>
+           <span className="text-white font-bold tracking-widest uppercase text-sm">EFCC / SCUML</span>
         </div>
-      </div>
+      </aside>
 
       {/* RIGHT PANEL - Login Form */}
-      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-background">
-        <div className="w-full max-w-md mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-4 sm:mt-10">
+      <section className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-background">
+        {/* Increased panel size from max-w-md to max-w-lg and xl:max-w-xl for desktop */}
+        <article className="w-full max-w-lg xl:max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-2 sm:mt-8">
           
           <div className="mb-8 flex justify-center lg:hidden">
             <Image src="/logo.png" alt="LoraBiz Logo" width={200} height={70} className="object-contain h-14 w-auto dark:brightness-110" priority />
           </div>
 
-          <div className="mb-8 text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-foreground tracking-tight">Welcome back</h2>
-            <p className="text-muted-foreground mt-2 text-[16px]">Log in to access your dashboard.</p>
-          </div>
-
-          <div className="flex gap-4 mb-6">
-            <Button type="button" variant="outline" className="w-full h-12 border-border" onClick={() => showToast("Facebook login is coming soon!")}>
-              <FacebookLogo className="h-5 w-5 mr-2 text-blue-600" weight="fill" /> Facebook
-            </Button>
-            <Button type="button" variant="outline" className="w-full h-12 border-border" onClick={() => showToast("Apple login is coming soon!")}>
-              <AppleLogo className="h-5 w-5 mr-2" weight="fill" /> Apple
-            </Button>
-          </div>
-
-          <div className="relative flex items-center py-2 mb-6">
-            <div className="flex-grow border-t border-border"></div>
-            <span className="flex-shrink-0 mx-4 text-muted-foreground text-sm font-medium">Or continue with</span>
-            <div className="flex-grow border-t border-border"></div>
-          </div>
+          <header className="mb-8 text-center lg:text-left">
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">Welcome back</h1>
+            <p className="text-muted-foreground mt-2 text-[16px]">Log in to access your LoraBiz dashboard.</p>
+          </header>
 
           <form onSubmit={handleLoginSubmit} className="space-y-6">
             {isRegistered && !error && (
@@ -316,10 +326,11 @@ function LoginContent() {
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground font-medium">Email Address</Label>
                 <div className="relative">
-                  <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                  {/* Changed icon to bold 'At' symbol */}
+                  <At className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" weight="bold" />
                   <Input 
                     id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    required placeholder="you@example.com" 
+                    required placeholder="you@example.com" aria-label="Email Address"
                     className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground focus-visible:ring-[#ff3f7a]" 
                   />
                 </div>
@@ -328,61 +339,72 @@ function LoginContent() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between mb-2">
                   <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
-                  <Link href="/auth/forgot-password" className="text-sm font-semibold text-[#ff3f7a] hover:underline transition-all">Forgot password?</Link>
+                  <Link href="/auth/forgot-password" aria-label="Forgot password link" className="text-sm font-semibold text-[#ff3f7a] hover:underline transition-all">Forgot password?</Link>
                 </div>
                 <div className="relative">
-                  <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                  <LockKey className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" weight="bold" />
                   <Input 
                     id="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})}
-                    required placeholder="••••••••" 
+                    required placeholder="••••••••" aria-label="Password"
                     className="pl-11 pr-10 h-12 text-[16px] bg-secondary/40 border-border text-foreground focus-visible:ring-[#ff3f7a]" 
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground">
-                    {showPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  <button type="button" aria-label="Toggle password visibility" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground">
+                    {showPassword ? <EyeSlash className="h-5 w-5" weight="fill" /> : <Eye className="h-5 w-5" weight="fill" />}
                   </button>
                 </div>
-                {/* OTP Micro-copy */}
                 <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                   <ShieldCheck weight="fill" className="h-3.5 w-3.5" /> For your security, we will send a one-time OTP upon login.
                 </p>
               </div>
             </div>
 
-            {/* Cloudflare Turnstile Placeholder (Simulated for UX) */}
-            <div className="pt-2">
-              <div 
-                onClick={() => setCaptchaVerified(true)}
-                className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${captchaVerified ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-secondary/50 border-border hover:bg-secondary'}`}
-              >
-                <div className={`h-6 w-6 rounded flex items-center justify-center border ${captchaVerified ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-muted-foreground/40 bg-background'}`}>
-                  {captchaVerified && <CheckCircle weight="bold" className="h-4 w-4" />}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{captchaVerified ? 'Verification Complete' : 'Verify you are human'}</p>
-                </div>
-                <Image src="/globe.svg" alt="Security" width={24} height={24} className="opacity-50 dark:invert" />
-              </div>
+            {/* Official Cloudflare Turnstile Integration */}
+            <div className="pt-2 flex justify-center lg:justify-start">
+               <div 
+                 className="cf-turnstile" 
+                 data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"} 
+                 data-callback="onTurnstileSuccess"
+                 data-theme="light" // Or dynamic based on your app theme
+               ></div>
             </div>
 
             <div className="pt-2">
-              <Button type="submit" disabled={loading || !captchaVerified} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25">
+              <Button type="submit" aria-label="Log In" disabled={loading || !captchaVerified} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25">
                 {loading ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : <>Log In <SignIn className="h-5 w-5 ml-2" weight="bold" /></>}
               </Button>
             </div>
 
-            <div className="text-center text-muted-foreground mt-6">
+            {/* Social Logins placed BELOW the form, stacking vertically on mobile */}
+            <div className="pt-4 pb-2">
+              <div className="relative flex items-center py-2 mb-6">
+                <div className="flex-grow border-t border-border"></div>
+                <span className="flex-shrink-0 mx-4 text-muted-foreground text-sm font-medium">Or continue with</span>
+                <div className="flex-grow border-t border-border"></div>
+              </div>
+
+              {/* Flex-col on small screens, flex-row on SM and above */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button type="button" variant="outline" aria-label="Continue with Google" className="w-full h-12 border-border font-medium" onClick={() => showToast("Google login is coming soon!")}>
+                  <GoogleLogo className="h-5 w-5 mr-2 text-rose-500" weight="bold" /> Google
+                </Button>
+                <Button type="button" variant="outline" aria-label="Continue with Facebook" className="w-full h-12 border-border font-medium" onClick={() => showToast("Facebook login is coming soon!")}>
+                  <FacebookLogo className="h-5 w-5 mr-2 text-blue-600" weight="fill" /> Facebook
+                </Button>
+              </div>
+            </div>
+
+            <div className="text-center text-muted-foreground mt-4">
               Don&apos;t have an account? <Link href="/auth/register" className="font-semibold text-[#ff3f7a] hover:underline">Register here</Link>
             </div>
           </form>
-        </div>
-      </div>
+        </article>
+      </section>
 
       {/* OTP OVERLAY MODAL */}
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          {/* Keep your existing Modal UI here... */}
           <div className="w-full max-w-md bg-secondary p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
-            <button onClick={handleCloseModal} className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-full transition-colors"><X className="h-5 w-5" weight="bold" /></button>
+            <button onClick={handleCloseModal} aria-label="Close OTP Modal" className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-full transition-colors"><X className="h-5 w-5" weight="bold" /></button>
             <div className="text-center mb-6">
               <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4 mt-2"><ShieldCheck weight="fill" className="h-6 w-6" /></div>
               <h2 className="text-xl sm:text-2xl font-bold text-foreground">2-Step Verification</h2>
@@ -392,10 +414,10 @@ function LoginContent() {
               {otpError && <div className="p-3 bg-destructive/10 text-destructive text-sm font-medium rounded-lg text-center animate-in shake">{otpError}</div>}
               {isLocked && <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm font-medium rounded-lg text-center">Too many resend attempts. For your security, this action has been temporarily blocked.</div>}
               <div className="space-y-2">
-                <Input value={otpCode} onChange={(e) => {setOtpCode(e.target.value.replace(/\D/g, "")); setOtpError("");}} maxLength={6} placeholder="000000" disabled={isSyncingTimer} className="h-14 sm:h-16 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]" />
+                <Input value={otpCode} aria-label="Enter 6 digit OTP" onChange={(e) => {setOtpCode(e.target.value.replace(/\D/g, "")); setOtpError("");}} maxLength={6} placeholder="000000" disabled={isSyncingTimer} className="h-14 sm:h-16 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]" />
               </div>
               <div className="flex flex-col gap-3 pt-2">
-                <Button type="submit" disabled={verifying || otpCode.length < 6 || isSyncingTimer} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white">
+                <Button type="submit" aria-label="Verify OTP" disabled={verifying || otpCode.length < 6 || isSyncingTimer} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white">
                   {verifying ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : "Verify & Access"}
                 </Button>
                 {!isLocked && (
@@ -408,7 +430,7 @@ function LoginContent() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
 
