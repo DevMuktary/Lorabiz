@@ -5,12 +5,9 @@ import { redis } from "@/lib/redis";
 import bcrypt from "bcryptjs";
 import { sendUserLoginOTP } from "@/lib/email";
 
-// Pre-computed dummy hash for timing attacks (equivalent to a random string)
+// Pre-computed dummy hash for timing attacks
 const DUMMY_HASH = "$2a$10$X7U.z5G8W8mH1L4y9vP/eeKjK9kYgG3d6fM9a6L7w1h3X9Z2Q5xO6";
 
-// ============================================================================
-// DUAL-LAYER BRUTE-FORCE PROTECTION ENGINE (IP + Email Tracking)
-// ============================================================================
 const MAX_FAILED_ATTEMPTS_PER_EMAIL = 5;
 const MAX_FAILED_ATTEMPTS_PER_IP = 20; 
 const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 Minutes
@@ -72,9 +69,6 @@ async function logSecurityEvent(data: { email: string; role?: string; event: str
   }
 }
 
-// ============================================================================
-// NEXTAUTH CONFIGURATION
-// ============================================================================
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -83,17 +77,49 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
         portal: { label: "Portal", type: "text" }, 
+        captchaToken: { label: "Captcha", type: "text" }, // <-- Added for Turnstile
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const normalizedEmail = credentials.email.toLowerCase().trim();
-        
         const rawIp = req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
         const clientIp = Array.isArray(rawIp) ? rawIp[0].split(',')[0].trim() : rawIp.split(',')[0].trim();
-        
         const rawUa = req?.headers?.["user-agent"] || "Unknown Browser";
         const clientDevice = Array.isArray(rawUa) ? rawUa[0] : rawUa;
+
+        // ====================================================================
+        // CLOUDFLARE TURNSTILE SERVER-SIDE VERIFICATION
+        // ====================================================================
+        const token = credentials.captchaToken;
+        if (!token) {
+          throw new Error("Security verification missing. Please complete the CAPTCHA.");
+        }
+
+        let turnstileResult;
+        try {
+          const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              secret: process.env.TURNSTILE_SECRET as string,
+              response: token,
+              remoteip: clientIp,
+            }),
+          });
+          
+          if (!r.ok) throw new Error(`siteverify ${r.status}`);
+          turnstileResult = await r.json();
+        } catch (err) {
+          await logSecurityEvent({ email: normalizedEmail, event: "CAPTCHA_ERROR", ipAddress: clientIp, userAgent: clientDevice, details: "Turnstile network failure" });
+          throw new Error("Security verification failed. Please try again."); 
+        }
+
+        if (!turnstileResult.success) {
+          await logSecurityEvent({ email: normalizedEmail, event: "CAPTCHA_REJECTED", ipAddress: clientIp, userAgent: clientDevice, details: "Turnstile returned success:false" });
+          throw new Error("Security verification failed. Please try again.");
+        }
+        // ====================================================================
 
         try {
           await checkRateLimit(normalizedEmail, clientIp);
@@ -101,44 +127,33 @@ export const authOptions: NextAuthOptions = {
           await logSecurityEvent({
             email: normalizedEmail, event: "BRUTE_FORCE_LOCKOUT", ipAddress: clientIp, userAgent: clientDevice, details: lockoutError.message,
           });
-          throw new Error("Invalid email or password."); // Generalized to prevent timing/enumeration
+          throw new Error("Invalid email or password.");
         }
 
         const user = await prisma.user.findUnique({
           where: { email: normalizedEmail },
         });
 
-        // ---> NEW: TIMING ATTACK PREVENTION <---
         if (!user || !user.passwordHash) {
-          // Artificially waste time hashing to pretend the user exists
           await bcrypt.compare(credentials.password, DUMMY_HASH);
           await recordFailedAttempt(normalizedEmail, clientIp);
           throw new Error("Invalid email or password."); 
         }
 
-        // ====================================================================
-        // ---> STRICT ROLE-BASED PORTAL SEPARATION (Pre-Login Checks)
-        // ====================================================================
         const requestedPortal = credentials.portal || "user";
         
-        if (requestedPortal === "user" && user.role !== "USER") {
-          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Admin/Staff attempted to access Client Portal." });
-          throw new Error("Invalid email or password.");
-        }
-
-        if (requestedPortal === "mds" && user.role !== "ADMIN") {
-          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: `${user.role} attempted to access MDS (Admin) Portal.` });
-          throw new Error("Invalid email or password.");
-        }
-
-        if (requestedPortal === "staff" && user.role !== "STAFF") {
-          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: `${user.role} attempted to access Staff Portal.` });
+        if (
+          (requestedPortal === "user" && user.role !== "USER") ||
+          (requestedPortal === "mds" && user.role !== "ADMIN") ||
+          (requestedPortal === "staff" && user.role !== "STAFF")
+        ) {
+          await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: `Cross portal access attempt.` });
           throw new Error("Invalid email or password.");
         }
 
         if (user.isSuspended) {
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "LOGIN_FAILED_SUSPENDED", ipAddress: clientIp, userAgent: clientDevice, details: "Attempted login on suspended account" });
-          throw new Error("Invalid email or password."); // Generalized
+          throw new Error("Invalid email or password.");
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
@@ -151,9 +166,6 @@ export const authOptions: NextAuthOptions = {
 
         await clearFailedAttempts(normalizedEmail, clientIp);
         
-        // ====================================================================
-        // CHECK DB STATE BEFORE GENERATING/SENDING A NEW OTP
-        // ====================================================================
         const now = new Date();
         const existingOtp = await prisma.otpCode.findUnique({
           where: { email: normalizedEmail }
@@ -190,22 +202,20 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
           role: user.role,
-          image: user.image, // Ensure image is passed from the authorize step
+          image: user.image,
         };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      // 1. Initial Login Injection
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
-        token.picture = user.image; // Assign image to token
+        token.picture = user.image; 
         token.mfaVerified = false; 
       }
 
-      // 2. Continuous Database Verification
       if (token?.id) {
         try {
           const dbUser = await prisma.user.findUnique({
@@ -221,7 +231,6 @@ export const authOptions: NextAuthOptions = {
             token.role = dbUser.role;
           }
           
-          // Keep image in sync with DB on every background refresh
           if (dbUser.image !== token.picture) {
              token.picture = dbUser.image;
           }
@@ -231,13 +240,12 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
-      // 3. MFA & Explicit Session Updates (Like Avatar Upload)
       if (trigger === "update" && session) {
         if (session.mfaVerified !== undefined) {
           token.mfaVerified = session.mfaVerified;
         }
         if (session.image !== undefined) {
-          token.picture = session.image; // Catch the avatar upload trigger
+          token.picture = session.image; 
         }
       }
       return token;
@@ -252,7 +260,6 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role as string;
         (session.user as any).mfaVerified = token.mfaVerified as boolean;
-        // Pass the picture from the token back to the client session
         session.user.image = token.picture as string | null | undefined; 
       }
       return session;
@@ -264,7 +271,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 Hours
+    maxAge: 24 * 60 * 60, 
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
