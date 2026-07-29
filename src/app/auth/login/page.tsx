@@ -3,19 +3,23 @@
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
+import { preconnect } from "react-dom";
 import { useState, useEffect, Suspense } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   LockKey, SignIn, Spinner, CheckCircle, 
   ShieldCheck, Eye, EyeSlash, Info, X,
-  FacebookLogo, GoogleLogo, Lifebuoy, Star, EnvelopeSimple
+  FacebookLogo, GoogleLogo, Lifebuoy, Star, Envelope 
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 function LoginContent() {
+  // 1. Tell the browser to connect to Cloudflare instantly before rendering
+  preconnect('https://challenges.cloudflare.com');
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, update } = useSession();
@@ -238,8 +242,11 @@ function LoginContent() {
   return (
     <main className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden transition-colors duration-300">
       
-      {/* Cloudflare Turnstile API */}
-      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+      {/* 2. Optimize Script Loading priority */}
+      <Script 
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
+        strategy="afterInteractive" 
+      />
 
       {/* Toast Notification */}
       {toastMsg && (
@@ -255,7 +262,6 @@ function LoginContent() {
 
       {/* LEFT PANEL - With Instant CSS Gradient Background */}
       <aside className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-slate-950 relative overflow-hidden flex-col justify-between">
-        {/* Instant CSS Radial Gradients (No external image loading delays) */}
         <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#ff3f7a]/20 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-20%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -268,7 +274,6 @@ function LoginContent() {
             SCUML, CAC, NIN, Airtime, and more.
           </h2>
 
-          {/* Testimonial Slider */}
           <div className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl min-h-[140px] flex flex-col justify-center transition-all duration-500 ease-in-out shadow-2xl">
             <div className="flex gap-1 mb-3">
               {[...Array(5)].map((_, i) => (
@@ -327,8 +332,8 @@ function LoginContent() {
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground font-medium">Email Address</Label>
                 <div className="relative">
-                  {/* Changed back to the standard Envelope icon */}
-                  <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" weight="bold" />
+                  {/* Fixed standard Envelope Icon */}
+                  <Envelope className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                   <Input 
                     id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
                     required placeholder="you@example.com" aria-label="Email Address"
@@ -353,8 +358,10 @@ function LoginContent() {
                     {showPassword ? <EyeSlash className="h-5 w-5" weight="fill" /> : <Eye className="h-5 w-5" weight="fill" />}
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  <ShieldCheck weight="fill" className="h-3.5 w-3.5" /> For your security, we will send a one-time OTP upon login.
+                {/* 3. Text Wrapping Fix for OTP notice */}
+                <p className="text-[11px] sm:text-xs text-muted-foreground mt-2 flex items-start gap-1.5">
+                  <ShieldCheck weight="fill" className="h-4 w-4 shrink-0 mt-0.5" /> 
+                  <span>For your security, we will send a one-time OTP upon login.</span>
                 </p>
               </div>
             </div>
@@ -367,6 +374,8 @@ function LoginContent() {
                  data-callback="onTurnstileSuccess"
                  data-action="turnstile-spin-v2"
                  data-theme="light"
+                 data-retry="auto"
+                 data-retry-interval="2000"
                ></div>
             </div>
 
