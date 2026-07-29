@@ -285,11 +285,11 @@ function LoginContent() {
         </div>
 
         <div className="relative z-10 p-12 flex flex-wrap gap-x-6 gap-y-2 opacity-50">
-           <span className="text-white font-bold tracking-widest uppercase text-sm">CAC Accredited</span>
+           <span className="text-white font-bold tracking-widest uppercase text-sm">CAC</span>
            <span className="text-white font-bold tracking-widest uppercase text-sm">•</span>
-           <span className="text-white font-bold tracking-widest uppercase text-sm">NIMC Partner</span>
+           <span className="text-white font-bold tracking-widest uppercase text-sm">NIMC</span>
            <span className="text-white font-bold tracking-widest uppercase text-sm">•</span>
-           <span className="text-white font-bold tracking-widest uppercase text-sm">EFCC / SCUML</span>
+           <span className="text-white font-bold tracking-widest uppercase text-sm">SCUML</span>
            <span className="text-white font-bold tracking-widest uppercase text-sm">•</span>
            <span className="text-white font-bold tracking-widest uppercase text-sm">And More</span>
         </div>
