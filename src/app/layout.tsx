@@ -9,15 +9,14 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-// Massive, comprehensive SEO block
+// Heavy SEO Configuration
 export const metadata: Metadata = {
-  metadataBase: new URL("https://lorabiz.com"), 
+  metadataBase: new URL("https://lorabiz.com"), // Update this to your actual production domain
   title: {
     default: "LoraBiz | CAC Registration, NIN Slips, SCUML & Airtime",
-    template: "%s | LoraBiz", 
+    template: "%s | LoraBiz", // Sub-pages will automatically render as "Dashboard | LoraBiz"
   },
   description: "Automate your corporate journey with LoraBiz. Seamlessly register your CAC Business Name or LLC, process EFCC SCUML certificates, generate instant NIN slips, and purchase fast airtime. Powered by Quadrox Technologies Limited.",
-  applicationName: "LoraBiz",
   keywords: [
     "CAC registration Nigeria",
     "Business Name registration",
@@ -29,9 +28,7 @@ export const metadata: Metadata = {
     "Buy cheap airtime Nigeria",
     "Quadrox Technologies Limited",
     "LoraBiz dashboard",
-    "Corporate Affairs Commission portal",
-    "SME business registration",
-    "Nigeria business setup"
+    "Corporate Affairs Commission portal"
   ],
   authors: [{ name: "Quadrox Technologies Limited", url: "https://quadrox.com" }],
   creator: "Quadrox Technologies Limited",
@@ -43,14 +40,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    locale: "en_NG", 
+    locale: "en_NG", // Specifically targets Nigerian local search
     url: "/",
     title: "LoraBiz | Business Registration & Identity Services Made Easy",
     description: "Automate your corporate journey with LoraBiz. Seamlessly register your CAC Business Name or LLC, process SCUML certificates, get instant NIN slips, and purchase fast airtime.",
     siteName: "LoraBiz",
     images: [
       {
-        url: "/logo.png", 
+        url: "/logo.png", // Next.js will resolve this against metadataBase
         width: 1200,
         height: 630,
         alt: "LoraBiz Official Brand Logo",
@@ -77,12 +74,16 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
-    apple: "/favicon.ico", 
+    apple: "/favicon.ico", // Good for iOS home screen bookmarks
   },
 };
 
-// No themeColor here - it is managed dynamically by your Providers
 export const viewport: Viewport = {
+  // Dynamically switch the mobile status bar color based on OS preference
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1, 
@@ -94,6 +95,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning is necessary here for next-themes
     <html lang="en" suppressHydrationWarning>
       <body className={`${jetbrainsMono.className} ${jetbrainsMono.variable} antialiased bg-background text-foreground min-h-[100dvh] flex flex-col transition-colors duration-300`}>
         <Providers>
