@@ -5,6 +5,9 @@ import { redis } from "@/lib/redis";
 import bcrypt from "bcryptjs";
 import { sendUserLoginOTP } from "@/lib/email";
 
+// Pre-computed dummy hash for timing attacks (equivalent to a random string)
+const DUMMY_HASH = "$2a$10$X7U.z5G8W8mH1L4y9vP/eeKjK9kYgG3d6fM9a6L7w1h3X9Z2Q5xO6";
+
 // ============================================================================
 // DUAL-LAYER BRUTE-FORCE PROTECTION ENGINE (IP + Email Tracking)
 // ============================================================================
@@ -98,16 +101,19 @@ export const authOptions: NextAuthOptions = {
           await logSecurityEvent({
             email: normalizedEmail, event: "BRUTE_FORCE_LOCKOUT", ipAddress: clientIp, userAgent: clientDevice, details: lockoutError.message,
           });
-          throw lockoutError;
+          throw new Error("Invalid email or password."); // Generalized to prevent timing/enumeration
         }
 
         const user = await prisma.user.findUnique({
           where: { email: normalizedEmail },
         });
 
+        // ---> NEW: TIMING ATTACK PREVENTION <---
         if (!user || !user.passwordHash) {
+          // Artificially waste time hashing to pretend the user exists
+          await bcrypt.compare(credentials.password, DUMMY_HASH);
           await recordFailedAttempt(normalizedEmail, clientIp);
-          return null; 
+          throw new Error("Invalid email or password."); 
         }
 
         // ====================================================================
@@ -117,22 +123,22 @@ export const authOptions: NextAuthOptions = {
         
         if (requestedPortal === "user" && user.role !== "USER") {
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: "Admin/Staff attempted to access Client Portal." });
-          throw new Error("Account does not exist in this portal.");
+          throw new Error("Invalid email or password.");
         }
 
         if (requestedPortal === "mds" && user.role !== "ADMIN") {
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: `${user.role} attempted to access MDS (Admin) Portal.` });
-          throw new Error("Account does not exist in this portal.");
+          throw new Error("Invalid email or password.");
         }
 
         if (requestedPortal === "staff" && user.role !== "STAFF") {
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "CROSS_PORTAL_DENIED", ipAddress: clientIp, userAgent: clientDevice, details: `${user.role} attempted to access Staff Portal.` });
-          throw new Error("Account does not exist in this portal.");
+          throw new Error("Invalid email or password.");
         }
 
         if (user.isSuspended) {
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "LOGIN_FAILED_SUSPENDED", ipAddress: clientIp, userAgent: clientDevice, details: "Attempted login on suspended account" });
-          throw new Error("Your account has been suspended. Please contact customer support.");
+          throw new Error("Invalid email or password."); // Generalized
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
@@ -140,7 +146,7 @@ export const authOptions: NextAuthOptions = {
         if (!isPasswordValid) {
           await recordFailedAttempt(normalizedEmail, clientIp);
           await logSecurityEvent({ email: normalizedEmail, role: user.role, event: "LOGIN_FAILED", ipAddress: clientIp, userAgent: clientDevice, details: "Invalid password" });
-          return null;
+          throw new Error("Invalid email or password.");
         }
 
         await clearFailedAttempts(normalizedEmail, clientIp);
