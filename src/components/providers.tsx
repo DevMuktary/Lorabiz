@@ -4,28 +4,24 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider, useTheme } from "next-themes";
 import React, { useEffect } from "react";
 
-// This instantly forces the UI, Dropdowns, and Mobile Status bar into alignment
-function ThemeSyncFix() {
+// This specifically targets the mobile status bar (theme-color) natively without DOM collisions
+function MobileStatusBarSync() {
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     if (!resolvedTheme) return;
-
-    const targetColor = resolvedTheme === "dark" ? "#020617" : "#f8fafc";
-
-    // 1. Fixes the Mobile Status Bar completely
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) {
-      metaThemeColor.setAttribute("content", targetColor);
+    
+    const color = resolvedTheme === "dark" ? "#020617" : "#f8fafc";
+    let meta = document.querySelector('meta[name="theme-color"]');
+    
+    if (meta) {
+      meta.setAttribute("content", color);
     } else {
-      metaThemeColor = document.createElement("meta");
-      metaThemeColor.setAttribute("name", "theme-color");
-      metaThemeColor.setAttribute("content", targetColor);
-      document.head.appendChild(metaThemeColor);
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      meta.setAttribute("content", color);
+      document.head.appendChild(meta);
     }
-
-    // 2. Fixes the Dropdown Flashing (Forces native HTML to match)
-    document.documentElement.style.colorScheme = resolvedTheme;
   }, [resolvedTheme]);
 
   return null;
@@ -37,11 +33,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider 
         attribute="class" 
         defaultTheme="system" 
-        enableSystem 
-        enableColorScheme // <- Crucial for native dropdowns
+        enableSystem={true}
+        enableColorScheme={true} // <-- NATIVE FIX: Forces HTML dropdowns to match theme with 0 flashing
         disableTransitionOnChange
       >
-        <ThemeSyncFix />
+        <MobileStatusBarSync />
         {children}
       </ThemeProvider>
     </SessionProvider>
