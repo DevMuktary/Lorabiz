@@ -1,70 +1,49 @@
 @import "tailwindcss";
 
-/* 1. CRITICAL TAILWIND v4 FIX: Tell Tailwind to listen to the .dark class */
+/* CRITICAL Tailwind v4 Fix: Forces Tailwind to obey next-themes */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   :root {
-    color-scheme: light; /* 2. FIX: Tells browser to make native dropdowns/scrollbars light */
-    
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
-    
-    --card: 0 0% 100%;
+    --background: 210 40% 98%; 
+    --foreground: 222.2 84% 4.9%; 
+    --card: 0 0% 100%; 
     --card-foreground: 222.2 84% 4.9%;
-    
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    
-    --primary: 332 63% 48%;
-    --primary-foreground: 210 40% 98%;
-    
+    --primary: 332 63% 48%; 
+    --primary-foreground: 210 40% 98%; 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-    
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-    
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 332 63% 48%;
-    
     --radius: 0.75rem;
   }
 
   .dark {
-    color-scheme: dark; /* 2. FIX: Tells browser to make native dropdowns/scrollbars dark */
-    
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    
-    --card: 217.2 32.6% 10%;
+    --background: 222.2 84% 4.9%; 
+    --foreground: 210 40% 98%; 
+    --card: 217.2 32.6% 10%; 
     --card-foreground: 210 40% 98%;
-    
     --popover: 217.2 32.6% 10%;
     --popover-foreground: 210 40% 98%;
-    
     --primary: 332 63% 48%;
     --primary-foreground: 210 40% 98%;
-    
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-    
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    
+    --muted-foreground: 215 20.2% 65.1%; 
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-    
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 332 63% 48%;
