@@ -1,8 +1,5 @@
 @import "tailwindcss";
 
-/* CRITICAL: Tells Tailwind v4 to obey the .dark class injected by next-themes */
-@custom-variant dark (&:is(.dark *));
-
 @layer base {
   :root {
     --background: 210 40% 98%; /* Crisp slate-50 */
