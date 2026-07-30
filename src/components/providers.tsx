@@ -1,14 +1,17 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { ThemeProvider as NextThemesProvider, type ThemeProviderProps } from 'next-themes';
-import { ThemeColorUpdater } from './ThemeColorUpdater';
+import { SessionProvider } from "next-auth/react";
+import { ThemeProvider } from "next-themes";
+import React from "react";
+import { ThemeColorUpdater } from "./ThemeColorUpdater";
 
-export function Providers({ children, ...props }: ThemeProviderProps) {
+export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <NextThemesProvider {...props}>
-      <ThemeColorUpdater />
-      {children}
-    </NextThemesProvider>
+    <SessionProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeColorUpdater />
+        {children}
+      </ThemeProvider>
+    </SessionProvider>
   );
 }
