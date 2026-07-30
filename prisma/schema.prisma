@@ -93,6 +93,7 @@ model User {
   registrations    BusinessRegistration[]
   llcRegistrations LlcRegistration[]
   ninRequests      NinRequestLog[]
+  scumlRequests ScumlRegistration[]
   notifications    InAppNotification[]
   wallet           Wallet?
   waitlists        Waitlist[]
@@ -467,4 +468,45 @@ model GlobalSetting {
   value       String
   description String?
   updatedAt   DateTime @updatedAt
+}
+
+// ==========================================
+// SCUML REGISTRATION
+// ==========================================
+
+enum ScumlType {
+  BUSINESS_NAME
+  LLC
+  NGO
+}
+
+enum ScumlStatus {
+  PENDING
+  PROCESSING
+}
+
+model ScumlRegistration {
+  id                String       @id @default(cuid())
+  userId            String
+  type              ScumlType
+  companyName       String
+  
+  // Document URLs (Uploaded via Cloudinary)
+  certificateUrl    String
+  statusReportUrl   String
+  memorandumUrl     String?      // Required only for LLC
+  constitutionUrl   String?      // Required only for NGO
+
+  status            ScumlStatus  @default(PENDING)
+  
+  // Payment Tracking
+  amountPaid        Decimal      @db.Decimal(10, 2)
+  transactionRef    String       @unique
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
