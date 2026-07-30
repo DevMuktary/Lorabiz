@@ -1,3 +1,4 @@
+// src/app/api/pricing/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -17,6 +18,10 @@ export async function GET() {
       LLC_EXTRA_MILLION: pricingMap.LLC_EXTRA_MILLION || 15000,
       BUSINESS_NAME: pricingMap.BUSINESS_NAME || 29000,
       NGO: pricingMap.NGO || 120000,
+      NAME_SUBSTITUTION: pricingMap.NAME_SUBSTITUTION || 5000,
+      // NEW: Added SCUML and TAX ID fallbacks
+      SCUML: pricingMap.SCUML || 15000,
+      TAX_ID: pricingMap.TAX_ID || 10000,
     };
 
     return NextResponse.json({ success: true, data: defaultPricing });
@@ -76,6 +81,22 @@ export async function POST(req: Request) {
       return NextResponse.json({
         baseFee: pricingMap.NGO || 120000,
         total: pricingMap.NGO || 120000
+      });
+    }
+
+    // NEW: SCUML Handler
+    if (service === 'scuml') {
+      return NextResponse.json({
+        baseFee: pricingMap.SCUML || 15000,
+        total: pricingMap.SCUML || 15000
+      });
+    }
+
+    // NEW: TAX ID Handler
+    if (service === 'tax-id') {
+      return NextResponse.json({
+        baseFee: pricingMap.TAX_ID || 10000,
+        total: pricingMap.TAX_ID || 10000
       });
     }
 
