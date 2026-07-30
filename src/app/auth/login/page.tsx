@@ -230,7 +230,7 @@ function LoginContent() {
   };
 
   return (
-    <main className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
+    <main className="min-h-[100dvh] w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
       
       <Script 
         src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
@@ -247,7 +247,7 @@ function LoginContent() {
         <Lifebuoy className="h-6 w-6" weight="fill" />
       </a>
 
-      <aside className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-slate-950 relative overflow-hidden flex-col justify-between">
+      <aside className="hidden lg:flex lg:w-[45%] shrink-0 min-h-[100dvh] bg-slate-950 relative overflow-hidden flex-col justify-between">
         <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#ff3f7a]/20 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-20%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -256,7 +256,6 @@ function LoginContent() {
         </div>
 
         <div className="relative z-10 p-12 space-y-8 max-w-xl">
-          {/* HIGHLY OPTIMIZED H2 FOR SEO */}
           <h2 className="text-4xl xl:text-5xl font-bold leading-tight tracking-tight text-white">
             Nigeria&apos;s #1 Platform for CAC, NIN, SCUML & Airtime.
           </h2>
@@ -287,14 +286,13 @@ function LoginContent() {
         </div>
       </aside>
 
-      <section className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-background">
+      <section className="flex-1 h-[100dvh] overflow-y-auto overflow-x-hidden relative block bg-background">
         <article className="w-full max-w-lg xl:max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-2 sm:mt-8">
           
           <div className="mb-8 flex justify-center lg:hidden">
             <Image src="/logo.png" alt="LoraBiz Logo" width={200} height={70} className="object-contain h-14 w-auto dark:brightness-110" priority />
           </div>
 
-          {/* HIGHLY OPTIMIZED H1 FOR SEO */}
           <header className="mb-8 text-center lg:text-left">
             <h1 className="text-3xl font-bold text-foreground tracking-tight">Log in to LoraBiz</h1>
             <p className="text-muted-foreground mt-2 text-[16px]">Access your dashboard to manage business registrations and identity services.</p>
