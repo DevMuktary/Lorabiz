@@ -3,6 +3,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
+import UnregisterSW from '@/components/UnregisterSW';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://lorabiz.com'),
@@ -28,13 +29,13 @@ export const metadata: Metadata = {
   authors: [{ name: 'QUADROX TECHNOLOGIES LIMITED' }],
   creator: 'QUADROX TECHNOLOGIES LIMITED',
   publisher: 'QUADROX TECHNOLOGIES LIMITED',
-  manifest: '/manifest.json', // ADDED: PWA Manifest link
-  appleWebApp: {              // ADDED: Apple specific PWA settings
+  manifest: '/manifest.json', // PWA Manifest link
+  appleWebApp: {              // Apple specific PWA settings
     capable: true,
     statusBarStyle: 'default',
     title: 'Lorabiz',
   },
-  formatDetection: {          // ADDED: Prevent auto-dialing formatted numbers
+  formatDetection: {          // Prevent auto-dialing formatted numbers
     telephone: false,
   },
   openGraph: {
@@ -78,7 +79,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#ff3f7a', // ADDED: PWA theme color for the browser/status bar
+  themeColor: '#ff3f7a', // PWA theme color for the browser/status bar
 };
 
 export default function RootLayout({
@@ -90,6 +91,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       {/* CRITICAL FIX: Removed transition-colors duration-300 from body */}
       <body className="antialiased bg-background text-foreground min-h-[100dvh] flex flex-col">
+        <UnregisterSW /> {/* The Kill Switch for rogue service workers */}
         <Providers>
           {children}
         </Providers>
