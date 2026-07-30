@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendVerificationOTP } from "@/lib/email";
+import { sendVerificationOTP, sendAccountExistsEmail } from "@/lib/email"; // Make sure to add sendAccountExistsEmail to your email lib
+
+// A robust list of common disposable/temporary email domains
+const DISPOSABLE_DOMAINS = [
+  "mailinator.com", "guerrillamail.com", "10minutemail.com", 
+  "temp-mail.org", "yopmail.com", "throwawaymail.com", 
+  "tempmail.com", "tempmail.net", "sharklasers.com", "dispostable.com"
+];
 
 export async function POST(req: Request) {
   try {
@@ -10,39 +17,61 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Email is required" }, { status: 400 });
     }
 
-    // --- MASKED EMAIL SUBADDRESS FILTERING ---
-    // Ensure the OTP check matches the exact email format we will save during registration
+    // --- MASKED EMAIL FILTERING ---
     let email = rawEmail.toLowerCase().trim();
     if (email.includes('@')) {
       const [localPart, domain] = email.split('@');
+      
+      // 1. TEMP MAIL BLOCKER
+      if (DISPOSABLE_DOMAINS.includes(domain)) {
+        return NextResponse.json(
+          { message: "Disposable or temporary email addresses are not allowed." }, 
+          { status: 400 }
+        );
+      }
+
       const cleanLocal = localPart.split('+')[0]; // Strip everything after '+'
       email = `${cleanLocal}@${domain}`;
     }
 
-    // 1. PRE-CHECK: Prevent wasting emails if the account already exists
+    // 2. THE "SILENT CATCH" (Anti-Enumeration)
+    // If the user already exists, pretend it worked to trick hackers.
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { message: "An account with this email already exists. Please log in." }, 
-        { status: 409 }
-      );
+      // Send a warning email to the real owner instead of an OTP
+      await sendAccountExistsEmail(email); 
+      // FAKE SUCCESS to UI:
+      return NextResponse.json({ message: "OTP sent successfully" }, { status: 200 });
     }
 
-    // 2. Generate a secure 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
-
-    // 3. Upsert securely (Prevents race conditions by guaranteeing 1 record per email)
-    await prisma.otpCode.upsert({
+    // 3. OTP REUSE & GENERATION
+    const existingOtp = await prisma.otpCode.findUnique({
       where: { email },
-      update: { code: otp, expiresAt },
-      create: { email, code: otp, expiresAt },
     });
 
-    // 4. Dispatch email using our DRY library
+    let otp: string;
+    let expiresAt: Date;
+
+    if (existingOtp && existingOtp.expiresAt > new Date()) {
+      // Rule 1: OTP exists and is not expired -> Reuse it
+      otp = existingOtp.code;
+      expiresAt = existingOtp.expiresAt;
+    } else {
+      // Rule 2: No OTP or it expired -> Generate a new one
+      otp = Math.floor(100000 + Math.random() * 900000).toString();
+      expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+      
+      await prisma.otpCode.upsert({
+        where: { email },
+        update: { code: otp, expiresAt },
+        create: { email, code: otp, expiresAt },
+      });
+    }
+
+    // 4. Dispatch email
     await sendVerificationOTP(email, otp);
 
     return NextResponse.json({ message: "OTP sent successfully" }, { status: 200 });
