@@ -198,7 +198,7 @@ export default function DashboardPage() {
 
           {/* Pricing Link - Now distinctly styled as a clickable pill button */}
           <Link 
-            href="/pricing"
+            href="/dashboard/pricing"
             className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-3.5 py-1.5 rounded-full hover:bg-primary hover:text-primary-foreground transition-all active:scale-95 md:mr-4 shadow-sm group"
           >
             <Tag weight="bold" className="h-3.5 w-3.5" />
