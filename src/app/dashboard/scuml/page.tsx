@@ -1,4 +1,3 @@
-// src/app/dashboard/scuml/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -6,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   Info, CheckCircle, Clock, X, WarningCircle, ArrowRight, ListDashes, 
-  ArrowLeft, CaretDown, CaretUp, Buildings, Storefront, Globe 
+  ArrowLeft, CaretDown, CaretUp, Buildings, Storefront, Globe, Tag
 } from "@phosphor-icons/react";
 import { FileUpload } from "@/components/FileUpload";
 
@@ -141,9 +140,9 @@ export default function ScumlPage() {
   };
 
   const getDynamicPlaceholder = () => {
-    if (regType === "BUSINESS_NAME") return "e.g. John Doe Enterprises";
-    if (regType === "LLC") return "e.g. Quadrox Technologies Limited";
-    if (regType === "NGO") return "e.g. Hope Foundation Initiative";
+    if (regType === "BUSINESS_NAME") return "e.g. Adebayo & Sons Enterprises";
+    if (regType === "LLC") return "e.g. Zenith Tech Limited";
+    if (regType === "NGO") return "e.g. Harmony Foundation Initiative";
     return "Select a type first...";
   };
 
@@ -164,7 +163,7 @@ export default function ScumlPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto relative">
       
-      {/* Intro Modal (Slides in middle of screen) */}
+      {/* Intro Modal */}
       {showIntroModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500">
@@ -226,13 +225,15 @@ export default function ScumlPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Main Application Form (Left Side - spans 2 columns) */}
+        {/* Main Application Form */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
             
             {/* 1. Designed Dropdown */}
             <div className="space-y-3" ref={dropdownRef}>
-              <label className="text-sm font-bold">1. Select Registration Type</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-bold">1. Select Registration Type</label>
+              </div>
               
               <div className="relative">
                 <button 
@@ -279,6 +280,14 @@ export default function ScumlPage() {
                   </div>
                 )}
               </div>
+
+              {/* Price Tag pops up sharply right below selection */}
+              {regType && !isLoadingPrice && (
+                <div className="animate-in fade-in slide-in-from-top-1 flex items-center gap-2 mt-3 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit">
+                  <Tag weight="fill" className="h-4 w-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Processing Fee: ₦{price.toLocaleString()}</span>
+                </div>
+              )}
             </div>
 
             {/* 2. Dynamic Company Name */}
@@ -300,17 +309,21 @@ export default function ScumlPage() {
             {regType && (
               <div className="space-y-4 pt-4 border-t border-border animate-in fade-in">
                 <h3 className="text-sm font-bold">3. Upload Required Documents</h3>
-                <p className="text-xs text-muted-foreground mb-4">Please upload clear, legible copies of your official CAC documents.</p>
+                <p className="text-xs text-muted-foreground mb-4">Please upload clear, legible copies of your official CAC documents. Maximum file size is 5MB.</p>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <FileUpload 
                     label="CAC Certificate" 
+                    description="PDF, JPG, or PNG"
+                    accept="application/pdf, image/jpeg, image/png"
                     value={documents.certificateUrl}
                     onUploadSuccess={(url) => setDocuments(p => ({ ...p, certificateUrl: url }))}
                     onRemove={() => setDocuments(p => ({ ...p, certificateUrl: "" }))}
                   />
                   <FileUpload 
                     label="Status Report" 
+                    description="Strictly PDF"
+                    accept="application/pdf"
                     value={documents.statusReportUrl}
                     onUploadSuccess={(url) => setDocuments(p => ({ ...p, statusReportUrl: url }))}
                     onRemove={() => setDocuments(p => ({ ...p, statusReportUrl: "" }))}
@@ -320,6 +333,8 @@ export default function ScumlPage() {
                     <div className="sm:col-span-2">
                       <FileUpload 
                         label="Memorandum & Articles (MEMART)" 
+                        description="Strictly PDF"
+                        accept="application/pdf"
                         value={documents.memorandumUrl}
                         onUploadSuccess={(url) => setDocuments(p => ({ ...p, memorandumUrl: url }))}
                         onRemove={() => setDocuments(p => ({ ...p, memorandumUrl: "" }))}
@@ -331,6 +346,8 @@ export default function ScumlPage() {
                     <div className="sm:col-span-2">
                       <FileUpload 
                         label="NGO Constitution" 
+                        description="Strictly PDF"
+                        accept="application/pdf"
                         value={documents.constitutionUrl}
                         onUploadSuccess={(url) => setDocuments(p => ({ ...p, constitutionUrl: url }))}
                         onRemove={() => setDocuments(p => ({ ...p, constitutionUrl: "" }))}
@@ -376,7 +393,7 @@ export default function ScumlPage() {
           </form>
         </div>
 
-        {/* How it works Sidebar (Right Side - spans 1 column) */}
+        {/* How it works Sidebar */}
         <div className="space-y-6">
           <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24">
             <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground mb-5">How it works</h3>
@@ -387,7 +404,7 @@ export default function ScumlPage() {
               </li>
               <li className="flex gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">2</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">Submit your application and pay the processing fee securely from your wallet.</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">Submit your application and pay the processing fee from your wallet.</p>
               </li>
               <li className="flex gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">3</div>
