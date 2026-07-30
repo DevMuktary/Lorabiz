@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Lorabiz | Smart  Management & Registrations',
     description:
-      ''Streamline your business operations with Lorabiz. Expert tools for CAC, Scuml, Tax id, Airtime registrations, verification, and GovTech management.',
+      'Streamline your business operations with Lorabiz. Expert tools for CAC, Scuml, Tax id, Airtime registrations, verification, and GovTech management.',
     images: ['/logo.png'],
   },
   robots: {
