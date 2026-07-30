@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 function LoginContent() {
-  // 1. Tell the browser to connect to Cloudflare instantly before rendering
   preconnect('https://challenges.cloudflare.com');
 
   const router = useRouter();
@@ -27,30 +26,25 @@ function LoginContent() {
   const isRegistered = searchParams.get("registered") === "true";
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
-  // Login Form States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
   
-  // Real Cloudflare Turnstile States
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
-  // OTP Modal & Timer States
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
   
-  // UI states synced with the server
   const [resendTimer, setResendTimer] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isSyncingTimer, setIsSyncingTimer] = useState(false);
 
-  // Carousel State for Left Panel
   const [currentSlide, setCurrentSlide] = useState(0);
   
   const testimonials = [
@@ -66,7 +60,6 @@ function LoginContent() {
     return () => clearInterval(slideInterval);
   }, [testimonials.length]);
 
-  // Turnstile Callback Registration
   useEffect(() => {
     (window as any).onTurnstileSuccess = (token: string) => {
       setCaptchaToken(token);
@@ -75,7 +68,6 @@ function LoginContent() {
     };
   }, []);
 
-  // Auto-trigger modal if user refreshed the page but hasn't entered the OTP yet
   useEffect(() => {
     if (session?.user) {
       const user = session.user as any;
@@ -88,7 +80,6 @@ function LoginContent() {
     }
   }, [session, router, callbackUrl]);
 
-  // Sync frontend timer with the Database Backend the moment the modal opens
   useEffect(() => {
     let mounted = true;
     async function syncTimerWithServer() {
@@ -153,7 +144,6 @@ function LoginContent() {
       if (res?.error) {
         setError(res.error === "CredentialsSignin" ? "Invalid email or password." : res.error);
         setLoading(false);
-        // CRITICAL: Reset Turnstile widget on failure so a retry gets a fresh token
         if ((window as any).turnstile) {
           (window as any).turnstile.reset();
           setCaptchaVerified(false);
@@ -240,27 +230,24 @@ function LoginContent() {
   };
 
   return (
-    <main className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden transition-colors duration-300">
+    {/* CRITICAL FIX: Removed transition-colors duration-300 from this main tag */}
+    <main className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
       
-      {/* 2. Optimize Script Loading priority */}
       <Script 
         src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
         strategy="afterInteractive" 
       />
 
-      {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background px-6 py-3 rounded-full shadow-lg font-medium animate-in slide-in-from-top-4 flex items-center gap-2">
           🚀 {toastMsg}
         </div>
       )}
 
-      {/* Support Icon */}
       <a href="mailto:help@support.lorabiz.com" aria-label="Contact Support" className="fixed bottom-6 right-6 z-40 bg-[#ff3f7a] text-white p-4 rounded-full shadow-2xl hover:scale-105 transition-transform hover:shadow-[#ff3f7a]/40" title="Need Help?">
         <Lifebuoy className="h-6 w-6" weight="fill" />
       </a>
 
-      {/* LEFT PANEL - With Instant CSS Gradient Background */}
       <aside className="hidden lg:flex lg:w-[45%] shrink-0 h-full bg-slate-950 relative overflow-hidden flex-col justify-between">
         <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#ff3f7a]/20 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-20%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
@@ -300,7 +287,6 @@ function LoginContent() {
         </div>
       </aside>
 
-      {/* RIGHT PANEL - Login Form */}
       <section className="flex-1 h-full overflow-y-auto overflow-x-hidden relative block bg-background">
         <article className="w-full max-w-lg xl:max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-2 sm:mt-8">
           
@@ -332,7 +318,6 @@ function LoginContent() {
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground font-medium">Email Address</Label>
                 <div className="relative">
-                  {/* Fixed standard Envelope Icon */}
                   <Envelope className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                   <Input 
                     id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
@@ -358,7 +343,6 @@ function LoginContent() {
                     {showPassword ? <EyeSlash className="h-5 w-5" weight="fill" /> : <Eye className="h-5 w-5" weight="fill" />}
                   </button>
                 </div>
-                {/* 3. Text Wrapping Fix for OTP notice */}
                 <p className="text-[11px] sm:text-xs text-muted-foreground mt-2 flex items-start gap-1.5">
                   <ShieldCheck weight="fill" className="h-4 w-4 shrink-0 mt-0.5" /> 
                   <span>For your security, we will send a one-time OTP upon login.</span>
@@ -366,7 +350,6 @@ function LoginContent() {
               </div>
             </div>
 
-            {/* Official Cloudflare Turnstile Integration */}
             <div className="pt-2 flex justify-center lg:justify-start">
                <div 
                  className="cf-turnstile" 
@@ -385,7 +368,6 @@ function LoginContent() {
               </Button>
             </div>
 
-            {/* Social Logins */}
             <div className="pt-4 pb-2">
               <div className="relative flex items-center py-2 mb-6">
                 <div className="flex-grow border-t border-border"></div>
@@ -410,7 +392,6 @@ function LoginContent() {
         </article>
       </section>
 
-      {/* OTP OVERLAY MODAL */}
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
           <div className="w-full max-w-md bg-secondary p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
