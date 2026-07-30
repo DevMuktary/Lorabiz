@@ -19,8 +19,8 @@ export const metadata: Metadata = {
     'airtime top-up',
     'business management software',
     'startup compliance',
-    'Tax ID Generation'
-    'Fast Scuml Registration'
+    'Tax ID Generation',
+    'Fast Scuml Registration',
     'TradeMark Registration',
   ],
   authors: [{ name: 'QUADROX TECHNOLOGIES LIMITED' }],
