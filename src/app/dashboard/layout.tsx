@@ -34,6 +34,7 @@ const NAVIGATION: NavCategory[] = [
       { name: "Service Hub", href: "/dashboard", icon: SquaresFour },
       { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
       { name: "Wallet", href: "/dashboard/wallet", icon: Wallet },
+      { name: "Pricing", href: "/pricing", icon: Tag }, // Added to sidebar
     ]
   },
   {
@@ -140,35 +141,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* SIDEBAR */}
       <aside className={`
-        fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[280px] h-screen bg-card border-r border-border 
+        fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[260px] h-screen bg-card border-r border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
         ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:translate-x-0 lg:flex"}
       `}>
-        <div className="h-[70px] flex items-center justify-between px-6 border-b border-border shrink-0">
+        <div className="h-[70px] flex items-center justify-between px-5 border-b border-border shrink-0">
           <Image 
             src="/logo.png" 
             alt="Lorabiz" 
-            width={130} 
-            height={36} 
-            className="h-7 w-auto object-contain dark:brightness-200 dark:contrast-100" 
+            width={120} 
+            height={32} 
+            className="h-6 w-auto object-contain dark:brightness-200 dark:contrast-100" 
             priority
           />
           <button 
             className="lg:hidden text-muted-foreground hover:text-primary transition-colors cursor-pointer"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            <X className="h-6 w-6" weight="bold" />
+            <X className="h-5 w-5" weight="bold" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-7 custom-scrollbar">
+        {/* Reduced vertical spacing to fix overflow issues */}
+        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-5 custom-scrollbar">
           {NAVIGATION.map((group) => (
-            <div key={group.category} className="space-y-2">
-              <h3 className="px-4 text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-3">
+            <div key={group.category} className="space-y-1.5">
+              <h3 className="px-3 text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
                 {group.category}
               </h3>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {group.links.map((link) => {
                   const isActive = link.href === "/dashboard" 
                     ? pathname === "/dashboard" 
@@ -189,7 +191,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         }
                       }}
                       className={`
-                        flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 group
+                        flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
                         ${isActive 
                           ? "bg-primary/10 text-primary shadow-sm" 
                           : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -198,9 +200,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     >
                       <Icon 
                         weight={isActive ? "fill" : "regular"} 
-                        className={`h-5 w-5 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} 
+                        className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} 
                       />
-                      <span className="text-[14px] font-bold flex-1">{link.name}</span>
+                      <span className="text-[13px] font-bold flex-1">{link.name}</span>
                       
                       {link.showSoonBadge && (
                         <span className="ml-auto inline-flex items-center justify-center rounded-full bg-[#ff3f7a]/10 px-2 py-0.5 text-[9px] font-black text-[#ff3f7a] uppercase tracking-widest animate-pulse border border-[#ff3f7a]/20 shrink-0">
@@ -215,15 +217,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-        <div className="p-4 border-t border-border shrink-0">
+        <div className="p-3 border-t border-border shrink-0 bg-card">
           <button 
             type="button"
             onClick={() => {
               signOut({ callbackUrl: "/auth/login", redirect: true });
             }}
-            className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-[14px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 group cursor-pointer"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 group cursor-pointer"
           >
-            <SignOut className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-destructive transition-transform group-hover:-translate-x-1" />
+            <SignOut className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-destructive transition-transform group-hover:-translate-x-1" />
             Log Out
           </button>
         </div>
@@ -284,8 +286,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 bg-secondary/10 p-4 lg:p-6 pb-24 relative">
-          <div className="max-w-[1400px] mx-auto w-full animate-in fade-in duration-300">
+        <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative">
+          <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
             {children}
           </div>
         </main>
