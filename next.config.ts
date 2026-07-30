@@ -1,5 +1,5 @@
 import { withSentryConfig } from "@sentry/nextjs";
-import withPWAInit from "@ducanh2912/next-pwa";
+import withSerwistInit from "@serwist/next";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -7,47 +7,25 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
 };
 
-// 1. Initialize PWA Configuration
-const withPWA = withPWAInit({
-  dest: "public",
-  // FIXED: Disabled frontend nav caching to stop the router from freezing!
-  cacheOnFrontEndNav: false,
-  aggressiveFrontEndNavCaching: false,
-  reloadOnOnline: true,
+// 1. Initialize Serwist PWA Configuration
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
   disable: process.env.NODE_ENV === "development",
-  workboxOptions: {
-    disableDevLogs: true,
-  },
 });
 
-// 2. Wrap NextConfig with PWA
-const pwaConfig = withPWA(nextConfig);
+// 2. Wrap NextConfig with Serwist
+const pwaConfig = withSerwist(nextConfig);
 
 // 3. Wrap the resulting PWA Config with Sentry
 export default withSentryConfig(pwaConfig, {
-  // For all available options, see:
-  // https://www.npmjs.com/package/@sentry/webpack-plugin#options
-
   org: "quadrox-technologies-limited",
   project: "javascript-nextjs",
-
-  // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
   tunnelRoute: "/monitoring",
-
   webpack: {
-    // Enables automatic instrumentation of Vercel Cron Monitors.
     automaticVercelMonitors: true,
-
-    // Tree-shaking options for reducing bundle size
     treeshake: {
       removeDebugLogging: true,
     },
