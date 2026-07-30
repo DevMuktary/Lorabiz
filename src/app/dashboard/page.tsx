@@ -5,7 +5,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ArrowRight, Sparkle, X, Info, Plus, Spinner, Eye, EyeSlash } from "@phosphor-icons/react";
+import { ArrowRight, Sparkle, X, Info, Plus, Spinner, Eye, EyeSlash, Tag } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 
 const SERVICES = [
@@ -145,18 +145,28 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 relative">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="flex flex-col gap-2.5">
           <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
             Welcome, {firstName} <span className="text-3xl animate-wave origin-bottom-right inline-block">👋</span>
           </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-            Select a service below to get started and manage your business operations.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
+              Select a service below to get started and manage your business operations.
+            </p>
+            {/* NEW: Safe Pricing Link Placement */}
+            <Link 
+              href="/pricing"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 px-3.5 py-1.5 rounded-full hover:bg-primary/20 transition-colors w-fit"
+            >
+              <Tag weight="bold" className="h-3.5 w-3.5" />
+              Pricing
+            </Link>
+          </div>
         </div>
         
-        <div className="flex items-center justify-between w-full sm:w-auto gap-4 shrink-0 bg-card p-2 pl-5 sm:pl-6 pr-2.5 rounded-full border border-border shadow-sm sm:ml-auto">
-          <div className="flex flex-col text-left sm:text-right">
+        <div className="flex items-center justify-between w-full md:w-auto gap-4 shrink-0 bg-card p-2 pl-5 sm:pl-6 pr-2.5 rounded-full border border-border shadow-sm md:ml-auto mt-2 md:mt-0">
+          <div className="flex flex-col text-left md:text-right">
             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-tight">
               Wallet Balance
             </span>
