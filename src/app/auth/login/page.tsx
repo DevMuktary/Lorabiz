@@ -7,7 +7,6 @@ import { preconnect } from "react-dom";
 import { useState, useEffect, Suspense } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
 import { 
   LockKey, SignIn, Spinner, CheckCircle, 
   ShieldCheck, Eye, EyeSlash, Info, X,
@@ -23,7 +22,6 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, update } = useSession();
-  const { resolvedTheme } = useTheme();
   
   const isRegistered = searchParams.get("registered") === "true";
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
@@ -36,7 +34,7 @@ function LoginContent() {
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   
-  // State for the new localized tooltips
+  // State for the localized tooltips
   const [activeTooltip, setActiveTooltip] = useState<"google" | "facebook" | null>(null);
 
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -348,14 +346,13 @@ function LoginContent() {
             </div>
 
             <div className="pt-2 flex justify-center lg:justify-start">
-               {/* key={resolvedTheme} forces the widget to rebuild instantly when theme changes */}
+               {/* FIX: Removed 'key' and set data-theme to 'auto' so it stops disappearing */}
                <div 
-                 key={resolvedTheme}
                  className="cf-turnstile" 
                  data-sitekey="0x4AAAAAAEA2i2RM9PiSsRCH" 
                  data-callback="onTurnstileSuccess"
                  data-action="turnstile-spin-v2"
-                 data-theme={resolvedTheme === "dark" ? "dark" : "light"}
+                 data-theme="auto"
                  data-retry="auto"
                  data-retry-interval="2000"
                ></div>
