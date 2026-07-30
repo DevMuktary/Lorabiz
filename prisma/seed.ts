@@ -13,9 +13,11 @@ async function main() {
     { serviceKey: "NGO", title: "Incorporated Trustees (NGO)", price: 120000.00 },
     // Name Substitution Fee
     { serviceKey: "NAME_SUBSTITUTION", title: "Name Substitution Fee", price: 5000.00 },
-    // NEW: SCUML & TAX ID Pricing
+    // SCUML
     { serviceKey: "SCUML", title: "SCUML Certificate Registration", price: 320000.00 },
-    { serviceKey: "TAX_ID", title: "Tax Identification Number (TIN)", price: 10000.00 }
+    // NEW: Split TAX ID Pricing
+    { serviceKey: "TAX_ID_INDIVIDUAL", title: "Individual Tax ID (TIN)", price: 500.00 },
+    { serviceKey: "TAX_ID_CORPORATE", title: "Corporate Tax ID (TIN)", price: 1000.00 }
   ]
 
   for (const p of prices) {
