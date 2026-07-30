@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Info, CheckCircle, Clock, X, WarningCircle, ArrowRight, ListDashes } from "@phosphor-icons/react";
-import FileUpload from "@/components/FileUpload";
+import { FileUpload } from "@/components/FileUpload"; // FIXED: Changed to named import
 
 type ScumlType = "BUSINESS_NAME" | "LLC" | "NGO";
 
