@@ -7,24 +7,26 @@ export function ThemeColorUpdater() {
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
-    // LoraBiz specific background colors
-    const lightThemeColor = "#f8fafc"; 
-    const darkThemeColor = "#020617"; 
+    if (!resolvedTheme) return;
 
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    
-    // If the meta tag doesn't exist, create and inject it
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement("meta");
-      metaThemeColor.setAttribute("name", "theme-color");
-      document.head.appendChild(metaThemeColor);
-    }
+    // LoraBiz strict theme colors
+    const targetColor = resolvedTheme === "dark" ? "#020617" : "#f8fafc";
 
-    // Instantly mutate the content attribute to force a Safari UI repaint
-    metaThemeColor.setAttribute(
-      "content",
-      resolvedTheme === "dark" ? darkThemeColor : lightThemeColor
-    );
+    // 1. Destroy ALL existing theme-color tags (Fixes Next.js multi-tag confusion)
+    const existingTags = document.querySelectorAll('meta[name="theme-color"]');
+    existingTags.forEach(tag => tag.remove());
+
+    // 2. Inject ONE absolute source of truth for Safari
+    const meta = document.createElement("meta");
+    meta.setAttribute("name", "theme-color");
+    meta.setAttribute("content", targetColor);
+    document.head.appendChild(meta);
+
+    // 3. NUCLEAR SAFARI FIX: Safari ignores the meta tag if the body background 
+    // doesn't match perfectly. We force the HTML to match instantly.
+    document.documentElement.style.backgroundColor = targetColor;
+    document.body.style.backgroundColor = targetColor;
+
   }, [resolvedTheme]);
 
   return null;
