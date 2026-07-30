@@ -3,7 +3,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
-import UnregisterSW from '@/components/UnregisterSW';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://lorabiz.com'),
@@ -91,7 +90,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       {/* CRITICAL FIX: Removed transition-colors duration-300 from body */}
       <body className="antialiased bg-background text-foreground min-h-[100dvh] flex flex-col">
-        <UnregisterSW /> {/* The Kill Switch for rogue service workers */}
         <Providers>
           {children}
         </Providers>
