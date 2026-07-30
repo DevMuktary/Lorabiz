@@ -1,3 +1,5 @@
+// src/app/layout.tsx
+
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
@@ -26,6 +28,15 @@ export const metadata: Metadata = {
   authors: [{ name: 'QUADROX TECHNOLOGIES LIMITED' }],
   creator: 'QUADROX TECHNOLOGIES LIMITED',
   publisher: 'QUADROX TECHNOLOGIES LIMITED',
+  manifest: '/manifest.json', // ADDED: PWA Manifest link
+  appleWebApp: {              // ADDED: Apple specific PWA settings
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Lorabiz',
+  },
+  formatDetection: {          // ADDED: Prevent auto-dialing formatted numbers
+    telephone: false,
+  },
   openGraph: {
     type: 'website',
     locale: 'en_NG',
@@ -67,6 +78,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  themeColor: '#ff3f7a', // ADDED: PWA theme color for the browser/status bar
 };
 
 export default function RootLayout({
