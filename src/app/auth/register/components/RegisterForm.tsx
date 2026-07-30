@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
   User, EnvelopeSimple, LockKey, Spinner, CheckCircle, 
-  GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash
+  GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash, X, ShieldCheck
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,10 @@ export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
+  // Turnstile State
+  const [captchaVerified, setCaptchaVerified] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+
   // Loading states for OTP specific actions
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -77,6 +82,15 @@ export default function RegisterForm() {
     }
   }, [termsAccepted, errors.terms]);
 
+  // Turnstile Callback Registration
+  useEffect(() => {
+    (window as any).onTurnstileSuccess = (token: string) => {
+      setCaptchaToken(token);
+      setCaptchaVerified(true);
+      if (errors.captcha) setErrors(prev => ({ ...prev, captcha: "" }));
+    };
+  }, [errors.captcha]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (otpTimer > 0 && otpStep === "sent") {
@@ -109,7 +123,7 @@ export default function RegisterForm() {
       } else {
         const data = await res.json();
         setErrors({ email: data.message || "Failed to send code." });
-        setOtpStep("idle"); // Reset if failed so they can try again
+        setOtpStep("idle"); 
       }
     } catch (err) {
       setErrors({ email: "Network error. Try again." });
@@ -119,14 +133,12 @@ export default function RegisterForm() {
     }
   };
 
-  const handleVerifyOTP = async () => {
-    if (otpCode.length !== 6) { 
-      setErrors({ email: "Invalid OTP Code. Must be 6 digits." });
-      return;
-    }
+  const handleVerifyOTP = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (otpCode.length !== 6) return;
 
     setIsVerifying(true);
-    setErrors({ email: "" });
+    setErrors({ otp: "" });
 
     try {
       const res = await fetch("/api/auth/verify-otp", {
@@ -139,10 +151,10 @@ export default function RegisterForm() {
         setOtpStep("verified");
       } else {
         const data = await res.json();
-        setErrors({ email: data.message || "Invalid OTP code." });
+        setErrors({ otp: data.message || "Invalid OTP code." });
       }
     } catch (err) {
-      setErrors({ email: "Verification failed. Check your network." });
+      setErrors({ otp: "Verification failed. Check your network." });
     } finally {
       setIsVerifying(false);
     }
@@ -153,6 +165,7 @@ export default function RegisterForm() {
     setErrors({});
     let newErrors: Record<string, string> = {};
 
+    if (!captchaVerified) newErrors.captcha = "Please complete the security check.";
     if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
     
@@ -178,7 +191,8 @@ export default function RegisterForm() {
       const payload = {
         ...formData,
         state: formatStateName(formData.state), 
-        otpCode
+        otpCode,
+        captchaToken
       };
 
       const res = await fetch("/api/auth/register", {
@@ -202,12 +216,29 @@ export default function RegisterForm() {
       setErrors({ form: "An unexpected error occurred. Please try again." });
     } finally {
       setLoading(false);
+      // Reset turnstile on failure
+      if ((window as any).turnstile) {
+        (window as any).turnstile.reset();
+        setCaptchaVerified(false);
+        setCaptchaToken("");
+      }
     }
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m > 0 ? `${m}m ` : ''}${s}s`;
   };
 
   return (
     <div className="w-full max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
+      <Script 
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
+        strategy="afterInteractive" 
+      />
+
       <div className="mb-8 flex justify-center lg:justify-start mt-2 sm:mt-0">
         <Image src="/logo.png" alt="LoraBiz Logo" width={340} height={120} className="object-contain h-20 lg:h-24 w-auto dark:brightness-110" priority />
       </div>
@@ -299,28 +330,6 @@ export default function RegisterForm() {
                 <Button type="button" disabled className="h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-6 min-w-[100px]">Verified ✓</Button>
               )}
             </div>
-            
-            {otpStep === "sent" && (
-              <div className="p-4 bg-secondary/40 rounded-lg border border-border mt-2 flex gap-2 animate-in fade-in zoom-in-95">
-                <Input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} maxLength={6} placeholder="Enter 6-digit OTP" className="h-12 text-center text-lg tracking-widest bg-background border-border text-foreground" />
-                <Button type="button" onClick={handleVerifyOTP} disabled={isVerifying} className="h-12 bg-[#ff3f7a] text-white min-w-[100px] cursor-pointer">
-                  {isVerifying ? <Spinner className="animate-spin h-5 w-5 mx-auto" /> : "Confirm"}
-                </Button>
-                {otpTimer > 0 ? (
-                  <div className="h-12 px-4 flex items-center justify-center bg-secondary border border-border rounded-md text-muted-foreground font-mono font-medium min-w-[80px]">{otpTimer}s</div>
-                ) : (
-                  <Button 
-                    type="button" 
-                    onClick={handleSendOTP} 
-                    variant="outline" 
-                    disabled={isSendingOtp}
-                    className="h-12 border-border text-foreground hover:bg-secondary cursor-pointer disabled:opacity-50 min-w-[80px]"
-                  >
-                    {isSendingOtp ? <Spinner className="animate-spin h-5 w-5 mx-auto" /> : "Resend"}
-                  </Button>
-                )}
-              </div>
-            )}
             {errors.email && <p className="text-sm text-destructive font-medium mt-1">{errors.email}</p>}
           </div>
 
@@ -427,6 +436,20 @@ export default function RegisterForm() {
           </div>
         </div>
 
+        {/* Turnstile Integration */}
+        <div className="pt-2 flex justify-center lg:justify-start">
+           <div 
+             className="cf-turnstile" 
+             data-sitekey="0x4AAAAAAEA2i2RM9PiSsRCH" 
+             data-callback="onTurnstileSuccess"
+             data-action="turnstile-spin-v2"
+             data-theme="auto"
+             data-retry="auto"
+             data-retry-interval="2000"
+           ></div>
+        </div>
+        {errors.captcha && <p className="text-sm text-destructive font-medium pl-1">{errors.captcha}</p>}
+
         {/* CHECKBOX & SUBMIT CONTAINER */}
         <div className="pt-6 border-t border-border space-y-4">
           <label className="flex items-start gap-3 p-4 border border-border bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors select-none">
@@ -438,7 +461,7 @@ export default function RegisterForm() {
           
           {errors.terms && <p className="text-sm text-destructive font-medium pl-1">{errors.terms}</p>}
 
-          <Button type="submit" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all cursor-pointer">
+          <Button type="submit" disabled={loading || !captchaVerified} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all cursor-pointer">
             {loading ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : <>Create Account</>}
           </Button>
         </div>
@@ -448,6 +471,52 @@ export default function RegisterForm() {
           <Link href="/auth/login" className="font-semibold text-[#ff3f7a] hover:underline transition-all">Sign in</Link>
         </div>
       </form>
+
+      {/* OTP MODAL (Matches Login Page Styling) */}
+      {otpStep === "sent" && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-secondary p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
+            <button onClick={() => setOtpStep("idle")} aria-label="Close OTP Modal" className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-full transition-colors">
+              <X className="h-5 w-5" weight="bold" />
+            </button>
+            <div className="text-center mb-6">
+              <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4 mt-2">
+                <ShieldCheck weight="fill" className="h-6 w-6" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground">Verify your email</h2>
+              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                We&apos;ve sent a 6-digit authorization code to <br/><span className="font-medium text-foreground">{formData.email}</span>.
+              </p>
+            </div>
+            
+            <form onSubmit={handleVerifyOTP} className="space-y-6">
+              {errors.otp && <div className="p-3 bg-destructive/10 text-destructive text-sm font-medium rounded-lg text-center animate-in shake">{errors.otp}</div>}
+              
+              <div className="space-y-2">
+                <Input 
+                  value={otpCode} 
+                  aria-label="Enter 6 digit OTP" 
+                  onChange={(e) => {setOtpCode(e.target.value.replace(/\D/g, "")); setErrors({ ...errors, otp: "" });}} 
+                  maxLength={6} 
+                  placeholder="000000" 
+                  className="h-14 sm:h-16 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]" 
+                />
+              </div>
+              
+              <div className="flex flex-col gap-3 pt-2">
+                <Button type="submit" aria-label="Verify OTP" disabled={isVerifying || otpCode.length < 6} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white">
+                  {isVerifying ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : "Verify & Continue"}
+                </Button>
+                
+                <Button type="button" variant="outline" onClick={handleSendOTP} disabled={isSendingOtp || otpTimer > 0} className="w-full h-12 font-medium bg-transparent border-border text-foreground hover:bg-background disabled:opacity-50">
+                  {isSendingOtp ? <Spinner className="animate-spin h-5 w-5" /> : otpTimer > 0 ? `Resend code in ${formatTime(otpTimer)}` : "Resend Code"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
