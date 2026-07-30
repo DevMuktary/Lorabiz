@@ -2,9 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
 
-// 1. Comprehensive SEO Metadata Configuration
 export const metadata: Metadata = {
-  metadataBase: new URL('https://lorabiz.com'), // Replace with your actual production URL
+  metadataBase: new URL('https://lorabiz.com'),
   title: {
     default: 'Lorabiz | Smart Business Management & Registrations',
     template: '%s | Lorabiz',
@@ -34,7 +33,7 @@ export const metadata: Metadata = {
     siteName: 'Lorabiz',
     images: [
       {
-        url: '/logo.png', // Ensure this points to a high-res OG image in your public folder
+        url: '/logo.png',
         width: 1200,
         height: 630,
         alt: 'Lorabiz Platform Logo',
@@ -61,8 +60,6 @@ export const metadata: Metadata = {
   },
 };
 
-// 2. Strict Viewport Configuration
-// Notice that `themeColor` is omitted here so our client-side `ThemeColorUpdater` can manage it dynamically.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -75,9 +72,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    // suppressHydrationWarning is strictly required on the html tag when using next-themes
     <html lang="en" suppressHydrationWarning>
-      <body>
+      {/* CRITICAL FIX: Removed transition-colors duration-300 from body */}
+      <body className="antialiased bg-background text-foreground min-h-[100dvh] flex flex-col">
         <Providers>
           {children}
         </Providers>
