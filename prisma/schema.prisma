@@ -94,6 +94,7 @@ model User {
   llcRegistrations LlcRegistration[]
   ninRequests      NinRequestLog[]
   scumlRequests ScumlRegistration[]
+  taxIdRequests TaxIdRequest[]
   notifications    InAppNotification[]
   wallet           Wallet?
   waitlists        Waitlist[]
@@ -502,6 +503,52 @@ model ScumlRegistration {
   finalCertificateUrl String?    // NEW: Where the admin uploads the finished work
 
   status            ScumlStatus  @default(PENDING)
+  
+  // Payment Tracking
+  amountPaid        Decimal      @db.Decimal(10, 2)
+  transactionRef    String       @unique
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ==========================================
+// TAX ID (TIN) REGISTRATION
+// ==========================================
+
+enum TaxIdType {
+  INDIVIDUAL
+  CORPORATE
+}
+
+enum TaxIdStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+}
+
+model TaxIdRequest {
+  id                String       @id @default(cuid())
+  userId            String
+  type              TaxIdType
+  status            TaxIdStatus  @default(PENDING)
+  
+  // Individual Fields
+  nin               String?
+  firstName         String?
+  lastName          String?
+  dob               String?
+
+  // Corporate Fields
+  cacNumber         String?
+  corporateCategory String?
+
+  // Output (Admin will upload the generated TIN here)
+  taxIdNumber       String?      
   
   // Payment Tracking
   amountPaid        Decimal      @db.Decimal(10, 2)
