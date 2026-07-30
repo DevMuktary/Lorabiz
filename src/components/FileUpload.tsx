@@ -22,13 +22,15 @@ export function FileUpload({
   label, 
   description, 
   value, 
-  accept = "application/pdf, image/jpeg, image/png", // FIXED: PDF allowed by default
+  accept = "application/pdf, image/jpeg, image/png", 
   aspectRatio = 1, 
   onUploadSuccess, 
   onRemove, 
   onError 
 }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // NEW: State to track percentage
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cropperRef = useRef<ReactCropperElement>(null);
 
@@ -50,7 +52,6 @@ export function FileUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // FIXED: Increased to 5MB limit
     if (file.size > 5 * 1024 * 1024) { 
       showError("File size exceeds 5MB limit."); 
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -80,13 +81,11 @@ export function FileUpload({
     const cropper = cropperRef.current?.cropper;
     if (!cropper) return;
 
-    setIsUploading(true);
     setImageToCrop(null); 
 
     cropper.getCroppedCanvas().toBlob(async (blob) => {
       if (!blob) {
          showError("Failed to crop image.");
-         setIsUploading(false);
          return;
       }
       const file = new File([blob], "cropped_document.jpg", { type: "image/jpeg" });
@@ -94,15 +93,43 @@ export function FileUpload({
     }, "image/jpeg", 0.95);
   };
 
+  // NEW: Rewritten with XMLHttpRequest to support live progress tracking
   const uploadFileToServer = async (file: File) => {
     setIsUploading(true);
+    setUploadProgress(0);
+
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      
+      const data = await new Promise<any>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/upload");
+
+        // Track upload progress
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percentComplete);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch (e) {
+              reject(new Error("Invalid JSON response"));
+            }
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        xhr.send(formData);
+      });
+
       if (data.success && data.url) {
         onUploadSuccess(data.url);
       } else {
@@ -112,6 +139,7 @@ export function FileUpload({
       showError("Network error during upload.");
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -135,23 +163,30 @@ export function FileUpload({
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {!value && !isUploading && (
-            <Button onClick={() => fileInputRef.current?.click()} className="bg-primary hover:opacity-90 text-primary-foreground w-full sm:w-auto h-10 px-6 rounded-lg font-bold shadow-md cursor-pointer transition-opacity">
+            // FIXED: Added type="button" to prevent form submission
+            <Button type="button" onClick={() => fileInputRef.current?.click()} className="bg-primary hover:opacity-90 text-primary-foreground w-full sm:w-auto h-10 px-6 rounded-lg font-bold shadow-md cursor-pointer transition-opacity">
               Choose File
             </Button>
           )}
           
           {isUploading && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg font-bold text-sm w-full sm:w-auto justify-center border border-primary/20">
-              <CircleNotch className="animate-spin h-5 w-5" weight="bold" /> Uploading...
+            // NEW: Added visual progress indicator
+            <div className="flex flex-col items-center gap-1 w-full sm:w-auto min-w-[140px]">
+              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg font-bold text-sm w-full justify-center border border-primary/20">
+                <CircleNotch className="animate-spin h-4 w-4" weight="bold" /> {uploadProgress}%
+              </div>
+              <div className="w-full bg-secondary rounded-full h-1 overflow-hidden mt-0.5">
+                <div className="bg-primary h-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+              </div>
             </div>
           )}
 
           {value && !isUploading && (
             <div className="flex w-full sm:w-auto gap-2">
-              <Button onClick={(e) => { e.preventDefault(); setViewFullScale(value); }} variant="outline" className="flex-1 sm:flex-none border-border bg-background text-foreground font-bold hover:bg-secondary h-10 cursor-pointer">
+              <Button type="button" onClick={(e) => { e.preventDefault(); setViewFullScale(value); }} variant="outline" className="flex-1 sm:flex-none border-border bg-background text-foreground font-bold hover:bg-secondary h-10 cursor-pointer">
                 View Document
               </Button>
-              <Button onClick={(e) => { e.preventDefault(); onRemove(); }} variant="outline" className="flex-1 sm:flex-none border-red-500/30 text-red-500 font-bold bg-background hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50 h-10 cursor-pointer transition-colors">
+              <Button type="button" onClick={(e) => { e.preventDefault(); onRemove(); }} variant="outline" className="flex-1 sm:flex-none border-red-500/30 text-red-500 font-bold bg-background hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50 h-10 cursor-pointer transition-colors">
                 Remove
               </Button>
             </div>
@@ -166,7 +201,7 @@ export function FileUpload({
           <div className="bg-card border border-border rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-secondary/50">
               <h3 className="font-black text-lg text-foreground">Crop Document ({label})</h3>
-              <button onClick={() => { setImageToCrop(null); setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="p-2 hover:bg-secondary rounded-full text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+              <button type="button" onClick={() => { setImageToCrop(null); setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="p-2 hover:bg-secondary rounded-full text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                 <X weight="bold" />
               </button>
             </div>
@@ -189,10 +224,10 @@ export function FileUpload({
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button onClick={handleCropAndUpload} className="flex-1 h-12 rounded-xl font-bold text-primary-foreground bg-primary hover:opacity-90 shadow-md cursor-pointer">
+                <Button type="button" onClick={handleCropAndUpload} className="flex-1 h-12 rounded-xl font-bold text-primary-foreground bg-primary hover:opacity-90 shadow-md cursor-pointer">
                   Crop & Upload
                 </Button>
-                <Button onClick={handleUploadOriginal} variant="outline" className="flex-1 h-12 rounded-xl font-bold text-foreground bg-background hover:bg-secondary border-border cursor-pointer">
+                <Button type="button" onClick={handleUploadOriginal} variant="outline" className="flex-1 h-12 rounded-xl font-bold text-foreground bg-background hover:bg-secondary border-border cursor-pointer">
                   Upload Original (Skip)
                 </Button>
               </div>
@@ -208,6 +243,7 @@ export function FileUpload({
           onClick={() => setViewFullScale(null)} 
         >
            <button 
+             type="button"
              onClick={(e) => { e.stopPropagation(); setViewFullScale(null); }} 
              className="absolute top-4 right-4 md:top-8 md:right-8 flex items-center gap-2 text-foreground bg-secondary/50 hover:bg-red-500 hover:text-white px-4 py-2 rounded-full font-bold transition-colors z-50 shadow-lg border border-border cursor-pointer"
            >
