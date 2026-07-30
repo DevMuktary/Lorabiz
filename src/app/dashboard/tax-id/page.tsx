@@ -1,10 +1,13 @@
 // src/app/dashboard/tax-id/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Info, CheckCircle, X, WarningCircle, ArrowRight, ListDashes, ArrowLeft, Tag, IdentificationCard, Buildings } from "@phosphor-icons/react";
+import { 
+  Info, CheckCircle, X, WarningCircle, ArrowRight, ListDashes, 
+  ArrowLeft, Tag, IdentificationCard, Buildings, CaretDown, CaretUp 
+} from "@phosphor-icons/react";
 
 type TaxIdType = "INDIVIDUAL" | "CORPORATE";
 
@@ -23,6 +26,8 @@ export default function TaxIdPage() {
   const [prices, setPrices] = useState({ individual: 0, corporate: 0 });
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   
+  const [showIntroModal, setShowIntroModal] = useState(true);
+
   const [consentChecked, setConsentChecked] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,6 +42,8 @@ export default function TaxIdPage() {
   // Corporate Form
   const [cacNumber, setCacNumber] = useState("");
   const [corpCategory, setCorpCategory] = useState("");
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchPricing = async () => {
@@ -58,6 +65,17 @@ export default function TaxIdPage() {
     fetchPricing();
   }, []);
 
+  // Close custom dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const currentPrice = reqType === "INDIVIDUAL" ? prices.individual : prices.corporate;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -67,6 +85,10 @@ export default function TaxIdPage() {
     if (!consentChecked) return;
     if (reqType === "INDIVIDUAL" && nin.length !== 11) {
       setErrorMsg("NIN must be exactly 11 digits.");
+      return;
+    }
+    if (reqType === "CORPORATE" && !corpCategory) {
+      setErrorMsg("Please select your registration category.");
       return;
     }
 
@@ -113,18 +135,40 @@ export default function TaxIdPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto relative">
       
+      {/* Intro Modal (Processing Timeline) */}
+      {showIntroModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
+                <Info weight="fill" className="h-6 w-6 text-blue-500" />
+              </div>
+              <h2 className="text-xl font-black">Processing Timeline</h2>
+            </div>
+            
+            <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+              <p>
+                Processing time is typically within <strong className="text-foreground">30 minutes</strong> between 9:00 AM and 5:00 PM. 
+              </p>
+              <p>
+                Applications submitted outside these working hours may take 1 hour or more to process. If your request is delayed beyond the expected timeframe, please log a complaint using the email option on our Support widget.
+              </p>
+            </div>
+
+            <button 
+              type="button"
+              onClick={() => setShowIntroModal(false)}
+              className="mt-8 w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity"
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
+
       <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit">
         <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Dashboard
       </Link>
-
-      {/* Warning Banner */}
-      <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5 flex gap-4 animate-in fade-in">
-        <Info weight="fill" className="h-6 w-6 text-blue-500 shrink-0 mt-0.5" />
-        <div className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
-          <p className="font-bold mb-1">Processing Timeline</p>
-          Processing time is within <strong className="text-foreground">30 minutes</strong> between 9:00 AM - 5:00 PM. Applications submitted outside these hours may take 1 hour or more. If your request is delayed, please log a complaint using the email option on our Support widget.
-        </div>
-      </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="flex items-center gap-3">
@@ -133,7 +177,7 @@ export default function TaxIdPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black">Generate Tax ID (TIN)</h1>
-            <p className="text-muted-foreground text-sm">Get your 13-digit Tax Identification Number instantly.</p>
+            <p className="text-muted-foreground text-sm">Get your 13-digit Tax Identification Number.</p>
           </div>
         </div>
 
@@ -169,7 +213,7 @@ export default function TaxIdPage() {
               </div>
 
               {!isLoadingPrice && (
-                <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit">
+                <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit mt-3">
                   <Tag weight="fill" className="h-4 w-4" />
                   <span className="text-xs font-bold uppercase tracking-wider">Processing Fee: ₦{currentPrice.toLocaleString()}</span>
                 </div>
@@ -204,13 +248,40 @@ export default function TaxIdPage() {
                     <label className="text-sm font-bold mb-2 block">CAC Registration Number</label>
                     <input required type="text" value={cacNumber} onChange={(e) => setCacNumber(e.target.value.toUpperCase())} placeholder="e.g. RC123456 or BN987654" className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all uppercase" />
                   </div>
-                  <div>
+                  
+                  {/* Designed Dropdown for Corporate Category */}
+                  <div className="relative" ref={categoryDropdownRef}>
                     <label className="text-sm font-bold mb-2 block">Registration Category</label>
-                    <select required value={corpCategory} onChange={(e) => setCorpCategory(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all cursor-pointer">
-                      <option value="" disabled>Select your CAC Category...</option>
-                      {CORPORATE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
+                    <button 
+                      type="button"
+                      onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                      className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all text-left ${isCategoryDropdownOpen ? 'border-primary ring-2 ring-primary/20 bg-background' : 'border-border bg-background hover:border-primary/50'}`}
+                    >
+                      <span className={corpCategory ? "font-bold text-sm text-foreground" : "text-sm text-muted-foreground"}>
+                        {corpCategory || "Select your CAC Category..."}
+                      </span>
+                      {isCategoryDropdownOpen ? <CaretUp weight="bold" className="h-4 w-4 text-muted-foreground" /> : <CaretDown weight="bold" className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+
+                    {isCategoryDropdownOpen && (
+                      <div className="absolute top-full left-0 w-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                        {CORPORATE_CATEGORIES.map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => {
+                              setCorpCategory(cat);
+                              setIsCategoryDropdownOpen(false);
+                            }}
+                            className="w-full flex items-center px-4 py-3 hover:bg-secondary transition-colors text-left border-b border-border last:border-0 font-bold text-sm text-foreground"
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
                 </div>
               )}
             </div>
@@ -224,7 +295,7 @@ export default function TaxIdPage() {
               </label>
 
               <button type="submit" disabled={!consentChecked || isLoadingPrice} className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md">
-                {isLoadingPrice ? "Loading pricing..." : `Pay ₦${currentPrice.toLocaleString()} & Generate TIN`}
+                {isLoadingPrice ? "Loading pricing..." : `Submit Application & Pay ₦${currentPrice.toLocaleString()}`}
               </button>
             </div>
           </form>
@@ -241,7 +312,7 @@ export default function TaxIdPage() {
               </li>
               <li className="flex gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">2</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">Necessary for processing SCUML and other regulatory certificates.</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">Required for registering your business for VAT and filing your annual tax returns.</p>
               </li>
               <li className="flex gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">3</div>
