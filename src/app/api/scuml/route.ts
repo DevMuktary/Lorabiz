@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma"; 
 import { generateNumericId } from "@/utils/generateId"; 
-import { sendScumlSubmittedEmail } from "@/lib/email"; // NEW: Import the email function
+import { sendScumlSubmittedEmail } from "@/lib/email";
 
 export async function GET(req: Request) {
   try {
@@ -96,11 +96,11 @@ export async function POST(req: Request) {
       return scumlReq;
     });
 
-    // NEW: Fire off the email notification after a successful transaction
+    // Fire off the email notification after a successful transaction
     try {
       await sendScumlSubmittedEmail({
         to: user.email!,
-        name: user.name || "Customer",
+        name: user.firstName || "Customer", // FIXED: Changed from user.name to user.firstName
         companyName: companyName,
         regType: type,
         transactionRef: transactionRef
