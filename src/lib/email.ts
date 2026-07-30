@@ -144,7 +144,6 @@ export async function sendAccountExistsEmail(to: string) {
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
 }
 
-
 // ============================================================================
 // STANDARD USER LOGIN 2FA
 // ============================================================================
@@ -172,7 +171,6 @@ export async function sendUserLoginOTP(to: string, otpCode: string) {
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
 }
 
-
 // ============================================================================
 // INTERNAL STAFF & MD TWO-FACTOR AUTHENTICATION PASSKEY
 // ============================================================================
@@ -187,7 +185,7 @@ export async function send2FAPasskeyEmail(to: string, otpCode: string, role?: st
 
   const content = `
     <div style="display: inline-block; background-color: #0f172a; color: ${accentColor}; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 6px 12px; border-radius: 9999px; margin-bottom: 16px; border: 1px solid #334155; font-family: sans-serif;">
-      🔒 Zero-Trust Identity Verification
+      🛡️ Zero-Trust Identity Verification
     </div>
     <div style="background: #0f172a; padding: 20px; text-align: center; font-size: 40px; font-weight: 800; letter-spacing: 8px; color: ${accentColor}; border-radius: 12px; border: 1px solid #334155; margin-bottom: 24px; font-family: monospace;">
       ${otpCode}
@@ -206,7 +204,6 @@ export async function send2FAPasskeyEmail(to: string, otpCode: string, role?: st
 
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
 }
-
 
 // ============================================================================
 // PROFILE SETTINGS & SECURITY OTPs
@@ -260,7 +257,6 @@ export async function sendPasswordChangeOTP(to: string, otpCode: string) {
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
 }
 
-
 // ============================================================================
 // STATUS NOTIFICATIONS (No OTP Required)
 // ============================================================================
@@ -273,7 +269,7 @@ export async function sendApplicationSubmittedEmail({
   const previewText = `We have received your filing for ${businessName} (Ref: ${regId}).`;
 
   const content = `
-    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">We've received your filing! 📄</h2>
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">We've received your filing! 🎉</h2>
     <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
       Hello <strong>${name}</strong>,<br/>
       Your incorporation filing for <strong>${businessName}</strong> has been received and payment confirmed. Our compliance engine is currently processing your documents with the Corporate Affairs Commission (CAC).
@@ -341,6 +337,37 @@ export async function sendApplicationApprovedEmail({
     </p>
     <div style="text-align: center;">
       <a href="https://lorabiz.com/dashboard/cac/new-incorporation" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Download Official Documents</a>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+// ============================================================================
+// NEW: SCUML SUBMISSION NOTIFICATION
+// ============================================================================
+
+export async function sendScumlSubmittedEmail({
+  to, name, companyName, regType, transactionRef,
+}: { to: string; name: string; companyName: string; regType: string; transactionRef: string; }) {
+  
+  const subject = `SCUML Application Received: ${companyName}`;
+  const previewText = `We have received your SCUML registration request for ${companyName} (Ref: ${transactionRef}).`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">SCUML Application Received 🛡️</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Your SCUML certificate registration request for <strong>${companyName}</strong> has been received and your payment is confirmed. Our compliance team is currently processing your documents with the relevant agencies.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 28px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Application Details</p>
+      <p style="margin: 0; font-size: 15px; color: #0f172a;"><strong>Entity Name:</strong> ${companyName}</p>
+      <p style="margin: 6px 0 0; font-size: 15px; color: #0f172a;"><strong>Type:</strong> ${regType.replace('_', ' ')}</p>
+      <p style="margin: 6px 0 0; font-size: 15px; color: #0f172a;"><strong>Tracking Ref:</strong> ${transactionRef}</p>
+    </div>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/scuml/history" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Track Application Status</a>
     </div>
   `;
 
