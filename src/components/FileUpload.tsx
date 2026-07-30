@@ -18,22 +18,27 @@ interface FileUploadProps {
   onError?: (msg: string) => void;
 }
 
-export function FileUpload({ label, description, value, accept = "image/jpeg, image/png", aspectRatio = 1, onUploadSuccess, onRemove, onError }: FileUploadProps) {
+export function FileUpload({ 
+  label, 
+  description, 
+  value, 
+  accept = "application/pdf, image/jpeg, image/png", // FIXED: PDF allowed by default
+  aspectRatio = 1, 
+  onUploadSuccess, 
+  onRemove, 
+  onError 
+}: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cropperRef = useRef<ReactCropperElement>(null);
 
-  // We need to check if the component is mounted to safely use createPortal in Next.js
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Raw File & Preview State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [viewFullScale, setViewFullScale] = useState<string | null>(null);
-
-  // Cropper State
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
   const showError = (msg: string) => {
@@ -45,8 +50,9 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 4 * 1024 * 1024) { 
-      showError("File size exceeds 4MB limit."); 
+    // FIXED: Increased to 5MB limit
+    if (file.size > 5 * 1024 * 1024) { 
+      showError("File size exceeds 5MB limit."); 
       if (fileInputRef.current) fileInputRef.current.value = "";
       return; 
     }
@@ -77,7 +83,6 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
     setIsUploading(true);
     setImageToCrop(null); 
 
-    // Extract the cropped area straight from the library
     cropper.getCroppedCanvas().toBlob(async (blob) => {
       if (!blob) {
          showError("Failed to crop image.");
@@ -116,7 +121,6 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
 
   return (
     <>
-      {/* --- COMPACT ROW UI --- */}
       <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-xl transition-all ${value ? 'border-emerald-500/30 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.05)]' : 'border-border bg-card'}`}>
         
         <div className="flex items-center gap-3 mb-4 sm:mb-0">
@@ -144,10 +148,10 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
 
           {value && !isUploading && (
             <div className="flex w-full sm:w-auto gap-2">
-              <Button onClick={() => setViewFullScale(value)} variant="outline" className="flex-1 sm:flex-none border-border bg-background text-foreground font-bold hover:bg-secondary h-10 cursor-pointer">
+              <Button onClick={(e) => { e.preventDefault(); setViewFullScale(value); }} variant="outline" className="flex-1 sm:flex-none border-border bg-background text-foreground font-bold hover:bg-secondary h-10 cursor-pointer">
                 View Document
               </Button>
-              <Button onClick={onRemove} variant="outline" className="flex-1 sm:flex-none border-red-500/30 text-red-500 font-bold bg-background hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50 h-10 cursor-pointer transition-colors">
+              <Button onClick={(e) => { e.preventDefault(); onRemove(); }} variant="outline" className="flex-1 sm:flex-none border-red-500/30 text-red-500 font-bold bg-background hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50 h-10 cursor-pointer transition-colors">
                 Remove
               </Button>
             </div>
@@ -157,7 +161,6 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
         </div>
       </div>
 
-      {/* --- DRAGGABLE CROP MODAL (Teleported to body via React Portal) --- */}
       {mounted && imageToCrop && createPortal(
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-card border border-border rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -199,7 +202,6 @@ export function FileUpload({ label, description, value, accept = "image/jpeg, im
         document.body
       )}
 
-      {/* --- LIGHTBOX PREVIEW (Teleported to body via React Portal) --- */}
       {mounted && viewFullScale && createPortal(
         <div 
           className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
