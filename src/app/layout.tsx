@@ -78,7 +78,7 @@ export default function RootLayout({
     // suppressHydrationWarning is strictly required on the html tag when using next-themes
     <html lang="en" suppressHydrationWarning>
       <body>
-        <Providers attribute="class" defaultTheme="system" enableSystem>
+        <Providers>
           {children}
         </Providers>
       </body>
