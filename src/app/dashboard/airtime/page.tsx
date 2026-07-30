@@ -1,13 +1,15 @@
+// src/app/dashboard/airtime/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import AirtimeForm from "@/components/features/airtime/AirtimeForm";
 import DuplicateWarningModal from "@/components/features/airtime/DuplicateWarningModal";
 import ProcessingOverlay from "@/components/features/airtime/ProcessingOverlay";
 import ReceiptCard from "@/components/features/airtime/ReceiptCard";
 import AirtimeHistory from "@/components/features/airtime/AirtimeHistory";
 import DisputeModal from "@/components/features/airtime/DisputeModal";
-import { Wallet } from "@phosphor-icons/react";
+import { Wallet, ArrowLeft } from "@phosphor-icons/react";
 
 // Shared Type
 interface Transaction {
@@ -94,16 +96,24 @@ export default function AirtimeDashboardPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto pb-16 pt-4 font-sans relative">
+    <div className="max-w-5xl mx-auto pb-16 pt-4 font-sans relative space-y-6">
       
+      {/* Back Button */}
+      <Link 
+        href="/dashboard" 
+        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit"
+      >
+        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Dashboard
+      </Link>
+
       {/* Page Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-border pb-6">
         <div>
           <h1 className="text-3xl font-black text-foreground">Airtime Recharge</h1>
           <p className="text-muted-foreground mt-2 font-medium">Instantly top-up your mobile line from your wallet.</p>
         </div>
         
-        <div className="bg-card border border-border px-5 py-3 rounded-2xl flex items-center gap-4 shadow-sm">
+        <div className="bg-card border border-border px-5 py-3 rounded-2xl flex items-center gap-4 shadow-sm shrink-0">
           <div className="h-10 w-10 bg-primary/10 text-primary rounded-full flex items-center justify-center shrink-0">
             <Wallet size={20} weight="fill" />
           </div>
