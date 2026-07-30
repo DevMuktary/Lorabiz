@@ -483,6 +483,7 @@ enum ScumlType {
 enum ScumlStatus {
   PENDING
   PROCESSING
+  COMPLETED    // NEW: Added completed status
 }
 
 model ScumlRegistration {
@@ -491,11 +492,14 @@ model ScumlRegistration {
   type              ScumlType
   companyName       String
   
-  // Document URLs (Uploaded via Cloudinary)
+  // User Uploaded Document URLs 
   certificateUrl    String
   statusReportUrl   String
-  memorandumUrl     String?      // Required only for LLC
-  constitutionUrl   String?      // Required only for NGO
+  memorandumUrl     String?      
+  constitutionUrl   String?      
+
+  // Admin Uploaded Final Certificate
+  finalCertificateUrl String?    // NEW: Where the admin uploads the finished work
 
   status            ScumlStatus  @default(PENDING)
   
