@@ -373,3 +373,28 @@ export async function sendScumlSubmittedEmail({
 
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
 }
+
+export async function sendTaxIdSubmittedEmail({
+  to, name, requestType, transactionRef,
+}: { to: string; name: string; requestType: string; transactionRef: string; }) {
+  const subject = `Tax ID Application Received`;
+  const previewText = `We have received your Tax ID registration request (Ref: ${transactionRef}).`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">Tax ID Request Received 📝</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Your Tax Identification Number (TIN) request has been received and your payment is confirmed. Our team is currently processing it.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 28px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Application Details</p>
+      <p style="margin: 0; font-size: 15px; color: #0f172a;"><strong>Type:</strong> ${requestType}</p>
+      <p style="margin: 6px 0 0; font-size: 15px; color: #0f172a;"><strong>Tracking Ref:</strong> ${transactionRef}</p>
+    </div>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/tax-id/history" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Track Application Status</a>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
