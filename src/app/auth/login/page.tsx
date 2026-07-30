@@ -230,7 +230,6 @@ function LoginContent() {
   };
 
   return (
-    {/* CRITICAL FIX: Removed transition-colors duration-300 from this main tag */}
     <main className="fixed inset-0 w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
       
       <Script 
@@ -257,8 +256,9 @@ function LoginContent() {
         </div>
 
         <div className="relative z-10 p-12 space-y-8 max-w-xl">
+          {/* HIGHLY OPTIMIZED H2 FOR SEO */}
           <h2 className="text-4xl xl:text-5xl font-bold leading-tight tracking-tight text-white">
-            SCUML, CAC, NIN, Airtime, and more.
+            Nigeria&apos;s #1 Platform for CAC, NIN, SCUML & Airtime.
           </h2>
 
           <div className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl min-h-[140px] flex flex-col justify-center transition-all duration-500 ease-in-out shadow-2xl">
@@ -268,7 +268,7 @@ function LoginContent() {
               ))}
             </div>
             <p className="text-white/90 text-lg font-medium leading-relaxed italic">
-              "{testimonials[currentSlide].text}"
+              &quot;{testimonials[currentSlide].text}&quot;
             </p>
             <p className="text-white/60 mt-4 font-semibold">
               — {testimonials[currentSlide].name}
@@ -294,9 +294,10 @@ function LoginContent() {
             <Image src="/logo.png" alt="LoraBiz Logo" width={200} height={70} className="object-contain h-14 w-auto dark:brightness-110" priority />
           </div>
 
+          {/* HIGHLY OPTIMIZED H1 FOR SEO */}
           <header className="mb-8 text-center lg:text-left">
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">Welcome back</h1>
-            <p className="text-muted-foreground mt-2 text-[16px]">Log in to access your LoraBiz dashboard.</p>
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">Log in to LoraBiz</h1>
+            <p className="text-muted-foreground mt-2 text-[16px]">Access your dashboard to manage business registrations and identity services.</p>
           </header>
 
           <form onSubmit={handleLoginSubmit} className="space-y-6">
@@ -399,7 +400,7 @@ function LoginContent() {
             <div className="text-center mb-6">
               <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4 mt-2"><ShieldCheck weight="fill" className="h-6 w-6" /></div>
               <h2 className="text-xl sm:text-2xl font-bold text-foreground">2-Step Verification</h2>
-              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">We've sent a 6-digit authorization code to <br/><span className="font-medium text-foreground">{formData.email}</span>.</p>
+              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">We&apos;ve sent a 6-digit authorization code to <br/><span className="font-medium text-foreground">{formData.email}</span>.</p>
             </div>
             <form onSubmit={handleVerifyOtp} className="space-y-6">
               {otpError && <div className="p-3 bg-destructive/10 text-destructive text-sm font-medium rounded-lg text-center animate-in shake">{otpError}</div>}
