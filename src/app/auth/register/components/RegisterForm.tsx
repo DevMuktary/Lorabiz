@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
   User, EnvelopeSimple, LockKey, Spinner, CheckCircle, 
-  GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash, X, ShieldCheck
+  GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,7 +107,7 @@ export default function RegisterForm() {
       return;
     }
     
-    setErrors({ email: "" });
+    setErrors({ email: "", otp: "" });
     setIsSendingOtp(true);
 
     try {
@@ -119,7 +119,7 @@ export default function RegisterForm() {
 
       if (res.ok) {
         setOtpStep("sent");
-        setOtpTimer(30);
+        setOtpTimer(60); // 60s cooldown for the resend button UI
       } else {
         const data = await res.json();
         setErrors({ email: data.message || "Failed to send code." });
@@ -135,7 +135,10 @@ export default function RegisterForm() {
 
   const handleVerifyOTP = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (otpCode.length !== 6) return;
+    if (otpCode.length !== 6) {
+      setErrors({ otp: "Code must be 6 digits." });
+      return;
+    }
 
     setIsVerifying(true);
     setErrors({ otp: "" });
@@ -207,7 +210,7 @@ export default function RegisterForm() {
         const data = await res.json();
         if (data.message?.toLowerCase().includes("code") || data.message?.toLowerCase().includes("verification")) {
           setOtpStep("sent");
-          setErrors({ email: data.message });
+          setErrors({ otp: data.message });
         } else {
           setErrors({ form: data.message || "Registration failed." });
         }
@@ -225,12 +228,6 @@ export default function RegisterForm() {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m > 0 ? `${m}m ` : ''}${s}s`;
-  };
-
   return (
     <div className="w-full max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
@@ -244,8 +241,8 @@ export default function RegisterForm() {
       </div>
 
       <div className="mb-8 text-center lg:text-left">
-        <h2 className="text-3xl font-bold text-foreground tracking-tight">Create an account</h2>
-        <p className="text-muted-foreground mt-2 text-[16px]">Enter your details to create your portal account.</p>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">Register for LoraBiz</h1>
+        <p className="text-muted-foreground mt-2 text-[16px]">Create your account to manage business and compliance services.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -312,7 +309,7 @@ export default function RegisterForm() {
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <EnvelopeSimple className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
-                <Input id="email" type="email" disabled={otpStep === "verified"} value={formData.email} onChange={handleChange} required placeholder="you@example.com" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
+                <Input id="email" type="email" disabled={otpStep === "verified" || otpStep === "sent"} value={formData.email} onChange={handleChange} required placeholder="you@example.com" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
               </div>
               
               {otpStep === "idle" && (
@@ -331,6 +328,45 @@ export default function RegisterForm() {
               )}
             </div>
             {errors.email && <p className="text-sm text-destructive font-medium mt-1">{errors.email}</p>}
+
+            {/* INLINE OTP BOX */}
+            {otpStep === "sent" && (
+              <div className="bg-secondary/20 p-4 rounded-xl border border-border mt-3 animate-in fade-in slide-in-from-top-2">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Input 
+                    value={otpCode} 
+                    onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, "")); setErrors({ ...errors, otp: "" }); }} 
+                    maxLength={6} 
+                    placeholder="Enter 6-digit code" 
+                    className="h-12 text-center text-lg tracking-widest bg-background border-border text-foreground font-bold focus-visible:ring-[#ff3f7a]" 
+                  />
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={handleVerifyOTP} disabled={isVerifying || otpCode.length !== 6} className="h-12 flex-1 bg-[#ff3f7a] hover:bg-[#e02b62] text-white cursor-pointer">
+                      {isVerifying ? <Spinner className="animate-spin h-5 w-5 mx-auto" /> : "Confirm"}
+                    </Button>
+                    {otpTimer > 0 ? (
+                      <div className="h-12 px-4 flex items-center justify-center bg-secondary border border-border rounded-md text-muted-foreground font-mono font-medium min-w-[80px]">
+                        {otpTimer}s
+                      </div>
+                    ) : (
+                      <Button 
+                        type="button" 
+                        onClick={handleSendOTP} 
+                        variant="outline" 
+                        disabled={isSendingOtp}
+                        className="h-12 border-border text-foreground hover:bg-secondary cursor-pointer disabled:opacity-50 min-w-[80px]"
+                      >
+                        {isSendingOtp ? <Spinner className="animate-spin h-5 w-5 mx-auto" /> : "Resend"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {errors.otp && <p className="text-sm text-destructive font-medium mt-2 text-center">{errors.otp}</p>}
+                <p className="text-xs text-muted-foreground text-center mt-3">
+                  Code sent to <strong>{formData.email}</strong>. Check your spam folder if it doesn't appear.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -471,52 +507,6 @@ export default function RegisterForm() {
           <Link href="/auth/login" className="font-semibold text-[#ff3f7a] hover:underline transition-all">Sign in</Link>
         </div>
       </form>
-
-      {/* OTP MODAL (Matches Login Page Styling) */}
-      {otpStep === "sent" && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-secondary p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
-            <button onClick={() => setOtpStep("idle")} aria-label="Close OTP Modal" className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-full transition-colors">
-              <X className="h-5 w-5" weight="bold" />
-            </button>
-            <div className="text-center mb-6">
-              <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4 mt-2">
-                <ShieldCheck weight="fill" className="h-6 w-6" />
-              </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground">Verify your email</h2>
-              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                We&apos;ve sent a 6-digit authorization code to <br/><span className="font-medium text-foreground">{formData.email}</span>.
-              </p>
-            </div>
-            
-            <form onSubmit={handleVerifyOTP} className="space-y-6">
-              {errors.otp && <div className="p-3 bg-destructive/10 text-destructive text-sm font-medium rounded-lg text-center animate-in shake">{errors.otp}</div>}
-              
-              <div className="space-y-2">
-                <Input 
-                  value={otpCode} 
-                  aria-label="Enter 6 digit OTP" 
-                  onChange={(e) => {setOtpCode(e.target.value.replace(/\D/g, "")); setErrors({ ...errors, otp: "" });}} 
-                  maxLength={6} 
-                  placeholder="000000" 
-                  className="h-14 sm:h-16 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]" 
-                />
-              </div>
-              
-              <div className="flex flex-col gap-3 pt-2">
-                <Button type="submit" aria-label="Verify OTP" disabled={isVerifying || otpCode.length < 6} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white">
-                  {isVerifying ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : "Verify & Continue"}
-                </Button>
-                
-                <Button type="button" variant="outline" onClick={handleSendOTP} disabled={isSendingOtp || otpTimer > 0} className="w-full h-12 font-medium bg-transparent border-border text-foreground hover:bg-background disabled:opacity-50">
-                  {isSendingOtp ? <Spinner className="animate-spin h-5 w-5" /> : otpTimer > 0 ? `Resend code in ${formatTime(otpTimer)}` : "Resend Code"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
