@@ -19,6 +19,9 @@ export const metadata: Metadata = {
     'airtime top-up',
     'business management software',
     'startup compliance',
+    'Tax ID Generation'
+    'Fast Scuml Registration'
+    'TradeMark Registration',
   ],
   authors: [{ name: 'QUADROX TECHNOLOGIES LIMITED' }],
   creator: 'QUADROX TECHNOLOGIES LIMITED',
@@ -27,9 +30,9 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_NG',
     url: '/',
-    title: 'Lorabiz | Smart Business Management & Registrations',
+    title: 'Lorabiz | Smart  Management & Registrations',
     description:
-      'Streamline your business operations with Lorabiz. Expert tools for CAC registrations, identity verification, and financial management.',
+      'Streamline your business operations with Lorabiz. Expert tools for CAC, Scuml, Tax id, Airtime registrations, verification, and GovTech management.',
     siteName: 'Lorabiz',
     images: [
       {
@@ -42,9 +45,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Lorabiz | Smart Business Management & Registrations',
+    title: 'Lorabiz | Smart  Management & Registrations',
     description:
-      'Streamline your business operations with Lorabiz. Expert tools for CAC registrations, identity verification, and financial management.',
+      ''Streamline your business operations with Lorabiz. Expert tools for CAC, Scuml, Tax id, Airtime registrations, verification, and GovTech management.',
     images: ['/logo.png'],
   },
   robots: {
