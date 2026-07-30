@@ -230,7 +230,8 @@ function LoginContent() {
   };
 
   return (
-    <main className="min-h-[100dvh] w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white overflow-hidden">
+    // 1. THE FIX: Removed `overflow-hidden` and `fixed inset-0`. Now it's a natural scrolling container.
+    <main className="min-h-screen w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white">
       
       <Script 
         src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
@@ -247,7 +248,8 @@ function LoginContent() {
         <Lifebuoy className="h-6 w-6" weight="fill" />
       </a>
 
-      <aside className="hidden lg:flex lg:w-[45%] shrink-0 min-h-[100dvh] bg-slate-950 relative overflow-hidden flex-col justify-between">
+      {/* 2. THE FIX: The left panel is now "fixed" to the left side on desktop, allowing the right side to scroll naturally */}
+      <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-[45%] shrink-0 min-h-screen bg-slate-950 relative overflow-hidden flex-col justify-between">
         <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#ff3f7a]/20 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-20%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -286,8 +288,9 @@ function LoginContent() {
         </div>
       </aside>
 
-      <section className="flex-1 h-[100dvh] overflow-y-auto overflow-x-hidden relative block bg-background">
-        <article className="w-full max-w-lg xl:max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-2 sm:mt-8">
+      {/* 3. THE FIX: The right section now acts as the true scrolling document (lg:ml-[45%] to make room for the fixed sidebar on desktop) */}
+      <section className="flex-1 w-full lg:ml-[45%] min-h-screen relative flex flex-col justify-center bg-background py-10">
+        <article className="w-full max-w-lg xl:max-w-xl mx-auto px-6 sm:px-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           
           <div className="mb-8 flex justify-center lg:hidden">
             <Image src="/logo.png" alt="LoraBiz Logo" width={200} height={70} className="object-contain h-14 w-auto dark:brightness-110" priority />
