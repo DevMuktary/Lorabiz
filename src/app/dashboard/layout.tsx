@@ -65,6 +65,8 @@ const NAVIGATION: NavCategory[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  
+  // Safe fallback to prevent Railway build crashes
   const { data: session, update } = useSession() || {};
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -125,7 +127,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = getUserInitials();
 
   return (
-    // THE CRITICAL FIX: Changed bg-secondary/10 to bg-background so Safari blends the status bar perfectly
     <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
       
       {isMobileMenuOpen && (
@@ -228,7 +229,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        <header className="sticky top-0 z-40 h-20 bg-background/95 backdrop-blur-md border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm">
+        
+        {/* CRITICAL FIX 1: Removed `sticky top-0` so it scrolls naturally */}
+        {/* CRITICAL FIX 2: Removed `bg-background/95 backdrop-blur-md` and made it solid `bg-background` to fix Safari's status bar confusion */}
+        <header className="relative z-40 h-20 bg-background border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm">
           <div className="flex items-center gap-4">
             <button 
               className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
@@ -272,8 +276,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* To keep your dashboard contrast nice, I moved the secondary background to just the inner content area */}
-        <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative border-t border-border">
+        <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
             {children}
           </div>
@@ -298,7 +301,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* SUPPORT WIDGET INSTALLED HERE IN THE DASHBOARD */}
       <SupportWidgetBootstrapper />
     </div>
   );
