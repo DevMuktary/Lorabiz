@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { CheckCircle, ShieldCheck, RocketLaunch, WhatsappLogo, Buildings, IdentificationCard, Cards, Copyright, Handshake, DeviceMobile } from "@phosphor-icons/react";
+import { 
+  CheckCircle, ShieldCheck, WhatsappLogo, 
+  Buildings, Copyright, Cards, Handshake 
+} from "@phosphor-icons/react";
 import RegisterForm from "./components/RegisterForm"; 
 
 export default function RegisterPage() {
@@ -24,74 +27,81 @@ export default function RegisterPage() {
     fetchSettings();
   }, []);
 
+  // Use the fetched number, OR fallback to the default permanent number instantly
   const activeSupportNumber = supportNumber || "2348000000000";
 
   return (
-    <div className="flex min-h-[100dvh] w-full bg-background font-sans selection:bg-[#ff3f7a] selection:text-white flex-col lg:flex-row relative">
+    // FIX: Using min-h-screen without `overflow-hidden` fixes Safari mobile repainting bugs
+    <div className="flex min-h-screen w-full bg-background font-sans selection:bg-[#ff3f7a] selection:text-white relative">
       
-      {/* LEFT PANEL (Sticky desktop sidebar with upgraded branding & SEO H2) */}
-      <div className="hidden lg:flex lg:w-[45%] lg:sticky lg:top-0 lg:h-[100dvh] bg-slate-950 p-12 flex-col justify-between relative overflow-hidden">
+      {/* LEFT PANEL (Fixed on desktop so it never scrolls out of view, matching the Login page) */}
+      <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-[45%] shrink-0 min-h-screen bg-slate-950 relative overflow-hidden flex-col justify-between">
         <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#ff3f7a]/20 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-20%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-        {/* Official Logo in Side Panel */}
-        <div className="relative z-10">
-          <Image 
-            src="/logo.png" 
-            alt="LoraBiz Official Logo" 
-            width={160} 
-            height={50} 
-            className="brightness-0 invert object-contain" 
-            priority 
-          />
+        <div className="relative z-10 p-12">
+          <Image src="/logo.png" alt="LoraBiz Official Logo" width={160} height={50} className="brightness-0 invert object-contain" priority />
         </div>
 
-        <div className="relative z-10 text-white space-y-6 max-w-lg mx-auto w-full">
-          {/* SEO Optimized H2 matching actual platform services */}
-          <h2 className="text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight">
-            Automate Your Corporate & Business Journey.
+        <div className="relative z-10 p-12 space-y-8 max-w-xl mt-auto mb-auto">
+          {/* HIGHLY OPTIMIZED H2 FOR SEO */}
+          <h2 className="text-4xl xl:text-5xl font-bold leading-tight tracking-tight text-white">
+            Nigeria&apos;s Comprehensive Hub for Business & Compliance.
           </h2>
-          <p className="text-base text-white/80 leading-relaxed">
-            Seamlessly register your CAC Business Name or LLC, generate instant NIN slips, process SCUML, or Generate your Tax ID, and handle utility top-ups all in one place.
+          <p className="text-lg text-white/80 leading-relaxed font-medium">
+            Create a free account to seamlessly access CAC Services, SCUML, Tax ID (TIN), Trademarks, SMEDAN, and Everyday Utilities—all from one powerful dashboard.
           </p>
           
-          <div className="pt-6 space-y-3.5">
-            <div className="flex items-center gap-3 text-white/90 text-sm font-medium">
-              <Buildings className="h-5 w-5 text-[#ff3f7a]" weight="fill" />
-              <span>CAC Registrations & Post-Incorporation</span>
+          <div className="pt-6 space-y-5">
+            <div className="flex items-center gap-4 text-white">
+              <div className="bg-[#ff3f7a]/20 p-2 rounded-lg">
+                <Buildings weight="fill" className="h-6 w-6 text-[#ff3f7a]" />
+              </div>
+              <span className="font-semibold text-[15px]">CAC Services, Post-Incorporation & Name Change</span>
             </div>
-            <div className="flex items-center gap-3 text-white/90 text-sm font-medium">
-              <IdentificationCard className="h-5 w-5 text-[#ff3f7a]" weight="fill" />
-              <span>Instant NIN Slips</span>
+            <div className="flex items-center gap-4 text-white">
+              <div className="bg-emerald-500/20 p-2 rounded-lg">
+                <ShieldCheck weight="fill" className="h-6 w-6 text-emerald-500" />
+              </div>
+              <span className="font-semibold text-[15px]">SCUML, Tax ID (TIN) & SMEDAN Registration</span>
             </div>
-            <div className="flex items-center gap-3 text-white/90 text-sm font-medium">
-              <ShieldCheck className="h-5 w-5 text-[#ff3f7a]" weight="fill" />
-              <span>SCUML, Trademark (IPO), Tax ID & SMEDAN</span>
+            <div className="flex items-center gap-4 text-white">
+              <div className="bg-blue-500/20 p-2 rounded-lg">
+                <Copyright weight="fill" className="h-6 w-6 text-blue-500" />
+              </div>
+              <span className="font-semibold text-[15px]">Trademark (IPO) & Intellectual Property</span>
+            </div>
+            <div className="flex items-center gap-4 text-white">
+              <div className="bg-amber-500/20 p-2 rounded-lg">
+                <Cards weight="fill" className="h-6 w-6 text-amber-500" />
+              </div>
+              <span className="font-semibold text-[15px]">NIN Slips, Airtime Top-ups & Utility Payments</span>
             </div>
           </div>
         </div>
 
-        <div className="relative z-10 flex items-center justify-between text-xs text-white/50 font-semibold tracking-widest uppercase">
-          <span>Powered by Quadrox Technologies Limited</span>
+        <div className="relative z-10 p-12">
+          <p className="text-xs font-bold tracking-widest text-white/50 uppercase">
+            &copy; {new Date().getFullYear()} Quadrox Technologies Limited
+          </p>
         </div>
-      </div>
+      </aside>
 
-      {/* RIGHT PANEL (Scrolls natively with the form) */}
-      <div className="flex-1 w-full relative">
+      {/* RIGHT PANEL (Scrolls naturally on all devices) */}
+      <section className="flex-1 w-full lg:ml-[45%] min-h-screen relative flex flex-col justify-center bg-background py-10">
          <RegisterForm />
-      </div>
+      </section>
 
-      {/* DYNAMIC WHATSAPP SUPPORT ICON */}
+      {/* DYNAMIC WHATSAPP SUPPORT ICON (Permanently visible) */}
       <a 
         href={`https://wa.me/${activeSupportNumber}`}
         target="_blank" 
         rel="noopener noreferrer"
-        aria-label="Chat with Support"
-        className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 bg-[#25D366] rounded-full shadow-lg shadow-black/20 hover:bg-[#1EBE5D] hover:scale-105 transition-all duration-300 group"
+        className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 bg-[#25D366] rounded-full shadow-xl hover:bg-[#1EBE5D] hover:scale-105 transition-all duration-300 group"
       >
         <WhatsappLogo className="h-8 w-8 text-white" weight="fill" />
         <span className="absolute right-16 bg-foreground text-background text-sm font-medium px-4 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
-          Need Help? Chat with Support
+          Chat with Support
         </span>
       </a>
 
