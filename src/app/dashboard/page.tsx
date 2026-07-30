@@ -1,3 +1,4 @@
+// src/app/dashboard/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -158,7 +159,7 @@ export default function DashboardPage() {
         </div>
         
         {/* Right Side: Wallet & Pricing Link */}
-        <div className="flex flex-col items-start md:items-end gap-2.5 w-full md:w-auto shrink-0">
+        <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto shrink-0">
           
           <div className="flex items-center justify-between w-full md:w-auto gap-4 bg-card p-2 pl-5 sm:pl-6 pr-2.5 rounded-full border border-border shadow-sm">
             <div className="flex flex-col text-left md:text-right">
@@ -193,13 +194,14 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Pricing Link tucked neatly below the wallet block */}
+          {/* Pricing Link - Now distinctly styled as a clickable pill button */}
           <Link 
             href="/pricing"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors md:mr-4"
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-3.5 py-1.5 rounded-full hover:bg-primary hover:text-primary-foreground transition-all active:scale-95 md:mr-4 shadow-sm group"
           >
             <Tag weight="bold" className="h-3.5 w-3.5" />
             Pricing
+            <ArrowRight weight="bold" className="h-3 w-3 ml-0.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
           
           <FundWalletModal 
