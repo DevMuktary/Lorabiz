@@ -11,7 +11,7 @@ import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrappe
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
-  UserCircle, SignOut, List, X, Info, Receipt, Article, Cards
+  UserCircle, SignOut, List, X, Info, Receipt, Article, Cards, Tag
 } from "@phosphor-icons/react";
 
 type NavLink = {
@@ -40,7 +40,9 @@ const NAVIGATION: NavCategory[] = [
     category: "Available Services",
     links: [
       { name: "CAC Services", href: "/dashboard/cac", icon: Buildings },
+      { name: "SCUML", href: "/dashboard/scuml", icon: ShieldCheck },
       { name: "NIN Services", href: "/dashboard/tools/nin-slip", icon: IdentificationCard },
+      { name: "Airtime", href: "/dashboard/airtime", icon: DeviceMobile },
     ]
   },
   {
@@ -49,10 +51,8 @@ const NAVIGATION: NavCategory[] = [
       { name: "Tax ID (TIN)", href: "#", icon: Cards, isComingSoon: true, showSoonBadge: true },
       { name: "Change of Name", href: "#", icon: Article, isComingSoon: true },
       { name: "Post Incorporation", href: "#", icon: Buildings, isComingSoon: true },
-      { name: "SCUML", href: "#", icon: ShieldCheck, isComingSoon: true },
       { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
       { name: "SMEDAN", href: "#", icon: Handshake, isComingSoon: true },
-      { name: "Utility & Airtime", href: "#", icon: DeviceMobile, isComingSoon: true, showSoonBadge: true },
     ]
   },
   {
@@ -107,6 +107,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (pathname.includes("/dashboard/cac")) return "CAC Services";
     if (pathname.includes("/dashboard/tools/nin-slip")) return "NIN Services";
     if (pathname.includes("/dashboard/transactions")) return "Transactions";
+    if (pathname.includes("/dashboard/scuml")) return "SCUML";
+    if (pathname.includes("/dashboard/airtime")) return "Airtime";
     return "Dashboard";
   };
 
@@ -143,7 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
         ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:translate-x-0 lg:flex"}
       `}>
-        <div className="h-20 flex items-center justify-between px-6 border-b border-border shrink-0">
+        <div className="h-[70px] flex items-center justify-between px-6 border-b border-border shrink-0">
           <Image 
             src="/logo.png" 
             alt="Lorabiz" 
@@ -230,9 +232,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 relative">
         
-        {/* CRITICAL FIX 1: Removed `sticky top-0` so it scrolls naturally */}
-        {/* CRITICAL FIX 2: Removed `bg-background/95 backdrop-blur-md` and made it solid `bg-background` to fix Safari's status bar confusion */}
-        <header className="relative z-40 h-20 bg-background border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm">
+        <header className="relative z-40 h-[70px] bg-background border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm">
           <div className="flex items-center gap-4">
             <button 
               className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
@@ -248,16 +248,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <List className="h-6 w-6" weight="bold" />
             </button>
 
-            <h2 className="text-xl font-black text-foreground hidden sm:block">
+            <h2 className="text-lg font-black text-foreground hidden sm:block">
               {getCurrentPageName()}
             </h2>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Link 
+              href="/pricing"
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[13px] font-bold"
+            >
+              <Tag weight="bold" className="h-4 w-4" />
+              Pricing
+            </Link>
+
             <ThemeToggle />
             <NotificationBell />
 
-            <div className="h-10 w-10 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[13px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0">
+            <div className="h-9 w-9 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[12px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0 ml-1">
               {session?.user?.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img 
@@ -276,8 +284,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative">
-          <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
+        <main className="flex-1 bg-secondary/10 p-4 lg:p-6 pb-24 relative">
+          <div className="max-w-[1400px] mx-auto w-full animate-in fade-in duration-300">
             {children}
           </div>
         </main>
