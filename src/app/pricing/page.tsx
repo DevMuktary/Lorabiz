@@ -3,10 +3,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Tag, SpinnerGap, Info, Buildings, ShieldCheck, Calculator } from "@phosphor-icons/react";
+import Image from "next/image";
+import { ArrowLeft, Tag, SpinnerGap, Info, Buildings, ShieldCheck, Calculator, WarningCircle } from "@phosphor-icons/react";
 
-// Mapping the API keys to readable labels, descriptions, and categories
-const PRICING_METADATA: Record<string, { label: string; desc?: string; category: string; icon: any; colorClass: string }> = {
+// Mapping the API keys to readable labels, descriptions, categories, and logos
+const PRICING_METADATA: Record<string, { label: string; desc?: string; category: string; icon?: any; imageSrc?: string; colorClass: string }> = {
   BUSINESS_NAME: { 
     label: "Business Name Registration", 
     category: "CAC Services", 
@@ -27,12 +28,7 @@ const PRICING_METADATA: Record<string, { label: string; desc?: string; category:
     icon: Buildings,
     colorClass: "text-blue-500 bg-blue-500/10 border-blue-500/20"
   },
-  NGO: { 
-    label: "Incorporated Trustees (NGO)", 
-    category: "CAC Services", 
-    icon: Buildings,
-    colorClass: "text-blue-500 bg-blue-500/10 border-blue-500/20"
-  },
+  // NGO removed as requested to hide it from the frontend
   NAME_SUBSTITUTION: { 
     label: "Name Substitution Fee", 
     desc: "Applied if your proposed name requires substitution during query",
@@ -43,20 +39,20 @@ const PRICING_METADATA: Record<string, { label: string; desc?: string; category:
   SCUML: { 
     label: "SCUML Certificate Registration", 
     category: "Compliance", 
-    icon: ShieldCheck,
-    colorClass: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+    imageSrc: "/scuml.png", // Using your actual SCUML logo
+    colorClass: "bg-emerald-500/10 border-emerald-500/20"
   },
   TAX_ID_INDIVIDUAL: { 
     label: "Individual Tax ID (TIN)", 
     category: "Tax & Financial", 
-    icon: Calculator,
-    colorClass: "text-purple-500 bg-purple-500/10 border-purple-500/20"
+    imageSrc: "/nrs.png", // Using the TIN/NRS logo
+    colorClass: "bg-purple-500/10 border-purple-500/20"
   },
   TAX_ID_CORPORATE: { 
     label: "Corporate Tax ID (TIN)", 
     category: "Tax & Financial", 
-    icon: Calculator,
-    colorClass: "text-purple-500 bg-purple-500/10 border-purple-500/20"
+    imageSrc: "/nrs.png", // Using the TIN/NRS logo
+    colorClass: "bg-purple-500/10 border-purple-500/20"
   },
 };
 
@@ -81,7 +77,7 @@ export default function PricingPage() {
     fetchPricing();
   }, []);
 
-  // Filter out the keys from the API that match our metadata map
+  // Filter out the keys from the API that match our metadata map (this automatically ignores the NGO price from the backend)
   const tableRows = pricingData 
     ? Object.keys(PRICING_METADATA).map(key => ({
         key,
@@ -155,8 +151,12 @@ export default function PricingPage() {
                       {/* Service Name & Description */}
                       <td className="px-6 py-5">
                         <div className="flex items-start gap-3">
-                          <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center border shrink-0 ${row.colorClass}`}>
-                            <row.icon weight="fill" className="h-4 w-4" />
+                          <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center border shrink-0 overflow-hidden ${row.colorClass}`}>
+                            {row.imageSrc ? (
+                              <Image src={row.imageSrc} alt={row.label} width={20} height={20} className="object-contain" />
+                            ) : row.icon ? (
+                              <row.icon weight="fill" className="h-4 w-4" />
+                            ) : null}
                           </div>
                           <div>
                             <p className="font-bold text-foreground text-[15px] group-hover:text-primary transition-colors">{row.label}</p>
