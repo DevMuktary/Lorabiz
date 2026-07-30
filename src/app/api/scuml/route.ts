@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma"; 
 import { generateNumericId } from "@/utils/generateId"; 
+import { sendScumlSubmittedEmail } from "@/lib/email"; // NEW: Import the email function
 
 export async function GET(req: Request) {
   try {
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Insufficient wallet balance." }, { status: 400 });
     }
 
-    // FIXED: Changed length from 10 to 8 to satisfy TypeScript types
+    // Generate Tracking Ref
     const transactionRef = `SCUML-${generateNumericId(8)}`;
 
     // Process Transaction & Create Application atomically
@@ -94,6 +95,20 @@ export async function POST(req: Request) {
 
       return scumlReq;
     });
+
+    // NEW: Fire off the email notification after a successful transaction
+    try {
+      await sendScumlSubmittedEmail({
+        to: user.email!,
+        name: user.name || "Customer",
+        companyName: companyName,
+        regType: type,
+        transactionRef: transactionRef
+      });
+    } catch (emailError) {
+      // We log the error but don't fail the request since the payment already went through
+      console.error("Failed to send SCUML confirmation email:", emailError);
+    }
 
     return NextResponse.json({ success: true, data: result });
 
