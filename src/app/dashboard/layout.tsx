@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
-import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper";
+import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper"; 
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
@@ -66,7 +66,7 @@ const NAVIGATION: NavCategory[] = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
-  // CRITICAL FIX: Added || {} fallback so the static build doesn't crash on Railway
+  // <--- THIS LINE IS THE CRITICAL FIX (Added || {})
   const { data: session, update } = useSession() || {};
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
