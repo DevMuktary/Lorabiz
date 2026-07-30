@@ -12,7 +12,6 @@ export async function POST(req: Request) {
                       "unknown";
 
     if (ipAddress !== "unknown") {
-      // 1. Check permanent blocklist
       const isBlocked = await prisma.blockedIp.findUnique({ where: { ip: ipAddress } });
       if (isBlocked) {
         return NextResponse.json(
@@ -21,7 +20,6 @@ export async function POST(req: Request) {
         );
       }
 
-      // 2. Check 7-Day Registration Cooldown
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const recentRegistration = await prisma.user.findFirst({
         where: {
@@ -32,94 +30,62 @@ export async function POST(req: Request) {
 
       if (recentRegistration) {
         return NextResponse.json(
-          { message: "Recent registration detected from your network. Please wait 7 days or contact support to open another account." }, 
+          { message: "Recent registration detected from your network. Please wait 7 days or contact support." }, 
           { status: 429 }
         );
       }
     }
     
-    // Destructure fields, renaming email to rawEmail so we can sanitize it
     const { 
-      firstName, 
-      middleName, 
-      lastName, 
-      email: rawEmail, 
-      phone, 
-      whatsapp,
-      password,
-      gender,
-      state,
-      lga,
-      street,
-      buildingNo,
-      otpCode 
+      firstName, middleName, lastName, email: rawEmail, 
+      phone, whatsapp, password, gender, state, lga, 
+      street, buildingNo, otpCode 
     } = body;
 
     // 1. Strict Basic Validation
     if (!firstName || !lastName || !rawEmail || !password || !phone || !whatsapp || !gender || !state || !lga || !street || !otpCode) {
-      return NextResponse.json(
-        { message: "Missing required fields" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
-    // --- MASKED EMAIL SUBADDRESS FILTERING ---
-    // Converts "user+alias@gmail.com" to "user@gmail.com" and forces lowercase
+    // --- MASKED EMAIL FILTERING ---
     let email = rawEmail.toLowerCase().trim();
     if (email.includes('@')) {
       const [localPart, domain] = email.split('@');
-      const cleanLocal = localPart.split('+')[0]; // Strip everything after '+'
+      const cleanLocal = localPart.split('+')[0]; 
       email = `${cleanLocal}@${domain}`;
     }
 
-    // 2. VERY SECURE: Check the OTP directly in the database using the sanitized email
+    // 2. VERIFY THE OTP
     const validOtp = await prisma.otpCode.findUnique({
       where: { email },
     });
 
-    if (!validOtp) {
-      return NextResponse.json(
-        { message: "Please request a verification code first." }, 
-        { status: 400 }
-      );
-    }
-    
-    if (validOtp.code !== otpCode) {
-      return NextResponse.json(
-        { message: "Invalid verification code." }, 
-        { status: 400 }
-      );
+    if (!validOtp || validOtp.code !== otpCode) {
+      return NextResponse.json({ message: "Invalid or missing verification code." }, { status: 400 });
     }
 
     if (validOtp.expiresAt < new Date()) {
-      return NextResponse.json(
-        { message: "Verification code has expired. Please request a new one." }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Verification code has expired. Please request a new one." }, { status: 400 });
     }
 
-    // 3. Check if the user already exists with this clean email, phone, or whatsapp
+    // 3. CHECK FOR DUPLICATES (Phone/WhatsApp crossover check)
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [
-          { email },
-          { phone },
-          { whatsapp }
-        ]
+        OR: [ { email }, { phone }, { whatsapp } ]
       },
     });
 
     if (existingUser) {
-      if (existingUser.email === email) {
-        return NextResponse.json({ message: "An account with this email already exists." }, { status: 409 });
-      }
-      return NextResponse.json({ message: "An account with this phone or WhatsApp number already exists." }, { status: 409 });
+      // Generic error so we don't leak which field caused the conflict
+      return NextResponse.json(
+        { message: "An account with these details already exists." }, 
+        { status: 409 }
+      );
     }
 
-    // 4. Hash the password securely
+    // 4. Hash & Transaction Create
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 5. ATOMIC TRANSACTION: Create User, Initialize Wallet, AND Delete OTP simultaneously
     const [newUser] = await prisma.$transaction([
       prisma.user.create({
         data: {
@@ -136,9 +102,7 @@ export async function POST(req: Request) {
           street,
           buildingNo: buildingNo || null, 
           ipAddress,
-          wallet: {
-            create: { balance: 0.00 } 
-          }
+          wallet: { create: { balance: 0.00 } }
         },
       }),
       prisma.otpCode.delete({
@@ -146,15 +110,9 @@ export async function POST(req: Request) {
       }),
     ]);
 
-    return NextResponse.json(
-      { message: "User created successfully", userId: newUser.id },
-      { status: 201 }
-    );
+    return NextResponse.json({ message: "User created successfully", userId: newUser.id }, { status: 201 });
   } catch (error) {
     console.error("Registration error:", error);
-    return NextResponse.json(
-      { message: "Internal server error while creating account." },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Internal server error while creating account." }, { status: 500 });
   }
 }
