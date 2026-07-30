@@ -44,14 +44,13 @@ const NAVIGATION: NavCategory[] = [
       { name: "SCUML", href: "/dashboard/scuml", icon: ShieldCheck },
       { name: "NIN Services", href: "/dashboard/tools/nin-slip", icon: IdentificationCard },
       { name: "Airtime", href: "/dashboard/airtime", icon: DeviceMobile },
+      { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },
     ]
   },
   {
     category: "Upcoming Services",
     links: [
-      { name: "Tax ID (TIN)", href: "#", icon: Cards, isComingSoon: true, showSoonBadge: true },
-      { name: "Change of Name", href: "#", icon: Article, isComingSoon: true },
-      { name: "Post Incorporation", href: "#", icon: Buildings, isComingSoon: true },
+      { name: "CAC Post Incorporation", href: "#", icon: Buildings, isComingSoon: true },
       { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
       { name: "SMEDAN", href: "#", icon: Handshake, isComingSoon: true },
     ]
