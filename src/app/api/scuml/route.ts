@@ -2,8 +2,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { prisma } from "@/lib/prisma"; // FIXED: Changed to named import
-import { generateNumericId } from "@/utils/generateId"; // FIXED: Corrected function name
+import { prisma } from "@/lib/prisma"; 
+import { generateNumericId } from "@/utils/generateId"; 
 
 export async function GET(req: Request) {
   try {
@@ -52,8 +52,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Insufficient wallet balance." }, { status: 400 });
     }
 
-    // FIXED: Using generateNumericId here
-    const transactionRef = `SCUML-${generateNumericId(10)}`;
+    // FIXED: Changed length from 10 to 8 to satisfy TypeScript types
+    const transactionRef = `SCUML-${generateNumericId(8)}`;
 
     // Process Transaction & Create Application atomically
     const result = await prisma.$transaction(async (tx) => {
