@@ -3,55 +3,66 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Tag, SpinnerGap, Info, WarningCircle, ArrowsLeftRight } from "@phosphor-icons/react";
+import Link from "next/link";
+import { 
+  Tag, SpinnerGap, Info, WarningCircle, ArrowsLeftRight, 
+  ArrowLeft, DeviceMobile 
+} from "@phosphor-icons/react";
 
 // Mapping the API keys to readable labels, descriptions, categories, and logos
-const PRICING_METADATA: Record<string, { label: string; desc?: string; category: string; imageSrc: string; colorClass: string }> = {
+const PRICING_METADATA: Record<string, { label: string; desc?: string; category: string; imageSrc?: string; icon?: any; colorClass: string }> = {
   BUSINESS_NAME: { 
     label: "Business Name Registration", 
     category: "CAC Services", 
     imageSrc: "/cac.png",
-    colorClass: "bg-blue-500/10 border-blue-500/20"
+    colorClass: "bg-blue-500/10 border-blue-500/20 text-blue-500"
   },
   LLC: { 
     label: "Company Registration (LLC)", 
     desc: "Includes standard processing for up to 1M Share Capital",
     category: "CAC Services", 
     imageSrc: "/cac.png",
-    colorClass: "bg-blue-500/10 border-blue-500/20"
+    colorClass: "bg-blue-500/10 border-blue-500/20 text-blue-500"
   },
   LLC_EXTRA_MILLION: { 
     label: "Additional Share Capital", 
     desc: "Fee applied per extra 1 Million shares above the standard 1M",
     category: "CAC Services", 
     imageSrc: "/cac.png",
-    colorClass: "bg-blue-500/10 border-blue-500/20"
+    colorClass: "bg-blue-500/10 border-blue-500/20 text-blue-500"
   },
   NAME_SUBSTITUTION: { 
     label: "Name Substitution Fee", 
     desc: "Applied if your proposed name requires substitution during query",
     category: "CAC Services", 
     imageSrc: "/cac.png",
-    colorClass: "bg-blue-500/10 border-blue-500/20"
+    colorClass: "bg-blue-500/10 border-blue-500/20 text-blue-500"
   },
   SCUML: { 
     label: "SCUML Certificate Registration", 
     category: "Compliance", 
     imageSrc: "/scuml.png",
-    colorClass: "bg-emerald-500/10 border-emerald-500/20"
+    colorClass: "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
   },
   TAX_ID_INDIVIDUAL: { 
     label: "Individual Tax ID (TIN)", 
     category: "Tax", 
     imageSrc: "/nrs.png",
-    colorClass: "bg-purple-500/10 border-purple-500/20"
+    colorClass: "bg-purple-500/10 border-purple-500/20 text-purple-500"
   },
   TAX_ID_CORPORATE: { 
     label: "Corporate Tax ID (TIN)", 
     category: "Tax", 
     imageSrc: "/nrs.png",
-    colorClass: "bg-purple-500/10 border-purple-500/20"
+    colorClass: "bg-purple-500/10 border-purple-500/20 text-purple-500"
   },
+  AIRTIME: {
+    label: "Airtime Top-up",
+    desc: "The amount you buy is the exact amount deducted from your wallet.",
+    category: "Utility",
+    icon: DeviceMobile,
+    colorClass: "bg-orange-500/10 border-orange-500/20 text-orange-500"
+  }
 };
 
 export default function DashboardPricingPage() {
@@ -75,18 +86,31 @@ export default function DashboardPricingPage() {
     fetchPricing();
   }, []);
 
-  // Filter out the keys from the API that match our metadata map
-  const tableRows = pricingData 
-    ? Object.keys(PRICING_METADATA).map(key => ({
-        key,
-        price: pricingData[key] || 0,
-        ...PRICING_METADATA[key]
-      }))
-    : [];
+  // Map metadata and safely merge dynamic prices or handle open prices
+  const tableRows = Object.keys(PRICING_METADATA).map(key => {
+    const meta = PRICING_METADATA[key];
+    const isAirtime = key === "AIRTIME";
+    const price = pricingData ? pricingData[key] || 0 : 0;
+
+    return {
+      key,
+      ...meta,
+      isAirtime,
+      price
+    };
+  });
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-16 animate-in fade-in duration-500">
+    <div className="space-y-8 max-w-6xl mx-auto pb-16 pt-4 animate-in fade-in duration-500 relative">
       
+      {/* Back Button */}
+      <Link 
+        href="/dashboard" 
+        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit"
+      >
+        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Dashboard
+      </Link>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-6">
         <div>
@@ -146,7 +170,11 @@ export default function DashboardPricingPage() {
                     <td className="px-6 py-5">
                       <div className="flex items-start gap-3">
                         <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center border shrink-0 overflow-hidden ${row.colorClass}`}>
-                          <Image src={row.imageSrc} alt={row.label} width={20} height={20} className="object-contain" />
+                          {row.imageSrc ? (
+                            <Image src={row.imageSrc} alt={row.label} width={20} height={20} className="object-contain" />
+                          ) : row.icon ? (
+                            <row.icon weight="fill" className="h-4 w-4" />
+                          ) : null}
                         </div>
                         <div>
                           <p className="font-bold text-foreground text-[15px] group-hover:text-primary transition-colors">{row.label}</p>
@@ -164,13 +192,19 @@ export default function DashboardPricingPage() {
                       </span>
                     </td>
 
-                    {/* Live Price */}
+                    {/* Live / Open Price */}
                     <td className="px-6 py-5 text-right">
                       <div className="inline-flex items-baseline gap-1 bg-background border border-border px-4 py-2 rounded-xl shadow-inner group-hover:border-primary/30 transition-colors">
-                        <span className="text-muted-foreground font-bold text-xs">₦</span>
-                        <span className="font-black text-foreground text-lg tracking-tight">
-                          {row.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
+                        {row.isAirtime ? (
+                          <span className="font-black text-foreground text-[15px] tracking-tight">Open Price</span>
+                        ) : (
+                          <>
+                            <span className="text-muted-foreground font-bold text-xs">₦</span>
+                            <span className="font-black text-foreground text-lg tracking-tight">
+                              {row.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </td>
 
