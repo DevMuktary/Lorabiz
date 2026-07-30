@@ -34,7 +34,7 @@ const NAVIGATION: NavCategory[] = [
       { name: "Service Hub", href: "/dashboard", icon: SquaresFour },
       { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
       { name: "Wallet", href: "/dashboard/wallet", icon: Wallet },
-      { name: "Pricing", href: "/pricing", icon: Tag }, // Added to sidebar
+      { name: "Pricing", href: "/dashboard/pricing", icon: Tag }, // Added to sidebar
     ]
   },
   {
