@@ -10,10 +10,10 @@ const nextConfig: NextConfig = {
 // 1. Initialize PWA Configuration
 const withPWA = withPWAInit({
   dest: "public",
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
+  // FIXED: Disabled frontend nav caching to stop the router from freezing!
+  cacheOnFrontEndNav: false,
+  aggressiveFrontEndNavCaching: false,
   reloadOnOnline: true,
-  // Removed swcMinify as it is now natively handled by Next.js
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
