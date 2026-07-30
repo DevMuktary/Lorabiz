@@ -145,58 +145,63 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 relative">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col md:flex-row justify-between gap-6">
+        
+        {/* Left Side: Welcome Text */}
+        <div className="flex flex-col gap-1.5 mt-2">
           <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
             Welcome, {firstName} <span className="text-3xl animate-wave origin-bottom-right inline-block">👋</span>
           </h1>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-              Select a service below to get started and manage your business operations.
-            </p>
-            {/* NEW: Safe Pricing Link Placement */}
-            <Link 
-              href="/pricing"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 px-3.5 py-1.5 rounded-full hover:bg-primary/20 transition-colors w-fit"
-            >
-              <Tag weight="bold" className="h-3.5 w-3.5" />
-              Pricing
-            </Link>
-          </div>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Select a service below to get started.
+          </p>
         </div>
         
-        <div className="flex items-center justify-between w-full md:w-auto gap-4 shrink-0 bg-card p-2 pl-5 sm:pl-6 pr-2.5 rounded-full border border-border shadow-sm md:ml-auto mt-2 md:mt-0">
-          <div className="flex flex-col text-left md:text-right">
-            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-tight">
-              Wallet Balance
-            </span>
-            <div className="flex items-center gap-2 h-[20px]">
-              <span className="font-bold text-foreground leading-tight flex items-center">
-                {isLoadingBalance 
-                  ? <Spinner className="animate-spin h-3.5 w-3.5 text-muted-foreground mt-0.5" weight="bold" />
-                  : isBalanceHidden
-                    ? "****"
-                    : `₦${Number(balance).toLocaleString(undefined, {minimumFractionDigits: 2})}`
-                }
+        {/* Right Side: Wallet & Pricing Link */}
+        <div className="flex flex-col items-start md:items-end gap-2.5 w-full md:w-auto shrink-0">
+          
+          <div className="flex items-center justify-between w-full md:w-auto gap-4 bg-card p-2 pl-5 sm:pl-6 pr-2.5 rounded-full border border-border shadow-sm">
+            <div className="flex flex-col text-left md:text-right">
+              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-tight">
+                Wallet Balance
               </span>
-              <button 
-                onClick={() => setIsBalanceHidden(!isBalanceHidden)}
-                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                title={isBalanceHidden ? "Show Balance" : "Hide Balance"}
-              >
-                {isBalanceHidden ? <EyeSlash weight="bold" className="h-4 w-4" /> : <Eye weight="bold" className="h-4 w-4" />}
-              </button>
+              <div className="flex items-center gap-2 h-[20px]">
+                <span className="font-bold text-foreground leading-tight flex items-center">
+                  {isLoadingBalance 
+                    ? <Spinner className="animate-spin h-3.5 w-3.5 text-muted-foreground mt-0.5" weight="bold" />
+                    : isBalanceHidden
+                      ? "****"
+                      : `₦${Number(balance).toLocaleString(undefined, {minimumFractionDigits: 2})}`
+                  }
+                </span>
+                <button 
+                  onClick={() => setIsBalanceHidden(!isBalanceHidden)}
+                  className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  title={isBalanceHidden ? "Show Balance" : "Hide Balance"}
+                >
+                  {isBalanceHidden ? <EyeSlash weight="bold" className="h-4 w-4" /> : <Eye weight="bold" className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
+
+            <button 
+              onClick={() => setIsWalletModalOpen(true)}
+              className="flex items-center gap-1.5 px-5 sm:px-6 py-2.5 bg-primary text-primary-foreground rounded-full font-bold text-xs hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer shrink-0"
+            >
+              <Plus weight="bold" className="h-3.5 w-3.5" />
+              Fund Wallet
+            </button>
           </div>
 
-          <button 
-            onClick={() => setIsWalletModalOpen(true)}
-            className="flex items-center gap-1.5 px-5 sm:px-6 py-2.5 bg-primary text-primary-foreground rounded-full font-bold text-xs hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer shrink-0"
+          {/* Pricing Link tucked neatly below the wallet block */}
+          <Link 
+            href="/pricing"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors md:mr-4"
           >
-            <Plus weight="bold" className="h-3.5 w-3.5" />
-            Fund Wallet
-          </button>
-
+            <Tag weight="bold" className="h-3.5 w-3.5" />
+            Pricing
+          </Link>
+          
           <FundWalletModal 
             isOpen={isWalletModalOpen} 
             onClose={() => setIsWalletModalOpen(false)} 
