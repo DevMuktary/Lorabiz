@@ -12,7 +12,7 @@ export const redis =
   globalForRedis.redis ||
   new Redis(redisUrl || "redis://localhost:6379", {
     maxRetriesPerRequest: null,
-    lazyConnect: true, // <--- CRITICAL FIX: Stops the build crash on Railway
+    lazyConnect: true, // <--- THIS LINE IS THE CRITICAL FIX
   });
 
 if (process.env.NODE_ENV !== "production") globalForRedis.redis = redis;
