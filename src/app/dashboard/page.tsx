@@ -32,6 +32,13 @@ const SERVICES = [
     active: true,
   },
   {
+    title: "TAX ID",
+    description: "Easily process your Tax Identification Number (TIN).",
+    logo: "/nrs.png",
+    href: "/dashboard/tax-id",
+    active: true,
+  },
+  {
     title: "Airtime",
     description: "Seamlessly purchase airtime directly from your wallet.",
     logo: "/airtime.png",
@@ -50,12 +57,7 @@ const SERVICES = [
     logo: "/smedan.png",
     active: false,
   },
-  {
-    title: "TAX ID",
-    description: "Easily process and manage your Tax Identification Number (TIN).",
-    logo: "/nrs.png",
-    active: false,
-  },
+  
 ];
 
 export default function DashboardPage() {
