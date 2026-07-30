@@ -1,7 +1,6 @@
 // src/app/sw.ts
 /// <reference lib="webworker" />
 
-import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
 
@@ -17,8 +16,8 @@ const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
-  runtimeCaching: defaultCache,
+  // CRITICAL: Navigation preload and runtime caching deliberately omitted
+  // to prevent the Service Worker from hijacking Next.js App Router navigations.
 });
 
 serwist.addEventListeners();
