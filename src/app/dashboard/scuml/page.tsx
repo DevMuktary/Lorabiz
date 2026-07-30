@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Info, CheckCircle, Clock, X, WarningCircle, ArrowRight, ListDashes } from "@phosphor-icons/react";
-import { FileUpload } from "@/components/FileUpload"; // FIXED: Changed to named import
+import { FileUpload } from "@/components/FileUpload";
 
 type ScumlType = "BUSINESS_NAME" | "LLC" | "NGO";
 
@@ -227,15 +227,18 @@ export default function ScumlPage() {
             <p className="text-xs text-muted-foreground mb-4">Please upload clear, legible copies of your official CAC documents.</p>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {/* FIXED: Using onUploadSuccess and onRemove instead of onChange */}
               <FileUpload 
                 label="CAC Certificate" 
                 value={documents.certificateUrl}
-                onChange={(url) => setDocuments(p => ({ ...p, certificateUrl: url }))}
+                onUploadSuccess={(url) => setDocuments(p => ({ ...p, certificateUrl: url }))}
+                onRemove={() => setDocuments(p => ({ ...p, certificateUrl: "" }))}
               />
               <FileUpload 
                 label="Status Report" 
                 value={documents.statusReportUrl}
-                onChange={(url) => setDocuments(p => ({ ...p, statusReportUrl: url }))}
+                onUploadSuccess={(url) => setDocuments(p => ({ ...p, statusReportUrl: url }))}
+                onRemove={() => setDocuments(p => ({ ...p, statusReportUrl: "" }))}
               />
 
               {regType === "LLC" && (
@@ -243,7 +246,8 @@ export default function ScumlPage() {
                   <FileUpload 
                     label="Memorandum & Articles (MEMART)" 
                     value={documents.memorandumUrl}
-                    onChange={(url) => setDocuments(p => ({ ...p, memorandumUrl: url }))}
+                    onUploadSuccess={(url) => setDocuments(p => ({ ...p, memorandumUrl: url }))}
+                    onRemove={() => setDocuments(p => ({ ...p, memorandumUrl: "" }))}
                   />
                 </div>
               )}
@@ -253,7 +257,8 @@ export default function ScumlPage() {
                   <FileUpload 
                     label="NGO Constitution" 
                     value={documents.constitutionUrl}
-                    onChange={(url) => setDocuments(p => ({ ...p, constitutionUrl: url }))}
+                    onUploadSuccess={(url) => setDocuments(p => ({ ...p, constitutionUrl: url }))}
+                    onRemove={() => setDocuments(p => ({ ...p, constitutionUrl: "" }))}
                   />
                 </div>
               )}
