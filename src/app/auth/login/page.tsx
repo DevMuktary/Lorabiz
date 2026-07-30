@@ -7,10 +7,11 @@ import { preconnect } from "react-dom";
 import { useState, useEffect, Suspense } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTheme } from "next-themes";
 import { 
   LockKey, SignIn, Spinner, CheckCircle, 
   ShieldCheck, Eye, EyeSlash, Info, X,
-  FacebookLogo, GoogleLogo, Lifebuoy, Star, Envelope 
+  FacebookLogo, GoogleLogo, Star, Envelope, ChatCircleDots 
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, update } = useSession();
+  const { resolvedTheme } = useTheme();
   
   const isRegistered = searchParams.get("registered") === "true";
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
@@ -33,7 +35,9 @@ function LoginContent() {
   
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
-  const [toastMsg, setToastMsg] = useState("");
+  
+  // State for the new localized tooltips
+  const [activeTooltip, setActiveTooltip] = useState<"google" | "facebook" | null>(null);
 
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -116,9 +120,9 @@ function LoginContent() {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(""), 3000);
+  const showTooltip = (type: "google" | "facebook") => {
+    setActiveTooltip(type);
+    setTimeout(() => setActiveTooltip(null), 2500);
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -230,7 +234,6 @@ function LoginContent() {
   };
 
   return (
-    // 1. THE FIX: Removed `overflow-hidden` and `fixed inset-0`. Now it's a natural scrolling container.
     <main className="min-h-screen w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white">
       
       <Script 
@@ -238,17 +241,10 @@ function LoginContent() {
         strategy="afterInteractive" 
       />
 
-      {toastMsg && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background px-6 py-3 rounded-full shadow-lg font-medium animate-in slide-in-from-top-4 flex items-center gap-2">
-          🚀 {toastMsg}
-        </div>
-      )}
-
       <a href="mailto:help@support.lorabiz.com" aria-label="Contact Support" className="fixed bottom-6 right-6 z-40 bg-[#ff3f7a] text-white p-4 rounded-full shadow-2xl hover:scale-105 transition-transform hover:shadow-[#ff3f7a]/40" title="Need Help?">
-        <Lifebuoy className="h-6 w-6" weight="fill" />
+        <ChatCircleDots className="h-6 w-6" weight="fill" />
       </a>
 
-      {/* 2. THE FIX: The left panel is now "fixed" to the left side on desktop, allowing the right side to scroll naturally */}
       <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-[45%] shrink-0 min-h-screen bg-slate-950 relative overflow-hidden flex-col justify-between">
         <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#ff3f7a]/20 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-20%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
@@ -288,7 +284,6 @@ function LoginContent() {
         </div>
       </aside>
 
-      {/* 3. THE FIX: The right section now acts as the true scrolling document (lg:ml-[45%] to make room for the fixed sidebar on desktop) */}
       <section className="flex-1 w-full lg:ml-[45%] min-h-screen relative flex flex-col justify-center bg-background py-10">
         <article className="w-full max-w-lg xl:max-w-xl mx-auto px-6 sm:px-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           
@@ -297,8 +292,8 @@ function LoginContent() {
           </div>
 
           <header className="mb-8 text-center lg:text-left">
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">Log in to LoraBiz</h1>
-            <p className="text-muted-foreground mt-2 text-[16px]">Access your dashboard to manage business registrations and identity services.</p>
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">Welcome back</h1>
+            <p className="text-muted-foreground mt-2 text-[16px]">Log in to access your LoraBiz dashboard.</p>
           </header>
 
           <form onSubmit={handleLoginSubmit} className="space-y-6">
@@ -353,12 +348,14 @@ function LoginContent() {
             </div>
 
             <div className="pt-2 flex justify-center lg:justify-start">
+               {/* key={resolvedTheme} forces the widget to rebuild instantly when theme changes */}
                <div 
+                 key={resolvedTheme}
                  className="cf-turnstile" 
                  data-sitekey="0x4AAAAAAEA2i2RM9PiSsRCH" 
                  data-callback="onTurnstileSuccess"
                  data-action="turnstile-spin-v2"
-                 data-theme="light"
+                 data-theme={resolvedTheme === "dark" ? "dark" : "light"}
                  data-retry="auto"
                  data-retry-interval="2000"
                ></div>
@@ -378,12 +375,29 @@ function LoginContent() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button type="button" variant="outline" aria-label="Continue with Google" className="w-full h-12 border-border font-medium" onClick={() => showToast("Google login is coming soon!")}>
-                  <GoogleLogo className="h-5 w-5 mr-2 text-rose-500" weight="bold" /> Google
-                </Button>
-                <Button type="button" variant="outline" aria-label="Continue with Facebook" className="w-full h-12 border-border font-medium" onClick={() => showToast("Facebook login is coming soon!")}>
-                  <FacebookLogo className="h-5 w-5 mr-2 text-blue-600" weight="fill" /> Facebook
-                </Button>
+                <div className="relative w-full">
+                  {activeTooltip === "google" && (
+                    <div className="absolute -top-11 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs font-bold px-3 py-1.5 rounded shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-bottom-2 z-10">
+                      Coming soon!
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-foreground"></div>
+                    </div>
+                  )}
+                  <Button type="button" variant="outline" aria-label="Continue with Google" className="w-full h-12 border-border font-medium" onClick={() => showTooltip("google")}>
+                    <GoogleLogo className="h-5 w-5 mr-2 text-rose-500" weight="bold" /> Google
+                  </Button>
+                </div>
+
+                <div className="relative w-full">
+                  {activeTooltip === "facebook" && (
+                    <div className="absolute -top-11 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs font-bold px-3 py-1.5 rounded shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-bottom-2 z-10">
+                      Coming soon!
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-foreground"></div>
+                    </div>
+                  )}
+                  <Button type="button" variant="outline" aria-label="Continue with Facebook" className="w-full h-12 border-border font-medium" onClick={() => showTooltip("facebook")}>
+                    <FacebookLogo className="h-5 w-5 mr-2 text-blue-600" weight="fill" /> Facebook
+                  </Button>
+                </div>
               </div>
             </div>
 
