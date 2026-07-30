@@ -11,8 +11,11 @@ async function main() {
     { serviceKey: "LLC", title: "Limited Liability Company (LTD) - Up to 1M Shares", price: 35000.00 },
     { serviceKey: "LLC_EXTRA_MILLION", title: "LLC Additional Fee per 1M Shares", price: 15000.00 },
     { serviceKey: "NGO", title: "Incorporated Trustees (NGO)", price: 120000.00 },
-    // NEW: Name Substitution Fee
-    { serviceKey: "NAME_SUBSTITUTION", title: "Name Substitution Fee", price: 5000.00 }
+    // Name Substitution Fee
+    { serviceKey: "NAME_SUBSTITUTION", title: "Name Substitution Fee", price: 5000.00 },
+    // NEW: SCUML & TAX ID Pricing
+    { serviceKey: "SCUML", title: "SCUML Certificate Registration", price: 320000.00 },
+    { serviceKey: "TAX_ID", title: "Tax Identification Number (TIN)", price: 10000.00 }
   ]
 
   for (const p of prices) {
@@ -57,4 +60,11 @@ async function main() {
   console.log("Global settings seeded successfully.")
 }
 
-main().catch((e) => { console.error(e); process.exit(1); }).finally(async () => { await prisma.$disconnect(); })
+main()
+  .catch((e) => { 
+    console.error(e); 
+    process.exit(1); 
+  })
+  .finally(async () => { 
+    await prisma.$disconnect(); 
+  })
