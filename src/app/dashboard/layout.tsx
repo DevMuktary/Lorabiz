@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
-import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper"; // <--- IMPORT ADDED
+import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper"; 
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
@@ -65,7 +65,7 @@ const NAVIGATION: NavCategory[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { data: session, update } = useSession();
+  const { data: session, update } = useSession() || {};
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
@@ -125,7 +125,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = getUserInitials();
 
   return (
-    <div className="min-h-screen w-full bg-secondary/10 text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
+    // THE CRITICAL FIX: Changed bg-secondary/10 to bg-background so Safari blends the status bar perfectly
+    <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
       
       {isMobileMenuOpen && (
         <div 
@@ -271,7 +272,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 p-5 lg:p-8 pb-24 relative">
+        {/* To keep your dashboard contrast nice, I moved the secondary background to just the inner content area */}
+        <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative border-t border-border">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
             {children}
           </div>
