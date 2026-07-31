@@ -14,7 +14,6 @@ import NinResultModal from "@/components/features/tools/nin-slip/NinResultModal"
 import NinHistorySection, { SlipHistoryItem } from "@/components/features/tools/nin-slip/NinHistorySection";
 
 export default function NinSlipPage() {
-  // NEW: Search Type State
   const [searchType, setSearchType] = useState<"NIN" | "PHONE">("NIN");
   const [identifier, setIdentifier] = useState("");
   
@@ -38,7 +37,6 @@ export default function NinSlipPage() {
     isOpen: false, src: "", label: ""
   });
 
-  // Confirmation Modal State updated for dynamic identifier
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     identifier: string;
@@ -62,29 +60,34 @@ export default function NinSlipPage() {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const settingsRes = await fetch("/api/settings/global", { cache: "no-store" });
-        const settingsData = await settingsRes.json();
-        
-        if (settingsData.success && settingsData.settings?.ninOptions) {
-          const opts = settingsData.settings.ninOptions;
-          const prcs = settingsData.settings.ninPrices || { nin_regular: 0, nin_standard: 0, nin_premium: 0 };
+        // Fetch directly from unified /api/pricing
+        const [pricingRes, historyRes] = await Promise.all([
+          fetch("/api/pricing", { cache: "no-store" }),
+          fetch("/api/tools/nin-slip/history", { cache: "no-store" })
+        ]);
 
+        const pricingData = await pricingRes.json();
+        const historyData = await historyRes.json();
+        
+        if (pricingData.success && pricingData.data) {
+          const prices = pricingData.data;
           setNinStatuses({
             loading: false,
-            options: opts,
-            prices: prcs
+            options: { 
+              nin_regular: !!prices.NIN_REGULAR, 
+              nin_standard: !!prices.NIN_STANDARD, 
+              nin_premium: !!prices.NIN_PREMIUM 
+            },
+            prices: { 
+              nin_regular: prices.NIN_REGULAR || 500, 
+              nin_standard: prices.NIN_STANDARD || 700, 
+              nin_premium: prices.NIN_PREMIUM || 1000 
+            }
           });
-          
-          if (!opts[slipType]) {
-            const available = Object.keys(opts).find(k => opts[k]);
-            if (available) setSlipType(available as any);
-          }
         } else {
           setNinStatuses(p => ({ ...p, loading: false }));
         }
 
-        const historyRes = await fetch("/api/tools/nin-slip/history", { cache: "no-store" });
-        const historyData = await historyRes.json();
         if (historyData.success && historyData.history) {
           setHistory(historyData.history);
         }
