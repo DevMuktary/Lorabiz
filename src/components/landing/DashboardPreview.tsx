@@ -62,13 +62,11 @@ export default function DashboardPreview() {
 
   return (
     <section className="bg-white dark:bg-[#0a0f1e] transition-colors duration-300 overflow-hidden">
-      {/* Container matching the exact Anchor CSS:
-        max-width: 1440px; padding-top: 98px; padding-right: 10%; display: flex; justify-content: space-between; column-gap: 50px; row-gap: 50px;
+      {/* REDUCED TOP PADDING: Changed pt-[60px] lg:pt-[98px] to pt-8 lg:pt-12 
       */}
-      <div className="w-full max-w-[1440px] mx-auto px-6 lg:pl-12 xl:pl-[8%] lg:pr-[10%] pt-[60px] lg:pt-[98px] pb-24 flex flex-col lg:flex-row justify-between gap-[50px]">
+      <div className="w-full max-w-[1440px] mx-auto px-6 lg:pl-12 xl:pl-[8%] lg:pr-[10%] pt-8 lg:pt-12 pb-24 flex flex-col lg:flex-row justify-between gap-[50px]">
         
         {/* ───── LEFT SIDE: HEADER ───── */}
-        {/* CSS Match: flex-grow: 1; flex-basis: 0%; max-width: 535px; (700px on 1920 screens) */}
         <div className="flex-1 lg:max-w-[535px] xl:max-w-[600px]">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -80,8 +78,8 @@ export default function DashboardPreview() {
             <h2 
               className="font-normal text-[#1a1a1a] dark:text-white"
               style={{
-                fontSize: 'clamp(32px, 4vw, 48px)', // 48px exactly like the CSS
-                lineHeight: '1.1875',               // 1.1875 exactly like the CSS
+                fontSize: 'clamp(32px, 4vw, 48px)',
+                lineHeight: '1.1875',
                 fontFamily: 'system-ui, -apple-system, sans-serif'
               }}
             >
@@ -92,9 +90,7 @@ export default function DashboardPreview() {
         </div>
 
         {/* ───── RIGHT SIDE: FEATURES GRID ───── */}
-        {/* CSS Match: width: 48%; max-width: 700px; */}
         <div className="w-full lg:w-[48%] lg:max-w-[700px]">
-          {/* CSS Match: display: grid; grid-template-columns: 1fr 1fr; column-gap: 100px; row-gap: 40px; */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 lg:gap-x-[100px] gap-y-10 lg:gap-y-[40px]">
             
             {features.map((feature, i) => (
@@ -106,12 +102,10 @@ export default function DashboardPreview() {
                 transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
                 className="flex flex-col"
               >
-                {/* CSS Match: width: 32px; height: 32px; */}
                 <div className="w-[32px] h-[32px]">
                   {feature.icon}
                 </div>
 
-                {/* CSS Match: max-width: 284px; color: #1a1a1a; margin-top: 24px; margin-bottom: 12px; font-size: 28px; line-height: 1; */}
                 <h3 
                   className="max-w-[284px] mt-[24px] mb-[12px] text-[#1a1a1a] dark:text-white font-medium"
                   style={{
@@ -123,7 +117,6 @@ export default function DashboardPreview() {
                   {feature.title}
                 </h3>
 
-                {/* CSS Match: color: #767676; font-size: 16px; line-height: 1.4375; */}
                 <p 
                   className="text-[#767676] dark:text-white/60"
                   style={{
