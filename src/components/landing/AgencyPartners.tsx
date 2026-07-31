@@ -35,7 +35,7 @@ export default function AgencyPartners() {
           className="flex items-center gap-16 sm:gap-24 w-max"
           animate={{ x: ["0%", "-50%"] }}
           transition={{
-            delay: 2.5, // Holds the logos completely still for 2.5 seconds on load!
+            delay: 2.5, // Holds the logos completely still for 2.5 seconds on load
             repeat: Infinity,
             ease: "linear",
             duration: 40,
@@ -44,16 +44,13 @@ export default function AgencyPartners() {
           {duplicatedLogos.map((logo, i) => (
             <div 
               key={i} 
-              // Significantly increased dimensions (w-[140px] and h-[50px] on mobile, larger on desktop)
-              // Increased baseline opacity so they don't vanish in Dark Mode
-              className="relative w-[140px] h-[50px] sm:w-[180px] sm:h-[65px] shrink-0 opacity-60 dark:opacity-80 grayscale hover:grayscale-0 hover:opacity-100 dark:hover:opacity-100 transition-all duration-300 cursor-pointer"
+              className="relative w-[140px] h-[50px] sm:w-[180px] sm:h-[65px] shrink-0 transition-transform duration-300 hover:scale-105 cursor-pointer"
             >
               <Image
                 src={logo.src}
                 alt={logo.alt}
                 fill
-                // Inverts to pure white in dark mode, but the higher opacity wrapper keeps it visible
-                className="object-contain dark:brightness-0 dark:invert dark:hover:brightness-100 dark:hover:invert-0 transition-all duration-300"
+                className="object-contain" // Removed all grayscale and invert classes
               />
             </div>
           ))}
