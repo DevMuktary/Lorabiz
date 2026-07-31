@@ -4,6 +4,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { NotificationEvent } from "@/services/notifications";
 import { notificationQueue } from "@/lib/queue";
+import redis from "@/lib/redis";
+import { sendScumlSubmittedEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
 
       // =========================================================================
       // SCENARIO 1: DIRECT WALLET FUNDING ("FW_...")
-      // ==========================================
+      // =========================================================================
       if (reference.startsWith("FW_")) {
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           const user = await tx.user.findUnique({ 
@@ -79,14 +81,28 @@ export async function POST(req: Request) {
       // SCENARIO 2: ONLINE SERVICE CHECKOUT ("ONL_...")
       // =========================================================================
       if (reference.startsWith("ONL_")) {
-        // Safely extract ID (handles ONL_12345 or ONL_SCUML_12345)
         const isScuml = reference.startsWith("ONL_SCUML_");
         const registrationId = metadata.registrationId || (isScuml ? reference.split("_")[2] : reference.split("_")[1]);
         
         let notificationPayload: NotificationEvent | null = null;
+        let isPaymentFullySuccessful = false;
+        let scumlDraft: any = null;
+
+        // PRE-FETCH REDIS DRAFT FOR SCUML OUTSIDE TRANSACTION
+        if (isScuml) {
+          const draftStr = await redis.get(registrationId);
+          if (draftStr) {
+            scumlDraft = JSON.parse(draftStr);
+          } else {
+            // If draft expired before payment completed, we must stop here.
+            console.warn(`SCUML Draft ${registrationId} expired before payment.`);
+            return NextResponse.json({ received: true }); 
+          }
+        }
+
+        const user = await prisma.user.findUnique({ where: { email: userEmail }, include: { wallet: true } });
 
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-          const user = await tx.user.findUnique({ where: { email: userEmail }, include: { wallet: true } });
           if (!user || !user.wallet) return; 
 
           const existingTx = await tx.transaction.findUnique({ where: { reference } });
@@ -96,26 +112,24 @@ export async function POST(req: Request) {
           let regName = "Registration";
           let displayId = registrationId; 
 
-          const bizReg = await tx.businessRegistration.findUnique({ where: { id: registrationId } });
-          if (bizReg) {
-            if (bizReg.status !== "UNSUBMITTED") return; 
-            serviceType = "business";
-            regName = bizReg.proposedName;
-            displayId = bizReg.trackingId || registrationId; 
+          if (isScuml && scumlDraft) {
+            serviceType = "scuml";
+            regName = scumlDraft.companyName || "SCUML Application";
+            displayId = registrationId;
           } else {
-            const llcReg = await tx.llcRegistration.findUnique({ where: { id: registrationId } });
-            if (llcReg) {
-              if (llcReg.status !== "UNSUBMITTED") return; 
-              serviceType = "llc";
-              regName = llcReg.proposedName || "LLC Application";
-              displayId = llcReg.trackingId || registrationId; 
+            const bizReg = await tx.businessRegistration.findUnique({ where: { id: registrationId } });
+            if (bizReg) {
+              if (bizReg.status !== "UNSUBMITTED") return; 
+              serviceType = "business";
+              regName = bizReg.proposedName;
+              displayId = bizReg.trackingId || registrationId; 
             } else {
-              const scumlReg = await tx.scumlRegistration.findUnique({ where: { id: registrationId } });
-              if (scumlReg) {
-                if (scumlReg.status !== "PENDING") return; // Status changes from PENDING -> PROCESSING upon payment
-                serviceType = "scuml";
-                regName = scumlReg.companyName || "SCUML Application";
-                displayId = registrationId;
+              const llcReg = await tx.llcRegistration.findUnique({ where: { id: registrationId } });
+              if (llcReg) {
+                if (llcReg.status !== "UNSUBMITTED") return; 
+                serviceType = "llc";
+                regName = llcReg.proposedName || "LLC Application";
+                displayId = llcReg.trackingId || registrationId; 
               }
             }
           }
@@ -146,7 +160,7 @@ export async function POST(req: Request) {
                 description: `Partial Online Payment (Underpaid for ${regName} - Credited to Wallet)`
               }
             });
-            return; // Abort without updating registration status or burning promo!
+            return; // Abort without updating registration status
           }
 
           // Step A: Record incoming online funds into wallet ledger
@@ -195,10 +209,18 @@ export async function POST(req: Request) {
             await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           } else if (serviceType === "llc") {
             await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
-          } else if (serviceType === "scuml") {
-            await tx.scumlRegistration.update({ 
-              where: { id: registrationId }, 
-              data: { 
+          } else if (serviceType === "scuml" && scumlDraft) {
+            // CREATE THE OFFICIAL POSTGRES ROW FROM REDIS DRAFT
+            await tx.scumlRegistration.create({ 
+              data: {
+                id: registrationId, 
+                userId: scumlDraft.userId,
+                type: scumlDraft.type,
+                companyName: scumlDraft.companyName,
+                certificateUrl: scumlDraft.documents.certificateUrl,
+                statusReportUrl: scumlDraft.documents.statusReportUrl,
+                memorandumUrl: scumlDraft.documents.memorandumUrl || null,
+                constitutionUrl: scumlDraft.documents.constitutionUrl || null,
                 status: "PROCESSING",
                 amountPaid: amountPaid,
                 transactionRef: reference
@@ -217,26 +239,55 @@ export async function POST(req: Request) {
             });
           }
 
-          const userPhone = user.phone || "";
-          const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
+          isPaymentFullySuccessful = true; // Mark as true so notifications fire
 
-          notificationPayload = {
-            userId: user.id, 
-            type: "APPLICATION_SUBMITTED", 
-            phone: userPhone, 
-            email: userEmail,
-            name: userName, 
-            businessName: regName, 
-            regId: displayId,
-          };
+          // Setup Notification payload for CAC services
+          if (serviceType !== "scuml" && user) {
+            const userPhone = user.phone || "";
+            const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
+            
+            notificationPayload = {
+              userId: user.id, 
+              type: "APPLICATION_SUBMITTED", 
+              phone: userPhone, 
+              email: userEmail,
+              name: userName, 
+              businessName: regName, 
+              regId: displayId,
+            };
+          }
         });
 
-        if (notificationPayload) {
-          await notificationQueue.add("send-application-notification", notificationPayload, {
-            attempts: 3, 
-            backoff: { type: "exponential", delay: 5000 }, 
-            removeOnComplete: true,
-          });
+        // =========================================================================
+        // AFTER TRANSACTION: CLEANUP REDIS & SEND EMAILS
+        // =========================================================================
+        if (isPaymentFullySuccessful && user) {
+          
+          if (isScuml && scumlDraft) {
+            // Clean up Redis
+            await redis.del(registrationId);
+            
+            // Fire SCUML Specific Email
+            try {
+              await sendScumlSubmittedEmail({
+                to: userEmail,
+                name: user.firstName || "Customer",
+                companyName: scumlDraft.companyName,
+                regType: scumlDraft.type,
+                transactionRef: reference
+              });
+            } catch (err) {
+              console.error("Failed to send SCUML email via Webhook:", err);
+            }
+          } else if (notificationPayload) {
+            // Fire CAC Background Queue Email
+            await notificationQueue.add("send-application-notification", notificationPayload, {
+              attempts: 3, 
+              backoff: { type: "exponential", delay: 5000 }, 
+              removeOnComplete: true,
+            });
+          }
+
         }
 
         return NextResponse.json({ received: true });
@@ -284,7 +335,7 @@ export async function POST(req: Request) {
                     description: "Partial Online Payment (Underpaid Name Substitution - Credited to Wallet)"
                   }
                 });
-                return; 
+                return; // Abort without updating names!
               }
 
               const fundedWallet = await tx.wallet.update({
