@@ -23,9 +23,6 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
   const [gatewayLoading, setGatewayLoading] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // =====================================================================
-  // PROMO CODE STATES
-  // =====================================================================
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
@@ -45,7 +42,6 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
 
         if (walletData.success && walletData.wallet) {
           setWalletBalance(Number(walletData.wallet.balance));
-          // Fallback to a base price if SCUML pricing key is missing from DB
           setServicePrice(pricingData.data?.SCUML || 45000); 
         } else {
           setErrorMsg("Failed to load wallet details.");
@@ -63,13 +59,11 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
     };
   }, []);
 
-  // 2. AUTO-START VERIFICATION POLLING WHEN RETURNING FROM PAYSTACK ONLINE
+  // 2. AUTO-START VERIFICATION POLLING WHEN RETURNING FROM PAYSTACK
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const isReturningFromPaystack = params.get("verifying") === "true" || params.get("paid") === "true" || params.has("trxref");
-      
-      if (isReturningFromPaystack && processingState === "idle") {
+      if (params.get("verifying") === "true" && processingState === "idle") {
         startWebhookPolling();
       }
     }
@@ -81,12 +75,11 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
     
     pollingIntervalRef.current = setInterval(async () => {
       try {
-        // Adjust this endpoint to match your SCUML detail fetcher
         const res = await fetch(`/api/scuml/${registrationId}`);
         const json = await res.json();
         
-        // Once Webhook updates status from PENDING to PROCESSING/COMPLETED
-        if (json.success && json.data.status !== "PENDING") {
+        // 🚨 FIXED: Because it's a Redis draft, if the record exists in Postgres at all, payment was successful!
+        if (json.success && json.data) {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
           
@@ -94,6 +87,7 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
           window.history.replaceState({}, document.title, newUrl);
 
           setTimeout(() => {
+            router.refresh(); // 🚨 CRITICAL: Forces Next.js to fetch new DB data
             router.push("/dashboard/scuml/history?success=true");
           }, 2500);
         }
@@ -114,34 +108,6 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
     }, 30000);
   };
 
-  // Prevent bfcache freeze if user presses browser Back
-  useEffect(() => {
-    const handlePageRestore = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        setProcessingState("idle");
-        setGatewayLoading(false);
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && gatewayLoading) {
-        setProcessingState("idle");
-        setGatewayLoading(false);
-      }
-    };
-
-    window.addEventListener("pageshow", handlePageRestore);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("pageshow", handlePageRestore);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [gatewayLoading]);
-
-  // =====================================================================
-  // PROMO HANDLERS
-  // =====================================================================
   const handleApplyPromo = async () => {
     if (!promoCodeInput.trim() || !servicePrice) return;
     
@@ -183,9 +149,6 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
     setPromoError(null);
   };
 
-  // =====================================================================
-  // PAYMENT HANDLER
-  // =====================================================================
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
     setProcessingState("initializing");
     setErrorMsg(null);
@@ -201,7 +164,7 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
         body: JSON.stringify({ 
           registrationId, 
           paymentMethod: method,
-          service: "scuml", // Specifically telling the backend this is a SCUML payment
+          service: "scuml", 
           promoCode: appliedPromo?.code
         })
       });
@@ -216,7 +179,10 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
 
       if (method === "WALLET") {
         setProcessingState("success");
-        setTimeout(() => router.push("/dashboard/scuml/history?success=true"), 2000);
+        setTimeout(() => {
+          router.refresh(); // 🚨 CRITICAL: Forces Next.js to fetch new DB data
+          router.push("/dashboard/scuml/history?success=true");
+        }, 2000);
       } else if (method === "ONLINE") {
         if (!data.authorizationUrl) {
           setErrorMsg("Server error: Could not obtain checkout link. Please try again.");
@@ -269,17 +235,6 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
           <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
             <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-[#ff3f7a] rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setGatewayLoading(false);
-              setProcessingState("idle");
-            }}
-            className="mt-8 text-xs text-slate-400 hover:text-white underline underline-offset-4 transition-colors cursor-pointer"
-          >
-            Cancel / Go Back
-          </button>
         </div>
       )}
 
@@ -302,7 +257,7 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
                 <div className="animate-in zoom-in duration-500 flex flex-col items-center">
                   <CheckCircle className="h-28 w-28 text-emerald-500 mb-6 drop-shadow-lg" weight="fill" />
                   <h3 className="font-black text-2xl text-foreground mb-2">Payment Successful!</h3>
-                  <p className="text-muted-foreground font-medium">Your SCUML application is in progress. Redirecting...</p>
+                  <p className="text-muted-foreground font-medium">Your SCUML application is now PENDING. Redirecting to your dashboard...</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
@@ -327,7 +282,7 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
                 ) : (
                   <h2 className="text-4xl font-black text-foreground">₦{displayPrice?.toLocaleString() || "..."}</h2>
                 )}
-                <p className="text-muted-foreground text-sm font-medium mt-2">Registration for: <span className="font-bold text-foreground">{companyName}</span></p>
+                <p className="text-muted-foreground text-sm font-medium mt-2">Registration for: <span className="font-bold text-foreground">{companyName || "Your Company"}</span></p>
               </div>
 
               {errorMsg && (
