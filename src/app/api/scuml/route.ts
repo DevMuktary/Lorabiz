@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import redis from "@/lib/redis"; // Using your existing Redis instance
+import { redis } from "@/lib/redis";
 import { generateNumericId } from "@/utils/generateId";
 
 export async function GET(req: Request) {
