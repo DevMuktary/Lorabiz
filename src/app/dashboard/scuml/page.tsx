@@ -8,6 +8,7 @@ import {
   ArrowLeft, CaretDown, CaretUp, Buildings, Storefront, Globe, Tag
 } from "@phosphor-icons/react";
 import { FileUpload } from "@/components/FileUpload";
+import ScumlPaymentModal from "@/components/features/scuml/ScumlPaymentModal"; // 🚨 Imported the new modal
 
 type ScumlType = "BUSINESS_NAME" | "LLC" | "NGO";
 
@@ -41,6 +42,9 @@ export default function ScumlPage() {
     memorandumUrl: "",
     constitutionUrl: ""
   });
+
+  // 🚨 NEW: State to hold the Redis draft ID and trigger the payment modal
+  const [paymentDraftId, setPaymentDraftId] = useState<string | null>(null);
 
   // Fetch Live Pricing from DB
   useEffect(() => {
@@ -98,31 +102,27 @@ export default function ScumlPage() {
     setErrorMsg("");
 
     try {
+      // Step 1: Hit the API to generate the temporary Redis draft
       const res = await fetch("/api/scuml", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: regType,
           companyName,
-          documents,
-          price
+          documents
         })
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Something went wrong.");
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Something went wrong generating the application.");
       }
 
-      // Success
+      // Step 2: Extract the Draft ID, close the confirm modal, and open the Payment modal
+      const draftId = data.data.id;
       setIsConfirmModalOpen(false);
-      setCompanyName("");
-      setRegType("");
-      setDocuments({ certificateUrl: "", statusReportUrl: "", memorandumUrl: "", constitutionUrl: "" });
-      setConsentChecked(false);
-      
-      window.location.href = "/dashboard/scuml/history?success=true";
+      setPaymentDraftId(draftId);
 
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -386,7 +386,7 @@ export default function ScumlPage() {
                   disabled={!consentChecked || !companyName || isLoadingPrice}
                   className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
                 >
-                  {isLoadingPrice ? "Loading pricing..." : `Proceed to Pay ₦${price.toLocaleString()}`}
+                  {isLoadingPrice ? "Loading pricing..." : `Proceed to Review`}
                 </button>
               </div>
             )}
@@ -472,13 +472,23 @@ export default function ScumlPage() {
                   disabled={isSubmitting}
                   className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? "Processing..." : <><CheckCircle weight="bold" className="h-4 w-4" /> Pay & Submit</>}
+                  {isSubmitting ? "Generating..." : <><ArrowRight weight="bold" className="h-4 w-4" /> Proceed to Pay</>}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* 🚨 NEW: Payment Modal Mount */}
+      {paymentDraftId && (
+        <ScumlPaymentModal
+          registrationId={paymentDraftId}
+          companyName={companyName}
+          onClose={() => setPaymentDraftId(null)}
+        />
+      )}
+
     </div>
   );
 }
