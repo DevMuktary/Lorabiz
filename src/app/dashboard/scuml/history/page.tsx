@@ -29,6 +29,28 @@ export default function ScumlHistoryPage() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "PROCESSING" | "COMPLETED">("ALL");
 
   const [viewDocsModal, setViewDocsModal] = useState<ScumlRecord | null>(null);
+  
+  // 🚨 NEW: State for the slide-in success toast
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+  // 🚨 NEW: Check URL for success flag, show toast, and clean up the URL
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("success") === "true") {
+        setShowSuccessToast(true);
+        
+        // Remove "?success=true" from the URL cleanly
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          setShowSuccessToast(false);
+        }, 5000);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -72,7 +94,24 @@ export default function ScumlHistoryPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
+    <div className="space-y-8 max-w-6xl mx-auto relative">
+      
+      {/* 🚨 NEW: Slide-in Success Toast */}
+      {showSuccessToast && (
+        <div className="fixed top-24 right-4 sm:right-8 z-[9999] flex items-center gap-4 bg-emerald-500 text-white px-5 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right-8 fade-in duration-500">
+          <CheckCircle weight="fill" className="h-7 w-7" />
+          <div className="pr-4">
+            <h4 className="font-black text-sm tracking-wide">Application Submitted!</h4>
+            <p className="text-xs font-medium opacity-90 mt-0.5">Your SCUML application is now PENDING.</p>
+          </div>
+          <button 
+            onClick={() => setShowSuccessToast(false)} 
+            className="ml-auto hover:bg-emerald-600 p-1.5 rounded-full transition-colors border border-transparent hover:border-white/20"
+          >
+            <X weight="bold" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       
       {/* Header & Back Button */}
       <div className="flex items-center gap-4">
