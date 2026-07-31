@@ -4,67 +4,97 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 
 export default function ServicesSection() {
-  // Punchy, Anchor-style naming and pure SVG icons
   const services = [
     {
       title: "Incorporation",
       desc: "Register your Business Name, Limited Company, LLP, or NGO seamlessly with the CAC.",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4a2 2 0 012-2h2a2 2 0 012 2v4M9 11h.01M15 11h.01M9 15h.01M15 15h.01" />
+      // Soft Sage Green
+      bgClass: "bg-[#F0F4EC] dark:bg-[#131F18]", 
+      titleClass: "text-[#1D2B23] dark:text-[#E1ECE5]",
+      descClass: "text-[#586C60] dark:text-[#8EAA9A]",
+      // Massive Abstract Documents Graphic
+      graphic: (
+        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <rect x="60" y="40" width="120" height="140" rx="24" fill="#045137" fillOpacity="0.08" transform="rotate(15 120 110)" />
+          <rect x="30" y="60" width="120" height="140" rx="24" fill="#045137" fillOpacity="0.15" />
+          <circle cx="90" cy="130" r="30" fill="#045137" fillOpacity="0.2" />
         </svg>
       ),
-      color: "bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-white",
       href: "/auth/register"
     },
     {
       title: "Compliance",
       desc: "Get your Special Control Unit against Money Laundering (SCUML) certificate quickly and efficiently.",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+      // Soft Peach/Orange (Matches your image closely)
+      bgClass: "bg-[#F8F0E5] dark:bg-[#2A1E14]",
+      titleClass: "text-[#3B2613] dark:text-[#F3E2D1]",
+      descClass: "text-[#8A6A4E] dark:text-[#C5A58A]",
+      // Massive Abstract Shield/Check Graphic
+      graphic: (
+        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <path d="M100 20L170 50V100C170 145 140 185 100 200C60 185 30 145 30 100V50L100 20Z" fill="#B35B1E" fillOpacity="0.1" />
+          <circle cx="100" cy="110" r="40" fill="#B35B1E" fillOpacity="0.15" />
+          <path d="M80 110L95 125L130 90" stroke="#B35B1E" strokeOpacity="0.3" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
-      color: "bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-white",
       href: "/auth/register"
     },
     {
       title: "Taxation",
       desc: "Generate your Tax Identification Number (TIN) swiftly. Essential for every registered business.",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+      // Soft Blue
+      bgClass: "bg-[#EBF2F6] dark:bg-[#121A21]",
+      titleClass: "text-[#182936] dark:text-[#DBEAF5]",
+      descClass: "text-[#54738B] dark:text-[#8AA5BA]",
+      // Massive Abstract Chart Graphic
+      graphic: (
+        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <path d="M100 180C144.183 180 180 144.183 180 100H100V20C55.8172 20 20 55.8172 20 100C20 144.183 55.8172 180 100 180Z" fill="#1C5B8B" fillOpacity="0.1" />
+          <path d="M190 80C185 45 155 15 120 10V80H190Z" fill="#1C5B8B" fillOpacity="0.2" />
         </svg>
       ),
-      color: "bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-white",
       href: "/auth/register"
     },
     {
       title: "Identity",
       desc: "Generate NIN slips and verify identities with ease. Instant, secure, and government-compliant.",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" />
+      // Soft Pink/Rose
+      bgClass: "bg-[#F6EBF0] dark:bg-[#29131C]",
+      titleClass: "text-[#3B1524] dark:text-[#F3D1DF]",
+      descClass: "text-[#934E6C] dark:text-[#CF89A7]",
+      // Massive Abstract ID/Fingerprint Graphic
+      graphic: (
+        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <rect x="40" y="30" width="120" height="150" rx="30" fill="#A8285B" fillOpacity="0.08" />
+          <circle cx="100" cy="80" r="25" fill="#A8285B" fillOpacity="0.15" />
+          <rect x="70" y="130" width="60" height="12" rx="6" fill="#A8285B" fillOpacity="0.2" />
+          <rect x="80" y="150" width="40" height="12" rx="6" fill="#A8285B" fillOpacity="0.15" />
         </svg>
       ),
-      color: "bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-white",
       href: "/auth/register"
     },
     {
       title: "Utilities",
       desc: "Buy airtime and data bundles for MTN, Airtel, Glo, and 9mobile directly from your dashboard.",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+      // Soft Violet
+      bgClass: "bg-[#EFEBF6] dark:bg-[#161221]",
+      titleClass: "text-[#231A36] dark:text-[#DFD1F3]",
+      descClass: "text-[#625484] dark:text-[#A191C6]",
+      // Massive Abstract Signal/Waves Graphic
+      graphic: (
+        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <circle cx="100" cy="180" r="140" stroke="#4C2E9A" strokeOpacity="0.05" strokeWidth="24" />
+          <circle cx="100" cy="180" r="100" stroke="#4C2E9A" strokeOpacity="0.1" strokeWidth="24" />
+          <circle cx="100" cy="180" r="60" stroke="#4C2E9A" strokeOpacity="0.15" strokeWidth="24" />
+          <circle cx="100" cy="180" r="20" fill="#4C2E9A" fillOpacity="0.2" />
         </svg>
       ),
-      color: "bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-white",
       href: "/auth/register"
     },
   ];
 
   return (
-    <section id="services" className="py-24 md:py-32 overflow-hidden bg-[#fafafa] dark:bg-[#0a0f1e] transition-colors duration-300">
+    <section id="services" className="py-24 md:py-32 overflow-hidden bg-white dark:bg-[#0a0f1e] transition-colors duration-300">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
         
         {/* Header Section */}
@@ -76,17 +106,17 @@ export default function ServicesSection() {
           className="max-w-2xl"
         >
           <h2 
-            className="font-normal tracking-tight text-zinc-900 dark:text-white"
+            className="font-normal tracking-tight text-[#23322D] dark:text-white"
             style={{ 
               fontSize: 'clamp(32px, 5vw, 48px)',
-              lineHeight: '1.1', 
+              lineHeight: '1.18', 
               fontFamily: 'system-ui, -apple-system, sans-serif' 
             }}
           >
             Everything you need to <br className="hidden md:block"/>
             operate smoothly.
           </h2>
-          <p className="mt-6 text-lg text-zinc-500 dark:text-white/50 leading-relaxed" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
+          <p className="mt-6 text-lg text-[#767676] dark:text-white/60 leading-relaxed" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
             From incorporation to financial compliance and everyday utility management, we handle the heavy lifting so you can focus entirely on growing your business.
           </p>
         </motion.div>
@@ -100,31 +130,27 @@ export default function ServicesSection() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-              // Massive cards matching the Anchor scale. w-[85vw] on mobile ensures 1.5 cards are visible.
-              className="shrink-0 w-[85vw] sm:w-[380px] lg:w-[420px] min-h-[440px] snap-start flex flex-col group cursor-pointer"
+              // Adjusted height and padding to fit the new top-heavy layout
+              className="shrink-0 w-[85vw] sm:w-[380px] lg:w-[420px] h-[460px] lg:h-[500px] snap-start"
             >
-              <Link href={service.href} className="flex flex-col h-full bg-white dark:bg-[#111827] border border-black/5 dark:border-white/5 rounded-3xl p-8 sm:p-10 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] dark:hover:shadow-none dark:hover:bg-white/[0.04] transition-all duration-500">
+              <Link href={service.href} className={`block relative w-full h-full rounded-[32px] p-8 lg:p-10 overflow-hidden group transition-transform duration-500 hover:-translate-y-2 ${service.bgClass}`}>
                 
-                {/* Clean, Vector Icon Wrapper */}
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-10 transition-transform duration-500 group-hover:scale-110 ${service.color}`}>
-                  {service.icon}
+                {/* Text Content at the Top */}
+                <div className="relative z-10 max-w-[85%]">
+                  <h3 className={`text-3xl font-medium mb-4 tracking-tight ${service.titleClass}`} style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    {service.title}
+                  </h3>
+                  
+                  <p className={`text-[17px] leading-relaxed ${service.descClass}`} style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
+                    {service.desc}
+                  </p>
                 </div>
 
-                <h3 className="text-3xl font-semibold mb-4 text-zinc-900 dark:text-white tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                  {service.title}
-                </h3>
-                
-                <p className="text-[17px] text-[#767676] dark:text-white/50 leading-relaxed mb-10 flex-grow" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
-                  {service.desc}
-                </p>
-
-                {/* Animated Bottom Link */}
-                <div className="mt-auto flex items-center text-[17px] font-medium text-zinc-900 dark:text-white">
-                  Explore {service.title}
-                  <svg className="w-5 h-5 ml-2 transition-transform duration-300 group-hover:translate-x-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
+                {/* Massive Graphic bleeding off the Bottom Right */}
+                <div className="absolute -bottom-8 -right-8 w-[260px] h-[280px] lg:w-[320px] lg:h-[340px] transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-rotate-3 pointer-events-none">
+                  {service.graphic}
                 </div>
+
               </Link>
             </motion.div>
           ))}
