@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     let description = "";
     let reference = "";
     let callbackPath = "/dashboard";
-    let promoServiceKey = ""; // NEW: Strictly aligns with database enum names
+    let promoServiceKey = ""; // Strictly aligns with database enum names
 
     // =========================================================================
     // 2. IDENTIFY SERVICE & EXCLUSIVELY CALCULATE PRICE ON THE SERVER
@@ -45,11 +45,11 @@ export async function POST(req: Request) {
       baseAmountToPay = Math.round(Number(amount));
       description = "Wallet Funding via Online Gateway";
       reference = `FW_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
-      callbackPath = "/dashboard?funded=true";
+      callbackPath = "/dashboard/wallet?funded=true";
 
     // CASE B: LLC (LIMITED LIABILITY COMPANY) REGISTRATION
     } else if (service === "llc") {
-      promoServiceKey = "LLC"; // Strict DB match
+      promoServiceKey = "LLC"; 
       
       if (!registrationId) {
         return NextResponse.json({ success: false, message: "Registration ID is required." }, { status: 400 });
@@ -80,9 +80,33 @@ export async function POST(req: Request) {
       
       callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?verifying=true`;
 
-    // CASE C: BUSINESS NAME REGISTRATION (DEFAULT SERVICE)
+    // CASE C: SCUML REGISTRATION
+    } else if (service === "scuml") {
+      promoServiceKey = "SCUML"; 
+      
+      if (!registrationId) {
+        return NextResponse.json({ success: false, message: "Registration ID is required." }, { status: 400 });
+      }
+
+      const registration = await prisma.scumlRegistration.findUnique({ where: { id: registrationId } });
+      if (!registration || registration.userId !== user.id) {
+        return NextResponse.json({ success: false, message: "Invalid SCUML application." }, { status: 404 });
+      }
+      if (registration.status !== "PENDING") {
+        return NextResponse.json({ success: false, message: "This application has already been processed or paid for." }, { status: 400 });
+      }
+
+      const servicePriceRecord = await prisma.servicePricing.findUnique({ where: { serviceKey: "SCUML" } });
+      baseAmountToPay = servicePriceRecord ? Number(servicePriceRecord.price) : 45000; // Fallback to 45k if not in DB
+      
+      description = `Payment for SCUML Registration (${registration.companyName})`;
+      reference = `ONL_SCUML_${registrationId}_${Date.now()}`;
+      
+      callbackPath = `/dashboard/scuml/history?verifying=true`;
+
+    // CASE D: BUSINESS NAME REGISTRATION (DEFAULT SERVICE)
     } else {
-      promoServiceKey = "BUSINESS_NAME"; // Strict DB match
+      promoServiceKey = "BUSINESS_NAME"; 
       
       if (!registrationId) {
         return NextResponse.json({ success: false, message: "Registration ID is required." }, { status: 400 });
@@ -123,11 +147,9 @@ export async function POST(req: Request) {
       const promo = await prisma.promoCode.findUnique({ where: { code: normalizedCode } });
 
       if (promo) {
-        // FIX: Match against promoServiceKey (e.g., "BUSINESS_NAME") instead of the raw frontend string
         const isAllowedService = promo.restrictedServices.includes("ALL") || promo.restrictedServices.includes(promoServiceKey);
         const userUsagesCount = await prisma.promoUsage.count({ where: { promoId: promo.id, userId: user.id } });
         
-        // FIX: Safe fallback if perUserLimit is null in the database
         const hasNotExceededUserLimit = promo.perUserLimit === null || userUsagesCount < promo.perUserLimit;
 
         if (
@@ -168,6 +190,8 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
 
+      const txReference = `WLT_${registrationId || "SRV"}_${Date.now()}`;
+
       await prisma.$transaction(async (tx) => {
         const newBalance = currentBalance - amountToPay;
 
@@ -184,7 +208,7 @@ export async function POST(req: Request) {
             balanceAfter: newBalance,
             type: "DEBIT",
             status: "SUCCESS",
-            reference: `WLT_${registrationId || "SRV"}_${Date.now()}`,
+            reference: txReference,
             description: description
           }
         });
@@ -200,9 +224,19 @@ export async function POST(req: Request) {
           });
         }
 
+        // UPDATE SPECIFIC SERVICE REGISTRATION STATUS
         if (promoServiceKey === "LLC" && registrationId) {
           await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
-        } else if (registrationId) {
+        } else if (promoServiceKey === "SCUML" && registrationId) {
+          await tx.scumlRegistration.update({ 
+            where: { id: registrationId }, 
+            data: { 
+              status: "PROCESSING", 
+              amountPaid: amountToPay,
+              transactionRef: txReference
+            } 
+          });
+        } else if (promoServiceKey === "BUSINESS_NAME" && registrationId) {
           await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
         }
       });
@@ -235,11 +269,11 @@ export async function POST(req: Request) {
           callback_url: `${appUrl}${callbackPath}`,
           metadata: {
             userId: user.id,
-            service: service || "business",
+            service: service || "business", // We pass "scuml" here naturally
             registrationId: registrationId || null,
             expectedAmount: amountToPay, 
             description: description,
-            appliedPromoId: appliedPromoId // Passed securely to Webhook!
+            appliedPromoId: appliedPromoId
           }
         }),
       });
