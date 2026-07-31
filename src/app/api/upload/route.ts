@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { getToken } from "next-auth/jwt";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -7,8 +8,22 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    // 1. Secure the endpoint: Verify the user has a valid session token
+    const token = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+
+    if (!token) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please log in to upload documents." }, 
+        { status: 401 }
+      );
+    }
+
+    // 2. Process the file upload
     const formData = await req.formData();
     const file = formData.get("file") as File;
 
@@ -21,7 +36,7 @@ export async function POST(req: Request) {
 
     const secureUrl = await new Promise<string>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        // Added resource_type: "auto" so it correctly handles both Images and PDFs
+        // Handles both Images (passports) and PDFs (certificates/memorandums)
         { folder: "lumebiz_documents", resource_type: "auto" }, 
         (error, result) => {
           if (error || !result) return reject(error);
