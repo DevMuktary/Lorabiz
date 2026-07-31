@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
@@ -7,10 +7,14 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> } // 🚨 CHANGED: params is now typed as a Promise
 ) {
   try {
+    // 🚨 CHANGED: You must await the params in newer Next.js versions
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
@@ -26,7 +30,7 @@ export async function GET(
 
     // Check if the Webhook has successfully created the record from the Redis draft
     const scumlRegistration = await prisma.scumlRegistration.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!scumlRegistration) {
