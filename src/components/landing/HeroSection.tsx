@@ -7,26 +7,24 @@ import { useRef } from "react";
 export default function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Track scroll position for the parting & fade animation
+  // Track scroll position for the horizontal compression effect
   const { scrollY } = useScroll();
 
-  // Mapping scroll position (0 to 300px down) to horizontal movement
-  const moveLeftFast = useTransform(scrollY, [0, 300], [0, -350]);
-  const moveLeftMedium = useTransform(scrollY, [0, 300], [0, -200]);
-  const moveLeftSlow = useTransform(scrollY, [0, 300], [0, -100]);
-  const moveRightSlow = useTransform(scrollY, [0, 300], [0, 150]);
-  const moveRightFast = useTransform(scrollY, [0, 300], [0, 300]);
-  
-  // Fade out the tags as they part ways
-  const fadeOut = useTransform(scrollY, [0, 250], [1, 0]);
+  // Instead of flying away, they "compress" inwards horizontally as you scroll.
+  // The outer ones move in by 70px, the inner ones move in by 35px.
+  const compressLeftFast = useTransform(scrollY, [0, 300], [0, 70]);
+  const compressLeftSlow = useTransform(scrollY, [0, 300], [0, 35]);
+  const centerStays = useTransform(scrollY, [0, 300], [0, 0]);
+  const compressRightSlow = useTransform(scrollY, [0, 300], [0, -35]);
+  const compressRightFast = useTransform(scrollY, [0, 300], [0, -70]);
 
-  // Adjusted the initialX and y values to spread them out beautifully and prevent ugly overlapping
+  // Initial X positions are spread out, Z-index is layered so they overlap beautifully
   const floatingTags = [
-    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: moveLeftFast, initialX: -150, y: 10, rotate: -6, delay: 0.1, z: 20 },
-    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: moveLeftMedium, initialX: -60, y: 60, rotate: 4, delay: 0.3, z: 30 },
-    { label: "SCUML", color: "bg-blue-100 text-blue-800", xOffset: moveLeftSlow, initialX: 0, y: -5, rotate: -3, delay: 0.2, z: 10 },
-    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: moveRightSlow, initialX: 80, y: 50, rotate: 6, delay: 0.4, z: 40 },
-    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: moveRightFast, initialX: 160, y: 15, rotate: -6, delay: 0.5, z: 20 },
+    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: compressLeftFast, initialX: -180, y: 10, rotate: -6, delay: 0.1, z: 10 },
+    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: compressLeftSlow, initialX: -90, y: 45, rotate: 4, delay: 0.3, z: 20 },
+    { label: "SCUML", color: "bg-blue-100 text-blue-800", xOffset: centerStays, initialX: 0, y: -5, rotate: -2, delay: 0.2, z: 30 },
+    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: compressRightSlow, initialX: 90, y: 40, rotate: 5, delay: 0.4, z: 20 },
+    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: compressRightFast, initialX: 180, y: 15, rotate: -5, delay: 0.5, z: 10 },
   ];
 
   return (
@@ -85,8 +83,8 @@ export default function HeroSection() {
                 initial={{ y: -600, opacity: 0, x: tag.initialX, rotate: 0 }}
                 animate={{ y: tag.y, opacity: 1, rotate: tag.rotate }}
                 transition={{ type: "spring", damping: 14, stiffness: 70, delay: tag.delay, duration: 1.5 }}
-                // Added fadeOut to opacity, combined with the parting xOffset
-                style={{ x: tag.xOffset, opacity: fadeOut, zIndex: tag.z }}
+                // xOffset now compresses them inward. Removed the opacity fade-out.
+                style={{ x: tag.xOffset, zIndex: tag.z }}
                 className={`absolute px-5 py-2.5 rounded-full text-sm font-bold shadow-lg backdrop-blur-md whitespace-nowrap border border-black/5 dark:border-white/10 ${tag.color}`}
               >
                 {tag.label}
@@ -98,7 +96,6 @@ export default function HeroSection() {
       </section>
 
       {/* ───── SCROLL REVEAL TEXT SECTION ───── */}
-      {/* Drastically reduced padding to eliminate whitespace */}
       <section className="relative w-full max-w-7xl mx-auto px-6 pt-8 pb-24 z-20 flex items-center">
         <motion.div
           initial={{ opacity: 0, x: -60 }}
