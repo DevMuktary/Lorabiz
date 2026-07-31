@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { NotificationEvent } from "@/services/notifications";
 import { notificationQueue } from "@/lib/queue";
-import redis from "@/lib/redis";
+import { redis } from "@/lib/redis";
 import { sendScumlSubmittedEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
