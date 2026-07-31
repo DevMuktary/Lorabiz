@@ -56,6 +56,14 @@ const PRICING_METADATA: Record<string, { label: string; desc?: string; category:
     imageSrc: "/nrs.png",
     colorClass: "bg-purple-500/10 border-purple-500/20 text-purple-500"
   },
+  // 🚨 NEW: Added NIN Slip Pricing
+  NIN_SLIP: {
+    label: "NIN Slip Retrieval",
+    desc: "Instant retrieval of standard National Identity Number (NIN) slip",
+    category: "Identity",
+    imageSrc: "/nimc.png",
+    colorClass: "bg-green-500/10 border-green-500/20 text-green-500"
+  },
   AIRTIME: {
     label: "Airtime Top-up",
     desc: "The amount you buy is the exact amount deducted from your wallet.",
