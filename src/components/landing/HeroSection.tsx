@@ -3,13 +3,11 @@ import Link from "next/link";
 
 export default function HeroSection() {
   return (
-    // Clean background: white in light mode, dark blue/black in dark mode. No borders.
     <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 flex flex-col items-center justify-center bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300">
       
       {/* Brand Color Background Glow Effects */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#c7365f]/5 dark:bg-[#c7365f]/15 rounded-full blur-[120px] pointer-events-none animate-pulse duration-1000" />
       
-      {/* Grid Pattern Overlay */}
       <div
         className="absolute inset-0 opacity-[0.02] dark:opacity-[0.03]"
         style={{
@@ -27,9 +25,9 @@ export default function HeroSection() {
 
       <div className="relative max-w-4xl mx-auto text-center flex flex-col items-center z-10 mt-8">
         
-        {/* Main Headline */}
+        {/* Main Headline (Gradient in Light Mode, White in Dark Mode) */}
         <h1 
-          className="font-normal tracking-tight text-[#111827] dark:text-white"
+          className="font-normal tracking-tight bg-gradient-to-r from-[#c7365f] to-[#e8447a] bg-clip-text text-transparent dark:bg-none dark:text-white"
           style={{
             fontSize: '56px',
             lineHeight: '52.58px',
@@ -40,7 +38,6 @@ export default function HeroSection() {
           <br className="hidden sm:block" /> and manage your business.
         </h1>
 
-        {/* Subheadline (Using the exact #767676) */}
         <p 
           className="mt-6 font-normal text-[#767676] dark:text-white/60 max-w-2xl mx-auto"
           style={{
@@ -52,11 +49,11 @@ export default function HeroSection() {
           LoraBiz provides the complete infrastructure needed for businesses to register, comply, launch, and manage essential utilities all in one place.
         </p>
 
-        {/* Single Centered CTA Button with Brand Colors */}
+        {/* CTA Button (Black in Light Mode, Gradient in Dark Mode) */}
         <div className="mt-10 mb-20">
           <Link
             href="/auth/register"
-            className="inline-flex items-center justify-center font-medium text-white bg-gradient-to-r from-[#c7365f] to-[#e8447a] rounded-full hover:scale-105 shadow-[0_10px_30px_rgba(199,54,95,0.25)] dark:shadow-[0_0_30px_rgba(199,54,95,0.4)] transition-all duration-300"
+            className="inline-flex items-center justify-center font-medium text-white bg-[#111827] dark:bg-gradient-to-r dark:from-[#c7365f] dark:to-[#e8447a] rounded-full hover:scale-105 shadow-xl dark:shadow-[0_0_30px_rgba(199,54,95,0.4)] transition-all duration-300"
             style={{
               fontSize: '18px',
               lineHeight: '22px',
