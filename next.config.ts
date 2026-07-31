@@ -1,26 +1,11 @@
 import { withSentryConfig } from "@sentry/nextjs";
-import withSerwistInit from "@serwist/next";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Leave this empty again! instrumentation.ts runs automatically now.
 };
 
-// 1. Initialize Serwist
-const withSerwist = withSerwistInit({
-  swSrc: "src/app/sw.ts",
-  swDest: "public/sw.js",
-  // ONLY run in production to prevent caching headaches during local development
-  disable: process.env.NODE_ENV === "development",
-  register: true,
-  reloadOnOnline: true,
-});
-
-// 2. Wrap NextConfig with Serwist
-const pwaConfig = withSerwist(nextConfig);
-
-// 3. Wrap the resulting PWA Config with Sentry
-export default withSentryConfig(pwaConfig, {
+export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
