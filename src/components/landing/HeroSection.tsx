@@ -1,139 +1,124 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef } from "react";
 
 export default function HeroSection() {
-  // These are the "pills" that will fall from the top of the screen
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Track scroll position for the parting animation
+  const { scrollY } = useScroll();
+
+  // Mapping scroll position (0 to 400px down) to horizontal movement for the parting effect
+  // 3 tags move left (negative), 2 tags move right (positive)
+  const moveLeftFast = useTransform(scrollY, [0, 400], [0, -350]);
+  const moveLeftMedium = useTransform(scrollY, [0, 400], [0, -200]);
+  const moveLeftSlow = useTransform(scrollY, [0, 400], [0, -100]);
+  const moveRightSlow = useTransform(scrollY, [0, 400], [0, 150]);
+  const moveRightFast = useTransform(scrollY, [0, 400], [0, 300]);
+
   const floatingTags = [
-    { label: "CAC Registration", color: "bg-[#0a0f1e] text-white dark:bg-white dark:text-black", rotate: -6, x: -150, y: 40, delay: 0.1 },
-    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", rotate: 4, x: -250, y: 120, delay: 0.3 },
-    { label: "SCUML", color: "bg-blue-100 text-blue-800", rotate: -3, x: 200, y: 60, delay: 0.2 },
-    { label: "NIN Verification", color: "bg-[#c7365f] text-white", rotate: 8, x: 280, y: 140, delay: 0.4 },
-    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", rotate: -8, x: 50, y: 160, delay: 0.5 },
+    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: moveLeftFast, initialX: -90, y: 20, rotate: -8, delay: 0.1, z: 10 },
+    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: moveLeftMedium, initialX: -30, y: 60, rotate: 4, delay: 0.3, z: 20 },
+    { label: "SCUML", color: "bg-blue-100 text-blue-800", xOffset: moveLeftSlow, initialX: 30, y: 10, rotate: -3, delay: 0.2, z: 10 },
+    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: moveRightSlow, initialX: 80, y: 50, rotate: 6, delay: 0.4, z: 30 },
+    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: moveRightFast, initialX: 130, y: 10, rotate: -6, delay: 0.5, z: 10 },
   ];
 
   return (
-    <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 flex flex-col items-center justify-center bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300 min-h-screen">
+    <div ref={containerRef} className="relative w-full flex flex-col items-center bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300">
       
-      {/* Background Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#c7365f]/5 dark:bg-[#c7365f]/15 rounded-full blur-[120px] pointer-events-none" />
-      
-      {/* Grid Pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.02] dark:opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(0,0,0,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.5) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
-        }}
-      />
-      <div
-        className="absolute inset-0 opacity-0 dark:opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
-        }}
-      />
-
-      <div className="relative max-w-5xl mx-auto text-center flex flex-col items-center z-10 mt-8 w-full">
+      {/* ───── HERO TOP SECTION ───── */}
+      <section className="relative pt-40 pb-10 px-6 w-full flex flex-col items-center z-10 min-h-[85vh]">
         
-        {/* Animated Headline */}
-        <motion.h1 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="font-normal tracking-tight bg-gradient-to-r from-[#c7365f] to-[#e8447a] bg-clip-text text-transparent dark:bg-none dark:text-white"
-          style={{
-            fontSize: 'clamp(40px, 6vw, 64px)', // Responsive scaling
-            lineHeight: '1.05',
-            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          }}
-        >
-          The easiest way to register
-          <br className="hidden sm:block" /> and manage your business.
-        </motion.h1>
+        {/* Background Glow */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#c7365f]/5 dark:bg-[#c7365f]/15 rounded-full blur-[120px] pointer-events-none" />
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(0,0,0,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.5) 1px, transparent 1px)`, backgroundSize: '60px 60px' }} />
+        <div className="absolute inset-0 opacity-0 dark:opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)`, backgroundSize: '60px 60px' }} />
 
-        {/* Animated Subheadline */}
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-6 font-normal text-[#767676] dark:text-white/60 max-w-2xl mx-auto"
-          style={{
-            fontSize: '16px',
-            lineHeight: '22px', // Matched to your specs
-            fontFamily: '"DM Sans", system-ui, -apple-system, sans-serif'
-          }}
-        >
-          LoraBiz provides the complete infrastructure needed for businesses to register, comply, launch, and manage essential utilities all in one place.
-        </motion.p>
+        <div className="relative max-w-4xl mx-auto text-center flex flex-col items-center z-10 w-full">
+          
+          {/* Animated Headline */}
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="font-normal tracking-tight bg-gradient-to-r from-[#c7365f] to-[#e8447a] bg-clip-text text-transparent dark:bg-none dark:text-white"
+            style={{ fontSize: 'clamp(40px, 6vw, 64px)', lineHeight: '1.05', fontFamily: 'system-ui, -apple-system, sans-serif' }}
+          >
+            The easiest way to register
+            <br className="hidden sm:block" /> and manage your business.
+          </motion.h1>
 
-        {/* Animated Button */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-10 mb-20 relative z-20"
+          {/* Animated Subheadline */}
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-6 font-normal text-[#767676] dark:text-white/60 max-w-2xl mx-auto"
+            style={{ fontSize: '16px', lineHeight: '22px', fontFamily: '"DM Sans", system-ui, sans-serif' }}
+          >
+            LoraBiz provides the complete infrastructure needed for businesses to register, comply, launch, and manage essential utilities all in one place.
+          </motion.p>
+
+          {/* Animated Button */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-10 mb-8 relative z-50"
+          >
+            <Link
+              href="/auth/register"
+              className="inline-flex items-center justify-center font-medium text-white bg-[#111827] dark:bg-gradient-to-r dark:from-[#c7365f] dark:to-[#e8447a] rounded-full hover:scale-105 shadow-xl dark:shadow-[0_0_30px_rgba(199,54,95,0.4)] transition-all duration-300"
+              style={{ fontSize: '18px', lineHeight: '22px', padding: '16px 36px', fontFamily: '"DM Sans", system-ui, sans-serif' }}
+            >
+              Get started
+            </Link>
+          </motion.div>
+
+          {/* ───── THE LANDING ZONE FOR PILLS ───── */}
+          {/* This container sits right under the button. We use relative positioning so the pills fall into this exact spot and are visible on mobile. */}
+          <div className="relative w-full h-[150px] flex justify-center mt-4">
+            {floatingTags.map((tag, i) => (
+              <motion.div
+                key={i}
+                // They drop from 600px above, landing at their designated y & initialX
+                initial={{ y: -600, opacity: 0, x: tag.initialX, rotate: 0 }}
+                animate={{ y: tag.y, opacity: 1, rotate: tag.rotate }}
+                transition={{ type: "spring", damping: 14, stiffness: 70, delay: tag.delay, duration: 1.5 }}
+                // We combine the initial fixed X with the scroll-based xOffset so they part ways when scrolled
+                style={{ x: tag.xOffset, zIndex: tag.z }}
+                className={`absolute px-5 py-2.5 rounded-full text-sm font-bold shadow-lg backdrop-blur-md whitespace-nowrap border border-black/5 dark:border-white/10 ${tag.color}`}
+              >
+                {tag.label}
+              </motion.div>
+            ))}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ───── SCROLL REVEAL TEXT SECTION ───── */}
+      {/* This text swipes in slowly from the left as the user scrolls down into this section */}
+      <section className="relative w-full max-w-7xl mx-auto px-6 py-24 z-20 flex items-center min-h-[50vh]">
+        <motion.div
+          initial={{ opacity: 0, x: -100 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: false, margin: "-100px" }} // Triggers just as it comes into view
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-4xl"
         >
-          <Link
-            href="/auth/register"
-            className="inline-flex items-center justify-center font-medium text-white bg-[#111827] dark:bg-gradient-to-r dark:from-[#c7365f] dark:to-[#e8447a] rounded-full hover:scale-105 shadow-xl dark:shadow-[0_0_30px_rgba(199,54,95,0.4)] transition-all duration-300"
-            style={{
-              fontSize: '18px',
-              lineHeight: '22px',
-              padding: '16px 36px',
-              fontFamily: '"DM Sans", system-ui, sans-serif'
+          <h2 
+            className="font-normal tracking-tight text-[#23322D] dark:text-[#E5E7EB]"
+            style={{ 
+              fontSize: 'clamp(32px, 5vw, 48px)', // Responsive to fit mobile too
+              lineHeight: '1.18', // 57px relative to 48px
+              fontFamily: 'system-ui, -apple-system, sans-serif' 
             }}
           >
-            Get started
-          </Link>
+            A fully integrated suite of business services - all the tools you need to launch your product.
+          </h2>
         </motion.div>
+      </section>
 
-        {/* The Falling "Anchor-Style" Pills */}
-        <div className="absolute top-1/2 left-1/2 w-full h-full pointer-events-none -translate-x-1/2 -translate-y-1/2 hidden md:block">
-          {floatingTags.map((tag, i) => (
-            <motion.div
-              key={i}
-              initial={{ y: -500, opacity: 0, rotate: 0, x: tag.x }}
-              animate={{ y: tag.y, opacity: 1, rotate: tag.rotate }}
-              transition={{ 
-                type: "spring", 
-                damping: 12, 
-                stiffness: 60, 
-                delay: tag.delay,
-                duration: 1.5
-              }}
-              className={`absolute left-1/2 px-6 py-3 rounded-full text-sm font-bold shadow-xl backdrop-blur-md ${tag.color}`}
-            >
-              {tag.label}
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Dashboard Image Preview with Scroll Fade */}
-        <motion.div 
-          initial={{ opacity: 0, y: 100 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-5xl mx-auto mt-10 group perspective-1000 z-10"
-        >
-          <div className="absolute -inset-4 bg-gradient-to-b from-[#c7365f]/5 to-transparent dark:from-[#c7365f]/20 rounded-3xl blur-2xl transition-all duration-500" />
-          
-          <div className="relative rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 shadow-2xl bg-white/50 dark:bg-[#0a0f1e]/50 backdrop-blur-sm transform transition-transform duration-700 ease-out group-hover:-translate-y-2">
-            <Image
-              src="/dashboard-preview.jpg"
-              alt="LoraBiz Platform"
-              width={1000}
-              height={562}
-              className="w-full h-auto opacity-95 group-hover:opacity-100 transition-opacity duration-500"
-              priority
-            />
-          </div>
-        </motion.div>
-        
-      </div>
-    </section>
+    </div>
   );
 }
