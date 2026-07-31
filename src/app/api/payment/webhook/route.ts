@@ -79,7 +79,10 @@ export async function POST(req: Request) {
       // SCENARIO 2: ONLINE SERVICE CHECKOUT ("ONL_...")
       // =========================================================================
       if (reference.startsWith("ONL_")) {
-        const registrationId = reference.split("_")[1];
+        // Safely extract ID (handles ONL_12345 or ONL_SCUML_12345)
+        const isScuml = reference.startsWith("ONL_SCUML_");
+        const registrationId = metadata.registrationId || (isScuml ? reference.split("_")[2] : reference.split("_")[1]);
+        
         let notificationPayload: NotificationEvent | null = null;
 
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -89,7 +92,7 @@ export async function POST(req: Request) {
           const existingTx = await tx.transaction.findUnique({ where: { reference } });
           if (existingTx && existingTx.status === "SUCCESS") return; 
 
-          let serviceType: "business" | "llc" | null = null;
+          let serviceType: "business" | "llc" | "scuml" | null = null;
           let regName = "Registration";
           let displayId = registrationId; 
 
@@ -106,6 +109,14 @@ export async function POST(req: Request) {
               serviceType = "llc";
               regName = llcReg.proposedName || "LLC Application";
               displayId = llcReg.trackingId || registrationId; 
+            } else {
+              const scumlReg = await tx.scumlRegistration.findUnique({ where: { id: registrationId } });
+              if (scumlReg) {
+                if (scumlReg.status !== "PENDING") return; // Status changes from PENDING -> PROCESSING upon payment
+                serviceType = "scuml";
+                regName = scumlReg.companyName || "SCUML Application";
+                displayId = registrationId;
+              }
             }
           }
 
@@ -179,11 +190,20 @@ export async function POST(req: Request) {
             }
           });
 
-          // Step C: Unlock application status for CAC processing
+          // Step C: Unlock application status for Admin processing
           if (serviceType === "business") {
             await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           } else if (serviceType === "llc") {
             await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
+          } else if (serviceType === "scuml") {
+            await tx.scumlRegistration.update({ 
+              where: { id: registrationId }, 
+              data: { 
+                status: "PROCESSING",
+                amountPaid: amountPaid,
+                transactionRef: reference
+              } 
+            });
           }
 
           // Step D: Burn Promo Code officially in the ledger
@@ -264,7 +284,7 @@ export async function POST(req: Request) {
                     description: "Partial Online Payment (Underpaid Name Substitution - Credited to Wallet)"
                   }
                 });
-                return; // Abort without updating names!
+                return; 
               }
 
               const fundedWallet = await tx.wallet.update({
