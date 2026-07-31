@@ -116,7 +116,9 @@ export async function POST(req: Request) {
       
       description = `Payment for SCUML Registration (${draft.companyName})`;
       reference = `ONL_SCUML_${registrationId}_${Date.now()}`;
-      callbackPath = `/dashboard/scuml/history?verifying=true`;
+      
+      // Send them back to the SCUML form page to trigger the success modal
+      callbackPath = `/dashboard/scuml?verifying=true&draftId=${registrationId}`;
       
       // Capture details for email notification
       regName = draft.companyName || "SCUML Application";
@@ -264,7 +266,7 @@ export async function POST(req: Request) {
                 statusReportUrl: draft.documents.statusReportUrl,
                 memorandumUrl: draft.documents.memorandumUrl || null,
                 constitutionUrl: draft.documents.constitutionUrl || null,
-                status: "PROCESSING", 
+                status: "PENDING", // Confirmed PENDING status post-payment
                 amountPaid: amountToPay,
                 transactionRef: txReference
               }
