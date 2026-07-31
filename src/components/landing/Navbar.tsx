@@ -45,12 +45,11 @@ export default function Navbar() {
   };
 
   return (
-    // Removed borders and backgrounds to blend seamlessly with the Hero
-    <nav className="absolute top-0 left-0 right-0 z-50 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
+    <nav className={`absolute top-0 left-0 right-0 z-50 transition-colors duration-300 ${isMobileMenuOpen ? "bg-white dark:bg-[#0a0f1e]" : ""}`}>
+      <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between relative z-[60]">
         
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 group z-50">
+        {/* Logo (Always Visible) */}
+        <Link href="/" className="flex items-center gap-3 group relative z-[60]">
           <Image
             src="/logo.png"
             alt="LoraBiz Logo"
@@ -73,7 +72,15 @@ export default function Navbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            {/* Dropdown removed for brevity, keeps original styling */}
+            <div className="absolute top-full left-0 w-56 pt-4 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300">
+              <div className="bg-white dark:bg-[#111827] border border-black/5 dark:border-white/10 rounded-xl shadow-xl overflow-hidden p-2">
+                {navItems.services.map((item) => (
+                  <Link key={item.name} href={item.href} className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-600 hover:text-zinc-900 dark:text-white/70 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/5 rounded-lg transition-colors">
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Creators (Disabled) */}
@@ -89,6 +96,15 @@ export default function Navbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
+            <div className="absolute top-full left-0 w-48 pt-4 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300">
+              <div className="bg-white dark:bg-[#111827] border border-black/5 dark:border-white/10 rounded-xl shadow-xl overflow-hidden p-2">
+                {navItems.resources.map((item) => (
+                  <Link key={item.name} href={item.href} className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-600 hover:text-zinc-900 dark:text-white/70 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/5 rounded-lg transition-colors">
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Company */}
@@ -99,11 +115,20 @@ export default function Navbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
+            <div className="absolute top-full left-0 w-48 pt-4 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300">
+              <div className="bg-white dark:bg-[#111827] border border-black/5 dark:border-white/10 rounded-xl shadow-xl overflow-hidden p-2">
+                {navItems.company.map((item) => (
+                  <Link key={item.name} href={item.href} className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-600 hover:text-zinc-900 dark:text-white/70 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/5 rounded-lg transition-colors">
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Desktop Buttons */}
-        <div className="hidden lg:flex items-center gap-4 z-50">
+        <div className="hidden lg:flex items-center gap-4 z-[60]">
           <Link
             href="/auth/register"
             className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#c7365f] to-[#e8447a] rounded-full hover:shadow-[0_0_20px_rgba(199,54,95,0.4)] transition-all duration-300 hover:-translate-y-0.5"
@@ -118,10 +143,10 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Custom Animated Hamburger Menu */}
+        {/* Mobile Hamburger Menu Button */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="lg:hidden relative w-12 h-12 flex flex-col justify-center items-center z-[60] bg-white/50 dark:bg-white/5 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors backdrop-blur-sm"
+          className="lg:hidden relative w-12 h-12 flex flex-col justify-center items-center z-[70] bg-zinc-50 dark:bg-white/5 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors"
           aria-label="Toggle menu"
         >
           <span className={`absolute block w-6 h-[2px] bg-zinc-900 dark:bg-white transition-all duration-400 ease-in-out ${isMobileMenuOpen ? 'rotate-45' : '-translate-y-2'}`} />
@@ -130,16 +155,16 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Menu Slider (Full Screen) */}
+      {/* Mobile Menu Slider (Full Absolute Wrapper) */}
       <div 
-        className={`lg:hidden fixed inset-0 top-0 left-0 w-full h-[100dvh] bg-white dark:bg-[#0a0f1e] z-50 pt-24 overflow-y-auto transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+        className={`lg:hidden absolute top-0 left-0 w-full min-h-[100dvh] bg-white dark:bg-[#0a0f1e] z-[50] pt-24 overflow-y-auto transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
           isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
         <div className="flex flex-col min-h-[calc(100dvh-96px)] px-6">
           
           <div className="flex-none space-y-2">
-            {/* Mobile Services Accordion */}
+            {/* Mobile Services */}
             <div className="pb-2">
               <button 
                 onClick={() => toggleDropdown("services")}
@@ -169,7 +194,7 @@ export default function Navbar() {
               </span>
             </div>
 
-            {/* Mobile Resources Accordion */}
+            {/* Mobile Resources */}
             <div className="pb-2">
               <button 
                 onClick={() => toggleDropdown("resources")}
@@ -183,7 +208,7 @@ export default function Navbar() {
               <div className={`grid transition-all duration-400 ease-in-out ${openDropdown === "resources" ? "grid-rows-[1fr] opacity-100 mb-6" : "grid-rows-[0fr] opacity-0"}`}>
                 <div className="overflow-hidden flex flex-col gap-4 pt-2">
                   {navItems.resources.map((item) => (
-                    <Link key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 py-2 text-[#767676] dark:text-white/60 hover:text-[#c7365f] transition-colors" style={{ fontSize: '16px', lineHeight: '22px', fontFamily: '"DM Sans", sans-serif' }}>
+                    <Link key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 py-2 text-[#767676] dark:text-white/60 hover:text-[#c7365f] dark:hover:text-[#e8447a] transition-colors" style={{ fontSize: '16px', lineHeight: '22px', fontFamily: '"DM Sans", sans-serif' }}>
                       {item.icon}
                       {item.name}
                     </Link>
@@ -192,7 +217,7 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Mobile Company Accordion */}
+            {/* Mobile Company */}
             <div className="pb-2">
               <button 
                 onClick={() => toggleDropdown("company")}
@@ -206,7 +231,7 @@ export default function Navbar() {
               <div className={`grid transition-all duration-400 ease-in-out ${openDropdown === "company" ? "grid-rows-[1fr] opacity-100 mb-6" : "grid-rows-[0fr] opacity-0"}`}>
                 <div className="overflow-hidden flex flex-col gap-4 pt-2">
                   {navItems.company.map((item) => (
-                    <Link key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 py-2 text-[#767676] dark:text-white/60 hover:text-[#c7365f] transition-colors" style={{ fontSize: '16px', lineHeight: '22px', fontFamily: '"DM Sans", sans-serif' }}>
+                    <Link key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 py-2 text-[#767676] dark:text-white/60 hover:text-[#c7365f] dark:hover:text-[#e8447a] transition-colors" style={{ fontSize: '16px', lineHeight: '22px', fontFamily: '"DM Sans", sans-serif' }}>
                       {item.icon}
                       {item.name}
                     </Link>
@@ -216,10 +241,9 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Spacer to push buttons to the absolute bottom */}
           <div className="flex-grow" />
 
-          {/* Mobile Action Buttons (Sign Up Left, Sign In Right) */}
+          {/* Mobile Action Buttons */}
           <div className="flex gap-4 pb-12 pt-8">
             <Link
               href="/auth/register"
