@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Unauthorized access. Please log in." }, { status: 401 });
     }
 
-    // NEW: Accept identifier and searchType ("NIN" or "PHONE")
     const { identifier, searchType, slipType, attestationsAccepted } = await req.json();
 
     if (!identifier || !/^\d{11}$/.test(identifier)) {
@@ -42,11 +41,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "User wallet not found." }, { status: 404 });
     }
 
-    const pricing = await prisma.ninSlipPricing.findUnique({
-      where: { slipType }
+    // 🚨 NEW: Map to the Unified ServicePricing Table
+    const dbKeyMap: Record<string, string> = {
+      "nin_regular": "NIN_REGULAR",
+      "nin_standard": "NIN_STANDARD",
+      "nin_premium": "NIN_PREMIUM"
+    };
+    
+    const serviceKey = dbKeyMap[slipType];
+
+    const pricing = await prisma.servicePricing.findUnique({
+      where: { serviceKey }
     });
 
-    if (!pricing || !pricing.isActive) {
+    if (!pricing) {
       return NextResponse.json({ success: false, message: "Selected slip service is currently unavailable." }, { status: 400 });
     }
 
@@ -66,13 +74,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Server configuration error. Please contact technical support." }, { status: 500 });
     }
 
-    // NEW: Dynamic Endpoint & Payload Construction
-    // If PHONE, we hit `${slipType}_phone.php`. E.g., `nin_premium_phone.php`
+    // Determine endpoint
     const endpointFile = searchType === "PHONE" ? `${slipType}_phone.php` : `${slipType}.php`;
     const url = `https://dataverify.com.ng/developers/nin_slips/${endpointFile}`;
 
-    // Note: Due to DataVerify's inconsistent documentation, we pass BOTH `phone` and `nin` 
-    // to ensure it never throws a missing parameter error.
     const requestBody = {
       api_key: apiKey,
       nin: identifier,
@@ -81,9 +86,7 @@ export async function POST(req: NextRequest) {
 
     const apiResponse = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
     });
 
@@ -129,14 +132,14 @@ export async function POST(req: NextRequest) {
           type: "DEBIT",
           status: "SUCCESS",
           reference: reference,
-          description: `NIMC Slip Printing (${pricing.displayName}) - ${maskedIdentifier}`
+          description: `NIMC Slip Printing (${pricing.title}) - ${maskedIdentifier}`
         }
       });
 
       await tx.ninRequestLog.create({
         data: {
           userId: user.id,
-          ninMasked: maskedIdentifier, // Reusing column securely for either NIN or Phone mask
+          ninMasked: maskedIdentifier,
           slipType: slipType,
           amountCharged: requiredAmount,
           status: "SUCCESS",
