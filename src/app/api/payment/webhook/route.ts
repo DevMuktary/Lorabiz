@@ -221,7 +221,7 @@ export async function POST(req: Request) {
                 statusReportUrl: scumlDraft.documents.statusReportUrl,
                 memorandumUrl: scumlDraft.documents.memorandumUrl || null,
                 constitutionUrl: scumlDraft.documents.constitutionUrl || null,
-                status: "PROCESSING",
+                status: "PENDING",
                 amountPaid: amountPaid,
                 transactionRef: reference
               } 
