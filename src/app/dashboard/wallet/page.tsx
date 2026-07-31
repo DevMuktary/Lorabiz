@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { 
   Wallet, PlusCircle, Headset, CheckCircle, 
   CaretDown, Spinner, Archive, ArrowsClockwise, WhatsappLogo,
-  MagnifyingGlass, Funnel
+  MagnifyingGlass, Funnel, CaretLeft, CaretRight, ArrowDownLeft
 } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
+
+const ITEMS_PER_PAGE = 10;
 
 export default function WalletPage() {
   const [balance, setBalance] = useState<number | null>(null);
@@ -23,6 +25,9 @@ export default function WalletPage() {
   const [search, setSearch] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
 
   const supportNumber = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "2348000000000";
 
@@ -53,6 +58,11 @@ export default function WalletPage() {
     fetchWalletData();
   }, []);
 
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, startDate, endDate]);
+
   // Filter Logic
   const filteredHistory = fundingHistory.filter((tx) => {
     const matchesSearch = tx.reference.toLowerCase().includes(search.toLowerCase());
@@ -71,6 +81,11 @@ export default function WalletPage() {
 
     return matchesSearch && matchesDate;
   });
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filteredHistory.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentData = filteredHistory.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   // SMART WEBHOOK POLLING
   const handleFundSuccess = async (amount: number) => {
@@ -108,7 +123,7 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10 max-w-5xl mx-auto font-sans">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10 max-w-6xl mx-auto font-sans">
       
       {/* STATUS TOASTS */}
       {verifyingPayment && (
@@ -188,94 +203,180 @@ export default function WalletPage() {
         </a>
       </div>
 
-      {/* FUNDING HISTORY */}
-      <div className="space-y-4 pt-4">
-        <h3 className="text-lg font-black text-foreground flex items-center gap-2 px-2">
-          Funding History <CaretDown className="h-4 w-4 text-muted-foreground" weight="bold" />
+      {/* FUNDING HISTORY SECTION */}
+      <div className="space-y-5 pt-2">
+        <h3 className="text-xl font-black text-foreground flex items-center gap-2 px-1">
+          Funding History <CaretDown className="h-5 w-5 text-muted-foreground" weight="bold" />
         </h3>
 
         {/* FILTER TOOLBAR */}
-        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col md:flex-row gap-4 shadow-sm">
-          <div className="relative flex-1">
-            <MagnifyingGlass className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" weight="bold" />
-            <Input 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by reference..." 
-              className="pl-11 h-12 bg-secondary/50 border-border rounded-xl font-medium"
-            />
+        <div className="bg-card border border-border rounded-2xl p-5 flex flex-col md:flex-row gap-5 shadow-sm">
+          
+          {/* Search Input */}
+          <div className="relative flex-1 flex flex-col justify-end">
+            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5 ml-1">Search Reference</label>
+            <div className="relative">
+              <MagnifyingGlass className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" weight="bold" />
+              <Input 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by reference..." 
+                className="pl-11 h-12 bg-secondary/50 border-border rounded-xl font-medium focus:ring-primary/50"
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Funnel className="h-5 w-5 text-muted-foreground hidden sm:block" weight="bold" />
-            <Input 
-              type="date" 
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="h-12 bg-secondary/50 border-border rounded-xl font-medium w-full sm:w-auto"
-            />
-            <span className="text-muted-foreground font-bold">-</span>
-            <Input 
-              type="date" 
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="h-12 bg-secondary/50 border-border rounded-xl font-medium w-full sm:w-auto"
-            />
+
+          {/* Date Range Selectors */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
+            <div className="w-full sm:w-auto flex flex-col">
+              <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5 ml-1">Start Date</label>
+              <div className="flex items-center gap-2">
+                <Funnel className="h-5 w-5 text-muted-foreground hidden sm:block shrink-0" weight="bold" />
+                <Input 
+                  type="date" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="h-12 bg-secondary/50 border-border rounded-xl font-medium w-full sm:w-[160px] focus:ring-primary/50"
+                />
+              </div>
+            </div>
+            
+            <span className="hidden sm:flex text-muted-foreground font-bold h-12 items-center">-</span>
+            
+            <div className="w-full sm:w-auto flex flex-col mt-2 sm:mt-0">
+              <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5 ml-1">End Date</label>
+              <Input 
+                type="date" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-12 bg-secondary/50 border-border rounded-xl font-medium w-full sm:w-[160px] focus:ring-primary/50"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
+        {/* RESPONSIVE DATA CONTAINER */}
+        <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
           {loading ? (
             <div className="py-24 text-center">
-              <Spinner className="animate-spin h-8 w-8 text-primary mx-auto" />
-              <p className="text-sm font-bold text-muted-foreground mt-4">Loading your records...</p>
+              <Spinner className="animate-spin h-10 w-10 text-primary mx-auto mb-4" />
+              <p className="text-sm font-bold text-muted-foreground">Loading your records...</p>
             </div>
           ) : filteredHistory.length === 0 ? (
             <div className="py-24 text-center text-muted-foreground">
-              <Archive className="h-12 w-12 mx-auto mb-4 opacity-20" weight="duotone" />
-              <p className="font-bold text-base text-foreground">No funding records found</p>
+              <Archive className="h-14 w-14 mx-auto mb-4 opacity-20" weight="duotone" />
+              <p className="font-black text-lg text-foreground">No funding records found</p>
               <p className="text-sm font-medium mt-1">Adjust your filters or make a deposit.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-sm whitespace-nowrap min-w-[600px]">
-                <thead>
-                  <tr className="bg-secondary/50 text-muted-foreground border-b border-border">
-                    <th className="px-6 py-5 font-bold text-xs uppercase tracking-wider">Date & Time</th>
-                    <th className="px-6 py-5 font-bold text-xs uppercase tracking-wider">Amount Funded</th>
-                    <th className="px-6 py-5 font-bold text-xs uppercase tracking-wider">Reference</th>
-                    <th className="px-6 py-5 font-bold text-xs uppercase tracking-wider text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
-                  {filteredHistory.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-secondary/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <p className="font-bold text-foreground">{new Date(tx.createdAt).toLocaleDateString()}</p>
-                        <p className="text-xs font-medium text-muted-foreground mt-0.5">
-                          {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-black text-emerald-600 dark:text-emerald-400 text-base bg-emerald-500/10 px-2 py-1 rounded-lg">
-                          +₦{Number(tx.amount).toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs font-bold text-muted-foreground font-mono bg-secondary px-2.5 py-1.5 rounded-lg border border-border">
-                          {tx.reference}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600">
-                          <CheckCircle weight="fill" className="h-3.5 w-3.5" />
-                          {tx.status}
-                        </span>
-                      </td>
+            <>
+              {/* 📱 MOBILE VIEW (Card Layout) */}
+              <div className="block md:hidden divide-y divide-border/50">
+                {currentData.map((tx) => (
+                  <div key={tx.id} className="p-5 hover:bg-secondary/30 transition-colors">
+                    <div className="flex justify-between items-start mb-4 gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="h-10 w-10 mt-0.5 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-500">
+                          <ArrowDownLeft weight="bold" className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-foreground text-sm line-clamp-2 leading-snug mb-1">Wallet Funding</p>
+                          <span className="text-[11px] font-medium text-muted-foreground">
+                            {new Date(tx.createdAt).toLocaleDateString()} • {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-black text-sm shrink-0 text-emerald-600 dark:text-emerald-400">
+                        +₦{Number(tx.amount).toLocaleString()}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center pl-[52px]">
+                      <span className="text-[10px] font-bold text-muted-foreground font-mono bg-secondary/50 px-2.5 py-1.5 rounded-lg border border-border/50 truncate max-w-[150px]">
+                        {tx.reference}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600">
+                        <CheckCircle weight="fill" className="h-3 w-3" />
+                        {tx.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 💻 DESKTOP VIEW (Table Layout) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-secondary/50 text-muted-foreground border-b border-border">
+                      <th className="px-6 py-5 font-bold text-xs uppercase tracking-wider">Date & Time</th>
+                      <th className="px-6 py-5 font-bold text-xs uppercase tracking-wider">Amount Funded</th>
+                      <th className="px-6 py-5 font-bold text-xs uppercase tracking-wider">Reference</th>
+                      <th className="px-6 py-5 font-bold text-xs uppercase tracking-wider text-right">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {currentData.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-secondary/30 transition-colors group">
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-foreground">{new Date(tx.createdAt).toLocaleDateString()}</p>
+                          <p className="text-xs font-medium text-muted-foreground mt-0.5">
+                            {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="font-black text-emerald-600 dark:text-emerald-400 text-base bg-emerald-500/10 px-2.5 py-1 rounded-lg">
+                            +₦{Number(tx.amount).toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-xs font-bold text-muted-foreground font-mono bg-secondary px-2.5 py-1.5 rounded-lg border border-border/50">
+                            {tx.reference}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600">
+                            <CheckCircle weight="fill" className="h-3.5 w-3.5" />
+                            {tx.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* PAGINATION FOOTER */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-6 border-t border-border bg-secondary/10 gap-4">
+                  <span className="text-sm text-muted-foreground font-medium">
+                    Showing <span className="font-bold text-foreground">{startIndex + 1}</span> to <span className="font-bold text-foreground">{Math.min(startIndex + ITEMS_PER_PAGE, filteredHistory.length)}</span> of <span className="font-bold text-foreground">{filteredHistory.length}</span> entries
+                  </span>
+                  
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-background border border-border rounded-xl text-sm font-bold text-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <CaretLeft weight="bold" className="h-4 w-4" /> Prev
+                    </button>
+                    
+                    <div className="hidden sm:flex items-center justify-center min-w-[40px] text-sm font-black">
+                      {currentPage} / {totalPages}
+                    </div>
+
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-background border border-border rounded-xl text-sm font-bold text-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next <CaretRight weight="bold" className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
