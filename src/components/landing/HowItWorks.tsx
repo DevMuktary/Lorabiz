@@ -1,66 +1,99 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { useRef } from "react";
+
 export default function HowItWorks() {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -window.innerWidth * 0.75, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: window.innerWidth * 0.75, behavior: 'smooth' });
+    }
+  };
+
   const steps = [
     {
-      step: "01",
-      title: "Create Your Account",
-      desc: "Sign up with your phone number and verify via OTP. Your secure dashboard is ready in seconds.",
-      gradient: "from-[#c7365f] to-[#e8447a]",
-      shadow: "shadow-[#c7365f]/30",
+      tag: "Step 1 • Onboarding",
+      title: "Sign up & verify identity.",
+      list: ["Create secure profile", "BVN / NIN Verification", "Instant dashboard access"],
+      // Deep Space Blue
+      bgClass: "bg-[#0A1128]",
+      textClass: "text-white",
+      tagClass: "bg-white/10 text-white",
+      listIconClass: "text-[#0BE49B]",
+      graphic: (
+        <svg viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full opacity-90">
+          <circle cx="200" cy="200" r="120" stroke="#0BE49B" strokeWidth="2" strokeDasharray="8 8" />
+          <rect x="150" y="140" width="100" height="120" rx="20" fill="#ffffff" fillOpacity="0.05" />
+          <path d="M200 170C211.046 170 220 178.954 220 190C220 201.046 211.046 210 200 210C188.954 210 180 201.046 180 190C180 178.954 188.954 170 200 170Z" fill="#0BE49B" fillOpacity="0.2" />
+          <path d="M165 240C165 220.67 180.67 205 200 205C219.33 205 235 220.67 235 240" stroke="#0BE49B" strokeWidth="8" strokeLinecap="round" />
+        </svg>
+      )
     },
     {
-      step: "02",
-      title: "Choose Your Service",
-      desc: "Select from CAC registration, SCUML, Tax ID, NIN verification, or utility services. Our AI assistant guides you.",
-      gradient: "from-indigo-500 to-violet-500",
-      shadow: "shadow-indigo-500/30",
+      tag: "Step 2 • Selection",
+      title: "Choose your exact service.",
+      list: ["CAC Registration", "SCUML & Tax ID (TIN)", "Utility Vending"],
+      // Mint/Ocean Green
+      bgClass: "bg-[#E6F3EE]",
+      textClass: "text-[#12221C]",
+      tagClass: "bg-[#12221C]/10 text-[#12221C]",
+      listIconClass: "text-[#045137]",
+      graphic: (
+        <svg viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full opacity-90">
+          <rect x="100" y="100" width="90" height="90" rx="24" fill="#045137" fillOpacity="0.1" />
+          <rect x="210" y="100" width="90" height="90" rx="24" fill="#045137" fillOpacity="0.2" />
+          <rect x="100" y="210" width="90" height="90" rx="24" fill="#045137" fillOpacity="0.15" />
+          <rect x="210" y="210" width="90" height="90" rx="24" fill="#045137" fillOpacity="0.05" />
+          <circle cx="255" cy="145" r="15" fill="#045137" />
+        </svg>
+      )
     },
     {
-      step: "03",
-      title: "Submit & Track",
-      desc: "Pay securely via wallet or Paystack, submit your documents, and track real-time status from your dashboard.",
-      gradient: "from-emerald-500 to-teal-500",
-      shadow: "shadow-emerald-500/30",
+      tag: "Step 3 • Processing",
+      title: "Track status in real-time.",
+      list: ["Live progress updates", "Secure wallet payments", "Document uploads"],
+      // Soft Peach/Orange
+      bgClass: "bg-[#FDF3E7]",
+      textClass: "text-[#3B2613]",
+      tagClass: "bg-[#3B2613]/10 text-[#3B2613]",
+      listIconClass: "text-[#D05F0D]",
+      graphic: (
+        <svg viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full opacity-90">
+          <rect x="80" y="180" width="240" height="40" rx="20" fill="#D05F0D" fillOpacity="0.1" />
+          <rect x="80" y="180" width="160" height="40" rx="20" fill="#D05F0D" fillOpacity="0.3" />
+          <circle cx="240" cy="200" r="12" fill="#D05F0D" />
+          <path d="M120 150L150 120L180 150" stroke="#D05F0D" strokeOpacity="0.5" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    },
+    {
+      tag: "Step 4 • Completion",
+      title: "Download & start running.",
+      list: ["Official Certificates", "Active Digital Wallet", "Continuous Support"],
+      // Brand Pink/Red Gradient
+      bgClass: "bg-gradient-to-br from-[#c7365f] to-[#e8447a]",
+      textClass: "text-white",
+      tagClass: "bg-white/20 text-white",
+      listIconClass: "text-white",
+      graphic: (
+        <svg viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full opacity-90">
+          <path d="M200 100L225 160L290 165L240 210L255 275L200 240L145 275L160 210L110 165L175 160L200 100Z" fill="#ffffff" fillOpacity="0.2" />
+          <path d="M200 120L215 165L265 170L225 200L235 250L200 225L165 250L175 200L135 170L185 165L200 120Z" fill="#ffffff" fillOpacity="0.4" />
+        </svg>
+      )
     },
   ];
 
   return (
-    <section id="how-it-works" className="py-24 md:py-32 px-6 relative bg-[#0a0f1e]">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-20">
-          <p className="text-xs font-semibold text-[#e8447a] uppercase tracking-[0.2em] mb-3">How It Works</p>
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-            Three Simple Steps
-          </h2>
-          <p className="mt-4 text-white/50 max-w-xl mx-auto">
-            Get your business registered and compliant in minutes with our streamlined process.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-12 relative">
-          {/* Connecting Line (Desktop) */}
-          <div className="hidden md:block absolute top-10 left-[calc(16.66%+40px)] right-[calc(16.66%+40px)] h-[2px] bg-gradient-to-r from-[#c7365f]/20 via-indigo-500/20 to-emerald-500/20" />
-
-          {steps.map((item, i) => (
-            <div key={i} className="relative group z-10">
-              <div className="text-center space-y-6">
-                <div 
-                  className={`mx-auto inline-flex w-20 h-20 rounded-2xl bg-gradient-to-br ${item.gradient} items-center justify-center text-2xl font-bold text-white shadow-[0_0_20px_rgba(0,0,0,0)] group-hover:shadow-2xl group-hover:${item.shadow} group-hover:-translate-y-2 transition-all duration-300`}
-                >
-                  {item.step}
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-xl font-semibold text-white group-hover:text-[#e8447a] transition-colors duration-300">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-white/50 leading-relaxed max-w-xs mx-auto">
-                    {item.desc}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+    <section className="py-24 md:py-32 bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300 relative">
+      
+      {/* ───── TOP HEADER & NAVIGATION ───── */}
+      <div className="
