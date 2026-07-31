@@ -56,10 +56,24 @@ const PRICING_METADATA: Record<string, { label: string; desc?: string; category:
     imageSrc: "/nrs.png",
     colorClass: "bg-purple-500/10 border-purple-500/20 text-purple-500"
   },
-  // 🚨 NEW: Added NIN Slip Pricing
-  NIN_SLIP: {
-    label: "NIN Slip Retrieval",
-    desc: "Instant retrieval of standard National Identity Number (NIN) slip",
+  // 🚨 NEW: Accurate breakdown of the 3 NIN Slips
+  NIN_REGULAR: {
+    label: "NIN Slip - Regular",
+    desc: "Standard layout accepted for corporate filings and business documentation.",
+    category: "Identity",
+    imageSrc: "/nimc.png",
+    colorClass: "bg-green-500/10 border-green-500/20 text-green-500"
+  },
+  NIN_STANDARD: {
+    label: "NIN Slip - Standard Biometric",
+    desc: "Compact layout containing high-density biometric and identification parameters.",
+    category: "Identity",
+    imageSrc: "/nimc.png",
+    colorClass: "bg-green-500/10 border-green-500/20 text-green-500"
+  },
+  NIN_PREMIUM: {
+    label: "NIN Slip - Premium Card",
+    desc: "Full-colour card design, formatted for pocket cutting or PVC ID printing.",
     category: "Identity",
     imageSrc: "/nimc.png",
     colorClass: "bg-green-500/10 border-green-500/20 text-green-500"
@@ -94,7 +108,6 @@ export default function DashboardPricingPage() {
     fetchPricing();
   }, []);
 
-  // Map metadata and safely merge dynamic prices or handle open prices
   const tableRows = Object.keys(PRICING_METADATA).map(key => {
     const meta = PRICING_METADATA[key];
     const isAirtime = key === "AIRTIME";
@@ -111,7 +124,6 @@ export default function DashboardPricingPage() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-16 pt-4 animate-in fade-in duration-500 relative">
       
-      {/* Back Button */}
       <Link 
         href="/dashboard" 
         className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit"
@@ -119,7 +131,6 @@ export default function DashboardPricingPage() {
         <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Dashboard
       </Link>
 
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-6">
         <div>
           <h1 className="text-3xl font-black flex items-center gap-3 text-foreground">
@@ -132,7 +143,6 @@ export default function DashboardPricingPage() {
         </div>
       </div>
 
-      {/* Disclaimer Banner */}
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5 flex gap-4">
         <Info weight="fill" className="h-6 w-6 text-blue-500 shrink-0 mt-0.5" />
         <div className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
@@ -141,13 +151,11 @@ export default function DashboardPricingPage() {
         </div>
       </div>
 
-      {/* Mobile Scroll Hint */}
       <div className="flex sm:hidden items-center justify-center gap-2 py-2 text-xs font-bold text-muted-foreground animate-pulse bg-secondary/50 rounded-lg">
         <ArrowsLeftRight weight="bold" className="h-4 w-4" />
         Swipe table sideways to view all details
       </div>
 
-      {/* Unified Data Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         {isLoading ? (
           <div className="p-24 flex flex-col items-center justify-center text-muted-foreground">
@@ -174,7 +182,6 @@ export default function DashboardPricingPage() {
                 {tableRows.map((row) => (
                   <tr key={row.key} className="hover:bg-secondary/30 transition-colors group">
                     
-                    {/* Service Name & Description */}
                     <td className="px-6 py-5">
                       <div className="flex items-start gap-3">
                         <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center border shrink-0 overflow-hidden ${row.colorClass}`}>
@@ -193,14 +200,12 @@ export default function DashboardPricingPage() {
                       </div>
                     </td>
 
-                    {/* Category Badge */}
                     <td className="px-6 py-5">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${row.colorClass}`}>
                         {row.category}
                       </span>
                     </td>
 
-                    {/* Live / Open Price */}
                     <td className="px-6 py-5 text-right">
                       <div className="inline-flex items-baseline gap-1 bg-background border border-border px-4 py-2 rounded-xl shadow-inner group-hover:border-primary/30 transition-colors">
                         {row.isAirtime ? (
