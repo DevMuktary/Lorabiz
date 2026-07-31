@@ -8,7 +8,6 @@ export default function ServicesSection() {
     {
       title: "CAC Registration",
       desc: "Register your Business Name, Limited Company, LLP, or NGO effortlessly using our platform.",
-      // "Accounts" Colors
       detailsBg: "bg-[#CEE9DF]", 
       detailsText: "text-[#1E1E1E]",
       innerBg: "bg-[#23322D]",
@@ -24,7 +23,6 @@ export default function ServicesSection() {
     {
       title: "SCUML Certificate",
       desc: "Get your Special Control Unit against Money Laundering certificate quickly and efficiently.",
-      // "Payments" Colors
       detailsBg: "bg-[#433968]",
       detailsText: "text-[#CEE9DF]",
       innerBg: "bg-[#CEE9DF]",
@@ -40,7 +38,6 @@ export default function ServicesSection() {
     {
       title: "Tax ID (TIN)",
       desc: "Generate your Tax Identification Number swiftly. Essential for every registered business.",
-      // "Cards" Colors
       detailsBg: "bg-[#23322D]",
       detailsText: "text-[#CEE9DF]",
       innerBg: "bg-[#EEDABE]",
@@ -56,7 +53,6 @@ export default function ServicesSection() {
     {
       title: "NIN Verification",
       desc: "Generate NIN slips and verify identities with ease. Instant and government-compliant.",
-      // "Credit" Colors
       detailsBg: "bg-[#EEDABE]",
       detailsText: "text-[#272727]",
       innerBg: "bg-[#D05F0D]",
@@ -72,7 +68,6 @@ export default function ServicesSection() {
     {
       title: "Utility Vending",
       desc: "Buy airtime and data bundles for all networks directly from your secure dashboard.",
-      // "Savings" Colors
       detailsBg: "bg-[#E0F4FE]",
       detailsText: "text-[#23322D]",
       innerBg: "bg-[#23322D]",
@@ -104,8 +99,8 @@ export default function ServicesSection() {
       </div>
 
       {/* ───── HORIZONTAL SCROLL CONTAINER ───── */}
-      {/* Replicated: flex, overflow-x-auto, padding-left: 100px, column-gap: 15px */}
-      <div className="w-full flex overflow-x-auto gap-[15px] px-6 lg:px-[100px] pb-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Added snap-x, snap-mandatory, and scroll padding to ensure perfect magnetic swiping */}
+      <div className="w-full flex overflow-x-auto snap-x snap-mandatory scroll-pl-6 lg:scroll-pl-[100px] gap-[15px] px-6 lg:px-[100px] pb-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         
         {services.map((service, i) => (
           <motion.div
@@ -114,36 +109,32 @@ export default function ServicesSection() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-50px" }}
             transition={{ duration: 0.5, delay: i * 0.1 }}
-            // Replicated: width: 308px, flex-direction: column, justify-content: flex-end
-            className="relative flex flex-col justify-end items-center shrink-0 w-[280px] lg:w-[308px] h-[360px] lg:h-[400px] group"
+            // Changed mobile width to 75vw so the next card ALWAYS peeks out. Added snap-start.
+            className="relative flex flex-col justify-end items-center shrink-0 w-[75vw] sm:w-[280px] lg:w-[308px] h-[360px] lg:h-[400px] group snap-start"
           >
             <Link href={service.href} className="absolute inset-0 w-full h-full flex flex-col justify-end items-center transition-transform duration-300 group-hover:-translate-y-2">
               
               {/* ───── THE DETAILS CARD (BACKGROUND) ───── */}
-              {/* Replicated: width: 90%, border-radius: 15px */}
               <div className={`flex flex-col justify-between w-[90%] h-full rounded-[15px] overflow-hidden ${service.detailsBg}`}>
                 
-                {/* Text Block - Replicated: padding-top: 44px, font-size: 20px */}
                 <div 
-                  className={`pt-[32px] lg:pt-[44px] px-[24px] lg:px-[34px] pb-[10px] text-[17px] lg:text-[20px] font-normal leading-[1.5] ${service.detailsText}`}
+                  className={`pt-[32px] lg:pt-[44px] px-[24px] lg:px-[34px] pb-[10px] text-[15px] sm:text-[17px] lg:text-[20px] font-normal leading-[1.5] ${service.detailsText}`}
                   style={{ fontFamily: 'system-ui, sans-serif' }}
                 >
                   {service.desc}
                 </div>
 
-                {/* SVG Graphic Block - Replicated: height: 288px (adjusted proportionally) */}
                 <div className="relative w-full h-[180px] lg:h-[220px] flex items-end justify-center pb-4">
                   {service.icon}
                 </div>
               </div>
 
               {/* ───── THE INNER FLOATING TITLE BAR ───── */}
-              {/* Replicated: position: absolute, bottom: 22px, width: 100%, border-radius: 12px, padding: 21px 36px */}
               <div 
-                className={`absolute bottom-[16px] lg:bottom-[22px] w-full flex items-center justify-between min-h-[64px] lg:min-h-[82px] rounded-[12px] px-[24px] lg:px-[36px] py-[16px] lg:py-[21px] shadow-xl ${service.innerBg}`}
+                className={`absolute bottom-[16px] lg:bottom-[22px] w-full flex items-center justify-between min-h-[64px] lg:min-h-[82px] rounded-[12px] px-[20px] sm:px-[24px] lg:px-[36px] py-[16px] lg:py-[21px] shadow-xl ${service.innerBg}`}
               >
                 <span 
-                  className={`text-[18px] lg:text-[22px] tracking-[-0.96px] font-medium whitespace-nowrap ${service.innerText}`}
+                  className={`text-[16px] sm:text-[18px] lg:text-[22px] tracking-[-0.96px] font-medium whitespace-nowrap ${service.innerText}`}
                   style={{ fontFamily: 'system-ui, sans-serif' }}
                 >
                   {service.title}
@@ -165,7 +156,7 @@ export default function ServicesSection() {
           </motion.div>
         ))}
 
-        {/* Padding spacer to allow full scrolling */}
+        {/* Padding spacer to allow the very last card to snap fully into view */}
         <div className="shrink-0 w-6 lg:w-[50px]" />
       </div>
     </section>
