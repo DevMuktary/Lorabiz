@@ -4,7 +4,6 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma"; 
 import { generateNumericId } from "@/utils/generateId"; 
-import { sendScumlSubmittedEmail } from "@/lib/email";
 
 export async function GET(req: Request) {
   try {
@@ -22,7 +21,7 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' }
     });
 
-    return NextResponse.json({ history });
+    return NextResponse.json({ success: true, history });
   } catch (error) {
     console.error("SCUML History Fetch Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -37,80 +36,37 @@ export async function POST(req: Request) {
     }
 
     const data = await req.json();
-    const { type, companyName, documents, price } = data;
+    const { type, companyName, documents } = data;
 
     const user = await prisma.user.findUnique({ 
-      where: { email: session.user.email },
-      include: { wallet: true }
+      where: { email: session.user.email }
     });
 
-    if (!user || !user.wallet) {
-      return NextResponse.json({ error: "User or wallet not found" }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check Wallet Balance
-    if (Number(user.wallet.balance) < price) {
-      return NextResponse.json({ error: "Insufficient wallet balance." }, { status: 400 });
-    }
+    // Since Prisma requires amountPaid and transactionRef, we set placeholders.
+    // These will be properly overwritten by our checkout/webhook route upon actual payment.
+    const tempTransactionRef = `UNPAID_SCUML_${generateNumericId(8)}`;
 
-    // Generate Tracking Ref
-    const transactionRef = `SCUML-${generateNumericId(8)}`;
-
-    // Process Transaction & Create Application atomically
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Deduct from wallet
-      const updatedWallet = await tx.wallet.update({
-        where: { id: user.wallet!.id },
-        data: { balance: { decrement: price } }
-      });
-
-      // 2. Record Transaction
-      await tx.transaction.create({
-        data: {
-          walletId: user.wallet!.id,
-          amount: price,
-          balanceBefore: user.wallet!.balance,
-          balanceAfter: updatedWallet.balance,
-          type: "DEBIT",
-          status: "SUCCESS",
-          reference: transactionRef,
-          description: `SCUML Registration Fee for ${companyName}`
-        }
-      });
-
-      // 3. Create SCUML Record
-      const scumlReq = await tx.scumlRegistration.create({
-        data: {
-          userId: user.id,
-          type,
-          companyName,
-          certificateUrl: documents.certificateUrl,
-          statusReportUrl: documents.statusReportUrl,
-          memorandumUrl: documents.memorandumUrl || null,
-          constitutionUrl: documents.constitutionUrl || null,
-          amountPaid: price,
-          transactionRef
-        }
-      });
-
-      return scumlReq;
+    const scumlReq = await prisma.scumlRegistration.create({
+      data: {
+        userId: user.id,
+        type,
+        companyName,
+        certificateUrl: documents.certificateUrl,
+        statusReportUrl: documents.statusReportUrl,
+        memorandumUrl: documents.memorandumUrl || null,
+        constitutionUrl: documents.constitutionUrl || null,
+        amountPaid: 0, 
+        transactionRef: tempTransactionRef,
+        status: "PENDING" // Awaiting payment
+      }
     });
 
-    // Fire off the email notification after a successful transaction
-    try {
-      await sendScumlSubmittedEmail({
-        to: user.email!,
-        name: user.firstName || "Customer", // FIXED: Changed from user.name to user.firstName
-        companyName: companyName,
-        regType: type,
-        transactionRef: transactionRef
-      });
-    } catch (emailError) {
-      // We log the error but don't fail the request since the payment already went through
-      console.error("Failed to send SCUML confirmation email:", emailError);
-    }
-
-    return NextResponse.json({ success: true, data: result });
+    // Return the created application ID so the frontend can launch the Payment Modal
+    return NextResponse.json({ success: true, data: scumlReq });
 
   } catch (error) {
     console.error("SCUML Submission Error:", error);
