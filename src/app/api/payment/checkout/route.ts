@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import redis from "@/lib/redis"; // Required for pulling the SCUML draft
+import { redis } from "@/lib/redis";
+import { notificationQueue } from "@/lib/queue";
+import { sendScumlSubmittedEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -28,7 +30,12 @@ export async function POST(req: Request) {
     let description = "";
     let reference = "";
     let callbackPath = "/dashboard";
-    let promoServiceKey = ""; // Strictly aligns with database enum names
+    let promoServiceKey = ""; 
+
+    // Variables needed for triggering notifications accurately
+    let regName = "Registration";
+    let displayId = registrationId || "";
+    let scumlDraftType = "Registration";
 
     // =========================================================================
     // 2. IDENTIFY SERVICE & EXCLUSIVELY CALCULATE PRICE ON THE SERVER
@@ -76,10 +83,14 @@ export async function POST(req: Request) {
       
       const extraSharesFee = Math.max(0, Math.ceil((totalShares - 1000000) / 1000000)) * extraMillionFee;
       baseAmountToPay = baseLLCFee + extraSharesFee;
+      
       description = `Payment for LLC Registration (${registration.proposedName || "Draft"})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
-      
       callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?verifying=true`;
+      
+      // Capture details for email notification
+      regName = registration.proposedName || "LLC Application";
+      displayId = registration.trackingId || registrationId;
 
     // CASE C: SCUML REGISTRATION (USING REDIS DRAFT)
     } else if (service === "scuml") {
@@ -101,12 +112,16 @@ export async function POST(req: Request) {
       }
 
       const servicePriceRecord = await prisma.servicePricing.findUnique({ where: { serviceKey: "SCUML" } });
-      baseAmountToPay = servicePriceRecord ? Number(servicePriceRecord.price) : 45000; // Fallback to 45k if not in DB
+      baseAmountToPay = servicePriceRecord ? Number(servicePriceRecord.price) : 45000; 
       
       description = `Payment for SCUML Registration (${draft.companyName})`;
       reference = `ONL_SCUML_${registrationId}_${Date.now()}`;
-      
       callbackPath = `/dashboard/scuml/history?verifying=true`;
+      
+      // Capture details for email notification
+      regName = draft.companyName || "SCUML Application";
+      scumlDraftType = draft.type || "Registration";
+      displayId = registrationId;
 
     // CASE D: BUSINESS NAME REGISTRATION (DEFAULT SERVICE)
     } else {
@@ -132,8 +147,11 @@ export async function POST(req: Request) {
       baseAmountToPay = Number(servicePriceRecord.price);
       description = `Payment for Business Registration (${registration.proposedName})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
-      
       callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?verifying=true`;
+      
+      // Capture details for email notification
+      regName = registration.proposedName || "Business Name Application";
+      displayId = registration.trackingId || registrationId;
     }
 
     if (baseAmountToPay <= 0) {
@@ -163,7 +181,6 @@ export async function POST(req: Request) {
           isAllowedService &&
           hasNotExceededUserLimit
         ) {
-          // Calculate discount
           let discountAmount = 0;
           if (promo.fixedAmount) discountAmount = Number(promo.fixedAmount);
           else if (promo.discountPct) discountAmount = (baseAmountToPay * Number(promo.discountPct)) / 100;
@@ -239,7 +256,7 @@ export async function POST(req: Request) {
             const draft = JSON.parse(draftStr);
             await tx.scumlRegistration.create({
               data: {
-                id: registrationId, // Hard-link the draft ID to Postgres for polling
+                id: registrationId, 
                 userId: draft.userId,
                 type: draft.type,
                 companyName: draft.companyName,
@@ -260,6 +277,40 @@ export async function POST(req: Request) {
           await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
         }
       });
+
+      // =========================================================================
+      // 🚨 SEND EMAIL NOTIFICATIONS FOR WALLET PAYMENTS
+      // =========================================================================
+      try {
+        if (promoServiceKey === "SCUML") {
+          await sendScumlSubmittedEmail({
+            to: user.email!,
+            name: user.firstName || "Customer",
+            companyName: regName, 
+            regType: scumlDraftType,
+            transactionRef: txReference
+          });
+        } else if (promoServiceKey === "BUSINESS_NAME" || promoServiceKey === "LLC") {
+          const userPhone = user.phone || "";
+          const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
+
+          await notificationQueue.add("send-application-notification", {
+            userId: user.id, 
+            type: "APPLICATION_SUBMITTED", 
+            phone: userPhone, 
+            email: user.email!,
+            name: userName, 
+            businessName: regName, 
+            regId: displayId,
+          }, {
+            attempts: 3, 
+            backoff: { type: "exponential", delay: 5000 }, 
+            removeOnComplete: true,
+          });
+        }
+      } catch (emailError) {
+        console.error("Failed to send notification for Wallet Payment:", emailError);
+      }
 
       return NextResponse.json({ success: true, message: "Payment successful via Wallet." });
     }
@@ -289,7 +340,7 @@ export async function POST(req: Request) {
           callback_url: `${appUrl}${callbackPath}`,
           metadata: {
             userId: user.id,
-            service: service || "business", // "scuml" is passed naturally
+            service: service || "business", 
             registrationId: registrationId || null,
             expectedAmount: amountToPay, 
             description: description,
