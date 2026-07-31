@@ -96,4 +96,121 @@ export default function HowItWorks() {
     <section className="py-24 md:py-32 bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300 relative">
       
       {/* ───── TOP HEADER & NAVIGATION ───── */}
-      <div className="
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-12 flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+        
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="max-w-2xl"
+        >
+          <h2 
+            className="font-normal text-[#1a1a1a] dark:text-white tracking-tight"
+            style={{ fontSize: 'clamp(40px, 5vw, 56px)', lineHeight: '1.1', fontFamily: 'system-ui, sans-serif' }}
+          >
+            From idea to registered <br className="hidden lg:block"/>
+            business in four steps.
+          </h2>
+        </motion.div>
+
+        {/* Custom Arrow Controls (Hides on mobile, where users naturally swipe) */}
+        <div className="hidden md:flex items-center gap-4">
+          <button 
+            onClick={scrollLeft}
+            className="w-14 h-14 rounded-full border border-black/10 dark:border-white/20 flex items-center justify-center text-zinc-600 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all duration-300"
+            aria-label="Previous step"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button 
+            onClick={scrollRight}
+            className="w-14 h-14 rounded-full border border-black/10 dark:border-white/20 flex items-center justify-center text-zinc-600 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all duration-300"
+            aria-label="Next step"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+      </div>
+
+      {/* ───── HORIZONTAL SLIDING CARDS ───── */}
+      <div 
+        ref={scrollContainerRef}
+        className="w-full flex overflow-x-auto snap-x snap-mandatory scroll-pl-6 lg:scroll-pl-12 gap-6 lg:gap-10 px-6 lg:px-12 pb-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      >
+        {steps.map((step, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6, delay: i * 0.1 }}
+            // Full width on mobile, massive 85% width on desktop
+            className={`relative flex-shrink-0 w-[90vw] lg:w-[85vw] max-w-[1200px] h-[500px] lg:h-[560px] rounded-[32px] lg:rounded-[48px] overflow-hidden snap-start ${step.bgClass}`}
+          >
+            <div className="absolute inset-0 flex flex-col-reverse lg:flex-row w-full h-full">
+              
+              {/* Left Side: Content */}
+              <div className="w-full lg:w-[55%] h-full flex flex-col justify-center p-8 sm:p-12 lg:p-20 z-10">
+                
+                {/* Step Tag */}
+                <div className="mb-6 lg:mb-10">
+                  <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase ${step.tagClass}`}>
+                    {step.tag}
+                  </span>
+                </div>
+
+                {/* Massive Step Title */}
+                <h3 
+                  className={`font-medium tracking-tight mb-8 lg:mb-12 ${step.textClass}`}
+                  style={{ fontSize: 'clamp(36px, 5vw, 64px)', lineHeight: '1.05', fontFamily: 'system-ui, sans-serif' }}
+                >
+                  {step.title.split('<br/>').map((line, idx) => (
+                    <span key={idx}>
+                      {line}
+                      {idx === 0 && <br className="hidden sm:block" />}
+                    </span>
+                  ))}
+                </h3>
+
+                {/* Checklist Features */}
+                <ul className="space-y-4 lg:space-y-5">
+                  {step.list.map((item, idx) => (
+                    <li key={idx} className="flex items-center gap-4">
+                      <svg className={`w-6 h-6 flex-shrink-0 ${step.listIconClass}`} fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span className={`text-[16px] lg:text-[20px] font-medium opacity-90 ${step.textClass}`} style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
+                        {item}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+              </div>
+
+              {/* Right Side: Graphic Illustration */}
+              <div className="w-full lg:w-[45%] h-[40%] lg:h-full relative flex items-center justify-center p-8 lg:p-0">
+                {/* Subtle gradient overlay to blend the graphic */}
+                <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-black/20 lg:from-black/10 to-transparent z-0 pointer-events-none" />
+                
+                <div className="relative z-10 w-[200px] lg:w-[400px] h-[200px] lg:h-[400px] transform transition-transform duration-700 hover:scale-105 hover:rotate-3">
+                  {step.graphic}
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+        ))}
+
+        {/* Spacer for final snap */}
+        <div className="shrink-0 w-6 lg:w-12" />
+      </div>
+
+    </section>
+  );
+}
