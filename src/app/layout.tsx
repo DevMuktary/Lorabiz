@@ -26,6 +26,15 @@ export const metadata: Metadata = {
   authors: [{ name: 'QUADROX TECHNOLOGIES LIMITED' }],
   creator: 'QUADROX TECHNOLOGIES LIMITED',
   publisher: 'QUADROX TECHNOLOGIES LIMITED',
+  manifest: '/manifest.json', // PWA Manifest link
+  appleWebApp: {              // Apple specific PWA settings
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Lorabiz',
+  },
+  formatDetection: {          // Prevent auto-dialing formatted numbers
+    telephone: false,
+  },
   openGraph: {
     type: 'website',
     locale: 'en_NG',
@@ -67,6 +76,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  themeColor: '#ff3f7a', // PWA theme color for the browser/status bar
 };
 
 export default function RootLayout({
