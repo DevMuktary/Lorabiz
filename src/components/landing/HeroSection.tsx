@@ -7,30 +7,33 @@ import { useRef } from "react";
 export default function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Track scroll position for the parting animation
+  // Track scroll position for the parting & fade animation
   const { scrollY } = useScroll();
 
-  // Mapping scroll position (0 to 400px down) to horizontal movement for the parting effect
-  // 3 tags move left (negative), 2 tags move right (positive)
-  const moveLeftFast = useTransform(scrollY, [0, 400], [0, -350]);
-  const moveLeftMedium = useTransform(scrollY, [0, 400], [0, -200]);
-  const moveLeftSlow = useTransform(scrollY, [0, 400], [0, -100]);
-  const moveRightSlow = useTransform(scrollY, [0, 400], [0, 150]);
-  const moveRightFast = useTransform(scrollY, [0, 400], [0, 300]);
+  // Mapping scroll position (0 to 300px down) to horizontal movement
+  const moveLeftFast = useTransform(scrollY, [0, 300], [0, -350]);
+  const moveLeftMedium = useTransform(scrollY, [0, 300], [0, -200]);
+  const moveLeftSlow = useTransform(scrollY, [0, 300], [0, -100]);
+  const moveRightSlow = useTransform(scrollY, [0, 300], [0, 150]);
+  const moveRightFast = useTransform(scrollY, [0, 300], [0, 300]);
+  
+  // Fade out the tags as they part ways
+  const fadeOut = useTransform(scrollY, [0, 250], [1, 0]);
 
+  // Adjusted the initialX and y values to spread them out beautifully and prevent ugly overlapping
   const floatingTags = [
-    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: moveLeftFast, initialX: -90, y: 20, rotate: -8, delay: 0.1, z: 10 },
-    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: moveLeftMedium, initialX: -30, y: 60, rotate: 4, delay: 0.3, z: 20 },
-    { label: "SCUML", color: "bg-blue-100 text-blue-800", xOffset: moveLeftSlow, initialX: 30, y: 10, rotate: -3, delay: 0.2, z: 10 },
-    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: moveRightSlow, initialX: 80, y: 50, rotate: 6, delay: 0.4, z: 30 },
-    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: moveRightFast, initialX: 130, y: 10, rotate: -6, delay: 0.5, z: 10 },
+    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: moveLeftFast, initialX: -150, y: 10, rotate: -6, delay: 0.1, z: 20 },
+    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: moveLeftMedium, initialX: -60, y: 60, rotate: 4, delay: 0.3, z: 30 },
+    { label: "SCUML", color: "bg-blue-100 text-blue-800", xOffset: moveLeftSlow, initialX: 0, y: -5, rotate: -3, delay: 0.2, z: 10 },
+    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: moveRightSlow, initialX: 80, y: 50, rotate: 6, delay: 0.4, z: 40 },
+    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: moveRightFast, initialX: 160, y: 15, rotate: -6, delay: 0.5, z: 20 },
   ];
 
   return (
     <div ref={containerRef} className="relative w-full flex flex-col items-center bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300">
       
       {/* ───── HERO TOP SECTION ───── */}
-      <section className="relative pt-40 pb-10 px-6 w-full flex flex-col items-center z-10 min-h-[85vh]">
+      <section className="relative pt-40 pb-4 px-6 w-full flex flex-col items-center z-10">
         
         {/* Background Glow */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#c7365f]/5 dark:bg-[#c7365f]/15 rounded-full blur-[120px] pointer-events-none" />
@@ -63,7 +66,7 @@ export default function HeroSection() {
           {/* Animated Button */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-10 mb-8 relative z-50"
+            className="mt-10 mb-2 relative z-50"
           >
             <Link
               href="/auth/register"
@@ -75,17 +78,15 @@ export default function HeroSection() {
           </motion.div>
 
           {/* ───── THE LANDING ZONE FOR PILLS ───── */}
-          {/* This container sits right under the button. We use relative positioning so the pills fall into this exact spot and are visible on mobile. */}
-          <div className="relative w-full h-[150px] flex justify-center mt-4">
+          <div className="relative w-full h-[140px] flex justify-center mt-2">
             {floatingTags.map((tag, i) => (
               <motion.div
                 key={i}
-                // They drop from 600px above, landing at their designated y & initialX
                 initial={{ y: -600, opacity: 0, x: tag.initialX, rotate: 0 }}
                 animate={{ y: tag.y, opacity: 1, rotate: tag.rotate }}
                 transition={{ type: "spring", damping: 14, stiffness: 70, delay: tag.delay, duration: 1.5 }}
-                // We combine the initial fixed X with the scroll-based xOffset so they part ways when scrolled
-                style={{ x: tag.xOffset, zIndex: tag.z }}
+                // Added fadeOut to opacity, combined with the parting xOffset
+                style={{ x: tag.xOffset, opacity: fadeOut, zIndex: tag.z }}
                 className={`absolute px-5 py-2.5 rounded-full text-sm font-bold shadow-lg backdrop-blur-md whitespace-nowrap border border-black/5 dark:border-white/10 ${tag.color}`}
               >
                 {tag.label}
@@ -97,20 +98,21 @@ export default function HeroSection() {
       </section>
 
       {/* ───── SCROLL REVEAL TEXT SECTION ───── */}
-      {/* This text swipes in slowly from the left as the user scrolls down into this section */}
-      <section className="relative w-full max-w-7xl mx-auto px-6 py-24 z-20 flex items-center min-h-[50vh]">
+      {/* Drastically reduced padding to eliminate whitespace */}
+      <section className="relative w-full max-w-7xl mx-auto px-6 pt-8 pb-24 z-20 flex items-center">
         <motion.div
-          initial={{ opacity: 0, x: -100 }}
+          initial={{ opacity: 0, x: -60 }}
           whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: false, margin: "-100px" }} // Triggers just as it comes into view
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          // ONCE: TRUE ensures the text locks into place permanently and won't bounce again
+          viewport={{ once: true, margin: "-50px" }} 
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-4xl"
         >
           <h2 
             className="font-normal tracking-tight text-[#23322D] dark:text-[#E5E7EB]"
             style={{ 
-              fontSize: 'clamp(32px, 5vw, 48px)', // Responsive to fit mobile too
-              lineHeight: '1.18', // 57px relative to 48px
+              fontSize: 'clamp(32px, 5vw, 48px)',
+              lineHeight: '1.18', 
               fontFamily: 'system-ui, -apple-system, sans-serif' 
             }}
           >
