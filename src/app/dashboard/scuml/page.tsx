@@ -8,7 +8,7 @@ import {
   ArrowLeft, CaretDown, CaretUp, Buildings, Storefront, Globe, Tag
 } from "@phosphor-icons/react";
 import { FileUpload } from "@/components/FileUpload";
-import ScumlPaymentModal from "@/components/features/scuml/ScumlPaymentModal"; // 🚨 Imported the new modal
+import ScumlPaymentModal from "@/components/features/scuml/ScumlPaymentModal";
 
 type ScumlType = "BUSINESS_NAME" | "LLC" | "NGO";
 
@@ -43,8 +43,17 @@ export default function ScumlPage() {
     constitutionUrl: ""
   });
 
-  // 🚨 NEW: State to hold the Redis draft ID and trigger the payment modal
   const [paymentDraftId, setPaymentDraftId] = useState<string | null>(null);
+
+  // Catch Paystack returning the user, and auto-open the modal!
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("verifying") === "true" && params.get("draftId")) {
+        setPaymentDraftId(params.get("draftId"));
+      }
+    }
+  }, []);
 
   // Fetch Live Pricing from DB
   useEffect(() => {
@@ -80,7 +89,6 @@ export default function ScumlPage() {
     setErrorMsg("");
     if (!consentChecked) return;
     
-    // Validation check for documents
     if (!documents.certificateUrl || !documents.statusReportUrl) {
       setErrorMsg("Please upload your Certificate and Status Report.");
       return;
@@ -102,7 +110,6 @@ export default function ScumlPage() {
     setErrorMsg("");
 
     try {
-      // Step 1: Hit the API to generate the temporary Redis draft
       const res = await fetch("/api/scuml", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,7 +126,6 @@ export default function ScumlPage() {
         throw new Error(data.error || "Something went wrong generating the application.");
       }
 
-      // Step 2: Extract the Draft ID, close the confirm modal, and open the Payment modal
       const draftId = data.data.id;
       setIsConfirmModalOpen(false);
       setPaymentDraftId(draftId);
@@ -131,7 +137,6 @@ export default function ScumlPage() {
     }
   };
 
-  // Dynamic Label & Placeholder generators
   const getDynamicLabel = () => {
     if (regType === "BUSINESS_NAME") return "2. Exact Business Name";
     if (regType === "LLC") return "2. Exact Company Name";
@@ -163,7 +168,6 @@ export default function ScumlPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto relative">
       
-      {/* Intro Modal */}
       {showIntroModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500">
@@ -193,7 +197,6 @@ export default function ScumlPage() {
         </div>
       )}
 
-      {/* Back Button */}
       <Link 
         href="/dashboard" 
         className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit"
@@ -201,7 +204,6 @@ export default function ScumlPage() {
         <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Dashboard
       </Link>
 
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0">
@@ -225,11 +227,9 @@ export default function ScumlPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Main Application Form */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
             
-            {/* 1. Designed Dropdown */}
             <div className="space-y-3" ref={dropdownRef}>
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold">1. Select Registration Type</label>
@@ -254,7 +254,6 @@ export default function ScumlPage() {
                   {isDropdownOpen ? <CaretUp weight="bold" className="h-4 w-4 text-muted-foreground" /> : <CaretDown weight="bold" className="h-4 w-4 text-muted-foreground" />}
                 </button>
 
-                {/* Dropdown Menu */}
                 {isDropdownOpen && (
                   <div className="absolute top-full left-0 w-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                     {REG_OPTIONS.map((option) => (
@@ -264,7 +263,7 @@ export default function ScumlPage() {
                         onClick={() => {
                           setRegType(option.id as ScumlType);
                           setIsDropdownOpen(false);
-                          setCompanyName(""); // Reset name so placeholder updates cleanly
+                          setCompanyName(""); 
                         }}
                         className="w-full flex items-center gap-4 px-4 py-3 hover:bg-secondary transition-colors text-left border-b border-border last:border-0"
                       >
@@ -281,7 +280,6 @@ export default function ScumlPage() {
                 )}
               </div>
 
-              {/* Price Tag pops up sharply right below selection */}
               {regType && !isLoadingPrice && (
                 <div className="animate-in fade-in slide-in-from-top-1 flex items-center gap-2 mt-3 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit">
                   <Tag weight="fill" className="h-4 w-4" />
@@ -290,7 +288,6 @@ export default function ScumlPage() {
               )}
             </div>
 
-            {/* 2. Dynamic Company Name */}
             {regType && (
               <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
                 <label className="text-sm font-bold">{getDynamicLabel()}</label>
@@ -305,7 +302,6 @@ export default function ScumlPage() {
               </div>
             )}
 
-            {/* 3. Document Uploads */}
             {regType && (
               <div className="space-y-4 pt-4 border-t border-border animate-in fade-in">
                 <h3 className="text-sm font-bold">3. Upload Required Documents</h3>
@@ -365,7 +361,6 @@ export default function ScumlPage() {
               </div>
             )}
 
-            {/* 4. Consent & Submit */}
             {regType && (
               <div className="pt-4 border-t border-border space-y-5 animate-in fade-in">
                 <label className="flex items-start gap-3 p-4 bg-secondary/50 rounded-xl cursor-pointer border border-transparent hover:border-border transition-colors">
@@ -393,7 +388,6 @@ export default function ScumlPage() {
           </form>
         </div>
 
-        {/* How it works Sidebar */}
         <div className="space-y-6">
           <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24">
             <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground mb-5">How it works</h3>
@@ -420,7 +414,6 @@ export default function ScumlPage() {
 
       </div>
 
-      {/* Confirmation Modal */}
       {isConfirmModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
@@ -480,7 +473,6 @@ export default function ScumlPage() {
         </div>
       )}
 
-      {/* 🚨 NEW: Payment Modal Mount */}
       {paymentDraftId && (
         <ScumlPaymentModal
           registrationId={paymentDraftId}
