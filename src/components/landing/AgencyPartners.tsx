@@ -13,13 +13,13 @@ export default function AgencyPartners() {
     { src: "/ipo.png", alt: "Intellectual Property Office" },
   ];
 
-  // We duplicate the array multiple times so the infinite scroll loops seamlessly without a gap
+  // We duplicate the array multiple times so the infinite scroll loops seamlessly
   const duplicatedLogos = [...logos, ...logos, ...logos, ...logos];
 
   return (
     <section id="partners" className="py-12 bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300 border-b border-black/5 dark:border-white/5">
-      <div className="max-w-7xl mx-auto px-6 mb-8">
-        <p className="text-center text-xs font-semibold text-[#767676] dark:text-white/40 uppercase tracking-[0.2em]">
+      <div className="max-w-7xl mx-auto px-6 mb-10">
+        <p className="text-center text-xs font-semibold text-[#767676] dark:text-white/50 uppercase tracking-[0.2em]">
           Facilitating compliance across regulatory bodies
         </p>
       </div>
@@ -32,9 +32,10 @@ export default function AgencyPartners() {
 
         {/* ───── INFINITE SLIDER ───── */}
         <motion.div
-          className="flex items-center gap-16 sm:gap-24 pl-16 sm:pl-24 w-max"
+          className="flex items-center gap-16 sm:gap-24 w-max"
           animate={{ x: ["0%", "-50%"] }}
           transition={{
+            delay: 2.5, // Holds the logos completely still for 2.5 seconds on load!
             repeat: Infinity,
             ease: "linear",
             duration: 40,
@@ -43,12 +44,15 @@ export default function AgencyPartners() {
           {duplicatedLogos.map((logo, i) => (
             <div 
               key={i} 
-              className="relative w-[90px] h-[35px] sm:w-[110px] sm:h-[40px] shrink-0 opacity-40 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300 cursor-pointer"
+              // Significantly increased dimensions (w-[140px] and h-[50px] on mobile, larger on desktop)
+              // Increased baseline opacity so they don't vanish in Dark Mode
+              className="relative w-[140px] h-[50px] sm:w-[180px] sm:h-[65px] shrink-0 opacity-60 dark:opacity-80 grayscale hover:grayscale-0 hover:opacity-100 dark:hover:opacity-100 transition-all duration-300 cursor-pointer"
             >
               <Image
                 src={logo.src}
                 alt={logo.alt}
                 fill
+                // Inverts to pure white in dark mode, but the higher opacity wrapper keeps it visible
                 className="object-contain dark:brightness-0 dark:invert dark:hover:brightness-100 dark:hover:invert-0 transition-all duration-300"
               />
             </div>
