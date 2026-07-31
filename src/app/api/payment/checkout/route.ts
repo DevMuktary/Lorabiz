@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import redis from "@/lib/redis"; // Required for pulling the SCUML draft
 
 export async function POST(req: Request) {
   try {
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
       
       callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?verifying=true`;
 
-    // CASE C: SCUML REGISTRATION
+    // CASE C: SCUML REGISTRATION (USING REDIS DRAFT)
     } else if (service === "scuml") {
       promoServiceKey = "SCUML"; 
       
@@ -88,18 +89,21 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Registration ID is required." }, { status: 400 });
       }
 
-      const registration = await prisma.scumlRegistration.findUnique({ where: { id: registrationId } });
-      if (!registration || registration.userId !== user.id) {
-        return NextResponse.json({ success: false, message: "Invalid SCUML application." }, { status: 404 });
+      // Fetch the application draft directly from Redis
+      const draftStr = await redis.get(registrationId);
+      if (!draftStr) {
+        return NextResponse.json({ success: false, message: "Application expired or not found. Please resubmit." }, { status: 404 });
       }
-      if (registration.status !== "PENDING") {
-        return NextResponse.json({ success: false, message: "This application has already been processed or paid for." }, { status: 400 });
+
+      const draft = JSON.parse(draftStr);
+      if (draft.userId !== user.id) {
+        return NextResponse.json({ success: false, message: "Unauthorized access to this application." }, { status: 403 });
       }
 
       const servicePriceRecord = await prisma.servicePricing.findUnique({ where: { serviceKey: "SCUML" } });
       baseAmountToPay = servicePriceRecord ? Number(servicePriceRecord.price) : 45000; // Fallback to 45k if not in DB
       
-      description = `Payment for SCUML Registration (${registration.companyName})`;
+      description = `Payment for SCUML Registration (${draft.companyName})`;
       reference = `ONL_SCUML_${registrationId}_${Date.now()}`;
       
       callbackPath = `/dashboard/scuml/history?verifying=true`;
@@ -228,14 +232,30 @@ export async function POST(req: Request) {
         if (promoServiceKey === "LLC" && registrationId) {
           await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
         } else if (promoServiceKey === "SCUML" && registrationId) {
-          await tx.scumlRegistration.update({ 
-            where: { id: registrationId }, 
-            data: { 
-              status: "PROCESSING", 
-              amountPaid: amountToPay,
-              transactionRef: txReference
-            } 
-          });
+          
+          // Pull from Redis and create the official row atomically
+          const draftStr = await redis.get(registrationId);
+          if (draftStr) {
+            const draft = JSON.parse(draftStr);
+            await tx.scumlRegistration.create({
+              data: {
+                id: registrationId, // Hard-link the draft ID to Postgres for polling
+                userId: draft.userId,
+                type: draft.type,
+                companyName: draft.companyName,
+                certificateUrl: draft.documents.certificateUrl,
+                statusReportUrl: draft.documents.statusReportUrl,
+                memorandumUrl: draft.documents.memorandumUrl || null,
+                constitutionUrl: draft.documents.constitutionUrl || null,
+                status: "PROCESSING", 
+                amountPaid: amountToPay,
+                transactionRef: txReference
+              }
+            });
+            // Clean up cache
+            await redis.del(registrationId);
+          }
+          
         } else if (promoServiceKey === "BUSINESS_NAME" && registrationId) {
           await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
         }
@@ -269,7 +289,7 @@ export async function POST(req: Request) {
           callback_url: `${appUrl}${callbackPath}`,
           metadata: {
             userId: user.id,
-            service: service || "business", // We pass "scuml" here naturally
+            service: service || "business", // "scuml" is passed naturally
             registrationId: registrationId || null,
             expectedAmount: amountToPay, 
             description: description,
