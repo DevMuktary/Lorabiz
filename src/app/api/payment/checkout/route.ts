@@ -54,6 +54,7 @@ export async function POST(req: Request) {
       description = "Wallet Funding via Online Gateway";
       reference = `FW_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
       callbackPath = "/dashboard/wallet?funded=true";
+      promoServiceKey = "WALLET_FUNDING";
 
     // CASE B: LLC (LIMITED LIABILITY COMPANY) REGISTRATION
     } else if (service === "llc") {
@@ -223,6 +224,7 @@ export async function POST(req: Request) {
           data: { balance: newBalance }
         });
 
+        // ✅ THE FIX: Explicitly setting serviceCategory for Dashboard Financials
         await tx.transaction.create({
           data: {
             walletId: user.wallet!.id,
@@ -232,7 +234,8 @@ export async function POST(req: Request) {
             type: "DEBIT",
             status: "SUCCESS",
             reference: txReference,
-            description: description
+            description: description,
+            serviceCategory: promoServiceKey || "OTHER" 
           }
         });
 
@@ -266,12 +269,11 @@ export async function POST(req: Request) {
                 statusReportUrl: draft.documents.statusReportUrl,
                 memorandumUrl: draft.documents.memorandumUrl || null,
                 constitutionUrl: draft.documents.constitutionUrl || null,
-                status: "PENDING", // Confirmed PENDING status post-payment
+                status: "PENDING", 
                 amountPaid: amountToPay,
                 transactionRef: txReference
               }
             });
-            // Clean up cache
             await redis.del(registrationId);
           }
           
@@ -329,6 +331,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
+      // ✅ THE FIX: Pack serviceCategory into Paystack metadata for the Webhook to read
       const paystackResponse = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
@@ -346,7 +349,8 @@ export async function POST(req: Request) {
             registrationId: registrationId || null,
             expectedAmount: amountToPay, 
             description: description,
-            appliedPromoId: appliedPromoId
+            appliedPromoId: appliedPromoId,
+            serviceCategory: promoServiceKey || "OTHER"
           }
         }),
       });
