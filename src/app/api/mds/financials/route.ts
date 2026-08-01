@@ -6,68 +6,92 @@ const prisma = new PrismaClient();
 
 export async function GET(req: Request) {
   try {
-    // Parse the requested date range from the URL (default to 30 days)
     const { searchParams } = new URL(req.url);
     const days = searchParams.get("days") || "30";
     
     const today = startOfDay(new Date());
-    let startDate = new Date(0); // Default to beginning of time if "all"
+    let startDate = new Date(0); 
     if (days !== "all") {
       startDate = subDays(today, parseInt(days, 10));
     }
 
-    // 1. Fetch Data in Parallel
-    const [transactions, walletAgg] = await Promise.all([
-      // Fetch Ledger
+    const baseWhere = {
+      createdAt: { gte: startDate },
+      type: "DEBIT" as const,
+      status: "SUCCESS" as const
+    };
+
+    // 1. Fetch EVERYTHING in parallel. Let the Database do the math, not Node.js.
+    const [
+      totalAgg,
+      ninAgg,
+      cacAgg,
+      walletAgg,
+      recentTransactions // Only fetch the actual rows for the recent ledger
+    ] = await Promise.all([
+      prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: baseWhere
+      }),
+      prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { ...baseWhere, description: { contains: "nin", mode: "insensitive" } }
+      }),
+      prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { ...baseWhere, description: { contains: "business", mode: "insensitive" } } // Adjust keyword if needed for CAC
+      }),
+      prisma.wallet.aggregate({
+        _sum: { balance: true }
+      }),
+      // THE FIX: Only pull the latest 100 records for the table to prevent browser crashing
       prisma.transaction.findMany({
         where: { createdAt: { gte: startDate } },
         orderBy: { createdAt: "desc" },
+        take: 100, 
         include: {
           wallet: {
             include: { user: { select: { firstName: true, lastName: true, email: true } } }
           }
         }
-      }),
-      // Fetch Total Wallet Liabilities (Unspent user deposits)
-      prisma.wallet.aggregate({
-        _sum: { balance: true }
       })
     ]);
 
-    // 2. Calculate Revenue Metrics
-    let totalRevenue = 0;
-    let cacRevenue = 0;
-    let ninRevenue = 0;
+    const totalRevenue = Number(totalAgg._sum.amount || 0);
+    const ninRevenue = Number(ninAgg._sum.amount || 0);
+    // Assuming whatever isn't NIN is roughly CAC for now (can be adjusted later)
+    const cacRevenue = totalRevenue - ninRevenue; 
 
-    // Build Chart Data (Last 7 days of the selected range for a cleaner chart)
+    // 2. Build Chart Data (Last 7 days strictly)
     const revenueByDay: Record<string, { name: string, CAC: number, NIN: number }> = {};
     for (let i = 6; i >= 0; i--) {
       const dayStr = format(subDays(today, i), 'EEE');
       revenueByDay[dayStr] = { name: dayStr, CAC: 0, NIN: 0 };
     }
 
-    transactions.forEach((tx) => {
-      if (tx.type === "DEBIT" && tx.status === "SUCCESS") {
-        const amount = Number(tx.amount);
-        totalRevenue += amount;
-        
-        const isNin = tx.description.toLowerCase().includes("nin");
-        if (isNin) ninRevenue += amount;
-        else cacRevenue += amount;
+    // We only need to fetch chart data specifically for the last 7 days
+    const chartTransactions = await prisma.transaction.findMany({
+      where: { 
+        createdAt: { gte: subDays(today, 7) },
+        type: "DEBIT",
+        status: "SUCCESS"
+      },
+      select: { amount: true, description: true, createdAt: true }
+    });
 
-        // Chart aggregation
-        if (tx.createdAt >= subDays(today, 7)) {
-          const dayStr = format(tx.createdAt, 'EEE');
-          if (revenueByDay[dayStr]) {
-            if (isNin) revenueByDay[dayStr].NIN += amount;
-            else revenueByDay[dayStr].CAC += amount;
-          }
-        }
+    chartTransactions.forEach((tx) => {
+      const amount = Number(tx.amount);
+      const dayStr = format(tx.createdAt, 'EEE');
+      const isNin = tx.description.toLowerCase().includes("nin");
+      
+      if (revenueByDay[dayStr]) {
+        if (isNin) revenueByDay[dayStr].NIN += amount;
+        else revenueByDay[dayStr].CAC += amount;
       }
     });
 
     // 3. Format the Ledger for the UI
-    const ledger = transactions.map(tx => ({
+    const ledger = recentTransactions.map(tx => ({
       id: tx.id,
       reference: tx.reference,
       date: tx.createdAt,
@@ -86,7 +110,7 @@ export async function GET(req: Request) {
         totalRevenue,
         cacRevenue,
         ninRevenue,
-        totalLiabilities: Number(walletAgg._sum.balance || 0) // New Metric
+        totalLiabilities: Number(walletAgg._sum.balance || 0)
       },
       chartData: Object.values(revenueByDay),
       ledger
