@@ -10,21 +10,20 @@ export default function HeroSection() {
   // Track scroll position for the horizontal compression effect
   const { scrollY } = useScroll();
 
-  // Instead of flying away, they "compress" inwards horizontally as you scroll.
-  // The outer ones move in by 70px, the inner ones move in by 35px.
-  const compressLeftFast = useTransform(scrollY, [0, 300], [0, 70]);
-  const compressLeftSlow = useTransform(scrollY, [0, 300], [0, 35]);
+  // REDUCED COMPRESSION: Now they only squeeze in by 40px (outer) and 20px (inner)
+  const compressLeftFast = useTransform(scrollY, [0, 300], [0, 40]);
+  const compressLeftSlow = useTransform(scrollY, [0, 300], [0, 20]);
   const centerStays = useTransform(scrollY, [0, 300], [0, 0]);
-  const compressRightSlow = useTransform(scrollY, [0, 300], [0, -35]);
-  const compressRightFast = useTransform(scrollY, [0, 300], [0, -70]);
+  const compressRightSlow = useTransform(scrollY, [0, 300], [0, -20]);
+  const compressRightFast = useTransform(scrollY, [0, 300], [0, -40]);
 
-  // Initial X positions are spread out, Z-index is layered so they overlap beautifully
+  // INCREASED SPREAD: initialX is now spaced out by 120px increments instead of 90px
   const floatingTags = [
-    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: compressLeftFast, initialX: -180, y: 10, rotate: -6, delay: 0.1, z: 10 },
-    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: compressLeftSlow, initialX: -90, y: 45, rotate: 4, delay: 0.3, z: 20 },
+    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: compressLeftFast, initialX: -240, y: 10, rotate: -6, delay: 0.1, z: 10 },
+    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: compressLeftSlow, initialX: -120, y: 45, rotate: 4, delay: 0.3, z: 20 },
     { label: "SCUML", color: "bg-blue-100 text-blue-800", xOffset: centerStays, initialX: 0, y: -5, rotate: -2, delay: 0.2, z: 30 },
-    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: compressRightSlow, initialX: 90, y: 40, rotate: 5, delay: 0.4, z: 20 },
-    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: compressRightFast, initialX: 180, y: 15, rotate: -5, delay: 0.5, z: 10 },
+    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: compressRightSlow, initialX: 120, y: 40, rotate: 5, delay: 0.4, z: 20 },
+    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: compressRightFast, initialX: 240, y: 15, rotate: -5, delay: 0.5, z: 10 },
   ];
 
   return (
@@ -83,7 +82,6 @@ export default function HeroSection() {
                 initial={{ y: -600, opacity: 0, x: tag.initialX, rotate: 0 }}
                 animate={{ y: tag.y, opacity: 1, rotate: tag.rotate }}
                 transition={{ type: "spring", damping: 14, stiffness: 70, delay: tag.delay, duration: 1.5 }}
-                // xOffset now compresses them inward. Removed the opacity fade-out.
                 style={{ x: tag.xOffset, zIndex: tag.z }}
                 className={`absolute px-5 py-2.5 rounded-full text-sm font-bold shadow-lg backdrop-blur-md whitespace-nowrap border border-black/5 dark:border-white/10 ${tag.color}`}
               >
@@ -100,7 +98,6 @@ export default function HeroSection() {
         <motion.div
           initial={{ opacity: 0, x: -60 }}
           whileInView={{ opacity: 1, x: 0 }}
-          // ONCE: TRUE ensures the text locks into place permanently and won't bounce again
           viewport={{ once: true, margin: "-50px" }} 
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-4xl"
