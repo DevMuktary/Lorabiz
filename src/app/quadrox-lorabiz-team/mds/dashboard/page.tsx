@@ -150,7 +150,7 @@ export default function MdsDashboardPage() {
         <div className="bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-800/80 shadow-2xl">
           <div className="flex items-center mb-8">
             <div className="p-2 bg-teal-500/10 rounded-lg mr-3">
-              <Layers className="text-teal-400" size={20} weight="fill" />
+              <Layers className="text-teal-400 fill-teal-400/20" size={20} />
             </div>
             <h2 className="text-lg font-bold text-white tracking-tight">Global Order Pipeline</h2>
           </div>
