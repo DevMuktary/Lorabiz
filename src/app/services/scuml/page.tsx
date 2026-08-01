@@ -32,7 +32,7 @@ export default function SCUMLRegistrationPage() {
       subtitle: "Incorporated Trustees",
       desc: "All charities, religious bodies, and social clubs must obtain a SCUML certificate to open a bank account and receive local or international donations securely.",
       bestFor: ["Churches & Mosques", "Charity Organizations", "Foundations", "Social Clubs"],
-      timeline: "7 - 14 Business Days",
+      timeline: "2 - 5 Business Days",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
           <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="6" strokeDasharray="10 10" />
@@ -48,7 +48,7 @@ export default function SCUMLRegistrationPage() {
       subtitle: "Advisory & Legal",
       desc: "Firms that offer financial or legal advice—including managing client assets or organizing company formations—fall strictly under EFCC anti-money laundering radar.",
       bestFor: ["Law Firms", "Accounting Firms", "Tax Consultants", "Audit Firms"],
-      timeline: "7 - 14 Business Days",
+      timeline: "2 - 5 Business Days",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
           <rect x="25" y="30" width="50" height="40" rx="4" fill="currentColor" fillOpacity="0.2" />
@@ -64,7 +64,7 @@ export default function SCUMLRegistrationPage() {
       subtitle: "High-Net-Worth Retail",
       desc: "Businesses selling high-value items often deal with large cash transactions. SCUML protects your business from being unknowingly used for money laundering.",
       bestFor: ["Jewelers", "Auto/Car Dealers", "Precious Metals/Stones", "Supermarkets"],
-      timeline: "7 - 14 Business Days",
+      timeline: "2 - 5 Business Days",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
           <polygon points="50,20 80,45 65,85 35,85 20,45" fill="currentColor" fillOpacity="0.2" />
@@ -84,7 +84,7 @@ export default function SCUMLRegistrationPage() {
     },
     {
       title: "EFCC Compliance",
-      desc: "SCUML operates under the Economic and Financial Crimes Commission (EFCC). Certification keeps your business entirely legally compliant.",
+      desc: "SCUML operates under the Economic and Financial Crimes Commission (EFCC). Certification keeps your business legally compliant and free from fines.",
       icon: "M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
     },
     {
@@ -105,13 +105,14 @@ export default function SCUMLRegistrationPage() {
 
       <main className="pt-24 pb-20">
         
-        {/* ───── HERO SECTION ───── */}
         <section className="relative pt-20 pb-16 px-6 overflow-hidden">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
+          {/* PINK/RED BRAND GLOW */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
           
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <div className="w-full lg:w-[55%] z-10">
-              <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 mb-6">
+              {/* BRAND PINK/RED BADGE */}
+              <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-[#c7365f]/10 text-[#c7365f] mb-6">
                 EFCC AML Compliance
               </div>
               <h1 
@@ -124,9 +125,10 @@ export default function SCUMLRegistrationPage() {
               <p className="text-[18px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
                 Required by the EFCC for Designated Non-Financial Businesses and Professions (DNFBPs). We handle the bureaucratic bottlenecks so you don't have to.
               </p>
+              {/* BRAND PINK/RED BUTTON */}
               <Link
                 href="/auth/register"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:scale-105 transition-all duration-300 font-medium text-[16px] shadow-lg shadow-emerald-500/30"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-white bg-gradient-to-r from-[#c7365f] to-[#e8447a] hover:scale-105 transition-all duration-300 font-medium text-[16px] shadow-lg shadow-[#c7365f]/30"
               >
                 Start SCUML Application
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -135,17 +137,20 @@ export default function SCUMLRegistrationPage() {
               </Link>
             </div>
 
-            {/* Value Proposition Card & Shield Logo */}
             <div className="w-full lg:w-[45%] relative flex flex-col items-center justify-center lg:pl-10">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-[40px] transform rotate-3" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[#c7365f]/5 to-transparent rounded-[40px] transform rotate-3" />
               
               <div className="bg-white dark:bg-[#111827] border border-black/5 dark:border-white/10 rounded-[32px] p-8 sm:p-10 shadow-2xl relative z-10 w-full max-w-md">
                 
-                {/* Official Shield Container */}
-                <div className="h-16 w-16 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center border border-emerald-100 dark:border-emerald-800/50 shadow-sm mb-8">
-                  <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
+                {/* EFCC LOGO CONTAINER */}
+                <div className="h-20 w-20 bg-white rounded-xl p-2 mb-8 flex items-center justify-center border border-black/5 shadow-sm">
+                  <Image 
+                    src="/efcc.png" 
+                    alt="Economic and Financial Crimes Commission" 
+                    width={64} 
+                    height={64} 
+                    className="object-contain" 
+                  />
                 </div>
                 
                 <h3 className="text-2xl font-semibold mb-4 text-[#1a1a1a] dark:text-white tracking-tight">
@@ -156,8 +161,9 @@ export default function SCUMLRegistrationPage() {
                   Traditional SCUML processing can take months of frustrating back-and-forth. Our system simplifies the documentation process, ensuring your application is 100% accurate before submission.
                 </p>
                 
+                {/* BRAND PINK/RED INFO BOX */}
                 <div className="mt-8 pt-6 border-t border-black/5 dark:border-white/10 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 flex flex-shrink-0 items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <div className="w-11 h-11 rounded-full bg-[#c7365f]/10 dark:bg-[#c7365f]/20 flex flex-shrink-0 items-center justify-center text-[#c7365f]">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
@@ -174,7 +180,6 @@ export default function SCUMLRegistrationPage() {
           </div>
         </section>
 
-        {/* ───── WHY REGISTRATION MATTERS ───── */}
         <section className="py-24 bg-[#fafafa] dark:bg-[#111827]/50 border-y border-black/5 dark:border-white/5">
           <div className="max-w-[1200px] mx-auto px-6">
             <div className="text-center mb-16">
@@ -204,11 +209,9 @@ export default function SCUMLRegistrationPage() {
           </div>
         </section>
 
-        {/* ───── INTERACTIVE ENTITY TABS ───── */}
         <section className="py-24 px-6 overflow-hidden">
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row gap-16 lg:gap-24">
             
-            {/* Left Column: The Tab Menu */}
             <div className="w-full lg:w-1/3 flex flex-col">
               <h2 className="text-[32px] md:text-[40px] font-medium tracking-tight mb-8 text-[#1a1a1a] dark:text-white" style={{ fontFamily: 'system-ui, sans-serif' }}>
                 Who needs SCUML?
@@ -243,7 +246,6 @@ export default function SCUMLRegistrationPage() {
               </div>
             </div>
 
-            {/* Right Column: The Motion Content */}
             <div className="w-full lg:w-2/3">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -254,17 +256,15 @@ export default function SCUMLRegistrationPage() {
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="bg-white dark:bg-[#111827] rounded-[32px] border border-black/5 dark:border-white/5 shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[400px] h-auto"
                 >
-                  {/* Visual Graphic Side */}
                   <div className={`w-full md:w-2/5 h-48 md:h-auto flex items-center justify-center p-10 ${scumlCategories[activeTab].color}`}>
                     <div className="w-full max-w-[160px] transform transition-transform duration-700 hover:scale-110">
                       {scumlCategories[activeTab].icon}
                     </div>
                   </div>
 
-                  {/* Text Details Side */}
                   <div className="w-full md:w-3/5 p-8 md:p-10 flex flex-col justify-center">
                     <div className="mb-2">
-                      <span className="text-sm font-bold tracking-widest uppercase text-emerald-600 dark:text-emerald-400 opacity-80">
+                      <span className="text-sm font-bold tracking-widest uppercase text-[#c7365f] dark:text-[#e8447a] opacity-80">
                         {scumlCategories[activeTab].subtitle}
                       </span>
                     </div>
