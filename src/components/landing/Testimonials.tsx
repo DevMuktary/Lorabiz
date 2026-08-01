@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 export default function Testimonials() {
   const testimonials = [
     {
-      quote: "LoraBiz turned a nightmare process into a breeze. We got our CAC registration and Tax ID sorted in days instead of weeks. Highly recommended!",
+      quote: "LoraBiz turned a nightmare process into a breeze. We got our CAC registration and Tax ID sorted in minutes instead of weeks. Highly recommended!",
       name: "Oluwaseun Adebayo",
       role: "Founder, TechNova Solutions",
       avatarGradient: "from-blue-400 to-indigo-500",
@@ -19,7 +19,7 @@ export default function Testimonials() {
       initials: "CN"
     },
     {
-      quote: "I love the integrated wallet. I fund it once and use it to buy airtime, data, and pay for all my business verifications from one spot.",
+      quote: "I love the integrated wallet. I fund it once and use it to buy airtime, and pay for all my business verifications from one spot.",
       name: "Ibrahim Hassan",
       role: "CEO, Hassan Retail Group",
       avatarGradient: "from-amber-400 to-orange-500",

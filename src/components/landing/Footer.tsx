@@ -69,7 +69,7 @@ export default function Footer() {
               <Link href="/blog" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Blog</Link>
               <Link href="/guides" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Guides</Link>
               <Link href="/faq" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">FAQs</Link>
-              <Link href="/help" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Help Center</Link>
+              <Link href="/contact" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Help Center</Link>
             </div>
           </div>
 
@@ -79,7 +79,7 @@ export default function Footer() {
             <div className="flex flex-col gap-4">
               <Link href="/privacy" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Terms of Use</Link>
-              <Link href="/compliance" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Compliance</Link>
+              <Link href="/acceptance-use" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Acceptance Use</Link>
             </div>
           </div>
 
@@ -88,7 +88,7 @@ export default function Footer() {
             <div>
               <h3 className="text-[15px] font-semibold text-white mb-2">Nigeria</h3>
               <p className="text-[15px] text-[#7a7a7a] leading-relaxed">
-                Ibadan, Oyo State,<br />
+                Lagos, Lagos State,<br />
                 Nigeria.
               </p>
             </div>
@@ -127,7 +127,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-[13px] text-white/40 leading-relaxed">
-              LoraBiz is a technology company, not a government agency. We facilitate business registrations and utility payments through integrated API partners and regulatory bodies.
+              LoraBiz is a business being managed by Quadrox Technologies Limited a Registered technology company, not a government agency. We facilitate business registrations and utility payments through integrated API partners and regulatory bodies.
             </p>
           </div>
 
@@ -136,7 +136,7 @@ export default function Footer() {
             <div>
               <h3 className="text-[13px] font-medium text-white/40 mb-1 uppercase tracking-wider">Email</h3>
               <a href="mailto:hello@lorabiz.com" className="text-[15px] text-white hover:text-[#c7365f] transition-colors font-medium">
-                hello@lorabiz.com
+                support@lorabiz.com
               </a>
             </div>
             

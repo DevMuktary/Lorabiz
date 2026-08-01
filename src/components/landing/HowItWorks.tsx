@@ -70,7 +70,7 @@ export default function HowItWorks() {
     },
     {
       tag: "Step 4 • Delivery",
-      title: "Get instant results.",
+      title: "Get instant Updates.",
       list: ["Track application status", "Download official files", "Continuous management"],
       bgClass: "bg-gradient-to-br from-[#c7365f] to-[#e8447a]",
       textClass: "text-white",
