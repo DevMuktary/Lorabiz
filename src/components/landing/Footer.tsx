@@ -79,7 +79,7 @@ export default function Footer() {
             <div className="flex flex-col gap-4">
               <Link href="/privacy" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Terms of Use</Link>
-              <Link href="/acceptance-use" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Acceptance Use</Link>
+              <Link href="/acceptable-use" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Acceptable Use</Link>
             </div>
           </div>
 
@@ -135,7 +135,7 @@ export default function Footer() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8 lg:gap-12">
             <div>
               <h3 className="text-[13px] font-medium text-white/40 mb-1 uppercase tracking-wider">Email</h3>
-              <a href="mailto:hello@lorabiz.com" className="text-[15px] text-white hover:text-[#c7365f] transition-colors font-medium">
+              <a href="mailto:support@lorabiz.com" className="text-[15px] text-white hover:text-[#c7365f] transition-colors font-medium">
                 support@lorabiz.com
               </a>
             </div>
