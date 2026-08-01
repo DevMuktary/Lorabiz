@@ -32,6 +32,9 @@ export async function POST(req: Request) {
       const metadata = event.data?.metadata || {};
       const expectedAmount = metadata.expectedAmount ? Number(metadata.expectedAmount) : null;
       const appliedPromoId = metadata.appliedPromoId || null;
+      
+      // ✅ THE FIX: Pull service category directly from Paystack metadata
+      const serviceCategory = metadata.serviceCategory || "OTHER";
 
       if (!reference || !userEmail) {
         return NextResponse.json({ message: "Invalid payload data" }, { status: 400 });
@@ -69,7 +72,8 @@ export async function POST(req: Request) {
               type: "CREDIT", 
               status: "SUCCESS", 
               reference: reference, 
-              description: "Wallet Funding via Paystack Gateway"
+              description: "Wallet Funding via Paystack Gateway",
+              serviceCategory: "WALLET_FUNDING" // ✅ Force to Wallet Funding bucket
             }
           });
         });
@@ -94,7 +98,6 @@ export async function POST(req: Request) {
           if (draftStr) {
             scumlDraft = JSON.parse(draftStr);
           } else {
-            // If draft expired before payment completed, we must stop here.
             console.warn(`SCUML Draft ${registrationId} expired before payment.`);
             return NextResponse.json({ received: true }); 
           }
@@ -157,10 +160,11 @@ export async function POST(req: Request) {
                 type: "CREDIT", 
                 status: "SUCCESS", 
                 reference: reference, 
-                description: `Partial Online Payment (Underpaid for ${regName} - Credited to Wallet)`
+                description: `Partial Online Payment (Underpaid for ${regName} - Credited to Wallet)`,
+                serviceCategory: "WALLET_FUNDING" // ✅ Guard bucket
               }
             });
-            return; // Abort without updating registration status
+            return; 
           }
 
           // Step A: Record incoming online funds into wallet ledger
@@ -180,7 +184,8 @@ export async function POST(req: Request) {
               type: "CREDIT", 
               status: "SUCCESS", 
               reference: reference, 
-              description: "Paystack Online Funding (Webhook)"
+              description: "Paystack Online Funding (Webhook)",
+              serviceCategory: "WALLET_FUNDING" // ✅ It enters as general funding
             }
           });
 
@@ -200,7 +205,8 @@ export async function POST(req: Request) {
               type: "DEBIT", 
               status: "SUCCESS", 
               reference: `SRV_PAY_${registrationId}_${Date.now()}`, 
-              description: `Payment for Registration (${regName})`
+              description: `Payment for Registration (${regName})`,
+              serviceCategory: serviceCategory // ✅ Boom. Perfectly assigned to the real service
             }
           });
 
@@ -210,7 +216,6 @@ export async function POST(req: Request) {
           } else if (serviceType === "llc") {
             await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           } else if (serviceType === "scuml" && scumlDraft) {
-            // CREATE THE OFFICIAL POSTGRES ROW FROM REDIS DRAFT
             await tx.scumlRegistration.create({ 
               data: {
                 id: registrationId, 
@@ -239,7 +244,7 @@ export async function POST(req: Request) {
             });
           }
 
-          isPaymentFullySuccessful = true; // Mark as true so notifications fire
+          isPaymentFullySuccessful = true;
 
           // Setup Notification payload for CAC services
           if (serviceType !== "scuml" && user) {
@@ -264,10 +269,8 @@ export async function POST(req: Request) {
         if (isPaymentFullySuccessful && user) {
           
           if (isScuml && scumlDraft) {
-            // Clean up Redis
             await redis.del(registrationId);
             
-            // Fire SCUML Specific Email
             try {
               await sendScumlSubmittedEmail({
                 to: userEmail,
@@ -280,7 +283,6 @@ export async function POST(req: Request) {
               console.error("Failed to send SCUML email via Webhook:", err);
             }
           } else if (notificationPayload) {
-            // Fire CAC Background Queue Email
             await notificationQueue.add("send-application-notification", notificationPayload, {
               attempts: 3, 
               backoff: { type: "exponential", delay: 5000 }, 
@@ -332,10 +334,11 @@ export async function POST(req: Request) {
                     type: "CREDIT", 
                     status: "SUCCESS", 
                     reference: reference, 
-                    description: "Partial Online Payment (Underpaid Name Substitution - Credited to Wallet)"
+                    description: "Partial Online Payment (Underpaid Name Substitution - Credited to Wallet)",
+                    serviceCategory: "WALLET_FUNDING" // ✅ Guard Bucket
                   }
                 });
-                return; // Abort without updating names!
+                return; 
               }
 
               const fundedWallet = await tx.wallet.update({
@@ -353,7 +356,8 @@ export async function POST(req: Request) {
                   type: "CREDIT", 
                   status: "SUCCESS", 
                   reference: reference, 
-                  description: "Paystack Online Funding (Webhook)"
+                  description: "Paystack Online Funding (Webhook)",
+                  serviceCategory: "WALLET_FUNDING" // ✅ Credit side
                 }
               });
 
@@ -372,7 +376,8 @@ export async function POST(req: Request) {
                   type: "DEBIT", 
                   status: "SUCCESS", 
                   reference: `NSUB_PAY_${registrationId}_${Date.now()}`, 
-                  description: "Payment for Name Substitution"
+                  description: "Payment for Name Substitution",
+                  serviceCategory: "NAME_SUBSTITUTION" // ✅ Explicitly isolated category
                 }
               });
 
