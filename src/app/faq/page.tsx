@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link"; // <-- Added missing import here!
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 
