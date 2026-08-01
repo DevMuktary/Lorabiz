@@ -10,46 +10,57 @@ export async function GET() {
     const thirtyDaysAgo = subDays(today, 30);
     const sevenDaysAgo = subDays(today, 7);
 
-    // 1. Run independent queries in parallel for performance
+    // 1. Run independent queries in parallel for maximum performance
     const [
       usersCount,
-      bizNamesPending,
-      llcsPending,
-      bizNamesQueried,
-      llcsQueried,
-      bizNamesApprovedToday,
-      llcsApprovedToday,
-      ninSlipsCompletedToday, 
-      totalBizNames,
-      totalLlcs,
-      totalNinSlips,
+      
+      // CAC Metrics
+      bizNamesPending, llcsPending,
+      bizNamesQueried, llcsQueried,
+      bizNamesApprovedToday, llcsApprovedToday,
+      totalBizNames, totalLlcs,
+      
+      // NIN Metrics
+      ninSlipsCompletedToday, totalNinSlips,
+      
+      // SCUML Metrics
+      scumlPending, scumlCompletedToday, totalScuml,
+      
+      // Tax ID Metrics
+      taxIdPending, taxIdCompletedToday, totalTaxId,
+
       recentAudits,
       recentProcessedFilings,
       recentTransactions
     ] = await Promise.all([
-      // KPIs
       prisma.user.count({ where: { role: "USER" } }),
+      
       prisma.businessRegistration.count({ where: { status: "PENDING" } }),
       prisma.llcRegistration.count({ where: { status: "PENDING" } }),
       prisma.businessRegistration.count({ where: { status: "QUERIED" } }),
       prisma.llcRegistration.count({ where: { status: "QUERIED" } }),
       prisma.businessRegistration.count({ where: { status: "APPROVED", updatedAt: { gte: today } } }),
       prisma.llcRegistration.count({ where: { status: "APPROVED", updatedAt: { gte: today } } }),
-      prisma.ninRequestLog.count({ where: { status: "SUCCESS", createdAt: { gte: today } } }),
-      
-      // Service Distribution Totals
       prisma.businessRegistration.count(),
       prisma.llcRegistration.count(),
+      
+      prisma.ninRequestLog.count({ where: { status: "SUCCESS", createdAt: { gte: today } } }),
       prisma.ninRequestLog.count({ where: { status: "SUCCESS" } }),
       
-      // Audit Feed
+      prisma.scumlRegistration.count({ where: { status: "PENDING" } }),
+      prisma.scumlRegistration.count({ where: { status: "COMPLETED", updatedAt: { gte: today } } }),
+      prisma.scumlRegistration.count(),
+      
+      prisma.taxIdRequest.count({ where: { status: "PENDING" } }),
+      prisma.taxIdRequest.count({ where: { status: "COMPLETED", updatedAt: { gte: today } } }),
+      prisma.taxIdRequest.count(),
+      
       prisma.staffActionLog.findMany({
         take: 10,
         orderBy: { createdAt: "desc" },
         include: { user: { select: { firstName: true, lastName: true } } }
       }),
 
-      // TAT Calculation Data (Last 50 processed items)
       prisma.businessRegistration.findMany({
         where: { processedAt: { not: null } },
         select: { createdAt: true, processedAt: true },
@@ -57,7 +68,6 @@ export async function GET() {
         take: 50
       }),
 
-      // Revenue Data (Wallet Debits = Payments for Services)
       prisma.transaction.findMany({
         where: {
           type: "DEBIT",
@@ -98,14 +108,25 @@ export async function GET() {
       avgTatFormatted = `${hours}h ${minutes}m`;
     }
 
-    // 4. Process Service Distribution Percentages (MACRO LEVEL)
+    // 4. DYNAMIC Service Distribution Percentages
     const totalCacServices = totalBizNames + totalLlcs;
-    const totalServices = totalCacServices + totalNinSlips || 1; 
+    const totalServices = totalCacServices + totalNinSlips + totalScuml + totalTaxId || 1; // Prevent division by zero
     
-    const serviceDistribution = [
-      { name: 'CAC Services', value: Math.round((totalCacServices / totalServices) * 100) || 0 },
-      { name: 'NIN Slip Services', value: Math.round((totalNinSlips / totalServices) * 100) || 0 },
+    const rawDistribution = [
+      { name: 'CAC Registrations', count: totalCacServices },
+      { name: 'NIMC Slips', count: totalNinSlips },
+      { name: 'SCUML Certificates', count: totalScuml },
+      { name: 'Tax ID (TIN)', count: totalTaxId },
     ];
+
+    // Filter out services with 0 count, calculate exact percentages
+    const serviceDistribution = rawDistribution
+      .filter(service => service.count > 0)
+      .map(service => ({
+        name: service.name,
+        value: Math.round((service.count / totalServices) * 100)
+      }))
+      .sort((a, b) => b.value - a.value); // Highest percentage first
 
     // 5. Format Audit Logs
     const formattedAudits = recentAudits.map(audit => ({
@@ -120,14 +141,14 @@ export async function GET() {
     return NextResponse.json({
       kpis: {
         revenue30d,
-        pendingOrders: bizNamesPending + llcsPending,
+        pendingOrders: bizNamesPending + llcsPending + scumlPending + taxIdPending, // Global pending count
         avgTat: avgTatFormatted,
         activeUsers: usersCount
       },
       pipeline: {
-        pending: bizNamesPending + llcsPending,
+        pending: bizNamesPending + llcsPending + scumlPending + taxIdPending,
         queried: bizNamesQueried + llcsQueried,
-        completedToday: bizNamesApprovedToday + llcsApprovedToday + ninSlipsCompletedToday
+        completedToday: bizNamesApprovedToday + llcsApprovedToday + ninSlipsCompletedToday + scumlCompletedToday + taxIdCompletedToday
       },
       charts: {
         revenueData: revenueChartData,
