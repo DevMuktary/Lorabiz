@@ -86,7 +86,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-zinc-400 dark:text-white/40 uppercase tracking-wider mb-1">Office Address</p>
-                      <p className="text-[17px] font-semibold text-[#1a1a1a] dark:text-white">Ibadan, Oyo State,<br />Nigeria.</p>
+                      <p className="text-[17px] font-semibold text-[#1a1a1a] dark:text-white">Lagos, Lagos State,<br />Nigeria.</p>
                     </div>
                   </div>
                 </div>
