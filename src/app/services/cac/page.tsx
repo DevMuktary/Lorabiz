@@ -14,9 +14,9 @@ export default function CACRegistrationPage() {
     {
       id: "business-name",
       title: "Business Name",
-      subtitle: "Sole Proprietorship",
+      subtitle: "Sole Proprietorship/Partnership",
       desc: "The simplest and fastest way to register your business. You and your business are the same legal entity, making tax and management straightforward.",
-      bestFor: ["Freelancers", "Solo Consultants", "Small Retail Shops", "Artisans"],
+      bestFor: ["Freelancers", "Consultants", "Small Retail Shops", "Artisans"],
       timeline: "1 - 2 Working  Hrs",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
