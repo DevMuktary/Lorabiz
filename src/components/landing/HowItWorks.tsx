@@ -86,10 +86,10 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section className="py-24 md:py-32 bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300 relative border-t border-black/5 dark:border-white/5">
+    // REDUCED TOP PADDING: Changed py-24 to pt-8 pb-24 md:pt-12 md:pb-32
+    <section className="pt-8 pb-24 md:pt-12 md:pb-32 bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300 relative border-t border-black/5 dark:border-white/5">
       
       {/* ───── TOP HEADER & NAVIGATION ───── */}
-      {/* REDUCED GAP: Changed mb-16 to mb-8 */}
       <div className="max-w-[1440px] mx-auto px-6 lg:px-12 flex flex-col md:flex-row md:items-end justify-between gap-8 mb-8">
         
         <motion.div
@@ -131,7 +131,7 @@ export default function HowItWorks() {
 
       </div>
 
-      {/* ───── HORIZONTAL SLIDING CARDS (RESIZED FURTHER) ───── */}
+      {/* ───── HORIZONTAL SLIDING CARDS (EXACT PIXEL WIDTHS) ───── */}
       <div 
         ref={scrollContainerRef}
         className="w-full flex overflow-x-auto snap-x snap-mandatory scroll-pl-6 lg:scroll-pl-12 gap-6 px-6 lg:px-12 pb-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
@@ -143,8 +143,8 @@ export default function HowItWorks() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-50px" }}
             transition={{ duration: 0.5, delay: i * 0.1 }}
-            // REDUCED WIDTH AND HEIGHT: w-[80vw] on mobile, locked to 340px on desktop, height to 460px
-            className={`relative flex-shrink-0 w-[80vw] sm:w-[300px] lg:w-[340px] h-[460px] rounded-[32px] overflow-hidden snap-start flex flex-col ${step.bgClass}`}
+            // STRICT WIDTH: 280px on mobile guarantees the next card is visible.
+            className={`relative flex-shrink-0 w-[280px] md:w-[320px] lg:w-[340px] h-[460px] rounded-[32px] overflow-hidden snap-start flex flex-col ${step.bgClass}`}
           >
             {/* Top Text Content */}
             <div className="w-full p-6 sm:p-8 flex-grow z-10">
