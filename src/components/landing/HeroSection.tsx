@@ -7,24 +7,23 @@ import { useRef } from "react";
 export default function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Track scroll position for the horizontal compression effect
+  // Track scroll position for the vertical parallax effect
   const { scrollY } = useScroll();
 
-  // Reduced the compression distance so they don't overlap as aggressively.
-  // The outer ones now move in by 40px (was 70px), the inner ones move in by 20px (was 35px).
-  const compressLeftFast = useTransform(scrollY, [0, 300], [0, 40]);
-  const compressLeftSlow = useTransform(scrollY, [0, 300], [0, 20]);
-  const centerStays = useTransform(scrollY, [0, 300], [0, 0]);
-  const compressRightSlow = useTransform(scrollY, [0, 300], [0, -20]);
-  const compressRightFast = useTransform(scrollY, [0, 300], [0, -40]);
+  // Instead of moving horizontally and crushing into each other, 
+  // they simply float UPWARDS at varying speeds when you scroll.
+  // This guarantees they never overlap horizontally and maintain their breathing room.
+  const floatUpFast = useTransform(scrollY, [0, 300], [0, -40]);
+  const floatUpMedium = useTransform(scrollY, [0, 300], [0, -25]);
+  const floatUpSlow = useTransform(scrollY, [0, 300], [0, -10]);
 
-  // Initial X positions are spread out, Z-index is layered so they overlap beautifully
+  // We use yTranslate to give them a natural "staggered/bouncy" look even when standing still
   const floatingTags = [
-    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: compressLeftFast, initialX: -180, y: 10, rotate: -6, delay: 0.1, z: 10 },
-    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: compressLeftSlow, initialX: -90, y: 45, rotate: 4, delay: 0.3, z: 20 },
-    { label: "SCUML", color: "bg-blue-100 text-blue-800", xOffset: centerStays, initialX: 0, y: -5, rotate: -2, delay: 0.2, z: 30 },
-    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: compressRightSlow, initialX: 90, y: 40, rotate: 5, delay: 0.4, z: 20 },
-    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: compressRightFast, initialX: 180, y: 15, rotate: -5, delay: 0.5, z: 10 },
+    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", float: floatUpMedium, rotate: -3, delay: 0.1, yTranslate: "translate-y-[-8px]" },
+    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", float: floatUpFast, rotate: 4, delay: 0.3, yTranslate: "translate-y-[12px]" },
+    { label: "SCUML", color: "bg-blue-100 text-blue-800", float: floatUpSlow, rotate: -2, delay: 0.2, yTranslate: "translate-y-[-2px]" },
+    { label: "NIN Verification", color: "bg-[#c7365f] text-white", float: floatUpFast, rotate: 5, delay: 0.4, yTranslate: "translate-y-[16px]" },
+    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", float: floatUpMedium, rotate: -4, delay: 0.5, yTranslate: "translate-y-[-6px]" },
   ];
 
   return (
@@ -76,17 +75,22 @@ export default function HeroSection() {
           </motion.div>
 
           {/* ───── THE LANDING ZONE FOR PILLS ───── */}
-          <div className="relative w-full h-[140px] flex justify-center mt-2">
+          {/* Using flex-wrap guarantees they NEVER clip off the screen corners, even on tiny phones */}
+          <div className="relative w-full max-w-3xl mx-auto mt-8 flex flex-wrap justify-center items-center gap-3 sm:gap-5 z-20">
             {floatingTags.map((tag, i) => (
               <motion.div
                 key={i}
-                initial={{ y: -600, opacity: 0, x: tag.initialX, rotate: 0 }}
-                animate={{ y: tag.y, opacity: 1, rotate: tag.rotate }}
-                transition={{ type: "spring", damping: 14, stiffness: 70, delay: tag.delay, duration: 1.5 }}
-                style={{ x: tag.xOffset, zIndex: tag.z }}
-                className={`absolute px-5 py-2.5 rounded-full text-sm font-bold shadow-lg backdrop-blur-md whitespace-nowrap border border-black/5 dark:border-white/10 ${tag.color}`}
+                initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: "spring", damping: 15, stiffness: 100, delay: tag.delay }}
+                className={tag.yTranslate} // This gives them the staggered "bouncy" look initially
               >
-                {tag.label}
+                <motion.div
+                  style={{ y: tag.float, rotate: tag.rotate }} // This handles the vertical parallax on scroll
+                  className={`px-5 py-2.5 rounded-full text-[13px] sm:text-sm font-semibold shadow-lg backdrop-blur-md whitespace-nowrap border border-black/5 dark:border-white/10 cursor-default hover:scale-105 transition-transform ${tag.color}`}
+                >
+                  {tag.label}
+                </motion.div>
               </motion.div>
             ))}
           </div>
@@ -95,7 +99,7 @@ export default function HeroSection() {
       </section>
 
       {/* ───── SCROLL REVEAL TEXT SECTION ───── */}
-      <section className="relative w-full max-w-7xl mx-auto px-6 pt-8 pb-24 z-20 flex items-center">
+      <section className="relative w-full max-w-7xl mx-auto px-6 pt-12 pb-24 z-20 flex items-center">
         <motion.div
           initial={{ opacity: 0, x: -60 }}
           whileInView={{ opacity: 1, x: 0 }}
