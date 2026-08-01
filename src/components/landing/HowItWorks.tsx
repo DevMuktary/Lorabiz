@@ -8,13 +8,13 @@ export default function HowItWorks() {
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -400, behavior: 'smooth' });
+      scrollContainerRef.current.scrollBy({ left: -360, behavior: 'smooth' });
     }
   };
 
   const scrollRight = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 400, behavior: 'smooth' });
+      scrollContainerRef.current.scrollBy({ left: 360, behavior: 'smooth' });
     }
   };
 
@@ -23,7 +23,6 @@ export default function HowItWorks() {
       tag: "Step 1 • Onboarding",
       title: "Create your account.",
       list: ["Sign up with basic details", "Verify your email address", "Log into your dashboard"],
-      // Deep Space Blue
       bgClass: "bg-[#0A1128]",
       textClass: "text-white",
       tagClass: "bg-white/10 text-white",
@@ -39,8 +38,7 @@ export default function HowItWorks() {
     {
       tag: "Step 2 • Wallet",
       title: "Fund your balance.",
-      list: ["Access virtual account", "Top up your wallet", "Ready for transactions"],
-      // Mint/Ocean Green
+      list: ["Fund via payment gateway", "Top up your wallet", "Ready for transactions"],
       bgClass: "bg-[#E6F3EE] dark:bg-[#132A22]",
       textClass: "text-[#12221C] dark:text-[#E6F3EE]",
       tagClass: "bg-[#12221C]/10 dark:bg-[#E6F3EE]/10 text-[#12221C] dark:text-[#E6F3EE]",
@@ -57,7 +55,6 @@ export default function HowItWorks() {
       tag: "Step 3 • Selection",
       title: "Choose your service.",
       list: ["CAC Registration", "SCUML & Tax ID (TIN)", "NIN & Utilities"],
-      // Soft Peach/Orange
       bgClass: "bg-[#FDF3E7] dark:bg-[#2B1B10]",
       textClass: "text-[#3B2613] dark:text-[#FDF3E7]",
       tagClass: "bg-[#3B2613]/10 dark:bg-[#FDF3E7]/10 text-[#3B2613] dark:text-[#FDF3E7]",
@@ -75,7 +72,6 @@ export default function HowItWorks() {
       tag: "Step 4 • Delivery",
       title: "Get instant results.",
       list: ["Track application status", "Download official files", "Continuous management"],
-      // Brand Pink/Red Gradient
       bgClass: "bg-gradient-to-br from-[#c7365f] to-[#e8447a]",
       textClass: "text-white",
       tagClass: "bg-white/20 text-white",
@@ -93,7 +89,8 @@ export default function HowItWorks() {
     <section className="py-24 md:py-32 bg-white dark:bg-[#0a0f1e] overflow-hidden transition-colors duration-300 relative border-t border-black/5 dark:border-white/5">
       
       {/* ───── TOP HEADER & NAVIGATION ───── */}
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-12 flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+      {/* REDUCED GAP: Changed mb-16 to mb-8 */}
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-12 flex flex-col md:flex-row md:items-end justify-between gap-8 mb-8">
         
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -134,7 +131,7 @@ export default function HowItWorks() {
 
       </div>
 
-      {/* ───── HORIZONTAL SLIDING CARDS (RESIZED) ───── */}
+      {/* ───── HORIZONTAL SLIDING CARDS (RESIZED FURTHER) ───── */}
       <div 
         ref={scrollContainerRef}
         className="w-full flex overflow-x-auto snap-x snap-mandatory scroll-pl-6 lg:scroll-pl-12 gap-6 px-6 lg:px-12 pb-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
@@ -146,11 +143,11 @@ export default function HowItWorks() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-50px" }}
             transition={{ duration: 0.5, delay: i * 0.1 }}
-            // Greatly reduced width so they fit on screen side-by-side
-            className={`relative flex-shrink-0 w-[85vw] sm:w-[380px] lg:w-[420px] h-[520px] rounded-[32px] overflow-hidden snap-start flex flex-col ${step.bgClass}`}
+            // REDUCED WIDTH AND HEIGHT: w-[80vw] on mobile, locked to 340px on desktop, height to 460px
+            className={`relative flex-shrink-0 w-[80vw] sm:w-[300px] lg:w-[340px] h-[460px] rounded-[32px] overflow-hidden snap-start flex flex-col ${step.bgClass}`}
           >
             {/* Top Text Content */}
-            <div className="w-full p-8 sm:p-10 flex-grow z-10">
+            <div className="w-full p-6 sm:p-8 flex-grow z-10">
               <div className="mb-6">
                 <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-[12px] font-bold tracking-widest uppercase ${step.tagClass}`}>
                   {step.tag}
@@ -159,7 +156,7 @@ export default function HowItWorks() {
 
               <h3 
                 className={`font-medium tracking-tight mb-8 ${step.textClass}`}
-                style={{ fontSize: 'clamp(28px, 4vw, 36px)', lineHeight: '1.1', fontFamily: 'system-ui, sans-serif' }}
+                style={{ fontSize: 'clamp(24px, 3vw, 32px)', lineHeight: '1.1', fontFamily: 'system-ui, sans-serif' }}
               >
                 {step.title}
               </h3>
@@ -170,7 +167,7 @@ export default function HowItWorks() {
                     <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${step.listIconClass}`} fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <span className={`text-[16px] font-medium opacity-90 ${step.textClass}`} style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
+                    <span className={`text-[15px] font-medium opacity-90 ${step.textClass}`} style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
                       {item}
                     </span>
                   </li>
@@ -179,7 +176,7 @@ export default function HowItWorks() {
             </div>
 
             {/* Bottom Graphic */}
-            <div className="relative w-full h-[200px] mt-auto pointer-events-none flex items-end justify-center">
+            <div className="relative w-full h-[160px] mt-auto pointer-events-none flex items-end justify-center">
               <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent z-0" />
               <div className="relative z-10 w-full h-full transform transition-transform duration-700 hover:scale-105">
                 {step.graphic}
