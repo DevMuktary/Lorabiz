@@ -166,34 +166,42 @@ export const authOptions: NextAuthOptions = {
 
         await clearFailedAttempts(normalizedEmail, clientIp);
         
-        const now = new Date();
-        const existingOtp = await prisma.otpCode.findUnique({
-          where: { email: normalizedEmail }
-        });
-
-        if (existingOtp?.lockedUntil && existingOtp.lockedUntil > now) {
-          throw new Error("Too many code requests. Account temporarily blocked from generating codes for 1 hour.");
-        }
-
-        if (!existingOtp?.nextResendAllowedAt || existingOtp.nextResendAllowedAt <= now) {
-          const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-          const expiresAt = new Date(now.getTime() + 10 * 60 * 1000); 
-          const nextResend = new Date(now.getTime() + 30 * 1000);     
-          
-          await prisma.otpCode.upsert({
-            where: { email: normalizedEmail },
-            update: { code: otpCode, expiresAt, resendCount: 0, nextResendAllowedAt: nextResend, lockedUntil: null },
-            create: { email: normalizedEmail, code: otpCode, expiresAt, resendCount: 0, nextResendAllowedAt: nextResend },
+        // ONLY generate and send Email OTP if it's a regular user OR if they explicitly chose Email 2FA
+        if (requestedPortal === "user" || user.twoFactorMethod === "EMAIL") {
+          const now = new Date();
+          const existingOtp = await prisma.otpCode.findUnique({
+            where: { email: normalizedEmail }
           });
 
-          sendUserLoginOTP(normalizedEmail, otpCode).catch((err) => console.error("Failed to send 2FA OTP:", err));
+          if (existingOtp?.lockedUntil && existingOtp.lockedUntil > now) {
+            throw new Error("Too many code requests. Account temporarily blocked from generating codes for 1 hour.");
+          }
 
-          await logSecurityEvent({
-            email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, fresh OTP sent via email.`,
-          });
+          if (!existingOtp?.nextResendAllowedAt || existingOtp.nextResendAllowedAt <= now) {
+            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const expiresAt = new Date(now.getTime() + 10 * 60 * 1000); 
+            const nextResend = new Date(now.getTime() + 30 * 1000);     
+            
+            await prisma.otpCode.upsert({
+              where: { email: normalizedEmail },
+              update: { code: otpCode, expiresAt, resendCount: 0, nextResendAllowedAt: nextResend, lockedUntil: null },
+              create: { email: normalizedEmail, code: otpCode, expiresAt, resendCount: 0, nextResendAllowedAt: nextResend },
+            });
+
+            sendUserLoginOTP(normalizedEmail, otpCode).catch((err) => console.error("Failed to send 2FA OTP:", err));
+
+            await logSecurityEvent({
+              email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, fresh OTP sent via email.`,
+            });
+          } else {
+            await logSecurityEvent({
+              email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, reused existing active OTP (cooldown enforcement).`,
+            });
+          }
         } else {
+          // Log success for MDS/STAFF using authenticator app
           await logSecurityEvent({
-            email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, reused existing active OTP (cooldown enforcement).`,
+            email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, proceeding to Authenticator 2FA.`,
           });
         }
 
@@ -220,7 +228,8 @@ export const authOptions: NextAuthOptions = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { id: true, role: true, isSuspended: true, image: true }
+            // ADDED twoFactorEnabled to query
+            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true }
           });
 
           if (!dbUser || dbUser.isSuspended) {
@@ -234,6 +243,9 @@ export const authOptions: NextAuthOptions = {
           if (dbUser.image !== token.picture) {
              token.picture = dbUser.image;
           }
+          
+          // MAP IT TO THE TOKEN
+          token.twoFactorEnabled = dbUser.twoFactorEnabled;
 
         } catch (error) {
           console.error("Database session verification failed:", error);
@@ -261,6 +273,8 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role as string;
         (session.user as any).mfaVerified = token.mfaVerified as boolean;
         session.user.image = token.picture as string | null | undefined; 
+        // MAP IT TO THE SESSION SO YOUR MDS LOGIN PAGE CAN READ IT
+        (session.user as any).twoFactorEnabled = token.twoFactorEnabled as boolean;
       }
       return session;
     },
