@@ -10,20 +10,21 @@ export default function HeroSection() {
   // Track scroll position for the horizontal compression effect
   const { scrollY } = useScroll();
 
-  // REDUCED COMPRESSION: Now they only squeeze in by 40px (outer) and 20px (inner)
+  // Reduced the compression distance so they don't overlap as aggressively.
+  // The outer ones now move in by 40px (was 70px), the inner ones move in by 20px (was 35px).
   const compressLeftFast = useTransform(scrollY, [0, 300], [0, 40]);
   const compressLeftSlow = useTransform(scrollY, [0, 300], [0, 20]);
   const centerStays = useTransform(scrollY, [0, 300], [0, 0]);
   const compressRightSlow = useTransform(scrollY, [0, 300], [0, -20]);
   const compressRightFast = useTransform(scrollY, [0, 300], [0, -40]);
 
-  // INCREASED SPREAD: initialX is now spaced out by 120px increments instead of 90px
+  // Initial X positions are spread out, Z-index is layered so they overlap beautifully
   const floatingTags = [
-    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: compressLeftFast, initialX: -240, y: 10, rotate: -6, delay: 0.1, z: 10 },
-    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: compressLeftSlow, initialX: -120, y: 45, rotate: 4, delay: 0.3, z: 20 },
+    { label: "CAC Registration", color: "bg-[#111827] text-white dark:bg-white dark:text-[#111827]", xOffset: compressLeftFast, initialX: -180, y: 10, rotate: -6, delay: 0.1, z: 10 },
+    { label: "Tax ID (TIN)", color: "bg-amber-100 text-amber-800", xOffset: compressLeftSlow, initialX: -90, y: 45, rotate: 4, delay: 0.3, z: 20 },
     { label: "SCUML", color: "bg-blue-100 text-blue-800", xOffset: centerStays, initialX: 0, y: -5, rotate: -2, delay: 0.2, z: 30 },
-    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: compressRightSlow, initialX: 120, y: 40, rotate: 5, delay: 0.4, z: 20 },
-    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: compressRightFast, initialX: 240, y: 15, rotate: -5, delay: 0.5, z: 10 },
+    { label: "NIN Verification", color: "bg-[#c7365f] text-white", xOffset: compressRightSlow, initialX: 90, y: 40, rotate: 5, delay: 0.4, z: 20 },
+    { label: "Utility Vending", color: "bg-emerald-100 text-emerald-800", xOffset: compressRightFast, initialX: 180, y: 15, rotate: -5, delay: 0.5, z: 10 },
   ];
 
   return (
