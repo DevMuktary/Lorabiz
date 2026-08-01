@@ -18,7 +18,7 @@ export default function ServicesSection() {
           <path d="M70 60H130M70 90H110" stroke="#1E1E1E" strokeOpacity="0.3" strokeWidth="12" strokeLinecap="round" />
         </svg>
       ),
-      href: "/auth/register"
+      href: "/services/cac"
     },
     {
       title: "SCUML Certificate",
@@ -33,7 +33,7 @@ export default function ServicesSection() {
           <path d="M100 40V110M65 75H135" stroke="#CEE9DF" strokeOpacity="0.3" strokeWidth="16" strokeLinecap="round" />
         </svg>
       ),
-      href: "/auth/register"
+      href: "services/scuml"
     },
     {
       title: "Tax ID (TIN)",
@@ -48,7 +48,7 @@ export default function ServicesSection() {
           <rect x="30" y="55" width="140" height="25" fill="#CEE9DF" fillOpacity="0.2" />
         </svg>
       ),
-      href: "/auth/register"
+      href: "services/tax-id"
     },
     {
       title: "NIN Verification",
@@ -63,11 +63,11 @@ export default function ServicesSection() {
           <path d="M40 140C40 110 70 100 100 100C130 100 160 110 160 140" stroke="#D05F0D" strokeOpacity="0.2" strokeWidth="16" strokeLinecap="round" />
         </svg>
       ),
-      href: "/auth/register"
+      href: "services/nin"
     },
     {
       title: "Utility Vending",
-      desc: "Buy airtime and data bundles for all networks directly from your secure dashboard.",
+      desc: "Buy airtime, data bundles, electricity directly from your secure dashboard.",
       detailsBg: "bg-[#E0F4FE]",
       detailsText: "text-[#23322D]",
       innerBg: "bg-[#23322D]",
@@ -77,7 +77,7 @@ export default function ServicesSection() {
           <path d="M50 110L80 50L120 90L160 30" stroke="#23322D" strokeOpacity="0.2" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
-      href: "/auth/register"
+      href: "services/utilities"
     },
   ];
 
