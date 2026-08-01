@@ -359,6 +359,7 @@ model Transaction {
   type          TransactionType    
   status        TransactionStatus  @default(PENDING) 
   reference     String             @unique 
+  serviceCategory String?          @default("OTHER")
   description   String             
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
