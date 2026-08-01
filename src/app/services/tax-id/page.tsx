@@ -13,11 +13,11 @@ export default function TaxIdPage() {
   const taxCategories = [
     {
       id: "corporate-tin",
-      title: "Corporate TIN (FIRS)",
-      subtitle: "For LLCs & Companies",
-      desc: "Mandatory for all Limited Liability Companies (LLCs). Issued directly by the Federal Inland Revenue Service (FIRS) for corporate tax filings, VAT, and company income tax.",
-      bestFor: ["Limited Companies (LTD)", "Corporations", "Foreign-owned Businesses"],
-      timeline: "30 Mins - 1 Hour",
+      title: "Corporate Tax ID",
+      subtitle: "For Registered Entities",
+      desc: "Mandatory for all registered business entities. Whether you run a Limited Liability Company (LLC), a Business Name, or an Incorporated Trustee (NGO), this unified corporate TIN is generated directly through the Nigeria Revenue Service (NRS).",
+      bestFor: ["Limited Companies (LTD)", "Business Names", "NGOs / Incorporated Trustees"],
+      timeline: "30 Mins - 1 Working Hr",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
           <rect x="20" y="20" width="60" height="60" rx="8" fill="currentColor" fillOpacity="0.2" />
@@ -29,11 +29,11 @@ export default function TaxIdPage() {
     },
     {
       id: "individual-tin",
-      title: "Individual / JTB TIN",
-      subtitle: "For Business Names",
-      desc: "Generated through the Joint Tax Board (JTB). This is required for Sole Proprietorships and Partnerships to pay personal income tax and open merchant bank accounts.",
-      bestFor: ["Business Names", "Sole Proprietors", "Freelancers", "Consultants"],
-      timeline: "30 Mins - 1 Hour",
+      title: "Individual Tax ID",
+      subtitle: "Personal / Unregistered",
+      desc: "Designed for individuals operating under their own name. This Tax ID is generated instantly through the NRS system using just your legal name, Date of Birth, and National Identification Number (NIN).",
+      bestFor: ["Individuals", "Freelancers", "Independent Consultants"],
+      timeline: "30 Mins - 1 Working Hr",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
           <circle cx="50" cy="40" r="16" fill="currentColor" fillOpacity="0.2" />
@@ -42,38 +42,6 @@ export default function TaxIdPage() {
         </svg>
       ),
       color: "bg-[#F3E8FF] text-[#4338CA] dark:bg-[#4338CA]/20 dark:text-[#F3E8FF]"
-    },
-    {
-      id: "ngo-tin",
-      title: "NGO & Non-Profit TIN",
-      subtitle: "Incorporated Trustees",
-      desc: "Even though NGOs are legally tax-exempt from corporate income tax, they are strictly required by law to have a TIN to operate bank accounts and deduct PAYE for staff.",
-      bestFor: ["Churches & Mosques", "Charities", "Foundations", "Associations"],
-      timeline: "30 Mins - 1 Hour",
-      icon: (
-        <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
-          <path d="M50 20L80 40V80H20V40L50 20Z" fill="currentColor" fillOpacity="0.2" />
-          <path d="M50 20L20 40V80H80V40L50 20Z" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M50 50V70M40 60H60" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
-      color: "bg-[#E0F2FE] text-[#0369A1] dark:bg-[#0369A1]/20 dark:text-[#E0F2FE]"
-    },
-    {
-      id: "vat-registration",
-      title: "VAT Registration",
-      subtitle: "Value Added Tax",
-      desc: "Once your TIN is generated, you must register for VAT to legally collect and remit the 7.5% Value Added Tax on goods and services sold in Nigeria.",
-      bestFor: ["Retailers", "Service Providers", "E-commerce", "Importers"],
-      timeline: "1 - 2 Business Days",
-      icon: (
-        <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
-          <rect x="25" y="20" width="50" height="65" rx="6" fill="currentColor" fillOpacity="0.2" />
-          <rect x="25" y="20" width="50" height="65" rx="6" stroke="currentColor" strokeWidth="6" />
-          <path d="M40 40H60M40 55H60M40 70H50" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
-        </svg>
-      ),
-      color: "bg-[#FEF3C7] text-[#B45309] dark:bg-[#B45309]/20 dark:text-[#FEF3C7]"
     }
   ];
 
@@ -95,7 +63,7 @@ export default function TaxIdPage() {
     },
     {
       title: "Avoid Penalties",
-      desc: "Operating without a TIN violates the Companies Income Tax Act (CITA), leading to severe financial penalties and business closure.",
+      desc: "Operating without a TIN violates the tax laws, leading to severe financial penalties and potential business closure.",
       icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
     }
   ];
@@ -115,7 +83,7 @@ export default function TaxIdPage() {
             <div className="w-full lg:w-[55%] z-10">
               {/* BLUE BADGE */}
               <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-blue-600/10 text-blue-700 dark:text-blue-400 mb-6">
-                Joint Tax Board / FIRS
+                Nigeria Revenue Service
               </div>
               <h1 
                 className="font-normal tracking-tight text-[#1a1a1a] dark:text-white mb-6"
@@ -125,7 +93,7 @@ export default function TaxIdPage() {
                 Tax ID instantly.
               </h1>
               <p className="text-[18px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
-                Required by law for all registered businesses. We interface directly with the Joint Tax Board (JTB) and FIRS to generate your official TIN in less than an hour.
+                Required by law for all financial operations. We interface directly with the Nigeria Revenue Service (NRS) to generate your official TIN in less than one working hour.
               </p>
               {/* BLUE BUTTON */}
               <Link
@@ -157,7 +125,7 @@ export default function TaxIdPage() {
                 </div>
                 
                 <h3 className="text-2xl font-semibold mb-4 text-[#1a1a1a] dark:text-white tracking-tight">
-                  Skip the FIRS queues.
+                  Skip the tax office queues.
                 </h3>
                 
                 <p className="text-[16px] text-[#767676] dark:text-white/60 leading-relaxed">
@@ -173,7 +141,7 @@ export default function TaxIdPage() {
                   </div>
                   <div>
                     <p className="text-[15px] font-bold tracking-wide text-[#1a1a1a] dark:text-white leading-tight">Lightning fast delivery</p>
-                    <p className="text-[13.5px] text-[#767676] dark:text-white/50 mt-0.5">Average delivery time: 30 mins - 1 hr.</p>
+                    <p className="text-[13.5px] text-[#767676] dark:text-white/50 mt-0.5">Average delivery time: 30 mins - 1 working hr.</p>
                   </div>
                 </div>
 
@@ -223,7 +191,7 @@ export default function TaxIdPage() {
                 Tax profiles.
               </h2>
               <p className="text-[16px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed" style={{ fontFamily: '"DM Sans", sans-serif' }}>
-                Depending on your business structure, your TIN is generated from different regulatory databases. Select your business type below.
+                The Nigeria Revenue Service classifies Tax IDs into two distinct branches based on your legal standing. Select your structure below.
               </p>
 
               <div className="flex flex-col gap-2">
