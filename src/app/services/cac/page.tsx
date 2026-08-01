@@ -17,7 +17,7 @@ export default function CACRegistrationPage() {
       subtitle: "Sole Proprietorship",
       desc: "The simplest and fastest way to register your business. You and your business are the same legal entity, making tax and management straightforward.",
       bestFor: ["Freelancers", "Solo Consultants", "Small Retail Shops", "Artisans"],
-      timeline: "1 - 3 Business Days",
+      timeline: "1 - 2 Working  Hrs",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
           <circle cx="50" cy="40" r="20" fill="currentColor" fillOpacity="0.2" />
@@ -141,15 +141,21 @@ export default function CACRegistrationPage() {
                   Stop overpaying agents.
                 </h3>
                 
-                <p className="text-[16px] text-[#767676] dark:text-white/60 mb-8 leading-relaxed">
-                  Traditional agents charge outrageous fees and take weeks to deliver. Our platform is connected to the CAC to get your business registered faster and at a fraction of the cost.
+                <p className="text-[16px] text-[#767676] dark:text-white/60 leading-relaxed">
+                  Traditional agents charge outrageous fees and take weeks to deliver. Our platform is connected directly to the CAC to get your business registered faster and at a fraction of the cost.
                 </p>
                 
-                <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 p-4 rounded-2xl">
-                  <svg className="w-6 h-6 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-medium text-[15px]">Save up to 60% on registration fees.</span>
+                {/* Clean, Non-AI looking Pricing Highlight */}
+                <div className="mt-8 pt-6 border-t border-black/5 dark:border-white/10 flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-full bg-[#c7365f]/10 dark:bg-[#c7365f]/20 flex flex-shrink-0 items-center justify-center text-[#c7365f]">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[15px] font-bold tracking-wide text-[#1a1a1a] dark:text-white leading-tight">Save up to 60%</p>
+                    <p className="text-[13.5px] text-[#767676] dark:text-white/50 mt-0.5">on traditional registration fees.</p>
+                  </div>
                 </div>
 
               </div>
@@ -227,7 +233,6 @@ export default function CACRegistrationPage() {
 
             {/* Right Column: The Motion Content */}
             <div className="w-full lg:w-2/3">
-              {/* Removed absolute positioning and locked heights. Now it breathes and expands naturally! */}
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
