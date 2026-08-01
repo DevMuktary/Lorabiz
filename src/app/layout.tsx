@@ -74,8 +74,43 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // JSON-LD Organization Schema for Google SEO
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "LoraBiz",
+    "legalName": "QUADROX TECHNOLOGIES LIMITED",
+    "url": "https://lorabiz.com",
+    "logo": "https://lorabiz.com/logo.png",
+    "description": "Lorabiz is a powerful platform for seamless business management, offering swift CAC registrations, LLC incorporations, NIN slip verifications, SCUML Certificate registrations, airtime services, and secure financial tools.",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Lagos",
+      "addressRegion": "Lagos State",
+      "addressCountry": "NG"
+    },
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "email": "support@lorabiz.com",
+      "contactType": "customer support"
+    },
+    "sameAs": [
+      "https://x.com/use_lorabiz",
+      "https://instagram.com/use_lorabiz",
+      "https://linkedin.com/company/use_lorabiz",
+      "https://facebook.com/use_lorabiz"
+    ]
+  };
+
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Injecting the SEO Schema globally */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       {/* CRITICAL FIX: Removed transition-colors duration-300 from body */}
       <body className="antialiased bg-background text-foreground min-h-[100dvh] flex flex-col">
         <Providers>
