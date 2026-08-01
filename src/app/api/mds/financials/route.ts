@@ -4,17 +4,32 @@ import { startOfDay, subDays, format } from "date-fns";
 
 const prisma = new PrismaClient();
 
-// DYNAMIC CATEGORIZER: Extracts service names intelligently.
-// Update this dictionary in the future if descriptions change, 
-// and the entire dashboard will adapt automatically.
-const getServiceCategory = (description: string) => {
-  const desc = description.toLowerCase();
-  if (desc.includes('nin')) return 'NIMC';
+// =========================================================================
+// UNIFIED CATEGORIZATION ENGINE
+// Groups explicit sub-services (like LLC & Business Name) into parent buckets
+// and gracefully falls back to description parsing for legacy data.
+// =========================================================================
+const categorizeTransaction = (tx: { serviceCategory?: string | null, description: string }) => {
+  // 1. USE EXPLICIT DATABASE CATEGORY (IF IT EXISTS AND ISN'T "OTHER")
+  if (tx.serviceCategory && tx.serviceCategory !== "OTHER" && tx.serviceCategory !== "UNCATEGORIZED_LEGACY") {
+    // Explicitly group all CAC related services into one "CAC" bucket
+    if (["BUSINESS_NAME", "LLC", "NAME_SUBSTITUTION", "CAC"].includes(tx.serviceCategory)) {
+      return "CAC";
+    }
+    return tx.serviceCategory; // Returns "SCUML", "NIN", "WALLET_FUNDING", etc.
+  }
+
+  // 2. FALLBACK FOR LEGACY TRANSACTIONS (Before we added serviceCategory to DB)
+  const desc = tx.description.toLowerCase();
+  if (desc.includes('nin')) return 'NIN';
   if (desc.includes('scuml')) return 'SCUML';
   if (desc.includes('tax') || desc.includes('tin')) return 'Tax ID';
-  if (desc.includes('airtime') || desc.includes('data') || desc.includes('utility')) return 'Utilities';
-  if (desc.includes('business') || desc.includes('llc') || desc.includes('incorporation') || desc.includes('cac')) return 'CAC';
-  if (desc.includes('wallet') || desc.includes('fund')) return 'Wallet Funding';
+  // Catch all old CAC services
+  if (desc.includes('business') || desc.includes('llc') || desc.includes('incorporation') || desc.includes('cac') || desc.includes('name substitution')) {
+    return 'CAC';
+  }
+  if (desc.includes('wallet') || desc.includes('fund')) return 'WALLET_FUNDING';
+  
   return 'Other';
 };
 
@@ -33,17 +48,31 @@ export async function GET(req: Request) {
     }
 
     const ledgerWhere = { createdAt: { gte: startDate } };
+    
+    // Only fetch SUCCESSFUL DEBITS for revenue math
+    const revenueWhere = { 
+      createdAt: { gte: startDate },
+      type: "DEBIT" as const,
+      status: "SUCCESS" as const 
+    };
 
-    // 1. Parallel execution: Fetch Math Data and Paginated Ledger
+    // =========================================================================
+    // PARALLEL EXECUTION FOR EXTREME SPEED
+    // =========================================================================
     const [walletAgg, totalLedgerCount, transactionsForMath, paginatedLedger] = await Promise.all([
+      // A. Total Wallet Liabilities (User Deposits)
       prisma.wallet.aggregate({ _sum: { balance: true } }),
+      
+      // B. Total Ledger Count for Pagination
       prisma.transaction.count({ where: ledgerWhere }),
-      // Fetch ONLY what is needed for Math (prevents memory overload)
+      
+      // C. Lightweight fetch of JUST the columns needed for math (Fast & Memory Safe)
       prisma.transaction.findMany({
-        where: { createdAt: { gte: startDate }, type: "DEBIT", status: "SUCCESS" },
-        select: { amount: true, description: true, createdAt: true }
+        where: revenueWhere,
+        select: { amount: true, serviceCategory: true, description: true, createdAt: true }
       }),
-      // Fetch the actual paginated table rows
+      
+      // D. Fetch actual paginated rows for the Ledger Table UI (Max 20 rows)
       prisma.transaction.findMany({
         where: ledgerWhere,
         orderBy: { createdAt: "desc" },
@@ -55,37 +84,41 @@ export async function GET(req: Request) {
       })
     ]);
 
-    // 2. Dynamic Revenue Calculations
+    // =========================================================================
+    // DYNAMIC REVENUE CALCULATION & CHART AGGREGATION
+    // =========================================================================
     let totalRevenue = 0;
     const revenueByService: Record<string, number> = {};
     const revenueByDay: Record<string, any> = {};
 
-    // Initialize 7-day chart structure
+    // Initialize the 7-day chart structure
     const sevenDaysAgo = subDays(today, 7);
     for (let i = 6; i >= 0; i--) {
       revenueByDay[format(subDays(today, i), 'EEE')] = { name: format(subDays(today, i), 'EEE') };
     }
 
+    // Process all mathematical aggregations in one swift loop
     transactionsForMath.forEach(tx => {
       const amount = Number(tx.amount);
-      const category = getServiceCategory(tx.description);
+      const unifiedCategory = categorizeTransaction(tx);
       
-      // We don't count wallet funding as pure service revenue here, just actual service debits
-      if (category !== 'Wallet Funding') {
+      // We explicitly exclude "WALLET_FUNDING" from Gross Service Revenue 
+      // because wallet deposits are liabilities, not service earnings.
+      if (unifiedCategory !== 'WALLET_FUNDING') {
         totalRevenue += amount;
-        revenueByService[category] = (revenueByService[category] || 0) + amount;
+        revenueByService[unifiedCategory] = (revenueByService[unifiedCategory] || 0) + amount;
 
-        // Chart aggregation
+        // Populate Chart if within the last 7 days
         if (tx.createdAt >= sevenDaysAgo) {
           const dayStr = format(tx.createdAt, 'EEE');
           if (revenueByDay[dayStr]) {
-            revenueByDay[dayStr][category] = (revenueByDay[dayStr][category] || 0) + amount;
+            revenueByDay[dayStr][unifiedCategory] = (revenueByDay[dayStr][unifiedCategory] || 0) + amount;
           }
         }
       }
     });
 
-    // Ensure all detected categories exist on all chart days to prevent Recharts errors
+    // Ensure all identified categories exist on all chart days to prevent Recharts rendering bugs
     const activeCategories = Object.keys(revenueByService);
     Object.values(revenueByDay).forEach(day => {
       activeCategories.forEach(cat => {
@@ -93,11 +126,14 @@ export async function GET(req: Request) {
       });
     });
 
-    // 3. Format Outputs
+    // Sort highest earning categories first for the UI Cards
     const formattedRevenueBreakdown = Object.entries(revenueByService)
       .map(([name, amount]) => ({ name, amount }))
-      .sort((a, b) => b.amount - a.amount); // Highest earners first
+      .sort((a, b) => b.amount - a.amount); 
 
+    // =========================================================================
+    // FORMAT LEDGER OUTPUT
+    // =========================================================================
     const ledger = paginatedLedger.map(tx => ({
       id: tx.id,
       reference: tx.reference,
