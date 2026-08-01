@@ -11,27 +11,26 @@ export default function NINVerificationPage() {
 
   const slipTypes = [
     {
-      id: "premium-slip",
-      title: "Premium Slip",
-      subtitle: "Detailed Card Format",
-      desc: "The Premium NIN Slip is designed in a highly detailed, card-like format. It is universally accepted across all major Nigerian institutions for advanced KYC checks and verification.",
-      bestFor: ["Corporate Bank Accounts", "International Verification", "Official Registrations"],
+      id: "regular-slip",
+      title: "Regular Slip",
+      subtitle: "Detailed Demographic Format",
+      desc: "Contains comprehensive information including your name, address, photo, tracking ID, and gender. This is the primary format heavily recommended and accepted by the CAC for Business Name registrations.",
+      bestFor: ["CAC Business Names", "Comprehensive KYC", "Internal Records"],
       delivery: "Instant Generation",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
-          <rect x="15" y="25" width="70" height="50" rx="6" fill="currentColor" fillOpacity="0.2" />
-          <rect x="25" y="35" width="20" height="25" rx="4" fill="currentColor" fillOpacity="0.4" />
-          <path d="M55 40H75M55 50H70M55 60H65" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+          <rect x="20" y="35" width="60" height="30" rx="4" fill="currentColor" fillOpacity="0.2" />
+          <path d="M30 50H70" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 6" />
         </svg>
       ),
-      color: "bg-[#DCFCE7] text-[#047857] dark:bg-[#047857]/20 dark:text-[#DCFCE7]"
+      color: "bg-[#FEF3C7] text-[#B45309] dark:bg-[#B45309]/20 dark:text-[#FEF3C7]"
     },
     {
       id: "standard-slip",
       title: "Standard Slip",
       subtitle: "Standard KYC Format",
-      desc: "The Standard Slip provides all your core demographic data in an official document format. It is the most commonly used slip for day-to-side business registrations and utility setups.",
-      bestFor: ["CAC Registrations", "Tier 2 Bank Accounts", "Telecom KYC"],
+      desc: "A widely accepted format by both the Corporate Affairs Commission and commercial banks. It serves as a reliable, official alternative to the premium slip for everyday business setups and account openings.",
+      bestFor: ["CAC Registrations", "Bank Accounts", "Telecom KYC"],
       delivery: "Instant Generation",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
@@ -43,19 +42,20 @@ export default function NINVerificationPage() {
       color: "bg-[#E0F4FE] text-[#0369A1] dark:bg-[#0369A1]/20 dark:text-[#E0F4FE]"
     },
     {
-      id: "regular-slip",
-      title: "Regular Slip",
-      subtitle: "Basic NIN Format",
-      desc: "The Regular Slip is a simplified layout containing just your official National Identification Number and essential details. Ideal for quick reference or basic tier 1 documentation.",
-      bestFor: ["Personal Reference", "Basic Form Fillings", "Internal Records"],
+      id: "premium-slip",
+      title: "Premium Slip",
+      subtitle: "Colored Card Format",
+      desc: "The fully colored, premium card-like format. It is universally accepted across all major Nigerian institutions, government agencies, and corporate banks for advanced KYC checks and official verifications.",
+      bestFor: ["Corporate Bank Accounts", "International Verification", "Official Registrations"],
       delivery: "Instant Generation",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
-          <rect x="20" y="35" width="60" height="30" rx="4" fill="currentColor" fillOpacity="0.2" />
-          <path d="M30 50H70" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 6" />
+          <rect x="15" y="25" width="70" height="50" rx="6" fill="currentColor" fillOpacity="0.2" />
+          <rect x="25" y="35" width="20" height="25" rx="4" fill="currentColor" fillOpacity="0.4" />
+          <path d="M55 40H75M55 50H70M55 60H65" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
         </svg>
       ),
-      color: "bg-[#FEF3C7] text-[#B45309] dark:bg-[#B45309]/20 dark:text-[#FEF3C7]"
+      color: "bg-[#DCFCE7] text-[#047857] dark:bg-[#047857]/20 dark:text-[#DCFCE7]"
     }
   ];
 
@@ -90,13 +90,13 @@ export default function NINVerificationPage() {
         
         {/* ───── HERO SECTION ───── */}
         <section className="relative pt-20 pb-16 px-6 overflow-hidden">
-          {/* EMERALD GREEN GLOW */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
+          {/* BRAND PINK/RED GLOW */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
           
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <div className="w-full lg:w-[55%] z-10">
-              {/* GREEN BADGE */}
-              <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 mb-6">
+              {/* BRAND PINK/RED BADGE */}
+              <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-[#c7365f]/10 text-[#c7365f] mb-6">
                 Identity Verification
               </div>
               <h1 
@@ -109,10 +109,10 @@ export default function NINVerificationPage() {
               <p className="text-[18px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
                 We integrated this feature directly into LoraBiz because it is a strict requirement for CAC applications and bank setups. Simply enter your Phone Number or NIN to generate your slip.
               </p>
-              {/* GREEN BUTTON */}
+              {/* BRAND PINK/RED BUTTON */}
               <Link
                 href="/auth/register"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:scale-105 transition-all duration-300 font-medium text-[16px] shadow-lg shadow-emerald-500/30"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-white bg-gradient-to-r from-[#c7365f] to-[#e8447a] hover:scale-105 transition-all duration-300 font-medium text-[16px] shadow-lg shadow-[#c7365f]/30"
               >
                 Generate My NIN Slip
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -123,12 +123,12 @@ export default function NINVerificationPage() {
 
             {/* Warning / Usage Card */}
             <div className="w-full lg:w-[45%] relative flex flex-col items-center justify-center lg:pl-10">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-[40px] transform rotate-3" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[#c7365f]/5 to-transparent rounded-[40px] transform rotate-3" />
               
               <div className="bg-white dark:bg-[#111827] border border-black/5 dark:border-white/10 rounded-[32px] p-8 sm:p-10 shadow-2xl relative z-10 w-full max-w-md">
                 
-                <div className="h-16 w-16 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center border border-emerald-100 dark:border-emerald-800/50 shadow-sm mb-8">
-                  <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <div className="h-16 w-16 bg-[#c7365f]/5 dark:bg-[#c7365f]/10 rounded-2xl flex items-center justify-center border border-[#c7365f]/20 shadow-sm mb-8">
+                  <svg className="w-8 h-8 text-[#c7365f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                   </svg>
                 </div>
@@ -194,7 +194,6 @@ export default function NINVerificationPage() {
         <section className="py-24 px-6 overflow-hidden">
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row gap-16 lg:gap-24">
             
-            {/* Left Column: The Tab Menu */}
             <div className="w-full lg:w-1/3 flex flex-col">
               <h2 className="text-[32px] md:text-[40px] font-medium tracking-tight mb-8 text-[#1a1a1a] dark:text-white" style={{ fontFamily: 'system-ui, sans-serif' }}>
                 Available Slip Formats.
@@ -229,7 +228,6 @@ export default function NINVerificationPage() {
               </div>
             </div>
 
-            {/* Right Column: The Motion Content */}
             <div className="w-full lg:w-2/3">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -240,17 +238,15 @@ export default function NINVerificationPage() {
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="bg-white dark:bg-[#111827] rounded-[32px] border border-black/5 dark:border-white/5 shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[400px] h-auto"
                 >
-                  {/* Visual Graphic Side */}
                   <div className={`w-full md:w-2/5 h-48 md:h-auto flex items-center justify-center p-10 ${slipTypes[activeTab].color}`}>
                     <div className="w-full max-w-[160px] transform transition-transform duration-700 hover:scale-110">
                       {slipTypes[activeTab].icon}
                     </div>
                   </div>
 
-                  {/* Text Details Side */}
                   <div className="w-full md:w-3/5 p-8 md:p-10 flex flex-col justify-center">
                     <div className="mb-2">
-                      <span className="text-sm font-bold tracking-widest uppercase text-emerald-600 dark:text-emerald-400 opacity-80">
+                      <span className="text-sm font-bold tracking-widest uppercase text-[#c7365f] dark:text-[#e8447a] opacity-80">
                         {slipTypes[activeTab].subtitle}
                       </span>
                     </div>
