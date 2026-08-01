@@ -28,62 +28,64 @@ export default function GlobalOrderPipelinePage() {
   const services = data?.services || [];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8 animate-in fade-in duration-500 font-sans">
       
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Global Order Pipeline</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">High-level overview of all processing workflows across the platform.</p>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Global Order Pipeline</h1>
+        <p className="text-base text-slate-500 dark:text-slate-400 mt-1">High-level operations overview across all platform service modules.</p>
       </div>
 
-      {/* 1. The 4 Global Cards */}
+      {/* 1. The 4 Global Cards - Upscaled & Premium */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <MetricCard 
-          title="Pending Staff Action" 
+          title="Awaiting Action" 
           value={global.pending} 
-          icon={<Clock size={20} className="text-amber-500" />} 
-          colorClass="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/5"
+          icon={<Clock size={22} className="text-amber-500" />} 
+          colorClass="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 shadow-sm shadow-amber-500/10"
           isLoading={isLoading}
         />
         <MetricCard 
           title="Completed Jobs" 
           value={global.completed} 
-          icon={<CheckCircle2 size={20} className="text-emerald-500" />} 
-          colorClass="border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/5"
+          icon={<CheckCircle2 size={22} className="text-emerald-500" />} 
+          colorClass="border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 shadow-sm shadow-emerald-500/10"
           isLoading={isLoading}
         />
         <MetricCard 
-          title="Queried (Client Action)" 
+          title="Queried / Client Hold" 
           value={global.queried} 
-          icon={<AlertCircle size={20} className="text-indigo-500" />} 
-          colorClass="border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/5"
+          icon={<AlertCircle size={22} className="text-indigo-500" />} 
+          colorClass="border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 shadow-sm shadow-indigo-500/10"
           isLoading={isLoading}
         />
         <MetricCard 
           title="Failed / Rejected" 
           value={global.failed} 
-          icon={<XCircle size={20} className="text-red-500" />} 
-          colorClass="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/5"
+          icon={<XCircle size={22} className="text-rose-500" />} 
+          colorClass="border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 shadow-sm shadow-rose-500/10"
           isLoading={isLoading}
         />
       </div>
 
-      <hr className="border-zinc-200 dark:border-zinc-800" />
+      <hr className="border-slate-200 dark:border-slate-800" />
 
       {/* 2. Service Hub (The Folders) */}
       <div>
         <div className="flex items-center mb-6">
-          <Layers className="text-zinc-400 mr-2" size={20} />
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Service Directories</h2>
+          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg mr-3">
+            <Layers className="text-slate-500 dark:text-slate-400" size={20} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Active Service Directories</h2>
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="h-56 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl animate-pulse"></div>
-            <div className="h-56 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl animate-pulse"></div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="h-64 bg-slate-100 dark:bg-slate-800/50 rounded-2xl animate-pulse"></div>
+            <div className="h-64 bg-slate-100 dark:bg-slate-800/50 rounded-2xl animate-pulse"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {services.map((service: any) => (
               <ServiceFolderCard key={service.id} service={service} />
             ))}
@@ -100,91 +102,84 @@ export default function GlobalOrderPipelinePage() {
 
 function MetricCard({ title, value, icon, colorClass, isLoading }: { title: string, value: number, icon: React.ReactNode, colorClass: string, isLoading: boolean }) {
   return (
-    <div className={`p-5 rounded-xl border ${colorClass} transition-colors`}>
-      <div className="flex justify-between items-start mb-2">
-        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{title}</p>
+    <div className={`p-6 rounded-2xl border ${colorClass} transition-all duration-300 hover:-translate-y-1`}>
+      <div className="flex justify-between items-start mb-4">
+        <p className="text-sm font-bold tracking-wide uppercase text-slate-700 dark:text-slate-300">{title}</p>
         {icon}
       </div>
       {isLoading ? (
-        <div className="w-16 h-8 bg-zinc-200/50 dark:bg-zinc-800 rounded animate-pulse mt-2"></div>
+        <div className="w-20 h-10 bg-black/5 dark:bg-white/10 rounded animate-pulse mt-2"></div>
       ) : (
-        <h3 className="text-3xl font-bold text-zinc-900 dark:text-white tabular-nums tracking-tight">{value.toLocaleString()}</h3>
+        <h3 className="text-4xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter">{value.toLocaleString()}</h3>
       )}
     </div>
   );
 }
 
 function ServiceFolderCard({ service }: { service: any }) {
-  const isAutomated = service.id === 'nin'; // Flag for automated API services
+  const isAutomated = service.isAutomated;
 
   return (
-    <div className="group bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all flex flex-col h-full">
+    <div className="group bg-white dark:bg-slate-900/50 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:border-teal-500/50 dark:hover:border-teal-500/50 transition-all duration-300 flex flex-col h-full cursor-default">
       
       {/* Top Section: Title & Description */}
-      <div className="flex items-start justify-between mb-6 flex-1">
+      <div className="flex items-start justify-between mb-8 flex-1">
         <div className="flex items-start">
-          <div className={`p-3 rounded-lg mr-4 shrink-0 ${isAutomated ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'}`}>
-            {isAutomated ? <Zap size={24} /> : <FolderOpen size={24} />}
+          <div className={`p-4 rounded-xl mr-5 shrink-0 shadow-inner ${isAutomated ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400' : 'bg-teal-100 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400'}`}>
+            {isAutomated ? <Zap size={28} /> : <FolderOpen size={28} />}
           </div>
           <div>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center">
+            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center">
               {service.name}
-              {isAutomated && <span className="ml-2 text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400 rounded-full uppercase tracking-wider">Automated</span>}
+              {isAutomated && <span className="ml-3 text-[10px] font-black px-2.5 py-1 bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400 rounded-md uppercase tracking-widest shadow-sm">Automated</span>}
             </h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2 leading-relaxed">{service.description}</p>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 leading-relaxed max-w-md">{service.description}</p>
           </div>
         </div>
       </div>
 
       {/* Middle Section: Metrics Ribbon */}
-      {isAutomated ? (
-        // Custom Layout for Automated Services (NIN)
-        <div className="grid grid-cols-2 gap-2 mb-8 bg-zinc-50 dark:bg-zinc-950 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/50">
-          <div className="text-center border-r border-zinc-200 dark:border-zinc-800">
-            <p className="text-[10px] uppercase font-bold text-zinc-400 mb-1">Total Generated</p>
-            <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{service.metrics.completed}</p>
+      <div className={`grid gap-3 mb-8 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 shadow-inner ${isAutomated ? "grid-cols-2" : "grid-cols-4"}`}>
+        
+        {!isAutomated && (
+          <div className="text-center border-r border-slate-200 dark:border-slate-800">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Action Req.</p>
+            <p className="text-xl font-black text-amber-600 dark:text-amber-400 tabular-nums">{service.metrics.pending}</p>
           </div>
-          <div className="text-center">
-            <p className="text-[10px] uppercase font-bold text-zinc-400 mb-1">Failed Requests</p>
-            <p className="text-lg font-semibold text-red-600 dark:text-red-400 tabular-nums">{service.metrics.failed}</p>
-          </div>
-        </div>
-      ) : (
-        // Standard Staff Workflow Layout (CAC)
-        <div className="grid grid-cols-4 gap-2 mb-8 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800/50">
-          <div className="text-center border-r border-zinc-200 dark:border-zinc-800 last:border-0">
-            <p className="text-[10px] uppercase font-bold text-zinc-400 mb-1">Unassigned / Pending</p>
-            <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 tabular-nums">{service.metrics.pending}</p>
-          </div>
-          <div className="text-center border-r border-zinc-200 dark:border-zinc-800 last:border-0">
-            <p className="text-[10px] uppercase font-bold text-zinc-400 mb-1">Completed</p>
-            <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{service.metrics.completed}</p>
-          </div>
-          <div className="text-center border-r border-zinc-200 dark:border-zinc-800 last:border-0">
-            <p className="text-[10px] uppercase font-bold text-zinc-400 mb-1">Queried</p>
-            <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 tabular-nums">{service.metrics.queried}</p>
-          </div>
-          <div className="text-center border-r border-zinc-200 dark:border-zinc-800 last:border-0">
-            <p className="text-[10px] uppercase font-bold text-zinc-400 mb-1">Failed</p>
-            <p className="text-sm font-semibold text-red-600 dark:text-red-400 tabular-nums">{service.metrics.failed}</p>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* Action Area (Pushed to bottom with mt-auto, lots of padding) */}
-      <div className="mt-auto flex items-center justify-between pt-5 border-t border-zinc-100 dark:border-zinc-800">
+        <div className={`text-center border-r border-slate-200 dark:border-slate-800 ${isAutomated ? "" : ""}`}>
+          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Completed</p>
+          <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{service.metrics.completed}</p>
+        </div>
+
+        {!isAutomated && (
+          <div className="text-center border-r border-slate-200 dark:border-slate-800">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Queried</p>
+            <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{service.metrics.queried}</p>
+          </div>
+        )}
+
+        <div className="text-center">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Failed</p>
+          <p className="text-xl font-black text-rose-600 dark:text-rose-400 tabular-nums">{service.metrics.failed}</p>
+        </div>
+      </div>
+
+      {/* Action Area */}
+      <div className="mt-auto flex items-center justify-between pt-4">
         <div className="flex flex-wrap gap-2">
           {service.subCategories.map((sub: string, idx: number) => (
-            <span key={idx} className="text-[10px] font-medium px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-md">
+            <span key={idx} className="text-[10px] font-bold px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg shadow-sm">
               {sub}
             </span>
           ))}
         </div>
         <Link 
           href={service.href}
-          className="flex items-center text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors py-2 px-1"
+          className="flex items-center text-sm font-black text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors py-2 px-3 bg-teal-50 dark:bg-teal-500/10 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-500/20"
         >
-          {isAutomated ? "View Logs" : "Open Directory"} <ArrowRight size={16} className="ml-1.5 group-hover:translate-x-1 transition-transform" />
+          {isAutomated ? "View Logs" : "Open Directory"} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
     </div>
