@@ -43,7 +43,7 @@ export default function MdsDashboardPage() {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-sans selection:bg-teal-500 selection:text-black animate-in fade-in duration-700">
+    <div className="space-y-6 sm:space-y-8 font-sans selection:bg-teal-500 selection:text-white animate-in fade-in duration-700">
       
       {/* KPI Ribbon */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -65,27 +65,27 @@ export default function MdsDashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Revenue Chart */}
-        <div className="xl:col-span-2 bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-800/80 shadow-2xl relative group transition-all">
+        <div className="xl:col-span-2 bg-white dark:bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-2xl relative group transition-all">
           {isLoading ? (
-            <div className="w-full h-[300px] bg-slate-800/50 animate-pulse rounded-xl"></div>
+            <div className="w-full h-[300px] bg-slate-100 dark:bg-slate-800/50 animate-pulse rounded-xl"></div>
           ) : (
             <>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                <h2 className="text-lg font-bold text-white tracking-tight">Revenue Trajectory</h2>
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full">Last 7 Days</span>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Revenue Trajectory</h2>
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700/50">Last 7 Days</span>
               </div>
               <div className="h-[250px] sm:h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={revenueData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.4} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 500 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 500 }} tickFormatter={(value) => `₦${value / 1000}k`} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748b" opacity={0.2} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 500 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 500 }} tickFormatter={(value) => `₦${value / 1000}k`} />
                     <RechartsTooltip 
-                      contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '12px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }}
+                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }}
                       itemStyle={{ color: '#2dd4bf', fontWeight: 700 }}
                       formatter={(value: any) => [formatCurrency(Number(value) || 0), "Volume"]}
                     />
-                    <Line type="monotone" dataKey="total" stroke="#2dd4bf" strokeWidth={3} dot={{ r: 4, fill: '#0f172a', strokeWidth: 2, stroke: '#2dd4bf' }} activeDot={{ r: 7, strokeWidth: 0, fill: '#2dd4bf' }} />
+                    <Line type="monotone" dataKey="total" stroke="#2dd4bf" strokeWidth={3} dot={{ r: 4, fill: '#ffffff', strokeWidth: 2, stroke: '#2dd4bf' }} activeDot={{ r: 7, strokeWidth: 0, fill: '#2dd4bf' }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -94,12 +94,12 @@ export default function MdsDashboardPage() {
         </div>
 
         {/* Dynamic Service Distribution */}
-        <div className="bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-800/80 shadow-2xl flex flex-col">
+        <div className="bg-white dark:bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-2xl flex flex-col">
           {isLoading ? (
-            <div className="w-full h-[300px] bg-slate-800/50 animate-pulse rounded-xl"></div>
+            <div className="w-full h-[300px] bg-slate-100 dark:bg-slate-800/50 animate-pulse rounded-xl"></div>
           ) : (
             <>
-              <h2 className="text-lg font-bold text-white tracking-tight mb-8">Service Distribution</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight mb-8">Service Distribution</h2>
               <div className="flex-1 flex flex-col items-center justify-center">
                 {serviceDistribution.length > 0 ? (
                   <>
@@ -108,11 +108,11 @@ export default function MdsDashboardPage() {
                         <PieChart>
                           <Pie data={serviceDistribution} cx="50%" cy="50%" innerRadius={65} outerRadius={90} paddingAngle={4} dataKey="value" stroke="none">
                             {serviceDistribution.map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="hover:opacity-80 transition-opacity cursor-pointer drop-shadow-lg" />
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="hover:opacity-80 transition-opacity cursor-pointer drop-shadow-md" />
                             ))}
                           </Pie>
                           <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '12px', color: '#f8fafc' }}
+                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#f8fafc' }}
                             itemStyle={{ color: '#fff', fontWeight: 600 }}
                             formatter={(value: any) => [`${value}%`, "Market Share"]}
                           />
@@ -121,20 +121,20 @@ export default function MdsDashboardPage() {
                     </div>
                     <div className="w-full mt-6 space-y-3">
                       {serviceDistribution.map((item: any, idx: number) => (
-                        <div key={item.name} className="flex items-center justify-between text-sm group bg-slate-800/30 px-3 py-2 rounded-lg border border-slate-700/30">
+                        <div key={item.name} className="flex items-center justify-between text-sm group bg-slate-50 dark:bg-slate-800/30 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-700/30">
                           <div className="flex items-center">
                             <span className="w-3 h-3 rounded-full mr-3 shadow-inner" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
-                            <span className="text-slate-300 font-medium group-hover:text-white transition-colors">{item.name}</span>
+                            <span className="text-slate-600 dark:text-slate-300 font-medium group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{item.name}</span>
                           </div>
-                          <span className="font-bold text-white tabular-nums">{item.value}%</span>
+                          <span className="font-bold text-slate-900 dark:text-white tabular-nums">{item.value}%</span>
                         </div>
                       ))}
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-center p-6 bg-slate-800/20 rounded-xl border border-slate-700/30">
-                    <Layers className="h-10 w-10 text-slate-600 mb-3" />
-                    <p className="text-sm font-medium text-slate-400">No operational data exists yet.</p>
+                  <div className="flex flex-col items-center justify-center text-center p-6 bg-slate-50 dark:bg-slate-800/20 rounded-xl border border-slate-200 dark:border-slate-700/30">
+                    <Layers className="h-10 w-10 text-slate-400 dark:text-slate-600 mb-3" />
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No operational data exists yet.</p>
                   </div>
                 )}
               </div>
@@ -147,15 +147,15 @@ export default function MdsDashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Generalized Pipeline Status */}
-        <div className="bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-800/80 shadow-2xl">
+        <div className="bg-white dark:bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-2xl">
           <div className="flex items-center mb-8">
-            <div className="p-2 bg-teal-500/10 rounded-lg mr-3">
-              <Layers className="text-teal-400 fill-teal-400/20" size={20} />
+            <div className="p-2 bg-teal-100 dark:bg-teal-500/10 rounded-lg mr-3">
+              <Layers className="text-teal-600 dark:text-teal-400" size={20} />
             </div>
-            <h2 className="text-lg font-bold text-white tracking-tight">Global Order Pipeline</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Global Order Pipeline</h2>
           </div>
           {isLoading ? (
-             <div className="w-full h-32 bg-slate-800/50 animate-pulse rounded-xl"></div>
+             <div className="w-full h-32 bg-slate-100 dark:bg-slate-800/50 animate-pulse rounded-xl"></div>
           ) : (
             <div className="space-y-6">
               <PipelineRow label="Awaiting Staff Processing" count={pipeline.pending} color="bg-amber-500" percent={pipeline.pending > 0 ? 65 : 0} />
@@ -166,18 +166,18 @@ export default function MdsDashboardPage() {
         </div>
 
         {/* Live Audit Feed */}
-        <div className="xl:col-span-2 bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-800/80 shadow-2xl">
+        <div className="xl:col-span-2 bg-white dark:bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-2xl">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-white tracking-tight flex items-center">
-              <div className="p-2 bg-slate-800 rounded-lg mr-3 relative">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center">
+              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg mr-3 relative">
                 <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></div>
-                <Activity className="text-slate-400" size={20} />
+                <Activity className="text-slate-500 dark:text-slate-400" size={20} />
               </div>
               System Audit Feed
             </h2>
           </div>
           {isLoading ? (
-             <div className="w-full h-40 bg-slate-800/50 animate-pulse rounded-xl"></div>
+             <div className="w-full h-40 bg-slate-100 dark:bg-slate-800/50 animate-pulse rounded-xl"></div>
           ) : (
             <div className="space-y-2">
               {auditFeed.length > 0 ? auditFeed.map((audit: any) => (
@@ -190,7 +190,7 @@ export default function MdsDashboardPage() {
                   onClick={() => setSelectedAudit(audit)} 
                 />
               )) : (
-                <p className="text-sm font-medium text-slate-500 text-center py-8 bg-slate-800/20 rounded-xl border border-slate-700/30">No administrative logs recorded recently.</p>
+                <p className="text-sm font-medium text-slate-500 text-center py-8 bg-slate-50 dark:bg-slate-800/20 rounded-xl border border-slate-200 dark:border-slate-700/30">No administrative logs recorded recently.</p>
               )}
             </div>
           )}
@@ -200,37 +200,37 @@ export default function MdsDashboardPage() {
       {/* Glassmorphic Slide-out Drawer */}
       {selectedAudit && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setSelectedAudit(null)}></div>
-          <div className="relative w-full max-w-md h-full bg-slate-900 border-l border-slate-800 shadow-2xl p-6 animate-in slide-in-from-right duration-300 flex flex-col">
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
-              <h3 className="text-xl font-bold tracking-tight flex items-center text-white">
-                <FileText size={22} className="mr-2 text-teal-400" />
+          <div className="absolute inset-0 bg-slate-900/20 dark:bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setSelectedAudit(null)}></div>
+          <div className="relative w-full max-w-md h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 animate-in slide-in-from-right duration-300 flex flex-col">
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-xl font-bold tracking-tight flex items-center text-slate-900 dark:text-white">
+                <FileText size={22} className="mr-2 text-teal-600 dark:text-teal-400" />
                 Audit Telemetry
               </h3>
-              <button onClick={() => setSelectedAudit(null)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors">
+              <button onClick={() => setSelectedAudit(null)} className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
             <div className="space-y-6 flex-1">
-              <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/30">
+              <div className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-100 dark:border-slate-700/30">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Authenticated Actor</p>
-                <p className="text-base font-semibold text-white">{selectedAudit.staff}</p>
+                <p className="text-base font-semibold text-slate-900 dark:text-white">{selectedAudit.staff}</p>
               </div>
-              <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/30">
+              <div className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-100 dark:border-slate-700/30">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Execution Type</p>
-                <p className="text-sm font-bold text-teal-400 bg-teal-500/10 inline-block px-3 py-1 rounded border border-teal-500/20 mt-1">{selectedAudit.action}</p>
+                <p className="text-sm font-bold text-teal-700 dark:text-teal-400 bg-teal-100 dark:bg-teal-500/10 inline-block px-3 py-1 rounded border border-teal-200 dark:border-teal-500/20 mt-1">{selectedAudit.action}</p>
               </div>
-              <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/30">
+              <div className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-100 dark:border-slate-700/30">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Target Identifier</p>
-                <p className="text-sm font-mono font-medium text-slate-300">{selectedAudit.target}</p>
+                <p className="text-sm font-mono font-medium text-slate-700 dark:text-slate-300">{selectedAudit.target}</p>
               </div>
-              <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/30">
+              <div className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-100 dark:border-slate-700/30">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Timestamp</p>
-                <p className="text-sm font-medium text-slate-300 tabular-nums">{selectedAudit.time}</p>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 tabular-nums">{selectedAudit.time}</p>
               </div>
               <div className="pt-6">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 pl-1">Raw Payload JSON</p>
-                <div className="p-4 bg-slate-950 rounded-xl text-xs text-teal-300/80 font-mono leading-relaxed border border-slate-800 break-words shadow-inner">
+                <div className="p-4 bg-slate-100 dark:bg-slate-950 rounded-xl text-xs text-slate-700 dark:text-teal-300/80 font-mono leading-relaxed border border-slate-200 dark:border-slate-800 break-words shadow-inner">
                   {selectedAudit.details}
                 </div>
               </div>
@@ -245,14 +245,14 @@ export default function MdsDashboardPage() {
 // Sub-components
 function KpiCard({ title, value, trend, positive, icon }: { title: string, value: string, trend: string, positive: boolean, icon?: React.ReactNode }) {
   return (
-    <div className="group bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-800/80 shadow-lg hover:border-teal-500/30 hover:shadow-teal-500/10 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-default">
+    <div className="group bg-white dark:bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-lg hover:border-teal-500/30 hover:shadow-md dark:hover:shadow-teal-500/10 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-default">
       <div className="flex justify-between items-start mb-6">
-        <p className="text-sm font-semibold text-slate-400 group-hover:text-slate-300 transition-colors tracking-wide">{title}</p>
-        {icon && <span className="text-slate-500 group-hover:text-teal-400 transition-colors bg-slate-800/50 p-1.5 rounded-md">{icon}</span>}
+        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors tracking-wide">{title}</p>
+        {icon && <span className="text-slate-400 dark:text-slate-500 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-md border border-slate-100 dark:border-transparent">{icon}</span>}
       </div>
       <div>
-        <h3 className="text-3xl font-black text-white mb-3 tabular-nums tracking-tighter">{value}</h3>
-        <div className={`flex items-center text-xs font-bold uppercase tracking-widest tabular-nums ${positive ? 'text-teal-400' : 'text-rose-400'}`}>
+        <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-3 tabular-nums tracking-tighter">{value}</h3>
+        <div className={`flex items-center text-xs font-bold uppercase tracking-widest tabular-nums ${positive ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-400'}`}>
           {positive ? <ArrowUpRight size={14} className="mr-1.5" /> : <ArrowDownRight size={14} className="mr-1.5" />}
           {trend}
         </div>
@@ -265,11 +265,11 @@ function PipelineRow({ label, count, color, percent }: { label: string, count: n
   return (
     <div className="group">
       <div className="flex justify-between items-center mb-3">
-        <span className="text-sm font-semibold text-slate-300 group-hover:text-white transition-colors tracking-wide">{label}</span>
-        <span className="text-sm font-bold text-white tabular-nums bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/50">{count}</span>
+        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors tracking-wide">{label}</span>
+        <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700/50">{count}</span>
       </div>
-      <div className="w-full bg-slate-800/50 rounded-full h-2 overflow-hidden shadow-inner">
-        <div className={`${color} h-full rounded-full transition-all duration-1000 ease-out shadow-lg`} style={{ width: `${percent}%` }}></div>
+      <div className="w-full bg-slate-100 dark:bg-slate-800/50 rounded-full h-2 overflow-hidden shadow-inner dark:shadow-none">
+        <div className={`${color} h-full rounded-full transition-all duration-1000 ease-out shadow-sm dark:shadow-lg`} style={{ width: `${percent}%` }}></div>
       </div>
     </div>
   );
@@ -277,25 +277,25 @@ function PipelineRow({ label, count, color, percent }: { label: string, count: n
 
 function AuditRow({ staff, action, target, time, onClick }: { staff: string, action: string, target: string, time: string, onClick: () => void }) {
   return (
-    <div onClick={onClick} className="group flex items-start sm:items-center justify-between p-3.5 -mx-3.5 rounded-xl hover:bg-slate-800/40 border border-transparent hover:border-slate-700/50 transition-all cursor-pointer flex-col sm:flex-row gap-2 sm:gap-0">
+    <div onClick={onClick} className="group flex items-start sm:items-center justify-between p-3.5 -mx-3.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/40 border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50 transition-all cursor-pointer flex-col sm:flex-row gap-2 sm:gap-0">
       <div className="flex flex-col">
-        <p className="text-sm font-bold text-white tracking-tight">
-          {staff} <span className="text-slate-500 font-medium group-hover:text-slate-400 transition-colors mx-1">initiated</span> <span className="text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded ml-1">{action}</span>
+        <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+          {staff} <span className="text-slate-500 font-medium group-hover:text-slate-700 dark:group-hover:text-slate-400 transition-colors mx-1">initiated</span> <span className="text-teal-700 dark:text-teal-400 bg-teal-100 dark:bg-teal-500/10 px-1.5 py-0.5 rounded ml-1 border border-teal-200 dark:border-transparent">{action}</span>
         </p>
         <p className="text-[11px] font-semibold text-slate-500 mt-1.5 uppercase tracking-wider break-all flex items-center">
-          Target Ref: <span className="font-mono ml-2 text-slate-400 normal-case">{target}</span>
+          Target Ref: <span className="font-mono ml-2 text-slate-600 dark:text-slate-400 normal-case">{target}</span>
         </p>
       </div>
-      <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 shrink-0 tabular-nums bg-slate-900/50 px-2 py-1 rounded-md border border-slate-800">{time}</span>
+      <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 shrink-0 tabular-nums bg-slate-100 dark:bg-slate-900/50 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-800">{time}</span>
     </div>
   );
 }
 
 function SkeletonCard() {
   return (
-    <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800/80 shadow-lg flex flex-col justify-between h-[140px]">
-      <div className="w-28 h-4 bg-slate-800/80 rounded animate-pulse"></div>
-      <div className="w-36 h-10 bg-slate-800/80 rounded animate-pulse mt-4"></div>
+    <div className="bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-lg flex flex-col justify-between h-[140px]">
+      <div className="w-28 h-4 bg-slate-200 dark:bg-slate-800/80 rounded animate-pulse"></div>
+      <div className="w-36 h-10 bg-slate-200 dark:bg-slate-800/80 rounded animate-pulse mt-4"></div>
     </div>
   );
 }
