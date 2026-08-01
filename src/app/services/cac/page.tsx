@@ -49,7 +49,6 @@ export default function CACRegistrationPage() {
       subtitle: "Incorporated Trustees",
       desc: "Designed specifically for non-profits, charities, religious bodies, and social clubs. It is governed by an appointed board of trustees.",
       bestFor: ["Churches & Mosques", "Charity Organizations", "Alumni Associations", "Clubs"],
-      // UPDATED TIMEFRAME
       timeline: "1 - 2 Months",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
@@ -90,14 +89,16 @@ export default function CACRegistrationPage() {
       <Navbar />
 
       <main className="pt-24 pb-20">
+        
+        {/* ───── HERO SECTION ───── */}
         <section className="relative pt-20 pb-16 px-6 overflow-hidden">
-          {/* GREEN THEME GLOW */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
+          {/* BRAND PINK/RED GLOW */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
           
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <div className="w-full lg:w-[55%] z-10">
-              {/* GREEN BADGE */}
-              <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 mb-6">
+              {/* BRAND PINK/RED BADGE */}
+              <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-[#c7365f]/10 text-[#c7365f] mb-6">
                 Corporate Affairs Commission
               </div>
               <h1 
@@ -110,10 +111,10 @@ export default function CACRegistrationPage() {
               <p className="text-[18px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
                 Skip the endless paperwork and long queues. LoraBiz completely automates your CAC registration so you can get your official certificate and start operating globally.
               </p>
-              {/* GREEN BUTTON */}
+              {/* BRAND PINK/RED BUTTON */}
               <Link
                 href="/auth/register"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:scale-105 transition-all duration-300 font-medium text-[16px] shadow-lg shadow-emerald-500/30"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-white bg-gradient-to-r from-[#c7365f] to-[#e8447a] hover:scale-105 transition-all duration-300 font-medium text-[16px] shadow-lg shadow-[#c7365f]/30"
               >
                 Register My Business
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -123,7 +124,7 @@ export default function CACRegistrationPage() {
             </div>
 
             <div className="w-full lg:w-[45%] relative flex flex-col items-center justify-center lg:pl-10">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-[40px] transform rotate-3" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[#c7365f]/5 to-transparent rounded-[40px] transform rotate-3" />
               
               <div className="bg-white dark:bg-[#111827] border border-black/5 dark:border-white/10 rounded-[32px] p-8 sm:p-10 shadow-2xl relative z-10 w-full max-w-md">
                 
@@ -145,9 +146,9 @@ export default function CACRegistrationPage() {
                   Traditional agents charge outrageous fees and take weeks to deliver. Our platform is connected directly to the CAC to get your business registered faster and at a fraction of the cost.
                 </p>
                 
-                {/* GREEN PRICE SAVINGS */}
+                {/* BRAND PINK/RED PRICE SAVINGS */}
                 <div className="mt-8 pt-6 border-t border-black/5 dark:border-white/10 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 flex flex-shrink-0 items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <div className="w-11 h-11 rounded-full bg-[#c7365f]/10 dark:bg-[#c7365f]/20 flex flex-shrink-0 items-center justify-center text-[#c7365f]">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
@@ -164,7 +165,7 @@ export default function CACRegistrationPage() {
           </div>
         </section>
 
-        {/* --- [The rest of the sections (Why Registration Matters & Tabs) remain identical] --- */}
+        {/* ───── WHY REGISTRATION MATTERS ───── */}
         <section className="py-24 bg-[#fafafa] dark:bg-[#111827]/50 border-y border-black/5 dark:border-white/5">
           <div className="max-w-[1200px] mx-auto px-6">
             <div className="text-center mb-16">
@@ -192,6 +193,7 @@ export default function CACRegistrationPage() {
           </div>
         </section>
 
+        {/* ───── INTERACTIVE ENTITY TABS ───── */}
         <section className="py-24 px-6 overflow-hidden">
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row gap-16 lg:gap-24">
             
