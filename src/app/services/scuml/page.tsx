@@ -145,7 +145,7 @@ export default function SCUMLRegistrationPage() {
                 {/* EFCC LOGO CONTAINER */}
                 <div className="h-20 w-20 bg-white rounded-xl p-2 mb-8 flex items-center justify-center border border-black/5 shadow-sm">
                   <Image 
-                    src="/efcc.png" 
+                    src="/scuml.png" 
                     alt="Economic and Financial Crimes Commission" 
                     width={64} 
                     height={64} 
