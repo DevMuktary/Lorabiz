@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 
@@ -14,7 +15,7 @@ export default function CACRegistrationPage() {
       id: "business-name",
       title: "Business Name",
       subtitle: "Sole Proprietorship",
-      desc: "The simplest and fastest way to register your business. You and your business are the same legal entity.",
+      desc: "The simplest and fastest way to register your business. You and your business are the same legal entity, making tax and management straightforward.",
       bestFor: ["Freelancers", "Solo Consultants", "Small Retail Shops", "Artisans"],
       timeline: "1 - 3 Business Days",
       icon: (
@@ -29,7 +30,7 @@ export default function CACRegistrationPage() {
       id: "llc",
       title: "Limited Company",
       subtitle: "LLC / LTD",
-      desc: "A separate legal entity from its owners. Offers limited liability protection, meaning your personal assets are secure.",
+      desc: "A completely separate legal entity from its owners. It offers limited liability protection, meaning your personal assets are completely secure.",
       bestFor: ["Startups", "Tech Companies", "Agencies", "Businesses seeking investment"],
       timeline: "3 - 7 Business Days",
       icon: (
@@ -46,7 +47,7 @@ export default function CACRegistrationPage() {
       id: "ngo",
       title: "NGO / Foundation",
       subtitle: "Incorporated Trustees",
-      desc: "Designed for non-profits, charities, religious bodies, and social clubs. Governed by a board of trustees.",
+      desc: "Designed specifically for non-profits, charities, religious bodies, and social clubs. It is governed by an appointed board of trustees.",
       bestFor: ["Churches & Mosques", "Charity Organizations", "Alumni Associations", "Clubs"],
       timeline: "2 - 4 Weeks (Subject to Newspaper Pub.)",
       icon: (
@@ -94,7 +95,7 @@ export default function CACRegistrationPage() {
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
           
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-            <div className="w-full lg:w-1/2 z-10">
+            <div className="w-full lg:w-[55%] z-10">
               <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-black/5 dark:bg-white/10 mb-6">
                 Corporate Affairs Commission
               </div>
@@ -119,40 +120,41 @@ export default function CACRegistrationPage() {
               </Link>
             </div>
 
-            {/* Abstract Hero Graphic */}
-            <div className="w-full lg:w-1/2 relative h-[400px] lg:h-[500px] flex items-center justify-center">
-              <div className="absolute inset-0 bg-gradient-to-br from-zinc-100 to-zinc-50 dark:from-zinc-900 dark:to-[#0a0f1e] rounded-[40px] border border-black/5 dark:border-white/5 transform rotate-3" />
-              <div className="absolute inset-0 bg-white dark:bg-[#111827] rounded-[40px] border border-black/10 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col">
+            {/* Value Proposition Card & CAC Logo */}
+            <div className="w-full lg:w-[45%] relative flex flex-col items-center justify-center lg:pl-10">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#c7365f]/5 to-transparent rounded-[40px] transform rotate-3" />
+              
+              <div className="bg-white dark:bg-[#111827] border border-black/5 dark:border-white/10 rounded-[32px] p-8 sm:p-10 shadow-2xl relative z-10 w-full max-w-md">
                 
-                {/* Mock Certificate Header */}
-                <div className="h-24 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-900/30 flex items-center px-8 gap-4">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-600">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                  </div>
-                  <div>
-                    <div className="h-4 w-32 bg-emerald-600/20 rounded mb-2" />
-                    <div className="h-3 w-24 bg-emerald-600/10 rounded" />
-                  </div>
+                {/* Official CAC Logo Container */}
+                <div className="h-16 w-36 bg-white rounded-xl p-3 mb-8 flex items-center justify-center border border-black/5 shadow-sm">
+                  <Image 
+                    src="/cac.png" 
+                    alt="Corporate Affairs Commission" 
+                    width={120} 
+                    height={40} 
+                    className="object-contain" 
+                  />
                 </div>
-                {/* Mock Certificate Body */}
-                <div className="p-8 flex-grow flex flex-col gap-6">
-                  <div className="h-8 w-3/4 bg-zinc-100 dark:bg-white/5 rounded-lg" />
-                  <div className="h-4 w-full bg-zinc-50 dark:bg-white/5 rounded" />
-                  <div className="h-4 w-5/6 bg-zinc-50 dark:bg-white/5 rounded" />
-                  <div className="h-4 w-4/6 bg-zinc-50 dark:bg-white/5 rounded" />
-                  
-                  <div className="mt-auto flex justify-between items-end">
-                    <div className="w-24 h-24 rounded-lg bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 flex items-center justify-center">
-                      <div className="w-16 h-16 border-4 border-dashed border-zinc-300 dark:border-white/20 rounded-full" />
-                    </div>
-                    <div className="w-32 h-12 bg-[#c7365f]/10 rounded-lg flex items-center justify-center">
-                      <div className="w-20 h-2 bg-[#c7365f]/40 rounded" />
-                    </div>
-                  </div>
+                
+                <h3 className="text-2xl font-semibold mb-4 text-[#1a1a1a] dark:text-white tracking-tight">
+                  Stop overpaying agents.
+                </h3>
+                
+                <p className="text-[16px] text-[#767676] dark:text-white/60 mb-8 leading-relaxed">
+                  Traditional agents charge outrageous fees and take weeks to deliver. Our platform is connected to the CAC to get your business registered faster and at a fraction of the cost.
+                </p>
+                
+                <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 p-4 rounded-2xl">
+                  <svg className="w-6 h-6 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-medium text-[15px]">Save up to 60% on registration fees.</span>
                 </div>
 
               </div>
             </div>
+
           </div>
         </section>
 
@@ -184,7 +186,7 @@ export default function CACRegistrationPage() {
           </div>
         </section>
 
-        {/* ───── INTERACTIVE ENTITY TABS (ANCHOR STYLE) ───── */}
+        {/* ───── INTERACTIVE ENTITY TABS ───── */}
         <section className="py-24 px-6 overflow-hidden">
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row gap-16 lg:gap-24">
             
@@ -225,60 +227,59 @@ export default function CACRegistrationPage() {
 
             {/* Right Column: The Motion Content */}
             <div className="w-full lg:w-2/3">
-              <div className="relative w-full h-[500px] md:h-[450px]">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute inset-0 bg-white dark:bg-[#111827] rounded-[32px] border border-black/5 dark:border-white/5 shadow-xl overflow-hidden flex flex-col md:flex-row"
-                  >
-                    {/* Visual Graphic Side */}
-                    <div className={`w-full md:w-2/5 h-48 md:h-full flex items-center justify-center p-10 ${entityTypes[activeTab].color}`}>
-                      <div className="w-full max-w-[160px] transform transition-transform duration-700 hover:scale-110">
-                        {entityTypes[activeTab].icon}
-                      </div>
+              {/* Removed absolute positioning and locked heights. Now it breathes and expands naturally! */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="bg-white dark:bg-[#111827] rounded-[32px] border border-black/5 dark:border-white/5 shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[400px] h-auto"
+                >
+                  {/* Visual Graphic Side */}
+                  <div className={`w-full md:w-2/5 h-48 md:h-auto flex items-center justify-center p-10 ${entityTypes[activeTab].color}`}>
+                    <div className="w-full max-w-[160px] transform transition-transform duration-700 hover:scale-110">
+                      {entityTypes[activeTab].icon}
+                    </div>
+                  </div>
+
+                  {/* Text Details Side */}
+                  <div className="w-full md:w-3/5 p-8 md:p-10 flex flex-col justify-center">
+                    <div className="mb-2">
+                      <span className="text-sm font-bold tracking-widest uppercase text-[#c7365f] opacity-80">
+                        {entityTypes[activeTab].subtitle}
+                      </span>
+                    </div>
+                    <h3 className="text-3xl font-semibold text-[#1a1a1a] dark:text-white mb-4">
+                      {entityTypes[activeTab].title}
+                    </h3>
+                    <p className="text-[16px] text-[#767676] dark:text-white/60 mb-8 leading-relaxed" style={{ fontFamily: '"DM Sans", sans-serif' }}>
+                      {entityTypes[activeTab].desc}
+                    </p>
+
+                    <div className="mb-8">
+                      <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-white mb-3">Best Suited For:</h4>
+                      <ul className="flex flex-wrap gap-2">
+                        {entityTypes[activeTab].bestFor.map((item, idx) => (
+                          <li key={idx} className="bg-black/5 dark:bg-white/10 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-full text-[13px] font-medium">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
 
-                    {/* Text Details Side */}
-                    <div className="w-full md:w-3/5 p-8 md:p-10 flex flex-col justify-center">
-                      <div className="mb-2">
-                        <span className="text-sm font-bold tracking-widest uppercase text-[#c7365f] opacity-80">
-                          {entityTypes[activeTab].subtitle}
-                        </span>
-                      </div>
-                      <h3 className="text-3xl font-semibold text-[#1a1a1a] dark:text-white mb-4">
-                        {entityTypes[activeTab].title}
-                      </h3>
-                      <p className="text-[16px] text-[#767676] dark:text-white/60 mb-8 leading-relaxed" style={{ fontFamily: '"DM Sans", sans-serif' }}>
-                        {entityTypes[activeTab].desc}
-                      </p>
-
-                      <div className="mb-6">
-                        <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-white mb-3">Best Suited For:</h4>
-                        <ul className="flex flex-wrap gap-2">
-                          {entityTypes[activeTab].bestFor.map((item, idx) => (
-                            <li key={idx} className="bg-black/5 dark:bg-white/10 text-zinc-800 dark:text-zinc-200 px-3 py-1 rounded-full text-[13px] font-medium">
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="mt-auto pt-6 border-t border-black/5 dark:border-white/10 flex items-center gap-3">
-                        <svg className="w-5 h-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="text-[14px] font-medium text-zinc-600 dark:text-zinc-400">
-                          Average timeframe: <strong className="text-zinc-900 dark:text-white">{entityTypes[activeTab].timeline}</strong>
-                        </span>
-                      </div>
+                    <div className="mt-auto pt-6 border-t border-black/5 dark:border-white/10 flex items-center gap-3">
+                      <svg className="w-5 h-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-[14px] font-medium text-zinc-600 dark:text-zinc-400">
+                        Average timeframe: <strong className="text-zinc-900 dark:text-white">{entityTypes[activeTab].timeline}</strong>
+                      </span>
                     </div>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
 
           </div>
