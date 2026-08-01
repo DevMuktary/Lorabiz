@@ -25,7 +25,7 @@ export default function TaxIdPage() {
           <circle cx="60" cy="60" r="8" fill="currentColor" />
         </svg>
       ),
-      color: "bg-[#E0E7FF] text-[#1D4ED8] dark:bg-[#1D4ED8]/20 dark:text-[#E0E7FF]"
+      color: "bg-[#FCE7F3] text-[#BE185D] dark:bg-[#BE185D]/20 dark:text-[#FCE7F3]"
     },
     {
       id: "individual-tin",
@@ -41,7 +41,7 @@ export default function TaxIdPage() {
           <path d="M70 30L85 45L70 60" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
         </svg>
       ),
-      color: "bg-[#F3E8FF] text-[#4338CA] dark:bg-[#4338CA]/20 dark:text-[#F3E8FF]"
+      color: "bg-[#FEF3C7] text-[#B45309] dark:bg-[#B45309]/20 dark:text-[#FEF3C7]"
     }
   ];
 
@@ -76,13 +76,13 @@ export default function TaxIdPage() {
         
         {/* ───── HERO SECTION ───── */}
         <section className="relative pt-20 pb-16 px-6 overflow-hidden">
-          {/* BLUE/INDIGO BRAND GLOW */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
+          {/* PINK/RED BRAND GLOW */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
           
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <div className="w-full lg:w-[55%] z-10">
-              {/* BLUE BADGE */}
-              <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-blue-600/10 text-blue-700 dark:text-blue-400 mb-6">
+              {/* PINK/RED BADGE */}
+              <div className="inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-bold tracking-widest uppercase bg-[#c7365f]/10 text-[#c7365f] mb-6">
                 Nigeria Revenue Service
               </div>
               <h1 
@@ -95,10 +95,10 @@ export default function TaxIdPage() {
               <p className="text-[18px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
                 Required by law for all financial operations. We interface directly with the Nigeria Revenue Service (NRS) to generate your official TIN in less than one working hour.
               </p>
-              {/* BLUE BUTTON */}
+              {/* PINK/RED BUTTON */}
               <Link
                 href="/auth/register"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 transition-all duration-300 font-medium text-[16px] shadow-lg shadow-blue-600/30"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-white bg-gradient-to-r from-[#c7365f] to-[#e8447a] hover:scale-105 transition-all duration-300 font-medium text-[16px] shadow-lg shadow-[#c7365f]/30"
               >
                 Generate Tax ID (TIN)
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -109,7 +109,7 @@ export default function TaxIdPage() {
 
             {/* Value Proposition Card & NRS Logo */}
             <div className="w-full lg:w-[45%] relative flex flex-col items-center justify-center lg:pl-10">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-transparent rounded-[40px] transform rotate-3" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[#c7365f]/5 to-transparent rounded-[40px] transform rotate-3" />
               
               <div className="bg-white dark:bg-[#111827] border border-black/5 dark:border-white/10 rounded-[32px] p-8 sm:p-10 shadow-2xl relative z-10 w-full max-w-md">
                 
@@ -132,9 +132,9 @@ export default function TaxIdPage() {
                   Visiting tax offices manually means dealing with endless paperwork, long queues, and unexplained delays. Our automated system fetches your TIN instantly from the database.
                 </p>
                 
-                {/* BLUE INFO BOX */}
+                {/* PINK/RED INFO BOX */}
                 <div className="mt-8 pt-6 border-t border-black/5 dark:border-white/10 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-600/10 dark:bg-blue-600/20 flex flex-shrink-0 items-center justify-center text-blue-600 dark:text-blue-400">
+                  <div className="w-11 h-11 rounded-full bg-[#c7365f]/10 dark:bg-[#c7365f]/20 flex flex-shrink-0 items-center justify-center text-[#c7365f]">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -185,7 +185,6 @@ export default function TaxIdPage() {
         <section className="py-24 px-6 overflow-hidden">
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row gap-16 lg:gap-24">
             
-            {/* Left Column: The Tab Menu */}
             <div className="w-full lg:w-1/3 flex flex-col">
               <h2 className="text-[32px] md:text-[40px] font-medium tracking-tight mb-8 text-[#1a1a1a] dark:text-white" style={{ fontFamily: 'system-ui, sans-serif' }}>
                 Tax profiles.
@@ -220,7 +219,6 @@ export default function TaxIdPage() {
               </div>
             </div>
 
-            {/* Right Column: The Motion Content */}
             <div className="w-full lg:w-2/3">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -231,17 +229,15 @@ export default function TaxIdPage() {
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="bg-white dark:bg-[#111827] rounded-[32px] border border-black/5 dark:border-white/5 shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[400px] h-auto"
                 >
-                  {/* Visual Graphic Side */}
                   <div className={`w-full md:w-2/5 h-48 md:h-auto flex items-center justify-center p-10 ${taxCategories[activeTab].color}`}>
                     <div className="w-full max-w-[160px] transform transition-transform duration-700 hover:scale-110">
                       {taxCategories[activeTab].icon}
                     </div>
                   </div>
 
-                  {/* Text Details Side */}
                   <div className="w-full md:w-3/5 p-8 md:p-10 flex flex-col justify-center">
                     <div className="mb-2">
-                      <span className="text-sm font-bold tracking-widest uppercase text-blue-600 dark:text-blue-400 opacity-80">
+                      <span className="text-sm font-bold tracking-widest uppercase text-[#c7365f] opacity-80">
                         {taxCategories[activeTab].subtitle}
                       </span>
                     </div>
