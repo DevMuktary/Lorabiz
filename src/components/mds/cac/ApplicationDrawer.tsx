@@ -5,12 +5,12 @@ import { format } from 'date-fns';
 import { 
   X, CheckCircle, FileText, UserPlus, File, Briefcase, Building2
 } from 'lucide-react';
-import { TabButton } from './cac/CacShared';
+import { TabButton } from './CacShared';
 // We will build these next!
-// import CacInfoTab from './cac/CacInfoTab';
-// import CacPeopleTab from './cac/CacPeopleTab';
-// import CacDocsTab from './cac/CacDocsTab';
-// import CacActionTab from './cac/CacActionTab';
+// import CacInfoTab from './CacInfoTab';
+// import CacPeopleTab from './CacPeopleTab';
+// import CacDocsTab from './CacDocsTab';
+// import CacActionTab from './CacActionTab';
 
 export default function ApplicationDrawer({ 
   ticket, 
@@ -80,7 +80,6 @@ export default function ApplicationDrawer({
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-8 relative">
           
-          {/* We will render the components here as we build them */}
           {activeTab === "INFO" && (
              <div className="text-center p-10 text-zinc-500">Creating CacInfoTab...</div>
              // <CacInfoTab ticket={ticket} isLlc={isLlc} />
