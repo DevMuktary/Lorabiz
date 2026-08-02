@@ -437,3 +437,139 @@ export async function sendTaxIdSubmittedEmail({
 
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
 }
+
+// ============================================================================
+// SCUML PIPELINE NOTIFICATIONS
+// ============================================================================
+
+export async function sendScumlProcessingEmail({
+  to, name, companyName, transactionRef,
+}: { to: string; name: string; companyName: string; transactionRef: string; }) {
+  const subject = `SCUML Processing Initiated: ${companyName}`;
+  const previewText = `Your SCUML application for ${companyName} is now being processed by the EFCC.`;
+
+  const content = `
+    <h2 style="color: #0284c7; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">Application Processing ⚙️</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Great news! Your SCUML certificate registration for <strong>${companyName}</strong> (Ref: ${transactionRef}) has passed our internal compliance checks and is now being actively processed by the <strong>Economic and Financial Crimes Commission (EFCC)</strong>.
+    </p>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      We will notify you immediately once the certificate is generated and ready for download.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/scuml/history" style="display: inline-block; background-color: #0284c7; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">View SCUML History</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendScumlCompletedEmail({
+  to, name, companyName, finalCertificateUrl,
+}: { to: string; name: string; companyName: string; finalCertificateUrl: string; }) {
+  const subject = `SCUML Certificate Approved: ${companyName} 🎉`;
+  const previewText = `Congratulations! Your SCUML Certificate for ${companyName} is ready.`;
+
+  const content = `
+    <h2 style="color: #15803d; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">SCUML Approved! 🎉</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Congratulations <strong>${name}</strong>,<br/>
+      Your Special Control Unit Against Money Laundering (SCUML) certificate for <strong>${companyName}</strong> has been officially generated.
+    </p>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      We have safely attached your official SCUML Certificate directly to this email. You can also download it anytime by logging into your portal, going to your <strong>SCUML History page</strong>, scrolling to this application, and clicking the Download button.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/scuml/history" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Download from Dashboard</a>
+    </div>
+  `;
+
+  const attachments: { name: string; mime_type: string; content: string }[] = [];
+  const b64 = await fetchPdfAsBase64(finalCertificateUrl);
+  if (b64) {
+    attachments.push({ name: `SCUML_Certificate_${companyName.replace(/\s+/g, '_')}.pdf`, mime_type: "application/pdf", content: b64 });
+  }
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText), attachments });
+}
+
+export async function sendScumlFailedEmail({
+  to, name, companyName, failureReason, refundAmount
+}: { to: string; name: string; companyName: string; failureReason: string; refundAmount: number; }) {
+  const subject = `Update on SCUML Application: ${companyName}`;
+  const previewText = `Your SCUML application was rejected. Please review the details.`;
+
+  const content = `
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">Application Failed ⚠️</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Unfortunately, your SCUML certificate application for <strong>${companyName}</strong> could not be completed and has been rejected by the authorities.
+    </p>
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 24px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 12px; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Reason for Rejection</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6; white-space: pre-wrap;">${failureReason}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      ${refundAmount > 0 ? `A refund of <strong>₦${refundAmount.toLocaleString()}</strong> has been credited back to your Lorabiz Wallet.` : 'No refund was issued for this application.'} 
+      Please check your <strong>Transaction History</strong> for full financial details.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/transactions" style="display: inline-block; background-color: #f59e0b; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">View Transaction History</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+// ============================================================================
+// TAX ID NOTIFICATIONS (Pre-Built for upcoming feature)
+// ============================================================================
+
+export async function sendTaxIdCompletedEmail({
+  to, name, taxIdNumber, requestType
+}: { to: string; name: string; taxIdNumber: string; requestType: string; }) {
+  const subject = `Your Tax ID is Ready! 🎉`;
+  const previewText = `Your ${requestType} Tax Identification Number is: ${taxIdNumber}`;
+
+  const content = `
+    <h2 style="color: #15803d; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">Tax ID Generated! 🎉</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Congratulations <strong>${name}</strong>,<br/>
+      Your ${requestType} Tax Identification Number has been successfully generated.
+    </p>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 28px; font-family: sans-serif;">
+      <p style="margin: 0 0 6px; font-size: 13px; color: #166534; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Official Tax ID Number (TIN)</p>
+      <p style="margin: 0; font-size: 36px; font-weight: 800; color: #15803d; letter-spacing: 4px;">${taxIdNumber}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      You can easily copy this digit directly from your <strong>Tax ID History</strong> page on the Lorabiz dashboard.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/tax-id/history" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to Tax ID History</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendTaxIdFailedEmail({
+  to, name, failureReason, refundAmount, requestType
+}: { to: string; name: string; failureReason: string; refundAmount: number; requestType: string; }) {
+  const subject = `Update on Tax ID Request`;
+  const previewText = `Your ${requestType} Tax ID request was rejected.`;
+
+  const content = `
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">Application Failed ⚠️</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Unfortunately, your request for a ${requestType} Tax ID could not be completed.
+    </p>
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 24px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 12px; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Reason for Rejection</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6; white-space: pre-wrap;">${failureReason}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      ${refundAmount > 0 ? `A refund of <strong>₦${refundAmount.toLocaleString()}</strong> has been credited back to your Lorabiz Wallet.` : 'No refund was issued for this application.'} 
+      Please check your <strong>Transaction History</strong> for full financial details.
+    </p>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
