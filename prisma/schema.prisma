@@ -70,9 +70,9 @@ model User {
   email           String           @unique
   phone           String           @unique
   whatsapp        String           @unique
-  oldPhone        String?   // Tracks previous number in case of fraud
-  phoneChangedAt  DateTime? // Tracks when they last changed it
-  image          String?   // Added for profile picture
+  oldPhone        String?          // Tracks previous number in case of fraud
+  phoneChangedAt  DateTime?        // Tracks when they last changed it
+  image          String?           // Added for profile picture
   passwordHash    String
   gender          Gender
   state           String
@@ -93,8 +93,8 @@ model User {
   registrations    BusinessRegistration[]
   llcRegistrations LlcRegistration[]
   ninRequests      NinRequestLog[]
-  scumlRequests ScumlRegistration[]
-  taxIdRequests TaxIdRequest[]
+  scumlRequests    ScumlRegistration[]
+  taxIdRequests    TaxIdRequest[]
   notifications    InAppNotification[]
   wallet           Wallet?
   waitlists        Waitlist[]
@@ -128,10 +128,10 @@ model BusinessRegistration {
   queryReason       String?            @db.Text
   queryStatus       String?            @default("UNRESOLVED")
   queryDate         DateTime?
-  registrationNumber String?    // BN Number
-  taxId              String?    // TIN
-  certificateUrl     String?    // PDF URL
-  statusReportUrl    String?    // PDF URL
+  registrationNumber String?           // BN Number
+  taxId              String?           // TIN
+  certificateUrl     String?           // PDF URL
+  statusReportUrl    String?           // PDF URL
   
   // --- COMPANY INFORMATION ---
   companyEmail      String?
@@ -191,7 +191,7 @@ model LlcRegistration {
   
   proposedName        String             
   altName1            String?            
-  altName2            String?            
+  altName2            String?
   similarityScore     String?            
   email               String?
   principalActivity   String?
@@ -199,26 +199,24 @@ model LlcRegistration {
   description         String?            @db.Text
   
   registeredAddress   Json?      
-  headOfficeAddress   Json?      
-  
+  headOfficeAddress   Json?
   useDefaultArticles  Boolean            @default(true)
   customArticles      Json?
   witnessDetails      Json?              
   memorandumObjects   String[]           
   
-  companyType         String?            
+  companyType         String?
   totalShareCapital   Float?
   shareClasses        Json?              
 
   declarantDetails    Json?
-  
   queryReason         String?            @db.Text
   queryStatus         String?            @default("UNRESOLVED")
-  registrationNumber String?    // RC Number
-  taxId              String?    // TIN
-  certificateUrl     String?    // PDF URL
-  statusReportUrl    String?    // PDF URL
-  memorandumUrl      String?    // PDF URL (LLC Only)
+  registrationNumber  String?            // RC Number
+  taxId               String?            // TIN
+  certificateUrl      String?            // PDF URL
+  statusReportUrl     String?            // PDF URL
+  memorandumUrl       String?            // PDF URL (LLC Only)
 
   witnessSignatureUrl   String?
   declarantSignatureUrl String?
@@ -263,7 +261,7 @@ model CompanyOfficer {
   residentialAddress Json?
   serviceAddress     Json?
   
-  sharesAllotted     Float?    
+  sharesAllotted     Float?
   pscDetails         Json?     
   
   idDocumentUrl      String?
@@ -429,7 +427,7 @@ model SecurityAuditLog {
 model PromoCode {
   id            String       @id @default(cuid())
   code          String       @unique
-  discountPct   Float?       
+  discountPct   Float?
   fixedAmount   Decimal?     
   usageLimit    Int?         // Total available for ALL users globally
   restrictedServices String[] // e.g., ["LLC", "BUSINESS_NAME"] or ["ALL"]
@@ -485,7 +483,8 @@ enum ScumlType {
 enum ScumlStatus {
   PENDING
   PROCESSING
-  COMPLETED    // NEW: Added completed status
+  COMPLETED    
+  FAILED       // NEW: Added FAILED status
 }
 
 model ScumlRegistration {
@@ -493,17 +492,18 @@ model ScumlRegistration {
   userId            String
   type              ScumlType
   companyName       String
-  
+ 
   // User Uploaded Document URLs 
   certificateUrl    String
   statusReportUrl   String
-  memorandumUrl     String?      
+  memorandumUrl     String?
   constitutionUrl   String?      
 
   // Admin Uploaded Final Certificate
-  finalCertificateUrl String?    // NEW: Where the admin uploads the finished work
+  finalCertificateUrl String?    // Where the admin uploads the finished work
 
   status            ScumlStatus  @default(PENDING)
+  failureReason     String?      @db.Text // NEW: Stores admin's reason for failure
   
   // Payment Tracking
   amountPaid        Decimal      @db.Decimal(10, 2)
@@ -530,6 +530,7 @@ enum TaxIdStatus {
   PENDING
   PROCESSING
   COMPLETED
+  FAILED       // NEW: Added FAILED status
 }
 
 model TaxIdRequest {
@@ -549,7 +550,9 @@ model TaxIdRequest {
   corporateCategory String?
 
   // Output (Admin will upload the generated TIN here)
-  taxIdNumber       String?      
+  taxIdNumber       String?
+
+  failureReason     String?      @db.Text // NEW: Stores admin's reason for failure
   
   // Payment Tracking
   amountPaid        Decimal      @db.Decimal(10, 2)
