@@ -17,16 +17,15 @@ import ComplianceStep from "@/components/features/cac/register/llc/ComplianceSte
 import UploadsStep from "@/components/features/cac/register/llc/UploadsStep";
 import PreviewStep from "@/components/features/cac/register/llc/PreviewStep";
 
-// FIXED IMPORT: Pointing to the LLC Payment Modal, NOT the Biz Name one!
 import PaymentModal from "@/components/features/cac/register/llc/PaymentModal";
 
 export default function LlcRegistrationDetailsPage() {
   const params = useParams();
-  const id = params?.id as string; // Internal CUID for secure API database updates
+  const id = params?.id as string; 
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [highestStep, setHighestStep] = useState(1); // Tracks the furthest unlocked step
+  const [highestStep, setHighestStep] = useState(1); 
   
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<any>(null);
@@ -37,12 +36,11 @@ export default function LlcRegistrationDetailsPage() {
   const [topError, setTopError] = useState<string | null>(null);
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
   
-  // NEW STATES FOR CHECKOUT RETURN LOGIC
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [lockedStatus, setLockedStatus] = useState<string | null>(null);
 
   const errorTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null); // For horizontal stepper scrolling
+  const scrollContainerRef = useRef<HTMLDivElement>(null); 
 
   // ==========================================
   // MASTER FORM STATE
@@ -54,7 +52,7 @@ export default function LlcRegistrationDetailsPage() {
     headOfficeAddress: { state: "", lga: "", city: "", postCode: "", houseNo: "", street: "" },
     useDefaultArticles: true,
     customArticles: [] as string[],
-    witnessDetails: { surname: "", firstName: "", otherName: "", dob: "", gender: "", occupation: "", country: "Nigeria", phoneCode: "+234", phone: "", email: "", state: "", lga: "", street: "" },
+    witnessDetails: { surname: "", firstName: "", otherName: "", dob: "", gender: "", occupation: "", country: "Nigeria", phoneCode: "+234", phone: "", email: "", state: "", lga: "", city: "", houseNo: "", street: "" },
     memorandumObjects: [] as string[],
     officers: [] as any[],
     shareCapital: null as any,
@@ -63,12 +61,11 @@ export default function LlcRegistrationDetailsPage() {
   });
 
   // ==========================================
-  // FETCH INITIAL DATA & HANDLE CHECKOUT RETURN
+  // FETCH INITIAL DATA
   // ==========================================
   useEffect(() => {
     if (!id) return;
     
-    // Check if returning from Paystack checkout native redirect
     const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
     const isReturningFromPaystack = searchParams?.get("verifying") === "true" || searchParams?.get("paid") === "true" || searchParams?.has("trxref");
 
@@ -77,11 +74,9 @@ export default function LlcRegistrationDetailsPage() {
       .then(json => {
         if (json.success) {
           
-          // If returning from Paystack, ALWAYS open the payment modal to show verification & checkmark!
           if (isReturningFromPaystack) {
             setShowPaymentModal(true);
           } 
-          // Only show static lockout screen if NOT actively verifying payment
           else if (json.data.status !== "UNSUBMITTED" && json.data.status !== "QUERIED") {
             setLockedStatus(json.data.status);
             setTimeout(() => router.push("/dashboard/cac/new-incorporation"), 3500);
@@ -120,9 +115,6 @@ export default function LlcRegistrationDetailsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, router]);
 
-  // ==========================================
-  // AUTO-SCROLL HORIZONTAL STEPPER ON MOBILE
-  // ==========================================
   useEffect(() => {
     const container = scrollContainerRef.current;
     const activeBtn = document.getElementById(`nav-step-${currentStep}`);
@@ -133,16 +125,12 @@ export default function LlcRegistrationDetailsPage() {
     }
   }, [currentStep]);
 
-  // ==========================================
-  // SILENT BACKGROUND AUTOSAVE
-  // ==========================================
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
-    // Prevent autosaving if locked or loading
     if (loading || !id || !draft || lockedStatus) return; 
 
     setSaveStatus("saving");
@@ -159,9 +147,6 @@ export default function LlcRegistrationDetailsPage() {
     return () => clearTimeout(timer);
   }, [companyDetails, id, loading, draft, lockedStatus]);
 
-  // ==========================================
-  // ERROR BANNER MANAGER
-  // ==========================================
   const triggerError = (message: string, anchorId?: string) => {
     setShowErrors(true);
     setTopError(message);
@@ -221,7 +206,7 @@ export default function LlcRegistrationDetailsPage() {
       if (firstError) return triggerError(`Please provide the ${firstError.name}.`, firstError.id);
     }
 
-    // STRICT STEP 2 
+    // STRICT STEP 2: FIXED WITH CITY AND HOUSE NO
     if (currentStep === 2) {
       const w = d.witnessDetails;
       if (!d.customArticles || d.customArticles.length === 0) return triggerError("You must provide at least one Article of Association to proceed.");
@@ -237,9 +222,16 @@ export default function LlcRegistrationDetailsPage() {
         { val: w.phone, name: "Witness Phone Number", id: "field-w-phone" },
         { val: w.email, name: "Witness Email Address", id: "field-w-email" },
         { val: w.state, name: "Witness State", id: "field-w-state" },
-        { val: w.lga, name: "Witness LGA", id: "field-w-lga" },
-        { val: w.street, name: "Witness Full Street Address", id: "field-w-street" }
+        // THE FIX: Explicitly check for City and House No.
+        { val: w.city, name: "Witness City / Town", id: "field-w-city" },
+        { val: w.houseNo, name: "Witness House Number", id: "field-w-house" },
+        { val: w.street, name: "Witness Street Address", id: "field-w-street" }
       ];
+
+      // Insert LGA check specifically if Nigeria
+      if (w.country === "Nigeria") {
+        witnessChecks.splice(10, 0, { val: w.lga, name: "Witness LGA", id: "field-w-lga" });
+      }
 
       const firstError = witnessChecks.find(c => !c.val || !c.val.trim());
       if (firstError) return triggerError(`Please provide the ${firstError.name}.`, firstError.id);
@@ -251,13 +243,10 @@ export default function LlcRegistrationDetailsPage() {
       if (w.phone.replace(/\D/g, '').length < 5) return triggerError("Please provide a valid Witness Phone Number.", "field-w-phone");
     }
 
-    // STRICT STEP 3 
     if (currentStep === 3 && d.memorandumObjects.length === 0) return triggerError("Please add at least one Object of Memorandum.");
     
-    // STRICT STEP 4 
     if (currentStep === 4 && d.officers.filter(o => o.roles.includes("DIRECTOR")).length === 0) return triggerError("You must add at least one Director.");
 
-    // STRICT STEP 5 
     if (currentStep === 5) {
       if (topError) {
          window.scrollTo({ top: 0, behavior: "smooth" });
@@ -287,13 +276,11 @@ export default function LlcRegistrationDetailsPage() {
       if (remainingAllotmentUnits < 0) return triggerError(`You have over-distributed your shares by ${Math.abs(remainingAllotmentUnits).toLocaleString()} units. Please correct the allotments.`);
     }
 
-    // STRICT STEP 6 (PSC)
     if (currentStep === 6) {
         const incompletePsc = d.officers.filter(o => o.roles.includes("PSC")).find((p: any) => !p.pscDetails?.isPep || !p.pscDetails?.hasAffiliation);
         if (incompletePsc) return triggerError(`Please complete the details for PSC: ${incompletePsc.firstName} ${incompletePsc.surname}`);
     }
 
-    // STRICT STEP 7 (Compliance)
     if (currentStep === 7) {
         const dec = d.declarantDetails || {};
         if (!dec.surname || !dec.firstName || !dec.phone || !dec.email || !dec.state || !dec.lga || !dec.city || !dec.street) return triggerError("Please fill in all required fields for the Declarant.");
@@ -302,7 +289,6 @@ export default function LlcRegistrationDetailsPage() {
         if (!dec.isAcknowledged) return triggerError("You must acknowledge the Statement of Compliance to proceed.");
     }
 
-    // STRICT STEP 8 (Uploads)
     if (currentStep === 8) {
       const u = d.uploads || {};
       const missingDocs: string[] = [];
@@ -361,7 +347,6 @@ export default function LlcRegistrationDetailsPage() {
     }
   };
 
-  // Helper to calculate exact Total Fee for LLC Checkout
   const calculateTotalFee = () => {
     const totalShares = Number(companyDetails.shareCapital?.totalIssuedCapital) || 1000000;
     const baseLLCFee = 35000;
@@ -423,7 +408,6 @@ export default function LlcRegistrationDetailsPage() {
       {/* Header & Clickable Stepper */}
       <div className="mb-8 border-b border-border pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="w-full overflow-hidden">
-          {/* Displays Tracking ID instead of CUID substring if available! */}
           <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5">
             Completing Application For {draft ? `• REF: ${draft.trackingId || draft.id?.substring(0, 8)}` : ""}
           </p>
@@ -509,7 +493,7 @@ export default function LlcRegistrationDetailsPage() {
         )}
       </div>
 
-      {/* PAYMENT MODAL (RENDERED WHEN READY) */}
+      {/* PAYMENT MODAL */}
       {showPaymentModal && (
         <PaymentModal 
           registrationId={id} 
