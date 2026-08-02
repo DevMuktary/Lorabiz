@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
+import DynamicPageTitle from '@/components/DynamicPageTitle'; // <-- Imported Title Manager
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://lorabiz.com'),
@@ -113,6 +114,7 @@ export default function RootLayout({
       </head>
       {/* CRITICAL FIX: Removed transition-colors duration-300 from body */}
       <body className="antialiased bg-background text-foreground min-h-[100dvh] flex flex-col">
+        <DynamicPageTitle /> {/* <-- Auto-manages all Client Page Titles silently! */}
         <Providers>
           {children}
         </Providers>
