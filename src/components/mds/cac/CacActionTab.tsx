@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CheckCircle, AlertCircle, UserPlus, ShieldAlert, RefreshCw } from "lucide-react";
 import { FileUpload } from "@/components/FileUpload";
 
@@ -30,6 +30,28 @@ export default function CacActionTab({
   const [queryReason, setQueryReason] = useState("");
   const [selectedStaff, setSelectedStaff] = useState("");
 
+  // ==========================================
+  // THE FIX: Wipe all form data when opening a new application
+  // ==========================================
+  useEffect(() => {
+    setActionType("");
+    setError("");
+    setCertificateUrl(null);
+    setStatusReportUrl(null);
+    setMemorandumUrl(null);
+    setRcNumber("");
+    setTaxId("");
+    setQueryReason("");
+    setSelectedStaff("");
+  }, [ticket.id]);
+
+  // ==========================================
+  // THE FIX: Clear errors instantly if they switch action types (e.g., from Query back to Approve)
+  // ==========================================
+  useEffect(() => {
+    setError("");
+  }, [actionType]);
+
   const handleActionSubmit = async () => {
     setIsProcessing(true);
     setError("");
@@ -51,17 +73,20 @@ export default function CacActionTab({
         throw new Error("Please select a staff member to assign.");
       }
 
+      // ==========================================
+      // THE FIX: Exact key mapping to match your API Route
+      // ==========================================
       const payload = {
-        action: actionType,
         ticketId: ticket.id,
         ticketType: ticket.type,
-        rcNumber,
-        taxId,
-        certificateUrl,
-        statusReportUrl,
-        memorandumUrl: isLlc ? memorandumUrl : undefined,
-        queryReason,
-        assignedTo: selectedStaff
+        actionType: actionType,             // Matches API
+        registrationNumber: rcNumber,       // Matches API
+        taxId: taxId,                       // Matches API
+        certificateUrl: certificateUrl,     // Matches API
+        statusReportUrl: statusReportUrl,   // Matches API
+        memorandumUrl: isLlc ? memorandumUrl : undefined, // Matches API
+        reason: queryReason,                // Matches API
+        staffId: selectedStaff              // Matches API
       };
 
       const response = await fetch("/api/mds/pipeline/cac/action", {
