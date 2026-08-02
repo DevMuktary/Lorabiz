@@ -7,9 +7,7 @@ import {
 
 export default function SettingsDashboard() {
   const [isLoading, setIsLoading] = useState(true);
-  
-  const [cacServices, setCacServices] = useState<any[]>([]);
-  const [ninServices, setNinServices] = useState<any[]>([]);
+  const [allServices, setAllServices] = useState<any[]>([]);
 
   const fetchSettings = async () => {
     setIsLoading(true);
@@ -18,11 +16,9 @@ export default function SettingsDashboard() {
       if (!res.ok) throw new Error("Failed to fetch");
       const result = await res.json();
       
-      // Filter out the duplicated NIN items from the global ServicePricing table
-      const cleanGlobalServices = (result.cacPricing || []).filter((s: any) => !s.serviceKey.startsWith("NIN_"));
-      
-      setCacServices(cleanGlobalServices);
-      setNinServices(result.ninPricing || []);
+      // We grab ONLY the global ServicePricing table (which contains CAC, SCUML, Tax ID, and the working uppercase NINs)
+      // We completely ignore the useless ghost ninPricing table
+      setAllServices(result.cacPricing || []);
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
@@ -34,9 +30,10 @@ export default function SettingsDashboard() {
     fetchSettings();
   }, []);
 
-  // Visually group the Global Services for a cleaner dashboard
-  const cacGroup = cacServices.filter(s => !s.serviceKey.includes("SCUML") && !s.serviceKey.includes("TAX_ID"));
-  const complianceGroup = cacServices.filter(s => s.serviceKey.includes("SCUML") || s.serviceKey.includes("TAX_ID"));
+  // Visually group the Global Services for a cleaner dashboard based on their serviceKey
+  const cacGroup = allServices.filter(s => !s.serviceKey.includes("SCUML") && !s.serviceKey.includes("TAX_ID") && !s.serviceKey.startsWith("NIN"));
+  const complianceGroup = allServices.filter(s => s.serviceKey.includes("SCUML") || s.serviceKey.includes("TAX_ID"));
+  const ninGroup = allServices.filter(s => s.serviceKey.startsWith("NIN"));
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300 pb-12">
@@ -72,7 +69,7 @@ export default function SettingsDashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {cacGroup.map(service => (
-                  <ServiceConfigCard key={service.id} service={service} apiCategory="CAC" />
+                  <ServiceConfigCard key={service.id} service={service} />
                 ))}
               </div>
             </section>
@@ -87,22 +84,22 @@ export default function SettingsDashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {complianceGroup.map(service => (
-                  <ServiceConfigCard key={service.id} service={service} apiCategory="CAC" />
+                  <ServiceConfigCard key={service.id} service={service} />
                 ))}
               </div>
             </section>
           )}
 
-          {/* NIN SECTION */}
-          {ninServices.length > 0 && (
+          {/* NIN SECTION (Now using the working uppercase global services!) */}
+          {ninGroup.length > 0 && (
             <section>
               <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
                 <Fingerprint size={20} className="text-blue-500 mr-2" />
                 <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Identity Services (NIN API)</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                {ninServices.map(service => (
-                  <ServiceConfigCard key={service.id} service={service} apiCategory="NIN" />
+                {ninGroup.map(service => (
+                  <ServiceConfigCard key={service.id} service={service} />
                 ))}
               </div>
             </section>
@@ -115,10 +112,10 @@ export default function SettingsDashboard() {
 }
 
 // ----------------------------------------------------------------------
-// SUB-COMPONENT: Service Config Card (Now Handles Local State Saving)
+// SUB-COMPONENT: Service Config Card (Handles Local State Saving)
 // ----------------------------------------------------------------------
 
-function ServiceConfigCard({ service, apiCategory }: { service: any, apiCategory: "CAC" | "NIN" }) {
+function ServiceConfigCard({ service }: { service: any }) {
   // Current edited state
   const [current, setCurrent] = useState({
     isActive: service.isActive,
@@ -135,14 +132,11 @@ function ServiceConfigCard({ service, apiCategory }: { service: any, apiCategory
 
   const [isSaving, setIsSaving] = useState(false);
 
-  const title = apiCategory === "CAC" ? service.title : service.displayName;
-  const serviceKey = apiCategory === "CAC" ? service.serviceKey : service.slipType;
-
   // Determine if the current inputs differ from what is "saved"
   const isChanged = 
     current.isActive !== savedState.isActive || 
     Number(current.price) !== Number(savedState.price) || 
-    (apiCategory === "CAC" && current.maintenanceMsg !== savedState.maintenanceMsg);
+    current.maintenanceMsg !== savedState.maintenanceMsg;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -151,12 +145,12 @@ function ServiceConfigCard({ service, apiCategory }: { service: any, apiCategory
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          category: apiCategory,
+          category: "CAC", // Backend looks for "CAC" to update the global ServicePricing table
           id: service.id,
-          title,
+          title: service.title,
           price: current.price,
           isActive: current.isActive,
-          maintenanceMsg: apiCategory === "CAC" ? current.maintenanceMsg : undefined
+          maintenanceMsg: current.maintenanceMsg
         })
       });
       
@@ -182,8 +176,8 @@ function ServiceConfigCard({ service, apiCategory }: { service: any, apiCategory
         !current.isActive ? 'bg-red-50 dark:bg-red-500/5 border-red-100 dark:border-red-500/20' : 'bg-zinc-50 dark:bg-zinc-900/50 border-zinc-100 dark:border-zinc-800'
       }`}>
         <div className="pr-4">
-          <h3 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 leading-tight">{title}</h3>
-          <p className="text-[10px] sm:text-xs font-mono text-zinc-500 mt-1 uppercase tracking-wider">{serviceKey}</p>
+          <h3 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 leading-tight">{service.title}</h3>
+          <p className="text-[10px] sm:text-xs font-mono text-zinc-500 mt-1 uppercase tracking-wider">{service.serviceKey}</p>
         </div>
         
         {/* Toggle Switch */}
@@ -216,22 +210,20 @@ function ServiceConfigCard({ service, apiCategory }: { service: any, apiCategory
           </div>
         </div>
 
-        {/* Maintenance Message (Only for CAC/SCUML/TAX_ID) */}
-        {apiCategory === "CAC" && (
-          <div className={`transition-all ${!current.isActive ? 'opacity-100' : 'opacity-60'}`}>
-            <label className="text-xs font-bold uppercase text-zinc-500 mb-1.5 flex items-center">
-              <AlertTriangle size={14} className="mr-1.5" /> Downtime Notice
-            </label>
-            <textarea 
-              rows={4}
-              value={current.maintenanceMsg}
-              onChange={(e) => setCurrent({ ...current, maintenanceMsg: e.target.value })}
-              placeholder="Explain to users why this service is currently unavailable..."
-              className="w-full p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none leading-relaxed"
-            />
-            {!current.isActive && <p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 font-bold mt-1.5">This message is currently visible to clients.</p>}
-          </div>
-        )}
+        {/* Maintenance Message (Now perfectly visible for NIN too!) */}
+        <div className={`transition-all ${!current.isActive ? 'opacity-100' : 'opacity-60'}`}>
+          <label className="text-xs font-bold uppercase text-zinc-500 mb-1.5 flex items-center">
+            <AlertTriangle size={14} className="mr-1.5" /> Downtime Notice
+          </label>
+          <textarea 
+            rows={4}
+            value={current.maintenanceMsg}
+            onChange={(e) => setCurrent({ ...current, maintenanceMsg: e.target.value })}
+            placeholder="Explain to users why this service is currently unavailable..."
+            className="w-full p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none leading-relaxed"
+          />
+          {!current.isActive && <p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 font-bold mt-1.5">This message is currently visible to clients.</p>}
+        </div>
 
       </div>
 
