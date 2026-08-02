@@ -35,17 +35,51 @@ export default function AirtimeDashboardPage() {
   // Dispute States
   const [disputeTransaction, setDisputeTransaction] = useState<Transaction | null>(null);
 
-  // Simulated Fetch (Replace with your actual /api/user/wallet and /api/airtime/history fetchers)
+  // Live fetchers for real data
+  const fetchData = async () => {
+    try {
+      // 1. Fetch Real Wallet Balance
+      const walletRes = await fetch("/api/user/wallet");
+      const walletData = await walletRes.json();
+      if (walletData.success) {
+        setWalletBalance(walletData.wallet.balance);
+      }
+
+      // 2. Fetch Real Transaction History
+      const txRes = await fetch("/api/user/transactions?status=SUCCESS");
+      const txData = await txRes.json();
+      if (txData.success) {
+        // Filter specifically for airtime/utility transactions
+        const airtimeTxs = txData.transactions.filter(
+          (tx: any) => tx.serviceCategory === "UTILITIES" || (tx.description && tx.description.includes("Airtime Recharge"))
+        );
+        
+        // Format the database rows to match the UI component's expected structure
+        const formattedHistory = airtimeTxs.map((tx: any) => {
+          // Extract network and phone from our structured description: "Airtime Recharge - 08012345678 (MTN)"
+          const match = tx.description.match(/Airtime Recharge - (\d+) \((.+)\)/);
+          return {
+            reference: tx.reference,
+            phone: match ? match[1] : "Unknown",
+            amount: Number(tx.amount),
+            network: match ? match[2].trim() : "Unknown",
+            date: new Date(tx.createdAt)
+          };
+        });
+        
+        setHistory(formattedHistory);
+      }
+    } catch (error) {
+      console.error("Failed to load airtime data:", error);
+    }
+  };
+
   useEffect(() => {
-    setWalletBalance(15000); 
-    setHistory([
-      { reference: "ART-123456789", phone: "08012345678", amount: 1000, network: "MTN", date: new Date(Date.now() - 86400000) },
-      { reference: "ART-987654321", phone: "08123456789", amount: 500, network: "AIRTEL", date: new Date(Date.now() - 172800000) }
-    ]);
+    fetchData();
   }, []);
 
   const initiatePurchase = (data: { network: string; phone: string; amount: number }) => {
-    // 1. Check for Duplicate within 10 minutes
+    // 1. Check for Duplicate within 10 minutes (Anti-mistake guard)
     const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
     const isDuplicate = history.some(tx => 
       tx.phone === data.phone && 
@@ -68,27 +102,37 @@ export default function AirtimeDashboardPage() {
     setIsProcessing(true);
 
     try {
-      // TODO: Replace with your actual fetch call to /api/airtime/purchase
-      // await fetch('/api/airtime/purchase', { method: "POST", body: JSON.stringify(data) });
+      // Actually hit the live API route
+      const res = await fetch('/api/services/airtime', { 
+        method: "POST", 
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data) 
+      });
       
-      // Simulating API Latency (To allow the beautiful ProcessingOverlay to shine!)
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      const result = await res.json();
 
-      const newTransaction = {
-        reference: `ART-${Date.now()}`,
-        phone: data.phone,
-        amount: data.amount,
-        network: data.network,
-        date: new Date()
-      };
+      if (result.success) {
+        const newTransaction = {
+          // Fallback to local generated ref if the provider doesn't hand one back
+          reference: result.data?.reference || `ART-${Date.now()}`,
+          phone: data.phone,
+          amount: data.amount,
+          network: data.network,
+          date: new Date()
+        };
 
-      // Update State
-      setWalletBalance(prev => prev - data.amount);
-      setHistory(prev => [newTransaction, ...prev]);
-      setCurrentReceipt(newTransaction);
+        // Update State using exact balance returned from server
+        setWalletBalance(result.newBalance);
+        setHistory(prev => [newTransaction, ...prev]);
+        setCurrentReceipt(newTransaction);
+      } else {
+        alert(`Transaction Failed: ${result.message}`);
+      }
 
     } catch (error) {
-      alert("Transaction Failed. Please check your network and try again.");
+      alert("Transaction Failed. Please check your network connection and try again.");
     } finally {
       setIsProcessing(false);
       setPendingPurchase(null);
