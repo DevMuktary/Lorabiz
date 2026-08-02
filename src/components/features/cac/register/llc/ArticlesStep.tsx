@@ -32,7 +32,7 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
   // ==========================================
   const handleBlur = (field: string) => setTouched((prev) => ({ ...prev, [field]: true }));
 
-  const getError = (fieldKey: string, value: string, type: "text" | "email" | "dob" | "phone" = "text") => {
+  const getError = (fieldKey: string, value: string | undefined, type: "text" | "email" | "dob" | "phone" = "text") => {
     if (!touched[fieldKey] && !showErrors) return null;
     
     if (!value || !value.trim()) {
@@ -76,7 +76,7 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
   const errEmail = getError("w-email", witness.email, "email");
   const errCountry = getError("w-country", witness.country);
   const errState = getError("w-state", witness.state);
-  const errLga = getError("w-lga", witness.lga);
+  const errLga = witness.country === "Nigeria" ? getError("w-lga", witness.lga) : null; 
   const errCity = getError("w-city", witness.city);
   const errHouseNo = getError("w-house", witness.houseNo);
   const errStreet = getError("w-street", witness.street);
@@ -96,7 +96,6 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
       let subtitle = "";
       let content = "";
       
-      // If there are more than 2 lines, assume line 2 is a subtitle
       if (lines.length > 2) {
         subtitle = lines[1].trim();
         content = lines.slice(2).join('\n').trim();
@@ -604,9 +603,9 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
               </div>
               
               <div className="space-y-2">
-                <Label className={`text-xs font-bold uppercase ${errCity ? "text-red-500" : "text-muted-foreground"}`}>City / County <span className="text-red-500">*</span></Label>
-                <Input id="field-w-city" placeholder="E.g. Austin, Toronto" value={witness.city || ""} onChange={e => { handleWitnessChange("city", e.target.value); setTouched(p => ({...p, "w-city": true})); }} onBlur={() => handleBlur("w-city")} className={`h-12 font-bold bg-background text-foreground ${errCity ? "border-red-500 bg-red-500/10" : "border-border focus-visible:ring-primary focus-visible:border-primary"}`} />
-                <ErrorMessage msg={errCity} />
+                <Label className={`text-xs font-bold uppercase ${errLga ? "text-red-500" : "text-muted-foreground"}`}>City / County <span className="text-red-500">*</span></Label>
+                <Input id="field-w-lga" placeholder="E.g. Austin, Toronto" value={witness.lga || ""} onChange={e => { handleWitnessChange("lga", e.target.value); setTouched(p => ({...p, "w-lga": true})); }} onBlur={() => handleBlur("w-lga")} className={`h-12 font-bold bg-background text-foreground ${errLga ? "border-red-500 bg-red-500/10" : "border-border focus-visible:ring-primary focus-visible:border-primary"}`} />
+                <ErrorMessage msg={errLga} />
               </div>
             </>
           )}
