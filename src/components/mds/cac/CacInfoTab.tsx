@@ -22,10 +22,10 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
     ? parseJsonSafe(ticket.headOfficeAddress, null) 
     : null;
 
-  // FIXED: Explicitly look inside shareCapital for the shareClasses array!
-  const shareCapitalObj = isLlc ? parseJsonSafe(ticket.shareCapital, {}) : {};
-  const shareClassesData = shareCapitalObj.shareClasses || [];
-  
+  // THE FIX: Share classes are inside ticket.shareCapital based on your schema
+  const shareCapitalObj = isLlc ? parseJsonSafe(ticket.shareCapital, null) : null;
+  const shareClassesData = shareCapitalObj?.shareClasses || [];
+
   const customArticlesData = isLlc ? parseJsonSafe(ticket.customArticles, []) : [];
   const declarant = isLlc ? parseJsonSafe(ticket.declarantDetails, null) : null;
   const witness = isLlc ? parseJsonSafe(ticket.witnessDetails, null) : null;
@@ -69,28 +69,38 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         )}
       </Section>
 
-      {/* FIXED: CLEAR DISPLAY OF SHARE CLASS TYPE (ORDINARY / PREFERENCE) */}
+      {/* FIXED: SHARE CAPITAL & CLASSES */}
       {isLlc && (
         <Section title="Share Capital Structure">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <DataBlock label="Total Share Capital" value={shareCapitalObj.totalIssuedCapital ? `₦${Number(shareCapitalObj.totalIssuedCapital).toLocaleString()}` : "N/A"} highlight />
-            <DataBlock label="Company Type" value={shareCapitalObj.companyType || "Private Company Limited by Shares"} />
+            <DataBlock label="Total Share Capital" value={ticket.totalShareCapital ? `₦${Number(ticket.totalShareCapital).toLocaleString()}` : "N/A"} highlight />
+            <DataBlock label="Company Type" value={ticket.companyType || "Private Company Limited by Shares"} />
           </div>
           
-          {shareClassesData.length > 0 && (
+          {shareClassesData.length > 0 ? (
             <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
               <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-4 flex items-center gap-2">
                 <PieChart size={14} className="text-indigo-500" /> Breakdown of Share Classes
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {shareClassesData.map((sc: any, i: number) => {
-                  const type = (sc.type || sc.shareType || sc.className || "ORDINARY").toUpperCase();
-                  const units = Number(sc.value || sc.allotted || sc.units || 0).toLocaleString();
-                  return (
-                    <DataBlock key={i} label={`${type} SHARES`} value={`${units} Units`} highlight />
-                  );
-                })}
+              <div className="grid grid-cols-1 gap-3">
+                {shareClassesData.map((sc: any, i: number) => (
+                  <div key={i} className="flex justify-between items-center text-sm p-4 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                      <div>
+                        <span className="font-black text-indigo-900 dark:text-indigo-100 uppercase tracking-widest text-xs">
+                          {sc.type}
+                        </span>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Value per share: ₦{sc.nominalValue}</p>
+                      </div>
+                      <span className="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-100 dark:bg-indigo-500/20 px-3 py-1.5 rounded-lg">
+                        {Number(sc.units).toLocaleString()} Units
+                      </span>
+                  </div>
+                ))}
               </div>
+            </div>
+          ) : (
+            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-bold">
+               No Share Classes Found. Please check database mapping.
             </div>
           )}
         </Section>

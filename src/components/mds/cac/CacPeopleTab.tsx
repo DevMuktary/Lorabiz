@@ -78,9 +78,8 @@ function PersonCard({ person, isLlc, showShares, showPsc }: any) {
     
   const serviceObj = isLlc ? parseJsonSafe(person.serviceAddress, null) : null;
   
+  // Safely parse PSC details
   const pscData = showPsc ? parseJsonSafe(person.pscDetails, null) : null;
-  const sharePct = pscData?.percentageOfShares || pscData?.sharesPercentage || pscData?.percentage || null;
-  const votingPct = pscData?.percentageOfVotingRights || pscData?.votingPercentage || null;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
@@ -122,18 +121,23 @@ function PersonCard({ person, isLlc, showShares, showPsc }: any) {
           <DataBlock label="Total Shares Allotted" value={`${Number(person.sharesAllotted).toLocaleString()} Units`} highlight />
         )}
 
-        {/* FIXED: EXACT 4-ROW PSC DECLARATIONS TABLE */}
+        {/* FIXED: EXACT PSC DECLARATIONS TABLE EXPOSING ALL 8 FIELDS */}
         {showPsc && pscData && (
-          <div className="md:col-span-3 bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-500/20 rounded-xl shadow-sm overflow-hidden mt-2">
-             <div className="bg-rose-50 dark:bg-rose-500/10 px-5 py-3 border-b border-rose-100 dark:border-rose-500/20">
-                <p className="text-xs font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">PSC DECLARATIONS</p>
+          <div className="md:col-span-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-xl shadow-sm overflow-hidden mt-2">
+             <div className="bg-rose-100/50 dark:bg-rose-500/10 px-5 py-3 border-b border-rose-100 dark:border-rose-500/20">
+                <p className="text-[10px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">PSC Declarations (Extract EXACTLY for CAC Portal)</p>
              </div>
              
-             <div className="flex flex-col">
+             <div className="p-0">
                 <PscRow label="POLITICALLY EXPOSED PERSON?" value={pscData.isPep} />
                 <PscRow label="HAS AFFILIATIONS?" value={pscData.hasAffiliation} />
-                <PscRow label="DIRECT SHARES HELD" value={pscData.holdsDirectShares} pct={sharePct} />
-                <PscRow label="DIRECT VOTING RIGHTS" value={pscData.holdsDirectVotingRights} pct={votingPct} />
+                <PscRow label="DIRECT SHARES HELD" value={pscData.holdsSharesDirect} />
+                <PscRow label="DIRECT VOTING RIGHTS" value={pscData.holdsVotingDirect} />
+                <PscRow label="INDIRECT SHARES HELD" value={pscData.holdsSharesIndirect} />
+                <PscRow label="INDIRECT VOTING RIGHTS" value={pscData.holdsVotingIndirect} />
+                {/* NEW: Added the two missing fields from your JSON structure */}
+                <PscRow label="RIGHT TO APPOINT/REMOVE DIRECTORS" value={pscData.canAppointRemove} />
+                <PscRow label="EXERCISES SIGNIFICANT INFLUENCE" value={pscData.hasSignificantInfluence} />
              </div>
           </div>
         )}
@@ -147,16 +151,17 @@ function PersonCard({ person, isLlc, showShares, showPsc }: any) {
   );
 }
 
-// FIXED: Exact format requested for the PSC Table rows
-function PscRow({ label, value, pct }: { label: string, value: any, pct?: string }) {
-  const isYes = value === true || value === "Yes" || value === "true" || value === "YES";
-  const displayValue = isYes ? `Yes ${pct && pct !== "N/A" ? `(${pct})` : ''}` : "No";
-
+// Helper to format the exact Table Row
+function PscRow({ label, value }: { label: string, value: any }) {
+  if (value === undefined || value === null || value === "") return null; 
+  
+  const isYes = String(value).toLowerCase().startsWith('yes');
+  
   return (
-    <div className="flex justify-between items-center px-5 py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0 bg-zinc-50/50 dark:bg-zinc-950/50">
-      <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wide">{label}</span>
-      <span className={`text-sm font-black ${isYes ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-500 dark:text-zinc-500'}`}>
-        {displayValue}
+    <div className="flex justify-between items-center px-6 py-3 border-b border-rose-100/50 dark:border-rose-500/10 last:border-0">
+      <span className="text-xs font-bold text-rose-900/70 dark:text-rose-200/70 uppercase tracking-wide">{label}</span>
+      <span className={`text-sm font-black ${isYes ? 'text-rose-700 dark:text-rose-300' : 'text-zinc-400'}`}>
+        {value}
       </span>
     </div>
   );
