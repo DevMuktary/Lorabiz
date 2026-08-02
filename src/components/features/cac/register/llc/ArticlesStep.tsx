@@ -366,7 +366,7 @@ export default function ArticlesStep({ data, updateData, showErrors }: any) {
               onClick={handleLoadDefaults} 
               className={`flex-1 md:flex-none h-10 font-bold rounded-xl text-xs px-3 flex items-center justify-center gap-2 transition-colors cursor-pointer ${data.useDefaultArticles && articles.length > 0 ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
             >
-              {data.useDefaultArticles && articles.length > 0 ? <><CheckCircle weight="fill" className="h-4 w-4 shrink-0" /> <span className="truncate">Defaults Loaded</span></> : "Load CAMA Defaults"}
+              {data.useDefaultArticles && articles.length > 0 ? <><CheckCircle weight="fill" className="h-4 w-4 shrink-0" /> <span className="truncate">Defaults Loaded</span></> : "Use CAMA Defaults"}
             </Button>
             <Button onClick={openAddModal} className="flex-1 md:flex-none h-10 font-bold rounded-xl text-xs px-3 flex items-center justify-center gap-2 bg-primary hover:opacity-90 text-primary-foreground shadow-md cursor-pointer">
               <Plus weight="bold" className="shrink-0" /> Add Custom
