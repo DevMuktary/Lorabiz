@@ -12,7 +12,7 @@ export default function DynamicPageTitle() {
     let title = "Lorabiz Dashboard";
     
     // Admin (MDS) Pages
-    else if (pathname.includes('/mds/dashboard/orders/cac')) title = "CAC Pipeline | Lorabiz MDS";
+    if (pathname.includes('/mds/dashboard/orders/cac')) title = "CAC Pipeline | Lorabiz MDS";
     else if (pathname.includes('/mds/dashboard/orders/scuml')) title = "SCUML Pipeline | Lorabiz MDS";
     else if (pathname.includes('/mds/dashboard/orders/tax-id')) title = "Tax ID Pipeline | Lorabiz MDS";
     else if (pathname.includes('/mds/dashboard/orders/airtime')) title = "Airtime Log | Lorabiz MDS";
