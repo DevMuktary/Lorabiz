@@ -1,3 +1,5 @@
+// src/app/api/scuml/route.ts
+
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -15,6 +17,7 @@ export async function GET(req: Request) {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+    // Prisma returns all columns by default, so finalCertificateUrl and failureReason are safely included!
     const history = await prisma.scumlRegistration.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' }
