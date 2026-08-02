@@ -86,31 +86,53 @@ export default function ApplicationDrawer({
       }
     };
 
-    // Safely parse and unroll JSON objects field by field (No merging)
+    // ==========================================
+    // THE FIX: Recursive Object Unroller
+    // ==========================================
     const printJsonObject = (title: string, obj: any) => {
       if (!obj) return;
       let parsed = obj;
       if (typeof obj === 'string') {
         try { parsed = JSON.parse(obj); } catch (e) { return; }
       }
-      if (typeof parsed !== 'object' || Object.keys(parsed).length === 0) return;
+      
+      // If it parsed into a primitive, just print it directly
+      if (typeof parsed !== 'object') {
+        addField(title, parsed);
+        return;
+      }
+      
+      if (Object.keys(parsed).length === 0) return;
       
       addHeader(`--- ${title} ---`);
-      Object.entries(parsed).forEach(([key, val]) => {
-        if (val !== null && val !== "") {
-          const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-          
-          if (typeof val === 'object') {
-             // If nested further (e.g. share classes inside share classes)
-             Object.entries(val).forEach(([subKey, subVal]) => {
-                addField(`${formattedKey} - ${subKey}`, subVal);
-             });
-          } else {
-             addField(formattedKey, val);
-          }
+
+      // Recursive dive function
+      const traverseAndPrint = (prefix: string, node: any) => {
+        if (node === null || node === undefined || node === "") return;
+        
+        if (Array.isArray(node)) {
+          // It's an Array (e.g. Multiple Share Classes)
+          node.forEach((item, index) => {
+            const newPrefix = prefix ? `${prefix} (Item ${index + 1})` : `Item ${index + 1}`;
+            traverseAndPrint(newPrefix, item);
+          });
+        } else if (typeof node === 'object') {
+          // It's an Object (e.g. { units: 100, class: 'Ordinary' })
+          Object.entries(node).forEach(([k, v]) => {
+            // Convert camelCase to Spaced Words
+            const formattedKey = k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            const newPrefix = prefix ? `${prefix} - ${formattedKey}` : formattedKey;
+            traverseAndPrint(newPrefix, v);
+          });
+        } else {
+          // It is finally a flat value (String, Number, Boolean)
+          addField(prefix, node);
         }
-      });
+      };
+
+      traverseAndPrint("", parsed);
     };
+    // ==========================================
 
     // 1. Core Metadata
     addHeader(`LORABIZ FULL APPLICATION RECORD - REF: ${ticket.trackingId}`, true);
@@ -151,6 +173,8 @@ export default function ApplicationDrawer({
        
        printJsonObject("Registered Office Address", ticket.registeredAddress);
        printJsonObject("Head Office Address", ticket.headOfficeAddress);
+       
+       // This will now perfectly unroll all Share arrays without errors
        printJsonObject("Share Classes Breakdown", ticket.shareClasses);
        
        if (ticket.memorandumObjects && Array.isArray(ticket.memorandumObjects)) {
@@ -164,7 +188,7 @@ export default function ApplicationDrawer({
        printJsonObject("Declarant Details", ticket.declarantDetails);
     }
 
-    // 3. Personnel / People Loop (Unrolled completely)
+    // 3. Personnel / People Loop
     if (ticket.people && ticket.people.length > 0) {
        addHeader(isLlc ? "COMPANY OFFICERS & SHAREHOLDERS" : "PROPRIETOR DETAILS", true);
        
@@ -194,9 +218,10 @@ export default function ApplicationDrawer({
 
           if (isLlc) {
              if (person.sharesAllotted) addField("Shares Allotted", person.sharesAllotted);
+             // These will also successfully unpack
              printJsonObject("Residential Address", person.residentialAddress);
              printJsonObject("Service Address", person.serviceAddress);
-             printJsonObject("PSC Details (Person of Significant Control)", person.pscDetails);
+             printJsonObject("PSC Details", person.pscDetails);
           } else {
              addHeader("--- Proprietor Address ---");
              addField("State", person.state);
