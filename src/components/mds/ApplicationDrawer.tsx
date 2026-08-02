@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { 
-  X, CheckCircle, AlertCircle, FileText, UserPlus, FilePdf, RefreshCw, Briefcase, Building2, MapPin
+  X, CheckCircle, AlertCircle, FileText, UserPlus, File, RefreshCw, Briefcase, Building2, MapPin
 } from 'lucide-react';
 import { FileUpload } from '@/components/FileUpload';
 
@@ -124,7 +124,8 @@ export default function ApplicationDrawer({
         <div className="flex px-8 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0 overflow-x-auto scrollbar-hide">
           <TabButton active={activeTab === "INFO"} onClick={() => setActiveTab("INFO")} label="Application Info" icon={<FileText size={16} />} />
           <TabButton active={activeTab === "PEOPLE"} onClick={() => setActiveTab("PEOPLE")} label={isLlc ? "Directors & Shareholders" : "Proprietors"} icon={<UserPlus size={16} />} />
-          <TabButton active={activeTab === "DOCS"} onClick={() => setActiveTab("DOCS")} label="Client Documents" icon={<FilePdf size={16} />} />
+          {/* FIXED: Using File instead of FilePdf */}
+          <TabButton active={activeTab === "DOCS"} onClick={() => setActiveTab("DOCS")} label="Client Documents" icon={<File size={16} />} />
           <TabButton active={activeTab === "ACTION"} onClick={() => setActiveTab("ACTION")} label="Admin Action Hub" icon={<CheckCircle size={16} />} alert={ticket.status === "PENDING"} />
         </div>
 
@@ -220,7 +221,7 @@ export default function ApplicationDrawer({
                   </h3>
                   <DocumentPreview label="Identity Document (ID)" url={person.identityDocumentUrl} />
                   <DocumentPreview label="Passport Photograph" url={person.passportPhotoUrl} />
-                  <DocumentPreview label="Signature Signature" url={person.signatureUrl} />
+                  <DocumentPreview label="Signature" url={person.signatureUrl} />
                 </div>
               ))}
             </div>
@@ -402,7 +403,8 @@ function DocumentPreview({ label, url }: { label: string, url: string | undefine
     <div className="flex items-center justify-between p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
         <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-lg">
-          {isPdf ? <FilePdf size={20} /> : <FileText size={20} />}
+          {/* FIXED: Using File and FileText consistently */}
+          {isPdf ? <File size={20} /> : <FileText size={20} />}
         </div>
         <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{label}</span>
       </div>
