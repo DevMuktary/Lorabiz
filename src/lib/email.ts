@@ -3,11 +3,13 @@
 export async function sendEmail({ 
   to, 
   subject, 
-  htmlBody 
+  htmlBody,
+  attachments = [] 
 }: { 
   to: string; 
   subject: string; 
-  htmlBody: string 
+  htmlBody: string;
+  attachments?: { name: string; mime_type: string; content: string }[];
 }) {
   const url = "https://api.zeptomail.com/v1.1/email";
   const token = process.env.ZEPTOMAIL_API_KEY;
@@ -17,6 +19,17 @@ export async function sendEmail({
     throw new Error("Missing ZeptoMail environment variables. Check your Railway settings.");
   }
 
+  const payload: any = {
+    from: { address: sender, name: "LoraBiz" },
+    to: [{ email_address: { address: to } }],
+    subject: subject,
+    htmlbody: htmlBody,
+  };
+
+  if (attachments.length > 0) {
+    payload.attachments = attachments;
+  }
+
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -24,12 +37,7 @@ export async function sendEmail({
       "Content-Type": "application/json",
       "Authorization": token,
     },
-    body: JSON.stringify({
-      from: { address: sender, name: "LoraBiz" },
-      to: [{ email_address: { address: to } }],
-      subject: subject,
-      htmlbody: htmlBody,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -39,6 +47,19 @@ export async function sendEmail({
   }
 
   return res.json();
+}
+
+// Helper function to fetch a PDF URL and convert it to Base64 for ZeptoMail
+async function fetchPdfAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Failed to fetch file");
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer).toString('base64');
+  } catch (error) {
+    console.error(`Error converting file to base64 (${url}):`, error);
+    return null;
+  }
 }
 
 // Reusable template layout wrapper using Bulletproof HTML Tables
@@ -65,7 +86,7 @@ function getBaseLayout(content: string, previewText: string = "") {
               
               <tr>
                 <td align="center" style="background-color: #0f172a; padding: 28px 32px;">
-                  <img src="https://lorabiz.com/logo.png" alt="LoraBiz" width="150" style="display: block; border: 0; outline: none; text-decoration: none;" />
+                  <img src="https://lorabiz.com/logo.png" alt="LoraBiz" width="150" height="auto" style="display: block; border: 0; outline: none; text-decoration: none;" />
                 </td>
               </tr>
 
@@ -77,7 +98,7 @@ function getBaseLayout(content: string, previewText: string = "") {
 
               <tr>
                 <td align="center" style="padding: 0; background-color: #ffffff;">
-                  <img src="https://lorabiz.com/lorabiz-footer.jpg" alt="LoraBiz Services" width="560" style="display: block; border: 0; max-width: 100%; height: auto; outline: none;" />
+                  <img src="https://lorabiz.com/lorabiz-footer.jpg" alt="LoraBiz Services" width="560" height="auto" style="display: block; border: 0; max-width: 100%; height: auto; outline: none;" />
                 </td>
               </tr>
 
@@ -258,7 +279,7 @@ export async function sendPasswordChangeOTP(to: string, otpCode: string) {
 }
 
 // ============================================================================
-// STATUS NOTIFICATIONS (No OTP Required)
+// STATUS NOTIFICATIONS
 // ============================================================================
 
 export async function sendApplicationSubmittedEmail({
@@ -280,7 +301,7 @@ export async function sendApplicationSubmittedEmail({
       <p style="margin: 6px 0 0; font-size: 15px; color: #0f172a;"><strong>Tracking Ref:</strong> ${regId}</p>
     </div>
     <div style="text-align: center;">
-      <a href="https://lorabiz.com/dashboard/cac/register/view/${regId}" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Track Application Status</a>
+      <a href="https://lorabiz.com/dashboard/cac" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Track Application Status</a>
     </div>
   `;
 
@@ -316,8 +337,11 @@ export async function sendApplicationQueriedEmail({
 }
 
 export async function sendApplicationApprovedEmail({
-  to, name, businessName, rcNumber,
-}: { to: string; name: string; businessName: string; rcNumber: string; }) {
+  to, name, businessName, rcNumber, certificateUrl, statusReportUrl, memorandumUrl
+}: { 
+  to: string; name: string; businessName: string; rcNumber: string; 
+  certificateUrl?: string; statusReportUrl?: string; memorandumUrl?: string;
+}) {
   
   const subject = `Incorporation Approved: ${businessName} 🎉`;
   const previewText = `Congratulations! ${businessName} is approved. RC Number: ${rcNumber}`;
@@ -333,18 +357,33 @@ export async function sendApplicationApprovedEmail({
       <p style="margin: 0; font-size: 28px; font-weight: 800; color: #15803d; letter-spacing: 1px;">${rcNumber}</p>
     </div>
     <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
-      Your statutory CAC Certificate, Status Report, and official documents are ready for download in your portal.
+      We have safely attached your official CAC Certificate and other applicable incorporation documents directly to this email for your convenience. You can also view and download them anytime in your portal.
     </p>
     <div style="text-align: center;">
-      <a href="https://lorabiz.com/dashboard/cac/new-incorporation" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Download Official Documents</a>
+      <a href="https://lorabiz.com/dashboard/cac" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to CAC Dashboard</a>
     </div>
   `;
 
-  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+  const attachments: { name: string; mime_type: string; content: string }[] = [];
+  
+  if (certificateUrl) {
+    const b64 = await fetchPdfAsBase64(certificateUrl);
+    if (b64) attachments.push({ name: `CAC_Certificate_${rcNumber}.pdf`, mime_type: "application/pdf", content: b64 });
+  }
+  if (statusReportUrl) {
+    const b64 = await fetchPdfAsBase64(statusReportUrl);
+    if (b64) attachments.push({ name: `Status_Report_${rcNumber}.pdf`, mime_type: "application/pdf", content: b64 });
+  }
+  if (memorandumUrl) {
+    const b64 = await fetchPdfAsBase64(memorandumUrl);
+    if (b64) attachments.push({ name: `Memorandum_${rcNumber}.pdf`, mime_type: "application/pdf", content: b64 });
+  }
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText), attachments });
 }
 
 // ============================================================================
-// NEW: SCUML SUBMISSION NOTIFICATION
+// SCUML SUBMISSION NOTIFICATION
 // ============================================================================
 
 export async function sendScumlSubmittedEmail({
