@@ -6,10 +6,12 @@ import {
   X, CheckCircle, FileText, UserPlus, File, Briefcase, Building2
 } from 'lucide-react';
 import { TabButton } from './CacShared';
+
+// Imported modular tabs
 import CacInfoTab from './CacInfoTab';
- import CacPeopleTab from './CacPeopleTab';
- import CacDocsTab from './CacDocsTab';
-/import CacActionTab from './CacActionTab';
+import CacPeopleTab from './CacPeopleTab';
+import CacDocsTab from './CacDocsTab';
+import CacActionTab from './CacActionTab';
 
 export default function ApplicationDrawer({ 
   ticket, 
@@ -80,23 +82,19 @@ export default function ApplicationDrawer({
         <div className="flex-1 overflow-y-auto p-8 relative">
           
           {activeTab === "INFO" && (
-             <div className="text-center p-10 text-zinc-500">Creating CacInfoTab...</div>
-             // <CacInfoTab ticket={ticket} isLlc={isLlc} />
+             <CacInfoTab ticket={ticket} isLlc={isLlc} />
           )}
 
           {activeTab === "PEOPLE" && (
-             <div className="text-center p-10 text-zinc-500">Creating CacPeopleTab...</div>
-             // <CacPeopleTab ticket={ticket} isLlc={isLlc} />
+             <CacPeopleTab ticket={ticket} isLlc={isLlc} />
           )}
 
           {activeTab === "DOCS" && (
-             <div className="text-center p-10 text-zinc-500">Creating CacDocsTab...</div>
-             // <CacDocsTab ticket={ticket} isLlc={isLlc} />
+             <CacDocsTab ticket={ticket} isLlc={isLlc} />
           )}
 
           {activeTab === "ACTION" && (
-             <div className="text-center p-10 text-zinc-500">Creating CacActionTab...</div>
-             // <CacActionTab ticket={ticket} staffList={staffList} onUpdateSuccess={onUpdateSuccess} />
+             <CacActionTab ticket={ticket} staffList={staffList} onUpdateSuccess={onUpdateSuccess} />
           )}
 
         </div>
