@@ -356,8 +356,9 @@ function CreatePromoDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean, on
 
             <div className="border-t border-b border-zinc-100 dark:border-zinc-800 py-4">
               <label className="text-xs font-bold uppercase text-zinc-500 mb-3 block">Apply to Services</label>
+              {/* NOW SUPPORTING SCUML AND TAX ID */}
               <div className="grid grid-cols-2 gap-2">
-                {["ALL", "LLC", "BUSINESS_NAME", "NIN"].map(s => (
+                {["ALL", "LLC", "BUSINESS_NAME", "NIN", "SCUML", "TAX_ID"].map(s => (
                   <button 
                     key={s}
                     type="button"
