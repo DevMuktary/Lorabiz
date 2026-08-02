@@ -91,7 +91,8 @@ export async function POST(req: Request) {
             type: "DEBIT",
             status: "SUCCESS",
             reference: reference,
-            description: `Airtime Recharge - ${phone} (${network})`
+            description: `Airtime Recharge - ${phone} (${network})`,
+            serviceCategory: "UTILITIES"
           }
         })
       ]);
