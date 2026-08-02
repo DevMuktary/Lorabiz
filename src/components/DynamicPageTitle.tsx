@@ -34,7 +34,9 @@ export default function DynamicPageTitle() {
     else if (pathname.includes('/dashboard/transactions')) title = "Transaction History | Lorabiz";
     else if (pathname.includes('/dashboard/wallet')) title = "My Wallet | Lorabiz";
     else if (pathname.includes('/dashboard/settings')) title = "Account Settings | Lorabiz";
+    else if (pathname === '/dashboard/pricing') title = "Pricing | Lorabiz";
     else if (pathname === '/dashboard') title = "My Dashboard | Lorabiz";
+    
 
     // Set the browser tab title
     document.title = title;
