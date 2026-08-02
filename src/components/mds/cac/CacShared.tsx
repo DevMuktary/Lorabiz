@@ -38,7 +38,6 @@ export function DataBlock({ label, value, highlight }: { label: string, value: R
   );
 }
 
-// NEW: Explicit Address Breakdown to prevent Admin guessing
 export function AddressBreakdown({ addressObj, title, icon }: { addressObj: any, title: string, icon?: React.ReactNode }) {
   if (!addressObj) return <DataBlock label={title} value="Not provided" />;
   
@@ -126,7 +125,9 @@ export function DocumentPreview({
   );
 }
 
+// =========================================================================
 // SAFE DATA PARSERS 
+// =========================================================================
 export const parseJsonSafe = (data: any, fallback: any = {}) => {
   if (!data) return fallback;
   if (typeof data === 'string') {
@@ -137,6 +138,16 @@ export const parseJsonSafe = (data: any, fallback: any = {}) => {
     } catch { return fallback; }
   }
   return data;
+};
+
+// THE FIX: Re-exporting the string parser for components that don't need the full Grid UI
+export const parseAddress = (addrObj: any, fallbackStr: string) => {
+  if (addrObj) {
+    const addr = parseJsonSafe(addrObj, {});
+    const str = `${addr.streetNo ? addr.streetNo + ' ' : ''}${addr.street || addr.address || ""}, ${addr.city || addr.lga || ""}, ${addr.state || ""} State.`.replace(/^, /, '').trim();
+    return str.length > 5 ? str : fallbackStr;
+  }
+  return fallbackStr;
 };
 
 export const handleForceDownload = async (url: string, filename: string, setDownloading: (url: string | null) => void) => {
