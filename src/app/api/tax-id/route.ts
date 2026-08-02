@@ -1,4 +1,5 @@
 // src/app/api/tax-id/route.ts
+
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -19,8 +20,9 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' }
     });
 
-    return NextResponse.json({ history });
+    return NextResponse.json({ success: true, history });
   } catch (error) {
+    console.error("Tax ID History Fetch Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -80,6 +82,7 @@ export async function POST(req: Request) {
       return taxReq;
     });
 
+    // Send confirmation email
     try {
       await sendTaxIdSubmittedEmail({
         to: user.email!,
@@ -94,7 +97,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: result });
 
   } catch (error) {
-    console.error("Tax ID Error:", error);
+    console.error("Tax ID Submission Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
