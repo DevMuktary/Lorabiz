@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { 
-  X, CheckCircle, AlertCircle, FileText, UserPlus, File, RefreshCw, Briefcase, Building2, MapPin, Download, Users, ShieldAlert, PieChart
+  X, CheckCircle, AlertCircle, FileText, UserPlus, File, RefreshCw, Briefcase, Building2, MapPin, Download, Users, ShieldAlert, PieChart, Scale
 } from 'lucide-react';
 import { FileUpload } from '@/components/FileUpload';
 
@@ -40,40 +40,48 @@ export default function ApplicationDrawer({
     "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400";
 
   // ==========================================
-  // SAFE DATA PARSERS 
+  // BULLETPROOF JSON PARSERS (Catches double-stringified objects)
   // ==========================================
-  const parseJsonSafe = (data: any, fallback: any = []) => {
+  const parseJsonSafe = (data: any, fallback: any = {}) => {
     if (!data) return fallback;
     if (typeof data === 'string') {
-      try { return JSON.parse(data); } catch { return fallback; }
+      try { 
+        const parsed = JSON.parse(data); 
+        if (typeof parsed === 'string') return JSON.parse(parsed); // Handle double stringify
+        return parsed;
+      } catch { return fallback; }
     }
     return data;
   };
   
-  const parseAddress = () => {
-    if (isLlc && ticket.registeredAddress) {
-      const addr = parseJsonSafe(ticket.registeredAddress, {});
-      return `${addr.street || ""}, ${addr.lga || ""}, ${addr.state || ""} State.`.replace(/^, /, '').trim();
-    } else {
-      return `${ticket.companyAddress || ""}, ${ticket.companyCity || ""}, ${ticket.companyState || ""} State.`.replace(/^, /, '').trim();
+  const parseAddress = (addrObj: any, fallbackStr: string) => {
+    if (addrObj) {
+      const addr = parseJsonSafe(addrObj, {});
+      const str = `${addr.streetNo ? addr.streetNo + ' ' : ''}${addr.street || addr.address || ""}, ${addr.city || addr.lga || ""}, ${addr.state || ""} State.`.replace(/^, /, '').trim();
+      return str.length > 5 ? str : fallbackStr;
     }
+    return fallbackStr;
   };
 
-  const parsePersonAddress = (person: any) => {
-    if (isLlc && person.residentialAddress) {
-      const addr = parseJsonSafe(person.residentialAddress, {});
-      return `${addr.street || ""}, ${addr.lga || ""}, ${addr.state || ""}`.replace(/^, /, '').trim();
-    } else {
-      return person.serviceAddress || `${person.streetNo ? person.streetNo + ' ' : ''}${person.city || ''}, ${person.lga || ''}, ${person.state || ''}`.replace(/^, /, '').trim();
-    }
-  };
-
+  // General App Info
+  const companyEmail = ticket.email || ticket.companyEmail || "Not Provided";
   const categoryLabel = isLlc ? ticket.principalActivity : ticket.category;
   const specificObjLabel = isLlc ? ticket.specificActivity : ticket.specificNature;
-  const addressLabel = parseAddress();
   
-  const shareClassesData = isLlc ? parseJsonSafe(ticket.shareClasses) : [];
-  const customArticlesData = isLlc ? parseJsonSafe(ticket.customArticles) : [];
+  // Addresses
+  const registeredAddress = isLlc 
+    ? parseAddress(ticket.registeredAddress, "Address not provided") 
+    : parseAddress(null, `${ticket.companyAddress || ""}, ${ticket.companyCity || ""}, ${ticket.companyState || ""}`);
+  
+  const headOfficeAddress = isLlc && ticket.headOfficeAddress 
+    ? parseAddress(ticket.headOfficeAddress, "Same as Registered Address") 
+    : null;
+
+  // LLC Complex Data
+  const shareClassesData = isLlc ? parseJsonSafe(ticket.shareClasses, []) : [];
+  const customArticlesData = isLlc ? parseJsonSafe(ticket.customArticles, []) : [];
+  const declarant = isLlc ? parseJsonSafe(ticket.declarantDetails, null) : null;
+  const witness = isLlc ? parseJsonSafe(ticket.witnessDetails, null) : null;
 
   // ==========================================
   // PEOPLE CATEGORIZATION LOGIC
@@ -208,11 +216,13 @@ export default function ApplicationDrawer({
           {activeTab === "INFO" && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-4xl mx-auto">
               
-              <Section title="Proposed Names">
+              <Section title="Proposed Names & Core Details">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <DataBlock label="Option 1 (Primary)" value={ticket.proposedName} highlight />
                   <DataBlock label="Option 2" value={ticket.altName1} />
                   <DataBlock label="Option 3" value={ticket.altName2} />
+                  <DataBlock label="Company Email" value={companyEmail} />
+                  {!isLlc && ticket.commencementDate && <DataBlock label="Commencement Date" value={ticket.commencementDate} />}
                 </div>
               </Section>
 
@@ -229,13 +239,13 @@ export default function ApplicationDrawer({
                 </div>
 
                 {isLlc && ticket.memorandumObjects && ticket.memorandumObjects.length > 0 && (
-                  <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3 flex items-center gap-2">
+                  <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-4 flex items-center gap-2">
                       <FileText size={14} className="text-indigo-500" /> Memorandum Objects (To submit to CAC)
                     </p>
-                    <ul className="list-disc list-inside space-y-2 text-sm font-medium text-zinc-900 dark:text-zinc-100 ml-2">
+                    <ul className="list-decimal list-outside space-y-3 text-sm font-medium text-zinc-900 dark:text-zinc-100 ml-4">
                       {ticket.memorandumObjects.map((obj: string, i: number) => (
-                        <li key={i} className="leading-relaxed">{obj}</li>
+                        <li key={i} className="leading-relaxed pl-2 pb-2 border-b border-zinc-100 dark:border-zinc-800/50 last:border-0">{obj}</li>
                       ))}
                     </ul>
                   </div>
@@ -252,13 +262,13 @@ export default function ApplicationDrawer({
                   
                   {shareClassesData && shareClassesData.length > 0 && (
                     <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3 flex items-center gap-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-4 flex items-center gap-2">
                         <PieChart size={14} className="text-indigo-500" /> Breakdown of Share Classes
                       </p>
-                      <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {shareClassesData.map((sc: any, i: number) => (
                           <div key={i} className="flex justify-between items-center text-sm p-4 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                              <span className="font-bold text-zinc-900 dark:text-zinc-100">{sc.type || sc.className || "Ordinary"} Shares</span>
+                              <span className="font-bold text-zinc-900 dark:text-zinc-100">{sc.type || sc.className || "Ordinary"}</span>
                               <span className="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-100 dark:bg-indigo-500/20 px-3 py-1 rounded-lg">
                                 {Number(sc.value || sc.allotted || 0).toLocaleString()} Units
                               </span>
@@ -267,6 +277,35 @@ export default function ApplicationDrawer({
                       </div>
                     </div>
                   )}
+                </Section>
+              )}
+
+              {/* LEGAL DECLARATIONS (LLC ONLY) */}
+              {isLlc && (declarant || witness) && (
+                <Section title="Legal Declarations & Witnesses">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {declarant && (
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-4 flex items-center gap-2"><Scale size={14} /> Declarant Details</p>
+                        <div className="space-y-4">
+                          <DataBlock label="Full Name" value={`${declarant.firstName || ""} ${declarant.lastName || declarant.surname || ""}`.trim()} />
+                          <DataBlock label="Occupation" value={declarant.occupation} />
+                          <DataBlock label="Identity Document" value={`${declarant.identityType || "ID"} - ${declarant.identityNumber || "N/A"}`} />
+                          <DataBlock label="Full Address" value={parseAddress(declarant.residentialAddress || declarant, "N/A")} />
+                        </div>
+                      </div>
+                    )}
+                    {witness && (
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-4 flex items-center gap-2"><UserPlus size={14} /> Witness Details</p>
+                        <div className="space-y-4">
+                          <DataBlock label="Full Name" value={`${witness.firstName || ""} ${witness.lastName || witness.surname || ""}`.trim()} />
+                          <DataBlock label="Occupation" value={witness.occupation} />
+                          <DataBlock label="Full Address" value={parseAddress(witness.residentialAddress || witness, "N/A")} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </Section>
               )}
 
@@ -294,15 +333,30 @@ export default function ApplicationDrawer({
                 </Section>
               )}
 
-              {/* Address */}
-              <Section title="Principal Address">
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <MapPin className="text-indigo-500 shrink-0 mt-0.5" size={20} />
-                    <div>
-                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">{addressLabel || "Address not fully provided"}</p>
+              {/* Addresses */}
+              <Section title="Company Addresses">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="text-indigo-500 shrink-0 mt-0.5" size={20} />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-1.5">Registered Address</p>
+                        <p className="font-semibold text-zinc-900 dark:text-zinc-100">{registeredAddress}</p>
+                      </div>
                     </div>
                   </div>
+
+                  {headOfficeAddress && (
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <MapPin className="text-indigo-500 shrink-0 mt-0.5" size={20} />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-1.5">Head Office Address</p>
+                          <p className="font-semibold text-zinc-900 dark:text-zinc-100">{headOfficeAddress}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </Section>
               
@@ -350,26 +404,39 @@ export default function ApplicationDrawer({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-5xl mx-auto pb-10">
               
               {/* Application Wide Documents */}
-              {isLlc && (ticket.declarantSignatureUrl || ticket.witnessSignatureUrl) && (
+              {isLlc && (ticket.declarantSignatureUrl || ticket.witnessSignatureUrl || ticket.memorandumUrl) && (
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-4 md:col-span-2">
                   <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4">
-                    General Signatures & Declarations
+                    Company Legal Documents & Declarations
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DocumentPreview 
-                      label="Declarant Signature" 
-                      url={ticket.declarantSignatureUrl} 
-                      downloadName={`Declarant_Signature_${ticket.trackingId}.jpg`} 
-                      isDownloading={downloadingFile === ticket.declarantSignatureUrl}
-                      onDownload={handleForceDownload}
-                    />
-                    <DocumentPreview 
-                      label="Witness Signature" 
-                      url={ticket.witnessSignatureUrl} 
-                      downloadName={`Witness_Signature_${ticket.trackingId}.jpg`} 
-                      isDownloading={downloadingFile === ticket.witnessSignatureUrl}
-                      onDownload={handleForceDownload}
-                    />
+                    {ticket.memorandumUrl && (
+                      <DocumentPreview 
+                        label="Custom Memorandum (PDF)" 
+                        url={ticket.memorandumUrl} 
+                        downloadName={`Memorandum_${ticket.trackingId}.pdf`} 
+                        isDownloading={downloadingFile === ticket.memorandumUrl}
+                        onDownload={handleForceDownload}
+                      />
+                    )}
+                    {ticket.declarantSignatureUrl && (
+                      <DocumentPreview 
+                        label="Declarant Signature" 
+                        url={ticket.declarantSignatureUrl} 
+                        downloadName={`Declarant_Signature_${ticket.trackingId}.jpg`} 
+                        isDownloading={downloadingFile === ticket.declarantSignatureUrl}
+                        onDownload={handleForceDownload}
+                      />
+                    )}
+                    {ticket.witnessSignatureUrl && (
+                      <DocumentPreview 
+                        label="Witness Signature" 
+                        url={ticket.witnessSignatureUrl} 
+                        downloadName={`Witness_Signature_${ticket.trackingId}.jpg`} 
+                        isDownloading={downloadingFile === ticket.witnessSignatureUrl}
+                        onDownload={handleForceDownload}
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -462,6 +529,7 @@ export default function ApplicationDrawer({
                 </div>
               </div>
 
+              {/* Dynamic Action Forms */}
               {actionType && (
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl">
                   
@@ -592,7 +660,16 @@ function RoleSection({ title, count, color, children }: { title: string, count: 
 
 function PersonCard({ person, isLlc, parseAddress, showShares, showPsc }: any) {
   const fullName = `${person.firstName || ''} ${person.surname || ''} ${person.otherName || ''}`.trim();
-  const pscData = showPsc ? (typeof person.pscDetails === 'string' ? JSON.parse(person.pscDetails) : person.pscDetails) : null;
+  
+  // Safely parse PSC details
+  let pscData = null;
+  if (showPsc && person.pscDetails) {
+    if (typeof person.pscDetails === 'string') {
+      try { pscData = JSON.parse(person.pscDetails); } catch (e) {}
+    } else {
+      pscData = person.pscDetails;
+    }
+  }
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
@@ -608,28 +685,36 @@ function PersonCard({ person, isLlc, parseAddress, showShares, showPsc }: any) {
         {isLlc ? (
           <>
             <DataBlock label="Occupation" value={person.occupation} />
+            <DataBlock label="Nationality" value={person.nationality} />
             <DataBlock label="ID Document Type" value={person.idType} />
             <DataBlock label="ID Number" value={person.idNumber} highlight />
+            
+            {/* Extended Details */}
+            {person.formerName && <DataBlock label="Former Name" value={person.formerName} />}
+            {person.formerNationality && <DataBlock label="Former Nationality" value={person.formerNationality} />}
+            {person.taxResidency && <DataBlock label="Tax Residency" value={person.taxResidency} />}
+            {person.tin && <DataBlock label="TIN" value={person.tin} highlight />}
           </>
         ) : (
           <DataBlock label="NIN Status" value={person.ninUrl ? "Uploaded" : "Missing"} highlight />
         )}
         
         {showShares && person.sharesAllotted && (
-          <DataBlock label="Total Shares Allotted" value={Number(person.sharesAllotted).toLocaleString()} highlight />
+          <DataBlock label="Total Shares Allotted" value={`${Number(person.sharesAllotted).toLocaleString()} Units`} highlight />
         )}
 
         {showPsc && pscData && (
-          <div className="md:col-span-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 p-4 rounded-xl">
-             <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-2">Significant Control Declarations</p>
-             <ul className="list-disc list-inside text-sm text-rose-900 dark:text-rose-200 space-y-1">
+          <div className="md:col-span-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 p-5 rounded-xl shadow-sm">
+             <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-3">Significant Control Declarations</p>
+             <ul className="list-disc list-inside text-sm font-medium text-rose-900 dark:text-rose-200 space-y-2">
                {pscData.natureOfControl?.map((control: string, i: number) => <li key={i}>{control}</li>)}
              </ul>
           </div>
         )}
         
-        <div className="md:col-span-3">
-           <DataBlock label="Residential / Service Address" value={parseAddress(person)} />
+        <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-6">
+           <DataBlock label="Residential Address" value={parseAddress(person.residentialAddress || person)} />
+           {isLlc && <DataBlock label="Service Address" value={parseAddress(person.serviceAddress, "Same as Residential")} />}
         </div>
       </div>
     </div>
