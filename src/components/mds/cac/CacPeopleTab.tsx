@@ -81,17 +81,19 @@ function PersonCard({ person, isLlc, showShares, showPsc }: any) {
   
   // Safely parse PSC details
   const pscData = showPsc ? parseJsonSafe(person.pscDetails, null) : null;
+  const sharePct = pscData?.percentageOfShares || pscData?.sharesPercentage || pscData?.percentage || null;
+  const votingPct = pscData?.percentageOfVotingRights || pscData?.votingPercentage || null;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
       <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-between items-center">
-        <h3 className="font-bold text-zinc-900 dark:text-zinc-100 text-lg uppercase tracking-wide">
-          {person.surname || "No Surname"}, {person.firstName || "No First Name"}
+        <h3 className="font-black text-zinc-900 dark:text-zinc-100 text-lg uppercase tracking-wide">
+          {person.surname || "No Surname"}, <span className="font-semibold">{person.firstName || "No First Name"}</span>
         </h3>
       </div>
       <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* NEW: Explicitly separated names for exact CAC data entry */}
+        {/* Explicitly separated names for exact CAC data entry */}
         <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
            <DataBlock label="Surname" value={person.surname} highlight />
            <DataBlock label="First Name" value={person.firstName} highlight />
@@ -103,15 +105,14 @@ function PersonCard({ person, isLlc, showShares, showPsc }: any) {
         <DataBlock label="Phone" value={`${person.phoneCode || ""}${person.phone}`} />
         <DataBlock label="Gender" value={person.gender} />
         <DataBlock label="Date of Birth" value={person.dob} />
+        <DataBlock label="Nationality" value={person.nationality || person.country || "Nigeria"} />
         
         {isLlc ? (
           <>
             <DataBlock label="Occupation" value={person.occupation} />
-            <DataBlock label="Nationality" value={person.nationality} />
             <DataBlock label="ID Document Type" value={person.idType} />
             <DataBlock label="ID Number" value={person.idNumber} highlight />
             
-            {/* Extended Details */}
             {person.formerName && <DataBlock label="Former Name" value={person.formerName} />}
             {person.formerNationality && <DataBlock label="Former Nationality" value={person.formerNationality} />}
             {person.taxResidency && <DataBlock label="Tax Residency" value={person.taxResidency} />}
@@ -125,55 +126,27 @@ function PersonCard({ person, isLlc, showShares, showPsc }: any) {
           <DataBlock label="Total Shares Allotted" value={`${Number(person.sharesAllotted).toLocaleString()} Units`} highlight />
         )}
 
-        {/* NEW: Comprehensive PSC Declarations Breakdown */}
+        {/* FIXED: EXACT PSC DECLARATIONS TABLE */}
         {showPsc && pscData && (
-          <div className="md:col-span-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 p-5 rounded-xl shadow-sm space-y-5">
-             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-rose-100 dark:border-rose-500/10 pb-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-rose-500">Significant Control (PSC) Declarations</p>
-                <div className="flex gap-2">
-                  {pscData.isPep && (
-                     <span className="text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 px-2 py-1 rounded">
-                       Politically Exposed (PEP)
-                     </span>
-                  )}
-                  {pscData.hasAffiliation && (
-                     <span className="text-[10px] font-black uppercase tracking-widest bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 px-2 py-1 rounded">
-                       PEP Affiliation
-                     </span>
-                  )}
-                </div>
+          <div className="md:col-span-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-xl shadow-sm overflow-hidden mt-2">
+             <div className="bg-rose-100/50 dark:bg-rose-500/10 px-5 py-3 border-b border-rose-100 dark:border-rose-500/20">
+                <p className="text-[10px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">PSC Declarations (Extract EXACTLY for CAC Portal)</p>
              </div>
              
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-white/60 dark:bg-black/20 p-4 rounded-lg border border-rose-100 dark:border-rose-500/10">
-                  <p className="text-[9px] font-bold uppercase text-rose-400 mb-1">Percentage of Shares</p>
-                  <p className="text-base font-black text-rose-700 dark:text-rose-300">
-                    {pscData.percentageOfShares || pscData.sharesPercentage || pscData.percentage || "N/A"}
-                  </p>
-                </div>
-                <div className="bg-white/60 dark:bg-black/20 p-4 rounded-lg border border-rose-100 dark:border-rose-500/10">
-                  <p className="text-[9px] font-bold uppercase text-rose-400 mb-1">Percentage of Voting Rights</p>
-                  <p className="text-base font-black text-rose-700 dark:text-rose-300">
-                    {pscData.percentageOfVotingRights || pscData.votingPercentage || "N/A"}
-                  </p>
-                </div>
+             <div className="p-0">
+                <PscRow label="POLITICALLY EXPOSED PERSON?" value={pscData.isPep} />
+                <PscRow label="HAS AFFILIATIONS?" value={pscData.hasAffiliation} />
+                <PscRow label="DIRECT SHARES HELD" value={pscData.holdsDirectShares} pct={sharePct} />
+                <PscRow label="INDIRECT SHARES HELD" value={pscData.holdsIndirectShares} />
+                <PscRow label="DIRECT VOTING RIGHTS" value={pscData.holdsDirectVotingRights} pct={votingPct} />
+                <PscRow label="INDIRECT VOTING RIGHTS" value={pscData.holdsIndirectVotingRights} />
+                <PscRow label="RIGHT TO APPOINT/REMOVE DIRECTORS" value={pscData.canAppointDirectors} />
+                <PscRow label="EXERCISES SIGNIFICANT INFLUENCE" value={pscData.exercisesSignificantInfluence} />
              </div>
-
-             <div className="bg-white/60 dark:bg-black/20 p-4 rounded-lg border border-rose-100 dark:border-rose-500/10">
-               <p className="text-[9px] font-bold uppercase text-rose-400 mb-2">Control Matrix (User Selections)</p>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 text-sm font-medium text-rose-900 dark:text-rose-200">
-                  <BooleanRow label="Holds Direct Shares" value={pscData.holdsDirectShares} />
-                  <BooleanRow label="Holds Indirect Shares" value={pscData.holdsIndirectShares} />
-                  <BooleanRow label="Holds Direct Voting Rights" value={pscData.holdsDirectVotingRights} />
-                  <BooleanRow label="Holds Indirect Voting Rights" value={pscData.holdsIndirectVotingRights} />
-                  <BooleanRow label="Right to Appoint/Remove Directors" value={pscData.canAppointDirectors} />
-                  <BooleanRow label="Exercises Significant Influence" value={pscData.exercisesSignificantInfluence} />
-               </div>
-             </div>
-
+             
              {(pscData.natureOfControl || pscData.details) && (
-               <div>
-                 <p className="text-[10px] font-bold uppercase text-rose-400 mb-2">Additional Control Details</p>
+               <div className="p-5 border-t border-rose-100 dark:border-rose-500/10 bg-white/40 dark:bg-black/20">
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-2">Additional Control Details</p>
                  <ul className="list-disc list-inside text-sm font-medium text-rose-900 dark:text-rose-200 space-y-1 ml-1">
                    {pscData.natureOfControl?.map((control: string, i: number) => <li key={i}>{control}</li>) || <li>{pscData.details}</li>}
                  </ul>
@@ -183,7 +156,7 @@ function PersonCard({ person, isLlc, showShares, showPsc }: any) {
         )}
         
         {/* Explicit Address Grids */}
-        <div className="md:col-span-3 space-y-4">
+        <div className="md:col-span-3 space-y-4 mt-2">
            <AddressBreakdown addressObj={residentialObj} title="Residential Address" />
            {serviceObj && <AddressBreakdown addressObj={serviceObj} title="Service Address" />}
         </div>
@@ -192,14 +165,17 @@ function PersonCard({ person, isLlc, showShares, showPsc }: any) {
   );
 }
 
-// Local helper to nicely format Yes/No Booleans for PSC
-function BooleanRow({ label, value }: { label: string, value: boolean | undefined | null }) {
-  if (value === undefined || value === null) return null; // Don't show if not filled out
+// Helper to format the exact Table Row the user requested
+function PscRow({ label, value, pct }: { label: string, value: any, pct?: string }) {
+  if (value === undefined || value === null) return null; // Don't show if they didn't even see the question
+  
+  const isYes = value === true || value === "Yes" || value === "true";
+  
   return (
-    <div className="flex justify-between items-center py-1 border-b border-rose-100/50 dark:border-rose-500/10 last:border-0">
-      <span className="opacity-80">{label}</span>
-      <span className={`font-bold ${value ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>
-        {value ? "YES" : "NO"}
+    <div className="flex justify-between items-center px-6 py-3 border-b border-rose-100/50 dark:border-rose-500/10 last:border-0">
+      <span className="text-xs font-bold text-rose-900/70 dark:text-rose-200/70 uppercase tracking-wide">{label}</span>
+      <span className={`text-sm font-black ${isYes ? 'text-rose-700 dark:text-rose-300' : 'text-zinc-400'}`}>
+        {isYes ? `Yes ${pct && pct !== "N/A" ? `(${pct})` : ''}` : "No"}
       </span>
     </div>
   );

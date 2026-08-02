@@ -69,6 +69,7 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         )}
       </Section>
 
+      {/* FIXED: CLEAR DISPLAY OF SHARE CLASS TYPE (ORDINARY / PREFERENCE) */}
       {isLlc && (
         <Section title="Share Capital Structure">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -81,12 +82,17 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
               <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-4 flex items-center gap-2">
                 <PieChart size={14} className="text-indigo-500" /> Breakdown of Share Classes
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 {shareClassesData.map((sc: any, i: number) => (
                   <div key={i} className="flex justify-between items-center text-sm p-4 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                      <span className="font-bold text-zinc-900 dark:text-zinc-100">{sc.type || sc.className || "Ordinary"}</span>
-                      <span className="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-100 dark:bg-indigo-500/20 px-3 py-1 rounded-lg">
-                        {Number(sc.value || sc.allotted || 0).toLocaleString()} Units
+                      <div>
+                        <span className="font-black text-indigo-900 dark:text-indigo-100 uppercase tracking-widest text-xs">
+                          {sc.type || sc.shareType || sc.className || "EQUITY (ORDINARY)"}
+                        </span>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Value per share: ₦{sc.valuePerShare || 1}</p>
+                      </div>
+                      <span className="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-100 dark:bg-indigo-500/20 px-3 py-1.5 rounded-lg">
+                        {Number(sc.value || sc.allotted || sc.units || 0).toLocaleString()} Units
                       </span>
                   </div>
                 ))}
@@ -96,12 +102,12 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         </Section>
       )}
 
-      {/* NEW: Exhaustive Declarants and Witness Sections */}
+      {/* FIXED: STRICT CAC REQUIRED FIELDS FOR DECLARANT AND WITNESS */}
       {isLlc && (declarant || witness) && (
         <Section title="Legal Declarations & Witnesses">
           <div className="space-y-6">
             
-            {/* Declarant Card */}
+            {/* Declarant Card (Stripped down to ONLY CAC requirements) */}
             {declarant && (
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-indigo-50/50 dark:bg-indigo-500/5 flex items-center gap-2">
@@ -113,18 +119,10 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
                   <DataBlock label="First Name" value={declarant.firstName} highlight />
                   <DataBlock label="Other Name" value={declarant.otherName} />
                   
-                  <DataBlock label="Email" value={declarant.email} />
                   <DataBlock label="Phone Number" value={declarant.phone} />
-                  <DataBlock label="Date of Birth" value={declarant.dob} />
+                  <DataBlock label="Email Address" value={declarant.email} />
+                  <DataBlock label="Accreditation Number" value={declarant.accreditationNumber || declarant.identityNumber || "N/A"} highlight />
                   
-                  <DataBlock label="Gender" value={declarant.gender} />
-                  <DataBlock label="Nationality" value={declarant.nationality} />
-                  <DataBlock label="Occupation" value={declarant.occupation} />
-                  
-                  <DataBlock label="ID Document Type" value={declarant.identityType} />
-                  <DataBlock label="ID Number" value={declarant.identityNumber} highlight />
-                  <div className="hidden md:block"></div> {/* Spacer */}
-
                   <div className="md:col-span-3 mt-2">
                     <AddressBreakdown addressObj={parseJsonSafe(declarant.residentialAddress || declarant, null)} title="Declarant Residential Address" />
                   </div>
@@ -145,12 +143,8 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
                   <DataBlock label="Other Name" value={witness.otherName} />
                   
                   <DataBlock label="Email" value={witness.email} />
-                  <DataBlock label="Phone Number" value={witness.phone} />
-                  <DataBlock label="Date of Birth" value={witness.dob} />
-                  
-                  <DataBlock label="Gender" value={witness.gender} />
-                  <DataBlock label="Nationality" value={witness.nationality} />
-                  <DataBlock label="Occupation" value={witness.occupation} />
+                  <DataBlock label="Phone Number" value={`${witness.phoneCode || ""}${witness.phone}`} />
+                  <DataBlock label="Nationality" value={witness.country || witness.nationality || "Nigeria"} />
                   
                   <div className="md:col-span-3 mt-2">
                     <AddressBreakdown addressObj={parseJsonSafe(witness.residentialAddress || witness, null)} title="Witness Residential Address" />
