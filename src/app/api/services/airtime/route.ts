@@ -52,12 +52,12 @@ export async function POST(req: Request) {
     // 6. Generate Unique Idempotency Reference
     const reference = `LUME_AIR_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
-    // 7. Securely Call the External Provider (API Key is hidden on the server)
+    // 7. Securely Call the External Provider (Fixed HTTP Headers!)
     const externalRes = await fetch("https://cheapdatasales.com/autobiz_vending_index.php", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Bearer": process.env.CHEAPDATASALES_API_KEY || "" // Stored securely in .env
+        "Authorization": `Bearer ${process.env.CHEAPDATASALES_API_KEY || ""}` // ✅ FIXED HEADER
       },
       body: JSON.stringify({
         amount: Number(amount),
@@ -70,8 +70,9 @@ export async function POST(req: Request) {
 
     const externalData = await externalRes.json();
 
-    // 8. Handle Success & Update Database
-    if (externalData.status === true) {
+    // 8. Handle Success STRICTLY (Prevent stealing money on failed vends)
+    // Ensures status is explicitly true or "success"
+    if (externalData.status === true || externalData.status === "success") {
       const amountCharged = Number(amount);
       const oldBalance = Number(user.wallet.balance);
       const newBalance = oldBalance - amountCharged;
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
             status: "SUCCESS",
             reference: reference,
             description: `Airtime Recharge - ${phone} (${network})`,
-            serviceCategory: "UTILITIES"
+            serviceCategory: "UTILITIES" // For MDS Financials tracking
           }
         })
       ]);
@@ -100,13 +101,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ 
         success: true, 
         message: `Successfully recharged ₦${amount} to ${phone}`, 
+        newBalance: newBalance, // ✅ Send exact new balance back to UI
         data: externalData.data 
       });
     } else {
-      // 9. Handle Provider Error
+      // 9. Handle Provider Error - Do not deduct wallet!
+      console.error("Provider rejected vend:", externalData);
       return NextResponse.json({ 
         success: false, 
-        message: externalData.server_message || "Recharge failed at the network provider." 
+        message: externalData.server_message || externalData.message || "Recharge failed at the network provider. Wallet not deducted." 
       });
     }
 
