@@ -1,6 +1,6 @@
 "use client";
 
-import { DataBlock, parseJsonSafe, parseAddress } from "./CacShared";
+import { DataBlock, AddressBreakdown, parseJsonSafe } from "./CacShared";
 
 export default function CacPeopleTab({ ticket, isLlc }: { ticket: any, isLlc: boolean }) {
   const directors = ticket.people?.filter((p: any) => p.roles?.includes("DIRECTOR")) || [];
@@ -74,8 +74,20 @@ function RoleSection({ title, count, color, children }: { title: string, count: 
 function PersonCard({ person, isLlc, showShares, showPsc }: any) {
   const fullName = `${person.firstName || ''} ${person.surname || ''} ${person.otherName || ''}`.trim();
   
+  // Format Addresses for the Grid Layout
+  const residentialObj = isLlc 
+    ? parseJsonSafe(person.residentialAddress, null) 
+    : { street: person.serviceAddress || person.streetNo, city: person.city, lga: person.lga, state: person.state };
+    
+  const serviceObj = isLlc 
+    ? parseJsonSafe(person.serviceAddress, null) 
+    : null;
+  
   // Safely parse PSC details
   const pscData = showPsc ? parseJsonSafe(person.pscDetails, null) : null;
+  // Deep search for percentages regardless of how the user frontend named the keys
+  const sharePct = pscData?.percentageOfShares || pscData?.sharesPercentage || pscData?.percentage || "N/A";
+  const votingPct = pscData?.percentageOfVotingRights || pscData?.votingPercentage || "N/A";
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
@@ -109,18 +121,33 @@ function PersonCard({ person, isLlc, showShares, showPsc }: any) {
           <DataBlock label="Total Shares Allotted" value={`${Number(person.sharesAllotted).toLocaleString()} Units`} highlight />
         )}
 
+        {/* NEW: Explicit PSC Declarations Breakdown */}
         {showPsc && pscData && (
           <div className="md:col-span-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 p-5 rounded-xl shadow-sm">
              <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-3">Significant Control Declarations</p>
+             
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div className="bg-white/60 dark:bg-black/20 p-3 rounded-lg border border-rose-100 dark:border-rose-500/10">
+                  <p className="text-[9px] font-bold uppercase text-rose-400">Percentage of Shares</p>
+                  <p className="text-sm font-black text-rose-700 dark:text-rose-300">{sharePct}</p>
+                </div>
+                <div className="bg-white/60 dark:bg-black/20 p-3 rounded-lg border border-rose-100 dark:border-rose-500/10">
+                  <p className="text-[9px] font-bold uppercase text-rose-400">Percentage of Voting Rights</p>
+                  <p className="text-sm font-black text-rose-700 dark:text-rose-300">{votingPct}</p>
+                </div>
+             </div>
+
+             <p className="text-[10px] font-bold uppercase text-rose-400 mb-2">Nature of Control / Influence</p>
              <ul className="list-disc list-inside text-sm font-medium text-rose-900 dark:text-rose-200 space-y-2">
-               {pscData.natureOfControl?.map((control: string, i: number) => <li key={i}>{control}</li>)}
+               {pscData.natureOfControl?.map((control: string, i: number) => <li key={i}>{control}</li>) || <li>{pscData.details || "No specific control details provided"}</li>}
              </ul>
           </div>
         )}
         
-        <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-6">
-           <DataBlock label="Residential Address" value={parseAddress(person.residentialAddress || person, "N/A")} />
-           {isLlc && <DataBlock label="Service Address" value={parseAddress(person.serviceAddress, "Same as Residential")} />}
+        {/* NEW: Explicit Address Grids */}
+        <div className="md:col-span-3 space-y-4">
+           <AddressBreakdown addressObj={residentialObj} title="Residential Address" />
+           {serviceObj && <AddressBreakdown addressObj={serviceObj} title="Service Address" />}
         </div>
       </div>
     </div>
