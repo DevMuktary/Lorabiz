@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { X, CheckCircle, FileText, Download, ShieldCheck, RefreshCw, AlertCircle } from 'lucide-react';
+import { X, CheckCircle, FileText, Download, ShieldCheck, RefreshCw, AlertCircle, AlertTriangle } from 'lucide-react';
 import { DocumentPreview } from '../cac/CacShared';
 import { FileUpload } from '@/components/FileUpload';
 
@@ -16,15 +16,49 @@ export default function ScumlApplicationDrawer({
   onUpdateSuccess: () => void
 }) {
   const [activeTab, setActiveTab] = useState("DOCS");
-  const [actionType, setActionType] = useState<"PROCESS" | "COMPLETE" | "">("");
+  const [actionType, setActionType] = useState<"PROCESS" | "COMPLETE" | "FAIL" | "">("");
+  
   const [finalCertificateUrl, setFinalCertificateUrl] = useState<string | null>(null);
+  const [failureReason, setFailureReason] = useState("");
+  const [issueRefund, setIssueRefund] = useState(false);
+  const [refundAmount, setRefundAmount] = useState<number | string>(ticket?.amountPaid || 0);
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+
+  // ==========================================
+  // FIX: Added Download State and Helper
+  // ==========================================
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+
+  const handleForceDownload = async (url: string, filename: string) => {
+    try {
+      setDownloadingFile(url);
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download failed, falling back to new tab", err);
+      window.open(url, '_blank');
+    } finally {
+      setDownloadingFile(null);
+    }
+  };
+  // ==========================================
 
   if (!ticket) return null;
 
   const statusColor = 
     ticket.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" :
+    ticket.status === "FAILED" ? "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400" :
     ticket.status === "PROCESSING" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400" :
     "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400";
 
@@ -35,15 +69,23 @@ export default function ScumlApplicationDrawer({
       if (actionType === "COMPLETE" && !finalCertificateUrl) {
         throw new Error("You must upload the Final SCUML Certificate to mark as completed.");
       }
+      if (actionType === "FAIL" && !failureReason.trim()) {
+        throw new Error("You must provide a reason for failing this application.");
+      }
+      if (actionType === "FAIL" && issueRefund && (!refundAmount || Number(refundAmount) <= 0)) {
+        throw new Error("Please enter a valid refund amount.");
+      }
 
-      // We will build this API route next
       const response = await fetch("/api/mds/pipeline/scuml/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ticketId: ticket.id,
           actionType: actionType,
-          finalCertificateUrl: finalCertificateUrl
+          finalCertificateUrl: finalCertificateUrl,
+          failureReason: failureReason,
+          issueRefund: issueRefund,
+          refundAmount: issueRefund ? Number(refundAmount) : 0
         })
       });
 
@@ -92,19 +134,48 @@ export default function ScumlApplicationDrawer({
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-8 relative">
           
+          {/* FIX: Passed download states down to DocumentPreviews */}
           {activeTab === "DOCS" && (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-               <DocumentPreview label="CAC Certificate" url={ticket.certificateUrl} downloadName={`CAC_Cert_${ticket.companyName}`} />
-               <DocumentPreview label="Status Report" url={ticket.statusReportUrl} downloadName={`Status_Report_${ticket.companyName}`} />
-               {ticket.memorandumUrl && <DocumentPreview label="Memorandum of Association" url={ticket.memorandumUrl} downloadName={`MEMART_${ticket.companyName}`} />}
-               {ticket.constitutionUrl && <DocumentPreview label="NGO Constitution" url={ticket.constitutionUrl} downloadName={`Constitution_${ticket.companyName}`} />}
+               <DocumentPreview 
+                 label="CAC Certificate" 
+                 url={ticket.certificateUrl} 
+                 downloadName={`CAC_Cert_${ticket.companyName}`} 
+                 isDownloading={downloadingFile === ticket.certificateUrl}
+                 onDownload={handleForceDownload}
+               />
+               <DocumentPreview 
+                 label="Status Report" 
+                 url={ticket.statusReportUrl} 
+                 downloadName={`Status_Report_${ticket.companyName}`} 
+                 isDownloading={downloadingFile === ticket.statusReportUrl}
+                 onDownload={handleForceDownload}
+               />
+               {ticket.memorandumUrl && (
+                 <DocumentPreview 
+                   label="Memorandum of Association" 
+                   url={ticket.memorandumUrl} 
+                   downloadName={`MEMART_${ticket.companyName}`} 
+                   isDownloading={downloadingFile === ticket.memorandumUrl}
+                   onDownload={handleForceDownload}
+                 />
+               )}
+               {ticket.constitutionUrl && (
+                 <DocumentPreview 
+                   label="NGO Constitution" 
+                   url={ticket.constitutionUrl} 
+                   downloadName={`Constitution_${ticket.companyName}`} 
+                   isDownloading={downloadingFile === ticket.constitutionUrl}
+                   onDownload={handleForceDownload}
+                 />
+               )}
              </div>
           )}
 
           {activeTab === "ACTION" && (
             <div className="max-w-2xl mx-auto space-y-8 pb-20">
               
-              {ticket.status === "COMPLETED" ? (
+              {ticket.status === "COMPLETED" && (
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl text-center">
                   <ShieldCheck size={48} className="text-emerald-500 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Application Completed</h3>
@@ -115,25 +186,46 @@ export default function ScumlApplicationDrawer({
                     </a>
                   )}
                 </div>
-              ) : (
+              )}
+
+              {ticket.status === "FAILED" && (
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+                  <div className="flex items-center gap-3 text-rose-600 mb-4">
+                    <AlertTriangle size={24} />
+                    <h3 className="text-xl font-bold">Application Failed</h3>
+                  </div>
+                  <p className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-2">Failure Reason Provided:</p>
+                  <div className="p-4 bg-rose-50 dark:bg-rose-500/10 rounded-xl text-rose-900 dark:text-rose-200 text-sm font-medium border border-rose-100 dark:border-rose-500/20">
+                    {ticket.failureReason}
+                  </div>
+                </div>
+              )}
+
+              {ticket.status !== "COMPLETED" && ticket.status !== "FAILED" && (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <button 
                       onClick={() => setActionType("PROCESS")}
                       className={`p-5 rounded-2xl border-2 transition-all font-bold flex flex-col items-center justify-center ${actionType === "PROCESS" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-zinc-200 bg-white text-zinc-500"}`}
                     >
-                      Move to Processing
+                      Process
                     </button>
                     <button 
                       onClick={() => setActionType("COMPLETE")}
                       className={`p-5 rounded-2xl border-2 transition-all font-bold flex flex-col items-center justify-center ${actionType === "COMPLETE" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-white text-zinc-500"}`}
                     >
-                      Mark as Completed
+                      Complete
+                    </button>
+                    <button 
+                      onClick={() => setActionType("FAIL")}
+                      className={`p-5 rounded-2xl border-2 transition-all font-bold flex flex-col items-center justify-center ${actionType === "FAIL" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-zinc-200 bg-white text-zinc-500"}`}
+                    >
+                      Fail & Reject
                     </button>
                   </div>
 
                   {actionType === "COMPLETE" && (
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl animate-in fade-in zoom-in-95 duration-200">
                       <FileUpload 
                         label="Upload Approved SCUML Certificate *" 
                         description="PDF format required. This will be emailed to the client." 
@@ -142,6 +234,46 @@ export default function ScumlApplicationDrawer({
                         onUploadSuccess={setFinalCertificateUrl} 
                         onRemove={() => setFinalCertificateUrl(null)} 
                       />
+                    </div>
+                  )}
+
+                  {actionType === "FAIL" && (
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl animate-in fade-in zoom-in-95 duration-200 space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Reason for Failure *</label>
+                        <textarea 
+                          value={failureReason}
+                          onChange={(e) => setFailureReason(e.target.value)}
+                          placeholder="Explain why this application was rejected. This will be emailed to the client."
+                          rows={4}
+                          className="w-full p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none text-sm"
+                        />
+                      </div>
+                      
+                      <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-4">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={issueRefund} 
+                            onChange={(e) => setIssueRefund(e.target.checked)}
+                            className="w-5 h-5 rounded border-zinc-300 text-rose-600 focus:ring-rose-500"
+                          />
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">Issue Wallet Refund</span>
+                        </label>
+                        
+                        {issueRefund && (
+                          <div className="pl-8 animate-in slide-in-from-top-2">
+                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Refund Amount (₦)</label>
+                            <input 
+                              type="number" 
+                              value={refundAmount} 
+                              onChange={(e) => setRefundAmount(e.target.value)}
+                              className="w-full h-10 px-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:ring-2 focus:ring-rose-500 focus:outline-none text-sm font-bold"
+                            />
+                            <p className="text-xs text-zinc-500 mt-2">Original amount paid: ₦{ticket.amountPaid}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
