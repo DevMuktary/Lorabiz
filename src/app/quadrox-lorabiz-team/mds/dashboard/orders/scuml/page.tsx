@@ -25,7 +25,6 @@ export default function ScumlPipelinePage() {
   const fetchPipeline = async () => {
     setIsLoading(true);
     try {
-      // We will build this API route next
       const res = await fetch('/api/mds/pipeline/scuml'); 
       if (!res.ok) throw new Error("Failed to fetch");
       const result = await res.json();
@@ -41,6 +40,7 @@ export default function ScumlPipelinePage() {
     fetchPipeline();
   }, []);
 
+  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, activeTab, serviceFilter, sortOrder]);
@@ -56,6 +56,7 @@ export default function ScumlPipelinePage() {
       if (activeTab === "PENDING") matchesTab = ticket.status === "PENDING"; 
       if (activeTab === "PROCESSING") matchesTab = ticket.status === "PROCESSING";
       if (activeTab === "COMPLETED") matchesTab = ticket.status === "COMPLETED";
+      if (activeTab === "FAILED") matchesTab = ticket.status === "FAILED";
 
       const matchesService = serviceFilter === "ALL" || ticket.type === serviceFilter;
 
@@ -104,11 +105,13 @@ export default function ScumlPipelinePage() {
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
+        {/* ADDED FAILED TAB */}
         <div className="flex overflow-x-auto border-b border-zinc-200 dark:border-zinc-800 scrollbar-hide">
           <TabButton label="All Applications" count={pipeline.filter(t => serviceFilter === "ALL" || t.type === serviceFilter).length} isActive={activeTab === "ALL"} onClick={() => setActiveTab("ALL")} />
           <TabButton label="Pending" count={pipeline.filter(t => t.status === "PENDING" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "PENDING"} onClick={() => setActiveTab("PENDING")} />
           <TabButton label="Processing" count={pipeline.filter(t => t.status === "PROCESSING" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "PROCESSING"} onClick={() => setActiveTab("PROCESSING")} />
           <TabButton label="Completed" count={pipeline.filter(t => t.status === "COMPLETED" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "COMPLETED"} onClick={() => setActiveTab("COMPLETED")} />
+          <TabButton label="Failed" count={pipeline.filter(t => t.status === "FAILED" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "FAILED"} onClick={() => setActiveTab("FAILED")} />
         </div>
 
         <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
@@ -297,18 +300,14 @@ export default function ScumlPipelinePage() {
   );
 }
 
-// ----------------------------------------------------------------------
-// SUB-COMPONENTS
-// ----------------------------------------------------------------------
-
 function TabButton({ label, count, isActive, onClick }: { label: string, count: number, isActive: boolean, onClick: () => void }) {
   return (
     <button 
       onClick={onClick}
       className={`flex items-center whitespace-nowrap px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
         isActive 
-          ? "border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/5" 
-          : "border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+          ? "border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/10" 
+          : "border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
       }`}
     >
       {label}
@@ -335,8 +334,8 @@ function EntityTypeBadge({ type }: { type: string }) {
 }
 
 function SlaIndicator({ timestamp, status }: { timestamp: string, status: string }) {
-  if (status === "COMPLETED") {
-    return <span className="text-xs font-medium text-zinc-500">Completed • {format(new Date(timestamp), 'MMM d')}</span>;
+  if (status === "COMPLETED" || status === "FAILED") {
+    return <span className="text-xs font-medium text-zinc-500">{status === "FAILED" ? "Failed" : "Completed"} • {format(new Date(timestamp), 'MMM d')}</span>;
   }
   const hoursInQueue = differenceInHours(new Date(), new Date(timestamp));
   const timeString = formatDistanceToNow(new Date(timestamp));
