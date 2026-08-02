@@ -9,36 +9,36 @@ import {
 export type NotificationEvent =
   | { type: "APPLICATION_SUBMITTED"; userId: string; phone: string; email: string; name: string; businessName: string; regId: string }
   | { type: "APPLICATION_QUERIED"; userId: string; phone: string; email: string; name: string; businessName: string; queryReason: string; regId: string; entitySlug: "llc" | "businesses" }
-  | { type: "APPLICATION_APPROVED"; userId: string; phone: string; email: string; name: string; businessName: string; rcNumber: string };
+  | { 
+      type: "APPLICATION_APPROVED"; 
+      userId: string; phone: string; email: string; name: string; businessName: string; rcNumber: string;
+      certificateUrl?: string; statusReportUrl?: string; memorandumUrl?: string; 
+    };
 
-// Converted to async Promise so BullMQ worker can track success/failure accurately
 export async function dispatchNotification(event: NotificationEvent): Promise<void> {
   switch (event.type) {
     case "APPLICATION_SUBMITTED": {
-      // 1. Database In-App Alert
       await prisma.inAppNotification.create({
         data: {
           userId: event.userId,
           title: "Application Received 📄",
           message: `Payment confirmed for ${event.businessName}. Your filing is under review.`,
           type: "info",
-          link: `/dashboard/cac/register/view/${event.regId}`,
+          link: `/dashboard/cac`,
         },
       });
 
-      // 2. WhatsApp
       const wa = await sendWhatsAppTemplate({
         recipientPhone: event.phone,
         templateName: "cac_application_submitted",
         variables: [event.name, event.businessName, event.regId],
-        buttonUrlVariable: `register/view/${event.regId}`,
+        buttonUrlVariable: ``, 
       });
       if (!wa.success) {
         console.error("⚠️ WhatsApp Sub Failed:", wa.error);
         throw new Error(`WhatsApp Dispatch Failed: ${JSON.stringify(wa.error)}`);
       }
 
-      // 3. Email
       await sendApplicationSubmittedEmail({
         to: event.email,
         name: event.name,
@@ -108,6 +108,9 @@ export async function dispatchNotification(event: NotificationEvent): Promise<vo
         name: event.name,
         businessName: event.businessName,
         rcNumber: event.rcNumber,
+        certificateUrl: event.certificateUrl,     
+        statusReportUrl: event.statusReportUrl,   
+        memorandumUrl: event.memorandumUrl        
       });
       break;
     }
