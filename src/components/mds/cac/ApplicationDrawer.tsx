@@ -6,11 +6,10 @@ import {
   X, CheckCircle, FileText, UserPlus, File, Briefcase, Building2
 } from 'lucide-react';
 import { TabButton } from './CacShared';
-// We will build these next!
-// import CacInfoTab from './CacInfoTab';
-// import CacPeopleTab from './CacPeopleTab';
-// import CacDocsTab from './CacDocsTab';
-// import CacActionTab from './CacActionTab';
+import CacInfoTab from './CacInfoTab';
+ import CacPeopleTab from './CacPeopleTab';
+ import CacDocsTab from './CacDocsTab';
+/import CacActionTab from './CacActionTab';
 
 export default function ApplicationDrawer({ 
   ticket, 
