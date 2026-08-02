@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { differenceInHours, formatDistanceToNow, format } from 'date-fns';
 import { 
-  ArrowLeft, Search, RefreshCw, Eye, UserPlus, Briefcase, Building2, Filter, ChevronLeft, ChevronRight
+  ArrowLeft, Search, RefreshCw, Eye, UserPlus, Briefcase, Building2, Filter, ChevronLeft, ChevronRight, ArrowUpDown
 } from 'lucide-react';
 import ApplicationDrawer from '@/components/mds/cac/ApplicationDrawer';
 
@@ -13,10 +13,11 @@ export default function CacPipelinePage() {
   const [pipeline, setPipeline] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]); 
   
-  // Filters & Pagination
+  // Filters, Sorting & Pagination
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("ALL"); 
   const [serviceFilter, setServiceFilter] = useState("ALL");
+  const [sortOrder, setSortOrder] = useState("NEWEST"); // NEWEST, OLDEST, NAME_ASC, NAME_DESC
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
   
@@ -42,32 +43,46 @@ export default function CacPipelinePage() {
     fetchPipeline();
   }, []);
 
-  // Reset to page 1 whenever filters change
+  // Reset to page 1 whenever filters or sorting change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, activeTab, serviceFilter]);
+  }, [searchTerm, activeTab, serviceFilter, sortOrder]);
 
   const filteredPipeline = useMemo(() => {
-    return pipeline.filter((ticket) => {
+    let result = pipeline.filter((ticket) => {
       // 1. Search
       const matchesSearch = 
         ticket.proposedName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.trackingId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.clientName.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // 2. Status Tabs - REORGANIZED & FIXED
+      // 2. Status Tabs
       let matchesTab = true;
-      if (activeTab === "PENDING") matchesTab = ticket.status === "PENDING"; // Captures ALL pending
+      if (activeTab === "PENDING") matchesTab = ticket.status === "PENDING"; 
       if (activeTab === "QUERIED") matchesTab = ticket.status === "QUERIED";
       if (activeTab === "COMPLETED") matchesTab = ticket.status === "APPROVED" || ticket.status === "FAILED";
-      if (activeTab === "UNASSIGNED") matchesTab = !ticket.assignedStaff && ticket.status === "PENDING"; // Pushed to the end
+      if (activeTab === "UNASSIGNED") matchesTab = !ticket.assignedStaff && ticket.status === "PENDING"; 
 
       // 3. Service Type Filter
       const matchesService = serviceFilter === "ALL" || ticket.type === serviceFilter;
 
       return matchesSearch && matchesTab && matchesService;
     });
-  }, [pipeline, searchTerm, activeTab, serviceFilter]);
+
+    // 4. Sorting logic
+    result = result.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt).getTime();
+
+      if (sortOrder === "NEWEST") return dateB - dateA;
+      if (sortOrder === "OLDEST") return dateA - dateB;
+      if (sortOrder === "NAME_ASC") return a.proposedName.localeCompare(b.proposedName);
+      if (sortOrder === "NAME_DESC") return b.proposedName.localeCompare(a.proposedName);
+      return 0;
+    });
+
+    return result;
+  }, [pipeline, searchTerm, activeTab, serviceFilter, sortOrder]);
 
   // Apply Pagination
   const paginatedPipeline = useMemo(() => {
@@ -78,7 +93,7 @@ export default function CacPipelinePage() {
   const totalPages = Math.ceil(filteredPipeline.length / ITEMS_PER_PAGE);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300 pb-12">
       
       {/* Header & Back Button */}
       <div>
@@ -92,7 +107,7 @@ export default function CacPipelinePage() {
           </div>
           <button 
             onClick={fetchPipeline}
-            className="flex items-center justify-center px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+            className="flex items-center justify-center px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm"
           >
             <RefreshCw size={16} className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh Queue
@@ -100,50 +115,68 @@ export default function CacPipelinePage() {
         </div>
       </div>
 
-      {/* Main Container */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
+      {/* Main Container - Removed overflow-hidden to fix desktop scroll squeezing */}
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
         
-        {/* Navigation Tabs - REORDERED */}
+        {/* Navigation Tabs */}
         <div className="flex overflow-x-auto border-b border-zinc-200 dark:border-zinc-800 scrollbar-hide">
-          <TabButton label="All Tickets" count={pipeline.filter(t => serviceFilter === "ALL" || t.type === serviceFilter).length} isActive={activeTab === "ALL"} onClick={() => setActiveTab("ALL")} />
+          <TabButton label="All Applications" count={pipeline.filter(t => serviceFilter === "ALL" || t.type === serviceFilter).length} isActive={activeTab === "ALL"} onClick={() => setActiveTab("ALL")} />
           <TabButton label="Pending" count={pipeline.filter(t => t.status === "PENDING" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "PENDING"} onClick={() => setActiveTab("PENDING")} />
           <TabButton label="Queried" count={pipeline.filter(t => t.status === "QUERIED" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "QUERIED"} onClick={() => setActiveTab("QUERIED")} />
           <TabButton label="Completed" count={pipeline.filter(t => (t.status === "APPROVED" || t.status === "FAILED") && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "COMPLETED"} onClick={() => setActiveTab("COMPLETED")} />
           <TabButton label="Unassigned Pool" count={pipeline.filter(t => !t.assignedStaff && t.status === "PENDING" && (serviceFilter === "ALL" || t.type === serviceFilter)).length} isActive={activeTab === "UNASSIGNED"} onClick={() => setActiveTab("UNASSIGNED")} alert />
         </div>
 
-        {/* Search & Service Filter Bar */}
-        <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="relative flex-1 max-w-md">
+        {/* Search, Filter & Sort Bar */}
+        <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+          <div className="relative w-full lg:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
             <input 
               type="text" 
               placeholder="Search by proposed name, tracking ID..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow shadow-sm"
             />
           </div>
           
-          <div className="flex items-center gap-2">
-            <Filter size={16} className="text-zinc-500 hidden sm:block" />
-            <select 
-              value={serviceFilter}
-              onChange={(e) => setServiceFilter(e.target.value)}
-              className="w-full sm:w-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-sm font-medium rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-            >
-              <option value="ALL">All Services</option>
-              <option value="BUSINESS_NAME">Business Names</option>
-              <option value="LLC">LLC Formations</option>
-            </select>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+            {/* Service Filter */}
+            <div className="flex items-center gap-2">
+              <Filter size={16} className="text-zinc-500 hidden sm:block" />
+              <select 
+                value={serviceFilter}
+                onChange={(e) => setServiceFilter(e.target.value)}
+                className="w-full sm:w-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-sm font-medium rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm"
+              >
+                <option value="ALL">All Services</option>
+                <option value="BUSINESS_NAME">Business Names Only</option>
+                <option value="LLC">LLC Formations Only</option>
+              </select>
+            </div>
+            
+            {/* Sorting */}
+            <div className="flex items-center gap-2">
+              <ArrowUpDown size={16} className="text-zinc-500 hidden sm:block" />
+              <select 
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="w-full sm:w-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-sm font-medium rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm"
+              >
+                <option value="NEWEST">Newest First</option>
+                <option value="OLDEST">Oldest First</option>
+                <option value="NAME_ASC">Name (A - Z)</option>
+                <option value="NAME_DESC">Name (Z - A)</option>
+              </select>
+            </div>
           </div>
         </div>
 
         {/* ==================================================== */}
-        {/* DESKTOP TABLE VIEW (Hidden on Mobile) */}
+        {/* DESKTOP TABLE VIEW */}
         {/* ==================================================== */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
+        <div className="hidden md:block w-full overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap min-w-[900px]">
             <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 text-xs uppercase tracking-wider">
               <tr>
                 <th className="px-6 py-4 font-medium">Application Info</th>
@@ -155,9 +188,32 @@ export default function CacPipelinePage() {
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {isLoading ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-zinc-500">Loading pipeline...</td></tr>
+                // SKELETON LOADER FOR DESKTOP
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-6 py-5">
+                      <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4 mb-2"></div>
+                      <div className="flex gap-2"><div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-16"></div><div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-20"></div></div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-1/2 mb-2"></div>
+                      <div className="h-3 bg-zinc-100 dark:bg-zinc-800/50 rounded w-1/3"></div>
+                    </td>
+                    <td className="px-6 py-5"><div className="h-6 bg-zinc-200 dark:bg-zinc-800 rounded-full w-24"></div></td>
+                    <td className="px-6 py-5"><div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-24"></div></td>
+                    <td className="px-6 py-5 text-center"><div className="h-8 w-8 mx-auto bg-zinc-200 dark:bg-zinc-800 rounded-md"></div></td>
+                  </tr>
+                ))
               ) : paginatedPipeline.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-zinc-500">No applications found.</td></tr>
+                <tr>
+                  <td colSpan={5} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center text-zinc-500">
+                      <Briefcase size={40} className="text-zinc-300 dark:text-zinc-700 mb-3" />
+                      <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">No applications found</p>
+                      <p className="text-sm mt-1">Try adjusting your search or filters.</p>
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 paginatedPipeline.map((ticket: any) => (
                   <tr key={ticket.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
@@ -184,17 +240,16 @@ export default function CacPipelinePage() {
                     </td>
                     <td className="px-6 py-4">
                       {ticket.assignedStaff ? (
-                        <span className="inline-flex items-center text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 rounded-full">
+                        <span className="inline-flex items-center text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-500/20">
                           <UserPlus size={14} className="mr-1.5" /> {ticket.assignedStaff}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center text-sm font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full">
+                        <span className="inline-flex items-center text-sm font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full border border-zinc-200 dark:border-zinc-700">
                           Unassigned
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {/* Pass updatedAt so we track from submission moment, not draft creation */}
                       <SlaIndicator timestamp={ticket.updatedAt} status={ticket.status} />
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -213,13 +268,28 @@ export default function CacPipelinePage() {
         </div>
 
         {/* ==================================================== */}
-        {/* MOBILE CARD VIEW (Hidden on Desktop) */}
+        {/* MOBILE CARD VIEW */}
         {/* ==================================================== */}
-        <div className="md:hidden divide-y divide-zinc-200 dark:divide-zinc-800">
+        <div className="md:hidden divide-y divide-zinc-200 dark:divide-zinc-800 w-full">
           {isLoading ? (
-            <div className="p-8 text-center text-zinc-500">Loading pipeline...</div>
+             // SKELETON LOADER FOR MOBILE
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-4 space-y-4 animate-pulse">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded w-full mb-3"></div>
+                    <div className="flex gap-2"><div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded w-16"></div><div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded w-20"></div></div>
+                  </div>
+                  <div className="h-8 w-16 bg-zinc-200 dark:bg-zinc-800 rounded-lg"></div>
+                </div>
+                <div className="h-20 bg-zinc-100 dark:bg-zinc-950 rounded-lg w-full"></div>
+              </div>
+            ))
           ) : paginatedPipeline.length === 0 ? (
-            <div className="p-8 text-center text-zinc-500">No applications found.</div>
+            <div className="p-12 text-center text-zinc-500 flex flex-col items-center">
+              <Briefcase size={32} className="text-zinc-300 dark:text-zinc-700 mb-3" />
+              <p className="font-medium text-zinc-900 dark:text-zinc-100">No applications found.</p>
+            </div>
           ) : (
             paginatedPipeline.map((ticket: any) => (
               <div key={ticket.id} className="p-4 space-y-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
@@ -229,7 +299,7 @@ export default function CacPipelinePage() {
                       {ticket.proposedName}
                     </p>
                     <div className="flex items-center mt-2 gap-2 flex-wrap">
-                      <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-400 text-xs">
+                      <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-400 text-xs border border-zinc-200 dark:border-zinc-700">
                         {ticket.trackingId}
                       </span>
                       {ticket.type === "LLC" ? (
@@ -245,7 +315,7 @@ export default function CacPipelinePage() {
                   </div>
                   <button 
                     onClick={() => setSelectedTicket(ticket)}
-                    className="flex-shrink-0 flex items-center gap-1 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 px-3 py-1.5 rounded-lg text-xs font-bold"
+                    className="flex-shrink-0 flex items-center gap-1 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
                   >
                     <Eye size={14} /> View
                   </button>
@@ -276,7 +346,7 @@ export default function CacPipelinePage() {
 
         {/* Pagination Footer */}
         {!isLoading && totalPages > 1 && (
-          <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-950">
+          <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between bg-zinc-50 dark:bg-zinc-950/50 gap-4">
             <p className="text-xs text-zinc-500">
               Showing <span className="font-medium text-zinc-900 dark:text-white">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> to <span className="font-medium text-zinc-900 dark:text-white">{Math.min(currentPage * ITEMS_PER_PAGE, filteredPipeline.length)}</span> of <span className="font-medium text-zinc-900 dark:text-white">{filteredPipeline.length}</span> entries
             </p>
@@ -284,19 +354,19 @@ export default function CacPipelinePage() {
               <button 
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="p-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 disabled:opacity-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-600 dark:text-zinc-400 disabled:opacity-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors bg-white dark:bg-zinc-900"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={16} /> Prev
               </button>
-              <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                Page {currentPage} of {totalPages}
+              <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 min-w-[70px] text-center">
+                Pg {currentPage} of {totalPages}
               </span>
               <button 
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="p-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 disabled:opacity-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-600 dark:text-zinc-400 disabled:opacity-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors bg-white dark:bg-zinc-900"
               >
-                <ChevronRight size={16} />
+                Next <ChevronRight size={16} />
               </button>
             </div>
           </div>
@@ -332,8 +402,8 @@ function TabButton({ label, count, isActive, onClick, alert = false }: { label: 
     >
       {label}
       <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] tabular-nums ${
-        isActive ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-      } ${alert && count > 0 && !isActive ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20" : ""}`}>
+        isActive ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
+      } ${alert && count > 0 && !isActive ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 border-amber-200 dark:border-amber-500/20" : ""}`}>
         {count}
       </span>
     </button>
@@ -341,12 +411,10 @@ function TabButton({ label, count, isActive, onClick, alert = false }: { label: 
 }
 
 function SlaIndicator({ timestamp, status }: { timestamp: string, status: string }) {
-  // Using 'Completed' instead of 'Resolved'
   if (status === "APPROVED" || status === "FAILED") {
     return <span className="text-xs font-medium text-zinc-500">Completed • {format(new Date(timestamp), 'MMM d')}</span>;
   }
 
-  // Calculating time against the submission/update timestamp
   const hoursInQueue = differenceInHours(new Date(), new Date(timestamp));
   const timeString = formatDistanceToNow(new Date(timestamp));
 
