@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { 
-  X, CheckCircle, AlertCircle, FileText, UserPlus, File, RefreshCw, Briefcase, Building2, MapPin
+  X, CheckCircle, AlertCircle, FileText, UserPlus, File, RefreshCw, Briefcase, Building2, MapPin, Download
 } from 'lucide-react';
 import { FileUpload } from '@/components/FileUpload';
 
@@ -39,23 +39,28 @@ export default function ApplicationDrawer({
     "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400";
 
   // ==========================================
-  // SAFE DATA PARSERS (Matches your Prisma Schema exactly)
+  // SAFE DATA PARSERS 
   // ==========================================
+  const parseJsonSafe = (data: any, fallback: any = []) => {
+    if (!data) return fallback;
+    if (typeof data === 'string') {
+      try { return JSON.parse(data); } catch { return fallback; }
+    }
+    return data;
+  };
   
   const parseAddress = () => {
     if (isLlc && ticket.registeredAddress) {
-      // LLC stores address as JSON
-      const addr = typeof ticket.registeredAddress === 'string' ? JSON.parse(ticket.registeredAddress) : ticket.registeredAddress;
+      const addr = parseJsonSafe(ticket.registeredAddress, {});
       return `${addr.street || ""}, ${addr.lga || ""}, ${addr.state || ""} State.`.replace(/^, /, '').trim();
     } else {
-      // Business Name stores address as separate columns
       return `${ticket.companyAddress || ""}, ${ticket.companyCity || ""}, ${ticket.companyState || ""} State.`.replace(/^, /, '').trim();
     }
   };
 
   const parsePersonAddress = (person: any) => {
     if (isLlc && person.residentialAddress) {
-      const addr = typeof person.residentialAddress === 'string' ? JSON.parse(person.residentialAddress) : person.residentialAddress;
+      const addr = parseJsonSafe(person.residentialAddress, {});
       return `${addr.street || ""}, ${addr.lga || ""}, ${addr.state || ""}`.replace(/^, /, '').trim();
     } else {
       return person.serviceAddress || `${person.streetNo ? person.streetNo + ' ' : ''}${person.city || ''}, ${person.lga || ''}, ${person.state || ''}`.replace(/^, /, '').trim();
@@ -65,6 +70,9 @@ export default function ApplicationDrawer({
   const categoryLabel = isLlc ? ticket.principalActivity : ticket.category;
   const specificObjLabel = isLlc ? ticket.specificActivity : ticket.specificNature;
   const addressLabel = parseAddress();
+  
+  const shareClassesData = isLlc ? parseJsonSafe(ticket.shareClasses) : [];
+  const customArticlesData = isLlc ? parseJsonSafe(ticket.customArticles) : [];
 
   // ==========================================
   // ACTION HANDLER
@@ -173,16 +181,81 @@ export default function ApplicationDrawer({
                 </div>
               </Section>
 
-              <Section title="Classification">
+              <Section title="Classification & Objectives">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <DataBlock label="Business Category" value={categoryLabel} />
                   <DataBlock label="Specific Objective" value={specificObjLabel} />
-                  {isLlc && (
-                    <DataBlock label="Total Share Capital" value={ticket.totalShareCapital ? `₦${Number(ticket.totalShareCapital).toLocaleString()}` : "N/A"} highlight />
+                  
+                  {/* FULL DESCRIPTION / NATURE OF BUSINESS */}
+                  {ticket.description && (
+                    <div className="md:col-span-2">
+                      <DataBlock label="Nature of Business / Detailed Description" value={ticket.description} />
+                    </div>
                   )}
                 </div>
+
+                {/* MEMORANDUM OBJECTS (List) */}
+                {isLlc && ticket.memorandumObjects && ticket.memorandumObjects.length > 0 && (
+                  <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3">Memorandum Objects (To submit to CAC)</p>
+                    <ul className="list-disc list-inside space-y-2 text-sm font-medium text-zinc-900 dark:text-zinc-100 ml-2">
+                      {ticket.memorandumObjects.map((obj: string, i: number) => (
+                        <li key={i}>{obj}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </Section>
 
+              {/* CAPITAL & SHARES (LLC ONLY) */}
+              {isLlc && (
+                <Section title="Share Capital Structure">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <DataBlock label="Total Share Capital" value={ticket.totalShareCapital ? `₦${Number(ticket.totalShareCapital).toLocaleString()}` : "N/A"} highlight />
+                    <DataBlock label="Company Type" value={ticket.companyType || "Private Company Limited by Shares"} />
+                  </div>
+                  
+                  {shareClassesData && shareClassesData.length > 0 && (
+                    <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3">Share Classes Breakdown</p>
+                      <div className="space-y-3">
+                        {shareClassesData.map((sc: any, i: number) => (
+                          <div key={i} className="flex justify-between items-center text-sm p-3 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                              <span className="font-bold text-zinc-900 dark:text-zinc-100">{sc.type || sc.className || "Ordinary"} Shares</span>
+                              <span className="text-zinc-500 font-mono bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 rounded">{Number(sc.value || sc.allotted || 0).toLocaleString()} Units</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Section>
+              )}
+
+              {/* ARTICLES OF ASSOCIATION (LLC ONLY) */}
+              {isLlc && (
+                <Section title="Articles of Association">
+                  {ticket.useDefaultArticles ? (
+                    <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-5 flex items-start gap-3">
+                      <CheckCircle className="text-emerald-500 mt-0.5 shrink-0" size={20} />
+                      <div>
+                        <p className="font-bold text-emerald-800 dark:text-emerald-400">Adopted Default CAC Articles</p>
+                        <p className="text-xs font-medium text-emerald-600 dark:text-emerald-500/80 mt-1">The client chose to use the standard prescribed Articles of Association. No custom typing required.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3">Custom Articles Provided by Client</p>
+                      <ul className="list-disc list-inside space-y-3 text-sm font-medium text-zinc-900 dark:text-zinc-100 ml-2">
+                        {customArticlesData && customArticlesData.length > 0 ? customArticlesData.map((art: any, i: number) => (
+                          <li key={i} className="leading-relaxed bg-zinc-50 dark:bg-zinc-950 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800">{art.article || art.text || art}</li>
+                        )) : <li className="text-zinc-500 italic list-none">No custom articles parsed.</li>}
+                      </ul>
+                    </div>
+                  )}
+                </Section>
+              )}
+
+              {/* Address */}
               <Section title="Principal Address">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
                   <div className="flex items-start gap-3">
@@ -237,10 +310,7 @@ export default function ApplicationDrawer({
                           )}
                         </>
                       ) : (
-                        // Business Name proprietors have NIN instead of generic ID Document
-                        <>
-                          <DataBlock label="NIN Status" value={person.ninUrl ? "Uploaded" : "Missing"} highlight />
-                        </>
+                        <DataBlock label="NIN Status" value={person.ninUrl ? "Uploaded" : "Missing"} highlight />
                       )}
                       
                       <div className="md:col-span-3">
@@ -257,38 +327,63 @@ export default function ApplicationDrawer({
           {activeTab === "DOCS" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               
-              {/* Application Wide Documents (e.g. custom articles for LLC) */}
-              {isLlc && (ticket.memorandumUrl || ticket.declarantSignatureUrl) && (
+              {/* Application Wide Documents (e.g. Declarant Signature) */}
+              {isLlc && (ticket.declarantSignatureUrl || ticket.witnessSignatureUrl) && (
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4 md:col-span-2">
                   <h3 className="font-bold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4">
-                    Company Legal Documents
+                    General Signatures & Declarations
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DocumentPreview label="Custom Memorandum & Articles" url={ticket.memorandumUrl} />
-                    <DocumentPreview label="Declarant Signature" url={ticket.declarantSignatureUrl} />
+                    <DocumentPreview 
+                      label="Declarant Signature" 
+                      url={ticket.declarantSignatureUrl} 
+                      downloadName={`Declarant_Signature_${ticket.trackingId}.jpg`} 
+                    />
+                    <DocumentPreview 
+                      label="Witness Signature" 
+                      url={ticket.witnessSignatureUrl} 
+                      downloadName={`Witness_Signature_${ticket.trackingId}.jpg`} 
+                    />
                   </div>
                 </div>
               )}
 
               {/* Personal Documents */}
               {ticket.people?.map((person: any, idx: number) => {
-                const fullName = `${person.firstName || ''} ${person.surname || ''}`.trim();
+                const safeName = (person.firstName || "Client").replace(/\s+/g, '_');
                 
                 return (
                   <div key={idx} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4">
-                    <h3 className="font-bold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4">
-                      Documents: {fullName || `Person ${idx + 1}`}
+                    <h3 className="font-bold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4 flex justify-between items-center">
+                      <span>{person.firstName} {person.surname}</span>
+                      <span className="text-[10px] font-black uppercase text-zinc-400">Documents</span>
                     </h3>
                     
                     {isLlc ? (
-                      <DocumentPreview label={`Identity Document (${person.idType || "ID"})`} url={person.idDocumentUrl} />
+                      <DocumentPreview 
+                        label={`ID Card (${person.idType || "ID"})`} 
+                        url={person.idDocumentUrl} 
+                        downloadName={`ID_${safeName}_${ticket.trackingId}`} 
+                      />
                     ) : (
                       <>
-                        <DocumentPreview label="NIN Slip / Card" url={person.ninUrl} />
-                        <DocumentPreview label="Passport Photograph" url={person.passportUrl} />
+                        <DocumentPreview 
+                          label="NIN Slip / Card" 
+                          url={person.ninUrl} 
+                          downloadName={`NIN_${safeName}_${ticket.trackingId}`} 
+                        />
+                        <DocumentPreview 
+                          label="Passport Photograph" 
+                          url={person.passportUrl} 
+                          downloadName={`Passport_${safeName}_${ticket.trackingId}`} 
+                        />
                       </>
                     )}
-                    <DocumentPreview label="Signature" url={person.signatureUrl} />
+                    <DocumentPreview 
+                      label="Specimen Signature" 
+                      url={person.signatureUrl} 
+                      downloadName={`Signature_${safeName}_${ticket.trackingId}`} 
+                    />
                   </div>
                 );
               })}
@@ -442,34 +537,55 @@ function DataBlock({ label, value, highlight }: { label: string, value: string |
   return (
     <div className={`p-4 rounded-xl border ${highlight ? 'bg-indigo-50/50 border-indigo-100 dark:bg-indigo-500/5 dark:border-indigo-500/20' : 'bg-white border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800'}`}>
       <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-1.5">{label}</p>
-      <p className={`text-sm font-semibold truncate ${highlight ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-zinc-100'}`}>
+      <p className={`text-sm font-semibold whitespace-pre-wrap break-words ${highlight ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-zinc-100'}`}>
         {value || "—"}
       </p>
     </div>
   );
 }
 
-function DocumentPreview({ label, url }: { label: string, url: string | undefined }) {
+function DocumentPreview({ label, url, downloadName }: { label: string, url: string | undefined, downloadName: string }) {
   if (!url) {
     return (
       <div className="flex items-center justify-between p-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950">
         <span className="text-sm font-semibold text-zinc-500">{label}</span>
-        <span className="text-xs font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-500 px-2 py-1 rounded">Missing</span>
+        <span className="text-[10px] font-black uppercase tracking-widest bg-zinc-200 dark:bg-zinc-800 text-zinc-500 px-2 py-1 rounded">Missing</span>
       </div>
     );
   }
 
+  // To ensure the file downloads correctly, we extract the extension from Cloudinary
+  const extension = url.split('.').pop() || 'pdf';
+  const finalDownloadName = `${downloadName}.${extension}`;
+
   return (
-    <div className="flex items-center justify-between p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-lg">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-3 overflow-hidden">
+        <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-lg shrink-0">
           <File size={20} />
         </div>
-        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{label}</span>
+        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate" title={label}>{label}</span>
       </div>
-      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 px-4 py-2 rounded-lg hover:opacity-90 transition-opacity shrink-0">
-        View File
-      </a>
+      
+      {/* Explicit Download & View Actions */}
+      <div className="flex items-center gap-2 shrink-0">
+        <a 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-xs font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-center"
+        >
+          View
+        </a>
+        <a 
+          href={url} 
+          target="_blank" 
+          download={finalDownloadName} 
+          className="flex items-center text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 px-3 py-2 rounded-lg hover:opacity-90 transition-opacity text-center"
+        >
+          <Download size={14} className="mr-1.5" /> Save File
+        </a>
+      </div>
     </div>
   );
 }
