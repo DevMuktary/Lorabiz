@@ -13,13 +13,20 @@ export default function CacActionTab({
   staffList: any[], 
   onUpdateSuccess: () => void 
 }) {
+  const isLlc = ticket.type === "LLC";
+
   const [actionType, setActionType] = useState<"APPROVE" | "QUERY" | "ASSIGN" | "">("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   
-  // Form States
+  // Document States
   const [certificateUrl, setCertificateUrl] = useState<string | null>(null);
   const [statusReportUrl, setStatusReportUrl] = useState<string | null>(null);
+  const [memorandumUrl, setMemorandumUrl] = useState<string | null>(null);
+  
+  // Text Input States
+  const [rcNumber, setRcNumber] = useState("");
+  const [taxId, setTaxId] = useState("");
   const [queryReason, setQueryReason] = useState("");
   const [selectedStaff, setSelectedStaff] = useState("");
 
@@ -29,9 +36,11 @@ export default function CacActionTab({
 
     try {
       if (actionType === "APPROVE") {
-        if (!certificateUrl || !statusReportUrl) {
-          throw new Error("Both Certificate and Status Report are required for approval.");
-        }
+        if (!rcNumber.trim()) throw new Error(`Please provide the approved ${isLlc ? 'RC' : 'BN'} Number.`);
+        if (!taxId.trim()) throw new Error("Please provide the Tax ID (TIN).");
+        if (!certificateUrl) throw new Error("The final CAC Certificate is required.");
+        if (!statusReportUrl) throw new Error("The Status Report is required.");
+        if (isLlc && !memorandumUrl) throw new Error("The Memorandum of Association is required for LLC formations.");
       }
 
       if (actionType === "QUERY" && !queryReason.trim()) {
@@ -46,8 +55,11 @@ export default function CacActionTab({
         action: actionType,
         ticketId: ticket.id,
         ticketType: ticket.type,
+        rcNumber,
+        taxId,
         certificateUrl,
         statusReportUrl,
+        memorandumUrl: isLlc ? memorandumUrl : undefined,
         queryReason,
         assignedTo: selectedStaff
       };
@@ -59,7 +71,10 @@ export default function CacActionTab({
       });
 
       const result = await response.json();
-      if (!result.success) throw new Error(result.message || "Failed to execute action.");
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || result.error || "Server rejected the request. Please verify the provided data.");
+      }
 
       onUpdateSuccess();
     } catch (err: any) {
@@ -108,30 +123,77 @@ export default function CacActionTab({
         </div>
       </div>
 
+      {/* Dynamic Action Forms */}
       {actionType && (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl">
           
           {actionType === "APPROVE" && (
-            <div className="space-y-6">
-              <h3 className="font-bold text-xl text-emerald-700 dark:text-emerald-400 border-b border-emerald-100 dark:border-emerald-500/20 pb-4 mb-6">Fulfill Order</h3>
+            <div className="space-y-8">
+              <h3 className="font-bold text-xl text-emerald-700 dark:text-emerald-400 border-b border-emerald-100 dark:border-emerald-500/20 pb-4">
+                Fulfill {isLlc ? "LLC" : "Business Name"} Registration
+              </h3>
               
-              <FileUpload 
-                label="Upload Final CAC Certificate"
-                description="PDF format required."
-                accept="application/pdf"
-                value={certificateUrl}
-                onUploadSuccess={(url) => setCertificateUrl(url)}
-                onRemove={() => setCertificateUrl(null)}
-              />
+              {/* Manual Input Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase text-zinc-600 dark:text-zinc-400">
+                    Approved {isLlc ? 'RC' : 'BN'} Number <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text"
+                    value={rcNumber}
+                    onChange={(e) => setRcNumber(e.target.value)}
+                    placeholder={isLlc ? "RC-1234567" : "BN-1234567"}
+                    className="w-full h-12 px-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm font-bold text-zinc-900 dark:text-zinc-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase text-zinc-600 dark:text-zinc-400">
+                    Company Tax ID (TIN) <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text"
+                    value={taxId}
+                    onChange={(e) => setTaxId(e.target.value)}
+                    placeholder="Enter assigned TIN"
+                    className="w-full h-12 px-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm font-bold text-zinc-900 dark:text-zinc-100"
+                  />
+                </div>
+              </div>
 
-              <FileUpload 
-                label="Upload Status Report"
-                description="PDF format required."
-                accept="application/pdf"
-                value={statusReportUrl}
-                onUploadSuccess={(url) => setStatusReportUrl(url)}
-                onRemove={() => setStatusReportUrl(null)}
-              />
+              <hr className="border-zinc-100 dark:border-zinc-800" />
+
+              {/* Document Uploads */}
+              <div className="space-y-6">
+                <FileUpload 
+                  label="Upload Final CAC Certificate *"
+                  description="PDF format required."
+                  accept="application/pdf"
+                  value={certificateUrl}
+                  onUploadSuccess={(url) => setCertificateUrl(url)}
+                  onRemove={() => setCertificateUrl(null)}
+                />
+
+                <FileUpload 
+                  label="Upload Status Report *"
+                  description="PDF format required."
+                  accept="application/pdf"
+                  value={statusReportUrl}
+                  onUploadSuccess={(url) => setStatusReportUrl(url)}
+                  onRemove={() => setStatusReportUrl(null)}
+                />
+
+                {isLlc && (
+                  <FileUpload 
+                    label="Upload Memorandum of Association *"
+                    description="PDF format required for LLC formations."
+                    accept="application/pdf"
+                    value={memorandumUrl}
+                    onUploadSuccess={(url) => setMemorandumUrl(url)}
+                    onRemove={() => setMemorandumUrl(null)}
+                  />
+                )}
+              </div>
             </div>
           )}
 
