@@ -38,6 +38,7 @@ export function DataBlock({ label, value, highlight }: { label: string, value: R
   );
 }
 
+// FIXED: Now strictly separates House No and Street Name
 export function AddressBreakdown({ addressObj, title, icon }: { addressObj: any, title: string, icon?: React.ReactNode }) {
   if (!addressObj) return <DataBlock label={title} value="Not provided" />;
   
@@ -47,10 +48,14 @@ export function AddressBreakdown({ addressObj, title, icon }: { addressObj: any,
         {icon}
         <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">{title}</p>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div>
+          <p className="text-[9px] font-bold uppercase text-zinc-400 mb-1">House No.</p>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{addressObj.streetNo || addressObj.houseNo || addressObj.houseNumber || "—"}</p>
+        </div>
         <div className="col-span-2 sm:col-span-1">
-          <p className="text-[9px] font-bold uppercase text-zinc-400 mb-1">Street / House No.</p>
-          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{addressObj.street || addressObj.address || addressObj.streetNo || "—"}</p>
+          <p className="text-[9px] font-bold uppercase text-zinc-400 mb-1">Street Name</p>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{addressObj.street || addressObj.address || addressObj.streetName || "—"}</p>
         </div>
         <div>
           <p className="text-[9px] font-bold uppercase text-zinc-400 mb-1">City / Town</p>
@@ -140,11 +145,10 @@ export const parseJsonSafe = (data: any, fallback: any = {}) => {
   return data;
 };
 
-// THE FIX: Re-exporting the string parser for components that don't need the full Grid UI
 export const parseAddress = (addrObj: any, fallbackStr: string) => {
   if (addrObj) {
     const addr = parseJsonSafe(addrObj, {});
-    const str = `${addr.streetNo ? addr.streetNo + ' ' : ''}${addr.street || addr.address || ""}, ${addr.city || addr.lga || ""}, ${addr.state || ""} State.`.replace(/^, /, '').trim();
+    const str = `${addr.streetNo || addr.houseNo ? (addr.streetNo || addr.houseNo) + ' ' : ''}${addr.street || addr.address || addr.streetName || ""}, ${addr.city || addr.town || addr.lga || ""}, ${addr.state || addr.companyState || ""} State.`.replace(/^, /, '').trim();
     return str.length > 5 ? str : fallbackStr;
   }
   return fallbackStr;

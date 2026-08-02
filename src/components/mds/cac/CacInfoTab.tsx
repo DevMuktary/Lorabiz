@@ -11,7 +11,13 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
   // Format Addresses strictly for the Breakdown Grid
   const registeredAddressObj = isLlc 
     ? parseJsonSafe(ticket.registeredAddress, null) 
-    : { street: ticket.companyAddress || ticket.companyStreetNo, city: ticket.companyCity, state: ticket.companyState };
+    : { 
+        streetNo: ticket.companyHouseNo || ticket.companyStreetNo || "", 
+        street: ticket.companyAddress || ticket.companyStreetName || "", 
+        city: ticket.companyCity, 
+        lga: ticket.companyLga,
+        state: ticket.companyState 
+      };
   
   const headOfficeAddressObj = isLlc && ticket.headOfficeAddress 
     ? parseJsonSafe(ticket.headOfficeAddress, null) 
