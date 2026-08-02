@@ -26,9 +26,6 @@ export default function ScumlApplicationDrawer({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
 
-  // ==========================================
-  // FIX: Added Download State and Helper
-  // ==========================================
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   const handleForceDownload = async (url: string, filename: string) => {
@@ -52,7 +49,6 @@ export default function ScumlApplicationDrawer({
       setDownloadingFile(null);
     }
   };
-  // ==========================================
 
   if (!ticket) return null;
 
@@ -125,7 +121,7 @@ export default function ScumlApplicationDrawer({
           </button>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs - FULLY FIXED FOR DARK MODE */}
         <div className="flex px-8 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0 overflow-x-auto scrollbar-hide z-10 shadow-sm">
           <TabButton active={activeTab === "DOCS"} onClick={() => setActiveTab("DOCS")} label="Client Documents" icon={<FileText size={16} />} />
           <TabButton active={activeTab === "ACTION"} onClick={() => setActiveTab("ACTION")} label="Admin Action Hub" icon={<CheckCircle size={16} />} alert={ticket.status === "PENDING"} />
@@ -134,7 +130,6 @@ export default function ScumlApplicationDrawer({
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-8 relative">
           
-          {/* FIX: Passed download states down to DocumentPreviews */}
           {activeTab === "DOCS" && (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                <DocumentPreview 
@@ -181,7 +176,7 @@ export default function ScumlApplicationDrawer({
                   <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Application Completed</h3>
                   <p className="text-zinc-500 text-sm mt-2 mb-6">The SCUML certificate was generated and sent to the client.</p>
                   {ticket.finalCertificateUrl && (
-                    <a href={ticket.finalCertificateUrl} target="_blank" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 font-bold rounded-xl border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                    <a href={ticket.finalCertificateUrl} target="_blank" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold rounded-xl border border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
                       <Download size={18} /> View Final Certificate
                     </a>
                   )}
@@ -190,9 +185,9 @@ export default function ScumlApplicationDrawer({
 
               {ticket.status === "FAILED" && (
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl">
-                  <div className="flex items-center gap-3 text-rose-600 mb-4">
+                  <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400 mb-4">
                     <AlertTriangle size={24} />
-                    <h3 className="text-xl font-bold">Application Failed</h3>
+                    <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Application Failed</h3>
                   </div>
                   <p className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-2">Failure Reason Provided:</p>
                   <div className="p-4 bg-rose-50 dark:bg-rose-500/10 rounded-xl text-rose-900 dark:text-rose-200 text-sm font-medium border border-rose-100 dark:border-rose-500/20">
@@ -203,22 +198,35 @@ export default function ScumlApplicationDrawer({
 
               {ticket.status !== "COMPLETED" && ticket.status !== "FAILED" && (
                 <>
+                  {/* ACTION BUTTONS - FULLY FIXED FOR DARK MODE */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <button 
                       onClick={() => setActionType("PROCESS")}
-                      className={`p-5 rounded-2xl border-2 transition-all font-bold flex flex-col items-center justify-center ${actionType === "PROCESS" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-zinc-200 bg-white text-zinc-500"}`}
+                      className={`p-5 rounded-2xl border-2 transition-all font-bold flex flex-col items-center justify-center ${
+                        actionType === "PROCESS" 
+                          ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400" 
+                          : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700"
+                      }`}
                     >
                       Process
                     </button>
                     <button 
                       onClick={() => setActionType("COMPLETE")}
-                      className={`p-5 rounded-2xl border-2 transition-all font-bold flex flex-col items-center justify-center ${actionType === "COMPLETE" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-white text-zinc-500"}`}
+                      className={`p-5 rounded-2xl border-2 transition-all font-bold flex flex-col items-center justify-center ${
+                        actionType === "COMPLETE" 
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" 
+                          : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700"
+                      }`}
                     >
                       Complete
                     </button>
                     <button 
                       onClick={() => setActionType("FAIL")}
-                      className={`p-5 rounded-2xl border-2 transition-all font-bold flex flex-col items-center justify-center ${actionType === "FAIL" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-zinc-200 bg-white text-zinc-500"}`}
+                      className={`p-5 rounded-2xl border-2 transition-all font-bold flex flex-col items-center justify-center ${
+                        actionType === "FAIL" 
+                          ? "border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400" 
+                          : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700"
+                      }`}
                     >
                       Fail & Reject
                     </button>
@@ -246,7 +254,7 @@ export default function ScumlApplicationDrawer({
                           onChange={(e) => setFailureReason(e.target.value)}
                           placeholder="Explain why this application was rejected. This will be emailed to the client."
                           rows={4}
-                          className="w-full p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none text-sm"
+                          className="w-full p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none text-sm text-zinc-900 dark:text-zinc-100"
                         />
                       </div>
                       
@@ -256,7 +264,7 @@ export default function ScumlApplicationDrawer({
                             type="checkbox" 
                             checked={issueRefund} 
                             onChange={(e) => setIssueRefund(e.target.checked)}
-                            className="w-5 h-5 rounded border-zinc-300 text-rose-600 focus:ring-rose-500"
+                            className="w-5 h-5 rounded border-zinc-300 text-rose-600 focus:ring-rose-500 bg-white dark:bg-zinc-900"
                           />
                           <span className="font-bold text-zinc-900 dark:text-zinc-100">Issue Wallet Refund</span>
                         </label>
@@ -268,7 +276,7 @@ export default function ScumlApplicationDrawer({
                               type="number" 
                               value={refundAmount} 
                               onChange={(e) => setRefundAmount(e.target.value)}
-                              className="w-full h-10 px-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:ring-2 focus:ring-rose-500 focus:outline-none text-sm font-bold"
+                              className="w-full h-10 px-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:ring-2 focus:ring-rose-500 focus:outline-none text-sm font-bold text-zinc-900 dark:text-zinc-100"
                             />
                             <p className="text-xs text-zinc-500 mt-2">Original amount paid: ₦{ticket.amountPaid}</p>
                           </div>
@@ -277,7 +285,7 @@ export default function ScumlApplicationDrawer({
                     </div>
                   )}
 
-                  {error && <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm font-bold flex items-center gap-2"><AlertCircle size={16} /> {error}</div>}
+                  {error && <div className="p-4 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 rounded-xl text-sm font-bold flex items-center gap-2"><AlertCircle size={16} /> {error}</div>}
 
                   {actionType && (
                     <button 
@@ -302,11 +310,13 @@ function TabButton({ label, active, onClick, icon, alert = false }: any) {
     <button 
       onClick={onClick}
       className={`flex items-center gap-2 whitespace-nowrap px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-        active ? "border-indigo-500 text-indigo-600 bg-indigo-50/50" : "border-transparent text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50"
+        active 
+          ? "border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/10" 
+          : "border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
       }`}
     >
       {icon} {label}
-      {alert && !active && <span className="w-2 h-2 rounded-full bg-amber-500"></span>}
+      {alert && !active && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>}
     </button>
   );
 }
