@@ -38,6 +38,37 @@ export default function ApplicationDrawer({
     ticket.status === "FAILED" ? "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400" :
     "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400";
 
+  // ==========================================
+  // SAFE DATA PARSERS (Matches your Prisma Schema exactly)
+  // ==========================================
+  
+  const parseAddress = () => {
+    if (isLlc && ticket.registeredAddress) {
+      // LLC stores address as JSON
+      const addr = typeof ticket.registeredAddress === 'string' ? JSON.parse(ticket.registeredAddress) : ticket.registeredAddress;
+      return `${addr.street || ""}, ${addr.lga || ""}, ${addr.state || ""} State.`.replace(/^, /, '').trim();
+    } else {
+      // Business Name stores address as separate columns
+      return `${ticket.companyAddress || ""}, ${ticket.companyCity || ""}, ${ticket.companyState || ""} State.`.replace(/^, /, '').trim();
+    }
+  };
+
+  const parsePersonAddress = (person: any) => {
+    if (isLlc && person.residentialAddress) {
+      const addr = typeof person.residentialAddress === 'string' ? JSON.parse(person.residentialAddress) : person.residentialAddress;
+      return `${addr.street || ""}, ${addr.lga || ""}, ${addr.state || ""}`.replace(/^, /, '').trim();
+    } else {
+      return person.serviceAddress || `${person.streetNo ? person.streetNo + ' ' : ''}${person.city || ''}, ${person.lga || ''}, ${person.state || ''}`.replace(/^, /, '').trim();
+    }
+  };
+
+  const categoryLabel = isLlc ? ticket.principalActivity : ticket.category;
+  const specificObjLabel = isLlc ? ticket.specificActivity : ticket.specificNature;
+  const addressLabel = parseAddress();
+
+  // ==========================================
+  // ACTION HANDLER
+  // ==========================================
   const handleActionSubmit = async () => {
     setIsProcessing(true);
     setError("");
@@ -88,7 +119,6 @@ export default function ApplicationDrawer({
     <div className="fixed inset-0 z-[100] flex justify-end font-sans">
       <div className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}></div>
       
-      {/* DRAWER WIDENED to max-w-4xl for absolute clarity */}
       <div className="relative w-full max-w-4xl h-full bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         
         {/* Header Ribbon */}
@@ -124,7 +154,6 @@ export default function ApplicationDrawer({
         <div className="flex px-8 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0 overflow-x-auto scrollbar-hide">
           <TabButton active={activeTab === "INFO"} onClick={() => setActiveTab("INFO")} label="Application Info" icon={<FileText size={16} />} />
           <TabButton active={activeTab === "PEOPLE"} onClick={() => setActiveTab("PEOPLE")} label={isLlc ? "Directors & Shareholders" : "Proprietors"} icon={<UserPlus size={16} />} />
-          {/* FIXED: Using File instead of FilePdf */}
           <TabButton active={activeTab === "DOCS"} onClick={() => setActiveTab("DOCS")} label="Client Documents" icon={<File size={16} />} />
           <TabButton active={activeTab === "ACTION"} onClick={() => setActiveTab("ACTION")} label="Admin Action Hub" icon={<CheckCircle size={16} />} alert={ticket.status === "PENDING"} />
         </div>
@@ -136,7 +165,6 @@ export default function ApplicationDrawer({
           {activeTab === "INFO" && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
               
-              {/* Names Section */}
               <Section title="Proposed Names">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <DataBlock label="Option 1 (Primary)" value={ticket.proposedName} highlight />
@@ -145,25 +173,22 @@ export default function ApplicationDrawer({
                 </div>
               </Section>
 
-              {/* Classification */}
               <Section title="Classification">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <DataBlock label="Business Category" value={ticket.category} />
-                  <DataBlock label="Specific Objective" value={ticket.specificObjective} />
+                  <DataBlock label="Business Category" value={categoryLabel} />
+                  <DataBlock label="Specific Objective" value={specificObjLabel} />
                   {isLlc && (
-                    <DataBlock label="Total Share Capital" value={`₦${Number(ticket.totalShareCapital).toLocaleString()}`} highlight />
+                    <DataBlock label="Total Share Capital" value={ticket.totalShareCapital ? `₦${Number(ticket.totalShareCapital).toLocaleString()}` : "N/A"} highlight />
                   )}
                 </div>
               </Section>
 
-              {/* Address */}
               <Section title="Principal Address">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
                   <div className="flex items-start gap-3">
                     <MapPin className="text-indigo-500 shrink-0 mt-0.5" size={20} />
                     <div>
-                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">{ticket.address}</p>
-                      <p className="text-sm font-medium text-zinc-500 mt-1">{ticket.lga}, {ticket.state} State.</p>
+                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">{addressLabel || "Address not fully provided"}</p>
                     </div>
                   </div>
                 </div>
@@ -175,55 +200,98 @@ export default function ApplicationDrawer({
           {/* TAB 2: People */}
           {activeTab === "PEOPLE" && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              {ticket.people?.map((person: any, idx: number) => (
-                <div key={idx} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
-                  <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-between items-center">
-                    <h3 className="font-bold text-zinc-900 dark:text-zinc-100">{person.firstName} {person.lastName}</h3>
-                    <div className="flex gap-2">
-                      {person.roles?.map((r: string) => (
-                        <span key={r} className="text-[10px] font-black uppercase tracking-widest bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 px-2 py-1 rounded">
-                          {r}
-                        </span>
-                      ))}
-                      {person.isPsc && (
-                         <span className="text-[10px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 px-2 py-1 rounded">
-                           PSC
-                         </span>
+              {ticket.people?.map((person: any, idx: number) => {
+                const fullName = `${person.firstName || ''} ${person.surname || ''} ${person.otherName || ''}`.trim();
+                const roles = isLlc ? (person.roles || []) : ["PROPRIETOR"];
+                const isPsc = isLlc ? !!person.pscDetails : false;
+
+                return (
+                  <div key={idx} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+                    <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-between items-center">
+                      <h3 className="font-bold text-zinc-900 dark:text-zinc-100">{fullName || "Unnamed Person"}</h3>
+                      <div className="flex gap-2">
+                        {roles.map((r: string) => (
+                          <span key={r} className="text-[10px] font-black uppercase tracking-widest bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 px-2 py-1 rounded">
+                            {r}
+                          </span>
+                        ))}
+                        {isPsc && (
+                           <span className="text-[10px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 px-2 py-1 rounded">
+                             PSC
+                           </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <DataBlock label="Email" value={person.email} />
+                      <DataBlock label="Phone" value={person.phone} />
+                      <DataBlock label="Gender" value={person.gender} />
+                      <DataBlock label="Date of Birth" value={person.dob} />
+                      {isLlc ? (
+                        <>
+                          <DataBlock label="Occupation" value={person.occupation} />
+                          <DataBlock label="ID Document Type" value={person.idType} />
+                          <DataBlock label="ID Number" value={person.idNumber} highlight />
+                          {person.sharesAllotted && (
+                            <DataBlock label="Shares Allotted" value={Number(person.sharesAllotted).toLocaleString()} highlight />
+                          )}
+                        </>
+                      ) : (
+                        // Business Name proprietors have NIN instead of generic ID Document
+                        <>
+                          <DataBlock label="NIN Status" value={person.ninUrl ? "Uploaded" : "Missing"} highlight />
+                        </>
                       )}
+                      
+                      <div className="md:col-span-3">
+                         <DataBlock label="Residential / Service Address" value={parsePersonAddress(person)} />
+                      </div>
                     </div>
                   </div>
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <DataBlock label="Email" value={person.email} />
-                    <DataBlock label="Phone" value={person.phone} />
-                    <DataBlock label="Gender" value={person.gender} />
-                    <DataBlock label="Occupation" value={person.occupation} />
-                    <DataBlock label="NIN" value={person.nin} highlight />
-                    <DataBlock label="Identity Doc Type" value={person.identityType} />
-                    {person.sharesAllotted > 0 && (
-                      <DataBlock label="Shares Allotted" value={person.sharesAllotted.toLocaleString()} highlight />
-                    )}
-                    <div className="md:col-span-3">
-                       <DataBlock label="Residential Address" value={`${person.address}, ${person.lga}, ${person.state}.`} />
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
           {/* TAB 3: Documents */}
           {activeTab === "DOCS" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              {ticket.people?.map((person: any, idx: number) => (
-                <div key={idx} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4">
+              
+              {/* Application Wide Documents (e.g. custom articles for LLC) */}
+              {isLlc && (ticket.memorandumUrl || ticket.declarantSignatureUrl) && (
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4 md:col-span-2">
                   <h3 className="font-bold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4">
-                    Documents: {person.firstName} {person.lastName}
+                    Company Legal Documents
                   </h3>
-                  <DocumentPreview label="Identity Document (ID)" url={person.identityDocumentUrl} />
-                  <DocumentPreview label="Passport Photograph" url={person.passportPhotoUrl} />
-                  <DocumentPreview label="Signature" url={person.signatureUrl} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <DocumentPreview label="Custom Memorandum & Articles" url={ticket.memorandumUrl} />
+                    <DocumentPreview label="Declarant Signature" url={ticket.declarantSignatureUrl} />
+                  </div>
                 </div>
-              ))}
+              )}
+
+              {/* Personal Documents */}
+              {ticket.people?.map((person: any, idx: number) => {
+                const fullName = `${person.firstName || ''} ${person.surname || ''}`.trim();
+                
+                return (
+                  <div key={idx} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4">
+                    <h3 className="font-bold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4">
+                      Documents: {fullName || `Person ${idx + 1}`}
+                    </h3>
+                    
+                    {isLlc ? (
+                      <DocumentPreview label={`Identity Document (${person.idType || "ID"})`} url={person.idDocumentUrl} />
+                    ) : (
+                      <>
+                        <DocumentPreview label="NIN Slip / Card" url={person.ninUrl} />
+                        <DocumentPreview label="Passport Photograph" url={person.passportUrl} />
+                      </>
+                    )}
+                    <DocumentPreview label="Signature" url={person.signatureUrl} />
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -231,13 +299,11 @@ export default function ApplicationDrawer({
           {activeTab === "ACTION" && (
             <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
               
-              {/* Context Warning */}
               <div className="bg-amber-50 dark:bg-amber-500/10 border-l-4 border-amber-500 p-4 rounded-r-xl">
                 <p className="text-sm font-bold text-amber-800 dark:text-amber-400">Critical Operation Zone</p>
                 <p className="text-xs font-medium text-amber-700/80 dark:text-amber-500/80 mt-1">Actions taken here will trigger automated emails to the client and permanently alter the application state.</p>
               </div>
 
-              {/* Action Selector */}
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Select Resolution Path</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -269,7 +335,6 @@ export default function ApplicationDrawer({
               {actionType && (
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl">
                   
-                  {/* APPROVAL FORM - INTEGRATING THE LIVE FILE UPLOADER */}
                   {actionType === "APPROVE" && (
                     <div className="space-y-6">
                       <h3 className="font-bold text-lg text-emerald-700 dark:text-emerald-400 border-b border-emerald-100 dark:border-emerald-500/20 pb-3 mb-6">Fulfill Order</h3>
@@ -294,7 +359,6 @@ export default function ApplicationDrawer({
                     </div>
                   )}
 
-                  {/* QUERY FORM */}
                   {actionType === "QUERY" && (
                     <div className="space-y-4">
                       <h3 className="font-bold text-lg text-rose-700 dark:text-rose-400 border-b border-rose-100 dark:border-rose-500/20 pb-3 mb-4">Query Details</h3>
@@ -309,7 +373,6 @@ export default function ApplicationDrawer({
                     </div>
                   )}
 
-                  {/* ASSIGN FORM */}
                   {actionType === "ASSIGN" && (
                     <div className="space-y-4">
                       <h3 className="font-bold text-lg text-indigo-700 dark:text-indigo-400 border-b border-indigo-100 dark:border-indigo-500/20 pb-3 mb-4">Staff Assignment</h3>
@@ -327,7 +390,6 @@ export default function ApplicationDrawer({
                     </div>
                   )}
 
-                  {/* Error & Submit */}
                   {error && <div className="mt-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm font-bold flex items-center gap-2"><AlertCircle size={16} /> {error}</div>}
 
                   <button 
@@ -397,18 +459,15 @@ function DocumentPreview({ label, url }: { label: string, url: string | undefine
     );
   }
 
-  const isPdf = url.toLowerCase().endsWith('.pdf');
-
   return (
     <div className="flex items-center justify-between p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
         <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-lg">
-          {/* FIXED: Using File and FileText consistently */}
-          {isPdf ? <File size={20} /> : <FileText size={20} />}
+          <File size={20} />
         </div>
         <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{label}</span>
       </div>
-      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 px-4 py-2 rounded-lg hover:opacity-90 transition-opacity">
+      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 px-4 py-2 rounded-lg hover:opacity-90 transition-opacity shrink-0">
         View File
       </a>
     </div>
