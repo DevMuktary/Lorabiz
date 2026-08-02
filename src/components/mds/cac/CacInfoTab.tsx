@@ -8,7 +8,6 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
   const categoryLabel = isLlc ? ticket.principalActivity : ticket.category;
   const specificObjLabel = isLlc ? ticket.specificActivity : ticket.specificNature;
   
-  // Format Addresses strictly for the Breakdown Grid
   const registeredAddressObj = isLlc 
     ? parseJsonSafe(ticket.registeredAddress, null) 
     : { 
@@ -23,10 +22,11 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
     ? parseJsonSafe(ticket.headOfficeAddress, null) 
     : null;
 
-  const shareClassesData = isLlc ? parseJsonSafe(ticket.shareClasses, []) : [];
-  const customArticlesData = isLlc ? parseJsonSafe(ticket.customArticles, []) : [];
+  // FIXED: Explicitly look inside shareCapital for the shareClasses array!
+  const shareCapitalObj = isLlc ? parseJsonSafe(ticket.shareCapital, {}) : {};
+  const shareClassesData = shareCapitalObj.shareClasses || [];
   
-  // Deep parse declarations
+  const customArticlesData = isLlc ? parseJsonSafe(ticket.customArticles, []) : [];
   const declarant = isLlc ? parseJsonSafe(ticket.declarantDetails, null) : null;
   const witness = isLlc ? parseJsonSafe(ticket.witnessDetails, null) : null;
 
@@ -73,41 +73,33 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
       {isLlc && (
         <Section title="Share Capital Structure">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <DataBlock label="Total Share Capital" value={ticket.totalShareCapital ? `₦${Number(ticket.totalShareCapital).toLocaleString()}` : "N/A"} highlight />
-            <DataBlock label="Company Type" value={ticket.companyType || "Private Company Limited by Shares"} />
+            <DataBlock label="Total Share Capital" value={shareCapitalObj.totalIssuedCapital ? `₦${Number(shareCapitalObj.totalIssuedCapital).toLocaleString()}` : "N/A"} highlight />
+            <DataBlock label="Company Type" value={shareCapitalObj.companyType || "Private Company Limited by Shares"} />
           </div>
           
-          {shareClassesData && shareClassesData.length > 0 && (
+          {shareClassesData.length > 0 && (
             <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
               <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-4 flex items-center gap-2">
                 <PieChart size={14} className="text-indigo-500" /> Breakdown of Share Classes
               </p>
-              <div className="grid grid-cols-1 gap-3">
-                {shareClassesData.map((sc: any, i: number) => (
-                  <div key={i} className="flex justify-between items-center text-sm p-4 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                      <div>
-                        <span className="font-black text-indigo-900 dark:text-indigo-100 uppercase tracking-widest text-xs">
-                          {sc.type || sc.shareType || sc.className || "EQUITY (ORDINARY)"}
-                        </span>
-                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Value per share: ₦{sc.valuePerShare || 1}</p>
-                      </div>
-                      <span className="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-100 dark:bg-indigo-500/20 px-3 py-1.5 rounded-lg">
-                        {Number(sc.value || sc.allotted || sc.units || 0).toLocaleString()} Units
-                      </span>
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {shareClassesData.map((sc: any, i: number) => {
+                  const type = (sc.type || sc.shareType || sc.className || "ORDINARY").toUpperCase();
+                  const units = Number(sc.value || sc.allotted || sc.units || 0).toLocaleString();
+                  return (
+                    <DataBlock key={i} label={`${type} SHARES`} value={`${units} Units`} highlight />
+                  );
+                })}
               </div>
             </div>
           )}
         </Section>
       )}
 
-      {/* FIXED: STRICT CAC REQUIRED FIELDS FOR DECLARANT AND WITNESS */}
       {isLlc && (declarant || witness) && (
         <Section title="Legal Declarations & Witnesses">
           <div className="space-y-6">
             
-            {/* Declarant Card (Stripped down to ONLY CAC requirements) */}
             {declarant && (
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-indigo-50/50 dark:bg-indigo-500/5 flex items-center gap-2">
@@ -130,7 +122,6 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
               </div>
             )}
 
-            {/* Witness Card */}
             {witness && (
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-amber-50/50 dark:bg-amber-500/5 flex items-center gap-2">
