@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle, AlertCircle, UserPlus, ShieldAlert, RefreshCw } from "lucide-react";
+import { CheckCircle, AlertCircle, UserPlus, ShieldAlert, RefreshCw, Edit3, ExternalLink } from "lucide-react";
 import { FileUpload } from "@/components/FileUpload";
 
 export default function CacActionTab({ 
@@ -19,6 +19,9 @@ export default function CacActionTab({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   
+  // View Lock State (Prevents accidental overwrites of existing data)
+  const [isLocked, setIsLocked] = useState(false);
+
   // Document States
   const [certificateUrl, setCertificateUrl] = useState<string | null>(null);
   const [statusReportUrl, setStatusReportUrl] = useState<string | null>(null);
@@ -30,27 +33,45 @@ export default function CacActionTab({
   const [queryReason, setQueryReason] = useState("");
   const [selectedStaff, setSelectedStaff] = useState("");
 
-  // ==========================================
-  // THE FIX: Wipe all form data when opening a new application
-  // ==========================================
+  // Populate existing data and determine locked state
   useEffect(() => {
-    setActionType("");
     setError("");
-    setCertificateUrl(null);
-    setStatusReportUrl(null);
-    setMemorandumUrl(null);
-    setRcNumber("");
-    setTaxId("");
-    setQueryReason("");
-    setSelectedStaff("");
-  }, [ticket.id]);
+    
+    // Load existing data from the database ticket
+    setRcNumber(ticket.registrationNumber || "");
+    setTaxId(ticket.taxId || "");
+    setCertificateUrl(ticket.certificateUrl || null);
+    setStatusReportUrl(ticket.statusReportUrl || null);
+    setMemorandumUrl(ticket.memorandumUrl || null);
+    setQueryReason(ticket.queryReason || "");
+    setSelectedStaff(ticket.assignedToId || "");
 
-  // ==========================================
-  // THE FIX: Clear errors instantly if they switch action types (e.g., from Query back to Approve)
-  // ==========================================
-  useEffect(() => {
+    // Lock the view if it has already been processed
+    if (ticket.status === "APPROVED") {
+      setActionType("APPROVE");
+      setIsLocked(true);
+    } else if (ticket.status === "QUERIED") {
+      setActionType("QUERY");
+      setIsLocked(true);
+    } else {
+      setActionType("");
+      setIsLocked(false);
+    }
+  }, [ticket]);
+
+  // Handle Tab Switching (Unlocks if moving to a new action)
+  const handleToggleAction = (type: "APPROVE" | "QUERY" | "ASSIGN") => {
+    setActionType(type);
     setError("");
-  }, [actionType]);
+    
+    if (type === "APPROVE" && ticket.status === "APPROVED") {
+      setIsLocked(true);
+    } else if (type === "QUERY" && ticket.status === "QUERIED") {
+      setIsLocked(true);
+    } else {
+      setIsLocked(false);
+    }
+  };
 
   const handleActionSubmit = async () => {
     setIsProcessing(true);
@@ -73,20 +94,17 @@ export default function CacActionTab({
         throw new Error("Please select a staff member to assign.");
       }
 
-      // ==========================================
-      // THE FIX: Exact key mapping to match your API Route
-      // ==========================================
       const payload = {
         ticketId: ticket.id,
         ticketType: ticket.type,
-        actionType: actionType,             // Matches API
-        registrationNumber: rcNumber,       // Matches API
-        taxId: taxId,                       // Matches API
-        certificateUrl: certificateUrl,     // Matches API
-        statusReportUrl: statusReportUrl,   // Matches API
-        memorandumUrl: isLlc ? memorandumUrl : undefined, // Matches API
-        reason: queryReason,                // Matches API
-        staffId: selectedStaff              // Matches API
+        actionType: actionType,
+        registrationNumber: rcNumber,
+        taxId: taxId,
+        certificateUrl: certificateUrl,
+        statusReportUrl: statusReportUrl,
+        memorandumUrl: isLlc ? memorandumUrl : undefined,
+        reason: queryReason,
+        staffId: selectedStaff
       };
 
       const response = await fetch("/api/mds/pipeline/cac/action", {
@@ -126,21 +144,21 @@ export default function CacActionTab({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <ActionToggle 
             active={actionType === "APPROVE"} 
-            onClick={() => setActionType("APPROVE")} 
+            onClick={() => handleToggleAction("APPROVE")} 
             label="Approve & Fulfill" 
             icon={<CheckCircle size={20} />} 
             color="emerald" 
           />
           <ActionToggle 
             active={actionType === "QUERY"} 
-            onClick={() => setActionType("QUERY")} 
+            onClick={() => handleToggleAction("QUERY")} 
             label="Raise CAC Query" 
             icon={<AlertCircle size={20} />} 
             color="rose" 
           />
           <ActionToggle 
             active={actionType === "ASSIGN"} 
-            onClick={() => setActionType("ASSIGN")} 
+            onClick={() => handleToggleAction("ASSIGN")} 
             label="Assign to Staff" 
             icon={<UserPlus size={20} />} 
             color="indigo" 
@@ -154,85 +172,96 @@ export default function CacActionTab({
           
           {actionType === "APPROVE" && (
             <div className="space-y-8">
-              <h3 className="font-bold text-xl text-emerald-700 dark:text-emerald-400 border-b border-emerald-100 dark:border-emerald-500/20 pb-4">
-                Fulfill {isLlc ? "LLC" : "Business Name"} Registration
-              </h3>
-              
-              {/* Manual Input Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-zinc-600 dark:text-zinc-400">
-                    Approved {isLlc ? 'RC' : 'BN'} Number <span className="text-red-500">*</span>
-                  </label>
-                  <input 
-                    type="text"
-                    value={rcNumber}
-                    onChange={(e) => setRcNumber(e.target.value)}
-                    placeholder={isLlc ? "RC-1234567" : "BN-1234567"}
-                    className="w-full h-12 px-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm font-bold text-zinc-900 dark:text-zinc-100"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-zinc-600 dark:text-zinc-400">
-                    Company Tax ID (TIN) <span className="text-red-500">*</span>
-                  </label>
-                  <input 
-                    type="text"
-                    value={taxId}
-                    onChange={(e) => setTaxId(e.target.value)}
-                    placeholder="Enter assigned TIN"
-                    className="w-full h-12 px-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm font-bold text-zinc-900 dark:text-zinc-100"
-                  />
-                </div>
-              </div>
-
-              <hr className="border-zinc-100 dark:border-zinc-800" />
-
-              {/* Document Uploads */}
-              <div className="space-y-6">
-                <FileUpload 
-                  label="Upload Final CAC Certificate *"
-                  description="PDF format required."
-                  accept="application/pdf"
-                  value={certificateUrl}
-                  onUploadSuccess={(url) => setCertificateUrl(url)}
-                  onRemove={() => setCertificateUrl(null)}
-                />
-
-                <FileUpload 
-                  label="Upload Status Report *"
-                  description="PDF format required."
-                  accept="application/pdf"
-                  value={statusReportUrl}
-                  onUploadSuccess={(url) => setStatusReportUrl(url)}
-                  onRemove={() => setStatusReportUrl(null)}
-                />
-
-                {isLlc && (
-                  <FileUpload 
-                    label="Upload Memorandum of Association *"
-                    description="PDF format required for LLC formations."
-                    accept="application/pdf"
-                    value={memorandumUrl}
-                    onUploadSuccess={(url) => setMemorandumUrl(url)}
-                    onRemove={() => setMemorandumUrl(null)}
-                  />
+              <div className="flex justify-between items-center border-b border-emerald-100 dark:border-emerald-500/20 pb-4">
+                <h3 className="font-bold text-xl text-emerald-700 dark:text-emerald-400">
+                  {isLocked ? "Current Fulfilled Details" : `Fulfill ${isLlc ? "LLC" : "Business Name"} Registration`}
+                </h3>
+                {isLocked && (
+                  <button onClick={() => setIsLocked(false)} className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors">
+                    <Edit3 size={14} /> Unlock to Edit
+                  </button>
                 )}
               </div>
+              
+              {isLocked ? (
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase font-bold">{isLlc ? 'RC' : 'BN'} Number</p>
+                      <p className="text-sm font-medium text-zinc-900 dark:text-white mt-1">{rcNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase font-bold">Tax ID</p>
+                      <p className="text-sm font-medium text-zinc-900 dark:text-white mt-1">{taxId}</p>
+                    </div>
+                  </div>
+                  <hr className="border-zinc-200 dark:border-zinc-800 my-4" />
+                  <div className="space-y-2">
+                    <p className="text-xs text-zinc-500 uppercase font-bold mb-2">Uploaded Documents</p>
+                    {certificateUrl && <a href={certificateUrl} target="_blank" className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"><ExternalLink size={14} /> Final Certificate</a>}
+                    {statusReportUrl && <a href={statusReportUrl} target="_blank" className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"><ExternalLink size={14} /> Status Report</a>}
+                    {memorandumUrl && <a href={memorandumUrl} target="_blank" className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"><ExternalLink size={14} /> Memorandum</a>}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-zinc-600 dark:text-zinc-400">Approved {isLlc ? 'RC' : 'BN'} Number <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text" value={rcNumber} onChange={(e) => setRcNumber(e.target.value)}
+                        placeholder={isLlc ? "RC-1234567" : "BN-1234567"}
+                        className="w-full h-12 px-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm font-bold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-zinc-600 dark:text-zinc-400">Company Tax ID (TIN) <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text" value={taxId} onChange={(e) => setTaxId(e.target.value)}
+                        placeholder="Enter assigned TIN"
+                        className="w-full h-12 px-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm font-bold"
+                      />
+                    </div>
+                  </div>
+                  <hr className="border-zinc-100 dark:border-zinc-800" />
+                  <div className="space-y-6">
+                    <FileUpload label="Upload Final CAC Certificate *" description="PDF format required." accept="application/pdf" value={certificateUrl} onUploadSuccess={(url) => setCertificateUrl(url)} onRemove={() => setCertificateUrl(null)} />
+                    <FileUpload label="Upload Status Report *" description="PDF format required." accept="application/pdf" value={statusReportUrl} onUploadSuccess={(url) => setStatusReportUrl(url)} onRemove={() => setStatusReportUrl(null)} />
+                    {isLlc && <FileUpload label="Upload Memorandum of Association *" description="PDF format required for LLC formations." accept="application/pdf" value={memorandumUrl} onUploadSuccess={(url) => setMemorandumUrl(url)} onRemove={() => setMemorandumUrl(null)} />}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           {actionType === "QUERY" && (
             <div className="space-y-4">
-              <h3 className="font-bold text-xl text-rose-700 dark:text-rose-400 border-b border-rose-100 dark:border-rose-500/20 pb-4 mb-4">Query Details</h3>
+              <div className="flex justify-between items-center border-b border-rose-100 dark:border-rose-500/20 pb-4 mb-4">
+                <h3 className="font-bold text-xl text-rose-700 dark:text-rose-400">
+                  {isLocked ? "Active Query Notice" : "Query Details"}
+                </h3>
+                {isLocked && (
+                  <button onClick={() => setIsLocked(false)} className="flex items-center gap-1.5 text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg hover:bg-rose-100 transition-colors">
+                    <Edit3 size={14} /> Unlock to Edit
+                  </button>
+                )}
+              </div>
+              
               <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300">Exact reason from CAC Portal:</label>
-              <textarea 
-                value={queryReason}
-                onChange={(e) => setQueryReason(e.target.value)}
-                placeholder="E.g., Proposed name is too similar to an existing entity. Please provide an alternative."
-                rows={5}
-                className="w-full p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none text-sm"
-              />
+              
+              {isLocked ? (
+                <div className="w-full p-4 bg-rose-50/50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-xl text-sm text-zinc-800 dark:text-zinc-200 min-h-[100px] whitespace-pre-wrap">
+                  {queryReason}
+                </div>
+              ) : (
+                <textarea 
+                  value={queryReason}
+                  onChange={(e) => setQueryReason(e.target.value)}
+                  placeholder="E.g., Proposed name is too similar to an existing entity..."
+                  rows={5}
+                  className="w-full p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none text-sm"
+                />
+              )}
             </div>
           )}
 
@@ -255,20 +284,21 @@ export default function CacActionTab({
 
           {error && <div className="mt-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm font-bold flex items-center gap-2"><AlertCircle size={16} /> {error}</div>}
 
-          <button 
-            onClick={handleActionSubmit}
-            disabled={isProcessing}
-            className="w-full mt-8 flex items-center justify-center gap-2 h-14 rounded-xl font-black text-white bg-zinc-900 dark:bg-white dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {isProcessing ? <RefreshCw className="animate-spin" /> : "Execute Confirmation"}
-          </button>
+          {!isLocked && (
+            <button 
+              onClick={handleActionSubmit}
+              disabled={isProcessing}
+              className="w-full mt-8 flex items-center justify-center gap-2 h-14 rounded-xl font-black text-white bg-zinc-900 dark:bg-white dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {isProcessing ? <RefreshCw className="animate-spin" /> : "Execute Confirmation"}
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-// Local UI Helper
 function ActionToggle({ active, onClick, label, icon, color }: any) {
   const colorMap: any = {
     emerald: "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
