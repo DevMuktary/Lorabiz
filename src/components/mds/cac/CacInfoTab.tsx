@@ -25,11 +25,13 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
 
   const shareClassesData = isLlc ? parseJsonSafe(ticket.shareClasses, []) : [];
   const customArticlesData = isLlc ? parseJsonSafe(ticket.customArticles, []) : [];
+  
+  // Deep parse declarations
   const declarant = isLlc ? parseJsonSafe(ticket.declarantDetails, null) : null;
   const witness = isLlc ? parseJsonSafe(ticket.witnessDetails, null) : null;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-4xl mx-auto">
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-4xl mx-auto">
       
       <Section title="Proposed Names & Core Details">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -94,30 +96,69 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         </Section>
       )}
 
+      {/* NEW: Exhaustive Declarants and Witness Sections */}
       {isLlc && (declarant || witness) && (
         <Section title="Legal Declarations & Witnesses">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            
+            {/* Declarant Card */}
             {declarant && (
-              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-4 flex items-center gap-2"><Scale size={14} /> Declarant Details</p>
-                <div className="space-y-4">
-                  <DataBlock label="Full Name" value={`${declarant.firstName || ""} ${declarant.lastName || declarant.surname || ""}`.trim()} />
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-indigo-50/50 dark:bg-indigo-500/5 flex items-center gap-2">
+                   <Scale size={16} className="text-indigo-600" />
+                   <h3 className="font-bold text-indigo-900 dark:text-indigo-100 uppercase tracking-widest text-xs">Declarant Details</h3>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <DataBlock label="Surname" value={declarant.lastName || declarant.surname} highlight />
+                  <DataBlock label="First Name" value={declarant.firstName} highlight />
+                  <DataBlock label="Other Name" value={declarant.otherName} />
+                  
+                  <DataBlock label="Email" value={declarant.email} />
+                  <DataBlock label="Phone Number" value={declarant.phone} />
+                  <DataBlock label="Date of Birth" value={declarant.dob} />
+                  
+                  <DataBlock label="Gender" value={declarant.gender} />
+                  <DataBlock label="Nationality" value={declarant.nationality} />
                   <DataBlock label="Occupation" value={declarant.occupation} />
-                  <DataBlock label="Identity Document" value={`${declarant.identityType || "ID"} - ${declarant.identityNumber || "N/A"}`} />
-                  <AddressBreakdown addressObj={parseJsonSafe(declarant.residentialAddress || declarant, null)} title="Declarant Address" />
+                  
+                  <DataBlock label="ID Document Type" value={declarant.identityType} />
+                  <DataBlock label="ID Number" value={declarant.identityNumber} highlight />
+                  <div className="hidden md:block"></div> {/* Spacer */}
+
+                  <div className="md:col-span-3 mt-2">
+                    <AddressBreakdown addressObj={parseJsonSafe(declarant.residentialAddress || declarant, null)} title="Declarant Residential Address" />
+                  </div>
                 </div>
               </div>
             )}
+
+            {/* Witness Card */}
             {witness && (
-              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-4 flex items-center gap-2"><UserPlus size={14} /> Witness Details</p>
-                <div className="space-y-4">
-                  <DataBlock label="Full Name" value={`${witness.firstName || ""} ${witness.lastName || witness.surname || ""}`.trim()} />
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-amber-50/50 dark:bg-amber-500/5 flex items-center gap-2">
+                   <UserPlus size={16} className="text-amber-600" />
+                   <h3 className="font-bold text-amber-900 dark:text-amber-100 uppercase tracking-widest text-xs">Witness Details</h3>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <DataBlock label="Surname" value={witness.lastName || witness.surname} highlight />
+                  <DataBlock label="First Name" value={witness.firstName} highlight />
+                  <DataBlock label="Other Name" value={witness.otherName} />
+                  
+                  <DataBlock label="Email" value={witness.email} />
+                  <DataBlock label="Phone Number" value={witness.phone} />
+                  <DataBlock label="Date of Birth" value={witness.dob} />
+                  
+                  <DataBlock label="Gender" value={witness.gender} />
+                  <DataBlock label="Nationality" value={witness.nationality} />
                   <DataBlock label="Occupation" value={witness.occupation} />
-                  <AddressBreakdown addressObj={parseJsonSafe(witness.residentialAddress || witness, null)} title="Witness Address" />
+                  
+                  <div className="md:col-span-3 mt-2">
+                    <AddressBreakdown addressObj={parseJsonSafe(witness.residentialAddress || witness, null)} title="Witness Residential Address" />
+                  </div>
                 </div>
               </div>
             )}
+
           </div>
         </Section>
       )}
@@ -145,7 +186,6 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         </Section>
       )}
 
-      {/* NEW: Explicit Company Address Grids */}
       <Section title="Company Addresses">
         <div className="grid grid-cols-1 gap-4">
           <AddressBreakdown 
