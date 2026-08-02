@@ -20,7 +20,7 @@ export async function GET() {
       prisma.llcRegistration.count({ where: { status: "FAILED" } }),
     ]);
 
-    // 2. Fetch counts for NIN Requests (Instant Service)
+    // 2. Fetch counts for NIN Requests
     const [ninSuccess, ninFailed] = await Promise.all([
       prisma.ninRequestLog.count({ where: { status: "SUCCESS" } }),
       prisma.ninRequestLog.count({ where: { status: "FAILED" } }),
@@ -40,6 +40,12 @@ export async function GET() {
       prisma.taxIdRequest.count({ where: { status: "COMPLETED" } }),
     ]);
 
+    // 5. Fetch counts for Utilities (Airtime/Data) from the master Transaction Ledger
+    // Note: The Airtime API currently only logs SUCCESS to the DB. Failed attempts are rejected before logging.
+    const airtimeCompleted = await prisma.transaction.count({
+      where: { serviceCategory: "UTILITIES", status: "SUCCESS" }
+    });
+
     // --- AGGREGATE LOGIC ---
 
     const cacMetrics = {
@@ -57,7 +63,7 @@ export async function GET() {
     };
 
     const scumlMetrics = {
-      pending: scumlPending + scumlProcessing, // Treating PROCESSING as active pending load
+      pending: scumlPending + scumlProcessing, 
       completed: scumlCompleted,
       queried: 0,
       failed: 0,
@@ -70,11 +76,18 @@ export async function GET() {
       failed: 0,
     };
 
+    const utilityMetrics = {
+      pending: 0, // Instant automated API
+      completed: airtimeCompleted,
+      queried: 0,
+      failed: 0, // Currently not logging external API failures to the DB
+    };
+
     // Calculate Global Totals
     const globalMetrics = {
       pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending,
-      completed: cacMetrics.completed + ninMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed,
-      queried: cacMetrics.queried, // Only CAC has queries currently
+      completed: cacMetrics.completed + ninMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
+      queried: cacMetrics.queried, 
       failed: cacMetrics.failed + ninMetrics.failed,
     };
 
@@ -108,6 +121,15 @@ export async function GET() {
           subCategories: ["Individual TIN", "Corporate TIN"],
           href: "/quadrox-lorabiz-team/mds/dashboard/orders/tax-id",
           isAutomated: false
+        },
+        {
+          id: "utilities",
+          name: "Utility Vending",
+          description: "Automated Airtime & Data VTU via external API integration.",
+          metrics: utilityMetrics,
+          subCategories: ["Airtime Recharge", "Data Plans"],
+          href: "#", // Placeholder until you build the MDS view for Utilities
+          isAutomated: true
         },
         {
           id: "nin",
