@@ -1,4 +1,3 @@
-// src/app/dashboard/tax-id/history/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,26 +5,42 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { 
   ArrowLeft, Clock, CheckCircle, SpinnerGap, 
-  FileText, Copy, MagnifyingGlass, Funnel 
+  MagnifyingGlass, X, Funnel, XCircle, Warning, Wallet, Copy, Check
 } from "@phosphor-icons/react";
 
-type TaxRecord = {
+type TaxIdRecord = {
   id: string;
-  type: string;
-  firstName?: string;
-  lastName?: string;
-  cacNumber?: string;
-  status: "PENDING" | "PROCESSING" | "COMPLETED";
+  type: "INDIVIDUAL" | "CORPORATE";
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
   createdAt: string;
-  taxIdNumber?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  cacNumber?: string | null;
+  taxIdNumber?: string | null;
+  failureReason?: string | null;
 };
 
 export default function TaxIdHistoryPage() {
-  const [history, setHistory] = useState<TaxRecord[]>([]);
+  const [history, setHistory] = useState<TaxIdRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "PROCESSING" | "COMPLETED">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
+
+  const [viewFailedModal, setViewFailedModal] = useState<TaxIdRecord | null>(null);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("success") === "true") {
+        setShowSuccessToast(true);
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        setTimeout(() => setShowSuccessToast(false), 5000);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -42,29 +57,42 @@ export default function TaxIdHistoryPage() {
     fetchHistory();
   }, []);
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(text);
+  const handleCopyTin = (tin: string, id: string) => {
+    navigator.clipboard.writeText(tin);
+    setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Filter Logic
   const filteredHistory = history.filter(item => {
-    const searchTarget = item.type === "INDIVIDUAL" 
-      ? `${item.firstName} ${item.lastName}`.toLowerCase() 
-      : (item.cacNumber || "").toLowerCase();
-      
-    const matchesSearch = searchTarget.includes(searchQuery.toLowerCase());
+    const searchTarget = item.type === "CORPORATE" ? item.cacNumber : `${item.firstName} ${item.lastName}`;
+    const matchesSearch = searchTarget?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
-    
     return matchesSearch && matchesStatus;
   });
 
-  const processingCount = history.filter(h => h.status === "PENDING" || h.status === "PROCESSING").length;
+  const pendingCount = history.filter(h => h.status === "PENDING").length;
+  const processingCount = history.filter(h => h.status === "PROCESSING").length;
   const completedCount = history.filter(h => h.status === "COMPLETED").length;
+  const failedCount = history.filter(h => h.status === "FAILED").length;
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
+    <div className="space-y-8 max-w-6xl mx-auto relative pb-12">
+      
+      {showSuccessToast && (
+        <div className="fixed top-24 right-4 sm:right-8 z-[9999] flex items-center gap-4 bg-emerald-500 text-white px-5 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right-8 fade-in duration-500">
+          <CheckCircle weight="fill" className="h-7 w-7" />
+          <div className="pr-4">
+            <h4 className="font-black text-sm tracking-wide">Request Submitted!</h4>
+            <p className="text-xs font-medium opacity-90 mt-0.5">Your Tax ID request is now PENDING.</p>
+          </div>
+          <button 
+            onClick={() => setShowSuccessToast(false)} 
+            className="ml-auto hover:bg-emerald-600 p-1.5 rounded-full transition-colors border border-transparent hover:border-white/20"
+          >
+            <X weight="bold" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       
       {/* Header & Back Button */}
       <div className="flex items-center gap-4">
@@ -76,29 +104,49 @@ export default function TaxIdHistoryPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-black">Tax ID (TIN) History</h1>
-          <p className="text-muted-foreground text-sm">Track your applications and copy your generated TINs.</p>
+          <p className="text-muted-foreground text-sm">Track your requests and copy your generated Tax IDs.</p>
         </div>
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-        <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 shadow-sm">
-          <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
-            <SpinnerGap className="h-6 w-6 text-blue-500 animate-spin" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-sm">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 bg-yellow-500/10 rounded-full flex items-center justify-center">
+            <Clock weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
           </div>
           <div>
-            <p className="text-sm font-bold text-muted-foreground">Processing</p>
-            <p className="text-2xl font-black">{processingCount}</p>
+            <p className="text-xs sm:text-sm font-bold text-muted-foreground">Pending</p>
+            <p className="text-xl sm:text-2xl font-black">{pendingCount}</p>
+          </div>
+        </div>
+        
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-sm">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 bg-blue-500/10 rounded-full flex items-center justify-center">
+            <SpinnerGap className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500 animate-spin" />
+          </div>
+          <div>
+            <p className="text-xs sm:text-sm font-bold text-muted-foreground">Processing</p>
+            <p className="text-xl sm:text-2xl font-black">{processingCount}</p>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 shadow-sm">
-          <div className="h-12 w-12 bg-green-500/10 rounded-full flex items-center justify-center shrink-0">
-            <CheckCircle weight="fill" className="h-6 w-6 text-green-500" />
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-sm">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 bg-green-500/10 rounded-full flex items-center justify-center">
+            <CheckCircle weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
           </div>
           <div>
-            <p className="text-sm font-bold text-muted-foreground">Completed</p>
-            <p className="text-2xl font-black">{completedCount}</p>
+            <p className="text-xs sm:text-sm font-bold text-muted-foreground">Completed</p>
+            <p className="text-xl sm:text-2xl font-black">{completedCount}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-sm">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 bg-red-500/10 rounded-full flex items-center justify-center">
+            <XCircle weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
+          </div>
+          <div>
+            <p className="text-xs sm:text-sm font-bold text-muted-foreground">Failed</p>
+            <p className="text-xl sm:text-2xl font-black">{failedCount}</p>
           </div>
         </div>
       </div>
@@ -109,24 +157,25 @@ export default function TaxIdHistoryPage() {
           <MagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input 
             type="text"
-            placeholder="Search by Name or CAC Number..."
+            placeholder="Search by RC number or Name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Funnel weight="bold" className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Funnel weight="bold" className="h-4 w-4 text-muted-foreground" />
           <select 
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="w-full sm:w-auto bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none font-bold transition-all cursor-pointer"
+            className="w-full sm:w-auto bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none font-bold cursor-pointer"
           >
             <option value="ALL">All Statuses</option>
             <option value="PENDING">Pending</option>
             <option value="PROCESSING">Processing</option>
             <option value="COMPLETED">Completed</option>
+            <option value="FAILED">Failed</option>
           </select>
         </div>
       </div>
@@ -140,7 +189,7 @@ export default function TaxIdHistoryPage() {
           </div>
         ) : filteredHistory.length === 0 ? (
           <div className="p-20 flex flex-col items-center justify-center text-muted-foreground text-center">
-            <FileText className="h-12 w-12 mb-4 opacity-50" />
+            <CheckCircle className="h-12 w-12 mb-4 opacity-50" />
             <p className="font-bold">No requests found</p>
             <p className="text-sm mt-1">Adjust your filters or submit a new Tax ID request.</p>
           </div>
@@ -150,9 +199,9 @@ export default function TaxIdHistoryPage() {
               <thead className="bg-secondary/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-bold text-muted-foreground">Date</th>
-                  <th className="px-6 py-4 font-bold text-muted-foreground">Registration Details</th>
+                  <th className="px-6 py-4 font-bold text-muted-foreground">Entity Info</th>
                   <th className="px-6 py-4 font-bold text-muted-foreground">Status</th>
-                  <th className="px-6 py-4 font-bold text-muted-foreground text-right">Generated TIN</th>
+                  <th className="px-6 py-4 font-bold text-muted-foreground text-right">Tax ID / Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -162,60 +211,57 @@ export default function TaxIdHistoryPage() {
                       {format(new Date(item.createdAt), "MMM dd, yyyy")}
                     </td>
                     <td className="px-6 py-4">
-                      {item.type === "INDIVIDUAL" ? (
-                        <>
-                          <p className="font-bold text-foreground text-base">{item.firstName} {item.lastName}</p>
-                          <p className="text-xs font-bold uppercase tracking-wider text-primary mt-1">Individual TIN</p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-bold text-foreground text-base uppercase">{item.cacNumber}</p>
-                          <p className="text-xs font-bold uppercase tracking-wider text-blue-500 mt-1">Corporate TIN</p>
-                        </>
-                      )}
+                      <p className="font-bold text-foreground">
+                        {item.type === "CORPORATE" ? item.cacNumber : `${item.firstName} ${item.lastName}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {item.type === "CORPORATE" ? "Corporate Entity" : "Individual"}
+                      </p>
                     </td>
                     <td className="px-6 py-4">
                       {item.status === "PENDING" && (
-                        <span className="inline-flex items-center gap-1.5 text-yellow-600 bg-yellow-500/10 px-3 py-1.5 rounded-full text-xs font-bold border border-yellow-500/20">
-                          <Clock weight="fill" className="h-4 w-4" /> Pending
+                        <span className="inline-flex items-center gap-1.5 text-yellow-600 bg-yellow-500/10 px-2.5 py-1 rounded-full text-xs font-bold border border-yellow-500/20">
+                          <Clock weight="fill" className="h-3 w-3" /> Pending
                         </span>
                       )}
                       {item.status === "PROCESSING" && (
-                        <span className="inline-flex items-center gap-1.5 text-blue-500 bg-blue-500/10 px-3 py-1.5 rounded-full text-xs font-bold border border-blue-500/20">
-                          <SpinnerGap className="h-4 w-4 animate-spin" /> Processing
+                        <span className="inline-flex items-center gap-1.5 text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-full text-xs font-bold border border-blue-500/20">
+                          <SpinnerGap className="h-3 w-3 animate-spin" /> Processing
                         </span>
                       )}
                       {item.status === "COMPLETED" && (
-                        <span className="inline-flex items-center gap-1.5 text-green-500 bg-green-500/10 px-3 py-1.5 rounded-full text-xs font-bold border border-green-500/20">
-                          <CheckCircle weight="fill" className="h-4 w-4" /> Completed
+                        <span className="inline-flex items-center gap-1.5 text-green-500 bg-green-500/10 px-2.5 py-1 rounded-full text-xs font-bold border border-green-500/20">
+                          <CheckCircle weight="fill" className="h-3 w-3" /> Completed
+                        </span>
+                      )}
+                      {item.status === "FAILED" && (
+                        <span className="inline-flex items-center gap-1.5 text-red-500 bg-red-500/10 px-2.5 py-1 rounded-full text-xs font-bold border border-red-500/20">
+                          <XCircle weight="fill" className="h-3 w-3" /> Failed
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       {item.status === "COMPLETED" && item.taxIdNumber ? (
-                        <div className="flex items-center justify-end gap-3">
-                          {/* Very Large, Prominent TIN Display */}
-                          <span className="font-black text-green-600 dark:text-green-400 tracking-[0.15em] text-xl bg-green-500/10 px-4 py-2 rounded-xl border-2 border-green-500/20 shadow-inner">
-                            {item.taxIdNumber}
-                          </span>
-                          
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="font-mono text-base font-black text-foreground tracking-widest">{item.taxIdNumber}</span>
                           <button 
-                            onClick={() => handleCopy(item.taxIdNumber!)}
-                            className={`p-2.5 rounded-xl text-white font-bold transition-all shadow-md active:scale-95 flex items-center justify-center w-12 h-12 ${
-                              copiedId === item.taxIdNumber 
-                                ? "bg-green-500 hover:bg-green-600" 
-                                : "bg-primary hover:opacity-90"
-                            }`}
+                            onClick={() => handleCopyTin(item.taxIdNumber!, item.id)}
+                            className="p-1.5 rounded-md hover:bg-secondary border border-border text-muted-foreground transition-colors"
                             title="Copy TIN"
                           >
-                            {copiedId === item.taxIdNumber 
-                              ? <CheckCircle weight="bold" className="h-5 w-5" /> 
-                              : <Copy weight="bold" className="h-5 w-5" />
-                            }
+                            {copiedId === item.id ? <Check weight="bold" className="h-4 w-4 text-green-500" /> : <Copy weight="bold" className="h-4 w-4" />}
                           </button>
                         </div>
+                      ) : item.status === "FAILED" ? (
+                        <button 
+                          onClick={() => setViewFailedModal(item)}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors px-4 py-2 rounded-lg border border-red-200 dark:border-red-500/20"
+                        >
+                          <Warning weight="bold" className="h-4 w-4" />
+                          View Reason
+                        </button>
                       ) : (
-                        <span className="text-sm text-muted-foreground italic font-medium pr-4">Awaiting Generation...</span>
+                        <span className="text-xs text-muted-foreground italic px-4">Awaiting TIN</span>
                       )}
                     </td>
                   </tr>
@@ -225,6 +271,56 @@ export default function TaxIdHistoryPage() {
           </div>
         )}
       </div>
+
+      {/* View Failed Reason & Refund Modal */}
+      {viewFailedModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col scale-in-95 duration-200">
+            <div className="flex flex-col items-center text-center p-8 bg-red-50/50 dark:bg-red-500/5 relative">
+              <button 
+                onClick={() => setViewFailedModal(null)} 
+                className="absolute top-4 right-4 p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-500"
+              >
+                <X weight="bold" className="h-5 w-5" />
+              </button>
+              
+              <div className="h-16 w-16 bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400 rounded-full flex items-center justify-center mb-4">
+                <Warning weight="fill" className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-black text-foreground">Application Rejected</h3>
+              <p className="text-sm text-muted-foreground mt-1 px-4">
+                Your Tax ID request for <strong>{viewFailedModal.type === 'CORPORATE' ? viewFailedModal.cacNumber : `${viewFailedModal.firstName} ${viewFailedModal.lastName}`}</strong> could not be processed.
+              </p>
+            </div>
+
+            <div className="p-6 md:p-8 space-y-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Reason for Rejection</p>
+                <div className="p-4 bg-secondary/50 border border-border rounded-xl text-sm font-medium text-foreground whitespace-pre-wrap">
+                  {viewFailedModal.failureReason || "No specific reason provided by the examiner."}
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-xl p-4 flex gap-3">
+                <Wallet weight="fill" className="h-5 w-5 text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-yellow-900 dark:text-yellow-400 mb-1">About Your Refund</p>
+                  <p className="text-xs text-yellow-800/80 dark:text-yellow-500/80 leading-relaxed">
+                    If this rejection qualified for a refund (full or partial), the funds have already been automatically credited back to your Lorabiz Wallet.
+                  </p>
+                  <Link 
+                    href="/dashboard/transactions"
+                    className="inline-block mt-3 text-xs font-bold text-yellow-700 dark:text-yellow-400 hover:underline"
+                  >
+                    View Transaction History ↗
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
