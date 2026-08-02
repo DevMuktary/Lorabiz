@@ -10,8 +10,15 @@ export default function DynamicPageTitle() {
     if (!pathname) return;
 
     let title = "Lorabiz Dashboard";
-
-  
+    
+    // Admin (MDS) Pages
+    else if (pathname.includes('/mds/dashboard/orders/cac')) title = "CAC Pipeline | Lorabiz MDS";
+    else if (pathname.includes('/mds/dashboard/orders/scuml')) title = "SCUML Pipeline | Lorabiz MDS";
+    else if (pathname.includes('/mds/dashboard/orders/tax-id')) title = "Tax ID Pipeline | Lorabiz MDS";
+    else if (pathname.includes('/mds/dashboard/orders/airtime')) title = "Airtime Log | Lorabiz MDS";
+    else if (pathname.includes('/mds/dashboard/settings')) title = "Global Settings | Lorabiz MDS";
+    else if (pathname === '/quadrox-lorabiz-team/mds/dashboard') title = "Admin Overview | Lorabiz MDS";
+    
     // User Dashboard Pages
     else if (pathname.includes('/dashboard/cac')) title = "CAC Services | Lorabiz";
     else if (pathname.includes('/dashboard/scuml/history')) title = "SCUML History | Lorabiz";
