@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { TabButton } from './CacShared';
 
-// Imported modular tabs
 import CacInfoTab from './CacInfoTab';
 import CacPeopleTab from './CacPeopleTab';
 import CacDocsTab from './CacDocsTab';
@@ -25,7 +24,7 @@ export default function ApplicationDrawer({
   onClose: () => void,
   onUpdateSuccess: () => void
 }) {
-  const [activeTab, setActiveTab] = useState("INFO"); // INFO, PEOPLE, DOCS, ACTION
+  const [activeTab, setActiveTab] = useState("INFO");
 
   if (!ticket) return null;
 
@@ -37,16 +36,15 @@ export default function ApplicationDrawer({
     "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400";
 
   // =======================================================================
-  // PDF EXPORT LOGIC
+  // HYPER-DETAILED PDF EXPORT LOGIC
   // =======================================================================
   const handleExportPDF = () => {
     const doc = new jsPDF();
     let yPos = 20;
-    const margin = 20;
-    const lineHeight = 7;
+    const margin = 15;
+    const lineHeight = 6;
     const pageHeight = doc.internal.pageSize.height;
 
-    // Helper: Add new page if text exceeds boundaries
     const checkPageBreak = (neededHeight = lineHeight) => {
       if (yPos + neededHeight >= pageHeight - margin) {
         doc.addPage();
@@ -54,120 +52,178 @@ export default function ApplicationDrawer({
       }
     };
 
-    // Helper: Add section headers
     const addHeader = (text: string, isMain = false) => {
-      checkPageBreak(15);
-      yPos += 5;
-      doc.setFontSize(isMain ? 14 : 12);
+      checkPageBreak(12);
+      yPos += 6;
+      doc.setFontSize(isMain ? 13 : 11);
       doc.setFont("helvetica", "bold");
       doc.text(text, margin, yPos);
-      yPos += lineHeight + 2;
-      doc.setFontSize(10);
+      yPos += lineHeight + 1;
+      doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
     };
 
-    // Helper: Add Field Key-Value pair
     const addField = (label: string, value: any, isLink = false) => {
       if (value === undefined || value === null || value === "") return;
-      
       checkPageBreak();
       doc.setFont("helvetica", "bold");
       doc.text(`${label}:`, margin, yPos);
       doc.setFont("helvetica", "normal");
       
-      const textX = margin + 45;
+      const textX = margin + 55;
       const maxLineWidth = doc.internal.pageSize.width - margin - textX;
       
       if (isLink) {
-         doc.setTextColor(37, 99, 235); // Classic Link Blue
-         doc.textWithLink("Click to View / Download File", textX, yPos, { url: String(value) });
-         doc.setTextColor(0, 0, 0); // Reset to black
+         doc.setTextColor(37, 99, 235);
+         doc.textWithLink("View/Download File", textX, yPos, { url: String(value) });
+         doc.setTextColor(0, 0, 0);
          yPos += lineHeight;
       } else {
-         const strValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+         const strValue = String(value);
          const lines = doc.splitTextToSize(strValue, maxLineWidth);
          doc.text(lines, textX, yPos);
          yPos += (lines.length * lineHeight);
       }
     };
 
-    // Helper: Safely parse nested JSON addresses
-    const formatAddress = (addr: any) => {
-      if (!addr) return null;
-      let parsed = addr;
-      if (typeof addr === 'string') {
-        try { parsed = JSON.parse(addr); } catch (e) { return addr; }
+    // Safely parse and unroll JSON objects field by field (No merging)
+    const printJsonObject = (title: string, obj: any) => {
+      if (!obj) return;
+      let parsed = obj;
+      if (typeof obj === 'string') {
+        try { parsed = JSON.parse(obj); } catch (e) { return; }
       }
-      if (typeof parsed === 'object') {
-         const parts = [parsed.streetNo, parsed.streetNumber, parsed.streetName, parsed.street, parsed.city, parsed.lga, parsed.state, parsed.country].filter(Boolean);
-         return parts.join(', ');
-      }
-      return addr;
+      if (typeof parsed !== 'object' || Object.keys(parsed).length === 0) return;
+      
+      addHeader(`--- ${title} ---`);
+      Object.entries(parsed).forEach(([key, val]) => {
+        if (val !== null && val !== "") {
+          const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          
+          if (typeof val === 'object') {
+             // If nested further (e.g. share classes inside share classes)
+             Object.entries(val).forEach(([subKey, subVal]) => {
+                addField(`${formattedKey} - ${subKey}`, subVal);
+             });
+          } else {
+             addField(formattedKey, val);
+          }
+        }
+      });
     };
 
-    // 1. Title Block
-    addHeader(`Lorabiz Application Export - Ref: ${ticket.trackingId}`, true);
-    
-    // 2. Core Metadata
-    addField("Application Type", isLlc ? "LLC Formation" : "Business Name");
-    addField("Status", ticket.status);
+    // 1. Core Metadata
+    addHeader(`LORABIZ FULL APPLICATION RECORD - REF: ${ticket.trackingId}`, true);
+    addField("Service Type", isLlc ? "LLC Formation (Adopted Articles)" : "Business Name Registration");
+    addField("System Status", ticket.status);
     addField("Client Name", ticket.clientName);
     addField("Client Email", ticket.clientEmail);
-    addField("Date Submitted", format(new Date(ticket.createdAt), "PPP 'at' p"));
+    addField("Timestamp", format(new Date(ticket.createdAt), "PPP 'at' p"));
 
-    // 3. Business Details
-    addHeader("Entity Details");
-    addField("Proposed Name", ticket.proposedName);
+    // 2. Exact Business Details
+    addHeader("NAME & BUSINESS DETAILS", true);
+    addField("Proposed Name 1", ticket.proposedName);
     addField("Alternative Name 1", ticket.altName1);
     addField("Alternative Name 2", ticket.altName2);
     
     if (!isLlc) {
        addField("Ownership Type", ticket.ownershipType);
        addField("Entity Type", ticket.entityType);
-       addField("Category", ticket.category);
-       addField("Nature of Business", ticket.specificNature);
+       addField("General Category", ticket.category);
+       addField("Business Type", ticket.businessType);
+       addField("Specific Nature of Business", ticket.specificNature);
        addField("Company Email", ticket.companyEmail);
-       const bnAddr = [ticket.companyStreetNo, ticket.companyAddress, ticket.companyCity, ticket.companyState].filter(Boolean).join(', ');
-       addField("Company Address", bnAddr);
+       addField("Commencement Date", ticket.commencementDate);
+       
+       addHeader("--- Business Address ---");
+       addField("State", ticket.companyState);
+       addField("City/Town", ticket.companyCity);
+       addField("Street Number", ticket.companyStreetNo);
+       addField("Street Name", ticket.companyAddress);
     } else {
+       addField("Company Email", ticket.email);
        addField("Principal Activity", ticket.principalActivity);
        addField("Specific Activity", ticket.specificActivity);
-       addField("Description", ticket.description);
-       addField("Company Email", ticket.email);
-       addField("Registered Address", formatAddress(ticket.registeredAddress));
-       addField("Head Office Address", formatAddress(ticket.headOfficeAddress));
+       addField("Full Description", ticket.description);
+       addField("Company Type", ticket.companyType);
        addField("Total Share Capital", ticket.totalShareCapital);
+       addField("Articles of Association", ticket.useDefaultArticles ? "Adopted Auto/Default Articles" : "Standard");
+       
+       printJsonObject("Registered Office Address", ticket.registeredAddress);
+       printJsonObject("Head Office Address", ticket.headOfficeAddress);
+       printJsonObject("Share Classes Breakdown", ticket.shareClasses);
+       
+       if (ticket.memorandumObjects && Array.isArray(ticket.memorandumObjects)) {
+         addHeader("--- Memorandum Objects ---");
+         ticket.memorandumObjects.forEach((obj: string, i: number) => {
+           addField(`Object ${i + 1}`, obj);
+         });
+       }
+
+       printJsonObject("Witness Details", ticket.witnessDetails);
+       printJsonObject("Declarant Details", ticket.declarantDetails);
     }
 
-    // 4. Personnel Details (Loop through Proprietors/Officers)
+    // 3. Personnel / People Loop (Unrolled completely)
     if (ticket.people && ticket.people.length > 0) {
-       addHeader(isLlc ? "Officers & Shareholders" : "Proprietors", true);
+       addHeader(isLlc ? "COMPANY OFFICERS & SHAREHOLDERS" : "PROPRIETOR DETAILS", true);
        
        ticket.people.forEach((person: any, idx: number) => {
-          addHeader(`Person ${idx + 1}: ${person.firstName} ${person.surname || person.lastName || ''}`);
-          addField("Roles", person.roles ? person.roles.join(', ') : 'Proprietor');
-          addField("Email", person.email);
-          addField("Phone", person.phone);
+          const personName = `${person.surname || ''} ${person.firstName || ''} ${person.otherName || ''}`.trim();
+          addHeader(`PERSON ${idx + 1}: ${personName}`);
+          
+          if (person.roles) addField("Assigned Roles", person.roles.join(', '));
+          
+          addField("Surname", person.surname);
+          addField("First Name", person.firstName);
+          addField("Other Name", person.otherName);
+          addField("Email Address", person.email);
+          addField("Phone Code", person.phoneCode);
+          addField("Phone Number", person.phone);
           addField("Gender", person.gender);
           addField("Date of Birth", person.dob);
           addField("Nationality", person.nationality);
-          if (person.occupation) addField("Occupation", person.occupation);
-          addField("ID Type", person.idType || "NIN");
-          addField("ID Number", person.idNumber || person.nin);
+          addField("Former Name", person.formerName);
+          addField("Former Nationality", person.formerNationality);
+          addField("Occupation", person.occupation);
           
-          const personAddr = formatAddress(person.residentialAddress) || formatAddress(person.serviceAddress) || [person.streetNo, person.street, person.city, person.lga, person.state].filter(Boolean).join(', ');
-          addField("Address", personAddr);
+          addField("Identification Type", person.idType || "NIN");
+          addField("Identification Number", person.idNumber || person.nin);
+          addField("Tax Residency", person.taxResidency);
+          addField("TIN", person.tin);
 
-          // Document Links
-          addField("ID Document / NIN", person.idDocumentUrl || person.ninUrl, true);
-          addField("Passport Photo", person.passportUrl, true);
+          if (isLlc) {
+             if (person.sharesAllotted) addField("Shares Allotted", person.sharesAllotted);
+             printJsonObject("Residential Address", person.residentialAddress);
+             printJsonObject("Service Address", person.serviceAddress);
+             printJsonObject("PSC Details (Person of Significant Control)", person.pscDetails);
+          } else {
+             addHeader("--- Proprietor Address ---");
+             addField("State", person.state);
+             addField("LGA", person.lga);
+             addField("City/Town", person.city);
+             addField("Street Number", person.streetNo);
+             addField("Service Address / Street Name", person.serviceAddress);
+          }
+
+          addHeader(`--- Documents for ${personName} ---`);
+          addField("ID Document (NIN)", person.idDocumentUrl || person.ninUrl, true);
+          addField("Passport Photograph", person.passportUrl, true);
           addField("Signature", person.signatureUrl, true);
        });
     }
 
-    // Execute Download
+    // 4. Extra LLC Documents
+    if (isLlc && (ticket.witnessSignatureUrl || ticket.declarantSignatureUrl || ticket.reasonRestrictionUrl || ticket.otherDocumentsUrl)) {
+      addHeader("ADDITIONAL LLC DOCUMENTS", true);
+      addField("Witness Signature", ticket.witnessSignatureUrl, true);
+      addField("Declarant Signature", ticket.declarantSignatureUrl, true);
+      addField("Reason for Restriction", ticket.reasonRestrictionUrl, true);
+      addField("Other Documents", ticket.otherDocumentsUrl, true);
+    }
+
     const cleanFileName = ticket.proposedName.replace(/[^a-zA-Z0-9]/g, '_');
-    doc.save(`${ticket.trackingId}_${cleanFileName}.pdf`);
+    doc.save(`${ticket.trackingId}_${cleanFileName}_FULL_EXPORT.pdf`);
   };
 
   return (
@@ -201,13 +257,12 @@ export default function ApplicationDrawer({
           </div>
           
           <div className="flex items-center gap-4">
-            {/* NEW EXPORT BUTTON */}
             <button 
               onClick={handleExportPDF}
-              title="Download Application Details as PDF"
+              title="Download Full Form Data as PDF"
               className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
             >
-              <Download size={16} /> <span className="hidden sm:inline">Export Form</span>
+              <Download size={16} /> <span className="hidden sm:inline">Export Form Details</span>
             </button>
             
             <button 
@@ -229,23 +284,10 @@ export default function ApplicationDrawer({
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-8 relative">
-          
-          {activeTab === "INFO" && (
-             <CacInfoTab ticket={ticket} isLlc={isLlc} />
-          )}
-
-          {activeTab === "PEOPLE" && (
-             <CacPeopleTab ticket={ticket} isLlc={isLlc} />
-          )}
-
-          {activeTab === "DOCS" && (
-             <CacDocsTab ticket={ticket} isLlc={isLlc} />
-          )}
-
-          {activeTab === "ACTION" && (
-             <CacActionTab ticket={ticket} staffList={staffList} onUpdateSuccess={onUpdateSuccess} />
-          )}
-
+          {activeTab === "INFO" && <CacInfoTab ticket={ticket} isLlc={isLlc} />}
+          {activeTab === "PEOPLE" && <CacPeopleTab ticket={ticket} isLlc={isLlc} />}
+          {activeTab === "DOCS" && <CacDocsTab ticket={ticket} isLlc={isLlc} />}
+          {activeTab === "ACTION" && <CacActionTab ticket={ticket} staffList={staffList} onUpdateSuccess={onUpdateSuccess} />}
         </div>
       </div>
     </div>
