@@ -35,7 +35,6 @@ export async function POST(req: Request) {
       if (actionType === "UNASSIGN") updateData.assignedToId = null;
       if (actionType === "ASSIGN" && staffId) updateData.assignedToId = staffId;
 
-      // Attach deliverables
       if (actionType === "APPROVE") {
         updateData.registrationNumber = registrationNumber;
         updateData.taxId = taxId;
@@ -44,7 +43,6 @@ export async function POST(req: Request) {
         if (ticketType === "LLC") updateData.memorandumUrl = memorandumUrl;
       }
 
-      // Save Query Reason
       if (actionType === "QUERY") {
         updateData.queryReason = reason;
         updateData.queryStatus = "UNRESOLVED";
@@ -65,10 +63,8 @@ export async function POST(req: Request) {
         regName = updated.proposedName || "LLC Application";
       }
 
-      // Fetch User details for notifications
       const user = await tx.user.findUnique({ where: { id: clientId } });
 
-      // Prepare Notification Payload for Approved or Queried
       if (user && (actionType === "APPROVE" || actionType === "QUERY")) {
         const userPhone = user.phone || "";
         const userEmail = user.email || "";
@@ -82,7 +78,10 @@ export async function POST(req: Request) {
             email: userEmail,
             name: userName,
             businessName: regName,
-            rcNumber: registrationNumber || "N/A"
+            rcNumber: registrationNumber || "N/A",
+            certificateUrl: certificateUrl,
+            statusReportUrl: statusReportUrl,
+            memorandumUrl: memorandumUrl,
           };
         } else if (actionType === "QUERY") {
           notificationPayload = {
@@ -99,7 +98,6 @@ export async function POST(req: Request) {
         }
       }
 
-      // PROCESS REFUND
       if (actionType === "FAIL" && issueRefund && refundAmount) {
         const wallet = await tx.wallet.findUnique({ where: { userId: clientId } });
         if (wallet) {
@@ -128,7 +126,6 @@ export async function POST(req: Request) {
       });
     });
 
-    // Fire background notification if a payload was generated
     if (notificationPayload) {
       await notificationQueue.add("send-admin-action-notification", notificationPayload, {
         attempts: 3,
