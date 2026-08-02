@@ -1,20 +1,20 @@
 "use client";
 
 import { FileText, PieChart, Scale, UserPlus, CheckCircle, MapPin } from "lucide-react";
-import { Section, DataBlock, parseJsonSafe, parseAddress } from "./CacShared";
+import { Section, DataBlock, AddressBreakdown, parseJsonSafe } from "./CacShared";
 
 export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: boolean }) {
-  // Parse necessary data
   const companyEmail = ticket.email || ticket.companyEmail || "Not Provided";
   const categoryLabel = isLlc ? ticket.principalActivity : ticket.category;
   const specificObjLabel = isLlc ? ticket.specificActivity : ticket.specificNature;
   
-  const registeredAddress = isLlc 
-    ? parseAddress(ticket.registeredAddress, "Address not provided") 
-    : parseAddress(null, `${ticket.companyAddress || ""}, ${ticket.companyCity || ""}, ${ticket.companyState || ""}`);
+  // Format Addresses strictly for the Breakdown Grid
+  const registeredAddressObj = isLlc 
+    ? parseJsonSafe(ticket.registeredAddress, null) 
+    : { street: ticket.companyAddress || ticket.companyStreetNo, city: ticket.companyCity, state: ticket.companyState };
   
-  const headOfficeAddress = isLlc && ticket.headOfficeAddress 
-    ? parseAddress(ticket.headOfficeAddress, "Same as Registered Address") 
+  const headOfficeAddressObj = isLlc && ticket.headOfficeAddress 
+    ? parseJsonSafe(ticket.headOfficeAddress, null) 
     : null;
 
   const shareClassesData = isLlc ? parseJsonSafe(ticket.shareClasses, []) : [];
@@ -25,7 +25,6 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-4xl mx-auto">
       
-      {/* 1. Proposed Names & Core Details */}
       <Section title="Proposed Names & Core Details">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <DataBlock label="Option 1 (Primary)" value={ticket.proposedName} highlight />
@@ -36,7 +35,6 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         </div>
       </Section>
 
-      {/* 2. Classification & Objectives */}
       <Section title="Classification & Objectives">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <DataBlock label="Business Category" value={categoryLabel} />
@@ -49,7 +47,6 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
           )}
         </div>
 
-        {/* The Exact Memorandum Objects for CAC */}
         {isLlc && ticket.memorandumObjects && ticket.memorandumObjects.length > 0 && (
           <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-4 flex items-center gap-2">
@@ -64,7 +61,6 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         )}
       </Section>
 
-      {/* 3. CAPITAL & SHARES (LLC ONLY) */}
       {isLlc && (
         <Section title="Share Capital Structure">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -92,7 +88,6 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         </Section>
       )}
 
-      {/* 4. LEGAL DECLARATIONS & WITNESS (LLC ONLY) */}
       {isLlc && (declarant || witness) && (
         <Section title="Legal Declarations & Witnesses">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -103,7 +98,7 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
                   <DataBlock label="Full Name" value={`${declarant.firstName || ""} ${declarant.lastName || declarant.surname || ""}`.trim()} />
                   <DataBlock label="Occupation" value={declarant.occupation} />
                   <DataBlock label="Identity Document" value={`${declarant.identityType || "ID"} - ${declarant.identityNumber || "N/A"}`} />
-                  <DataBlock label="Full Address" value={parseAddress(declarant.residentialAddress || declarant, "N/A")} />
+                  <AddressBreakdown addressObj={parseJsonSafe(declarant.residentialAddress || declarant, null)} title="Declarant Address" />
                 </div>
               </div>
             )}
@@ -113,7 +108,7 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
                 <div className="space-y-4">
                   <DataBlock label="Full Name" value={`${witness.firstName || ""} ${witness.lastName || witness.surname || ""}`.trim()} />
                   <DataBlock label="Occupation" value={witness.occupation} />
-                  <DataBlock label="Full Address" value={parseAddress(witness.residentialAddress || witness, "N/A")} />
+                  <AddressBreakdown addressObj={parseJsonSafe(witness.residentialAddress || witness, null)} title="Witness Address" />
                 </div>
               </div>
             )}
@@ -121,7 +116,6 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         </Section>
       )}
 
-      {/* 5. ARTICLES OF ASSOCIATION (LLC ONLY) */}
       {isLlc && (
         <Section title="Articles of Association">
           {ticket.useDefaultArticles ? (
@@ -145,29 +139,21 @@ export default function CacInfoTab({ ticket, isLlc }: { ticket: any, isLlc: bool
         </Section>
       )}
 
-      {/* 6. Company Addresses */}
+      {/* NEW: Explicit Company Address Grids */}
       <Section title="Company Addresses">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-              <MapPin className="text-indigo-500 shrink-0 mt-0.5" size={20} />
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-1.5">Registered Address</p>
-                <p className="font-semibold text-zinc-900 dark:text-zinc-100">{registeredAddress}</p>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-4">
+          <AddressBreakdown 
+            addressObj={registeredAddressObj} 
+            title="Registered Address" 
+            icon={<MapPin className="text-indigo-500 shrink-0" size={16} />} 
+          />
 
-          {headOfficeAddress && (
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-              <div className="flex items-start gap-3">
-                <MapPin className="text-indigo-500 shrink-0 mt-0.5" size={20} />
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-1.5">Head Office Address</p>
-                  <p className="font-semibold text-zinc-900 dark:text-zinc-100">{headOfficeAddress}</p>
-                </div>
-              </div>
-            </div>
+          {headOfficeAddressObj && (
+            <AddressBreakdown 
+              addressObj={headOfficeAddressObj} 
+              title="Head Office Address" 
+              icon={<MapPin className="text-indigo-500 shrink-0" size={16} />} 
+            />
           )}
         </div>
       </Section>

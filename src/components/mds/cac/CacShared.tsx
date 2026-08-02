@@ -38,6 +38,38 @@ export function DataBlock({ label, value, highlight }: { label: string, value: R
   );
 }
 
+// NEW: Explicit Address Breakdown to prevent Admin guessing
+export function AddressBreakdown({ addressObj, title, icon }: { addressObj: any, title: string, icon?: React.ReactNode }) {
+  if (!addressObj) return <DataBlock label={title} value="Not provided" />;
+  
+  return (
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">{title}</p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="col-span-2 sm:col-span-1">
+          <p className="text-[9px] font-bold uppercase text-zinc-400 mb-1">Street / House No.</p>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{addressObj.street || addressObj.address || addressObj.streetNo || "—"}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-bold uppercase text-zinc-400 mb-1">City / Town</p>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{addressObj.city || addressObj.town || "—"}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-bold uppercase text-zinc-400 mb-1">LGA</p>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{addressObj.lga || "—"}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-bold uppercase text-zinc-400 mb-1">State</p>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{addressObj.state || addressObj.companyState || "—"}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DocumentPreview({ 
   label, 
   url, 
@@ -105,15 +137,6 @@ export const parseJsonSafe = (data: any, fallback: any = {}) => {
     } catch { return fallback; }
   }
   return data;
-};
-
-export const parseAddress = (addrObj: any, fallbackStr: string) => {
-  if (addrObj) {
-    const addr = parseJsonSafe(addrObj, {});
-    const str = `${addr.streetNo ? addr.streetNo + ' ' : ''}${addr.street || addr.address || ""}, ${addr.city || addr.lga || ""}, ${addr.state || ""} State.`.replace(/^, /, '').trim();
-    return str.length > 5 ? str : fallbackStr;
-  }
-  return fallbackStr;
 };
 
 export const handleForceDownload = async (url: string, filename: string, setDownloading: (url: string | null) => void) => {
