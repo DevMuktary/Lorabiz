@@ -47,7 +47,7 @@ export default function ReceiptCard({ transaction, onNewTransaction }: ReceiptCa
   return (
     <>
       {/* Print Styles injected locally so it only prints the receipt nicely */}
-      <style dangerouslySetContent={{__html: `
+      <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * { visibility: hidden; }
           #printable-receipt, #printable-receipt * { visibility: visible; }
