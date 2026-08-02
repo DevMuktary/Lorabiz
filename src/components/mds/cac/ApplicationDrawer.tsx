@@ -63,32 +63,41 @@ export default function ApplicationDrawer({
       doc.setFont("helvetica", "normal");
     };
 
+    // THE FIX: Smart label sizing to prevent text overlap
     const addField = (label: string, value: any, isLink = false) => {
       if (value === undefined || value === null || value === "") return;
       checkPageBreak();
+      
+      const labelStr = `${label}:`;
       doc.setFont("helvetica", "bold");
-      doc.text(`${label}:`, margin, yPos);
+      doc.text(labelStr, margin, yPos);
       doc.setFont("helvetica", "normal");
       
-      const textX = margin + 55;
-      const maxLineWidth = doc.internal.pageSize.width - margin - textX;
+      // Calculate how wide the bold label is dynamically
+      const labelWidth = doc.getTextWidth(labelStr);
+      
+      // Base padding. If the label is extremely long, push the value text further right.
+      let actualTextX = margin + 65; 
+      if (labelWidth > 60) {
+         actualTextX = margin + labelWidth + 5; 
+      }
+      
+      const maxLineWidth = doc.internal.pageSize.width - actualTextX - margin;
       
       if (isLink) {
          doc.setTextColor(37, 99, 235);
-         doc.textWithLink("View/Download File", textX, yPos, { url: String(value) });
+         doc.textWithLink("View/Download File", actualTextX, yPos, { url: String(value) });
          doc.setTextColor(0, 0, 0);
          yPos += lineHeight;
       } else {
          const strValue = String(value);
          const lines = doc.splitTextToSize(strValue, maxLineWidth);
-         doc.text(lines, textX, yPos);
+         doc.text(lines, actualTextX, yPos);
          yPos += (lines.length * lineHeight);
       }
     };
 
-    // ==========================================
-    // THE FIX: Recursive Object Unroller
-    // ==========================================
+    // THE FIX: Clean Recursive Object Unroller
     const printJsonObject = (title: string, obj: any) => {
       if (!obj) return;
       let parsed = obj;
@@ -96,7 +105,6 @@ export default function ApplicationDrawer({
         try { parsed = JSON.parse(obj); } catch (e) { return; }
       }
       
-      // If it parsed into a primitive, just print it directly
       if (typeof parsed !== 'object') {
         addField(title, parsed);
         return;
@@ -106,33 +114,28 @@ export default function ApplicationDrawer({
       
       addHeader(`--- ${title} ---`);
 
-      // Recursive dive function
       const traverseAndPrint = (prefix: string, node: any) => {
         if (node === null || node === undefined || node === "") return;
         
         if (Array.isArray(node)) {
-          // It's an Array (e.g. Multiple Share Classes)
           node.forEach((item, index) => {
-            const newPrefix = prefix ? `${prefix} (Item ${index + 1})` : `Item ${index + 1}`;
+            // Clean Array Naming: e.g., "Allotment 1" instead of "Allotment (Item 1)"
+            const newPrefix = prefix ? `${prefix} ${index + 1}` : `Item ${index + 1}`;
             traverseAndPrint(newPrefix, item);
           });
         } else if (typeof node === 'object') {
-          // It's an Object (e.g. { units: 100, class: 'Ordinary' })
           Object.entries(node).forEach(([k, v]) => {
-            // Convert camelCase to Spaced Words
             const formattedKey = k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
             const newPrefix = prefix ? `${prefix} - ${formattedKey}` : formattedKey;
             traverseAndPrint(newPrefix, v);
           });
         } else {
-          // It is finally a flat value (String, Number, Boolean)
           addField(prefix, node);
         }
       };
 
       traverseAndPrint("", parsed);
     };
-    // ==========================================
 
     // 1. Core Metadata
     addHeader(`LORABIZ FULL APPLICATION RECORD - REF: ${ticket.trackingId}`, true);
@@ -173,8 +176,6 @@ export default function ApplicationDrawer({
        
        printJsonObject("Registered Office Address", ticket.registeredAddress);
        printJsonObject("Head Office Address", ticket.headOfficeAddress);
-       
-       // This will now perfectly unroll all Share arrays without errors
        printJsonObject("Share Classes Breakdown", ticket.shareClasses);
        
        if (ticket.memorandumObjects && Array.isArray(ticket.memorandumObjects)) {
@@ -218,7 +219,6 @@ export default function ApplicationDrawer({
 
           if (isLlc) {
              if (person.sharesAllotted) addField("Shares Allotted", person.sharesAllotted);
-             // These will also successfully unpack
              printJsonObject("Residential Address", person.residentialAddress);
              printJsonObject("Service Address", person.serviceAddress);
              printJsonObject("PSC Details", person.pscDetails);
@@ -238,7 +238,6 @@ export default function ApplicationDrawer({
        });
     }
 
-    // 4. Extra LLC Documents
     if (isLlc && (ticket.witnessSignatureUrl || ticket.declarantSignatureUrl || ticket.reasonRestrictionUrl || ticket.otherDocumentsUrl)) {
       addHeader("ADDITIONAL LLC DOCUMENTS", true);
       addField("Witness Signature", ticket.witnessSignatureUrl, true);
