@@ -33,21 +33,12 @@ export default function CacDocsTab({ ticket, isLlc }: { ticket: any, isLlc: bool
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-5xl mx-auto pb-10">
       
       {/* Application Wide Documents */}
-      {isLlc && (ticket.declarantSignatureUrl || ticket.witnessSignatureUrl || ticket.memorandumUrl) && (
+      {isLlc && (ticket.declarantSignatureUrl || ticket.witnessSignatureUrl) && (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-4 md:col-span-2">
           <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4">
             Company Legal Documents & Declarations
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {ticket.memorandumUrl && (
-              <DocumentPreview 
-                label="Custom Memorandum (PDF)" 
-                url={ticket.memorandumUrl} 
-                downloadName={`Memorandum_${ticket.trackingId}`} 
-                isDownloading={downloadingFile === ticket.memorandumUrl}
-                onDownload={handleForceDownload}
-              />
-            )}
             {ticket.declarantSignatureUrl && (
               <DocumentPreview 
                 label="Declarant Signature" 
@@ -119,4 +110,4 @@ export default function CacDocsTab({ ticket, isLlc }: { ticket: any, isLlc: bool
       })}
     </div>
   );
-}
+}eee
