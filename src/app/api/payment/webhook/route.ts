@@ -33,7 +33,6 @@ export async function POST(req: Request) {
       const expectedAmount = metadata.expectedAmount ? Number(metadata.expectedAmount) : null;
       const appliedPromoId = metadata.appliedPromoId || null;
       
-      // ✅ THE FIX: Pull service category directly from Paystack metadata
       const serviceCategory = metadata.serviceCategory || "OTHER";
 
       if (!reference || !userEmail) {
@@ -73,7 +72,7 @@ export async function POST(req: Request) {
               status: "SUCCESS", 
               reference: reference, 
               description: "Wallet Funding via Paystack Gateway",
-              serviceCategory: "WALLET_FUNDING" // ✅ Force to Wallet Funding bucket
+              serviceCategory: "WALLET_FUNDING"
             }
           });
         });
@@ -161,7 +160,7 @@ export async function POST(req: Request) {
                 status: "SUCCESS", 
                 reference: reference, 
                 description: `Partial Online Payment (Underpaid for ${regName} - Credited to Wallet)`,
-                serviceCategory: "WALLET_FUNDING" // ✅ Guard bucket
+                serviceCategory: "WALLET_FUNDING"
               }
             });
             return; 
@@ -185,7 +184,7 @@ export async function POST(req: Request) {
               status: "SUCCESS", 
               reference: reference, 
               description: "Paystack Online Funding (Webhook)",
-              serviceCategory: "WALLET_FUNDING" // ✅ It enters as general funding
+              serviceCategory: "WALLET_FUNDING"
             }
           });
 
@@ -206,7 +205,7 @@ export async function POST(req: Request) {
               status: "SUCCESS", 
               reference: `SRV_PAY_${registrationId}_${Date.now()}`, 
               description: `Payment for Registration (${regName})`,
-              serviceCategory: serviceCategory // ✅ Boom. Perfectly assigned to the real service
+              serviceCategory: serviceCategory 
             }
           });
 
@@ -335,7 +334,7 @@ export async function POST(req: Request) {
                     status: "SUCCESS", 
                     reference: reference, 
                     description: "Partial Online Payment (Underpaid Name Substitution - Credited to Wallet)",
-                    serviceCategory: "WALLET_FUNDING" // ✅ Guard Bucket
+                    serviceCategory: "WALLET_FUNDING"
                   }
                 });
                 return; 
@@ -357,7 +356,7 @@ export async function POST(req: Request) {
                   status: "SUCCESS", 
                   reference: reference, 
                   description: "Paystack Online Funding (Webhook)",
-                  serviceCategory: "WALLET_FUNDING" // ✅ Credit side
+                  serviceCategory: "WALLET_FUNDING"
                 }
               });
 
@@ -377,7 +376,7 @@ export async function POST(req: Request) {
                   status: "SUCCESS", 
                   reference: `NSUB_PAY_${registrationId}_${Date.now()}`, 
                   description: "Payment for Name Substitution",
-                  serviceCategory: "NAME_SUBSTITUTION" // ✅ Explicitly isolated category
+                  serviceCategory: "NAME_SUBSTITUTION"
                 }
               });
 
