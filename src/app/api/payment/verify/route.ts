@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function POST(req: Request) {
   try {
@@ -13,7 +14,6 @@ export async function POST(req: Request) {
 
     // =====================================================================
     // SSRF FIX: STRICT INPUT VALIDATION & SANITIZATION
-    // Only allow alphanumeric characters, hyphens, and underscores.
     // =====================================================================
     if (!reference || typeof reference !== "string" || !/^[a-zA-Z0-9_-]+$/.test(reference)) {
       return NextResponse.json({ message: "Invalid transaction reference format" }, { status: 400 });
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     const userEmail = session.user.email as string;
 
     // 2. ATOMIC TRANSACTION TO PREVENT RACE CONDITIONS
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.findUnique({ 
         where: { email: userEmail }, 
         include: { wallet: true } 
@@ -63,46 +63,50 @@ export async function POST(req: Request) {
         throw new Error("Application already submitted or invalid");
       }
 
-      // STEP A: FUND THE WALLET
-      let currentBalance = Number(user.wallet.balance);
-      let newBalanceAfterFunding = currentBalance + amountPaid;
+      // STEP A: ATOMICALLY FUND THE WALLET
+      const fundedWallet = await tx.wallet.update({
+        where: { id: user.wallet.id },
+        data: { balance: { increment: amountPaid } }
+      });
+      const balanceAfterCredit = Number(fundedWallet.balance);
+      const balanceBeforeCredit = balanceAfterCredit - amountPaid;
 
       await tx.transaction.create({
         data: {
           walletId: user.wallet.id,
           amount: amountPaid,
-          balanceBefore: currentBalance,
-          balanceAfter: newBalanceAfterFunding,
+          balanceBefore: balanceBeforeCredit,
+          balanceAfter: balanceAfterCredit,
           type: "CREDIT",
           status: "SUCCESS",
           reference: reference, 
-          description: "Paystack Online Funding"
+          description: "Paystack Online Funding",
+          serviceCategory: "WALLET_FUNDING"
         }
       });
 
-      // STEP B: EXACT SIMULTANEOUS DEBIT 
-      let newBalanceAfterPayment = newBalanceAfterFunding - amountPaid;
+      // STEP B: EXACT SIMULTANEOUS ATOMIC DEBIT 
+      const debitedWallet = await tx.wallet.update({
+        where: { id: user.wallet.id },
+        data: { balance: { decrement: amountPaid } }
+      });
+      const balanceAfterDebit = Number(debitedWallet.balance);
 
       await tx.transaction.create({
         data: {
           walletId: user.wallet.id,
           amount: amountPaid,
-          balanceBefore: newBalanceAfterFunding,
-          balanceAfter: newBalanceAfterPayment,
+          balanceBefore: balanceAfterCredit,
+          balanceAfter: balanceAfterDebit,
           type: "DEBIT",
           status: "SUCCESS",
           reference: `SRV_PAY_${registrationId}_${Date.now()}`,
-          description: `Payment for Business Registration (${registration.proposedName})`
+          description: `Payment for Business Registration (${registration.proposedName})`,
+          serviceCategory: "BUSINESS_NAME"
         }
       });
 
-      // STEP C: UPDATE WALLET BALANCE
-      await tx.wallet.update({
-        where: { id: user.wallet.id },
-        data: { balance: newBalanceAfterPayment } 
-      });
-
-      // STEP D: UPDATE REGISTRATION STATUS
+      // STEP C: UPDATE REGISTRATION STATUS
       await tx.businessRegistration.update({
         where: { id: registrationId },
         data: { status: "PENDING" } 
