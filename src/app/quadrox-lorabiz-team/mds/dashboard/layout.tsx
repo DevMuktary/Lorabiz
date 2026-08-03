@@ -15,10 +15,10 @@ export default async function MdsDashboardLayout({
   children: React.ReactNode;
 }) {
   // Hard Server-Side Check
-  const session = await getServerSession(authOptions);
+  const session: any = await getServerSession(authOptions);
 
   // If there is no session or the user is NOT an admin, kick them out immediately
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || session?.user?.role !== "ADMIN") {
     redirect("/quadrox-lorabiz-team/mds/login");
   }
 
