@@ -217,19 +217,20 @@ export async function POST(req: Request) {
       const txReference = `WLT_${registrationId || "SRV"}_${Date.now()}`;
 
       await prisma.$transaction(async (tx) => {
-        const newBalance = currentBalance - amountToPay;
-
-        await tx.wallet.update({
+        // ✅ THE FIX: Atomic decrement to prevent double-spending race conditions
+        const updatedWallet = await tx.wallet.update({
           where: { id: user.wallet!.id },
-          data: { balance: newBalance }
+          data: { balance: { decrement: amountToPay } }
         });
+        
+        const newBalance = Number(updatedWallet.balance);
+        const balanceBeforeUpdate = newBalance + amountToPay;
 
-        // ✅ THE FIX: Explicitly setting serviceCategory for Dashboard Financials
         await tx.transaction.create({
           data: {
             walletId: user.wallet!.id,
             amount: amountToPay,
-            balanceBefore: currentBalance,
+            balanceBefore: balanceBeforeUpdate,
             balanceAfter: newBalance,
             type: "DEBIT",
             status: "SUCCESS",
@@ -331,7 +332,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      // ✅ THE FIX: Pack serviceCategory into Paystack metadata for the Webhook to read
+      // Packed serviceCategory into Paystack metadata for the Webhook to read
       const paystackResponse = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
