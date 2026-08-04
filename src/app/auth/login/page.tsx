@@ -24,7 +24,12 @@ function LoginContent() {
   const { data: session, update } = useSession();
   
   const isRegistered = searchParams.get("registered") === "true";
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  
+  // SECURITY FIX: Ensure callbackUrl is an internal path, not an external phishing link
+  const rawCallbackUrl = searchParams.get("callbackUrl");
+  const callbackUrl = (rawCallbackUrl && rawCallbackUrl.startsWith("/")) 
+    ? rawCallbackUrl 
+    : "/dashboard";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -345,8 +350,14 @@ function LoginContent() {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-center lg:justify-start">
-               {/* FIX: Removed 'key' and set data-theme to 'auto' so it stops disappearing */}
+            {/* UX IMPROVEMENT: Security Verification Loading State */}
+            <div className="pt-2 flex flex-col items-center lg:items-start">
+               {!captchaVerified && (
+                 <div className="flex items-center gap-2 mb-3 text-sm font-medium text-muted-foreground animate-pulse">
+                   <Spinner className="animate-spin h-4 w-4" />
+                   <span>Verifying security...</span>
+                 </div>
+               )}
                <div 
                  className="cf-turnstile" 
                  data-sitekey="0x4AAAAAAEA2i2RM9PiSsRCH" 
