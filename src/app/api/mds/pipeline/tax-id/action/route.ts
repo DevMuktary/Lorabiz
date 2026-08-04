@@ -12,6 +12,7 @@ export async function POST(req: Request) {
       ticketId, 
       actionType, 
       taxIdNumber, 
+      taxIdImageUrl,
       failureReason, 
       issueRefund, 
       refundAmount 
@@ -49,7 +50,8 @@ export async function POST(req: Request) {
           where: { id: ticketId },
           data: { 
             status: "COMPLETED",
-            taxIdNumber: taxIdNumber 
+            taxIdNumber: taxIdNumber,
+            taxIdImageUrl: taxIdImageUrl
           }
         });
       }
@@ -110,7 +112,9 @@ export async function POST(req: Request) {
           type: "TAXID_COMPLETED",
           userId: ticket.userId, email: userEmail, name: userName,
           requestType: ticket.type === "CORPORATE" ? "Corporate" : "Individual",
-          taxIdNumber: taxIdNumber, transactionRef: ticket.transactionRef
+          taxIdNumber: taxIdNumber, 
+          taxIdImageUrl: taxIdImageUrl,
+          transactionRef: ticket.transactionRef
         };
       } else if (actionType === "FAIL") {
         notificationPayload = {
