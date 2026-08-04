@@ -551,7 +551,7 @@ model TaxIdRequest {
 
   // Output (Admin will upload the generated TIN here)
   taxIdNumber       String?
-
+  taxIdImageUrl     String?      // ADD THIS LINE
   failureReason     String?      @db.Text // NEW: Stores admin's reason for failure
   
   // Payment Tracking
