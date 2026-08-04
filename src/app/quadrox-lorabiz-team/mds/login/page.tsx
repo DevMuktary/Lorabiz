@@ -19,7 +19,12 @@ function AdminLoginContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/quadrox-lorabiz-team/mds/dashboard";
+  
+  // SECURITY FIX: Ensure callbackUrl is an internal path
+  const rawCallbackUrl = searchParams.get("callbackUrl");
+  const callbackUrl = (rawCallbackUrl && rawCallbackUrl.startsWith("/")) 
+    ? rawCallbackUrl 
+    : "/quadrox-lorabiz-team/mds/dashboard";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
