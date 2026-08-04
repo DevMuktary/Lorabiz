@@ -1,8 +1,10 @@
+// src/components/mds/tax-id/TaxIdApplicationDrawer.tsx
 "use client";
 
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { X, CheckCircle, FileText, ShieldCheck, RefreshCw, AlertCircle, AlertTriangle, FileDigit } from 'lucide-react';
+import { FileUpload } from "@/components/FileUpload"; // Imported FileUpload
 
 export default function TaxIdApplicationDrawer({ 
   ticket, 
@@ -17,6 +19,7 @@ export default function TaxIdApplicationDrawer({
   const [actionType, setActionType] = useState<"PROCESS" | "COMPLETE" | "FAIL" | "">("");
   
   const [taxIdNumber, setTaxIdNumber] = useState("");
+  const [taxIdImageUrl, setTaxIdImageUrl] = useState(""); // NEW: State for image upload
   const [failureReason, setFailureReason] = useState("");
   const [issueRefund, setIssueRefund] = useState(false);
   const [refundAmount, setRefundAmount] = useState<number | string>(ticket?.amountPaid || 0);
@@ -40,6 +43,9 @@ export default function TaxIdApplicationDrawer({
       if (actionType === "COMPLETE" && !taxIdNumber.trim()) {
         throw new Error("You must input the generated Tax ID number to mark as completed.");
       }
+      if (actionType === "COMPLETE" && !taxIdImageUrl) {
+        throw new Error("You must upload the Tax ID screenshot to mark as completed.");
+      }
       if (actionType === "FAIL" && !failureReason.trim()) {
         throw new Error("You must provide a reason for failing this application.");
       }
@@ -54,6 +60,7 @@ export default function TaxIdApplicationDrawer({
           ticketId: ticket.id,
           actionType: actionType,
           taxIdNumber: taxIdNumber,
+          taxIdImageUrl: taxIdImageUrl, // Sent to backend
           failureReason: failureReason,
           issueRefund: issueRefund,
           refundAmount: issueRefund ? Number(refundAmount) : 0
@@ -179,15 +186,29 @@ export default function TaxIdApplicationDrawer({
                   </div>
 
                   {actionType === "COMPLETE" && (
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl animate-in fade-in zoom-in-95 duration-200">
-                      <label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Generated Tax ID (TIN) *</label>
-                      <input 
-                        type="text" 
-                        value={taxIdNumber}
-                        onChange={(e) => setTaxIdNumber(e.target.value)}
-                        placeholder="Enter the official TIN..."
-                        className="w-full mt-2 h-12 px-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-base font-bold text-zinc-900 dark:text-zinc-100"
-                      />
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl animate-in fade-in zoom-in-95 duration-200 space-y-6">
+                      <div>
+                        <label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Generated Tax ID (TIN) *</label>
+                        <input 
+                          type="text" 
+                          value={taxIdNumber}
+                          onChange={(e) => setTaxIdNumber(e.target.value)}
+                          placeholder="Enter the official TIN..."
+                          className="w-full mt-2 h-12 px-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-base font-bold text-zinc-900 dark:text-zinc-100"
+                        />
+                      </div>
+                      
+                      {/* ADDED FILE UPLOAD HERE */}
+                      <div>
+                        <FileUpload
+                          label="Tax ID Screenshot *"
+                          description="Upload the generated TIN image from NRS"
+                          value={taxIdImageUrl}
+                          onUploadSuccess={setTaxIdImageUrl}
+                          onRemove={() => setTaxIdImageUrl("")}
+                          accept="image/jpeg, image/png, image/webp"
+                        />
+                      </div>
                     </div>
                   )}
 
