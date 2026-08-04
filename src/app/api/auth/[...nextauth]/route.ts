@@ -9,7 +9,7 @@ import { sendUserLoginOTP } from "@/lib/email";
 const DUMMY_HASH = "$2a$10$X7U.z5G8W8mH1L4y9vP/eeKjK9kYgG3d6fM9a6L7w1h3X9Z2Q5xO6";
 
 const MAX_FAILED_ATTEMPTS_PER_EMAIL = 5;
-const MAX_FAILED_ATTEMPTS_PER_IP = 20; 
+const MAX_FAILED_ATTEMPTS_PER_IP = 100; 
 const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 Minutes
 
 async function checkRateLimit(email: string, ip: string): Promise<void> {
