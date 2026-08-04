@@ -24,7 +24,7 @@ export type NotificationEvent =
   | { type: "SCUML_PROCESSING"; userId: string; email: string; name: string; companyName: string; transactionRef: string; }
   | { type: "SCUML_COMPLETED"; userId: string; phone: string; email: string; name: string; companyName: string; transactionRef: string; finalCertificateUrl: string; }
   | { type: "SCUML_FAILED"; userId: string; email: string; name: string; companyName: string; transactionRef: string; failureReason: string; refundAmount: number; }
-  | { type: "TAXID_COMPLETED"; userId: string; email: string; name: string; requestType: string; taxIdNumber: string; transactionRef: string; }
+  | { type: "TAXID_COMPLETED"; userId: string; email: string; name: string; requestType: string; taxIdNumber: string; transactionRef: string; taxIdImageUrl?: string; }
   | { type: "TAXID_FAILED"; userId: string; email: string; name: string; requestType: string; failureReason: string; refundAmount: number; transactionRef: string; };
 
 export async function dispatchNotification(event: NotificationEvent): Promise<void> {
@@ -191,7 +191,11 @@ export async function dispatchNotification(event: NotificationEvent): Promise<vo
         },
       });
       await sendTaxIdCompletedEmail({
-        to: event.email, name: event.name, requestType: event.requestType, taxIdNumber: event.taxIdNumber
+        to: event.email, 
+        name: event.name, 
+        requestType: event.requestType, 
+        taxIdNumber: event.taxIdNumber,
+        taxIdImageUrl: event.taxIdImageUrl
       });
       break;
     }
