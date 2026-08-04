@@ -6,35 +6,10 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // --- IP TRACKING & SECURITY ---
+    // We still grab the IP just for your database audit logs, but we DO NOT block it.
     const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || 
                       req.headers.get("x-real-ip") || 
                       "unknown";
-
-    if (ipAddress !== "unknown") {
-      const isBlocked = await prisma.blockedIp.findUnique({ where: { ip: ipAddress } });
-      if (isBlocked) {
-        return NextResponse.json(
-          { message: "Access denied from this network. Please contact customer support." }, 
-          { status: 403 }
-        );
-      }
-
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const recentRegistration = await prisma.user.findFirst({
-        where: {
-          ipAddress,
-          createdAt: { gte: sevenDaysAgo },
-        },
-      });
-
-      if (recentRegistration) {
-        return NextResponse.json(
-          { message: "Recent registration detected from your network. Please wait 7 days or contact support." }, 
-          { status: 429 }
-        );
-      }
-    }
     
     const { 
       firstName, middleName, lastName, email: rawEmail, 
