@@ -17,8 +17,11 @@ function StaffLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Default callback locked to the Staff Operations panel
-  const callbackUrl = searchParams.get("callbackUrl") || "/quadrox-lorabiz-team/staff";
+  // SECURITY FIX: Ensure callbackUrl is an internal path
+  const rawCallbackUrl = searchParams.get("callbackUrl");
+  const callbackUrl = (rawCallbackUrl && rawCallbackUrl.startsWith("/")) 
+    ? rawCallbackUrl 
+    : "/quadrox-lorabiz-team/staff";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
