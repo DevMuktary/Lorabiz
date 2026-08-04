@@ -15,7 +15,7 @@ export async function GET() {
         lastName: true,
         email: true,
         phone: true,
-        image: true, // Included
+        image: true,
         role: true,
         phoneChangedAt: true,
       }
@@ -35,13 +35,22 @@ export async function PUT(req: Request) {
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const { firstName, lastName } = await req.json();
-    if (!firstName || !lastName) {
+    
+    // Security: Sanitize strings and check length
+    const cleanFirstName = firstName?.trim();
+    const cleanLastName = lastName?.trim();
+
+    if (!cleanFirstName || !cleanLastName) {
       return NextResponse.json({ message: "First and last names are required." }, { status: 400 });
+    }
+
+    if (cleanFirstName.length > 50 || cleanLastName.length > 50) {
+      return NextResponse.json({ message: "Names must be 50 characters or less." }, { status: 400 });
     }
 
     await prisma.user.update({
       where: { email: session.user.email },
-      data: { firstName, lastName }
+      data: { firstName: cleanFirstName, lastName: cleanLastName }
     });
 
     return NextResponse.json({ success: true, message: "Profile updated successfully." });
