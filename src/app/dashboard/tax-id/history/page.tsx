@@ -5,7 +5,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { 
   ArrowLeft, Clock, CheckCircle, SpinnerGap, 
-  MagnifyingGlass, X, Funnel, XCircle, Warning, Wallet, Copy, Check
+  MagnifyingGlass, X, Funnel, XCircle, Warning, Wallet, Copy, Check, Image as ImageIcon
 } from "@phosphor-icons/react";
 
 type TaxIdRecord = {
@@ -17,6 +17,7 @@ type TaxIdRecord = {
   lastName?: string | null;
   cacNumber?: string | null;
   taxIdNumber?: string | null;
+  taxIdImageUrl?: string | null;
   failureReason?: string | null;
 };
 
@@ -251,6 +252,17 @@ export default function TaxIdHistoryPage() {
                           >
                             {copiedId === item.id ? <Check weight="bold" className="h-4 w-4 text-green-500" /> : <Copy weight="bold" className="h-4 w-4" />}
                           </button>
+                          {item.taxIdImageUrl && (
+                            <a 
+                              href={item.taxIdImageUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-md hover:bg-secondary border border-border text-muted-foreground transition-colors inline-flex"
+                              title="View/Download Screenshot"
+                            >
+                              <ImageIcon weight="bold" className="h-4 w-4" />
+                            </a>
+                          )}
                         </div>
                       ) : item.status === "FAILED" ? (
                         <button 
