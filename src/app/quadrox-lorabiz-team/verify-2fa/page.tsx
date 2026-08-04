@@ -17,8 +17,15 @@ function Verify2FAContent() {
   const searchParams = useSearchParams();
   
   const userRole = (session?.user as any)?.role || "STAFF";
-  const callbackUrl = searchParams.get("callbackUrl") || 
-    (userRole === "ADMIN" ? "/quadrox-lorabiz-team/mds/dashboard" : "/quadrox-lorabiz-team/staff/dashboard");
+  const defaultCallback = userRole === "ADMIN" 
+    ? "/quadrox-lorabiz-team/mds/dashboard" 
+    : "/quadrox-lorabiz-team/staff/dashboard";
+
+  // SECURITY FIX: Ensure callbackUrl is an internal path, not an external phishing link
+  const rawCallbackUrl = searchParams.get("callbackUrl");
+  const callbackUrl = (rawCallbackUrl && rawCallbackUrl.startsWith("/")) 
+    ? rawCallbackUrl 
+    : defaultCallback;
 
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
