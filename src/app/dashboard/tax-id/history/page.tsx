@@ -5,7 +5,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { 
   ArrowLeft, Clock, CheckCircle, SpinnerGap, 
-  MagnifyingGlass, X, Funnel, XCircle, Warning, Wallet, Copy, Check, Image as ImageIcon
+  MagnifyingGlass, X, Funnel, XCircle, Warning, Wallet, Copy, Check, DownloadSimple, Eye
 } from "@phosphor-icons/react";
 
 type TaxIdRecord = {
@@ -28,8 +28,11 @@ export default function TaxIdHistoryPage() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
 
   const [viewFailedModal, setViewFailedModal] = useState<TaxIdRecord | null>(null);
+  const [viewImageModal, setViewImageModal] = useState<string | null>(null);
+  
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -64,6 +67,31 @@ export default function TaxIdHistoryPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleForceDownload = async (url: string, taxIdNumber: string, id: string) => {
+    setDownloadingId(id);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch image");
+      
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `Tax_ID_${taxIdNumber}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Download failed:", error);
+      window.open(url, '_blank');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const filteredHistory = history.filter(item => {
     const searchTarget = item.type === "CORPORATE" ? item.cacNumber : `${item.firstName} ${item.lastName}`;
     const matchesSearch = searchTarget?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -95,7 +123,6 @@ export default function TaxIdHistoryPage() {
         </div>
       )}
       
-      {/* Header & Back Button */}
       <div className="flex items-center gap-4">
         <Link 
           href="/dashboard/tax-id"
@@ -109,7 +136,6 @@ export default function TaxIdHistoryPage() {
         </div>
       </div>
 
-      {/* Metrics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-sm">
           <div className="h-10 w-10 sm:h-12 sm:w-12 bg-yellow-500/10 rounded-full flex items-center justify-center">
@@ -152,7 +178,6 @@ export default function TaxIdHistoryPage() {
         </div>
       </div>
 
-      {/* Filters & Search */}
       <div className="bg-card border border-border rounded-2xl p-4 flex flex-col sm:flex-row gap-4 justify-between items-center shadow-sm">
         <div className="relative w-full sm:max-w-md">
           <MagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -181,7 +206,6 @@ export default function TaxIdHistoryPage() {
         </div>
       </div>
 
-      {/* Data Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         {isLoading ? (
           <div className="p-20 flex flex-col items-center justify-center text-muted-foreground">
@@ -243,25 +267,40 @@ export default function TaxIdHistoryPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       {item.status === "COMPLETED" && item.taxIdNumber ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="font-mono text-base font-black text-foreground tracking-widest">{item.taxIdNumber}</span>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span className="font-mono text-base font-black text-foreground tracking-widest mr-2">{item.taxIdNumber}</span>
+                          
                           <button 
                             onClick={() => handleCopyTin(item.taxIdNumber!, item.id)}
-                            className="p-1.5 rounded-md hover:bg-secondary border border-border text-muted-foreground transition-colors"
+                            className="p-2 rounded-lg bg-secondary/50 hover:bg-secondary border border-border text-foreground transition-colors"
                             title="Copy TIN"
                           >
                             {copiedId === item.id ? <Check weight="bold" className="h-4 w-4 text-green-500" /> : <Copy weight="bold" className="h-4 w-4" />}
                           </button>
+                          
                           {item.taxIdImageUrl && (
-                            <a 
-                              href={item.taxIdImageUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 rounded-md hover:bg-secondary border border-border text-muted-foreground transition-colors inline-flex"
-                              title="View/Download Screenshot"
-                            >
-                              <ImageIcon weight="bold" className="h-4 w-4" />
-                            </a>
+                            <>
+                              <button 
+                                onClick={() => setViewImageModal(item.taxIdImageUrl!)}
+                                className="p-2 rounded-lg bg-secondary/50 hover:bg-secondary border border-border text-foreground transition-colors inline-flex"
+                                title="View Screenshot"
+                              >
+                                <Eye weight="bold" className="h-4 w-4" />
+                              </button>
+
+                              <button 
+                                onClick={() => handleForceDownload(item.taxIdImageUrl!, item.taxIdNumber!, item.id)}
+                                disabled={downloadingId === item.id}
+                                className="p-2 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary transition-colors inline-flex disabled:opacity-50"
+                                title="Download Screenshot"
+                              >
+                                {downloadingId === item.id ? (
+                                  <SpinnerGap className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <DownloadSimple weight="bold" className="h-4 w-4" />
+                                )}
+                              </button>
+                            </>
                           )}
                         </div>
                       ) : item.status === "FAILED" ? (
@@ -284,7 +323,32 @@ export default function TaxIdHistoryPage() {
         )}
       </div>
 
-      {/* View Failed Reason & Refund Modal */}
+      {/* Image Viewer Modal */}
+      {viewImageModal && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/90 backdrop-blur-md animate-in fade-in duration-200" 
+          onClick={() => setViewImageModal(null)}
+        >
+          <div 
+            className="relative max-w-4xl w-full flex flex-col items-center animate-in zoom-in-95 duration-200" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setViewImageModal(null)}
+              className="absolute -top-12 right-0 p-2 text-foreground bg-secondary/50 hover:bg-secondary rounded-full transition-colors border border-border"
+            >
+              <X weight="bold" className="h-6 w-6" />
+            </button>
+            <img 
+              src={viewImageModal} 
+              alt="Tax ID Screenshot" 
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-2 border-border bg-card" 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* View Failed Reason Modal */}
       {viewFailedModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col scale-in-95 duration-200">
