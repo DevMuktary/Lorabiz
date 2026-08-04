@@ -32,10 +32,15 @@ export async function POST(req: Request) {
         }
       }
 
+      // Pre-flight check: Prevent crashing if the number is already taken
+      const phoneExists = await prisma.user.findFirst({ where: { phone: newPhone } });
+      if (phoneExists && phoneExists.email !== userEmail) {
+        return NextResponse.json({ message: "This phone number is already registered to another account." }, { status: 400 });
+      }
+
       const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
-      // Use the standard OTP table you already have for login
       await prisma.otpCode.upsert({
         where: { email: userEmail },
         update: { code: generatedOtp, expiresAt },
@@ -59,17 +64,23 @@ export async function POST(req: Request) {
         return NextResponse.json({ message: "Invalid or expired verification code." }, { status: 400 });
       }
 
+      // Secondary check right before the transaction to prevent Prisma 500 crashes
+      const phoneExists = await prisma.user.findFirst({ where: { phone: newPhone } });
+      if (phoneExists && phoneExists.email !== userEmail) {
+        return NextResponse.json({ message: "This phone number is already registered to another account." }, { status: 400 });
+      }
+
       // Valid OTP! Apply the changes
       await prisma.$transaction([
         prisma.user.update({
           where: { email: userEmail },
           data: {
-            oldPhone: user.phone, // Save current to old for fraud tracking
+            oldPhone: user.phone || null, 
             phone: newPhone,
-            phoneChangedAt: new Date() // Trigger the 30-day lock
+            phoneChangedAt: new Date()
           }
         }),
-        prisma.otpCode.delete({ where: { email: userEmail } }) // Clean up OTP
+        prisma.otpCode.delete({ where: { email: userEmail } })
       ]);
 
       return NextResponse.json({ success: true, message: "Phone number securely updated." });
@@ -78,7 +89,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Invalid action." }, { status: 400 });
 
   } catch (error) {
+    // Keep it completely silent for production users, but log it to your server terminal
     console.error("Phone Security API Error:", error);
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ message: "An unexpected error occurred while verifying the code. Please try again." }, { status: 500 });
   }
 }
