@@ -11,7 +11,7 @@ import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrappe
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
-  UserCircle, SignOut, List, X, Info, Receipt, Article, Cards, Tag
+  UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag
 } from "@phosphor-icons/react";
 
 type NavLink = {
@@ -34,7 +34,7 @@ const NAVIGATION: NavCategory[] = [
       { name: "Service Hub", href: "/dashboard", icon: SquaresFour },
       { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
       { name: "Wallet", href: "/dashboard/wallet", icon: Wallet },
-      { name: "Pricing", href: "/dashboard/pricing", icon: Tag }, // Added to sidebar
+      { name: "Pricing", href: "/dashboard/pricing", icon: Tag },
     ]
   },
   {
@@ -67,10 +67,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   
   // Safe fallback to prevent Railway build crashes
-  const { data: session, update } = useSession() || {};
+  const { data: session } = useSession() || {};
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); // NEW STATE FOR DROPDOWN
   const [sidebarAlert, setSidebarAlert] = useState<{title: string, message: string} | null>(null);
 
   useEffect(() => {
@@ -162,8 +163,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        {/* Reduced vertical spacing to fix overflow issues */}
-        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-5 custom-scrollbar">
+        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-5 custom-scrollbar pb-10">
           {NAVIGATION.map((group) => (
             <div key={group.category} className="space-y-1.5">
               <h3 className="px-3 text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
@@ -215,19 +215,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           ))}
         </nav>
-
-        <div className="p-3 border-t border-border shrink-0 bg-card">
-          <button 
-            type="button"
-            onClick={() => {
-              signOut({ callbackUrl: "/auth/login", redirect: true });
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 group cursor-pointer"
-          >
-            <SignOut className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-destructive transition-transform group-hover:-translate-x-1" />
-            Log Out
-          </button>
-        </div>
+        {/* LOGOUT BUTTON HAS BEEN COMPLETELY REMOVED FROM HERE */}
       </aside>
 
       {/* MAIN CONTENT AREA */}
@@ -256,7 +244,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <div className="flex items-center gap-3">
             <Link 
-              href="/pricing"
+              href="/dashboard/pricing"
               className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[13px] font-bold"
             >
               <Tag weight="bold" className="h-4 w-4" />
@@ -266,22 +254,71 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <ThemeToggle />
             <NotificationBell />
 
-            <div className="h-9 w-9 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[12px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0 ml-1">
-              {session?.user?.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img 
-                  src={session.user.image} 
-                  alt="Profile" 
-                  className="h-full w-full object-cover" 
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).parentElement!.innerHTML = initials;
-                  }}
-                />
-              ) : (
-                initials
+            {/* NEW: PROFILE DROPDOWN WRAPPER */}
+            <div className="relative ml-1">
+              <div 
+                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                className="h-9 w-9 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[12px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0"
+              >
+                {session?.user?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img 
+                    src={session.user.image} 
+                    alt="Profile" 
+                    className="h-full w-full object-cover" 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement!.innerHTML = initials;
+                    }}
+                  />
+                ) : (
+                  initials
+                )}
+              </div>
+
+              {/* PROFILE DROPDOWN MENU */}
+              {isProfileDropdownOpen && (
+                <>
+                  {/* Invisible overlay to close dropdown when clicking outside */}
+                  <div 
+                    className="fixed inset-0 z-[45]" 
+                    onClick={() => setIsProfileDropdownOpen(false)} 
+                  />
+                  
+                  <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-[50] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-3 border-b border-border bg-secondary/30">
+                      <p className="text-[13px] font-black text-foreground truncate">
+                        {session?.user?.name || "Lorabiz User"}
+                      </p>
+                      <p className="text-[11px] font-medium text-muted-foreground truncate mt-0.5">
+                        {session?.user?.email}
+                      </p>
+                    </div>
+                    
+                    <div className="p-2 space-y-1">
+                      <Link 
+                        href="/dashboard/settings"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-foreground hover:bg-secondary transition-colors"
+                      >
+                        <UserCircle className="h-4 w-4 text-muted-foreground" weight="bold" />
+                        Profile Settings
+                      </Link>
+                      
+                      <button 
+                        type="button"
+                        onClick={() => signOut({ callbackUrl: "/auth/login", redirect: true })}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors group cursor-pointer"
+                      >
+                        <SignOut className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-destructive transition-transform group-hover:-translate-x-1" weight="bold" />
+                        Log Out
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
+
           </div>
         </header>
 
