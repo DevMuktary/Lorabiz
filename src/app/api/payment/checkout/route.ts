@@ -53,7 +53,10 @@ export async function POST(req: Request) {
       baseAmountToPay = Math.round(Number(amount));
       description = "Wallet Funding via Online Gateway";
       reference = `FW_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
-      callbackPath = "/dashboard/wallet?funded=true";
+      
+      // ✅ THE FIX: Changed from "/dashboard/wallet?funded=true" to "/dashboard" so your alerts catch it!
+      callbackPath = "/dashboard?funded=true"; 
+      
       promoServiceKey = "WALLET_FUNDING";
 
     // CASE B: LLC (LIMITED LIABILITY COMPANY) REGISTRATION
@@ -329,8 +332,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      // Safely construct metadata to strictly exclude ALL `null` values 
-      // (Korapay strictly validates against null fields in metadata)
       const safeMetadata: Record<string, string | number> = {
         userId: user.id,
         service: service || "wallet_funding",
