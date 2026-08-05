@@ -10,14 +10,17 @@ import { sendScumlSubmittedEmail } from "@/lib/email";
 export async function POST(req: Request) {
   try {
     const body = await req.text();
-    const signature = req.headers.get("x-paystack-signature");
+    // Use Korapay's signature header
+    const signature = req.headers.get("x-korapay-signature");
 
     if (!signature) {
       return NextResponse.json({ message: "No signature found" }, { status: 400 });
     }
 
-    const secret = process.env.PAYSTACK_SECRET_KEY as string;
-    const expectedSignature = crypto.createHmac("sha512", secret).update(body).digest("hex");
+    const secret = process.env.KORAPAY_SECRET_KEY as string;
+    
+    // Korapay uses SHA256 (not SHA512)
+    const expectedSignature = crypto.createHmac("sha256", secret).update(body).digest("hex");
 
     if (signature !== expectedSignature) {
       return NextResponse.json({ message: "Invalid signature" }, { status: 400 });
@@ -27,7 +30,8 @@ export async function POST(req: Request) {
 
     if (event.event === "charge.success") {
       const reference = event.data?.reference;
-      const amountPaid = Number(event.data?.amount) / 100; // Convert Kobo to Naira
+      // Korapay amounts are already in Naira. No dividing by 100
+      const amountPaid = Number(event.data?.amount); 
       const userEmail = event.data?.customer?.email;
       const metadata = event.data?.metadata || {};
       const expectedAmount = metadata.expectedAmount ? Number(metadata.expectedAmount) : null;
@@ -71,7 +75,7 @@ export async function POST(req: Request) {
               type: "CREDIT", 
               status: "SUCCESS", 
               reference: reference, 
-              description: "Wallet Funding via Paystack Gateway",
+              description: "Wallet Funding via Korapay Gateway",
               serviceCategory: "WALLET_FUNDING"
             }
           });
@@ -183,7 +187,7 @@ export async function POST(req: Request) {
               type: "CREDIT", 
               status: "SUCCESS", 
               reference: reference, 
-              description: "Paystack Online Funding (Webhook)",
+              description: "Korapay Online Funding (Webhook)",
               serviceCategory: "WALLET_FUNDING"
             }
           });
@@ -355,7 +359,7 @@ export async function POST(req: Request) {
                   type: "CREDIT", 
                   status: "SUCCESS", 
                   reference: reference, 
-                  description: "Paystack Online Funding (Webhook)",
+                  description: "Korapay Online Funding (Webhook)",
                   serviceCategory: "WALLET_FUNDING"
                 }
               });
