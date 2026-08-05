@@ -57,7 +57,6 @@ const SERVICES = [
     logo: "/smedan.png",
     active: false,
   },
-  
 ];
 
 export default function DashboardPage() {
@@ -96,7 +95,21 @@ export default function DashboardPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       
-      if (params.get("funded") === "true") {
+      const status = params.get("status");
+      const isFunded = params.get("funded") === "true";
+      const isCancelled = params.get("cancelled") === "true";
+
+      // THE FIX: Check for cancellation OR failure BEFORE checking for success!
+      if (status === "cancelled" || status === "failed" || isCancelled) {
+        setAlertInfo({
+          title: "Payment Cancelled ⚠️",
+          message: "You cancelled the payment transaction. No funds were debited."
+        });
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      } 
+      // If it wasn't cancelled or failed, THEN check if it was successfully funded
+      else if (isFunded) {
         setAlertInfo({
           title: "Payment Successful 🎉",
           message: "Your wallet has been funded successfully! Balance is updating..."
@@ -105,17 +118,6 @@ export default function DashboardPage() {
         
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
-      } 
-      else if (params.get("cancelled") === "true" || params.get("trxref")) {
-        const status = params.get("status");
-        if (status === "cancelled" || status === "failed") {
-          setAlertInfo({
-            title: "Payment Cancelled ⚠️",
-            message: "You cancelled the payment transaction. No funds were debited."
-          });
-          const newUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, newUrl);
-        }
       }
     }
   }, []);
