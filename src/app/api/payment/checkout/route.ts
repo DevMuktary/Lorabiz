@@ -217,7 +217,7 @@ export async function POST(req: Request) {
       const txReference = `WLT_${registrationId || "SRV"}_${Date.now()}`;
 
       await prisma.$transaction(async (tx) => {
-        // ✅ THE FIX: Atomic decrement to prevent double-spending race conditions
+        // Atomic decrement to prevent double-spending race conditions
         const updatedWallet = await tx.wallet.update({
           where: { id: user.wallet!.id },
           data: { balance: { decrement: amountToPay } }
@@ -321,29 +321,32 @@ export async function POST(req: Request) {
     }
 
     // =========================================================================
-    // FLOW B: PAY ONLINE VIA PAYSTACK (SERVER-TO-SERVER INITIALIZATION)
+    // FLOW B: PAY ONLINE VIA KORAPAY (SERVER-TO-SERVER INITIALIZATION)
     // =========================================================================
     if (paymentMethod === "ONLINE") {
-      const secretKey = process.env.PAYSTACK_SECRET_KEY;
+      const secretKey = process.env.KORAPAY_SECRET_KEY;
       const appUrl = process.env.NEXTAUTH_URL || "https://lorabiz.com";
 
       if (!secretKey) {
-        console.error("❌ Paystack Secret Key missing from server environment.");
+        console.error("❌ Korapay Secret Key missing from server environment.");
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      // Packed serviceCategory into Paystack metadata for the Webhook to read
-      const paystackResponse = await fetch("https://api.paystack.co/transaction/initialize", {
+      const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${secretKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: user.email,
-          amount: Math.round(amountToPay * 100), 
+          amount: Math.round(amountToPay), // Korapay expects exact Naira amount
+          currency: "NGN",
           reference: reference,
-          callback_url: `${appUrl}${callbackPath}`,
+          redirect_url: `${appUrl}${callbackPath}`, // Korapay uses redirect_url
+          customer: {
+            email: user.email,
+            name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Customer"
+          },
           metadata: {
             userId: user.id,
             service: service || "business", 
@@ -356,19 +359,20 @@ export async function POST(req: Request) {
         }),
       });
 
-      const paystackData = await paystackResponse.json();
+      const koraData = await koraResponse.json();
 
-      if (!paystackResponse.ok || !paystackData.status || !paystackData.data?.authorization_url) {
-        console.error("❌ Paystack Initialization Failed:", paystackData);
+      if (!koraResponse.ok || !koraData.status || !koraData.data?.checkout_url) {
+        console.error("❌ Korapay Initialization Failed:", koraData);
         return NextResponse.json({ 
           success: false, 
-          message: paystackData.message || "Failed to initialize secure checkout with bank." 
+          message: koraData.message || "Failed to initialize secure checkout with bank." 
         }, { status: 400 });
       }
 
+      // Returned as `authorizationUrl` so frontend code doesn't need to change
       return NextResponse.json({ 
         success: true, 
-        authorizationUrl: paystackData.data.authorization_url,
+        authorizationUrl: koraData.data.checkout_url,
         reference: reference
       });
     }
