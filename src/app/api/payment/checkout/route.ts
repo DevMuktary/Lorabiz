@@ -332,6 +332,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
+      // Format updated to align with Korapay REST API spec
       const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
         method: "POST",
         headers: {
@@ -342,17 +343,15 @@ export async function POST(req: Request) {
           amount: Math.round(amountToPay), // Korapay expects exact Naira amount
           currency: "NGN",
           reference: reference,
-          redirect_url: `${appUrl}${callbackPath}`, // Korapay uses redirect_url
-          customer: {
-            email: user.email,
-            name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Customer"
-          },
+          redirect_url: `${appUrl}${callbackPath}`, 
+          customer_email: user.email,
+          customer_name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Customer",
+          narration: description,
           metadata: {
             userId: user.id,
             service: service || "business", 
             registrationId: registrationId || null,
             expectedAmount: amountToPay, 
-            description: description,
             appliedPromoId: appliedPromoId,
             serviceCategory: promoServiceKey || "OTHER"
           }
