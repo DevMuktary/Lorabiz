@@ -118,10 +118,8 @@ export async function POST(req: Request) {
       description = `Payment for SCUML Registration (${draft.companyName})`;
       reference = `ONL_SCUML_${registrationId}_${Date.now()}`;
       
-      // Send them back to the SCUML form page to trigger the success modal
       callbackPath = `/dashboard/scuml?verifying=true&draftId=${registrationId}`;
       
-      // Capture details for email notification
       regName = draft.companyName || "SCUML Application";
       scumlDraftType = draft.type || "Registration";
       displayId = registrationId;
@@ -152,7 +150,6 @@ export async function POST(req: Request) {
       reference = `ONL_${registrationId}_${Date.now()}`;
       callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?verifying=true`;
       
-      // Capture details for email notification
       regName = registration.proposedName || "Business Name Application";
       displayId = registration.trackingId || registrationId;
     }
@@ -325,37 +322,45 @@ export async function POST(req: Request) {
     // =========================================================================
     if (paymentMethod === "ONLINE") {
       const secretKey = process.env.KORAPAY_SECRET_KEY;
-      const appUrl = process.env.NEXTAUTH_URL || "https://lorabiz.com";
+      const appUrl = (process.env.NEXTAUTH_URL || "https://lorabiz.com").replace(/\/$/, "");
 
       if (!secretKey) {
         console.error("❌ Korapay Secret Key missing from server environment.");
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      // Format updated to align with Korapay REST API spec
+      // Safely construct metadata to strictly exclude ALL `null` values 
+      // (Korapay strictly validates against null fields in metadata)
+      const safeMetadata: Record<string, string | number> = {
+        userId: user.id,
+        service: service || "wallet_funding",
+        expectedAmount: amountToPay,
+        serviceCategory: promoServiceKey || "OTHER"
+      };
+
+      if (registrationId) safeMetadata.registrationId = registrationId;
+      if (appliedPromoId) safeMetadata.appliedPromoId = appliedPromoId;
+
+      const koraPayload = {
+        amount: Math.round(amountToPay), // Exact Naira amount
+        currency: "NGN",
+        reference: reference,
+        redirect_url: `${appUrl}${callbackPath}`, 
+        customer: {
+          email: user.email,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Customer"
+        },
+        narration: description,
+        metadata: safeMetadata
+      };
+
       const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${secretKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          amount: Math.round(amountToPay), // Korapay expects exact Naira amount
-          currency: "NGN",
-          reference: reference,
-          redirect_url: `${appUrl}${callbackPath}`, 
-          customer_email: user.email,
-          customer_name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Customer",
-          narration: description,
-          metadata: {
-            userId: user.id,
-            service: service || "business", 
-            registrationId: registrationId || null,
-            expectedAmount: amountToPay, 
-            appliedPromoId: appliedPromoId,
-            serviceCategory: promoServiceKey || "OTHER"
-          }
-        }),
+        body: JSON.stringify(koraPayload),
       });
 
       const koraData = await koraResponse.json();
@@ -368,7 +373,6 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
 
-      // Returned as `authorizationUrl` so frontend code doesn't need to change
       return NextResponse.json({ 
         success: true, 
         authorizationUrl: koraData.data.checkout_url,
