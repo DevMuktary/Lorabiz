@@ -33,7 +33,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Fetch Wallet Balance on mount (No Paystack Script Injection Needed!)
+  // 1. Fetch Wallet Balance on mount
   useEffect(() => {
     const fetchWallet = async () => {
       try {
@@ -58,19 +58,96 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
     };
   }, []);
 
-  // 2. AUTO-START VERIFICATION POLLING WHEN RETURNING FROM PAYSTACK ONLINE
+  // =====================================================================
+  // 2. ROBUST REDIRECT VERIFICATION (FIX FOR THE INFINITE LOADING TRAP)
+  // =====================================================================
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const isReturningFromPaystack = params.get("verifying") === "true" || params.get("paid") === "true" || params.has("trxref");
+      const isVerifying = params.get("verifying") === "true";
+      const reference = params.get("reference");
       
-      if (isReturningFromPaystack && processingState === "idle") {
-        startWebhookPolling();
+      if (isVerifying && processingState === "idle") {
+        // Immediately clean the URL so if the user refreshes, they aren't trapped
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+
+        if (reference) {
+          verifyOnlinePayment(reference);
+        } else {
+          // User closed the gateway and no reference was appended
+          setErrorMsg("Payment was cancelled or interrupted. No funds were debited.");
+          setProcessingState("idle");
+        }
       }
     }
   }, [registrationId, processingState]);
 
-  // Prevent bfcache freeze if user presses browser Back from Paystack checkout page
+  const verifyOnlinePayment = async (reference: string) => {
+    setProcessingState("verifying");
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch('/api/payment/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Payment succeeded
+        setProcessingState("success");
+        setTimeout(() => {
+          router.refresh(); 
+          router.push("/dashboard/cac/new-incorporation?success=true");
+        }, 2500);
+      } else {
+        // User cancelled or transaction failed
+        setErrorMsg("Transaction cancelled or failed. Please try again.");
+        setProcessingState("idle");
+      }
+    } catch (err) {
+      // Fallback: If network drops during verify, check our own DB
+      startWebhookPollingFallback();
+    }
+  };
+
+  // 3. Fallback Polling (Only runs if explicit verify route throws a network error)
+  const startWebhookPollingFallback = () => {
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/cac/register/llc/details/${registrationId}`);
+        const json = await res.json();
+        
+        // Once Webhook updates status from UNSUBMITTED to PENDING, show success!
+        if (json.success && json.data.status !== "UNSUBMITTED") {
+          if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+          setProcessingState("success");
+          
+          setTimeout(() => {
+            router.refresh();
+            router.push("/dashboard/cac/new-incorporation?success=true");
+          }, 2500);
+        }
+      } catch (e) {
+        // Silent catch while polling
+      }
+    }, 2000);
+
+    // Escape hatch after 15 seconds
+    setTimeout(() => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        if (processingState !== "success") {
+          setErrorMsg("Could not confirm payment status automatically. Please check your dashboard history in a moment.");
+          setProcessingState("idle");
+        }
+      }
+    }, 15000);
+  };
+
+  // Prevent bfcache freeze if user presses browser Back from checkout page
   useEffect(() => {
     const handlePageRestore = (event: PageTransitionEvent) => {
       if (event.persisted) {
@@ -94,45 +171,6 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [gatewayLoading]);
-
-  // 3. Webhook Polling Logic
-  const startWebhookPolling = () => {
-    setProcessingState("verifying");
-    
-    pollingIntervalRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/cac/register/llc/details/${registrationId}`);
-        const json = await res.json();
-        
-        // Once Webhook updates status from UNSUBMITTED to PENDING, show success and redirect!
-        if (json.success && json.data.status !== "UNSUBMITTED") {
-          if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-          setProcessingState("success");
-          
-          // Clean URL parameters
-          const newUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, newUrl);
-
-          setTimeout(() => {
-            router.push("/dashboard/cac/new-incorporation?success=true");
-          }, 2500);
-        }
-      } catch (e) {
-        // Silent catch while polling
-      }
-    }, 1500);
-
-    // Escape hatch after 30 seconds
-    setTimeout(() => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        if (processingState !== "success") {
-          setErrorMsg("Payment received, but confirmation is taking slightly longer than usual. Please check your dashboard in a moment.");
-          setProcessingState("idle");
-        }
-      }
-    }, 30000);
-  };
 
   // =====================================================================
   // PROMO HANDLERS
@@ -212,7 +250,10 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
 
       if (method === "WALLET") {
         setProcessingState("success");
-        setTimeout(() => router.push("/dashboard/cac/new-incorporation?success=true"), 2000);
+        setTimeout(() => {
+          router.refresh(); // Forces Next.js to fetch new DB data
+          router.push("/dashboard/cac/new-incorporation?success=true");
+        }, 2000);
       } else if (method === "ONLINE") {
         if (!data.authorizationUrl) {
           setErrorMsg("Server error: Could not obtain checkout link. Please try again.");
@@ -238,7 +279,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
     <>
       {/* =========================================================================
           FRIENDLY DANCING BABY DOLL OVERLAY
-          Delightful animation while the browser navigates natively to Paystack!
+          Delightful animation while the browser navigates natively to Gateway!
       ========================================================================= */}
       {gatewayLoading && (
         <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-300 select-none p-6 text-center">
@@ -263,7 +304,7 @@ export default function PaymentModal({ registrationId, proposedName, totalAmount
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
-            Connecting to Paystack...
+            Connecting to KoraPay...
           </h3>
           
           <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
