@@ -32,7 +32,6 @@ export async function POST(req: Request) {
     let callbackPath = "/dashboard";
     let promoServiceKey = ""; 
 
-    // Variables needed for triggering notifications accurately
     let regName = "Registration";
     let displayId = registrationId || "";
     let scumlDraftType = "Registration";
@@ -41,7 +40,6 @@ export async function POST(req: Request) {
     // 2. IDENTIFY SERVICE & EXCLUSIVELY CALCULATE PRICE ON THE SERVER
     // =========================================================================
     
-    // CASE A: DIRECT WALLET FUNDING
     if (service === "wallet_funding") {
       if (!amount || isNaN(Number(amount)) || Number(amount) < 100) {
         return NextResponse.json({ success: false, message: "Minimum wallet funding amount is ₦100." }, { status: 400 });
@@ -56,7 +54,6 @@ export async function POST(req: Request) {
       callbackPath = "/dashboard?funded=true";
       promoServiceKey = "WALLET_FUNDING";
 
-    // CASE B: LLC (LIMITED LIABILITY COMPANY) REGISTRATION
     } else if (service === "llc") {
       promoServiceKey = "LLC"; 
       
@@ -92,7 +89,6 @@ export async function POST(req: Request) {
       regName = registration.proposedName || "LLC Application";
       displayId = registration.trackingId || registrationId;
 
-    // CASE C: SCUML REGISTRATION
     } else if (service === "scuml") {
       promoServiceKey = "SCUML"; 
       
@@ -122,7 +118,6 @@ export async function POST(req: Request) {
       scumlDraftType = draft.type || "Registration";
       displayId = registrationId;
 
-    // CASE D: BUSINESS NAME REGISTRATION
     } else {
       promoServiceKey = "BUSINESS_NAME"; 
       
@@ -157,7 +152,7 @@ export async function POST(req: Request) {
     }
 
     // =========================================================================
-    // 3. PROMO CODE VALIDATION & DISCOUNT CALCULATION
+    // 3. PROMO CODE VALIDATION
     // =========================================================================
     let amountToPay = baseAmountToPay;
     let appliedPromoId: string | null = null;
@@ -197,10 +192,9 @@ export async function POST(req: Request) {
     }
 
     // =========================================================================
-    // FLOW A: PAY WITH INTERNAL WALLET BALANCE (UNCHANGED)
+    // FLOW A: PAY WITH INTERNAL WALLET BALANCE 
     // =========================================================================
     if (paymentMethod === "WALLET") {
-        // [Existing Wallet Logic Remains Exactly the Same]
         const currentBalance = Number(user.wallet.balance);
         
         if (currentBalance < amountToPay) {
@@ -308,7 +302,7 @@ export async function POST(req: Request) {
     }
 
     // =========================================================================
-    // FLOW B: PAY ONLINE VIA KORAPAY (SERVER-TO-SERVER INITIALIZATION)
+    // FLOW B: PAY ONLINE VIA KORAPAY
     // =========================================================================
     if (paymentMethod === "ONLINE") {
       const secretKey = process.env.KORAPAY_SECRET_KEY;
@@ -319,7 +313,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      // We package metadata into a single JSON string because KoraPay restricts metadata keys to 5 maximum.
       const payloadString = JSON.stringify({
         userId: user.id,
         service: service || "business", 
@@ -336,8 +329,7 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: user.email,
-          amount: Math.round(amountToPay), // KoraPay uses standard NGN values, not Kobo
+          amount: Math.round(amountToPay),
           currency: "NGN",
           reference: reference,
           redirect_url: `${appUrl}${callbackPath}`,
@@ -347,7 +339,7 @@ export async function POST(req: Request) {
             name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "Customer"
           },
           metadata: {
-            custom_payload: payloadString
+            payload: payloadString 
           }
         }),
       });
@@ -362,7 +354,6 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
 
-      // We map Kora's checkout_url back to authorizationUrl so the frontend continues to work seamlessly
       return NextResponse.json({ 
         success: true, 
         authorizationUrl: koraData.data.checkout_url,
