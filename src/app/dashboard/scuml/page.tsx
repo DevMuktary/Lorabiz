@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   Info, CheckCircle, Clock, X, WarningCircle, ArrowRight, ListDashes, 
-  ArrowLeft, CaretDown, CaretUp, Buildings, Storefront, Globe, Tag
+  ArrowLeft, CaretDown, CaretUp, Buildings, Storefront, Globe, Tag, Spinner
 } from "@phosphor-icons/react";
 import { FileUpload } from "@/components/FileUpload";
 import ScumlPaymentModal from "@/components/features/scuml/ScumlPaymentModal";
@@ -44,16 +44,69 @@ export default function ScumlPage() {
   });
 
   const [paymentDraftId, setPaymentDraftId] = useState<string | null>(null);
+  
+  // UX State for Verification
+  const [alertInfo, setAlertInfo] = useState<{title: string, message: string} | null>(null);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
 
-  // Catch Paystack returning the user, and auto-open the modal!
+  // =========================================================================
+  // ROBUST PAYMENT VERIFICATION & CANCEL HANDLER
+  // =========================================================================
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("verifying") === "true" && params.get("draftId")) {
-        setPaymentDraftId(params.get("draftId"));
+      const isVerifying = params.get("verifying") === "true";
+      const draftId = params.get("draftId");
+      const reference = params.get("reference");
+
+      if (isVerifying && draftId) {
+        // Immediately clean the URL so the PaymentModal doesn't get stuck in a loading state
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+
+        if (reference) {
+          setIsVerifyingPayment(true);
+          setAlertInfo({ title: "Verifying Payment 🔄", message: "Confirming your transaction with the bank..." });
+
+          fetch('/api/payment/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reference })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              setAlertInfo({ title: "Payment Successful 🎉", message: "Your application is now processing! Redirecting..." });
+              setTimeout(() => {
+                window.location.href = "/dashboard/scuml/history";
+              }, 1500);
+            } else {
+              setAlertInfo({ title: "Payment Incomplete ⚠️", message: "Transaction failed or was cancelled. You can try again." });
+              setPaymentDraftId(draftId); // Opens modal with clear URL so they can retry
+            }
+          })
+          .catch(() => {
+            setAlertInfo({ title: "Status Pending ⏳", message: "Network error during verification. We'll keep checking." });
+            setPaymentDraftId(draftId);
+          })
+          .finally(() => {
+            setIsVerifyingPayment(false);
+          });
+        } else {
+          // User closed the KoraPay checkout without a reference being passed back
+          setAlertInfo({ title: "Payment Cancelled ⚠️", message: "You closed the payment gateway. No funds were debited." });
+          setPaymentDraftId(draftId); // Opens modal with clear URL so they can retry
+        }
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (alertInfo) {
+      const timer = setTimeout(() => setAlertInfo(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [alertInfo]);
 
   // Fetch Live Pricing from DB
   useEffect(() => {
@@ -168,7 +221,16 @@ export default function ScumlPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto relative">
       
-      {showIntroModal && (
+      {/* Full Screen Loading Overlay for Verification */}
+      {isVerifyingPayment && (
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200">
+          <Spinner className="animate-spin h-12 w-12 text-primary mb-4" weight="bold" />
+          <h2 className="text-xl font-black">Verifying Payment</h2>
+          <p className="text-muted-foreground mt-2">Please wait while we confirm your transaction...</p>
+        </div>
+      )}
+
+      {showIntroModal && !isVerifyingPayment && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500">
             <div className="flex items-center gap-4 mb-4">
@@ -378,7 +440,7 @@ export default function ScumlPage() {
 
                 <button 
                   type="submit"
-                  disabled={!consentChecked || !companyName || isLoadingPrice}
+                  disabled={!consentChecked || !companyName || isLoadingPrice || isSubmitting}
                   className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
                 >
                   {isLoadingPrice ? "Loading pricing..." : `Proceed to Review`}
@@ -479,6 +541,25 @@ export default function ScumlPage() {
           companyName={companyName}
           onClose={() => setPaymentDraftId(null)}
         />
+      )}
+
+      {/* Toast Alert Component */}
+      {alertInfo && (
+        <div className="fixed bottom-6 right-6 bg-foreground text-background px-5 py-4 rounded-2xl shadow-2xl z-[99999] flex items-center gap-4 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm border border-border">
+          <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
+            <Info weight="fill" className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h4 className="font-bold text-sm leading-tight">{alertInfo.title}</h4>
+            <p className="text-xs opacity-90 mt-1 leading-snug">{alertInfo.message}</p>
+          </div>
+          <button 
+            onClick={() => setAlertInfo(null)} 
+            className="ml-2 p-1.5 hover:bg-background/20 rounded-full transition-colors cursor-pointer shrink-0"
+          >
+            <X weight="bold" className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
     </div>
