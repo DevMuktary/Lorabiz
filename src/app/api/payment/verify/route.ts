@@ -19,12 +19,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Invalid transaction reference format" }, { status: 400 });
     }
 
-    if (!reference.startsWith("ONL_")) {
+    // Allow Service (ONL_), Wallet (FW_), and Name Sub (NSUB-) references
+    if (!reference.startsWith("ONL_") && !reference.startsWith("FW_") && !reference.startsWith("NSUB-")) {
       return NextResponse.json({ message: "Invalid transaction type for this endpoint" }, { status: 400 });
     }
 
     const safeReference = encodeURIComponent(reference);
-    const registrationId = reference.split("_")[1];
 
     // 1. Verify Payment Server-to-Server with KoraPay
     const koraRes = await fetch(`https://api.korapay.com/merchant/api/v1/charges/${safeReference}`, {
@@ -51,68 +51,109 @@ export async function POST(req: Request) {
       });
       if (!user || !user.wallet) throw new Error("User or wallet missing");
 
-      // IDEMPOTENCY CHECK
+      // IDEMPOTENCY CHECK - If Webhook beat us to it, just return success!
       const existingTx = await tx.transaction.findUnique({ where: { reference } });
       if (existingTx && existingTx.status === "SUCCESS") {
         return; 
       }
 
-      const registration = await tx.businessRegistration.findUnique({ where: { id: registrationId } });
-      if (!registration || registration.status !== "UNSUBMITTED") {
-        throw new Error("Application already submitted or invalid");
+      // =====================================================================
+      // SCENARIO A: WALLET FUNDING
+      // =====================================================================
+      if (reference.startsWith("FW_")) {
+        const updatedWallet = await tx.wallet.update({
+          where: { id: user.wallet.id },
+          data: { balance: { increment: amountPaid } }
+        });
+        
+        await tx.transaction.create({
+          data: {
+            walletId: user.wallet.id,
+            amount: amountPaid,
+            balanceBefore: Number(updatedWallet.balance) - amountPaid,
+            balanceAfter: Number(updatedWallet.balance),
+            type: "CREDIT",
+            status: "SUCCESS",
+            reference: reference, 
+            description: "Wallet Funding via KoraPay Gateway",
+            serviceCategory: "WALLET_FUNDING"
+          }
+        });
+        return;
       }
 
-      // STEP A: ATOMICALLY FUND THE WALLET
-      const fundedWallet = await tx.wallet.update({
-        where: { id: user.wallet.id },
-        data: { balance: { increment: amountPaid } }
-      });
-      const balanceAfterCredit = Number(fundedWallet.balance);
-      const balanceBeforeCredit = balanceAfterCredit - amountPaid;
+      // =====================================================================
+      // SCENARIO B: SERVICE CHECKOUT (CAC/SCUML)
+      // =====================================================================
+      if (reference.startsWith("ONL_")) {
+        const isScuml = reference.startsWith("ONL_SCUML_");
+        const registrationId = isScuml ? reference.split("_")[2] : reference.split("_")[1];
 
-      await tx.transaction.create({
-        data: {
-          walletId: user.wallet.id,
-          amount: amountPaid,
-          balanceBefore: balanceBeforeCredit,
-          balanceAfter: balanceAfterCredit,
-          type: "CREDIT",
-          status: "SUCCESS",
-          reference: reference, 
-          description: "KoraPay Online Funding",
-          serviceCategory: "WALLET_FUNDING"
+        // STEP A: ATOMICALLY FUND THE WALLET
+        const fundedWallet = await tx.wallet.update({
+          where: { id: user.wallet.id },
+          data: { balance: { increment: amountPaid } }
+        });
+        const balanceAfterCredit = Number(fundedWallet.balance);
+
+        await tx.transaction.create({
+          data: {
+            walletId: user.wallet.id,
+            amount: amountPaid,
+            balanceBefore: balanceAfterCredit - amountPaid,
+            balanceAfter: balanceAfterCredit,
+            type: "CREDIT",
+            status: "SUCCESS",
+            reference: reference, 
+            description: "KoraPay Online Funding",
+            serviceCategory: "WALLET_FUNDING"
+          }
+        });
+
+        // STEP B: EXACT SIMULTANEOUS ATOMIC DEBIT 
+        const debitedWallet = await tx.wallet.update({
+          where: { id: user.wallet.id },
+          data: { balance: { decrement: amountPaid } }
+        });
+        const balanceAfterDebit = Number(debitedWallet.balance);
+
+        await tx.transaction.create({
+          data: {
+            walletId: user.wallet.id,
+            amount: amountPaid,
+            balanceBefore: balanceAfterCredit,
+            balanceAfter: balanceAfterDebit,
+            type: "DEBIT",
+            status: "SUCCESS",
+            reference: `SRV_PAY_${registrationId}_${Date.now()}`,
+            description: `Payment for Service Registration`,
+            serviceCategory: isScuml ? "SCUML" : "BUSINESS_NAME"
+          }
+        });
+
+        // STEP C: UPDATE REGISTRATION STATUS (Safely route between Business and LLC)
+        if (!isScuml) {
+          const bizReg = await tx.businessRegistration.findUnique({ where: { id: registrationId }});
+          
+          if (bizReg && bizReg.status === "UNSUBMITTED") {
+            await tx.businessRegistration.update({
+              where: { id: registrationId },
+              data: { status: "PENDING" } 
+            });
+          } else {
+            const llcReg = await tx.llcRegistration.findUnique({ where: { id: registrationId }});
+            if (llcReg && llcReg.status === "UNSUBMITTED") {
+              await tx.llcRegistration.update({
+                where: { id: registrationId },
+                data: { status: "PENDING" } 
+              });
+            }
+          }
         }
-      });
-
-      // STEP B: EXACT SIMULTANEOUS ATOMIC DEBIT 
-      const debitedWallet = await tx.wallet.update({
-        where: { id: user.wallet.id },
-        data: { balance: { decrement: amountPaid } }
-      });
-      const balanceAfterDebit = Number(debitedWallet.balance);
-
-      await tx.transaction.create({
-        data: {
-          walletId: user.wallet.id,
-          amount: amountPaid,
-          balanceBefore: balanceAfterCredit,
-          balanceAfter: balanceAfterDebit,
-          type: "DEBIT",
-          status: "SUCCESS",
-          reference: `SRV_PAY_${registrationId}_${Date.now()}`,
-          description: `Payment for Business Registration (${registration.proposedName})`,
-          serviceCategory: "BUSINESS_NAME"
-        }
-      });
-
-      // STEP C: UPDATE REGISTRATION STATUS
-      await tx.businessRegistration.update({
-        where: { id: registrationId },
-        data: { status: "PENDING" } 
-      });
+      }
     });
 
-    return NextResponse.json({ success: true, message: "Payment verified and application submitted!" });
+    return NextResponse.json({ success: true, message: "Payment verified successfully!" });
 
   } catch (error: any) {
     console.error("Payment Verification Error:", error.message);
