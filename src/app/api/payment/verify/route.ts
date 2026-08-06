@@ -20,7 +20,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Invalid transaction reference format" }, { status: 400 });
     }
 
-    // Allow Service (ONL_), Wallet (FW_), and Name Sub (NSUB-) references
     if (!reference.startsWith("ONL_") && !reference.startsWith("FW_") && !reference.startsWith("NSUB-")) {
       return NextResponse.json({ message: "Invalid transaction type for this endpoint" }, { status: 400 });
     }
@@ -41,21 +40,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Payment verification failed with KoraPay." }, { status: 400 });
     }
 
-    const amountPaid = Number(koraData.data.amount); // Standard NGN from KoraPay
+    const amountPaid = Number(koraData.data.amount);
     const userEmail = session.user.email as string;
 
     // =====================================================================
-    // CRITICAL FIX: PULL SCUML DRAFT FROM REDIS BEFORE TRANSACTION
+    // CRITICAL FIX: SAFELY EXTRACT REGISTRATION ID IGNORING UNDERSCORES
     // =====================================================================
     let scumlDraft: any = null;
     const isScuml = reference.startsWith("ONL_SCUML_");
-    const registrationId = isScuml ? reference.split("_")[2] : reference.split("_")[1];
-
+    
+    let registrationId = "";
     if (isScuml) {
+      const temp = reference.replace("ONL_SCUML_", "");
+      registrationId = temp.substring(0, temp.lastIndexOf("_")); // Properly grabs "scuml_draft_XYZ"
+      
       const draftStr = await redis.get(registrationId);
       if (draftStr) {
         scumlDraft = JSON.parse(draftStr);
       }
+    } else if (reference.startsWith("ONL_")) {
+      const temp = reference.replace("ONL_", "");
+      registrationId = temp.substring(0, temp.lastIndexOf("_"));
     }
 
     // 2. ATOMIC TRANSACTION TO PREVENT RACE CONDITIONS
@@ -66,15 +71,11 @@ export async function POST(req: Request) {
       });
       if (!user || !user.wallet) throw new Error("User or wallet missing");
 
-      // IDEMPOTENCY CHECK - If Webhook beat us to it, just return success!
       const existingTx = await tx.transaction.findUnique({ where: { reference } });
       if (existingTx && existingTx.status === "SUCCESS") {
         return; 
       }
 
-      // =====================================================================
-      // SCENARIO A: WALLET FUNDING
-      // =====================================================================
       if (reference.startsWith("FW_")) {
         const updatedWallet = await tx.wallet.update({
           where: { id: user.wallet.id },
@@ -97,12 +98,7 @@ export async function POST(req: Request) {
         return;
       }
 
-      // =====================================================================
-      // SCENARIO B: SERVICE CHECKOUT (CAC/SCUML)
-      // =====================================================================
       if (reference.startsWith("ONL_")) {
-        
-        // STEP A: ATOMICALLY FUND THE WALLET
         const fundedWallet = await tx.wallet.update({
           where: { id: user.wallet.id },
           data: { balance: { increment: amountPaid } }
@@ -123,7 +119,6 @@ export async function POST(req: Request) {
           }
         });
 
-        // STEP B: EXACT SIMULTANEOUS ATOMIC DEBIT 
         const debitedWallet = await tx.wallet.update({
           where: { id: user.wallet.id },
           data: { balance: { decrement: amountPaid } }
@@ -144,7 +139,6 @@ export async function POST(req: Request) {
           }
         });
 
-        // STEP C: UPDATE/CREATE REGISTRATION STATUS (Now properly handles SCUML!)
         if (isScuml) {
           if (scumlDraft) {
             await tx.scumlRegistration.create({ 
@@ -165,7 +159,6 @@ export async function POST(req: Request) {
           }
         } else {
           const bizReg = await tx.businessRegistration.findUnique({ where: { id: registrationId }});
-          
           if (bizReg && bizReg.status === "UNSUBMITTED") {
             await tx.businessRegistration.update({
               where: { id: registrationId },
@@ -184,7 +177,6 @@ export async function POST(req: Request) {
       }
     });
 
-    // Cleanup Redis Draft if it was a SCUML transaction
     if (isScuml && scumlDraft) {
       await redis.del(registrationId);
     }
