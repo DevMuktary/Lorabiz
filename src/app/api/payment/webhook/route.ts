@@ -32,11 +32,13 @@ export async function POST(req: Request) {
     if (event.event === "charge.success") {
       const reference = event.data?.reference;
       const amountPaid = Number(event.data?.amount);
-      const userEmail = event.data?.customer?.email;
       
       const metadata = event.data?.metadata || {};
       
-      // Map back to the flat keys we sent in the new init function
+      // Pull the email from our custom metadata instead of the missing customer object
+      const userEmail = metadata.email || event.data?.customer?.email; 
+      
+      // Map back to the flat keys we sent
       const expectedAmount = metadata.expected ? Number(metadata.expected) : null;
       const appliedPromoId = metadata["promo-id"] || null;
       const serviceCategory = metadata.category || "OTHER";
@@ -47,7 +49,7 @@ export async function POST(req: Request) {
       const registrationId = metadata["reg-id"] || regIdFallback;
 
       if (!reference || !userEmail) {
-        return NextResponse.json({ message: "Invalid payload data" }, { status: 400 });
+        return NextResponse.json({ message: "Invalid payload data (Missing Reference or Email)" }, { status: 400 });
       }
 
       // =========================================================================
