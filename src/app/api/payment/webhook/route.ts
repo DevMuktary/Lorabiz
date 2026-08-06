@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     const event = JSON.parse(rawBody);
     const secret = process.env.KORAPAY_SECRET_KEY as string;
 
+    // Validate Signature natively using Kora's structure rules
     const expectedSignature = crypto
       .createHmac("sha256", secret)
       .update(JSON.stringify(event.data))
@@ -38,23 +39,25 @@ export async function POST(req: Request) {
       console.log(`✅ Event Validated. Ref: ${reference} | Amount: ${amountPaid}`);
 
       let userId: string | null = null;
-      let serviceType: "business" | "llc" | "scuml" | "wallet_funding" | "name_sub" | null = null;
+      let serviceType: "business" | "llc" | "scuml" | "wallet_funding" | null = null;
       let registrationId: string | null = null;
       let regName = "Registration";
       let displayId = "";
       let scumlDraft: any = null;
 
       // =========================================================================
-      // 1. STATELESS USER RESOLUTION (We find the User based on the Reference)
+      // 1. STATELESS USER RESOLUTION (ROBUST STRING PARSING)
       // =========================================================================
       if (reference.startsWith("FW_USR_")) {
-          // Format: FW_USR_{userId}_{timestamp}
           serviceType = "wallet_funding";
-          userId = reference.split("_")[2];
+          const temp = reference.replace("FW_USR_", "");
+          userId = temp.substring(0, temp.lastIndexOf("_"));
       } 
       else if (reference.startsWith("ONL_SCUML_")) {
           serviceType = "scuml";
-          registrationId = reference.split("_")[2];
+          const temp = reference.replace("ONL_SCUML_", "");
+          registrationId = temp.substring(0, temp.lastIndexOf("_")); // Safely extracts "scuml_draft_xyz"
+          
           const draftStr = await redis.get(registrationId);
           if (draftStr) {
               scumlDraft = JSON.parse(draftStr);
@@ -66,8 +69,9 @@ export async function POST(req: Request) {
           }
       } 
       else if (reference.startsWith("ONL_")) {
-          registrationId = reference.split("_")[1];
-          // Try Business Name
+          const temp = reference.replace("ONL_", "");
+          registrationId = temp.substring(0, temp.lastIndexOf("_"));
+          
           const bizReg = await prisma.businessRegistration.findUnique({ where: { id: registrationId } });
           if (bizReg) {
               serviceType = "business";
@@ -75,7 +79,6 @@ export async function POST(req: Request) {
               regName = bizReg.proposedName;
               displayId = bizReg.trackingId || registrationId;
           } else {
-              // Try LLC
               const llcReg = await prisma.llcRegistration.findUnique({ where: { id: registrationId } });
               if (llcReg) {
                   serviceType = "llc";
@@ -91,7 +94,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ message: "Unresolvable Reference" }, { status: 400 });
       }
 
-      // Fetch the resolved user
       const user = await prisma.user.findUnique({ where: { id: userId }, include: { wallet: true } });
       if (!user || !user.wallet) {
           console.error(`❌ FAILED: Resolved User (${userId}) missing or has no wallet.`);
@@ -114,7 +116,6 @@ export async function POST(req: Request) {
                 return; 
             }
 
-            // A. WALLET FUNDING LOGIC
             if (serviceType === "wallet_funding") {
                 const updatedWallet = await tx.wallet.update({
                   where: { id: user.wallet!.id },
@@ -137,7 +138,6 @@ export async function POST(req: Request) {
                 return;
             }
 
-            // B. SERVICE CHECKOUT LOGIC (Business / LLC / SCUML)
             const fundedWallet = await tx.wallet.update({
               where: { id: user.wallet!.id },
               data: { balance: { increment: amountPaid } }
@@ -220,9 +220,6 @@ export async function POST(req: Request) {
           console.error("❌ DATABASE UPDATE FAILED:", dbError);
       }
 
-      // =========================================================================
-      // 3. POST-PAYMENT ACTIONS (Emails / Notifications)
-      // =========================================================================
       if (isPaymentFullySuccessful) {
         if (serviceType === "scuml" && scumlDraft && registrationId) {
           await redis.del(registrationId);
