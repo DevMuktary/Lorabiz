@@ -57,6 +57,7 @@ const SERVICES = [
     logo: "/smedan.png",
     active: false,
   },
+  
 ];
 
 export default function DashboardPage() {
@@ -91,54 +92,37 @@ export default function DashboardPage() {
     fetchBalance();
   }, []);
 
-  // ✅ KORAPAY FIX: Handle KoraPay's explicit statuses and silent cancellations (reference only)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       
-      const status = params.get("status"); 
-      const action = params.get("action"); 
-      const reference = params.get("reference"); 
-      
-      if (action === "funding_checkout") {
+      if (params.get("funded") === "true") {
+        setAlertInfo({
+          title: "Payment Successful 🎉",
+          message: "Your wallet has been funded successfully! Balance is updating..."
+        });
+        setTimeout(fetchBalance, 1500);
         
-        // 1. Explicit Failure/Cancellation
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      } 
+      else if (params.get("cancelled") === "true" || params.get("trxref")) {
+        const status = params.get("status");
         if (status === "cancelled" || status === "failed") {
           setAlertInfo({
             title: "Payment Cancelled ⚠️",
             message: "You cancelled the payment transaction. No funds were debited."
           });
-        } 
-        // 2. Explicit Success
-        else if (status === "success" || status === "successful") {
-          setAlertInfo({
-            title: "Payment Received 🎉",
-            message: "Your payment was successful! Wallet balance is updating..."
-          });
-          setTimeout(fetchBalance, 2000); 
-          setTimeout(fetchBalance, 5000);
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
         }
-        // 3. Silent Return (User closed modal - only reference is present)
-        else if (reference) {
-          setAlertInfo({
-            title: "Verifying Transaction 🔄",
-            message: "If you completed the payment, your balance will update shortly."
-          });
-          // Poll the balance just in case it actually went through
-          setTimeout(fetchBalance, 3000); 
-          setTimeout(fetchBalance, 6000);
-        }
-        
-        // Clean up the URL so it doesn't trigger again on refresh
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
       }
     }
   }, []);
 
   useEffect(() => {
     if (alertInfo) {
-      const timer = setTimeout(() => setAlertInfo(null), 5000);
+      const timer = setTimeout(() => setAlertInfo(null), 4000);
       return () => clearTimeout(timer);
     }
   }, [alertInfo]);
@@ -212,6 +196,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
+          {/* Pricing Link - Now distinctly styled as a clickable pill button */}
           <Link 
             href="/dashboard/pricing"
             className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-3.5 py-1.5 rounded-full hover:bg-primary hover:text-primary-foreground transition-all active:scale-95 md:mr-4 shadow-sm group"
