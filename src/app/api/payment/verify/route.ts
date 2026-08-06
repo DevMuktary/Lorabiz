@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { redis } from "@/lib/redis";
 
 export async function POST(req: Request) {
   try {
@@ -42,6 +43,20 @@ export async function POST(req: Request) {
 
     const amountPaid = Number(koraData.data.amount); // Standard NGN from KoraPay
     const userEmail = session.user.email as string;
+
+    // =====================================================================
+    // CRITICAL FIX: PULL SCUML DRAFT FROM REDIS BEFORE TRANSACTION
+    // =====================================================================
+    let scumlDraft: any = null;
+    const isScuml = reference.startsWith("ONL_SCUML_");
+    const registrationId = isScuml ? reference.split("_")[2] : reference.split("_")[1];
+
+    if (isScuml) {
+      const draftStr = await redis.get(registrationId);
+      if (draftStr) {
+        scumlDraft = JSON.parse(draftStr);
+      }
+    }
 
     // 2. ATOMIC TRANSACTION TO PREVENT RACE CONDITIONS
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -86,9 +101,7 @@ export async function POST(req: Request) {
       // SCENARIO B: SERVICE CHECKOUT (CAC/SCUML)
       // =====================================================================
       if (reference.startsWith("ONL_")) {
-        const isScuml = reference.startsWith("ONL_SCUML_");
-        const registrationId = isScuml ? reference.split("_")[2] : reference.split("_")[1];
-
+        
         // STEP A: ATOMICALLY FUND THE WALLET
         const fundedWallet = await tx.wallet.update({
           where: { id: user.wallet.id },
@@ -131,8 +144,26 @@ export async function POST(req: Request) {
           }
         });
 
-        // STEP C: UPDATE REGISTRATION STATUS (Safely route between Business and LLC)
-        if (!isScuml) {
+        // STEP C: UPDATE/CREATE REGISTRATION STATUS (Now properly handles SCUML!)
+        if (isScuml) {
+          if (scumlDraft) {
+            await tx.scumlRegistration.create({ 
+              data: {
+                id: registrationId, 
+                userId: scumlDraft.userId,
+                type: scumlDraft.type,
+                companyName: scumlDraft.companyName,
+                certificateUrl: scumlDraft.documents.certificateUrl,
+                statusReportUrl: scumlDraft.documents.statusReportUrl,
+                memorandumUrl: scumlDraft.documents.memorandumUrl || null,
+                constitutionUrl: scumlDraft.documents.constitutionUrl || null,
+                status: "PENDING",
+                amountPaid: amountPaid,
+                transactionRef: reference
+              } 
+            });
+          }
+        } else {
           const bizReg = await tx.businessRegistration.findUnique({ where: { id: registrationId }});
           
           if (bizReg && bizReg.status === "UNSUBMITTED") {
@@ -152,6 +183,11 @@ export async function POST(req: Request) {
         }
       }
     });
+
+    // Cleanup Redis Draft if it was a SCUML transaction
+    if (isScuml && scumlDraft) {
+      await redis.del(registrationId);
+    }
 
     return NextResponse.json({ success: true, message: "Payment verified successfully!" });
 
