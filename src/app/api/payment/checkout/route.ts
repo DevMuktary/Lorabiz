@@ -352,6 +352,10 @@ export async function POST(req: Request) {
         currency: "NGN",
         reference: reference,
         redirect_url: `${appUrl}${callbackPath}`, 
+        
+        // ✅ CRITICAL FIX: Forcing KoraPay to ping this exact URL regardless of dashboard settings
+        notification_url: `${appUrl}/api/payment/webhook`, 
+
         customer: {
           email: user.email,
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Customer"
