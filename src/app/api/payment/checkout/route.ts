@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       baseAmountToPay = Math.round(Number(amount));
       description = "Wallet Funding via Online Gateway";
       reference = `FW_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
-      callbackPath = "/dashboard/wallet?funded=true";
+      callbackPath = "/dashboard?funded=true";
       promoServiceKey = "WALLET_FUNDING";
 
     // CASE B: LLC (LIMITED LIABILITY COMPANY) REGISTRATION
