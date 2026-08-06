@@ -192,7 +192,7 @@ export async function POST(req: Request) {
     }
 
     // =========================================================================
-    // FLOW A: PAY WITH INTERNAL WALLET BALANCE 
+    // FLOW A: PAY WITH INTERNAL WALLET BALANCE
     // =========================================================================
     if (paymentMethod === "WALLET") {
         const currentBalance = Number(user.wallet.balance);
@@ -313,14 +313,30 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      const payloadString = JSON.stringify({
-        userId: user.id,
-        service: service || "business", 
-        registrationId: registrationId || null,
-        expectedAmount: amountToPay,
-        appliedPromoId: appliedPromoId,
-        serviceCategory: promoServiceKey || "OTHER"
-      });
+      // Flattened metadata strictly complying with Kora's 20-char max key rule.
+      const safeMetadata: Record<string, string> = {
+        "expected": String(Math.round(amountToPay)),
+        "category": String(promoServiceKey || "OTHER").substring(0, 50)
+      };
+      
+      if (appliedPromoId) {
+        safeMetadata["promo-id"] = String(appliedPromoId);
+      }
+      if (registrationId) {
+        safeMetadata["reg-id"] = String(registrationId);
+      }
+
+      const koraPayload = {
+        amount: Math.round(amountToPay),
+        currency: "NGN",
+        reference: reference, 
+        redirect_url: `${appUrl}${callbackPath}`,
+        customer: {
+          email: user.email,
+          name: (user.firstName ? `${user.firstName} ${user.lastName || ''}` : "Customer").trim().substring(0, 50)
+        },
+        metadata: safeMetadata
+      };
 
       const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
         method: "POST",
@@ -328,20 +344,7 @@ export async function POST(req: Request) {
           Authorization: `Bearer ${secretKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          amount: Math.round(amountToPay),
-          currency: "NGN",
-          reference: reference,
-          redirect_url: `${appUrl}${callbackPath}`,
-          narration: description,
-          customer: {
-            email: user.email,
-            name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "Customer"
-          },
-          metadata: {
-            payload: payloadString 
-          }
-        }),
+        body: JSON.stringify(koraPayload),
       });
 
       const koraData = await koraResponse.json();
