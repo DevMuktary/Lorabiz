@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -57,7 +56,6 @@ const SERVICES = [
     logo: "/smedan.png",
     active: false,
   },
-  
 ];
 
 export default function DashboardPage() {
@@ -92,20 +90,67 @@ export default function DashboardPage() {
     fetchBalance();
   }, []);
 
+  // =========================================================================
+  // ROBUST REDIRECT VERIFICATION (OPTION 2)
+  // =========================================================================
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      const isFunded = params.get("funded");
+      const reference = params.get("reference");
       
-      if (params.get("funded") === "true") {
+      if (isFunded === "true" && reference) {
+        // 1. Instantly show a verifying state instead of a fake success
         setAlertInfo({
-          title: "Payment Successful 🎉",
-          message: "Your wallet has been funded successfully! Balance is updating..."
+          title: "Verifying Payment 🔄",
+          message: "Confirming your transaction status with the bank..."
         });
-        setTimeout(fetchBalance, 1500);
-        
+
+        // 2. Ask the backend for the absolute truth
+        fetch('/api/payment/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reference })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setAlertInfo({
+              title: "Payment Successful 🎉",
+              message: "Your wallet has been funded successfully!"
+            });
+            fetchBalance(); // Pull fresh database balance
+          } else {
+            // User likely closed the modal without paying
+            setAlertInfo({
+              title: "Payment Incomplete ⚠️",
+              message: "Transaction cancelled or failed. No funds were debited."
+            });
+          }
+        })
+        .catch(() => {
+          // Fallback if network cuts out during verification
+          setAlertInfo({
+            title: "Status Pending ⏳",
+            message: "Your payment is processing. Balance will update shortly if successful."
+          });
+        })
+        .finally(() => {
+          // Clean the URL so a simple page refresh doesn't trigger this again
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        });
+      } 
+      else if (isFunded === "true" && !reference) {
+        // Fallback for edge cases where the reference string drops from the redirect
+        setAlertInfo({
+          title: "Processing Payment 🔄",
+          message: "If successful, your balance will update momentarily."
+        });
+        setTimeout(fetchBalance, 3000);
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
-      } 
+      }
       else if (params.get("cancelled") === "true" || params.get("trxref")) {
         const status = params.get("status");
         if (status === "cancelled" || status === "failed") {
@@ -122,7 +167,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (alertInfo) {
-      const timer = setTimeout(() => setAlertInfo(null), 4000);
+      const timer = setTimeout(() => setAlertInfo(null), 5000); // Extended slightly so they have time to read verifying states
       return () => clearTimeout(timer);
     }
   }, [alertInfo]);
@@ -196,7 +241,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Pricing Link - Now distinctly styled as a clickable pill button */}
+          {/* Pricing Link */}
           <Link 
             href="/dashboard/pricing"
             className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-3.5 py-1.5 rounded-full hover:bg-primary hover:text-primary-foreground transition-all active:scale-95 md:mr-4 shadow-sm group"
