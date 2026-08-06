@@ -53,10 +53,7 @@ export async function POST(req: Request) {
       baseAmountToPay = Math.round(Number(amount));
       description = "Wallet Funding via Online Gateway";
       reference = `FW_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
-      
-      // ✅ KORAPAY FIX: Pass an action intent instead of a blind success flag
-      callbackPath = "/dashboard?action=funding_checkout"; 
-      
+      callbackPath = "/dashboard/wallet?funded=true";
       promoServiceKey = "WALLET_FUNDING";
 
     // CASE B: LLC (LIMITED LIABILITY COMPANY) REGISTRATION
@@ -90,9 +87,7 @@ export async function POST(req: Request) {
       
       description = `Payment for LLC Registration (${registration.proposedName || "Draft"})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
-      
-      // ✅ KORAPAY FIX: Pass an action intent 
-      callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?action=checkout_return`;
+      callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?verifying=true`;
       
       // Capture details for email notification
       regName = registration.proposedName || "LLC Application";
@@ -123,9 +118,10 @@ export async function POST(req: Request) {
       description = `Payment for SCUML Registration (${draft.companyName})`;
       reference = `ONL_SCUML_${registrationId}_${Date.now()}`;
       
-      // ✅ KORAPAY FIX: Pass an action intent 
-      callbackPath = `/dashboard/scuml?action=checkout_return&draftId=${registrationId}`;
+      // Send them back to the SCUML form page to trigger the success modal
+      callbackPath = `/dashboard/scuml?verifying=true&draftId=${registrationId}`;
       
+      // Capture details for email notification
       regName = draft.companyName || "SCUML Application";
       scumlDraftType = draft.type || "Registration";
       displayId = registrationId;
@@ -154,10 +150,9 @@ export async function POST(req: Request) {
       baseAmountToPay = Number(servicePriceRecord.price);
       description = `Payment for Business Registration (${registration.proposedName})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
+      callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?verifying=true`;
       
-      // ✅ KORAPAY FIX: Pass an action intent 
-      callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?action=checkout_return`;
-      
+      // Capture details for email notification
       regName = registration.proposedName || "Business Name Application";
       displayId = registration.trackingId || registrationId;
     }
@@ -222,7 +217,7 @@ export async function POST(req: Request) {
       const txReference = `WLT_${registrationId || "SRV"}_${Date.now()}`;
 
       await prisma.$transaction(async (tx) => {
-        // Atomic decrement to prevent double-spending race conditions
+        // ✅ THE FIX: Atomic decrement to prevent double-spending race conditions
         const updatedWallet = await tx.wallet.update({
           where: { id: user.wallet!.id },
           data: { balance: { decrement: amountToPay } }
@@ -326,66 +321,54 @@ export async function POST(req: Request) {
     }
 
     // =========================================================================
-    // FLOW B: PAY ONLINE VIA KORAPAY (SERVER-TO-SERVER INITIALIZATION)
+    // FLOW B: PAY ONLINE VIA PAYSTACK (SERVER-TO-SERVER INITIALIZATION)
     // =========================================================================
     if (paymentMethod === "ONLINE") {
-      const secretKey = process.env.KORAPAY_SECRET_KEY;
-      const appUrl = (process.env.NEXTAUTH_URL || "https://lorabiz.com").replace(/\/$/, "");
+      const secretKey = process.env.PAYSTACK_SECRET_KEY;
+      const appUrl = process.env.NEXTAUTH_URL || "https://lorabiz.com";
 
       if (!secretKey) {
-        console.error("❌ Korapay Secret Key missing from server environment.");
+        console.error("❌ Paystack Secret Key missing from server environment.");
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      const safeMetadata: Record<string, string | number> = {
-        userId: user.id,
-        service: service || "wallet_funding",
-        expectedAmount: amountToPay,
-        serviceCategory: promoServiceKey || "OTHER"
-      };
-
-      if (registrationId) safeMetadata.registrationId = registrationId;
-      if (appliedPromoId) safeMetadata.appliedPromoId = appliedPromoId;
-
-      const koraPayload = {
-        amount: Math.round(amountToPay), // Exact Naira amount
-        currency: "NGN",
-        reference: reference,
-        redirect_url: `${appUrl}${callbackPath}`, 
-        
-        // ✅ CRITICAL FIX: Forcing KoraPay to ping this exact URL regardless of dashboard settings
-        notification_url: `${appUrl}/api/payment/webhook`, 
-
-        customer: {
-          email: user.email,
-          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Customer"
-        },
-        narration: description,
-        metadata: safeMetadata
-      };
-
-      const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
+      // Packed serviceCategory into Paystack metadata for the Webhook to read
+      const paystackResponse = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${secretKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(koraPayload),
+        body: JSON.stringify({
+          email: user.email,
+          amount: Math.round(amountToPay * 100), 
+          reference: reference,
+          callback_url: `${appUrl}${callbackPath}`,
+          metadata: {
+            userId: user.id,
+            service: service || "business", 
+            registrationId: registrationId || null,
+            expectedAmount: amountToPay, 
+            description: description,
+            appliedPromoId: appliedPromoId,
+            serviceCategory: promoServiceKey || "OTHER"
+          }
+        }),
       });
 
-      const koraData = await koraResponse.json();
+      const paystackData = await paystackResponse.json();
 
-      if (!koraResponse.ok || !koraData.status || !koraData.data?.checkout_url) {
-        console.error("❌ Korapay Initialization Failed:", koraData);
+      if (!paystackResponse.ok || !paystackData.status || !paystackData.data?.authorization_url) {
+        console.error("❌ Paystack Initialization Failed:", paystackData);
         return NextResponse.json({ 
           success: false, 
-          message: koraData.message || "Failed to initialize secure checkout with bank." 
+          message: paystackData.message || "Failed to initialize secure checkout with bank." 
         }, { status: 400 });
       }
 
       return NextResponse.json({ 
         success: true, 
-        authorizationUrl: koraData.data.checkout_url,
+        authorizationUrl: paystackData.data.authorization_url,
         reference: reference
       });
     }
