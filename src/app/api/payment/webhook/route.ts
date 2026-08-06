@@ -14,15 +14,23 @@ export async function POST(req: Request) {
     const signature = req.headers.get("x-korapay-signature");
 
     if (!signature) {
+      console.error("🚨 Webhook Error: No KoraPay signature found in headers.");
       return NextResponse.json({ message: "No signature found" }, { status: 400 });
     }
 
-    const secret = process.env.KORAPAY_SECRET_KEY as string;
+    const secret = process.env.KORAPAY_SECRET_KEY;
+    
+    // ✅ RAILWAY FIX: Prevent fatal server crash if environment variable is missing
+    if (!secret) {
+      console.error("🚨 CRITICAL: KORAPAY_SECRET_KEY is missing from Railway environment variables!");
+      return NextResponse.json({ message: "Server configuration error" }, { status: 500 });
+    }
     
     // Korapay uses SHA256 (not SHA512)
     const expectedSignature = crypto.createHmac("sha256", secret).update(body).digest("hex");
 
     if (signature !== expectedSignature) {
+      console.error("🚨 Webhook Error: Invalid signature match.");
       return NextResponse.json({ message: "Invalid signature" }, { status: 400 });
     }
 
@@ -30,7 +38,7 @@ export async function POST(req: Request) {
 
     if (event.event === "charge.success") {
       const reference = event.data?.reference;
-      // Korapay amounts are already in Naira. No dividing by 100
+      // Korapay amounts are already in exact Naira
       const amountPaid = Number(event.data?.amount); 
       const userEmail = event.data?.customer?.email;
       const metadata = event.data?.metadata || {};
@@ -40,6 +48,7 @@ export async function POST(req: Request) {
       const serviceCategory = metadata.serviceCategory || "OTHER";
 
       if (!reference || !userEmail) {
+        console.error("🚨 Webhook Error: Missing reference or email in payload.");
         return NextResponse.json({ message: "Invalid payload data" }, { status: 400 });
       }
 
@@ -81,6 +90,7 @@ export async function POST(req: Request) {
           });
         });
 
+        console.log(`✅ Successfully funded wallet for ${userEmail} with ₦${amountPaid}`);
         return NextResponse.json({ received: true });
       }
 
@@ -101,7 +111,7 @@ export async function POST(req: Request) {
           if (draftStr) {
             scumlDraft = JSON.parse(draftStr);
           } else {
-            console.warn(`SCUML Draft ${registrationId} expired before payment.`);
+            console.warn(`⚠️ SCUML Draft ${registrationId} expired before payment.`);
             return NextResponse.json({ received: true }); 
           }
         }
@@ -397,7 +407,7 @@ export async function POST(req: Request) {
               }
             });
           } catch (e) {
-            console.error("Failed to parse/execute NSUB payload:", e);
+            console.error("🚨 Failed to parse/execute NSUB payload:", e);
           }
         }
         return NextResponse.json({ received: true });
@@ -408,7 +418,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Webhook Error:", error);
+    console.error("🚨 Webhook Critical Error:", error);
     return NextResponse.json({ message: "Webhook error" }, { status: 500 });
   }
 }
