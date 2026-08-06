@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     let scumlDraftType = "Registration";
 
     // =========================================================================
-    // 2. IDENTIFY SERVICE & EXCLUSIVELY CALCULATE PRICE ON THE SERVER
+    // 2. IDENTIFY SERVICE & CALCULATE PRICE ON THE SERVER
     // =========================================================================
     
     if (service === "wallet_funding") {
@@ -50,7 +50,8 @@ export async function POST(req: Request) {
 
       baseAmountToPay = Math.round(Number(amount));
       description = "Wallet Funding via Online Gateway";
-      reference = `FW_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
+      // CRITICAL FIX: Embed the User ID into the reference so the webhook can find them!
+      reference = `FW_USR_${user.id}_${Date.now()}`;
       callbackPath = "/dashboard?funded=true";
       promoServiceKey = "WALLET_FUNDING";
 
@@ -313,20 +314,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      // Flattened metadata strictly complying with Kora's 20-char max key rule.
-      const safeMetadata: Record<string, string> = {
-        "expected": String(Math.round(amountToPay)),
-        "category": String(promoServiceKey || "OTHER").substring(0, 50),
-        "email": user.email // Added email here so the webhook can read it
-      };
-      
-      if (appliedPromoId) {
-        safeMetadata["promo-id"] = String(appliedPromoId);
-      }
-      if (registrationId) {
-        safeMetadata["reg-id"] = String(registrationId);
-      }
-
       const koraPayload = {
         amount: Math.round(amountToPay),
         currency: "NGN",
@@ -335,8 +322,7 @@ export async function POST(req: Request) {
         customer: {
           email: user.email,
           name: (user.firstName ? `${user.firstName} ${user.lastName || ''}` : "Customer").trim().substring(0, 50)
-        },
-        metadata: safeMetadata
+        }
       };
 
       const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
