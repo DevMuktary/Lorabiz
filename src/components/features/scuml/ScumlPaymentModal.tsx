@@ -59,53 +59,92 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
     };
   }, []);
 
-  // 2. AUTO-START VERIFICATION POLLING WHEN RETURNING FROM PAYSTACK
+  // =========================================================================
+  // 2. ROBUST REDIRECT VERIFICATION (FIX FOR THE INFINITE LOADING TRAP)
+  // =========================================================================
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("verifying") === "true" && processingState === "idle") {
-        startWebhookPolling();
+      const isVerifying = params.get("verifying") === "true";
+      const reference = params.get("reference");
+
+      if (isVerifying && processingState === "idle") {
+        // Immediately clean the URL so if the user refreshes, they aren't trapped in verification
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+
+        if (reference) {
+          verifyOnlinePayment(reference);
+        } else {
+          // If they closed the gateway and no reference was appended
+          setErrorMsg("Payment was cancelled or interrupted. No funds were debited.");
+          setProcessingState("idle");
+        }
       }
     }
   }, [registrationId, processingState]);
 
-  // 3. Webhook Polling Logic
-  const startWebhookPolling = () => {
+  const verifyOnlinePayment = async (reference: string) => {
     setProcessingState("verifying");
-    
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch('/api/payment/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Payment actually succeeded! Show your custom success state.
+        setProcessingState("success");
+        setTimeout(() => {
+          router.refresh(); // Forces Next.js to fetch new DB data
+          router.push("/dashboard/scuml/history?success=true");
+        }, 2500);
+      } else {
+        // User cancelled, underpaid, or it failed. Reset back to the payment buttons.
+        setErrorMsg("Transaction cancelled or failed. Please try again.");
+        setProcessingState("idle");
+      }
+    } catch (err) {
+      // Fallback: If network drops during verify, check our own DB just in case the webhook caught it
+      startWebhookPollingFallback();
+    }
+  };
+
+  // 3. Fallback Polling (Only runs if the explicit verify route throws a network error)
+  const startWebhookPollingFallback = () => {
     pollingIntervalRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/scuml/${registrationId}`);
         const json = await res.json();
         
-        // 🚨 FIXED: Because it's a Redis draft, if the record exists in Postgres at all, payment was successful!
         if (json.success && json.data) {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
           
-          const newUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, newUrl);
-
           setTimeout(() => {
-            router.refresh(); // 🚨 CRITICAL: Forces Next.js to fetch new DB data
+            router.refresh(); 
             router.push("/dashboard/scuml/history?success=true");
           }, 2500);
         }
       } catch (e) {
         // Silent catch while polling
       }
-    }, 1500);
+    }, 2000);
 
-    // Escape hatch after 30 seconds
+    // Escape hatch after 15 seconds instead of 30 to prevent eternal loading
     setTimeout(() => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         if (processingState !== "success") {
-          setErrorMsg("Payment received, but confirmation is taking slightly longer than usual. Please check your dashboard history in a moment.");
+          setErrorMsg("Could not confirm payment status automatically. Please check your history in a moment.");
           setProcessingState("idle");
         }
       }
-    }, 30000);
+    }, 15000);
   };
 
   const handleApplyPromo = async () => {
@@ -180,7 +219,7 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
       if (method === "WALLET") {
         setProcessingState("success");
         setTimeout(() => {
-          router.refresh(); // 🚨 CRITICAL: Forces Next.js to fetch new DB data
+          router.refresh(); 
           router.push("/dashboard/scuml/history?success=true");
         }, 2000);
       } else if (method === "ONLINE") {
@@ -226,10 +265,10 @@ export default function ScumlPaymentModal({ registrationId, companyName, onClose
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
-            Connecting to Paystack...
+            Connecting to KoraPay...
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
-            Please wait a moment while we prepare your secure checkout.
+            Please wait a moment while we prepare your checkout.
           </p>
 
           <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
