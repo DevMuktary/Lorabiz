@@ -316,7 +316,8 @@ export async function POST(req: Request) {
       // Flattened metadata strictly complying with Kora's 20-char max key rule.
       const safeMetadata: Record<string, string> = {
         "expected": String(Math.round(amountToPay)),
-        "category": String(promoServiceKey || "OTHER").substring(0, 50)
+        "category": String(promoServiceKey || "OTHER").substring(0, 50),
+        "email": user.email // Added email here so the webhook can read it
       };
       
       if (appliedPromoId) {
