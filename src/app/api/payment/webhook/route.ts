@@ -9,31 +9,49 @@ import { sendScumlSubmittedEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.text();
-    const signature = req.headers.get("x-paystack-signature");
+    const rawBody = await req.text();
+    const signature = req.headers.get("x-korapay-signature");
 
     if (!signature) {
       return NextResponse.json({ message: "No signature found" }, { status: 400 });
     }
 
-    const secret = process.env.PAYSTACK_SECRET_KEY as string;
-    const expectedSignature = crypto.createHmac("sha512", secret).update(body).digest("hex");
+    const event = JSON.parse(rawBody);
+    const secret = process.env.KORAPAY_SECRET_KEY as string;
+
+    // KoraPay explicitly requires hashing only the `data` object, using sha256
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(JSON.stringify(event.data))
+      .digest("hex");
 
     if (signature !== expectedSignature) {
       return NextResponse.json({ message: "Invalid signature" }, { status: 400 });
     }
 
-    const event = JSON.parse(body);
-
     if (event.event === "charge.success") {
       const reference = event.data?.reference;
-      const amountPaid = Number(event.data?.amount) / 100; // Convert Kobo to Naira
+      const amountPaid = Number(event.data?.amount); // KoraPay provides standard NGN
       const userEmail = event.data?.customer?.email;
-      const metadata = event.data?.metadata || {};
-      const expectedAmount = metadata.expectedAmount ? Number(metadata.expectedAmount) : null;
-      const appliedPromoId = metadata.appliedPromoId || null;
       
-      const serviceCategory = metadata.serviceCategory || "OTHER";
+      // Unpack our bundled metadata
+      let metaDataObj: any = {};
+      try {
+        if (event.data?.metadata?.custom_payload) {
+            metaDataObj = JSON.parse(event.data.metadata.custom_payload);
+        }
+      } catch (e) {
+          console.error("Failed to parse KoraPay custom metadata:", e);
+      }
+
+      const expectedAmount = metaDataObj.expectedAmount ? Number(metaDataObj.expectedAmount) : null;
+      const appliedPromoId = metaDataObj.appliedPromoId || null;
+      const serviceCategory = metaDataObj.serviceCategory || "OTHER";
+      
+      // Fallback ID extraction if metadata fails
+      let regIdFallback = reference.split("_")[1];
+      if (reference.startsWith("ONL_SCUML_")) regIdFallback = reference.split("_")[2];
+      const registrationId = metaDataObj.registrationId || regIdFallback;
 
       if (!reference || !userEmail) {
         return NextResponse.json({ message: "Invalid payload data" }, { status: 400 });
@@ -71,7 +89,7 @@ export async function POST(req: Request) {
               type: "CREDIT", 
               status: "SUCCESS", 
               reference: reference, 
-              description: "Wallet Funding via Paystack Gateway",
+              description: "Wallet Funding via KoraPay Gateway",
               serviceCategory: "WALLET_FUNDING"
             }
           });
@@ -85,13 +103,11 @@ export async function POST(req: Request) {
       // =========================================================================
       if (reference.startsWith("ONL_")) {
         const isScuml = reference.startsWith("ONL_SCUML_");
-        const registrationId = metadata.registrationId || (isScuml ? reference.split("_")[2] : reference.split("_")[1]);
         
         let notificationPayload: NotificationEvent | null = null;
         let isPaymentFullySuccessful = false;
         let scumlDraft: any = null;
 
-        // PRE-FETCH REDIS DRAFT FOR SCUML OUTSIDE TRANSACTION
         if (isScuml) {
           const draftStr = await redis.get(registrationId);
           if (draftStr) {
@@ -138,9 +154,6 @@ export async function POST(req: Request) {
 
           if (!serviceType) return; 
 
-          // ---------------------------------------------------------------------
-          // SECURITY GUARD: STRICT AMOUNT VERIFICATION
-          // ---------------------------------------------------------------------
           if (expectedAmount && amountPaid < expectedAmount) {
             console.warn(`🚨 UNDERPAYMENT DETECTED for ${reference}: Paid ₦${amountPaid}, Required ₦${expectedAmount}. Crediting wallet balance only.`);
             
@@ -166,7 +179,6 @@ export async function POST(req: Request) {
             return; 
           }
 
-          // Step A: Record incoming online funds into wallet ledger
           const fundedWallet = await tx.wallet.update({
             where: { id: user.wallet.id },
             data: { balance: { increment: amountPaid } }
@@ -183,12 +195,11 @@ export async function POST(req: Request) {
               type: "CREDIT", 
               status: "SUCCESS", 
               reference: reference, 
-              description: "Paystack Online Funding (Webhook)",
+              description: "KoraPay Online Funding (Webhook)",
               serviceCategory: "WALLET_FUNDING"
             }
           });
 
-          // Step B: Debit the wallet for the actual service fee
           const debitedWallet = await tx.wallet.update({
             where: { id: user.wallet.id },
             data: { balance: { decrement: amountPaid } }
@@ -209,7 +220,6 @@ export async function POST(req: Request) {
             }
           });
 
-          // Step C: Unlock application status for Admin processing
           if (serviceType === "business") {
             await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           } else if (serviceType === "llc") {
@@ -232,7 +242,6 @@ export async function POST(req: Request) {
             });
           }
 
-          // Step D: Burn Promo Code officially in the ledger
           if (appliedPromoId) {
             await tx.promoCode.update({
               where: { id: appliedPromoId },
@@ -245,7 +254,6 @@ export async function POST(req: Request) {
 
           isPaymentFullySuccessful = true;
 
-          // Setup Notification payload for CAC services
           if (serviceType !== "scuml" && user) {
             const userPhone = user.phone || "";
             const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
@@ -262,11 +270,7 @@ export async function POST(req: Request) {
           }
         });
 
-        // =========================================================================
-        // AFTER TRANSACTION: CLEANUP REDIS & SEND EMAILS
-        // =========================================================================
         if (isPaymentFullySuccessful && user) {
-          
           if (isScuml && scumlDraft) {
             await redis.del(registrationId);
             
@@ -288,7 +292,6 @@ export async function POST(req: Request) {
               removeOnComplete: true,
             });
           }
-
         }
 
         return NextResponse.json({ received: true });
@@ -355,7 +358,7 @@ export async function POST(req: Request) {
                   type: "CREDIT", 
                   status: "SUCCESS", 
                   reference: reference, 
-                  description: "Paystack Online Funding (Webhook)",
+                  description: "KoraPay Online Funding (Webhook)",
                   serviceCategory: "WALLET_FUNDING"
                 }
               });
