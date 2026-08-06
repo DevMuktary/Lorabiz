@@ -27,23 +27,21 @@ export async function POST(req: Request) {
     const safeReference = encodeURIComponent(reference);
     const registrationId = reference.split("_")[1];
 
-    // 1. Verify Payment Server-to-Server with Korapay
-    const koraRes = await fetch(`https://api.korapay.com/merchant/api/v1/charges/${safeReference}`, {
+    // 1. Verify Payment Server-to-Server with Paystack
+    const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${safeReference}`, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${process.env.KORAPAY_SECRET_KEY}`, 
-        "Content-Type": "application/json"
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, 
       },
     });
 
-    const koraData = await koraRes.json();
+    const paystackData = await paystackRes.json();
 
-    if (!koraData.status || (koraData.data.status !== "success" && koraData.data.status !== "successful")) {
-      return NextResponse.json({ success: false, message: "Payment verification failed with Korapay." }, { status: 400 });
+    if (!paystackData.status || paystackData.data.status !== "success") {
+      return NextResponse.json({ success: false, message: "Payment verification failed with Paystack." }, { status: 400 });
     }
 
-    // Korapay returns amount in exact Naira
-    const amountPaid = Number(koraData.data.amount); 
+    const amountPaid = Number(paystackData.data.amount) / 100; // Convert Kobo back to Naira
     const userEmail = session.user.email as string;
 
     // 2. ATOMIC TRANSACTION TO PREVENT RACE CONDITIONS
@@ -82,7 +80,7 @@ export async function POST(req: Request) {
           type: "CREDIT",
           status: "SUCCESS",
           reference: reference, 
-          description: "Korapay Online Funding",
+          description: "Paystack Online Funding",
           serviceCategory: "WALLET_FUNDING"
         }
       });
