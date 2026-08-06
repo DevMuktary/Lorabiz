@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const event = JSON.parse(rawBody);
     const secret = process.env.KORAPAY_SECRET_KEY as string;
 
-    // KoraPay explicitly requires hashing only the `data` object, using sha256
+    // Validate Signature natively using Kora's structure rules
     const expectedSignature = crypto
       .createHmac("sha256", secret)
       .update(JSON.stringify(event.data))
@@ -31,27 +31,20 @@ export async function POST(req: Request) {
 
     if (event.event === "charge.success") {
       const reference = event.data?.reference;
-      const amountPaid = Number(event.data?.amount); // KoraPay provides standard NGN
+      const amountPaid = Number(event.data?.amount);
       const userEmail = event.data?.customer?.email;
       
-      // Unpack our bundled metadata
-      let metaDataObj: any = {};
-      try {
-        if (event.data?.metadata?.custom_payload) {
-            metaDataObj = JSON.parse(event.data.metadata.custom_payload);
-        }
-      } catch (e) {
-          console.error("Failed to parse KoraPay custom metadata:", e);
-      }
-
-      const expectedAmount = metaDataObj.expectedAmount ? Number(metaDataObj.expectedAmount) : null;
-      const appliedPromoId = metaDataObj.appliedPromoId || null;
-      const serviceCategory = metaDataObj.serviceCategory || "OTHER";
+      const metadata = event.data?.metadata || {};
       
-      // Fallback ID extraction if metadata fails
+      // Map back to the flat keys we sent in the new init function
+      const expectedAmount = metadata.expected ? Number(metadata.expected) : null;
+      const appliedPromoId = metadata["promo-id"] || null;
+      const serviceCategory = metadata.category || "OTHER";
+      
+      // Fallback logic to get registrationId if it was missed in metadata
       let regIdFallback = reference.split("_")[1];
       if (reference.startsWith("ONL_SCUML_")) regIdFallback = reference.split("_")[2];
-      const registrationId = metaDataObj.registrationId || regIdFallback;
+      const registrationId = metadata["reg-id"] || regIdFallback;
 
       if (!reference || !userEmail) {
         return NextResponse.json({ message: "Invalid payload data" }, { status: 400 });
