@@ -91,7 +91,7 @@ export default function DashboardPage() {
     fetchBalance();
   }, []);
 
-  // ✅ THE FIX: Account for KoraPay appending 'reference' on success 
+  // ✅ KORAPAY FIX: Handle KoraPay's explicit statuses and silent cancellations (reference only)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -101,22 +101,32 @@ export default function DashboardPage() {
       const reference = params.get("reference"); 
       
       if (action === "funding_checkout") {
+        
+        // 1. Explicit Failure/Cancellation
         if (status === "cancelled" || status === "failed") {
           setAlertInfo({
             title: "Payment Cancelled ⚠️",
             message: "You cancelled the payment transaction. No funds were debited."
           });
         } 
-        // KoraPay will either send status=success OR a transaction reference. We accept both as an indicator of completion.
-        else if (status === "success" || status === "successful" || reference) {
+        // 2. Explicit Success
+        else if (status === "success" || status === "successful") {
           setAlertInfo({
-            title: "Payment Received ⏳",
-            message: "Your payment was processed! Wallet balance will update shortly..."
+            title: "Payment Received 🎉",
+            message: "Your payment was successful! Wallet balance is updating..."
           });
-          
-          // Poll the balance twice to give the KoraPay Webhook time to update the database
           setTimeout(fetchBalance, 2000); 
           setTimeout(fetchBalance, 5000);
+        }
+        // 3. Silent Return (User closed modal - only reference is present)
+        else if (reference) {
+          setAlertInfo({
+            title: "Verifying Transaction 🔄",
+            message: "If you completed the payment, your balance will update shortly."
+          });
+          // Poll the balance just in case it actually went through
+          setTimeout(fetchBalance, 3000); 
+          setTimeout(fetchBalance, 6000);
         }
         
         // Clean up the URL so it doesn't trigger again on refresh
