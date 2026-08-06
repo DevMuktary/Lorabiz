@@ -10,27 +10,16 @@ import { sendScumlSubmittedEmail } from "@/lib/email";
 export async function POST(req: Request) {
   try {
     const body = await req.text();
-    // Use Korapay's signature header
-    const signature = req.headers.get("x-korapay-signature");
+    const signature = req.headers.get("x-paystack-signature");
 
     if (!signature) {
-      console.error("🚨 Webhook Error: No KoraPay signature found in headers.");
       return NextResponse.json({ message: "No signature found" }, { status: 400 });
     }
 
-    const secret = process.env.KORAPAY_SECRET_KEY;
-    
-    // ✅ RAILWAY FIX: Prevent fatal server crash if environment variable is missing
-    if (!secret) {
-      console.error("🚨 CRITICAL: KORAPAY_SECRET_KEY is missing from Railway environment variables!");
-      return NextResponse.json({ message: "Server configuration error" }, { status: 500 });
-    }
-    
-    // Korapay uses SHA256 (not SHA512)
-    const expectedSignature = crypto.createHmac("sha256", secret).update(body).digest("hex");
+    const secret = process.env.PAYSTACK_SECRET_KEY as string;
+    const expectedSignature = crypto.createHmac("sha512", secret).update(body).digest("hex");
 
     if (signature !== expectedSignature) {
-      console.error("🚨 Webhook Error: Invalid signature match.");
       return NextResponse.json({ message: "Invalid signature" }, { status: 400 });
     }
 
@@ -38,8 +27,7 @@ export async function POST(req: Request) {
 
     if (event.event === "charge.success") {
       const reference = event.data?.reference;
-      // Korapay amounts are already in exact Naira
-      const amountPaid = Number(event.data?.amount); 
+      const amountPaid = Number(event.data?.amount) / 100; // Convert Kobo to Naira
       const userEmail = event.data?.customer?.email;
       const metadata = event.data?.metadata || {};
       const expectedAmount = metadata.expectedAmount ? Number(metadata.expectedAmount) : null;
@@ -48,7 +36,6 @@ export async function POST(req: Request) {
       const serviceCategory = metadata.serviceCategory || "OTHER";
 
       if (!reference || !userEmail) {
-        console.error("🚨 Webhook Error: Missing reference or email in payload.");
         return NextResponse.json({ message: "Invalid payload data" }, { status: 400 });
       }
 
@@ -84,13 +71,12 @@ export async function POST(req: Request) {
               type: "CREDIT", 
               status: "SUCCESS", 
               reference: reference, 
-              description: "Wallet Funding via Korapay Gateway",
+              description: "Wallet Funding via Paystack Gateway",
               serviceCategory: "WALLET_FUNDING"
             }
           });
         });
 
-        console.log(`✅ Successfully funded wallet for ${userEmail} with ₦${amountPaid}`);
         return NextResponse.json({ received: true });
       }
 
@@ -111,7 +97,7 @@ export async function POST(req: Request) {
           if (draftStr) {
             scumlDraft = JSON.parse(draftStr);
           } else {
-            console.warn(`⚠️ SCUML Draft ${registrationId} expired before payment.`);
+            console.warn(`SCUML Draft ${registrationId} expired before payment.`);
             return NextResponse.json({ received: true }); 
           }
         }
@@ -197,7 +183,7 @@ export async function POST(req: Request) {
               type: "CREDIT", 
               status: "SUCCESS", 
               reference: reference, 
-              description: "Korapay Online Funding (Webhook)",
+              description: "Paystack Online Funding (Webhook)",
               serviceCategory: "WALLET_FUNDING"
             }
           });
@@ -369,7 +355,7 @@ export async function POST(req: Request) {
                   type: "CREDIT", 
                   status: "SUCCESS", 
                   reference: reference, 
-                  description: "Korapay Online Funding (Webhook)",
+                  description: "Paystack Online Funding (Webhook)",
                   serviceCategory: "WALLET_FUNDING"
                 }
               });
@@ -407,7 +393,7 @@ export async function POST(req: Request) {
               }
             });
           } catch (e) {
-            console.error("🚨 Failed to parse/execute NSUB payload:", e);
+            console.error("Failed to parse/execute NSUB payload:", e);
           }
         }
         return NextResponse.json({ received: true });
@@ -418,7 +404,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("🚨 Webhook Critical Error:", error);
+    console.error("Webhook Error:", error);
     return NextResponse.json({ message: "Webhook error" }, { status: 500 });
   }
 }
