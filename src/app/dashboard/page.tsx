@@ -91,31 +91,31 @@ export default function DashboardPage() {
     fetchBalance();
   }, []);
 
+  // ✅ KORAPAY FIX: Handle redirects by reading actual status and action intent
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       
-      const status = params.get("status");
-      const isFunded = params.get("funded") === "true";
-      const isCancelled = params.get("cancelled") === "true";
-
-      // THE FIX: Check for cancellation OR failure BEFORE checking for success!
-      if (status === "cancelled" || status === "failed" || isCancelled) {
-        setAlertInfo({
-          title: "Payment Cancelled ⚠️",
-          message: "You cancelled the payment transaction. No funds were debited."
-        });
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-      } 
-      // If it wasn't cancelled or failed, THEN check if it was successfully funded
-      else if (isFunded) {
-        setAlertInfo({
-          title: "Payment Successful 🎉",
-          message: "Your wallet has been funded successfully! Balance is updating..."
-        });
-        setTimeout(fetchBalance, 1500);
+      const status = params.get("status"); // KoraPay appends 'success', 'failed', or 'cancelled'
+      const action = params.get("action"); // Our custom flag from the checkout API
+      
+      // Check if the user is returning from a wallet funding checkout
+      if (action === "funding_checkout") {
+        if (status === "cancelled" || status === "failed") {
+          setAlertInfo({
+            title: "Payment Cancelled ⚠️",
+            message: "You cancelled the payment transaction. No funds were debited."
+          });
+        } else if (status === "success" || status === "successful") {
+          setAlertInfo({
+            title: "Payment Successful 🎉",
+            message: "Your wallet has been funded successfully! Balance is updating..."
+          });
+          // Fetch balance after a short delay to allow webhook processing
+          setTimeout(fetchBalance, 2000); 
+        }
         
+        // Clean up the URL so it doesn't trigger again on refresh
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
       }
