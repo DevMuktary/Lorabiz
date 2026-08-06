@@ -54,8 +54,8 @@ export async function POST(req: Request) {
       description = "Wallet Funding via Online Gateway";
       reference = `FW_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
       
-      // ✅ THE FIX: Changed from "/dashboard/wallet?funded=true" to "/dashboard" so your alerts catch it!
-      callbackPath = "/dashboard?funded=true"; 
+      // ✅ KORAPAY FIX: Pass an action intent instead of a blind success flag
+      callbackPath = "/dashboard?action=funding_checkout"; 
       
       promoServiceKey = "WALLET_FUNDING";
 
@@ -90,7 +90,9 @@ export async function POST(req: Request) {
       
       description = `Payment for LLC Registration (${registration.proposedName || "Draft"})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
-      callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?verifying=true`;
+      
+      // ✅ KORAPAY FIX: Pass an action intent 
+      callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?action=checkout_return`;
       
       // Capture details for email notification
       regName = registration.proposedName || "LLC Application";
@@ -121,7 +123,8 @@ export async function POST(req: Request) {
       description = `Payment for SCUML Registration (${draft.companyName})`;
       reference = `ONL_SCUML_${registrationId}_${Date.now()}`;
       
-      callbackPath = `/dashboard/scuml?verifying=true&draftId=${registrationId}`;
+      // ✅ KORAPAY FIX: Pass an action intent 
+      callbackPath = `/dashboard/scuml?action=checkout_return&draftId=${registrationId}`;
       
       regName = draft.companyName || "SCUML Application";
       scumlDraftType = draft.type || "Registration";
@@ -151,7 +154,9 @@ export async function POST(req: Request) {
       baseAmountToPay = Number(servicePriceRecord.price);
       description = `Payment for Business Registration (${registration.proposedName})`;
       reference = `ONL_${registrationId}_${Date.now()}`;
-      callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?verifying=true`;
+      
+      // ✅ KORAPAY FIX: Pass an action intent 
+      callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?action=checkout_return`;
       
       regName = registration.proposedName || "Business Name Application";
       displayId = registration.trackingId || registrationId;
