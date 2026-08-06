@@ -23,25 +23,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Invalid transaction type for this endpoint" }, { status: 400 });
     }
 
-    // Safely encode the reference before injecting it into the URL
     const safeReference = encodeURIComponent(reference);
     const registrationId = reference.split("_")[1];
 
-    // 1. Verify Payment Server-to-Server with Paystack
-    const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${safeReference}`, {
+    // 1. Verify Payment Server-to-Server with KoraPay
+    const koraRes = await fetch(`https://api.korapay.com/merchant/api/v1/charges/${safeReference}`, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, 
+        Authorization: `Bearer ${process.env.KORAPAY_SECRET_KEY}`, 
       },
     });
 
-    const paystackData = await paystackRes.json();
+    const koraData = await koraRes.json();
 
-    if (!paystackData.status || paystackData.data.status !== "success") {
-      return NextResponse.json({ success: false, message: "Payment verification failed with Paystack." }, { status: 400 });
+    if (!koraData.status || koraData.data.status !== "success") {
+      return NextResponse.json({ success: false, message: "Payment verification failed with KoraPay." }, { status: 400 });
     }
 
-    const amountPaid = Number(paystackData.data.amount) / 100; // Convert Kobo back to Naira
+    const amountPaid = Number(koraData.data.amount); // Standard NGN from KoraPay
     const userEmail = session.user.email as string;
 
     // 2. ATOMIC TRANSACTION TO PREVENT RACE CONDITIONS
@@ -80,7 +79,7 @@ export async function POST(req: Request) {
           type: "CREDIT",
           status: "SUCCESS",
           reference: reference, 
-          description: "Paystack Online Funding",
+          description: "KoraPay Online Funding",
           serviceCategory: "WALLET_FUNDING"
         }
       });
