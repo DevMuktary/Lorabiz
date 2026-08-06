@@ -91,28 +91,32 @@ export default function DashboardPage() {
     fetchBalance();
   }, []);
 
-  // ✅ KORAPAY FIX: Handle redirects by reading actual status and action intent
+  // ✅ THE FIX: Account for KoraPay appending 'reference' on success 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       
-      const status = params.get("status"); // KoraPay appends 'success', 'failed', or 'cancelled'
-      const action = params.get("action"); // Our custom flag from the checkout API
+      const status = params.get("status"); 
+      const action = params.get("action"); 
+      const reference = params.get("reference"); 
       
-      // Check if the user is returning from a wallet funding checkout
       if (action === "funding_checkout") {
         if (status === "cancelled" || status === "failed") {
           setAlertInfo({
             title: "Payment Cancelled ⚠️",
             message: "You cancelled the payment transaction. No funds were debited."
           });
-        } else if (status === "success" || status === "successful") {
+        } 
+        // KoraPay will either send status=success OR a transaction reference. We accept both as an indicator of completion.
+        else if (status === "success" || status === "successful" || reference) {
           setAlertInfo({
-            title: "Payment Successful 🎉",
-            message: "Your wallet has been funded successfully! Balance is updating..."
+            title: "Payment Received ⏳",
+            message: "Your payment was processed! Wallet balance will update shortly..."
           });
-          // Fetch balance after a short delay to allow webhook processing
+          
+          // Poll the balance twice to give the KoraPay Webhook time to update the database
           setTimeout(fetchBalance, 2000); 
+          setTimeout(fetchBalance, 5000);
         }
         
         // Clean up the URL so it doesn't trigger again on refresh
@@ -124,7 +128,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (alertInfo) {
-      const timer = setTimeout(() => setAlertInfo(null), 4000);
+      const timer = setTimeout(() => setAlertInfo(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [alertInfo]);
@@ -198,7 +202,6 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Pricing Link - Now distinctly styled as a clickable pill button */}
           <Link 
             href="/dashboard/pricing"
             className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-3.5 py-1.5 rounded-full hover:bg-primary hover:text-primary-foreground transition-all active:scale-95 md:mr-4 shadow-sm group"
