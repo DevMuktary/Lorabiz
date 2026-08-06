@@ -89,11 +89,10 @@ export async function POST(req: Request) {
       reference = `ONL_${registrationId}_${Date.now()}`;
       callbackPath = `/dashboard/cac/register/llc/details/${registrationId}?verifying=true`;
       
-      // Capture details for email notification
       regName = registration.proposedName || "LLC Application";
       displayId = registration.trackingId || registrationId;
 
-    // CASE C: SCUML REGISTRATION (USING REDIS DRAFT)
+    // CASE C: SCUML REGISTRATION
     } else if (service === "scuml") {
       promoServiceKey = "SCUML"; 
       
@@ -101,7 +100,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Registration ID is required." }, { status: 400 });
       }
 
-      // Fetch the application draft directly from Redis
       const draftStr = await redis.get(registrationId);
       if (!draftStr) {
         return NextResponse.json({ success: false, message: "Application expired or not found. Please resubmit." }, { status: 404 });
@@ -118,15 +116,13 @@ export async function POST(req: Request) {
       description = `Payment for SCUML Registration (${draft.companyName})`;
       reference = `ONL_SCUML_${registrationId}_${Date.now()}`;
       
-      // Send them back to the SCUML form page to trigger the success modal
       callbackPath = `/dashboard/scuml?verifying=true&draftId=${registrationId}`;
       
-      // Capture details for email notification
       regName = draft.companyName || "SCUML Application";
       scumlDraftType = draft.type || "Registration";
       displayId = registrationId;
 
-    // CASE D: BUSINESS NAME REGISTRATION (DEFAULT SERVICE)
+    // CASE D: BUSINESS NAME REGISTRATION
     } else {
       promoServiceKey = "BUSINESS_NAME"; 
       
@@ -152,7 +148,6 @@ export async function POST(req: Request) {
       reference = `ONL_${registrationId}_${Date.now()}`;
       callbackPath = `/dashboard/cac/register/business-name/details/${registrationId}?verifying=true`;
       
-      // Capture details for email notification
       regName = registration.proposedName || "Business Name Application";
       displayId = registration.trackingId || registrationId;
     }
@@ -202,138 +197,139 @@ export async function POST(req: Request) {
     }
 
     // =========================================================================
-    // FLOW A: PAY WITH INTERNAL WALLET BALANCE
+    // FLOW A: PAY WITH INTERNAL WALLET BALANCE (UNCHANGED)
     // =========================================================================
     if (paymentMethod === "WALLET") {
-      const currentBalance = Number(user.wallet.balance);
-      
-      if (currentBalance < amountToPay) {
-        return NextResponse.json({ 
-          success: false, 
-          message: `Insufficient wallet balance. You need ₦${amountToPay.toLocaleString()} but have ₦${currentBalance.toLocaleString()}. Please fund your wallet.` 
-        }, { status: 400 });
-      }
-
-      const txReference = `WLT_${registrationId || "SRV"}_${Date.now()}`;
-
-      await prisma.$transaction(async (tx) => {
-        // ✅ THE FIX: Atomic decrement to prevent double-spending race conditions
-        const updatedWallet = await tx.wallet.update({
-          where: { id: user.wallet!.id },
-          data: { balance: { decrement: amountToPay } }
-        });
+        // [Existing Wallet Logic Remains Exactly the Same]
+        const currentBalance = Number(user.wallet.balance);
         
-        const newBalance = Number(updatedWallet.balance);
-        const balanceBeforeUpdate = newBalance + amountToPay;
-
-        await tx.transaction.create({
-          data: {
-            walletId: user.wallet!.id,
-            amount: amountToPay,
-            balanceBefore: balanceBeforeUpdate,
-            balanceAfter: newBalance,
-            type: "DEBIT",
-            status: "SUCCESS",
-            reference: txReference,
-            description: description,
-            serviceCategory: promoServiceKey || "OTHER" 
+        if (currentBalance < amountToPay) {
+          return NextResponse.json({ 
+            success: false, 
+            message: `Insufficient wallet balance. You need ₦${amountToPay.toLocaleString()} but have ₦${currentBalance.toLocaleString()}. Please fund your wallet.` 
+          }, { status: 400 });
+        }
+  
+        const txReference = `WLT_${registrationId || "SRV"}_${Date.now()}`;
+  
+        await prisma.$transaction(async (tx) => {
+          const updatedWallet = await tx.wallet.update({
+            where: { id: user.wallet!.id },
+            data: { balance: { decrement: amountToPay } }
+          });
+          
+          const newBalance = Number(updatedWallet.balance);
+          const balanceBeforeUpdate = newBalance + amountToPay;
+  
+          await tx.transaction.create({
+            data: {
+              walletId: user.wallet!.id,
+              amount: amountToPay,
+              balanceBefore: balanceBeforeUpdate,
+              balanceAfter: newBalance,
+              type: "DEBIT",
+              status: "SUCCESS",
+              reference: txReference,
+              description: description,
+              serviceCategory: promoServiceKey || "OTHER" 
+            }
+          });
+  
+          if (appliedPromoId) {
+            await tx.promoCode.update({
+              where: { id: appliedPromoId },
+              data: { timesUsed: { increment: 1 } }
+            });
+            await tx.promoUsage.create({
+              data: { promoId: appliedPromoId, userId: user.id }
+            });
+          }
+  
+          if (promoServiceKey === "LLC" && registrationId) {
+            await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
+          } else if (promoServiceKey === "SCUML" && registrationId) {
+            const draftStr = await redis.get(registrationId);
+            if (draftStr) {
+              const draft = JSON.parse(draftStr);
+              await tx.scumlRegistration.create({
+                data: {
+                  id: registrationId, 
+                  userId: draft.userId,
+                  type: draft.type,
+                  companyName: draft.companyName,
+                  certificateUrl: draft.documents.certificateUrl,
+                  statusReportUrl: draft.documents.statusReportUrl,
+                  memorandumUrl: draft.documents.memorandumUrl || null,
+                  constitutionUrl: draft.documents.constitutionUrl || null,
+                  status: "PENDING", 
+                  amountPaid: amountToPay,
+                  transactionRef: txReference
+                }
+              });
+              await redis.del(registrationId);
+            }
+          } else if (promoServiceKey === "BUSINESS_NAME" && registrationId) {
+            await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           }
         });
-
-        // BURN PROMO CODE IF APPLIED
-        if (appliedPromoId) {
-          await tx.promoCode.update({
-            where: { id: appliedPromoId },
-            data: { timesUsed: { increment: 1 } }
-          });
-          await tx.promoUsage.create({
-            data: { promoId: appliedPromoId, userId: user.id }
-          });
-        }
-
-        // UPDATE SPECIFIC SERVICE REGISTRATION STATUS
-        if (promoServiceKey === "LLC" && registrationId) {
-          await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
-        } else if (promoServiceKey === "SCUML" && registrationId) {
-          
-          // Pull from Redis and create the official row atomically
-          const draftStr = await redis.get(registrationId);
-          if (draftStr) {
-            const draft = JSON.parse(draftStr);
-            await tx.scumlRegistration.create({
-              data: {
-                id: registrationId, 
-                userId: draft.userId,
-                type: draft.type,
-                companyName: draft.companyName,
-                certificateUrl: draft.documents.certificateUrl,
-                statusReportUrl: draft.documents.statusReportUrl,
-                memorandumUrl: draft.documents.memorandumUrl || null,
-                constitutionUrl: draft.documents.constitutionUrl || null,
-                status: "PENDING", 
-                amountPaid: amountToPay,
-                transactionRef: txReference
-              }
+  
+        try {
+          if (promoServiceKey === "SCUML") {
+            await sendScumlSubmittedEmail({
+              to: user.email!,
+              name: user.firstName || "Customer",
+              companyName: regName, 
+              regType: scumlDraftType,
+              transactionRef: txReference
             });
-            await redis.del(registrationId);
+          } else if (promoServiceKey === "BUSINESS_NAME" || promoServiceKey === "LLC") {
+            const userPhone = user.phone || "";
+            const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
+  
+            await notificationQueue.add("send-application-notification", {
+              userId: user.id, 
+              type: "APPLICATION_SUBMITTED", 
+              phone: userPhone, 
+              email: user.email!,
+              name: userName, 
+              businessName: regName, 
+              regId: displayId,
+            }, {
+              attempts: 3, 
+              backoff: { type: "exponential", delay: 5000 }, 
+              removeOnComplete: true,
+            });
           }
-          
-        } else if (promoServiceKey === "BUSINESS_NAME" && registrationId) {
-          await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
+        } catch (emailError) {
+          console.error("Failed to send notification for Wallet Payment:", emailError);
         }
-      });
-
-      // =========================================================================
-      // 🚨 SEND EMAIL NOTIFICATIONS FOR WALLET PAYMENTS
-      // =========================================================================
-      try {
-        if (promoServiceKey === "SCUML") {
-          await sendScumlSubmittedEmail({
-            to: user.email!,
-            name: user.firstName || "Customer",
-            companyName: regName, 
-            regType: scumlDraftType,
-            transactionRef: txReference
-          });
-        } else if (promoServiceKey === "BUSINESS_NAME" || promoServiceKey === "LLC") {
-          const userPhone = user.phone || "";
-          const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Valued Customer";
-
-          await notificationQueue.add("send-application-notification", {
-            userId: user.id, 
-            type: "APPLICATION_SUBMITTED", 
-            phone: userPhone, 
-            email: user.email!,
-            name: userName, 
-            businessName: regName, 
-            regId: displayId,
-          }, {
-            attempts: 3, 
-            backoff: { type: "exponential", delay: 5000 }, 
-            removeOnComplete: true,
-          });
-        }
-      } catch (emailError) {
-        console.error("Failed to send notification for Wallet Payment:", emailError);
-      }
-
-      return NextResponse.json({ success: true, message: "Payment successful via Wallet." });
+  
+        return NextResponse.json({ success: true, message: "Payment successful via Wallet." });
     }
 
     // =========================================================================
-    // FLOW B: PAY ONLINE VIA PAYSTACK (SERVER-TO-SERVER INITIALIZATION)
+    // FLOW B: PAY ONLINE VIA KORAPAY (SERVER-TO-SERVER INITIALIZATION)
     // =========================================================================
     if (paymentMethod === "ONLINE") {
-      const secretKey = process.env.PAYSTACK_SECRET_KEY;
+      const secretKey = process.env.KORAPAY_SECRET_KEY;
       const appUrl = process.env.NEXTAUTH_URL || "https://lorabiz.com";
 
       if (!secretKey) {
-        console.error("❌ Paystack Secret Key missing from server environment.");
+        console.error("❌ KoraPay Secret Key missing from server environment.");
         return NextResponse.json({ success: false, message: "Payment gateway configuration error." }, { status: 500 });
       }
 
-      // Packed serviceCategory into Paystack metadata for the Webhook to read
-      const paystackResponse = await fetch("https://api.paystack.co/transaction/initialize", {
+      // We package metadata into a single JSON string because KoraPay restricts metadata keys to 5 maximum.
+      const payloadString = JSON.stringify({
+        userId: user.id,
+        service: service || "business", 
+        registrationId: registrationId || null,
+        expectedAmount: amountToPay,
+        appliedPromoId: appliedPromoId,
+        serviceCategory: promoServiceKey || "OTHER"
+      });
+
+      const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${secretKey}`,
@@ -341,34 +337,35 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           email: user.email,
-          amount: Math.round(amountToPay * 100), 
+          amount: Math.round(amountToPay), // KoraPay uses standard NGN values, not Kobo
+          currency: "NGN",
           reference: reference,
-          callback_url: `${appUrl}${callbackPath}`,
+          redirect_url: `${appUrl}${callbackPath}`,
+          narration: description,
+          customer: {
+            email: user.email,
+            name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "Customer"
+          },
           metadata: {
-            userId: user.id,
-            service: service || "business", 
-            registrationId: registrationId || null,
-            expectedAmount: amountToPay, 
-            description: description,
-            appliedPromoId: appliedPromoId,
-            serviceCategory: promoServiceKey || "OTHER"
+            custom_payload: payloadString
           }
         }),
       });
 
-      const paystackData = await paystackResponse.json();
+      const koraData = await koraResponse.json();
 
-      if (!paystackResponse.ok || !paystackData.status || !paystackData.data?.authorization_url) {
-        console.error("❌ Paystack Initialization Failed:", paystackData);
+      if (!koraResponse.ok || !koraData.status || !koraData.data?.checkout_url) {
+        console.error("❌ KoraPay Initialization Failed:", koraData);
         return NextResponse.json({ 
           success: false, 
-          message: paystackData.message || "Failed to initialize secure checkout with bank." 
+          message: koraData.message || "Failed to initialize secure checkout with bank." 
         }, { status: 400 });
       }
 
+      // We map Kora's checkout_url back to authorizationUrl so the frontend continues to work seamlessly
       return NextResponse.json({ 
         success: true, 
-        authorizationUrl: paystackData.data.authorization_url,
+        authorizationUrl: koraData.data.checkout_url,
         reference: reference
       });
     }
