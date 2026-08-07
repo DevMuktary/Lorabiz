@@ -131,8 +131,10 @@ export default function ReferralsPage() {
     e.preventDefault();
     
     const amountNum = Number(withdrawAmount);
-    if (isNaN(amountNum) || amountNum < 2000) {
-      showToast("Minimum withdrawal amount is ₦2,000.", "error");
+    const minLimit = stats?.minWithdrawal || 2000;
+
+    if (isNaN(amountNum) || amountNum < minLimit) {
+      showToast(`Minimum withdrawal amount is ₦${minLimit.toLocaleString()}.`, "error");
       return;
     }
     
@@ -239,7 +241,6 @@ export default function ReferralsPage() {
             </div>
           </div>
           
-          {/* Updated Notice Box */}
           <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 p-4 rounded-xl mb-8 text-sm flex gap-3 leading-relaxed">
             <Info className="h-5 w-5 shrink-0 mt-0.5" weight="fill" />
             <p><strong>Notice:</strong> The bank account name must match with the name you registered with on LoraBiz.</p>
@@ -370,7 +371,7 @@ export default function ReferralsPage() {
               <div>
                 <h3 className="text-lg font-bold text-foreground flex items-center gap-2 mb-2"><Users className="h-5 w-5 text-[#ff3f7a]" weight="fill" /> Your Referral Link</h3>
                 <p className="text-sm text-muted-foreground mb-6">
-                  Share this link. When businesses sign up and spend at least <strong>₦{(stats?.spendThreshold || 5000).toLocaleString()}</strong> on compliance services, you get paid.
+                  Share this link. When businesses sign up and spend at least <strong>₦{(stats?.spendThreshold || 5000).toLocaleString()}</strong> on compliance services, you get paid <strong>₦{(stats?.rewardAmount || 1000).toLocaleString()}</strong>!
                 </p>
                 
                 <div className="flex items-center gap-2 p-1.5 bg-secondary/50 border border-border rounded-lg mb-4">
@@ -419,10 +420,10 @@ export default function ReferralsPage() {
                   />
                 </div>
                 
-                <Button type="submit" disabled={withdrawing || !withdrawAmount || Number(withdrawAmount) < 2000} className="w-full h-12 font-semibold bg-foreground text-background hover:bg-foreground/90">
+                <Button type="submit" disabled={withdrawing || !withdrawAmount || Number(withdrawAmount) < (stats?.minWithdrawal || 2000)} className="w-full h-12 font-semibold bg-foreground text-background hover:bg-foreground/90">
                   {withdrawing ? <Spinner className="animate-spin h-5 w-5" /> : "Request Cashout"}
                 </Button>
-                <p className="text-xs text-center text-muted-foreground">Minimum withdrawal: ₦2,000</p>
+                <p className="text-xs text-center text-muted-foreground">Minimum withdrawal: ₦{(stats?.minWithdrawal || 2000).toLocaleString()}</p>
               </form>
             </div>
 
