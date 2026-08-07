@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     if (actionType === "APPROVE_PAYOUT") {
       await prisma.referralWithdrawal.update({
         where: { id: withdrawalId },
-        data: { status: "PAID", processedAt: new Date() }
+        data: { status: "PAID" } // Removed processedAt, relying on Prisma updatedAt
       });
       return NextResponse.json({ success: true, message: "Payout marked as Paid." });
     }
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       await prisma.$transaction(async (tx) => {
         await tx.referralWithdrawal.update({
           where: { id: withdrawalId },
-          data: { status: "REJECTED", processedAt: new Date() }
+          data: { status: "REJECTED" } // Removed processedAt, relying on Prisma updatedAt
         });
 
         // Give the money back to their dashboard balance so they can try again
