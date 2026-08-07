@@ -14,7 +14,9 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
   const [error, setError] = useState<string | null>(null);
   
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [substitutionFee, setSubstitutionFee] = useState(5000); 
+  const [substitutionFee, setSubstitutionFee] = useState<number | null>(null); 
+  const [isLoadingPrice, setIsLoadingPrice] = useState(true);
+
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [gatewayLoading, setGatewayLoading] = useState(false);
@@ -25,17 +27,34 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     altName2: reg.altName2 || ""
   });
 
+  // Fetch Wallet Balance & Dynamic Pricing
   useEffect(() => {
-    const fetchWallet = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch("/api/user/wallet");
-        const data = await res.json();
-        if (data.success && data.wallet) {
-          setWalletBalance(Number(data.wallet.balance));
+        const [walletRes, pricingRes] = await Promise.all([
+          fetch("/api/user/wallet"),
+          fetch("/api/pricing")
+        ]);
+        
+        const walletData = await walletRes.json();
+        const pricingData = await pricingRes.json();
+
+        if (walletData.success && walletData.wallet) {
+          setWalletBalance(Number(walletData.wallet.balance));
         }
-      } catch (err) {}
+
+        if (pricingData.success && pricingData.data?.NAME_SUBSTITUTION) {
+          setSubstitutionFee(Number(pricingData.data.NAME_SUBSTITUTION));
+        } else {
+          setSubstitutionFee(5000); // Fallback if not found in DB
+        }
+      } catch (err) {
+        setSubstitutionFee(5000); // Network fallback
+      } finally {
+        setIsLoadingPrice(false);
+      }
     };
-    fetchWallet();
+    fetchData();
 
     return () => {
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
@@ -113,7 +132,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setStep(2);
   };
 
-  const startWebhookPolling = () => {
+  const startWebhookPolling = (popupReference?: Window | null) => {
     setProcessingState("verifying");
     
     pollingIntervalRef.current = setInterval(async () => {
@@ -125,9 +144,13 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         const res = await fetch(endpoint);
         const json = await res.json();
         
+        // If the DB has the newly substituted name, Webhook succeeded!
         if (json.success && json.data.proposedName === formData.proposedName) {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
+          setGatewayLoading(false);
+          
+          if (popupReference) popupReference.close(); 
           router.refresh();
         }
       } catch (e) {}
@@ -136,19 +159,26 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setTimeout(() => {
       if (pollingIntervalRef.current && processingState !== "success") {
         clearInterval(pollingIntervalRef.current);
-        setError("Payment confirmation delayed. If you paid, it will reflect shortly.");
+        setError("Payment confirmation delayed. If you paid, check your dashboard shortly.");
         setProcessingState("idle");
+        setGatewayLoading(false);
         setStep(2); 
       }
-    }, 15000);
+    }, 180000); // 3-minute timeout
   };
 
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
     setLoading(true);
     setError(null);
+    setStep(3);
+    setProcessingState("initializing");
+
+    let popup: Window | null = null;
     
     if (method === "ONLINE") {
       setGatewayLoading(true);
+      // Open immediately to bypass popup blockers
+      popup = window.open("about:blank", "KoraPayCheckout", "width=450,height=750");
     }
 
     try {
@@ -165,30 +195,49 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
       if (!res.ok || !data.success) {
         setError(data.message || "Failed to initialize payment.");
+        setStep(2);
         setProcessingState("idle");
         setGatewayLoading(false);
+        if (popup) popup.close();
         return;
       }
 
       if (method === "WALLET") {
         setProcessingState("success");
-        setStep(3);
         router.refresh();
       } else if (method === "ONLINE") {
         if (!data.authorizationUrl) {
           setError("Server error: Could not obtain checkout link.");
-          setProcessingState("idle"); 
-          setGatewayLoading(false);
+          setStep(2); setProcessingState("idle"); setGatewayLoading(false);
+          if (popup) popup.close();
           return;
         }
         
-        // Native Redirect - 100% reliable
-        window.location.href = data.authorizationUrl;
+        if (popup) {
+          popup.location.href = data.authorizationUrl;
+          startWebhookPolling(popup);
+
+          // Detect if the user manually closes the popup before finishing
+          const popupCheck = setInterval(() => {
+            if (popup?.closed && processingState !== "success") {
+              clearInterval(popupCheck);
+              if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+              setGatewayLoading(false);
+              setProcessingState("idle");
+              setStep(2);
+              setError("Payment window was closed.");
+            }
+          }, 1000);
+
+        } else {
+          // Absolute fallback if popups are fully blocked by their browser
+          window.location.href = data.authorizationUrl;
+        }
       }
     } catch (e) {
       setError("A network error occurred.");
-      setProcessingState("idle");
-      setGatewayLoading(false);
+      setStep(2); setProcessingState("idle"); setGatewayLoading(false);
+      if (popup) popup.close();
     } finally {
       setLoading(false);
     }
@@ -215,7 +264,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     window.location.reload(); 
   };
 
-  const isWalletInsufficient = walletBalance !== null && walletBalance < substitutionFee;
+  const isWalletInsufficient = walletBalance !== null && substitutionFee !== null && walletBalance < substitutionFee;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
@@ -243,10 +292,10 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
-            Connecting to Secure Checkout...
+            Secure Checkout Open
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
-            Please wait a moment while we prepare your checkout page.
+            Please complete the payment in the popup window.
           </p>
 
           <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
@@ -283,7 +332,9 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
           {step === 1 && (
             <div className="space-y-6">
-              <p className="text-sm font-medium text-muted-foreground">Substitution Fee: <span className="font-bold text-foreground">₦{substitutionFee.toLocaleString()}</span></p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Substitution Fee: <span className="font-bold text-foreground">{isLoadingPrice ? "Loading..." : `₦${substitutionFee?.toLocaleString()}`}</span>
+              </p>
               
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -300,7 +351,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
                 </div>
               </div>
 
-              <button onClick={handleProceedToPayment} className="w-full h-14 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity">
+              <button disabled={isLoadingPrice} onClick={handleProceedToPayment} className="w-full h-14 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50">
                 Proceed to Payment
               </button>
             </div>
@@ -310,13 +361,13 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
             <div className="space-y-6">
                <div className="text-center mb-6">
                   <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Fee</p>
-                  <h2 className="text-4xl font-black text-foreground">₦{substitutionFee.toLocaleString()}</h2>
+                  <h2 className="text-4xl font-black text-foreground">{isLoadingPrice ? "..." : `₦${substitutionFee?.toLocaleString()}`}</h2>
                </div>
 
               <div className="space-y-4">
                 <button 
                   onClick={() => handlePayment("WALLET")}
-                  disabled={loading || isWalletInsufficient}
+                  disabled={loading || isLoadingPrice || isWalletInsufficient}
                   className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed group text-left"
                 >
                   <div className="flex items-center gap-4">
@@ -332,8 +383,8 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
                 <button 
                   onClick={() => handlePayment("ONLINE")}
-                  disabled={loading}
-                  className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group text-left"
+                  disabled={loading || isLoadingPrice}
+                  className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group text-left disabled:opacity-50"
                 >
                   <div className="flex items-center gap-4">
                     <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
@@ -369,7 +420,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
                         {loading ? <Spinner className="animate-spin h-5 w-5" /> : "Yes, Submit Query Now"}
                       </button>
                       
-                      {/* THIS IS THE CRITICAL UX FIX. IT FORCES A HARD RELOAD TO SHOW THE NEW NAMES EVERYWHERE. */}
                       <button onClick={handleContinueEditing} disabled={loading} className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80 transition-colors">
                         No, Continue Editing
                       </button>
