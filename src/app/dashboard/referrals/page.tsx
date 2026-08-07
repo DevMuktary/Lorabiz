@@ -369,7 +369,9 @@ export default function ReferralsPage() {
             <div className="bg-card border border-border p-6 md:p-8 rounded-2xl shadow-sm flex flex-col justify-between">
               <div>
                 <h3 className="text-lg font-bold text-foreground flex items-center gap-2 mb-2"><Users className="h-5 w-5 text-[#ff3f7a]" weight="fill" /> Your Referral Link</h3>
-                <p className="text-sm text-muted-foreground mb-6">Share this link. When businesses sign up and spend money on compliance services, you get paid.</p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Share this link. When businesses sign up and spend at least <strong>₦{(stats?.spendThreshold || 5000).toLocaleString()}</strong> on compliance services, you get paid.
+                </p>
                 
                 <div className="flex items-center gap-2 p-1.5 bg-secondary/50 border border-border rounded-lg mb-4">
                   <div className="flex-1 truncate px-3 text-sm font-mono text-foreground font-medium select-all">
