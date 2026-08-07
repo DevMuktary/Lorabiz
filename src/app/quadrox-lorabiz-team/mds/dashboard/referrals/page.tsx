@@ -12,11 +12,14 @@ import { Label } from "@/components/ui/label";
 export default function AdminReferralsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"PAYOUTS" | "REFERRERS" | "SETTINGS">("PAYOUTS");
+  const [activeTab, setActiveTab] = useState<"PAYOUTS" | "REFERRERS" | "ENROLLED" | "SETTINGS">("PAYOUTS");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Settings state
-  const [settingsForm, setSettingsForm] = useState({ rewardAmount: 1000, spendThreshold: 5000 });
+  // Settings state (Allowing strings prevents the 'sticky zero' bug when clearing the input)
+  const [settingsForm, setSettingsForm] = useState<{rewardAmount: string | number, spendThreshold: string | number}>({ 
+    rewardAmount: 1000, 
+    spendThreshold: 5000 
+  });
 
   // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -105,7 +108,11 @@ export default function AdminReferralsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex flex-col justify-center">
+          <div className="flex items-center gap-2 text-muted-foreground mb-2"><Users className="h-5 w-5" /> <span className="font-medium text-sm">Active Enrolled Users</span></div>
+          <p className="text-3xl font-bold text-foreground">{data?.enrolledUsers?.length || 0}</p>
+        </div>
         <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex flex-col justify-center">
           <div className="flex items-center gap-2 text-muted-foreground mb-2"><ClockCounterClockwise className="h-5 w-5" /> <span className="font-medium text-sm">Pending Payouts</span></div>
           <p className="text-3xl font-bold text-foreground">₦{(data?.stats.totalPending || 0).toLocaleString()}</p>
@@ -117,10 +124,11 @@ export default function AdminReferralsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border mb-4">
-        <button onClick={() => setActiveTab("PAYOUTS")} className={`px-4 py-3 text-sm font-semibold transition-colors ${activeTab === "PAYOUTS" ? "text-[#ff3f7a] border-b-2 border-[#ff3f7a]" : "text-muted-foreground hover:text-foreground"}`}>Pending Payouts ({data?.pendingWithdrawals.length || 0})</button>
-        <button onClick={() => setActiveTab("REFERRERS")} className={`px-4 py-3 text-sm font-semibold transition-colors ${activeTab === "REFERRERS" ? "text-[#ff3f7a] border-b-2 border-[#ff3f7a]" : "text-muted-foreground hover:text-foreground"}`}>Top Referrers</button>
-        <button onClick={() => setActiveTab("SETTINGS")} className={`px-4 py-3 text-sm font-semibold transition-colors ${activeTab === "SETTINGS" ? "text-[#ff3f7a] border-b-2 border-[#ff3f7a]" : "text-muted-foreground hover:text-foreground"}`}>Settings</button>
+      <div className="flex overflow-x-auto border-b border-border mb-4 custom-scrollbar">
+        <button onClick={() => setActiveTab("PAYOUTS")} className={`px-4 py-3 whitespace-nowrap text-sm font-semibold transition-colors ${activeTab === "PAYOUTS" ? "text-[#ff3f7a] border-b-2 border-[#ff3f7a]" : "text-muted-foreground hover:text-foreground"}`}>Pending Payouts ({data?.pendingWithdrawals.length || 0})</button>
+        <button onClick={() => setActiveTab("ENROLLED")} className={`px-4 py-3 whitespace-nowrap text-sm font-semibold transition-colors ${activeTab === "ENROLLED" ? "text-[#ff3f7a] border-b-2 border-[#ff3f7a]" : "text-muted-foreground hover:text-foreground"}`}>Enrolled Users ({data?.enrolledUsers?.length || 0})</button>
+        <button onClick={() => setActiveTab("REFERRERS")} className={`px-4 py-3 whitespace-nowrap text-sm font-semibold transition-colors ${activeTab === "REFERRERS" ? "text-[#ff3f7a] border-b-2 border-[#ff3f7a]" : "text-muted-foreground hover:text-foreground"}`}>Top Referrers</button>
+        <button onClick={() => setActiveTab("SETTINGS")} className={`px-4 py-3 whitespace-nowrap text-sm font-semibold transition-colors ${activeTab === "SETTINGS" ? "text-[#ff3f7a] border-b-2 border-[#ff3f7a]" : "text-muted-foreground hover:text-foreground"}`}>Settings</button>
       </div>
 
       {/* PAYOUTS TAB */}
@@ -191,6 +199,46 @@ export default function AdminReferralsPage() {
         </div>
       )}
 
+      {/* ENROLLED USERS TAB */}
+      {activeTab === "ENROLLED" && (
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-secondary/50 text-muted-foreground uppercase text-[11px] font-bold tracking-wider">
+                <tr>
+                  <th className="px-6 py-4">User Details</th>
+                  <th className="px-6 py-4">Referral Code</th>
+                  <th className="px-6 py-4 text-right">Unpaid Balance</th>
+                  <th className="px-6 py-4 text-right">Joined Program</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data?.enrolledUsers?.length === 0 ? (
+                  <tr><td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">No users have enrolled yet.</td></tr>
+                ) : (
+                  data?.enrolledUsers?.map((user: any) => (
+                    <tr key={user.id} className="hover:bg-secondary/20 transition-colors">
+                      <td className="px-6 py-4">
+                        <p className="font-semibold text-foreground">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                        <p className="text-xs text-muted-foreground">{user.phone}</p>
+                      </td>
+                      <td className="px-6 py-4 font-mono font-medium text-muted-foreground">{user.referralCode}</td>
+                      <td className="px-6 py-4 text-right font-bold text-foreground">
+                        ₦{Number(user.referralBalance).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground text-xs whitespace-nowrap text-right">
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* REFERRERS TAB */}
       {activeTab === "REFERRERS" && (
         <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
@@ -251,7 +299,7 @@ export default function AdminReferralsPage() {
               <Input 
                 type="number" 
                 value={settingsForm.rewardAmount} 
-                onChange={e => setSettingsForm({...settingsForm, rewardAmount: Number(e.target.value)})} 
+                onChange={e => setSettingsForm({...settingsForm, rewardAmount: e.target.value === '' ? '' : Number(e.target.value)})} 
                 className="h-12 bg-secondary/40 font-bold"
               />
             </div>
@@ -262,7 +310,7 @@ export default function AdminReferralsPage() {
               <Input 
                 type="number" 
                 value={settingsForm.spendThreshold} 
-                onChange={e => setSettingsForm({...settingsForm, spendThreshold: Number(e.target.value)})} 
+                onChange={e => setSettingsForm({...settingsForm, spendThreshold: e.target.value === '' ? '' : Number(e.target.value)})} 
                 className="h-12 bg-secondary/40 font-bold"
               />
             </div>
