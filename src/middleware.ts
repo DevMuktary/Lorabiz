@@ -22,6 +22,7 @@ function forceLogoutAndRedirect(req: NextRequest, path: string) {
 // ============================================================================
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  const refCode = req.nextUrl.searchParams.get('ref');
 
   const token = await getToken({
     req,
@@ -31,10 +32,13 @@ export async function middleware(req: NextRequest) {
   const role = token?.role as string | undefined;
   const mfaVerified = token?.mfaVerified as boolean | undefined;
 
+  let response = NextResponse.next();
+
   // ===========================================================================
   // 0. PUBLIC ROUTES (Always Allow)
   // ===========================================================================
   const isPublicRoute =
+    pathname === "/" ||
     pathname === "/auth/login" ||
     pathname === "/auth/register" ||
     pathname === "/quadrox-lorabiz-team/mds/login" ||
@@ -43,102 +47,72 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/quadrox-lorabiz-team/setup-2fa");
 
   if (isPublicRoute) {
-    return NextResponse.next();
+    // Falls through to the cookie attachment at the end
   }
-
   // ===========================================================================
   // 1. CLIENT USER PORTAL
   // ===========================================================================
-  if (pathname.startsWith("/dashboard")) {
+  else if (pathname.startsWith("/dashboard")) {
     if (!token) {
-      return NextResponse.redirect(new URL("/auth/login", req.url));
+      response = NextResponse.redirect(new URL("/auth/login", req.url));
+    } else if (role !== "USER") {
+      response = forceLogoutAndRedirect(req, "/auth/login");
     }
-
-    if (role !== "USER") {
-      return forceLogoutAndRedirect(req, "/auth/login");
-    }
-
-    return NextResponse.next();
   }
-
   // ===========================================================================
   // 2. ADMIN (MDS) PORTAL
   // ===========================================================================
-  if (pathname.startsWith("/quadrox-lorabiz-team/mds")) {
+  else if (pathname.startsWith("/quadrox-lorabiz-team/mds")) {
     if (!token) {
-      return NextResponse.redirect(
-        new URL("/quadrox-lorabiz-team/mds/login", req.url)
-      );
-    }
-
-    if (role !== "ADMIN") {
+      response = NextResponse.redirect(new URL("/quadrox-lorabiz-team/mds/login", req.url));
+    } else if (role !== "ADMIN") {
       if (role === "USER") {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        response = NextResponse.redirect(new URL("/dashboard", req.url));
+      } else {
+        response = forceLogoutAndRedirect(req, "/quadrox-lorabiz-team/mds/login");
       }
-
-      return forceLogoutAndRedirect(
-        req,
-        "/quadrox-lorabiz-team/mds/login"
+    } else if (mfaVerified === false) {
+      response = NextResponse.redirect(
+        new URL(`/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(pathname)}`, req.url)
       );
     }
-
-    if (mfaVerified === false) {
-      return NextResponse.redirect(
-        new URL(
-          `/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(
-            pathname
-          )}`,
-          req.url
-        )
-      );
-    }
-
-    return NextResponse.next();
   }
-
   // ===========================================================================
   // 3. STAFF PORTAL
   // ===========================================================================
-  if (pathname.startsWith("/quadrox-lorabiz-team/staff")) {
+  else if (pathname.startsWith("/quadrox-lorabiz-team/staff")) {
     if (!token) {
-      return NextResponse.redirect(
-        new URL("/quadrox-lorabiz-team/staff/login", req.url)
-      );
-    }
-
-    if (role !== "STAFF") {
+      response = NextResponse.redirect(new URL("/quadrox-lorabiz-team/staff/login", req.url));
+    } else if (role !== "STAFF") {
       if (role === "USER") {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        response = NextResponse.redirect(new URL("/dashboard", req.url));
+      } else {
+        response = forceLogoutAndRedirect(req, "/quadrox-lorabiz-team/staff/login");
       }
-
-      return forceLogoutAndRedirect(
-        req,
-        "/quadrox-lorabiz-team/staff/login"
+    } else if (mfaVerified === false) {
+      response = NextResponse.redirect(
+        new URL(`/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(pathname)}`, req.url)
       );
     }
-
-    if (mfaVerified === false) {
-      return NextResponse.redirect(
-        new URL(
-          `/quadrox-lorabiz-team/verify-2fa?callbackUrl=${encodeURIComponent(
-            pathname
-          )}`,
-          req.url
-        )
-      );
-    }
-
-    return NextResponse.next();
   }
 
   // ===========================================================================
-  // DEFAULT
+  // ATTACH REFERRAL COOKIE (If present in URL)
   // ===========================================================================
-  return NextResponse.next();
+  if (refCode) {
+    response.cookies.set('lorabiz_ref', refCode, { 
+      maxAge: 30 * 24 * 60 * 60, // 30 Days
+      path: '/'
+    });
+  }
+
+  return response;
 }
 
 export const config = {
   matcher: [
+    "/",
+    "/auth/:path*",
     "/dashboard/:path*",
     "/quadrox-lorabiz-team/:path*",
   ],
