@@ -80,6 +80,19 @@ model User {
   street          String
   buildingNo      String?
   ipAddress       String?          // Tracks registration IP
+
+  referralCode       String?   @unique
+  referredBy         String?   
+  referralBalance    Decimal   @default(0.00) // Separate wallet
+  totalSpent         Decimal   @default(0.00) // Tracks cumulative spend for triggers
+  
+  payoutBankCode     String?
+  payoutBankName     String?
+  payoutAccountNo    String?
+  payoutAccountName  String?
+
+  referralsGiven     Referral[] @relation("Referrer")
+  withdrawals        ReferralWithdrawal[]
   
   // Two-Factor Authentication (MFA) Fields
   twoFactorEnabled Boolean         @default(false)
@@ -564,4 +577,34 @@ model TaxIdRequest {
   user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ==========================================
+// REFERRAL SYSTEM
+// ==========================================
+
+model Referral {
+  id               String   @id @default(cuid())
+  referrerId       String   
+  referredUserId   String   @unique
+  status           String   @default("PENDING") // PENDING | EARNED
+  rewardAmount     Decimal  // Fetched dynamically from GlobalSetting on creation
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  referrer         User     @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+}
+
+model ReferralWithdrawal {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Decimal
+  status      String   @default("PENDING") // PENDING | PAID | REJECTED
+  bankName    String
+  accountNo   String
+  accountName String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
