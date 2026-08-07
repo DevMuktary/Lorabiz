@@ -17,7 +17,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
   const [substitutionFee, setSubstitutionFee] = useState<number | null>(null); 
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
 
-  // Added "ready_for_popup" state for the new 2-step flow
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "ready_for_popup" | "verifying" | "success">("idle");
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   
@@ -66,7 +65,10 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
   const validateNames = () => {
     if (reg._appType === "BUSINESS_NAME") {
-      const restricted = /limited|ltd|plc|inc|incorporated|llc/i;
+      // THE BUG FIX: Added \b (word boundaries) so it ONLY flags whole words!
+      // This stops it from rejecting names like "Prince" (inc) or "Meltdown" (ltd)
+      const restricted = /\b(limited|ltd|plc|inc|incorporated|llc)\b/i;
+      
       if (restricted.test(formData.proposedName) || restricted.test(formData.altName1) || restricted.test(formData.altName2)) {
         return "Business Names cannot contain Limited, Ltd, Plc, Inc, or LLC. If you need a company, please register an LLC.";
       }
@@ -82,9 +84,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setStep(2);
   };
 
-  // =========================================================================
-  // STATELESS POLLING (Watches the DB while the Popup handles the payment)
-  // =========================================================================
   const startWebhookPolling = (popupReference?: Window | null) => {
     setProcessingState("verifying");
     
@@ -97,19 +96,17 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         const res = await fetch(endpoint);
         const json = await res.json();
         
-        // If the DB has the newly substituted name, Webhook succeeded!
         if (json.success && json.data.proposedName === formData.proposedName) {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
           
           if (popupReference && !popupReference.closed) {
-             popupReference.close(); // Automatically close KoraPay tab!
+             popupReference.close(); 
           } 
         }
       } catch (e) {}
     }, 2000);
 
-    // Escape hatch
     setTimeout(() => {
       if (pollingIntervalRef.current && processingState !== "success") {
         clearInterval(pollingIntervalRef.current);
@@ -117,7 +114,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         setProcessingState("idle");
         setStep(2); 
       }
-    }, 180000); // 3-minute timeout
+    }, 180000); 
   };
 
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
@@ -159,7 +156,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
           return;
         }
         
-        // Move to Step 2 of the Popup Flow
         setCheckoutUrl(data.authorizationUrl);
         setProcessingState("ready_for_popup");
         setGatewayLoading(false);
@@ -196,7 +192,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
       
-      {/* Friendly Dancing Baby Doll Overlay for Initialization */}
       {gatewayLoading && (
         <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-300 select-none p-6 text-center">
           <div className="relative flex items-center justify-center mb-8 w-40 h-40">
