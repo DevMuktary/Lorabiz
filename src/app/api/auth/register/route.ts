@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     }
 
     // 4. PREPARE REFERRAL DATA (Who brought them in?)
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const cookieRef = cookieStore.get('lorabiz_ref')?.value;
     
     // Check if they manually typed a code, otherwise fallback to the silent cookie
