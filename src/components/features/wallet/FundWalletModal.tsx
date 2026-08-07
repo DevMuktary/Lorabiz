@@ -108,7 +108,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
-            Connecting to Paystack...
+            Connecting to KoraPay...
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
             Please wait a moment while we prepare your checkout page.
