@@ -189,7 +189,7 @@ export async function POST(req: Request) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-      // FIX 1: Strip "LIMITED" before querying the CAC endpoint so it doesn't throw a 403 error.
+      // Strip "LIMITED" before querying the CAC endpoint so it doesn't throw a 403 error.
       let cacSearchName = uppercaseName;
       if (entityType === "Company (LLC)") {
         const words = cacSearchName.split(" ");
@@ -234,9 +234,10 @@ export async function POST(req: Request) {
                          cacJson.message === "BUSINESS_NAME_EXISTS" ||
                          similarityVal >= 85; 
 
-      // FIX 2: AI Verification Interceptor
-      // If CAC rejected it based on similarity (but it's not a 100% exact match), let AI double check
-      if (isRejected && similarityVal < 100 && similarNamesArray.length > 0) {
+      let suppressSimilarityWarning = false;
+
+      // AI Interceptor now checks ANY noticeable similarity to suppress fake warnings
+      if (similarityVal >= 40 && similarityVal < 100 && similarNamesArray.length > 0) {
         try {
           const aiVerification = await openai.chat.completions.create({
             model: "gpt-4o-mini",
@@ -246,7 +247,7 @@ export async function POST(req: Request) {
                 content: `You are a corporate name similarity examiner for the Corporate Affairs Commission.
                 Compare the Proposed Name against the list of Existing Names.
                 IGNORE generic descriptors like 'INTERNATIONAL', 'SERVICES', 'CONCEPTS', 'GLOBAL', 'NIGERIA', 'VENTURES', 'ENTERPRISES', 'LIMITED', 'LTD'.
-                Only flag as a conflict if the core, distinct identifying root words are identical or differ by only 1-2 letters (e.g., 'QUADROX' vs 'QUADOW' is a conflict, but 'THREEMEALS' vs 'DERABEL' is NOT a conflict).
+                Only flag as a conflict if the core, distinct identifying root words are identical or differ by only 1-2 letters (e.g., 'QUADROX' vs 'QUADOW' is a conflict, but 'THREEMEALS' vs 'CEEOME' is NOT a conflict).
                 Return {"isConflict": true} if there is a genuine risk of confusion. Return {"isConflict": false} if they are distinct enough to be safely registered.`
               },
               {
@@ -262,10 +263,11 @@ export async function POST(req: Request) {
           
           if (aiResult.isConflict === false) {
             isRejected = false;
-            console.log(`🤖 AI OVERRIDE: Rescued ${uppercaseName} from CAC's false-positive similarity score of ${similarityVal}%. Root words are completely distinct.`);
+            suppressSimilarityWarning = true; // Tell the UI to ignore the warning
+            console.log(`🤖 AI OVERRIDE: Suppressed CAC's false-positive similarity score of ${similarityVal}%. Root words are completely distinct.`);
           }
         } catch (aiError) {
-          console.error("AI Similarity check failed, proceeding with CAC original rejection.", aiError);
+          console.error("AI Similarity check failed, proceeding with CAC original assessment.", aiError);
         }
       }
 
@@ -280,7 +282,8 @@ export async function POST(req: Request) {
         });
       }
 
-      if (similarityVal > 0 && mostSimilarName !== "N/A") {
+      // WARNING is now skipped if the AI suppressed it!
+      if (similarityVal > 0 && mostSimilarName !== "N/A" && !suppressSimilarityWarning) {
         uiWarningMessage = uiWarningMessage 
           ? `${uiWarningMessage} Also, a similarly named business (${mostSimilarName}) exists, which may cause a CAC query.`
           : `Note: A similarly named business (${mostSimilarName}) exists. We will submit your application, but CAC may query it if the root words conflict.`;
@@ -292,9 +295,9 @@ export async function POST(req: Request) {
         rejectionType: "PASSED",
         reasonMessage: "Name appears to be available for registration.",
         warningMessage: uiWarningMessage, 
-        conflicts: similarityVal > 0 ? [mostSimilarName] : [], 
+        conflicts: (similarityVal > 0 && !suppressSimilarityWarning) ? [mostSimilarName] : [], 
         data: {
-          mostSimilarName: mostSimilarName,
+          mostSimilarName: suppressSimilarityWarning ? "N/A" : mostSimilarName,
           cleansedNameUsed: uppercaseName
         }
       });
