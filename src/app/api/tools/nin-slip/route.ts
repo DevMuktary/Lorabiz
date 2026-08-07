@@ -147,6 +147,36 @@ export async function POST(req: NextRequest) {
           pdfUrl: securePdfUrl 
         }
       });
+
+      // --- NEW: REFERRAL SPEND TRACKING (NIN SLIP WALLET DEDUCTION) ---
+      const updatedSpender = await tx.user.update({
+        where: { id: user.id },
+        data: { totalSpent: { increment: requiredAmount } }
+      });
+
+      const thresholdSetting = await tx.globalSetting.findUnique({ 
+        where: { key: 'REFERRAL_SPEND_THRESHOLD' } 
+      });
+      const thresholdAmount = thresholdSetting ? Number(thresholdSetting.value) : 5000;
+
+      if (Number(updatedSpender.totalSpent) >= thresholdAmount) {
+        const pendingReferral = await tx.referral.findUnique({
+          where: { referredUserId: user.id }
+        });
+
+        if (pendingReferral && pendingReferral.status === "PENDING") {
+          await tx.referral.update({
+            where: { id: pendingReferral.id },
+            data: { status: "EARNED" }
+          });
+
+          await tx.user.update({
+            where: { id: pendingReferral.referrerId },
+            data: { referralBalance: { increment: pendingReferral.rewardAmount } }
+          });
+        }
+      }
+      // --------------------------------------------------------
     });
 
     return NextResponse.json({
