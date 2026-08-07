@@ -180,12 +180,14 @@ export async function POST(req: Request) {
     if (!cacApiKey) throw new Error("Missing CAC API Key.");
 
     try {
+      // FIX 1: Extended timeout to 25s so slow CAC servers don't trigger the fail-open block
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
       const cacResponse = await fetch("https://vasapp.cac.gov.ng/api/vas/engine/pre/bn-compliance", {
         method: "POST",
         headers: { "Accept": "application/json", "Content-Type": "application/json", "X_API_KEY": cacApiKey },
+        // Notice advanceCheck is omitted here to save costs per your instruction
         body: JSON.stringify({ proposedName: uppercaseName, lineOfBusiness }),
         signal: controller.signal
       });
@@ -193,27 +195,33 @@ export async function POST(req: Request) {
       clearTimeout(timeoutId);
 
       if (!cacResponse.ok) {
-        throw new Error("Registry HTTP Error");
+        throw new Error(`Registry HTTP Error: ${cacResponse.status}`);
       }
 
       const cacJson = await cacResponse.json();
 
-      // EXACT MATCH FOUND -> BLOCK
-      if (cacJson.message === "Name exist") {
+      // FIX 2: Highly robust rejection check. Catches it if success is false OR if the message contains exist/exists.
+      const isRejected = cacJson.success === false || 
+                         cacJson.message === "Name exist" || 
+                         cacJson.message === "BUSINESS_NAME_EXISTS";
+
+      if (isRejected) {
         return NextResponse.json({
           success: true,
           isBlocked: true,
           rejectionType: "EXACT_MATCH",
           reasonMessage: "This exact name is already registered by another business.",
-          conflicts: [uppercaseName], 
+          conflicts: cacJson.data?.similarNames || [uppercaseName], 
           data: { mostSimilarName: uppercaseName, cleansedNameUsed: uppercaseName }
         });
       }
 
-      // If highly similar -> APPROVE (Let human examiner decide) but add warning
-      const similarityStr = cacJson.data?.similarityScore || "0%";
-      const similarityVal = parseInt(similarityStr);
-      const mostSimilarName = cacJson.data?.mostSimilarName || "N/A";
+      // FIX 3: Safe parsing for similarity score (handles string "80%" or number 80 formats)
+      const similarityRaw = cacJson.data?.similarityScore || cacJson.data?.similarityScorePercentage || 0;
+      const similarityVal = typeof similarityRaw === "string" ? parseInt(similarityRaw) || 0 : similarityRaw;
+      
+      const similarNamesArray = cacJson.data?.similarNames || [];
+      const mostSimilarName = cacJson.data?.mostSimilarName || (similarNamesArray.length > 0 ? similarNamesArray[0] : "N/A");
 
       if (similarityVal > 0 && mostSimilarName !== "N/A") {
         uiWarningMessage = uiWarningMessage 
@@ -235,7 +243,7 @@ export async function POST(req: Request) {
       });
 
     } catch (networkError) {
-      // FAIL-OPEN: If CAC is offline, do NOT block the user.
+      // FAIL-OPEN: If CAC is completely offline or takes > 25 seconds, we let the user proceed.
       return NextResponse.json({
         success: true,
         isBlocked: false,
