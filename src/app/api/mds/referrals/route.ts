@@ -46,11 +46,27 @@ export async function GET() {
       earnedCount: user.referralsGiven.filter(r => r.status === "EARNED").length
     }));
 
-    // 3. Fetch Settings
+    // 3. Fetch Enrolled Users (Everyone with a referral code)
+    const enrolledUsers = await prisma.user.findMany({
+      where: { referralCode: { not: null } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        referralCode: true,
+        createdAt: true,
+        referralBalance: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 4. Fetch Settings
     const rewardSetting = await prisma.globalSetting.findUnique({ where: { key: 'REFERRAL_REWARD_AMOUNT' } });
     const thresholdSetting = await prisma.globalSetting.findUnique({ where: { key: 'REFERRAL_SPEND_THRESHOLD' } });
 
-    // 4. Fetch Quick Stats
+    // 5. Fetch Quick Stats
     const totalPaidData = await prisma.referralWithdrawal.aggregate({
       where: { status: "PAID" },
       _sum: { amount: true }
@@ -65,6 +81,7 @@ export async function GET() {
       success: true,
       pendingWithdrawals,
       topReferrers: formattedReferrers,
+      enrolledUsers,
       settings: {
         rewardAmount: rewardSetting ? Number(rewardSetting.value) : 1000,
         spendThreshold: thresholdSetting ? Number(thresholdSetting.value) : 5000
