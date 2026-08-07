@@ -266,36 +266,6 @@ export async function POST(req: Request) {
           } else if (promoServiceKey === "BUSINESS_NAME" && registrationId) {
             await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           }
-
-          // --- NEW: REFERRAL SPEND TRACKING (WALLET CHECKOUT) ---
-          const updatedSpender = await tx.user.update({
-            where: { id: user.id },
-            data: { totalSpent: { increment: amountToPay } }
-          });
-
-          const thresholdSetting = await tx.globalSetting.findUnique({ 
-            where: { key: 'REFERRAL_SPEND_THRESHOLD' } 
-          });
-          const thresholdAmount = thresholdSetting ? Number(thresholdSetting.value) : 5000;
-
-          if (Number(updatedSpender.totalSpent) >= thresholdAmount) {
-            const pendingReferral = await tx.referral.findUnique({
-              where: { referredUserId: user.id }
-            });
-
-            if (pendingReferral && pendingReferral.status === "PENDING") {
-              await tx.referral.update({
-                where: { id: pendingReferral.id },
-                data: { status: "EARNED" }
-              });
-
-              await tx.user.update({
-                where: { id: pendingReferral.referrerId },
-                data: { referralBalance: { increment: pendingReferral.rewardAmount } }
-              });
-            }
-          }
-          // --------------------------------------------------------
         });
   
         try {
