@@ -1,5 +1,3 @@
-// src/app/api/user/referral/route.ts
-
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -33,9 +31,10 @@ export async function GET(req: Request) {
       .filter(w => w.status === "PAID")
       .reduce((sum, w) => sum + Number(w.amount), 0);
 
-    // Fetch the Spend Threshold so users know how much their referrals must spend
+    // Fetch the Global Settings so users know the current parameters
     const thresholdSetting = await prisma.globalSetting.findUnique({ where: { key: 'REFERRAL_SPEND_THRESHOLD' } });
-    const spendThreshold = thresholdSetting ? Number(thresholdSetting.value) : 5000;
+    const rewardSetting = await prisma.globalSetting.findUnique({ where: { key: 'REFERRAL_REWARD_AMOUNT' } });
+    const minWithSetting = await prisma.globalSetting.findUnique({ where: { key: 'REFERRAL_MIN_WITHDRAWAL' } });
 
     return NextResponse.json({
       success: true,
@@ -46,7 +45,9 @@ export async function GET(req: Request) {
         pendingReferrals,
         earnedReferrals,
         totalWithdrawn,
-        spendThreshold, // ADDED HERE
+        spendThreshold: thresholdSetting ? Number(thresholdSetting.value) : 5000,
+        rewardAmount: rewardSetting ? Number(rewardSetting.value) : 1000,
+        minWithdrawal: minWithSetting ? Number(minWithSetting.value) : 2000,
         bankDetails: user.payoutAccountNo ? {
           bankName: user.payoutBankName,
           accountNo: user.payoutAccountNo,
@@ -104,7 +105,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // 2. Strict Name Matching Validation
+    // 2. Strict Name Matching Validation (With aggressive trimming for safety)
     const resolvedName = paystackData.data.account_name.toLowerCase();
     const userFirstName = (user.firstName || "").toLowerCase().trim();
     const userLastName = (user.lastName || "").toLowerCase().trim();
@@ -116,7 +117,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // 3. Generate Code
+    // 3. Generate Code (Only if they don't already have one)
     let newReferralCode = user.referralCode;
     if (!newReferralCode) {
       const cleanFirstName = userFirstName.replace(/[^a-z0-9]/g, '');
