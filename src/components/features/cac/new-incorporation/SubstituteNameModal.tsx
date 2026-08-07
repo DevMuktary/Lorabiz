@@ -42,6 +42,59 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     };
   }, []);
 
+  // =====================================================================
+  // ROBUST REDIRECT VERIFICATION 
+  // =====================================================================
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const isVerifying = params.get("verifying") === "true";
+      const reference = params.get("reference");
+      
+      if (isVerifying && processingState === "idle") {
+        // Instantly clean the URL so refreshing the page doesn't re-trigger it
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        
+        setStep(3); // Move directly to the verifying view
+
+        if (reference) {
+          verifyOnlinePayment(reference);
+        } else {
+          // User closed the gateway and no reference was appended
+          setError("Payment was cancelled or interrupted. No funds were debited.");
+          setProcessingState("idle");
+          setStep(2); 
+        }
+      }
+    }
+  }, [reg.id, processingState]);
+
+  const verifyOnlinePayment = async (reference: string) => {
+    setProcessingState("verifying");
+    setError(null);
+
+    try {
+      const res = await fetch('/api/payment/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setProcessingState("success");
+        router.refresh(); 
+      } else {
+        setError("Transaction cancelled or failed. Please try again.");
+        setProcessingState("idle");
+        setStep(2);
+      }
+    } catch (err) {
+      startWebhookPolling();
+    }
+  };
+
   const validateNames = () => {
     if (reg._appType === "BUSINESS_NAME") {
       const restricted = /limited|ltd|plc|inc|incorporated|llc/i;
@@ -60,10 +113,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setStep(2);
   };
 
-  // =========================================================================
-  // STATELESS POLLING (Watches the DB while the Popup handles the payment)
-  // =========================================================================
-  const startWebhookPolling = (popupReference?: Window | null) => {
+  const startWebhookPolling = () => {
     setProcessingState("verifying");
     
     pollingIntervalRef.current = setInterval(async () => {
@@ -75,13 +125,9 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         const res = await fetch(endpoint);
         const json = await res.json();
         
-        // If the DB has the newly substituted name, Webhook succeeded!
         if (json.success && json.data.proposedName === formData.proposedName) {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
-          setGatewayLoading(false);
-          
-          if (popupReference) popupReference.close(); // Automatically close KoraPay!
           router.refresh();
         }
       } catch (e) {}
@@ -90,26 +136,19 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setTimeout(() => {
       if (pollingIntervalRef.current && processingState !== "success") {
         clearInterval(pollingIntervalRef.current);
-        setError("Payment confirmation delayed. If you paid, check your dashboard shortly.");
+        setError("Payment confirmation delayed. If you paid, it will reflect shortly.");
         setProcessingState("idle");
-        setGatewayLoading(false);
         setStep(2); 
       }
-    }, 180000); // 3-minute timeout
+    }, 15000);
   };
 
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
     setLoading(true);
     setError(null);
-    setStep(3);
-    setProcessingState("initializing");
-
-    let popup: Window | null = null;
     
     if (method === "ONLINE") {
       setGatewayLoading(true);
-      // Open immediately to bypass popup blockers
-      popup = window.open("about:blank", "KoraPayCheckout", "width=450,height=750");
     }
 
     try {
@@ -118,7 +157,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: reg.id, type: reg._appType, paymentMethod: method, ...formData,
-          callbackUrl: window.location.pathname
+          callbackUrl: window.location.pathname // Sending exact path to backend
         })
       });
 
@@ -126,49 +165,30 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
       if (!res.ok || !data.success) {
         setError(data.message || "Failed to initialize payment.");
-        setStep(2);
         setProcessingState("idle");
         setGatewayLoading(false);
-        if (popup) popup.close();
         return;
       }
 
       if (method === "WALLET") {
         setProcessingState("success");
+        setStep(3);
         router.refresh();
       } else if (method === "ONLINE") {
         if (!data.authorizationUrl) {
           setError("Server error: Could not obtain checkout link.");
-          setStep(2); setProcessingState("idle"); setGatewayLoading(false);
-          if (popup) popup.close();
+          setProcessingState("idle"); 
+          setGatewayLoading(false);
           return;
         }
         
-        if (popup) {
-          popup.location.href = data.authorizationUrl;
-          startWebhookPolling(popup);
-
-          // Detect if the user manually closes the popup before finishing
-          const popupCheck = setInterval(() => {
-            if (popup?.closed && processingState !== "success") {
-              clearInterval(popupCheck);
-              if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-              setGatewayLoading(false);
-              setProcessingState("idle");
-              setStep(2);
-              setError("Payment window was closed.");
-            }
-          }, 1000);
-
-        } else {
-          // Absolute fallback if popups are fully blocked by their browser
-          window.location.href = data.authorizationUrl;
-        }
+        // Native Redirect - 100% reliable
+        window.location.href = data.authorizationUrl;
       }
     } catch (e) {
       setError("A network error occurred.");
-      setStep(2); setProcessingState("idle"); setGatewayLoading(false);
-      if (popup) popup.close();
+      setProcessingState("idle");
+      setGatewayLoading(false);
     } finally {
       setLoading(false);
     }
@@ -182,6 +202,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: reg.id, type: reg._appType })
       });
+      // Force hard reload so the queries page reflects the absolute latest state
       window.location.reload(); 
     } catch (e) {
       setError("Failed to submit query.");
@@ -190,12 +211,8 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
   };
 
   const handleContinueEditing = () => {
-    if (reg._appType === "LLC") {
-      router.push(`/dashboard/cac/llc/${reg.id}/queries`);
-    } else {
-      router.push(`/dashboard/cac/businesses/${reg.id}/queries`);
-    }
-    onClose();
+    // CRITICAL UX FIX: Force a hard reload so the new names render instantly on the screen
+    window.location.reload(); 
   };
 
   const isWalletInsufficient = walletBalance !== null && walletBalance < substitutionFee;
@@ -226,10 +243,10 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
-            Secure Checkout Open
+            Connecting to Secure Checkout...
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
-            Please complete the payment in the popup window.
+            Please wait a moment while we prepare your checkout page.
           </p>
 
           <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
@@ -351,6 +368,8 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
                       <button onClick={handleResolveQuery} disabled={loading} className="w-full h-14 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center shadow-lg shadow-emerald-500/20">
                         {loading ? <Spinner className="animate-spin h-5 w-5" /> : "Yes, Submit Query Now"}
                       </button>
+                      
+                      {/* THIS IS THE CRITICAL UX FIX. IT FORCES A HARD RELOAD TO SHOW THE NEW NAMES EVERYWHERE. */}
                       <button onClick={handleContinueEditing} disabled={loading} className="w-full h-14 bg-secondary text-foreground font-bold rounded-xl hover:bg-secondary/80 transition-colors">
                         No, Continue Editing
                       </button>
