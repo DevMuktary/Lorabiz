@@ -33,6 +33,10 @@ export async function GET(req: Request) {
       .filter(w => w.status === "PAID")
       .reduce((sum, w) => sum + Number(w.amount), 0);
 
+    // Fetch the Spend Threshold so users know how much their referrals must spend
+    const thresholdSetting = await prisma.globalSetting.findUnique({ where: { key: 'REFERRAL_SPEND_THRESHOLD' } });
+    const spendThreshold = thresholdSetting ? Number(thresholdSetting.value) : 5000;
+
     return NextResponse.json({
       success: true,
       data: {
@@ -42,6 +46,7 @@ export async function GET(req: Request) {
         pendingReferrals,
         earnedReferrals,
         totalWithdrawn,
+        spendThreshold, // ADDED HERE
         bankDetails: user.payoutAccountNo ? {
           bankName: user.payoutBankName,
           accountNo: user.payoutAccountNo,
@@ -101,18 +106,17 @@ export async function POST(req: Request) {
 
     // 2. Strict Name Matching Validation
     const resolvedName = paystackData.data.account_name.toLowerCase();
-    const userFirstName = (user.firstName || "").toLowerCase();
-    const userLastName = (user.lastName || "").toLowerCase();
+    const userFirstName = (user.firstName || "").toLowerCase().trim();
+    const userLastName = (user.lastName || "").toLowerCase().trim();
 
-    // The account name MUST contain both the user's first and last name from registration
     if (!resolvedName.includes(userFirstName) || !resolvedName.includes(userLastName)) {
       return NextResponse.json({ 
         success: false, 
-        message: `Verification Failed: The bank account name (${paystackData.data.account_name}) must match your registered LoraBiz name (${user.firstName} ${user.lastName}).` 
+        message: `Verification Failed: The bank account name (${paystackData.data.account_name}) must match your registered LoraBiz name (${user.firstName?.trim()} ${user.lastName?.trim()}).` 
       }, { status: 400 });
     }
 
-    // 3. Generate Code (Only if they don't already have one)
+    // 3. Generate Code
     let newReferralCode = user.referralCode;
     if (!newReferralCode) {
       const cleanFirstName = userFirstName.replace(/[^a-z0-9]/g, '');
