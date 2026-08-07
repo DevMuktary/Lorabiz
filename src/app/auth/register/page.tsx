@@ -28,7 +28,7 @@ export default function RegisterPage() {
   }, []);
 
   // Use the fetched number, OR fallback to the default permanent number instantly
-  const activeSupportNumber = supportNumber || "2348000000000";
+  const activeSupportNumber = supportNumber || "2349024051958";
 
   return (
     // FIX: Using min-h-screen without `overflow-hidden` fixes Safari mobile repainting bugs
