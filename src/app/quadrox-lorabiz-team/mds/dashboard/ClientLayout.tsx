@@ -16,7 +16,8 @@ import {
   X,
   Layers,
   UserSquare2,
-  TicketPercent
+  TicketPercent,
+  UserPlus
 } from "lucide-react";
 
 export default function ClientLayout({
@@ -65,6 +66,7 @@ export default function ClientLayout({
       title: "System & Tools",
       links: [
         { href: "/quadrox-lorabiz-team/mds/dashboard/marketing", icon: <TicketPercent size={20} />, label: "Promo Campaigns" },
+        { href: "/quadrox-lorabiz-team/mds/dashboard/referrals", icon: <UserPlus size={20} />, label: "Partner Program" },
         { href: "/quadrox-lorabiz-team/mds/dashboard/settings", icon: <Settings size={20} />, label: "Service Control" },
         { href: "/quadrox-lorabiz-team/mds/dashboard/audit", icon: <ShieldAlert size={20} />, label: "Audit Logs" },
       ]
