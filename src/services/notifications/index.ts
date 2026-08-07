@@ -48,7 +48,8 @@ export async function dispatchNotification(event: NotificationEvent): Promise<vo
         recipientPhone: event.phone,
         templateName: "cac_application_submitted",
         variables: [event.name, event.businessName, event.regId],
-        buttonUrlVariable: ``, 
+        // ✅ FIX: Pass the regId so Meta can successfully build the URL button
+        buttonUrlVariable: event.regId, 
       });
       if (!wa.success) console.error("⚠️ WhatsApp Sub Failed:", wa.error);
 
@@ -99,6 +100,8 @@ export async function dispatchNotification(event: NotificationEvent): Promise<vo
         recipientPhone: event.phone,
         templateName: "cac_application_approved",
         variables: [event.name, event.businessName, event.rcNumber],
+        // NOTE: If you add a URL button to the 'approved' template in Meta later, 
+        // you will need to change this to event.rcNumber or the dynamic slug.
         buttonUrlVariable: "",
       });
       if (!wa.success) console.error("⚠️ WhatsApp Appr Failed:", wa.error);
