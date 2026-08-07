@@ -70,11 +70,12 @@ export async function POST(req: Request) {
     const newUser = await prisma.$transaction(async (tx) => {
       
       // A. Create the base user (No referral code generated for them yet)
+      // FIX: Trimming names before saving to prevent Paystack mismatch errors later
       const createdUser = await tx.user.create({
         data: {
-          firstName,
-          middleName: middleName || null, 
-          lastName,
+          firstName: firstName.trim(),
+          middleName: middleName ? middleName.trim() : null, 
+          lastName: lastName.trim(),
           email, 
           phone,
           whatsapp,
