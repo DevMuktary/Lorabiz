@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { 
   User, EnvelopeSimple, LockKey, Spinner, CheckCircle, 
-  GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash
+  GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash, Users
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,7 @@ export default function RegisterForm() {
   const [formData, setFormData] = useState({
     firstName: "", middleName: "", lastName: "", email: "", phone: "",
     whatsapp: "", password: "", confirmPassword: "", gender: "", state: "",
-    lga: "", street: "", buildingNo: "",
+    lga: "", street: "", buildingNo: "", referralCode: "",
   });
 
   const [otpStep, setOtpStep] = useState<"idle" | "sent" | "verified">("idle");
@@ -62,6 +62,18 @@ export default function RegisterForm() {
     return score;
   };
   const passScore = getPasswordStrength();
+
+  // --- NEW: Auto-capture referral code from URL if they clicked a link ---
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get("ref");
+      if (ref) {
+        setFormData(prev => ({ ...prev, referralCode: ref }));
+      }
+    }
+  }, []);
+  // -----------------------------------------------------------------------
 
   useEffect(() => {
     if (sameAsPhone) {
@@ -498,6 +510,19 @@ export default function RegisterForm() {
               <Label htmlFor="buildingNo" className="text-foreground font-medium">Building No.</Label>
               <Input id="buildingNo" value={formData.buildingNo} onChange={handleChange} placeholder="Optional" className="h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
             </div>
+          </div>
+        </div>
+
+        {/* SECTION 4: Referral (Optional) */}
+        <div className="space-y-5">
+          <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">4. Referral (Optional)</h3>
+          <div className="space-y-2">
+            <Label htmlFor="referralCode" className="text-foreground font-medium">Referral Code</Label>
+            <div className="relative">
+              <Users className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+              <Input id="referralCode" value={formData.referralCode} onChange={handleChange} placeholder="If you were referred, enter the code here" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Leave this blank if you don&apos;t have one.</p>
           </div>
         </div>
 
