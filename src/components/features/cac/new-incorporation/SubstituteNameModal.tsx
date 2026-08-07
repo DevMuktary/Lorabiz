@@ -57,7 +57,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
   const validateNames = () => {
     if (reg._appType === "BUSINESS_NAME") {
-      // Safely check for restricted words using word boundaries (\b)
       const restricted = /\b(limited|ltd|plc|inc|incorporated|llc)\b/i;
       if (restricted.test(formData.proposedName) || restricted.test(formData.altName1) || restricted.test(formData.altName2)) {
         return "Business Names cannot contain Limited, Ltd, Plc, Inc, or LLC. If you need a company, please register an LLC.";
@@ -98,9 +97,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         return;
       }
 
-      // Wallet payment is atomic and instant. Go straight to success!
       setProcessingState("success");
-      router.refresh();
       
     } catch (e) {
       setError("A network error occurred. Please try again.");
@@ -111,6 +108,19 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     }
   };
 
+  // =========================================
+  // ROUTING FIX RESTORED (With Cache Clearing)
+  // =========================================
+  const navigateToQueries = () => {
+    router.refresh(); // Forces Next.js to fetch the fresh DB data immediately
+    if (reg._appType === "LLC") {
+      router.push(`/dashboard/cac/llc/${reg.id}/queries`);
+    } else {
+      router.push(`/dashboard/cac/businesses/${reg.id}/queries`);
+    }
+    onClose();
+  };
+
   const handleResolveQuery = async () => {
     setLoading(true);
     try {
@@ -119,8 +129,8 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: reg.id, type: reg._appType })
       });
-      // Force reload so the page sees the new names and the resolved status instantly
-      window.location.reload(); 
+      // Redirect straight to the queries page to see the newly submitted status
+      navigateToQueries();
     } catch (e) {
       setError("Failed to submit query.");
       setLoading(false);
@@ -128,8 +138,8 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
   };
 
   const handleContinueEditing = () => {
-    // Force reload so the parent page fetches the new names from the DB instantly
-    window.location.reload(); 
+    // Redirect straight to the queries page so they can finish editing
+    navigateToQueries();
   };
 
   const isWalletInsufficient = walletBalance !== null && substitutionFee !== null && walletBalance < substitutionFee;
