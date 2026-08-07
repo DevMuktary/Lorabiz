@@ -54,6 +54,40 @@ export async function POST(req: Request) {
             taxIdImageUrl: taxIdImageUrl
           }
         });
+
+        // --- NEW: REFERRAL SPEND TRACKING (ON COMPLETION) ---
+        const amountPaid = Number(ticket.amountPaid || 0);
+        
+        if (amountPaid > 0) {
+          const updatedSpender = await tx.user.update({
+            where: { id: ticket.userId },
+            data: { totalSpent: { increment: amountPaid } }
+          });
+
+          const thresholdSetting = await tx.globalSetting.findUnique({ 
+            where: { key: 'REFERRAL_SPEND_THRESHOLD' } 
+          });
+          const thresholdAmount = thresholdSetting ? Number(thresholdSetting.value) : 5000;
+
+          if (Number(updatedSpender.totalSpent) >= thresholdAmount) {
+            const pendingReferral = await tx.referral.findUnique({
+              where: { referredUserId: ticket.userId }
+            });
+
+            if (pendingReferral && pendingReferral.status === "PENDING") {
+              await tx.referral.update({
+                where: { id: pendingReferral.id },
+                data: { status: "EARNED" }
+              });
+
+              await tx.user.update({
+                where: { id: pendingReferral.referrerId },
+                data: { referralBalance: { increment: pendingReferral.rewardAmount } }
+              });
+            }
+          }
+        }
+        // ----------------------------------------------------
       }
 
       if (actionType === "FAIL") {
