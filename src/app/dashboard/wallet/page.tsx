@@ -29,7 +29,7 @@ export default function WalletPage() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
 
-  const supportNumber = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "2348000000000";
+  const supportNumber = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "12299494839";
 
   // Fetch Wallet Balance and Funding History
   const fetchWalletData = async () => {
