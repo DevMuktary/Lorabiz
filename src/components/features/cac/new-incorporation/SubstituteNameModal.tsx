@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Script from "next/script";
-import { X, TextAa, WarningCircle, CheckCircle, Spinner, Wallet, CreditCard, CircleDashed } from "@phosphor-icons/react";
+import { X, TextAa, WarningCircle, CheckCircle, Spinner, Wallet, CreditCard, CircleDashed, Sparkle, MusicNotes } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -18,6 +17,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
   const [substitutionFee, setSubstitutionFee] = useState(5000); 
   const [processingState, setProcessingState] = useState<"idle" | "initializing" | "verifying" | "success">("idle");
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [gatewayLoading, setGatewayLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     proposedName: reg.proposedName || "",
@@ -41,6 +41,59 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     };
   }, []);
+
+  // =====================================================================
+  // ROBUST REDIRECT VERIFICATION (FIX FOR THE INFINITE LOADING TRAP)
+  // =====================================================================
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const isVerifying = params.get("verifying") === "true";
+      const reference = params.get("reference");
+      
+      if (isVerifying && processingState === "idle") {
+        // Immediately clean the URL so if the user refreshes, they aren't trapped
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        
+        setStep(3); // Move to the verification visual step
+
+        if (reference) {
+          verifyOnlinePayment(reference);
+        } else {
+          // User closed the gateway and no reference was appended
+          setError("Payment was cancelled or interrupted. No funds were debited.");
+          setProcessingState("idle");
+          setStep(2); // Kick them back to the payment selection
+        }
+      }
+    }
+  }, [reg.id, processingState]);
+
+  const verifyOnlinePayment = async (reference: string) => {
+    setProcessingState("verifying");
+    setError(null);
+
+    try {
+      const res = await fetch('/api/payment/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setProcessingState("success");
+        router.refresh(); 
+      } else {
+        setError("Transaction cancelled or failed. Please try again.");
+        setProcessingState("idle");
+        setStep(2);
+      }
+    } catch (err) {
+      startWebhookPolling();
+    }
+  };
 
   const validateNames = () => {
     if (reg._appType === "BUSINESS_NAME") {
@@ -75,6 +128,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         if (json.success && json.data.proposedName === formData.proposedName) {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
+          router.refresh();
         }
       } catch (e) {}
     }, 2000);
@@ -86,7 +140,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         setProcessingState("idle");
         setStep(2); 
       }
-    }, 30000);
+    }, 15000);
   };
 
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
@@ -94,6 +148,10 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setError(null);
     setStep(3);
     setProcessingState("initializing");
+
+    if (method === "ONLINE") {
+      setGatewayLoading(true);
+    }
 
     try {
       const res = await fetch("/api/cac/substitute-name", {
@@ -106,45 +164,33 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
       const data = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !data.success) {
         setError(data.message || "Failed to initialize payment.");
         setStep(2);
         setProcessingState("idle");
+        setGatewayLoading(false);
         return;
       }
 
       if (method === "WALLET") {
         setProcessingState("success");
+        router.refresh();
       } else if (method === "ONLINE") {
-        if (!data.paystackData?.publicKey) {
-          setError("Server error: Paystack configuration missing.");
-          setStep(2); setProcessingState("idle"); return;
+        if (!data.authorizationUrl) {
+          setError("Server error: Could not obtain checkout link.");
+          setStep(2); 
+          setProcessingState("idle"); 
+          setGatewayLoading(false);
+          return;
         }
-
-        try {
-          const handler = (window as any).PaystackPop.setup({
-            key: data.paystackData.publicKey,
-            email: data.paystackData.email,
-            amount: data.paystackData.amount,
-            ref: data.paystackData.reference,
-            metadata: data.paystackData.metadata, // <--- THE FIX IS PASSED HERE
-            callback: function () {
-              startWebhookPolling();
-            },
-            onClose: function () {
-              setStep(2);
-              setProcessingState("idle");
-            },
-          });
-          handler.openIframe();
-        } catch (err) {
-          setError("Payment gateway is loading. Try again.");
-          setStep(2); setProcessingState("idle");
-        }
+        // Native Redirect to KoraPay Gateway
+        window.location.href = data.authorizationUrl;
       }
     } catch (e) {
       setError("A network error occurred.");
-      setStep(2); setProcessingState("idle");
+      setStep(2); 
+      setProcessingState("idle");
+      setGatewayLoading(false);
     } finally {
       setLoading(false);
     }
@@ -165,9 +211,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     }
   };
 
-  // =========================================
-  // ROUTING FIX: Takes user to the Queries page!
-  // =========================================
   const handleContinueEditing = () => {
     if (reg._appType === "LLC") {
       router.push(`/dashboard/cac/llc/${reg.id}/queries`);
@@ -181,7 +224,53 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-      <Script src="https://js.paystack.co/v1/inline.js" strategy="lazyOnload" />
+      
+      {/* Friendly Dancing Baby Doll Overlay */}
+      {gatewayLoading && (
+        <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-300 select-none p-6 text-center">
+          <div className="relative flex items-center justify-center mb-8 w-40 h-40">
+            <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/20 animate-ping opacity-75" />
+            <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/50 animate-[spin_8s_linear_infinite]" />
+            <div className="absolute inset-6 rounded-full border border-dotted border-amber-400/60 animate-[spin_5s_linear_infinite_reverse]" />
+            
+            <div className="absolute -top-1 -right-2 text-amber-400 animate-bounce delay-100">
+              <MusicNotes size={26} weight="fill" />
+            </div>
+            <div className="absolute -bottom-1 -left-2 text-[#ff3f7a] animate-bounce delay-300">
+              <Sparkle size={24} weight="fill" />
+            </div>
+
+            <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-tr from-[#ff3f7a] via-[#e02b62] to-amber-400 flex items-center justify-center shadow-2xl shadow-[#ff3f7a]/40 border border-white/20 animate-bounce">
+              <span className="text-4xl drop-shadow-md select-none transform hover:scale-110 transition-transform animate-[pulse_1s_ease-in-out_infinite]">
+                🧸
+              </span>
+            </div>
+          </div>
+
+          <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
+            Connecting to KoraPay...
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
+            Please wait a moment while we prepare your checkout page.
+          </p>
+
+          <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
+            <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-[#ff3f7a] rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setGatewayLoading(false);
+              setProcessingState("idle");
+              setStep(2);
+            }}
+            className="mt-8 text-xs text-slate-400 hover:text-white underline underline-offset-4 transition-colors cursor-pointer"
+          >
+            Cancel / Go Back
+          </button>
+        </div>
+      )}
 
       <div className="bg-card border border-border rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
         
