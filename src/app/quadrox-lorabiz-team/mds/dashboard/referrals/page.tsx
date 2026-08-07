@@ -16,9 +16,10 @@ export default function AdminReferralsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Settings state (Allowing strings prevents the 'sticky zero' bug when clearing the input)
-  const [settingsForm, setSettingsForm] = useState<{rewardAmount: string | number, spendThreshold: string | number}>({ 
+  const [settingsForm, setSettingsForm] = useState<{rewardAmount: string | number, spendThreshold: string | number, minWithdrawal: string | number}>({ 
     rewardAmount: 1000, 
-    spendThreshold: 5000 
+    spendThreshold: 5000,
+    minWithdrawal: 2000
   });
 
   // Toast Notification State
@@ -37,7 +38,8 @@ export default function AdminReferralsPage() {
         setData(json);
         setSettingsForm({
           rewardAmount: json.settings.rewardAmount,
-          spendThreshold: json.settings.spendThreshold
+          spendThreshold: json.settings.spendThreshold,
+          minWithdrawal: json.settings.minWithdrawal || 2000
         });
       }
     } catch (e) {
@@ -311,6 +313,17 @@ export default function AdminReferralsPage() {
                 type="number" 
                 value={settingsForm.spendThreshold} 
                 onChange={e => setSettingsForm({...settingsForm, spendThreshold: e.target.value === '' ? '' : Number(e.target.value)})} 
+                className="h-12 bg-secondary/40 font-bold"
+              />
+            </div>
+
+            <div className="space-y-2 border-t border-border pt-4">
+              <Label className="font-bold">Minimum Withdrawal Limit (₦)</Label>
+              <p className="text-xs text-muted-foreground mb-2">The minimum amount a user can request to withdraw.</p>
+              <Input 
+                type="number" 
+                value={settingsForm.minWithdrawal} 
+                onChange={e => setSettingsForm({...settingsForm, minWithdrawal: e.target.value === '' ? '' : Number(e.target.value)})} 
                 className="h-12 bg-secondary/40 font-bold"
               />
             </div>
