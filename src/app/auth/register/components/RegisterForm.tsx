@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   User, EnvelopeSimple, LockKey, Spinner, CheckCircle, 
   GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash
@@ -24,9 +24,11 @@ export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // Turnstile State
+  // Turnstile State & Refs
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
 
   // Loading states for OTP specific actions
   const [isSendingOtp, setIsSendingOtp] = useState(false);
@@ -90,6 +92,32 @@ export default function RegisterForm() {
       if (errors.captcha) setErrors(prev => ({ ...prev, captcha: "" }));
     };
   }, [errors.captcha]);
+
+  // Turnstile Explicit Render Function
+  const renderTurnstile = () => {
+    const win = window as any;
+    if (win.turnstile && turnstileRef.current && !widgetIdRef.current) {
+      widgetIdRef.current = win.turnstile.render(turnstileRef.current, {
+        sitekey: "0x4AAAAAAEA2i2RM9PiSsRCH",
+        callback: win.onTurnstileSuccess,
+        action: "turnstile-spin-v2",
+        theme: "auto",
+        retry: "auto",
+        "retry-interval": 2000,
+      });
+    }
+  };
+
+  // Turnstile Cleanup on Unmount
+  useEffect(() => {
+    return () => {
+      const win = window as any;
+      if (widgetIdRef.current && win.turnstile) {
+        win.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -219,9 +247,9 @@ export default function RegisterForm() {
       setErrors({ form: "An unexpected error occurred. Please try again." });
     } finally {
       setLoading(false);
-      // Reset turnstile on failure
-      if ((window as any).turnstile) {
-        (window as any).turnstile.reset();
+      // Reset turnstile on failure using the explicit widget ID
+      if ((window as any).turnstile && widgetIdRef.current) {
+        (window as any).turnstile.reset(widgetIdRef.current);
         setCaptchaVerified(false);
         setCaptchaToken("");
       }
@@ -232,8 +260,9 @@ export default function RegisterForm() {
     <div className="w-full max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
       <Script 
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" 
         strategy="afterInteractive" 
+        onReady={renderTurnstile}
       />
 
       <div className="mb-8 flex justify-center lg:justify-start mt-2 sm:mt-0">
@@ -474,15 +503,7 @@ export default function RegisterForm() {
 
         {/* Turnstile Integration */}
         <div className="pt-2 flex justify-center lg:justify-start">
-           <div 
-             className="cf-turnstile" 
-             data-sitekey="0x4AAAAAAEA2i2RM9PiSsRCH" 
-             data-callback="onTurnstileSuccess"
-             data-action="turnstile-spin-v2"
-             data-theme="auto"
-             data-retry="auto"
-             data-retry-interval="2000"
-           ></div>
+           <div ref={turnstileRef} className="min-h-[65px]"></div>
         </div>
         {errors.captcha && <p className="text-sm text-destructive font-medium pl-1">{errors.captcha}</p>}
 
