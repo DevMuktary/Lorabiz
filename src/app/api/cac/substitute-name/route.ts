@@ -44,6 +44,7 @@ export async function POST(req: Request) {
           }
         });
 
+        // Update Names immediately in the Database
         if (type === "BUSINESS_NAME") {
           await tx.businessRegistration.update({ where: { id }, data: { proposedName, altName1, altName2 } });
         } else {
@@ -65,8 +66,10 @@ export async function POST(req: Request) {
 
       const reference = `NSUB_${id}_${Date.now()}`; 
       
-      // Dynamic fallback URL so the popup window has a safe place to land before we close it
-      const callbackPath = callbackUrl || "/dashboard";
+      // CRITICAL FIX: Append ?verifying=true so the modal automatically opens when the user returns!
+      let callbackPath = callbackUrl 
+        ? `${callbackUrl}?verifying=true` 
+        : `/dashboard/cac/${type === "LLC" ? "llc" : "businesses"}/${id}/queries?verifying=true`;
 
       const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
         method: "POST",
