@@ -11,7 +11,7 @@ import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrappe
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
-  UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag
+  UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users
 } from "@phosphor-icons/react";
 
 type NavLink = {
@@ -34,6 +34,7 @@ const NAVIGATION: NavCategory[] = [
       { name: "Service Hub", href: "/dashboard", icon: SquaresFour },
       { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
       { name: "Wallet", href: "/dashboard/wallet", icon: Wallet },
+      { name: "Partner Program", href: "/dashboard/referrals", icon: Users },
       { name: "Pricing", href: "/dashboard/pricing", icon: Tag },
     ]
   },
@@ -110,6 +111,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (pathname.includes("/dashboard/transactions")) return "Transactions";
     if (pathname.includes("/dashboard/scuml")) return "SCUML";
     if (pathname.includes("/dashboard/airtime")) return "Airtime";
+    if (pathname.includes("/dashboard/referrals")) return "Partner Program";
     return "Dashboard";
   };
 
