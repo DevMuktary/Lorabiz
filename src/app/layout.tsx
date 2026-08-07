@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script'; // <-- Imported Next.js Script component
 import './globals.css';
 import { Providers } from '@/components/providers';
-import DynamicPageTitle from '@/components/DynamicPageTitle'; // <-- Imported Title Manager
+import DynamicPageTitle from '@/components/DynamicPageTitle'; 
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://lorabiz.com'),
@@ -115,9 +116,26 @@ export default function RootLayout({
       {/* CRITICAL FIX: Removed transition-colors duration-300 from body */}
       <body className="antialiased bg-background text-foreground min-h-[100dvh] flex flex-col">
         <DynamicPageTitle /> {/* <-- Auto-manages all Client Page Titles silently! */}
+        
         <Providers>
           {children}
         </Providers>
+
+        {/* --- SimpleAnalytics Tracking --- */}
+        <Script
+          src="https://scripts.simpleanalyticscdn.com/latest.js"
+          strategy="afterInteractive"
+        />
+        {/* Fallback for users with JavaScript disabled */}
+        <noscript>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://queue.simpleanalyticscdn.com/noscript.gif"
+            alt=""
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </noscript>
+
       </body>
     </html>
   );
