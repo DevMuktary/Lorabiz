@@ -39,7 +39,8 @@ export async function POST(req: Request) {
             type: "DEBIT",
             status: "SUCCESS",
             reference: `NSUB-WLT-${id}-${Date.now()}`,
-            description: `Name Substitution Fee for tracking ID ${id}`
+            description: `Name Substitution Fee for tracking ID ${id}`,
+            serviceCategory: "NAME_SUBSTITUTION"
           }
         });
 
@@ -55,30 +56,56 @@ export async function POST(req: Request) {
     }
 
     // ==========================================
-    // FLOW B: PAY ONLINE (PAYSTACK)
+    // FLOW B: PAY ONLINE (KORAPAY)
     // ==========================================
     if (paymentMethod === "ONLINE") {
       if (!userEmail) return NextResponse.json({ message: "User email required for online payment" }, { status: 400 });
 
-      // Clean, short reference
-      const reference = `NSUB-ONL-${id}-${Date.now()}`; 
+      const secretKey = process.env.KORAPAY_SECRET_KEY;
+      const appUrl = process.env.NEXTAUTH_URL || "https://lorabiz.com";
+
+      // Clean, short reference starting with NSUB_
+      const reference = `NSUB_${id}_${Date.now()}`; 
+
+      // Route them right back to the queries page where the modal is open!
+      const callbackPath = `/dashboard/cac/${type === "LLC" ? "llc" : "businesses"}/${id}/queries?verifying=true`;
+
+      const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: Math.round(fee),
+          currency: "NGN",
+          reference: reference,
+          redirect_url: `${appUrl}${callbackPath}`,
+          customer: {
+            email: userEmail,
+            name: session.user.name?.substring(0, 50) || "Customer"
+          },
+          // We safely pack the names into KoraPay's 5 allowed metadata slots!
+          metadata: {
+            "reg-id": id.substring(0, 20),
+            "type": type.substring(0, 20),
+            "name-1": proposedName?.substring(0, 50) || "none",
+            "name-2": altName1?.substring(0, 50) || "none",
+            "name-3": altName2?.substring(0, 50) || "none"
+          }
+        }),
+      });
+
+      const koraData = await koraResponse.json();
+
+      if (!koraResponse.ok || !koraData.status || !koraData.data?.checkout_url) {
+        console.error("❌ KoraPay Initialization Failed:", koraData);
+        return NextResponse.json({ success: false, message: koraData.message || "Failed to initialize payment." }, { status: 400 });
+      }
 
       return NextResponse.json({ 
         success: true, 
-        paystackData: {
-          email: userEmail,
-          amount: fee * 100, // Paystack uses Kobo
-          reference: reference,
-          // THE FIX: Pass the names safely in the metadata object
-          metadata: {
-            registrationId: id,
-            type,
-            proposedName,
-            altName1,
-            altName2
-          },
-          publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
-        }
+        authorizationUrl: koraData.data.checkout_url 
       });
     }
 
