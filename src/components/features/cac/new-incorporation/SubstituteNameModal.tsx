@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { X, TextAa, WarningCircle, CheckCircle, Spinner, Wallet, CreditCard, CircleDashed, Sparkle, MusicNotes, LockKey } from "@phosphor-icons/react";
+import { X, TextAa, WarningCircle, CheckCircle, Spinner, Wallet, CircleDashed } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -17,11 +17,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
   const [substitutionFee, setSubstitutionFee] = useState<number | null>(null); 
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
 
-  const [processingState, setProcessingState] = useState<"idle" | "initializing" | "ready_for_popup" | "verifying" | "success">("idle");
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [gatewayLoading, setGatewayLoading] = useState(false);
+  const [processingState, setProcessingState] = useState<"idle" | "processing" | "success">("idle");
 
   const [formData, setFormData] = useState({
     proposedName: reg.proposedName || "",
@@ -57,18 +53,12 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
       }
     };
     fetchData();
-
-    return () => {
-      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-    };
   }, []);
 
   const validateNames = () => {
     if (reg._appType === "BUSINESS_NAME") {
-      // THE BUG FIX: Added \b (word boundaries) so it ONLY flags whole words!
-      // This stops it from rejecting names like "Prince" (inc) or "Meltdown" (ltd)
+      // Safely check for restricted words using word boundaries (\b)
       const restricted = /\b(limited|ltd|plc|inc|incorporated|llc)\b/i;
-      
       if (restricted.test(formData.proposedName) || restricted.test(formData.altName1) || restricted.test(formData.altName2)) {
         return "Business Names cannot contain Limited, Ltd, Plc, Inc, or LLC. If you need a company, please register an LLC.";
       }
@@ -84,85 +74,38 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setStep(2);
   };
 
-  const startWebhookPolling = (popupReference?: Window | null) => {
-    setProcessingState("verifying");
-    
-    pollingIntervalRef.current = setInterval(async () => {
-      try {
-        const endpoint = reg._appType === "LLC" 
-            ? `/api/cac/register/llc/details/${reg.id}`
-            : `/api/cac/register/business-name/details/${reg.id}`;
-            
-        const res = await fetch(endpoint);
-        const json = await res.json();
-        
-        if (json.success && json.data.proposedName === formData.proposedName) {
-          if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-          setProcessingState("success");
-          
-          if (popupReference && !popupReference.closed) {
-             popupReference.close(); 
-          } 
-        }
-      } catch (e) {}
-    }, 2000);
-
-    setTimeout(() => {
-      if (pollingIntervalRef.current && processingState !== "success") {
-        clearInterval(pollingIntervalRef.current);
-        setError("Payment confirmation delayed. If you paid, check your dashboard shortly.");
-        setProcessingState("idle");
-        setStep(2); 
-      }
-    }, 180000); 
-  };
-
-  const handlePayment = async (method: "WALLET" | "ONLINE") => {
+  const handleWalletPayment = async () => {
     setLoading(true);
     setError(null);
     setStep(3);
-    setProcessingState("initializing");
-
-    if (method === "ONLINE") {
-      setGatewayLoading(true);
-    }
+    setProcessingState("processing");
 
     try {
       const res = await fetch("/api/cac/substitute-name", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: reg.id, type: reg._appType, paymentMethod: method, ...formData,
-          callbackUrl: window.location.pathname
+          id: reg.id, type: reg._appType, paymentMethod: "WALLET", ...formData
         })
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        setError(data.message || "Failed to initialize payment.");
+        setError(data.message || "Failed to process payment from wallet.");
         setStep(2);
         setProcessingState("idle");
-        setGatewayLoading(false);
         return;
       }
 
-      if (method === "WALLET") {
-        setProcessingState("success");
-      } else if (method === "ONLINE") {
-        if (!data.authorizationUrl) {
-          setError("Server error: Could not obtain checkout link.");
-          setStep(2); setProcessingState("idle"); setGatewayLoading(false);
-          return;
-        }
-        
-        setCheckoutUrl(data.authorizationUrl);
-        setProcessingState("ready_for_popup");
-        setGatewayLoading(false);
-      }
+      // Wallet payment is atomic and instant. Go straight to success!
+      setProcessingState("success");
+      router.refresh();
+      
     } catch (e) {
-      setError("A network error occurred.");
-      setStep(2); setProcessingState("idle"); setGatewayLoading(false);
+      setError("A network error occurred. Please try again.");
+      setStep(2); 
+      setProcessingState("idle");
     } finally {
       setLoading(false);
     }
@@ -176,6 +119,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: reg.id, type: reg._appType })
       });
+      // Force reload so the page sees the new names and the resolved status instantly
       window.location.reload(); 
     } catch (e) {
       setError("Failed to submit query.");
@@ -184,6 +128,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
   };
 
   const handleContinueEditing = () => {
+    // Force reload so the parent page fetches the new names from the DB instantly
     window.location.reload(); 
   };
 
@@ -191,41 +136,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-      
-      {gatewayLoading && (
-        <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-300 select-none p-6 text-center">
-          <div className="relative flex items-center justify-center mb-8 w-40 h-40">
-            <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/20 animate-ping opacity-75" />
-            <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/50 animate-[spin_8s_linear_infinite]" />
-            <div className="absolute inset-6 rounded-full border border-dotted border-amber-400/60 animate-[spin_5s_linear_infinite_reverse]" />
-            
-            <div className="absolute -top-1 -right-2 text-amber-400 animate-bounce delay-100">
-              <MusicNotes size={26} weight="fill" />
-            </div>
-            <div className="absolute -bottom-1 -left-2 text-[#ff3f7a] animate-bounce delay-300">
-              <Sparkle size={24} weight="fill" />
-            </div>
-
-            <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-tr from-[#ff3f7a] via-[#e02b62] to-amber-400 flex items-center justify-center shadow-2xl shadow-[#ff3f7a]/40 border border-white/20 animate-bounce">
-              <span className="text-4xl drop-shadow-md select-none transform hover:scale-110 transition-transform animate-[pulse_1s_ease-in-out_infinite]">
-                🧸
-              </span>
-            </div>
-          </div>
-
-          <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
-            Preparing Secure Checkout...
-          </h3>
-          <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
-            Please wait a moment while we generate your payment link.
-          </p>
-
-          <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
-            <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-[#ff3f7a] rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
-          </div>
-        </div>
-      )}
-
       <div className="bg-card border border-border rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
         
         <div className="px-6 py-5 border-b border-border flex justify-between items-center bg-secondary/50">
@@ -288,7 +198,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
               <div className="space-y-4">
                 <button 
-                  onClick={() => handlePayment("WALLET")}
+                  onClick={handleWalletPayment}
                   disabled={loading || isLoadingPrice || isWalletInsufficient}
                   className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed group text-left"
                 >
@@ -302,23 +212,12 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
                     </div>
                   </div>
                 </button>
-
-                <button 
-                  onClick={() => handlePayment("ONLINE")}
-                  disabled={loading || isLoadingPrice}
-                  className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group text-left disabled:opacity-50"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      <CreditCard size={24} weight="fill" />
-                    </div>
-                    <div>
-                      <h4 className="font-black text-lg text-foreground">Pay Online</h4>
-                      <p className="text-sm font-medium text-muted-foreground">Card, Transfer, OPay, USSD</p>
-                    </div>
-                  </div>
-                </button>
+                
+                {isWalletInsufficient && (
+                  <p className="text-xs text-red-500 font-bold text-center px-4">Insufficient balance. Please fund your wallet to proceed.</p>
+                )}
               </div>
+
               <button onClick={() => setStep(1)} className="w-full text-center text-sm font-bold text-muted-foreground hover:text-foreground mt-4">
                 &larr; Back to Name Input
               </button>
@@ -327,39 +226,14 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
 
           {step === 3 && (
             <div className="text-center py-4">
-               {processingState === "ready_for_popup" && (
-                 <div className="animate-in zoom-in duration-300 flex flex-col items-center">
-                    <div className="h-20 w-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-5">
-                      <LockKey weight="fill" className="h-10 w-10" />
-                    </div>
-                    <h3 className="text-xl font-black text-foreground mb-2">Gateway Ready</h3>
-                    <p className="text-sm text-muted-foreground font-medium mb-8">
-                      Click the button below to open the secure payment window. This window will automatically close when payment is successful.
-                    </p>
-                    
-                    <button 
-                      onClick={() => {
-                        const popup = window.open(checkoutUrl!, "_blank", "width=500,height=750");
-                        startWebhookPolling(popup);
-                      }}
-                      className="w-full h-14 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity"
-                    >
-                      Open Secure Checkout <Sparkle weight="fill" className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => { setStep(2); setProcessingState("idle"); }} className="w-full text-center text-sm font-bold text-muted-foreground hover:text-foreground mt-6">
-                      Cancel
-                    </button>
-                 </div>
-               )}
-
-               {processingState === "success" && (
+               {processingState === "success" ? (
                  <div className="animate-in zoom-in duration-500">
                     <div className="h-20 w-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 ring-8 ring-emerald-500/5">
                       <CheckCircle weight="fill" className="h-10 w-10" />
                     </div>
                     <h3 className="text-xl font-black text-foreground mb-2">Names Substituted!</h3>
                     <p className="text-sm text-muted-foreground font-medium mb-8">
-                      Your new names have been saved. Is your query fully resolved, or do you still need to edit other details?
+                      Your new names have been saved securely. Is your query fully resolved, or do you still need to edit other details?
                     </p>
                     
                     <div className="flex flex-col gap-3">
@@ -372,16 +246,14 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
                       </button>
                     </div>
                  </div>
-               )}
-
-               {(processingState === "initializing" || processingState === "verifying") && (
-                 <div className="flex flex-col items-center justify-center h-48 animate-in fade-in duration-300">
+               ) : (
+                 <div className="flex flex-col items-center justify-center h-48">
                     <CircleDashed className="animate-spin h-16 w-16 text-primary mb-4" weight="bold" />
                     <h3 className="font-black text-lg text-foreground mb-2">
-                      {processingState === "initializing" ? "Initializing Payment..." : "Awaiting Payment..."}
+                      Processing Payment...
                     </h3>
                     <p className="text-muted-foreground font-medium text-sm px-4">
-                      {processingState === "verifying" ? "Complete the transaction in the popup window. This will update automatically." : "Please do not close this window."}
+                      Please wait while we secure your substitution.
                     </p>
                  </div>
                )}
