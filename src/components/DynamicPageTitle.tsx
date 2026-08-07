@@ -17,6 +17,7 @@ export default function DynamicPageTitle() {
     else if (pathname.includes('/mds/dashboard/orders/tax-id')) title = "Tax ID Pipeline | Lorabiz MDS";
     else if (pathname.includes('/mds/dashboard/orders/airtime')) title = "Airtime Log | Lorabiz MDS";
     else if (pathname.includes('/mds/dashboard/settings')) title = "Global Settings | Lorabiz MDS";
+    else if (pathname.includes('/mds/dashboard/marketing')) title = "Marketing & Referrals | Lorabiz MDS";
     else if (pathname === '/quadrox-lorabiz-team/mds/dashboard') title = "Admin Overview | Lorabiz MDS";
     
     // User Dashboard Pages
@@ -29,11 +30,11 @@ export default function DynamicPageTitle() {
     else if (pathname.includes('/dashboard/tools/nin-slip')) title = "NIN Slip Print | Lorabiz";
     else if (pathname.includes('/dashboard/transactions')) title = "Transaction History | Lorabiz";
     else if (pathname.includes('/dashboard/wallet')) title = "My Wallet | Lorabiz";
+    else if (pathname.includes('/dashboard/referrals')) title = "Partner Program | Lorabiz";
     else if (pathname.includes('/dashboard/settings')) title = "Account Settings | Lorabiz";
     else if (pathname === '/dashboard/pricing') title = "Pricing | Lorabiz";
     else if (pathname === '/dashboard') title = "My Dashboard | Lorabiz";
     
-
     // Set the browser tab title
     document.title = title;
   }, [pathname]);
