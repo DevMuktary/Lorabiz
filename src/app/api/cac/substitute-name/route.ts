@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     if (!session?.user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     
     const userEmail = session.user.email;
-    const { id, type, paymentMethod, proposedName, altName1, altName2 } = await req.json();
+    const { id, type, paymentMethod, proposedName, altName1, altName2, callbackUrl } = await req.json();
 
     const pricing = await prisma.servicePricing.findUnique({ where: { serviceKey: "NAME_SUBSTITUTION" } });
     const fee = pricing?.price ? Number(pricing.price) : 5000;
@@ -44,7 +44,6 @@ export async function POST(req: Request) {
           }
         });
 
-        // Update Names immediately
         if (type === "BUSINESS_NAME") {
           await tx.businessRegistration.update({ where: { id }, data: { proposedName, altName1, altName2 } });
         } else {
@@ -64,11 +63,10 @@ export async function POST(req: Request) {
       const secretKey = process.env.KORAPAY_SECRET_KEY;
       const appUrl = process.env.NEXTAUTH_URL || "https://lorabiz.com";
 
-      // Clean, short reference starting with NSUB_
       const reference = `NSUB_${id}_${Date.now()}`; 
-
-      // Route them right back to the queries page where the modal is open!
-      const callbackPath = `/dashboard/cac/${type === "LLC" ? "llc" : "businesses"}/${id}/queries?verifying=true`;
+      
+      // Dynamic fallback URL so the popup window has a safe place to land before we close it
+      const callbackPath = callbackUrl || "/dashboard";
 
       const koraResponse = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
         method: "POST",
@@ -85,7 +83,6 @@ export async function POST(req: Request) {
             email: userEmail,
             name: session.user.name?.substring(0, 50) || "Customer"
           },
-          // We safely pack the names into KoraPay's 5 allowed metadata slots!
           metadata: {
             "reg-id": id.substring(0, 20),
             "type": type.substring(0, 20),
@@ -99,20 +96,14 @@ export async function POST(req: Request) {
       const koraData = await koraResponse.json();
 
       if (!koraResponse.ok || !koraData.status || !koraData.data?.checkout_url) {
-        console.error("❌ KoraPay Initialization Failed:", koraData);
         return NextResponse.json({ success: false, message: koraData.message || "Failed to initialize payment." }, { status: 400 });
       }
 
-      return NextResponse.json({ 
-        success: true, 
-        authorizationUrl: koraData.data.checkout_url 
-      });
+      return NextResponse.json({ success: true, authorizationUrl: koraData.data.checkout_url });
     }
 
     return NextResponse.json({ message: "Invalid payment method" }, { status: 400 });
-
   } catch (error) {
-    console.error("Name Substitution Error:", error);
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
