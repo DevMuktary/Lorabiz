@@ -42,59 +42,6 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     };
   }, []);
 
-  // =====================================================================
-  // ROBUST REDIRECT VERIFICATION (FIX FOR THE INFINITE LOADING TRAP)
-  // =====================================================================
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const isVerifying = params.get("verifying") === "true";
-      const reference = params.get("reference");
-      
-      if (isVerifying && processingState === "idle") {
-        // Immediately clean the URL so if the user refreshes, they aren't trapped
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-        
-        setStep(3); // Move to the verification visual step
-
-        if (reference) {
-          verifyOnlinePayment(reference);
-        } else {
-          // User closed the gateway and no reference was appended
-          setError("Payment was cancelled or interrupted. No funds were debited.");
-          setProcessingState("idle");
-          setStep(2); // Kick them back to the payment selection
-        }
-      }
-    }
-  }, [reg.id, processingState]);
-
-  const verifyOnlinePayment = async (reference: string) => {
-    setProcessingState("verifying");
-    setError(null);
-
-    try {
-      const res = await fetch('/api/payment/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference })
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        setProcessingState("success");
-        router.refresh(); 
-      } else {
-        setError("Transaction cancelled or failed. Please try again.");
-        setProcessingState("idle");
-        setStep(2);
-      }
-    } catch (err) {
-      startWebhookPolling();
-    }
-  };
-
   const validateNames = () => {
     if (reg._appType === "BUSINESS_NAME") {
       const restricted = /limited|ltd|plc|inc|incorporated|llc/i;
@@ -113,7 +60,10 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setStep(2);
   };
 
-  const startWebhookPolling = () => {
+  // =========================================================================
+  // STATELESS POLLING (Watches the DB while the Popup handles the payment)
+  // =========================================================================
+  const startWebhookPolling = (popupReference?: Window | null) => {
     setProcessingState("verifying");
     
     pollingIntervalRef.current = setInterval(async () => {
@@ -125,9 +75,13 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         const res = await fetch(endpoint);
         const json = await res.json();
         
+        // If the DB has the newly substituted name, Webhook succeeded!
         if (json.success && json.data.proposedName === formData.proposedName) {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setProcessingState("success");
+          setGatewayLoading(false);
+          
+          if (popupReference) popupReference.close(); // Automatically close KoraPay!
           router.refresh();
         }
       } catch (e) {}
@@ -136,11 +90,12 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setTimeout(() => {
       if (pollingIntervalRef.current && processingState !== "success") {
         clearInterval(pollingIntervalRef.current);
-        setError("Payment received, but confirmation is delayed. Please check your dashboard later.");
+        setError("Payment confirmation delayed. If you paid, check your dashboard shortly.");
         setProcessingState("idle");
+        setGatewayLoading(false);
         setStep(2); 
       }
-    }, 15000);
+    }, 180000); // 3-minute timeout
   };
 
   const handlePayment = async (method: "WALLET" | "ONLINE") => {
@@ -149,8 +104,12 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
     setStep(3);
     setProcessingState("initializing");
 
+    let popup: Window | null = null;
+    
     if (method === "ONLINE") {
       setGatewayLoading(true);
+      // Open immediately to bypass popup blockers
+      popup = window.open("about:blank", "KoraPayCheckout", "width=450,height=750");
     }
 
     try {
@@ -158,7 +117,8 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: reg.id, type: reg._appType, paymentMethod: method, ...formData
+          id: reg.id, type: reg._appType, paymentMethod: method, ...formData,
+          callbackUrl: window.location.pathname
         })
       });
 
@@ -169,6 +129,7 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
         setStep(2);
         setProcessingState("idle");
         setGatewayLoading(false);
+        if (popup) popup.close();
         return;
       }
 
@@ -178,19 +139,36 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
       } else if (method === "ONLINE") {
         if (!data.authorizationUrl) {
           setError("Server error: Could not obtain checkout link.");
-          setStep(2); 
-          setProcessingState("idle"); 
-          setGatewayLoading(false);
+          setStep(2); setProcessingState("idle"); setGatewayLoading(false);
+          if (popup) popup.close();
           return;
         }
-        // Native Redirect to KoraPay Gateway
-        window.location.href = data.authorizationUrl;
+        
+        if (popup) {
+          popup.location.href = data.authorizationUrl;
+          startWebhookPolling(popup);
+
+          // Detect if the user manually closes the popup before finishing
+          const popupCheck = setInterval(() => {
+            if (popup?.closed && processingState !== "success") {
+              clearInterval(popupCheck);
+              if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+              setGatewayLoading(false);
+              setProcessingState("idle");
+              setStep(2);
+              setError("Payment window was closed.");
+            }
+          }, 1000);
+
+        } else {
+          // Absolute fallback if popups are fully blocked by their browser
+          window.location.href = data.authorizationUrl;
+        }
       }
     } catch (e) {
       setError("A network error occurred.");
-      setStep(2); 
-      setProcessingState("idle");
-      setGatewayLoading(false);
+      setStep(2); setProcessingState("idle"); setGatewayLoading(false);
+      if (popup) popup.close();
     } finally {
       setLoading(false);
     }
@@ -248,27 +226,15 @@ export default function SubstituteNameModal({ reg, onClose }: { reg: any, onClos
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
-            Connecting to KoraPay...
+            Secure Checkout Open
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
-            Please wait a moment while we prepare your checkout page.
+            Please complete the payment in the popup window.
           </p>
 
           <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
             <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-[#ff3f7a] rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setGatewayLoading(false);
-              setProcessingState("idle");
-              setStep(2);
-            }}
-            className="mt-8 text-xs text-slate-400 hover:text-white underline underline-offset-4 transition-colors cursor-pointer"
-          >
-            Cancel / Go Back
-          </button>
         </div>
       )}
 
