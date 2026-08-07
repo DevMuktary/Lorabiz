@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
@@ -6,7 +7,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // We still grab the IP just for your database audit logs, but we DO NOT block it.
     const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || 
                       req.headers.get("x-real-ip") || 
                       "unknown";
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     const { 
       firstName, middleName, lastName, email: rawEmail, 
       phone, whatsapp, password, gender, state, lga, 
-      street, buildingNo, otpCode 
+      street, buildingNo, otpCode, referralCode 
     } = body;
 
     // 1. Strict Basic Validation
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Verification code has expired. Please request a new one." }, { status: 400 });
     }
 
-    // 3. CHECK FOR DUPLICATES (Phone/WhatsApp crossover check)
+    // 3. CHECK FOR DUPLICATES
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [ { email }, { phone }, { whatsapp } ]
@@ -51,18 +51,26 @@ export async function POST(req: Request) {
     });
 
     if (existingUser) {
-      // Generic error so we don't leak which field caused the conflict
       return NextResponse.json(
         { message: "An account with these details already exists." }, 
         { status: 409 }
       );
     }
 
-    // 4. Hash & Transaction Create
+    // 4. PREPARE REFERRAL DATA (Who brought them in?)
+    const cookieStore = cookies();
+    const cookieRef = cookieStore.get('lorabiz_ref')?.value;
+    
+    // Check if they manually typed a code, otherwise fallback to the silent cookie
+    const finalReferredBy = referralCode || cookieRef || null;
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const [newUser] = await prisma.$transaction([
-      prisma.user.create({
+    // 5. INTERACTIVE TRANSACTION
+    const newUser = await prisma.$transaction(async (tx) => {
+      
+      // A. Create the base user (No referral code generated for them yet)
+      const createdUser = await tx.user.create({
         data: {
           firstName,
           middleName: middleName || null, 
@@ -77,13 +85,42 @@ export async function POST(req: Request) {
           street,
           buildingNo: buildingNo || null, 
           ipAddress,
+          referredBy: finalReferredBy,          
           wallet: { create: { balance: 0.00 } }
         },
-      }),
-      prisma.otpCode.delete({
+      });
+
+      // B. Clear the used OTP
+      await tx.otpCode.delete({
         where: { email }, 
-      }),
-    ]);
+      });
+
+      // C. Process Referral Reward if a code was provided
+      if (finalReferredBy) {
+        const referrer = await tx.user.findUnique({ 
+          where: { referralCode: finalReferredBy } 
+        });
+
+        // Only create the pending reward if the referrer actually exists in the DB
+        if (referrer) {
+          const rewardSetting = await tx.globalSetting.findUnique({ 
+            where: { key: 'REFERRAL_REWARD_AMOUNT' } 
+          });
+          const dynamicReward = rewardSetting ? Number(rewardSetting.value) : 1000.00;
+
+          await tx.referral.create({
+            data: {
+              referrerId: referrer.id,
+              referredUserId: createdUser.id,
+              status: "PENDING",
+              rewardAmount: dynamicReward
+            }
+          });
+        }
+      }
+
+      return createdUser;
+    });
 
     return NextResponse.json({ message: "User created successfully", userId: newUser.id }, { status: 201 });
   } catch (error) {
