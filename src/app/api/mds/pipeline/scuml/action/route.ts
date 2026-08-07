@@ -60,6 +60,40 @@ export async function POST(req: Request) {
             finalCertificateUrl: finalCertificateUrl 
           }
         });
+
+        // --- NEW: REFERRAL SPEND TRACKING (ON COMPLETION) ---
+        const amountPaid = Number(scumlTicket.amountPaid || 0);
+        
+        if (amountPaid > 0) {
+          const updatedSpender = await tx.user.update({
+            where: { id: scumlTicket.userId },
+            data: { totalSpent: { increment: amountPaid } }
+          });
+
+          const thresholdSetting = await tx.globalSetting.findUnique({ 
+            where: { key: 'REFERRAL_SPEND_THRESHOLD' } 
+          });
+          const thresholdAmount = thresholdSetting ? Number(thresholdSetting.value) : 5000;
+
+          if (Number(updatedSpender.totalSpent) >= thresholdAmount) {
+            const pendingReferral = await tx.referral.findUnique({
+              where: { referredUserId: scumlTicket.userId }
+            });
+
+            if (pendingReferral && pendingReferral.status === "PENDING") {
+              await tx.referral.update({
+                where: { id: pendingReferral.id },
+                data: { status: "EARNED" }
+              });
+
+              await tx.user.update({
+                where: { id: pendingReferral.referrerId },
+                data: { referralBalance: { increment: pendingReferral.rewardAmount } }
+              });
+            }
+          }
+        }
+        // ----------------------------------------------------
       }
 
       // ---------------------------------------------------------
