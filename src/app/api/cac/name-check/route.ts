@@ -12,7 +12,15 @@ const LLC_SUFFIXES = ["LTD", "LIMITED", "PLC", "GTE", "ULC"];
 
 export async function POST(req: Request) {
   try {
-    const { proposedName, lineOfBusiness, entityType, mode } = await req.json();
+    const body = await req.json();
+
+    // 🚨 TRAP 1: See exactly what the frontend sends. (Is LLC missing data?)
+    console.log("\n==============================================");
+    console.log("➡️ INCOMING NAME CHECK REQUEST:");
+    console.log(JSON.stringify(body, null, 2));
+    console.log("==============================================\n");
+
+    const { proposedName, lineOfBusiness, entityType, mode } = body;
 
     if (!entityType) {
       return NextResponse.json({ success: false, message: "Missing required entity type." }, { status: 400 });
@@ -58,7 +66,6 @@ export async function POST(req: Request) {
 
     // ==========================================
     // MODE: INSTANT SUGGESTION GENERATOR 
-    // Generates 4 distinct names instantly for the UI
     // ==========================================
     if (mode === "SUGGEST") {
       if (!lineOfBusiness || !proposedName) {
@@ -101,7 +108,7 @@ export async function POST(req: Request) {
     }
 
     // ==========================================
-    // MODE: STANDARD CHECK (Fast Rule Check + AI Qualifier Check)
+    // MODE: STANDARD CHECK 
     // ==========================================
     if (!proposedName) {
       return NextResponse.json({ success: false, message: "Proposed name is required." }, { status: 400 });
@@ -113,8 +120,12 @@ export async function POST(req: Request) {
 
     let uiWarningMessage = "";
 
-    // Rule 1: Restricted Government/Global Words (INSTANT REJECT)
-    if (RESTRICTED_WORDS.some(restricted => uppercaseName.includes(restricted))) {
+    const hasRestrictedWord = RESTRICTED_WORDS.some(restricted => {
+      const regex = new RegExp(`\\b${restricted}\\b`, 'i');
+      return regex.test(uppercaseName);
+    });
+
+    if (hasRestrictedWord) {
       return NextResponse.json({
         success: true, isBlocked: true, rejectionType: "RESTRICTED_WORD", conflicts: [],
         reasonMessage: "This name contains restricted terminology (e.g., Federal, National, State) and requires special consent from the CAC.",
@@ -122,7 +133,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Rule 2: LLC Suffix Check (INSTANT REJECT)
     if (entityType === "Company (LLC)") {
       const hasLlcSuffix = LLC_SUFFIXES.includes(lastWord);
       if (!hasLlcSuffix) {
@@ -134,7 +144,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Rule 3: Business Name Rules
     if (entityType === "Business Name") {
       const hasIllegalLlcSuffix = LLC_SUFFIXES.includes(lastWord);
       if (hasIllegalLlcSuffix) {
@@ -145,7 +154,6 @@ export async function POST(req: Request) {
         });
       }
 
-      // Fast AI Qualifier Check (Just to toggle the warning message, NEVER to block)
       try {
         const qualifierCheck = await openai.chat.completions.create({
           model: "gpt-4o-mini",
@@ -168,7 +176,6 @@ export async function POST(req: Request) {
           uiWarningMessage = "Tip: Unless you are registering your exact personal legal name, CAC usually requires a qualifier like 'Ventures' or 'Services' at the end of a Business Name.";
         }
       } catch (aiError) {
-        // If OpenAI fails or times out, we just swallow it and move on. Do not interrupt checkout!
         console.warn("AI Qualifier check skipped due to error.");
       }
     }
@@ -192,42 +199,42 @@ export async function POST(req: Request) {
 
       clearTimeout(timeoutId);
 
+      // 🚨 TRAP 2: Check if CAC is crashing when we send LLC names!
       if (!cacResponse.ok) {
+        const rawErrorText = await cacResponse.text();
+        console.error("❌ CAC API HTTP ERROR:", cacResponse.status, rawErrorText);
         throw new Error(`Registry HTTP Error: ${cacResponse.status}`);
       }
 
       const cacJson = await cacResponse.json();
 
-      // ========================================================
-      // 🚨 TEMPORARY DEBUG LOGGING FOR RAILWAY 🚨
-      // ========================================================
       console.log("\n==============================================");
       console.log(`🔍 CAC NAME CHECK DEBUG: ${uppercaseName}`);
       console.log("==============================================");
       console.log("RAW PAYLOAD:", JSON.stringify(cacJson, null, 2));
       console.log("==============================================\n");
 
-      // We will adjust this check once we see the exact string in your Railway logs!
+      const similarityRaw = cacJson.data?.similarityScore || cacJson.data?.similarityScorePercentage || 0;
+      const similarityVal = typeof similarityRaw === "string" ? parseFloat(similarityRaw) || 0 : similarityRaw;
+      
+      const similarNamesArray = cacJson.data?.similarNames || [];
+      const mostSimilarName = cacJson.data?.mostSimilarName || (similarNamesArray.length > 0 ? similarNamesArray[0] : "N/A");
+
       const isRejected = cacJson.success === false || 
                          cacJson.message === "Name exist" || 
-                         cacJson.message === "BUSINESS_NAME_EXISTS";
+                         cacJson.message === "BUSINESS_NAME_EXISTS" ||
+                         similarityVal >= 85; 
 
       if (isRejected) {
         return NextResponse.json({
           success: true,
           isBlocked: true,
           rejectionType: "EXACT_MATCH",
-          reasonMessage: "This exact name is already registered by another business.",
-          conflicts: cacJson.data?.similarNames || [uppercaseName], 
-          data: { mostSimilarName: uppercaseName, cleansedNameUsed: uppercaseName }
+          reasonMessage: `This name is already registered or highly similar to an existing business (${mostSimilarName}).`,
+          conflicts: similarNamesArray.length > 0 ? similarNamesArray : [uppercaseName], 
+          data: { mostSimilarName: mostSimilarName, cleansedNameUsed: uppercaseName }
         });
       }
-
-      const similarityRaw = cacJson.data?.similarityScore || cacJson.data?.similarityScorePercentage || 0;
-      const similarityVal = typeof similarityRaw === "string" ? parseInt(similarityRaw) || 0 : similarityRaw;
-      
-      const similarNamesArray = cacJson.data?.similarNames || [];
-      const mostSimilarName = cacJson.data?.mostSimilarName || (similarNamesArray.length > 0 ? similarNamesArray[0] : "N/A");
 
       if (similarityVal > 0 && mostSimilarName !== "N/A") {
         uiWarningMessage = uiWarningMessage 
@@ -249,7 +256,8 @@ export async function POST(req: Request) {
       });
 
     } catch (networkError) {
-      // FAIL-OPEN: If CAC is completely offline or takes > 25 seconds, we let the user proceed.
+      // 🚨 TRAP 3: If it falls in here, log EXACTLY why it failed so we can see it in Railway.
+      console.error("🚨 FAIL-OPEN CATCH BLOCK TRIGGERED:", networkError);
       return NextResponse.json({
         success: true,
         isBlocked: false,
