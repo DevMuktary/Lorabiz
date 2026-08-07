@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { 
   Users, Wallet, ClockCounterClockwise, CheckCircle, 
-  Copy, Bank, ShieldCheck, Spinner, Info, Money, Check, PencilSimple
+  Copy, Bank, Spinner, Info, Money, Check, PencilSimple, 
+  ArrowLeft, CaretDown, MagnifyingGlass, X
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,33 +20,51 @@ export default function ReferralsPage() {
   
   // Bank Setup State
   const [banks, setBanks] = useState<any[]>([]);
-  const [setupData, setSetupData] = useState({ bankCode: "", accountNumber: "", acceptTerms: false });
+  const [setupData, setSetupData] = useState({ bankCode: "", bankName: "", accountNumber: "", acceptTerms: false });
   const [settingUp, setSettingUp] = useState(false);
-  const [setupError, setSetupError] = useState("");
-  const [setupSuccess, setSetupSuccess] = useState("");
   const [isEditingBank, setIsEditingBank] = useState(false);
+
+  // Searchable Dropdown State
+  const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
+  const [bankSearch, setBankSearch] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Withdrawal State
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
-  const [withdrawError, setWithdrawError] = useState("");
-  const [withdrawSuccess, setWithdrawSuccess] = useState("");
 
   // Copy State
   const [copied, setCopied] = useState(false);
+
+  // Toast Notification State
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   useEffect(() => {
     fetchBanks();
     fetchStats();
   }, []);
 
-  // Fetch the live list of Nigerian banks directly from Paystack
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsBankDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const fetchBanks = async () => {
     try {
       const res = await fetch("https://api.paystack.co/bank?country=nigeria");
       const data = await res.json();
       if (data.status) {
-        // Sort banks alphabetically for better UX
         const sortedBanks = data.data.sort((a: any, b: any) => a.name.localeCompare(b.name));
         setBanks(sortedBanks);
       }
@@ -60,7 +80,7 @@ export default function ReferralsPage() {
       if (json.success) {
         setStats(json.data);
         if (json.data.bankDetails) {
-          setSetupData(prev => ({ ...prev, acceptTerms: true })); // Pre-check if already enrolled
+          setSetupData(prev => ({ ...prev, acceptTerms: true })); 
         }
       }
     } catch (e) {
@@ -72,16 +92,13 @@ export default function ReferralsPage() {
 
   const handleSetupBank = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSetupError("");
-    setSetupSuccess("");
     
     if (!setupData.bankCode || !setupData.accountNumber || !setupData.acceptTerms) {
-      setSetupError("Please fill all fields and accept the terms.");
+      showToast("Please fill all fields and accept the terms.", "error");
       return;
     }
     
     setSettingUp(true);
-    const selectedBank = banks.find(b => b.code === setupData.bankCode);
     
     try {
       const res = await fetch("/api/user/referral", {
@@ -89,7 +106,7 @@ export default function ReferralsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bankCode: setupData.bankCode,
-          bankName: selectedBank?.name,
+          bankName: setupData.bankName,
           accountNumber: setupData.accountNumber,
           acceptTerms: setupData.acceptTerms
         })
@@ -97,14 +114,14 @@ export default function ReferralsPage() {
       const data = await res.json();
       
       if (data.success) {
-        setSetupSuccess(data.message);
+        showToast(data.message, "success");
         setIsEditingBank(false);
         await fetchStats(); 
       } else {
-        setSetupError(data.message);
+        showToast(data.message, "error");
       }
     } catch (e) {
-      setSetupError("Network error. Please try again.");
+      showToast("Network error. Please try again.", "error");
     } finally {
       setSettingUp(false);
     }
@@ -112,17 +129,15 @@ export default function ReferralsPage() {
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
-    setWithdrawError("");
-    setWithdrawSuccess("");
     
     const amountNum = Number(withdrawAmount);
     if (isNaN(amountNum) || amountNum < 2000) {
-      setWithdrawError("Minimum withdrawal amount is ₦2,000.");
+      showToast("Minimum withdrawal amount is ₦2,000.", "error");
       return;
     }
     
     if (amountNum > stats.referralBalance) {
-      setWithdrawError("You do not have enough funds in your referral balance.");
+      showToast("You do not have enough funds in your referral balance.", "error");
       return;
     }
     
@@ -136,14 +151,14 @@ export default function ReferralsPage() {
       const data = await res.json();
       
       if (data.success) {
-        setWithdrawSuccess(data.message);
+        showToast(data.message, "success");
         setWithdrawAmount("");
         await fetchStats();
       } else {
-        setWithdrawError(data.message);
+        showToast(data.message, "error");
       }
     } catch (e) {
-      setWithdrawError("Network error. Please check your connection.");
+      showToast("Network error. Please check your connection.", "error");
     } finally {
       setWithdrawing(false);
     }
@@ -157,6 +172,10 @@ export default function ReferralsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const filteredBanks = banks.filter(bank => 
+    bank.name.toLowerCase().includes(bankSearch.toLowerCase())
+  );
+
   if (loadingInit) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[60vh]">
@@ -168,9 +187,38 @@ export default function ReferralsPage() {
   const needsSetup = !stats?.bankDetails || isEditingBank;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+    <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-12">
       
-      <div>
+      {/* Side Toast Notification */}
+      {toast && (
+        <div className="fixed top-24 right-4 z-[100] animate-in slide-in-from-right-8 fade-in duration-300">
+          <div className={`flex items-center gap-3 p-4 pr-12 rounded-xl shadow-2xl border ${
+            toast.type === "success" 
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" 
+              : "bg-red-50 text-red-800 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"
+          }`}>
+            {toast.type === "success" ? (
+              <CheckCircle className="h-6 w-6 shrink-0" weight="fill" />
+            ) : (
+              <Info className="h-6 w-6 shrink-0" weight="fill" />
+            )}
+            <p className="text-sm font-medium">{toast.message}</p>
+            <button 
+              onClick={() => setToast(null)} 
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 opacity-70 hover:opacity-100 transition-opacity"
+            >
+              <X className="h-4 w-4" weight="bold" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Back Button */}
+      <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+      </Link>
+
+      <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Partner Program</h1>
         <p className="text-muted-foreground mt-1">Earn real cash by inviting businesses to LoraBiz.</p>
       </div>
@@ -191,36 +239,64 @@ export default function ReferralsPage() {
             </div>
           </div>
           
+          {/* Updated Notice Box */}
           <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 p-4 rounded-xl mb-8 text-sm flex gap-3 leading-relaxed">
             <Info className="h-5 w-5 shrink-0 mt-0.5" weight="fill" />
-            <p><strong>Strict Verification:</strong> The bank account name must strictly match the name you registered with on LoraBiz. We use Paystack to verify this instantly to prevent fraud.</p>
+            <p><strong>Notice:</strong> The bank account name must match with the name you registered with on LoraBiz.</p>
           </div>
 
           <form onSubmit={handleSetupBank} className="space-y-6">
-            {setupError && (
-              <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-lg border border-destructive/20 flex items-center gap-2">
-                <Info weight="bold" className="h-5 w-5 shrink-0" />
-                <span>{setupError}</span>
-              </div>
-            )}
             
-            <div className="space-y-2">
-              <Label htmlFor="bankCode">Select Bank</Label>
-              <div className="relative">
-                <Bank className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
-                <select 
-                  id="bankCode" 
-                  value={setupData.bankCode} 
-                  onChange={(e) => setSetupData({...setupData, bankCode: e.target.value})} 
-                  required 
-                  className="flex h-12 w-full rounded-md border border-border bg-secondary/40 pl-11 pr-3 text-[16px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3f7a] dark:bg-[#121212]"
-                >
-                  <option value="" disabled>Select your bank</option>
-                  {banks.map((bank) => (
-                    <option key={bank.code} value={bank.code}>{bank.name}</option>
-                  ))}
-                </select>
+            {/* Custom Searchable Dropdown */}
+            <div className="space-y-2 relative" ref={dropdownRef}>
+              <Label htmlFor="bankSearch">Select Bank</Label>
+              <div 
+                className="relative flex items-center h-12 w-full rounded-md border border-border bg-secondary/40 px-3 cursor-pointer text-[16px] text-foreground hover:border-[#ff3f7a]/50 transition-colors"
+                onClick={() => setIsBankDropdownOpen(!isBankDropdownOpen)}
+              >
+                <Bank className="h-5 w-5 text-muted-foreground mr-2 shrink-0" />
+                <span className={`flex-1 truncate ${!setupData.bankName && "text-muted-foreground"}`}>
+                  {setupData.bankName || "Select your bank"}
+                </span>
+                <CaretDown className={`h-4 w-4 text-muted-foreground transition-transform ${isBankDropdownOpen ? "rotate-180" : ""}`} />
               </div>
+
+              {isBankDropdownOpen && (
+                <div className="absolute top-[76px] left-0 w-full z-50 bg-popover border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-2 border-b border-border bg-muted/30">
+                    <div className="relative">
+                      <MagnifyingGlass className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        autoFocus
+                        placeholder="Search for a bank..." 
+                        value={bankSearch}
+                        onChange={(e) => setBankSearch(e.target.value)}
+                        className="h-9 pl-9 bg-background border-border text-sm focus-visible:ring-0 focus-visible:border-[#ff3f7a]"
+                      />
+                    </div>
+                  </div>
+                  <ul className="max-h-[250px] overflow-y-auto p-1">
+                    {filteredBanks.length === 0 ? (
+                      <li className="p-3 text-sm text-center text-muted-foreground">No banks found</li>
+                    ) : (
+                      filteredBanks.map((bank) => (
+                        <li 
+                          key={bank.code} 
+                          className="px-3 py-2.5 text-sm hover:bg-secondary rounded-lg cursor-pointer transition-colors flex items-center justify-between"
+                          onClick={() => {
+                            setSetupData(prev => ({ ...prev, bankCode: bank.code, bankName: bank.name }));
+                            setIsBankDropdownOpen(false);
+                            setBankSearch("");
+                          }}
+                        >
+                          <span className="font-medium text-foreground">{bank.name}</span>
+                          {setupData.bankCode === bank.code && <Check className="h-4 w-4 text-[#ff3f7a]" weight="bold" />}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -262,7 +338,7 @@ export default function ReferralsPage() {
           </form>
         </div>
       ) : (
-        <>
+        <div className="space-y-6">
           {/* Dashboard View */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex flex-col justify-center">
@@ -299,7 +375,7 @@ export default function ReferralsPage() {
                   <div className="flex-1 truncate px-3 text-sm font-mono text-foreground font-medium select-all">
                     {typeof window !== "undefined" ? `${window.location.origin}/auth/register?ref=${stats?.referralCode}` : `.../auth/register?ref=${stats?.referralCode}`}
                   </div>
-                  <Button onClick={copyToClipboard} variant={copied ? "default" : "secondary"} className={`shrink-0 h-10 px-4 transition-all ${copied ? "bg-emerald-500 hover:bg-emerald-600 text-white" : ""}`}>
+                  <Button onClick={copyToClipboard} variant={copied ? "default" : "secondary"} className={`shrink-0 h-10 px-4 transition-all ${copied ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent" : ""}`}>
                     {copied ? <Check className="h-4 w-4 mr-2" weight="bold" /> : <Copy className="h-4 w-4 mr-2" />}
                     {copied ? "Copied" : "Copy"}
                   </Button>
@@ -330,9 +406,6 @@ export default function ReferralsPage() {
               </div>
 
               <form onSubmit={handleWithdraw} className="space-y-4">
-                {withdrawError && <div className="p-3 bg-destructive/10 text-destructive text-sm font-medium rounded-lg text-center">{withdrawError}</div>}
-                {withdrawSuccess && <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium rounded-lg text-center flex justify-center items-center gap-2"><CheckCircle weight="fill" className="h-5 w-5" /> {withdrawSuccess}</div>}
-                
                 <div className="relative">
                   <span className="absolute left-4 top-3.5 font-bold text-muted-foreground">₦</span>
                   <Input 
@@ -352,7 +425,7 @@ export default function ReferralsPage() {
             </div>
 
           </div>
-        </>
+        </div>
       )}
     </div>
   );
