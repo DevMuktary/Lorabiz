@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Invalid transaction reference format" }, { status: 400 });
     }
 
-    if (!reference.startsWith("ONL_") && !reference.startsWith("FW_") && !reference.startsWith("NSUB-")) {
+    if (!reference.startsWith("ONL_") && !reference.startsWith("FW_") && !reference.startsWith("NSUB_")) {
       return NextResponse.json({ message: "Invalid transaction type for this endpoint" }, { status: 400 });
     }
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     let registrationId = "";
     if (isScuml) {
       const temp = reference.replace("ONL_SCUML_", "");
-      registrationId = temp.substring(0, temp.lastIndexOf("_")); // Properly grabs "scuml_draft_XYZ"
+      registrationId = temp.substring(0, temp.lastIndexOf("_")); 
       
       const draftStr = await redis.get(registrationId);
       if (draftStr) {
@@ -60,6 +60,9 @@ export async function POST(req: Request) {
       }
     } else if (reference.startsWith("ONL_")) {
       const temp = reference.replace("ONL_", "");
+      registrationId = temp.substring(0, temp.lastIndexOf("_"));
+    } else if (reference.startsWith("NSUB_")) {
+      const temp = reference.replace("NSUB_", "");
       registrationId = temp.substring(0, temp.lastIndexOf("_"));
     }
 
@@ -76,6 +79,9 @@ export async function POST(req: Request) {
         return; 
       }
 
+      // =====================================================================
+      // SCENARIO A: WALLET FUNDING
+      // =====================================================================
       if (reference.startsWith("FW_")) {
         const updatedWallet = await tx.wallet.update({
           where: { id: user.wallet.id },
@@ -98,6 +104,68 @@ export async function POST(req: Request) {
         return;
       }
 
+      // =====================================================================
+      // SCENARIO C: NAME SUBSTITUTION (NEW!)
+      // =====================================================================
+      if (reference.startsWith("NSUB_")) {
+        // Extract names packed into KoraPay metadata during initialization
+        const metadata = koraData.data.metadata || {};
+        const proposedName = metadata["name-1"];
+        const altName1 = metadata["name-2"] !== "none" ? metadata["name-2"] : "";
+        const altName2 = metadata["name-3"] !== "none" ? metadata["name-3"] : "";
+        const type = metadata["type"];
+
+        const fundedWallet = await tx.wallet.update({
+          where: { id: user.wallet.id },
+          data: { balance: { increment: amountPaid } }
+        });
+        const balanceAfterCredit = Number(fundedWallet.balance);
+
+        await tx.transaction.create({
+          data: {
+            walletId: user.wallet.id,
+            amount: amountPaid,
+            balanceBefore: balanceAfterCredit - amountPaid,
+            balanceAfter: balanceAfterCredit,
+            type: "CREDIT",
+            status: "SUCCESS",
+            reference: reference, 
+            description: "KoraPay Online Funding",
+            serviceCategory: "WALLET_FUNDING"
+          }
+        });
+
+        const debitedWallet = await tx.wallet.update({
+          where: { id: user.wallet.id },
+          data: { balance: { decrement: amountPaid } }
+        });
+
+        await tx.transaction.create({
+          data: {
+            walletId: user.wallet.id,
+            amount: amountPaid,
+            balanceBefore: balanceAfterCredit,
+            balanceAfter: Number(debitedWallet.balance),
+            type: "DEBIT",
+            status: "SUCCESS",
+            reference: `NSUB_PAY_${registrationId}_${Date.now()}`,
+            description: `Payment for Name Substitution`,
+            serviceCategory: "NAME_SUBSTITUTION"
+          }
+        });
+
+        // Save the new names to the database!
+        if (type === "BUSINESS_NAME") {
+          await tx.businessRegistration.update({ where: { id: registrationId }, data: { proposedName, altName1, altName2 } });
+        } else {
+          await tx.llcRegistration.update({ where: { id: registrationId }, data: { proposedName, altName1, altName2 } });
+        }
+        return;
+      }
+
+      // =====================================================================
+      // SCENARIO B: SERVICE CHECKOUT (CAC/SCUML)
+      // =====================================================================
       if (reference.startsWith("ONL_")) {
         const fundedWallet = await tx.wallet.update({
           where: { id: user.wallet.id },
