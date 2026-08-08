@@ -51,6 +51,36 @@ const SERVICES = [
     active: false,
   },
   {
+    title: "Nigerian Copyright Commission (NCC)",
+    description: "Register and protect your creative works, software, and literary assets.",
+    logo: "/ncc.jpg",
+    active: false,
+  },
+  {
+    title: "Board Resolution",
+    description: "Generate instant, legally formatted board resolutions and official company documents.",
+    logo: "/file.svg",
+    active: false,
+  },
+  {
+    title: "NEPC Export License",
+    description: "Fast-track your registration with the Nigerian Export Promotion Council (NEPC) and get certified.",
+    logo: "/nepc.jpg",
+    active: false,
+  },
+  {
+    title: "Bureau of Public Procurement (BPP)",
+    description: "Get certified to bid for Federal Government contracts and ensure your company meets all federal compliance requirements.",
+    logo: "/bpp.png",
+    active: false,
+  },
+  {
+    title: "Expert Tax Consultation",
+    description: "Connect directly with certified accountants to resolve FIRS compliance issues and process your TCC.",
+    logo: "/nrs.png",
+    active: false,
+  },
+  {
     title: "SMEDAN",
     description: "Get your business certified with the Small and Medium Enterprises agency.",
     logo: "/smedan.png",
