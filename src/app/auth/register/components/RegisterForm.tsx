@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   User, EnvelopeSimple, LockKey, Spinner, CheckCircle, 
   GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash, Users
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NIGERIA_STATES_LGA } from "@/lib/nigeria-states";
+import { TurnstileWidget } from "@/components/TurnstileWidget"; // <-- ADDED ISOLATED WIDGET
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -24,11 +24,9 @@ export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // Turnstile State & Refs
+  // Turnstile State (Refs and explicit script loading have been removed)
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
-  const turnstileRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string | null>(null);
 
   // Loading states for OTP specific actions
   const [isSendingOtp, setIsSendingOtp] = useState(false);
@@ -47,7 +45,7 @@ export default function RegisterForm() {
   // Safely fetch the LGAs from the Record object using the selected state key
   const availableLgas = formData.state ? NIGERIA_STATES_LGA[formData.state] || [] : [];
 
-  // Helper to nicely format the uppercase state keys (e.g., "AKWA IBOM" -> "Akwa Ibom")
+  // Helper to nicely format the uppercase state keys
   const formatStateName = (name: string) => {
     return name.split(' ').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ');
   };
@@ -63,7 +61,7 @@ export default function RegisterForm() {
   };
   const passScore = getPasswordStrength();
 
-  // --- NEW: Auto-capture referral code from URL if they clicked a link ---
+  // Auto-capture referral code from URL
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -73,7 +71,6 @@ export default function RegisterForm() {
       }
     }
   }, []);
-  // -----------------------------------------------------------------------
 
   useEffect(() => {
     if (sameAsPhone) {
@@ -96,39 +93,11 @@ export default function RegisterForm() {
     }
   }, [termsAccepted, errors.terms]);
 
-  // Turnstile Callback Registration
-  useEffect(() => {
-    (window as any).onTurnstileSuccess = (token: string) => {
-      setCaptchaToken(token);
-      setCaptchaVerified(true);
-      if (errors.captcha) setErrors(prev => ({ ...prev, captcha: "" }));
-    };
-  }, [errors.captcha]);
-
-  // Turnstile Explicit Render Function
-  const renderTurnstile = () => {
-    const win = window as any;
-    if (win.turnstile && turnstileRef.current && !widgetIdRef.current) {
-      widgetIdRef.current = win.turnstile.render(turnstileRef.current, {
-        sitekey: "0x4AAAAAAEA2i2RM9PiSsRCH",
-        callback: win.onTurnstileSuccess,
-        action: "turnstile-spin-v2",
-        theme: "auto",
-        retry: "auto",
-        "retry-interval": 2000,
-      });
-    }
-  };
-
-  // Turnstile Cleanup on Unmount
-  useEffect(() => {
-    return () => {
-      const win = window as any;
-      if (widgetIdRef.current && win.turnstile) {
-        win.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
-      }
-    };
+  // NEW: Memoized Turnstile Callback to prevent re-renders on typing
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setCaptchaToken(token);
+    setCaptchaVerified(true);
+    setErrors(prev => ({ ...prev, captcha: "" }));
   }, []);
 
   useEffect(() => {
@@ -159,7 +128,7 @@ export default function RegisterForm() {
 
       if (res.ok) {
         setOtpStep("sent");
-        setOtpTimer(60); // 60s cooldown for the resend button UI
+        setOtpTimer(60); 
       } else {
         const data = await res.json();
         setErrors({ email: data.message || "Failed to send code." });
@@ -259,9 +228,9 @@ export default function RegisterForm() {
       setErrors({ form: "An unexpected error occurred. Please try again." });
     } finally {
       setLoading(false);
-      // Reset turnstile on failure using the explicit widget ID
-      if ((window as any).turnstile && widgetIdRef.current) {
-        (window as any).turnstile.reset(widgetIdRef.current);
+      // Cleanly reset global turnstile on failure
+      if ((window as any).turnstile) {
+        (window as any).turnstile.reset();
         setCaptchaVerified(false);
         setCaptchaToken("");
       }
@@ -271,12 +240,6 @@ export default function RegisterForm() {
   return (
     <div className="w-full max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
-      <Script 
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" 
-        strategy="afterInteractive" 
-        onReady={renderTurnstile}
-      />
-
       <div className="mb-8 flex justify-center lg:justify-start mt-2 sm:mt-0">
         <Image src="/logo.png" alt="LoraBiz Logo" width={340} height={120} className="object-contain h-20 lg:h-24 w-auto dark:brightness-110" priority />
       </div>
@@ -526,11 +489,17 @@ export default function RegisterForm() {
           </div>
         </div>
 
-        {/* Turnstile Integration */}
-        <div className="pt-2 flex justify-center lg:justify-start">
-           <div ref={turnstileRef} className="min-h-[65px]"></div>
+        {/* --- NEW: ISOLATED TURNSTILE WIDGET --- */}
+        <div className="pt-2 flex flex-col items-center lg:items-start">
+          {!captchaVerified && (
+            <div className="flex items-center gap-2 mb-3 text-sm font-medium text-muted-foreground animate-pulse">
+              <Spinner className="animate-spin h-4 w-4" />
+              <span>Verifying security...</span>
+            </div>
+          )}
+          <TurnstileWidget onVerify={handleTurnstileVerify} />
+          {errors.captcha && <p className="text-sm text-destructive font-medium mt-1">{errors.captcha}</p>}
         </div>
-        {errors.captcha && <p className="text-sm text-destructive font-medium pl-1">{errors.captcha}</p>}
 
         {/* CHECKBOX & SUBMIT CONTAINER */}
         <div className="pt-6 border-t border-border space-y-4">
