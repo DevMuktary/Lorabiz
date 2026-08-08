@@ -7,7 +7,8 @@ import { format } from "date-fns";
 import { 
   Users, Wallet, CheckCircle, 
   Copy, Bank, Spinner, Info, Money, Check, PencilSimple, 
-  ArrowLeft, CaretDown, MagnifyingGlass, X, Coins, EnvelopeSimple, ChartLineUp
+  ArrowLeft, CaretDown, MagnifyingGlass, X, Coins, EnvelopeSimple, ChartLineUp,
+  Gift, ShieldWarning // <-- Added new icons for the onboarding view
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,87 +202,145 @@ export default function ReferralsPage() {
       </div>
 
       {needsSetup ? (
-        <div className="max-w-2xl bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-          {/* Bank Setup Form (Untouched, fully operational) */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="h-12 w-12 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center shrink-0">
-              <Money className="h-6 w-6" weight="fill" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-foreground">
-                {isEditingBank ? "Update Payout Bank" : "Activate Your Partner Link"}
-              </h2>
-              <p className="text-muted-foreground text-sm">Where should we send your cash rewards?</p>
-            </div>
-          </div>
+        <div className="space-y-8">
           
-          <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 p-4 rounded-xl mb-8 text-sm flex gap-3 leading-relaxed">
-            <Info className="h-5 w-5 shrink-0 mt-0.5" weight="fill" />
-            <p><strong>Notice:</strong> The bank account name must match with the name you registered with on LoraBiz.</p>
+          {/* NEW: Onboarding Benefits & Rules (Hidden if just editing an existing bank) */}
+          {!isEditingBank && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* The Benefits */}
+              <div className="bg-[#ff3f7a]/5 border border-[#ff3f7a]/20 p-6 sm:p-8 rounded-2xl shadow-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-10 w-10 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center shrink-0">
+                    <Gift className="h-5 w-5" weight="fill" />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground">Why Join the Program?</h2>
+                </div>
+                <ul className="space-y-4">
+                  <li className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-[#ff3f7a] shrink-0 mt-0.5" weight="fill" />
+                    <p className="text-sm text-muted-foreground leading-relaxed"><strong className="text-foreground">Earn Unlimited Cash:</strong> Get fixed cash rewards directly added to your balance every time a business you invite successfully completes a compliance service.</p>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-[#ff3f7a] shrink-0 mt-0.5" weight="fill" />
+                    <p className="text-sm text-muted-foreground leading-relaxed"><strong className="text-foreground">Help Your Network:</strong> Anyone who registers using your unique partner link instantly receives a 5% discount on their first major service.</p>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-[#ff3f7a] shrink-0 mt-0.5" weight="fill" />
+                    <p className="text-sm text-muted-foreground leading-relaxed"><strong className="text-foreground">Direct Withdrawals:</strong> Request cash payouts directly to your verified local Nigerian bank account once you hit the minimum balance.</p>
+                  </li>
+                </ul>
+              </div>
+
+              {/* The Rules */}
+              <div className="bg-secondary/20 border border-border p-6 sm:p-8 rounded-2xl shadow-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-10 w-10 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center shrink-0">
+                    <ShieldWarning className="h-5 w-5" weight="fill" />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground">Program Rules & Terms</h2>
+                </div>
+                <ul className="space-y-4">
+                  <li className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-2" />
+                    <p className="text-sm text-muted-foreground leading-relaxed">Commissions are ONLY credited when the referred user's service application is fully processed and <strong className="text-foreground">approved</strong> by the LoraBiz team.</p>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-2" />
+                    <p className="text-sm text-muted-foreground leading-relaxed">Self-referrals or creating fake accounts to manipulate the discount system is strictly prohibited.</p>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-2" />
+                    <p className="text-sm text-muted-foreground leading-relaxed">LoraBiz reserves the right to suspend accounts, withhold payouts, or permanently disable the program at any time if fraud, abuse, or violation of terms is suspected.</p>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Existing Bank Setup Form */}
+          <div className="max-w-2xl bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="h-12 w-12 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center shrink-0">
+                <Money className="h-6 w-6" weight="fill" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">
+                  {isEditingBank ? "Update Payout Bank" : "Activate Your Partner Link"}
+                </h2>
+                <p className="text-muted-foreground text-sm">Where should we send your cash rewards?</p>
+              </div>
+            </div>
+            
+            <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 p-4 rounded-xl mb-8 text-sm flex gap-3 leading-relaxed">
+              <Info className="h-5 w-5 shrink-0 mt-0.5" weight="fill" />
+              <p><strong>Notice:</strong> The bank account name must match with the name you registered with on LoraBiz.</p>
+            </div>
+
+            <form onSubmit={handleSetupBank} className="space-y-6">
+              <div className="space-y-2 relative" ref={dropdownRef}>
+                <Label htmlFor="bankSearch">Select Bank</Label>
+                <div 
+                  className="relative flex items-center h-12 w-full rounded-md border border-border bg-secondary/40 px-3 cursor-pointer text-[16px] text-foreground hover:border-[#ff3f7a]/50 transition-colors"
+                  onClick={() => setIsBankDropdownOpen(!isBankDropdownOpen)}
+                >
+                  <Bank className="h-5 w-5 text-muted-foreground mr-2 shrink-0" />
+                  <span className={`flex-1 truncate ${!setupData.bankName && "text-muted-foreground"}`}>{setupData.bankName || "Select your bank"}</span>
+                  <CaretDown className={`h-4 w-4 text-muted-foreground transition-transform ${isBankDropdownOpen ? "rotate-180" : ""}`} />
+                </div>
+                {isBankDropdownOpen && (
+                  <div className="absolute top-[76px] left-0 w-full z-50 bg-popover border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="p-2 border-b border-border bg-muted/30">
+                      <div className="relative">
+                        <MagnifyingGlass className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input autoFocus placeholder="Search for a bank..." value={bankSearch} onChange={(e) => setBankSearch(e.target.value)} className="h-9 pl-9 bg-background border-border text-sm" />
+                      </div>
+                    </div>
+                    <ul className="max-h-[250px] overflow-y-auto p-1">
+                      {filteredBanks.length === 0 ? (
+                        <li className="p-3 text-sm text-center text-muted-foreground">No banks found</li>
+                      ) : (
+                        filteredBanks.map((bank) => (
+                          <li 
+                            key={bank.code} 
+                            className="px-3 py-2.5 text-sm hover:bg-secondary rounded-lg cursor-pointer transition-colors flex items-center justify-between"
+                            onClick={() => {
+                              setSetupData(prev => ({ ...prev, bankCode: bank.code, bankName: bank.name }));
+                              setIsBankDropdownOpen(false);
+                              setBankSearch("");
+                            }}
+                          >
+                            <span className="font-medium text-foreground">{bank.name}</span>
+                            {setupData.bankCode === bank.code && <Check className="h-4 w-4 text-[#ff3f7a]" weight="bold" />}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="accountNumber">Account Number (NUBAN)</Label>
+                <Input id="accountNumber" type="text" maxLength={10} value={setupData.accountNumber} onChange={(e) => setSetupData({...setupData, accountNumber: e.target.value.replace(/\D/g, "")})} required placeholder="0000000000" className="h-12 bg-secondary/40 border-border text-foreground focus-visible:ring-[#ff3f7a]" />
+              </div>
+
+              {!stats?.bankDetails && (
+                <label className="flex items-start gap-3 p-4 border border-border bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors select-none">
+                  <input type="checkbox" checked={setupData.acceptTerms} onChange={(e) => setSetupData({...setupData, acceptTerms: e.target.checked})} className="mt-0.5 h-5 w-5 accent-[#ff3f7a] rounded border-border cursor-pointer shrink-0" />
+                  <span className="text-sm text-muted-foreground leading-relaxed">I have read and agree to the LoraBiz Partner Program Rules & Terms outlined above.</span>
+                </label>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                {isEditingBank && <Button type="button" variant="outline" onClick={() => setIsEditingBank(false)} className="h-12 px-6 border-border">Cancel</Button>}
+                <Button type="submit" disabled={settingUp || !setupData.bankCode || setupData.accountNumber.length !== 10 || !setupData.acceptTerms} className="flex-1 h-12 font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white">
+                  {settingUp ? <Spinner className="animate-spin h-5 w-5" /> : "Verify & Save Details"}
+                </Button>
+              </div>
+            </form>
           </div>
 
-          <form onSubmit={handleSetupBank} className="space-y-6">
-            <div className="space-y-2 relative" ref={dropdownRef}>
-              <Label htmlFor="bankSearch">Select Bank</Label>
-              <div 
-                className="relative flex items-center h-12 w-full rounded-md border border-border bg-secondary/40 px-3 cursor-pointer text-[16px] text-foreground hover:border-[#ff3f7a]/50 transition-colors"
-                onClick={() => setIsBankDropdownOpen(!isBankDropdownOpen)}
-              >
-                <Bank className="h-5 w-5 text-muted-foreground mr-2 shrink-0" />
-                <span className={`flex-1 truncate ${!setupData.bankName && "text-muted-foreground"}`}>{setupData.bankName || "Select your bank"}</span>
-                <CaretDown className={`h-4 w-4 text-muted-foreground transition-transform ${isBankDropdownOpen ? "rotate-180" : ""}`} />
-              </div>
-              {isBankDropdownOpen && (
-                <div className="absolute top-[76px] left-0 w-full z-50 bg-popover border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                  <div className="p-2 border-b border-border bg-muted/30">
-                    <div className="relative">
-                      <MagnifyingGlass className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input autoFocus placeholder="Search for a bank..." value={bankSearch} onChange={(e) => setBankSearch(e.target.value)} className="h-9 pl-9 bg-background border-border text-sm" />
-                    </div>
-                  </div>
-                  <ul className="max-h-[250px] overflow-y-auto p-1">
-                    {filteredBanks.length === 0 ? (
-                      <li className="p-3 text-sm text-center text-muted-foreground">No banks found</li>
-                    ) : (
-                      filteredBanks.map((bank) => (
-                        <li 
-                          key={bank.code} 
-                          className="px-3 py-2.5 text-sm hover:bg-secondary rounded-lg cursor-pointer transition-colors flex items-center justify-between"
-                          onClick={() => {
-                            setSetupData(prev => ({ ...prev, bankCode: bank.code, bankName: bank.name }));
-                            setIsBankDropdownOpen(false);
-                            setBankSearch("");
-                          }}
-                        >
-                          <span className="font-medium text-foreground">{bank.name}</span>
-                          {setupData.bankCode === bank.code && <Check className="h-4 w-4 text-[#ff3f7a]" weight="bold" />}
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="accountNumber">Account Number (NUBAN)</Label>
-              <Input id="accountNumber" type="text" maxLength={10} value={setupData.accountNumber} onChange={(e) => setSetupData({...setupData, accountNumber: e.target.value.replace(/\D/g, "")})} required placeholder="0000000000" className="h-12 bg-secondary/40 border-border text-foreground focus-visible:ring-[#ff3f7a]" />
-            </div>
-
-            {!stats?.bankDetails && (
-              <label className="flex items-start gap-3 p-4 border border-border bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors select-none">
-                <input type="checkbox" checked={setupData.acceptTerms} onChange={(e) => setSetupData({...setupData, acceptTerms: e.target.checked})} className="mt-0.5 h-5 w-5 accent-[#ff3f7a] rounded border-border cursor-pointer shrink-0" />
-                <span className="text-sm text-muted-foreground leading-relaxed">I agree to the LoraBiz Partner Program Terms. I understand that rewards are earned only when my referrals complete paid services.</span>
-              </label>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              {isEditingBank && <Button type="button" variant="outline" onClick={() => setIsEditingBank(false)} className="h-12 px-6 border-border">Cancel</Button>}
-              <Button type="submit" disabled={settingUp || !setupData.bankCode || setupData.accountNumber.length !== 10 || !setupData.acceptTerms} className="flex-1 h-12 font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white">
-                {settingUp ? <Spinner className="animate-spin h-5 w-5" /> : "Verify & Save Details"}
-              </Button>
-            </div>
-          </form>
         </div>
       ) : (
         <div className="space-y-6">
