@@ -61,37 +61,49 @@ export async function POST(req: Request) {
           }
         });
 
-        // --- NEW: REFERRAL SPEND TRACKING (ON COMPLETION) ---
-        const amountPaid = Number(scumlTicket.amountPaid || 0);
-        
-        if (amountPaid > 0) {
-          const updatedSpender = await tx.user.update({
-            where: { id: scumlTicket.userId },
-            data: { totalSpent: { increment: amountPaid } }
-          });
+        // --- NEW: BULLETPROOF REFERRAL LEDGER PAYOUT ---
+        const activeReferral = await tx.referral.findUnique({
+          where: { referredUserId: scumlTicket.userId }
+        });
 
-          const thresholdSetting = await tx.globalSetting.findUnique({ 
-            where: { key: 'REFERRAL_SPEND_THRESHOLD' } 
-          });
-          const thresholdAmount = thresholdSetting ? Number(thresholdSetting.value) : 5000;
-
-          if (Number(updatedSpender.totalSpent) >= thresholdAmount) {
-            const pendingReferral = await tx.referral.findUnique({
-              where: { referredUserId: scumlTicket.userId }
+        if (activeReferral) {
+            const isReferralActiveSetting = await tx.globalSetting.findUnique({ 
+                where: { key: 'REFERRAL_ACTIVE' } 
             });
+            const isReferralActive = !isReferralActiveSetting || isReferralActiveSetting.value === 'true';
+            
+            const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
 
-            if (pendingReferral && pendingReferral.status === "PENDING") {
-              await tx.referral.update({
-                where: { id: pendingReferral.id },
-                data: { status: "EARNED" }
-              });
+            if (isReferralActive && isNotExpired) {
+                // Prevent Double Payouts
+                const existingCommission = await tx.referralCommission.findUnique({
+                    where: { serviceId: ticketId }
+                });
 
-              await tx.user.update({
-                where: { id: pendingReferral.referrerId },
-                data: { referralBalance: { increment: pendingReferral.rewardAmount } }
-              });
+                if (!existingCommission) {
+                    const rewardSetting = await tx.globalSetting.findUnique({
+                        where: { key: 'REF_REWARD_SCUML' }
+                    });
+                    
+                    const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 500.00;
+
+                    if (commissionAmount > 0) {
+                        await tx.referralCommission.create({
+                            data: {
+                                referralId: activeReferral.id,
+                                serviceType: "SCUML",
+                                serviceId: ticketId,
+                                amount: commissionAmount
+                            }
+                        });
+
+                        await tx.user.update({
+                            where: { id: activeReferral.referrerId },
+                            data: { referralBalance: { increment: commissionAmount } }
+                        });
+                    }
+                }
             }
-          }
         }
         // ----------------------------------------------------
       }
