@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import Script from "next/script";
 import { preconnect } from "react-dom";
-import { useState, useEffect, Suspense, useRef } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -15,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 function LoginContent() {
   preconnect('https://challenges.cloudflare.com');
@@ -25,7 +25,6 @@ function LoginContent() {
   
   const isRegistered = searchParams.get("registered") === "true";
   
-  // SECURITY FIX: Ensure callbackUrl is an internal path, not an external phishing link
   const rawCallbackUrl = searchParams.get("callbackUrl");
   const callbackUrl = (rawCallbackUrl && rawCallbackUrl.startsWith("/")) 
     ? rawCallbackUrl 
@@ -39,7 +38,6 @@ function LoginContent() {
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   
-  // State for the localized tooltips
   const [activeTooltip, setActiveTooltip] = useState<"google" | "facebook" | null>(null);
 
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -54,36 +52,6 @@ function LoginContent() {
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Turnstile Refs & Render Function
-  const turnstileRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string | null>(null);
-
-  const renderTurnstile = () => {
-    const win = window as any;
-    // Check if the script is loaded, the container exists, and it hasn't been rendered yet
-    if (win.turnstile && turnstileRef.current && !widgetIdRef.current) {
-      widgetIdRef.current = win.turnstile.render(turnstileRef.current, {
-        sitekey: "0x4AAAAAAEA2i2RM9PiSsRCH",
-        callback: win.onTurnstileSuccess,
-        action: "turnstile-spin-v2",
-        theme: "auto",
-        retry: "auto",
-        "retry-interval": 2000,
-      });
-    }
-  };
-
-  // Clean up the widget if the component unmounts
-  useEffect(() => {
-    return () => {
-      const win = window as any;
-      if (widgetIdRef.current && win.turnstile) {
-        win.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
-      }
-    };
-  }, []);
-  
   const testimonials = [
     { text: "Got my SCUML certificate in just a few hours. Absolutely lifesaving speed!", name: "Adeola M.", rating: 5 },
     { text: "Registered my CAC Business Name in minutes. The dashboard is incredibly smooth.", name: "Chinedu O.", rating: 5 },
@@ -97,12 +65,11 @@ function LoginContent() {
     return () => clearInterval(slideInterval);
   }, [testimonials.length]);
 
-  useEffect(() => {
-    (window as any).onTurnstileSuccess = (token: string) => {
-      setCaptchaToken(token);
-      setCaptchaVerified(true);
-      setError(""); 
-    };
+  // Wrapped in useCallback so React.memo works in the child component
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setCaptchaToken(token);
+    setCaptchaVerified(true);
+    setError("");
   }, []);
 
   useEffect(() => {
@@ -181,8 +148,9 @@ function LoginContent() {
       if (res?.error) {
         setError(res.error === "CredentialsSignin" ? "Invalid email or password." : res.error);
         setLoading(false);
-        if ((window as any).turnstile && widgetIdRef.current) {
-          (window as any).turnstile.reset(widgetIdRef.current);
+        // Reset the turnstile globally on failure so they can verify again
+        if ((window as any).turnstile) {
+          (window as any).turnstile.reset();
           setCaptchaVerified(false);
           setCaptchaToken("");
         }
@@ -268,12 +236,6 @@ function LoginContent() {
 
   return (
     <main className="min-h-screen w-full flex bg-background font-sans selection:bg-[#ff3f7a] selection:text-white">
-      
-      <Script 
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" 
-        strategy="afterInteractive"
-        onReady={renderTurnstile}
-      />
 
       <a href="mailto:help@support.lorabiz.com" aria-label="Contact Support" className="fixed bottom-6 right-6 z-40 bg-[#ff3f7a] text-white p-4 rounded-full shadow-2xl hover:scale-105 transition-transform hover:shadow-[#ff3f7a]/40" title="Need Help?">
         <ChatCircleDots className="h-6 w-6" weight="fill" />
@@ -389,7 +351,8 @@ function LoginContent() {
                    <span>Verifying security...</span>
                  </div>
                )}
-               <div ref={turnstileRef} className="min-h-[65px]"></div>
+               {/* --- THE ISOLATED WIDGET GOES HERE --- */}
+               <TurnstileWidget onVerify={handleTurnstileVerify} />
             </div>
 
             <div className="pt-2">
