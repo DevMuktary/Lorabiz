@@ -333,8 +333,8 @@ export default function DashboardLayoutClient({
         <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
             
-            {/* THE INJECTED WELCOME BANNER (Only renders on the main /dashboard route) */}
-            {showBanner && pathname === "/dashboard" && (
+            {/* THE INJECTED WELCOME BANNER */}
+            {showBanner && pathname === "/dashboard" && welcomePromo && (
               <div className="bg-[#ff3f7a]/10 border border-[#ff3f7a]/20 text-foreground p-5 rounded-2xl mb-8 flex flex-col md:flex-row items-start md:items-center justify-between shadow-sm animate-in fade-in zoom-in-95 duration-500 relative">
                 <button 
                   onClick={() => setShowBanner(false)}
