@@ -1,5 +1,3 @@
-Hold o this first, should i add sign up and sign in to this?
-
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
