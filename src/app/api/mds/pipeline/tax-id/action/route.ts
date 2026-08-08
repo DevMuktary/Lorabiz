@@ -1,3 +1,5 @@
+// src/app/api/mds/pipeline/tax-id/action/route.ts
+
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { notificationQueue } from "@/lib/queue";
@@ -55,37 +57,49 @@ export async function POST(req: Request) {
           }
         });
 
-        // --- NEW: REFERRAL SPEND TRACKING (ON COMPLETION) ---
-        const amountPaid = Number(ticket.amountPaid || 0);
-        
-        if (amountPaid > 0) {
-          const updatedSpender = await tx.user.update({
-            where: { id: ticket.userId },
-            data: { totalSpent: { increment: amountPaid } }
-          });
+        // --- NEW: BULLETPROOF REFERRAL LEDGER PAYOUT ---
+        const activeReferral = await tx.referral.findUnique({
+          where: { referredUserId: ticket.userId }
+        });
 
-          const thresholdSetting = await tx.globalSetting.findUnique({ 
-            where: { key: 'REFERRAL_SPEND_THRESHOLD' } 
-          });
-          const thresholdAmount = thresholdSetting ? Number(thresholdSetting.value) : 5000;
-
-          if (Number(updatedSpender.totalSpent) >= thresholdAmount) {
-            const pendingReferral = await tx.referral.findUnique({
-              where: { referredUserId: ticket.userId }
+        if (activeReferral) {
+            const isReferralActiveSetting = await tx.globalSetting.findUnique({ 
+                where: { key: 'REFERRAL_ACTIVE' } 
             });
+            const isReferralActive = !isReferralActiveSetting || isReferralActiveSetting.value === 'true';
+            
+            const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
 
-            if (pendingReferral && pendingReferral.status === "PENDING") {
-              await tx.referral.update({
-                where: { id: pendingReferral.id },
-                data: { status: "EARNED" }
-              });
+            if (isReferralActive && isNotExpired) {
+                // Prevent Double Payouts
+                const existingCommission = await tx.referralCommission.findUnique({
+                    where: { serviceId: ticketId }
+                });
 
-              await tx.user.update({
-                where: { id: pendingReferral.referrerId },
-                data: { referralBalance: { increment: pendingReferral.rewardAmount } }
-              });
+                if (!existingCommission) {
+                    const rewardSetting = await tx.globalSetting.findUnique({
+                        where: { key: 'REF_REWARD_TAX_ID' }
+                    });
+                    
+                    const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 200.00;
+
+                    if (commissionAmount > 0) {
+                        await tx.referralCommission.create({
+                            data: {
+                                referralId: activeReferral.id,
+                                serviceType: "TAX_ID",
+                                serviceId: ticketId,
+                                amount: commissionAmount
+                            }
+                        });
+
+                        await tx.user.update({
+                            where: { id: activeReferral.referrerId },
+                            data: { referralBalance: { increment: commissionAmount } }
+                        });
+                    }
+                }
             }
-          }
         }
         // ----------------------------------------------------
       }
