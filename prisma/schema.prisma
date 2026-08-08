@@ -580,25 +580,45 @@ model TaxIdRequest {
 }
 
 // ==========================================
-// REFERRAL SYSTEM
+// REFERRAL SYSTEM & LEDGER
 // ==========================================
 
 model Referral {
   id               String   @id @default(cuid())
   referrerId       String   
-  referredUserId   String   @unique
-  status           String   @default("PENDING") // PENDING | EARNED
-  rewardAmount     Decimal  // Fetched dynamically from GlobalSetting on creation
+  referredUserId   String   @unique // A user can only be referred once
+  
+  // Expiration for the 12-month earning window 
+  expiresAt        DateTime? 
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   
   referrer         User     @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  commissions      ReferralCommission[]
+}
+
+// THE NEW LEDGER: Tracks every single payout to prevent fraud
+model ReferralCommission {
+  id             String   @id @default(cuid())
+  referralId     String
+  
+  serviceType    String   // e.g., "CAC_BIZ", "CAC_LLC", "SCUML", "TAX_ID", "NIN"
+  serviceId      String   @unique // The ID of the specific job. @unique prevents double-paying for the same job!
+  
+  amount         Decimal  @db.Decimal(10, 2) // The fixed admin-set price paid out at the time of completion
+  createdAt      DateTime @default(now())
+
+  referral       Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+
+  @@index([referralId])
+  @@index([serviceType])
 }
 
 model ReferralWithdrawal {
   id          String   @id @default(cuid())
   userId      String
-  amount      Decimal
+  amount      Decimal  @db.Decimal(10, 2)
   status      String   @default("PENDING") // PENDING | PAID | REJECTED
   bankName    String
   accountNo   String
