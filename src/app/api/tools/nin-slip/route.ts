@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "User wallet not found." }, { status: 404 });
     }
 
-    // 🚨 NEW: Map to the Unified ServicePricing Table
+    // Map to the Unified ServicePricing Table
     const dbKeyMap: Record<string, string> = {
       "nin_regular": "NIN_REGULAR",
       "nin_standard": "NIN_STANDARD",
@@ -136,7 +136,8 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      await tx.ninRequestLog.create({
+      // Saving the created log to a variable so we can use its ID for the referral ledger
+      const ninLog = await tx.ninRequestLog.create({
         data: {
           userId: user.id,
           ninMasked: maskedIdentifier,
@@ -148,32 +149,48 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // --- NEW: REFERRAL SPEND TRACKING (NIN SLIP WALLET DEDUCTION) ---
-      const updatedSpender = await tx.user.update({
-        where: { id: user.id },
-        data: { totalSpent: { increment: requiredAmount } }
+      // --- NEW: BULLETPROOF REFERRAL LEDGER PAYOUT (INSTANT FOR NIN) ---
+      const activeReferral = await tx.referral.findUnique({
+        where: { referredUserId: user.id }
       });
 
-      const thresholdSetting = await tx.globalSetting.findUnique({ 
-        where: { key: 'REFERRAL_SPEND_THRESHOLD' } 
-      });
-      const thresholdAmount = thresholdSetting ? Number(thresholdSetting.value) : 5000;
-
-      if (Number(updatedSpender.totalSpent) >= thresholdAmount) {
-        const pendingReferral = await tx.referral.findUnique({
-          where: { referredUserId: user.id }
+      if (activeReferral) {
+        const isReferralActiveSetting = await tx.globalSetting.findUnique({ 
+          where: { key: 'REFERRAL_ACTIVE' } 
         });
+        const isReferralActive = !isReferralActiveSetting || isReferralActiveSetting.value === 'true';
+        
+        const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
 
-        if (pendingReferral && pendingReferral.status === "PENDING") {
-          await tx.referral.update({
-            where: { id: pendingReferral.id },
-            data: { status: "EARNED" }
+        if (isReferralActive && isNotExpired) {
+          const existingCommission = await tx.referralCommission.findUnique({
+            where: { serviceId: ninLog.id } 
           });
 
-          await tx.user.update({
-            where: { id: pendingReferral.referrerId },
-            data: { referralBalance: { increment: pendingReferral.rewardAmount } }
-          });
+          if (!existingCommission) {
+            const rewardSetting = await tx.globalSetting.findUnique({
+              where: { key: 'REF_REWARD_NIN' }
+            });
+            
+            // NIN margins are usually small, so defaulting to 10 Naira if admin hasn't set it yet
+            const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 10.00;
+
+            if (commissionAmount > 0) {
+              await tx.referralCommission.create({
+                data: {
+                  referralId: activeReferral.id,
+                  serviceType: "NIN",
+                  serviceId: ninLog.id, 
+                  amount: commissionAmount
+                }
+              });
+
+              await tx.user.update({
+                where: { id: activeReferral.referrerId },
+                data: { referralBalance: { increment: commissionAmount } }
+              });
+            }
+          }
         }
       }
       // --------------------------------------------------------
