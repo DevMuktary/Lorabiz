@@ -12,27 +12,25 @@ export async function POST(req: Request) {
     if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json();
-    const { actionType, withdrawalId, rewardAmount, spendThreshold, minWithdrawal } = body;
+    const { actionType, withdrawalId, settings } = body;
 
     if (actionType === "UPDATE_SETTINGS") {
-      await prisma.$transaction([
-        prisma.globalSetting.upsert({
-          where: { key: 'REFERRAL_REWARD_AMOUNT' },
-          update: { value: String(rewardAmount) },
-          create: { key: 'REFERRAL_REWARD_AMOUNT', value: String(rewardAmount), description: 'Amount paid per successful referral' }
-        }),
-        prisma.globalSetting.upsert({
-          where: { key: 'REFERRAL_SPEND_THRESHOLD' },
-          update: { value: String(spendThreshold) },
-          create: { key: 'REFERRAL_SPEND_THRESHOLD', value: String(spendThreshold), description: 'Amount referred user must spend' }
-        }),
-        prisma.globalSetting.upsert({
-          where: { key: 'REFERRAL_MIN_WITHDRAWAL' },
-          update: { value: String(minWithdrawal) },
-          create: { key: 'REFERRAL_MIN_WITHDRAWAL', value: String(minWithdrawal), description: 'Minimum withdrawal limit' }
-        })
-      ]);
-      return NextResponse.json({ success: true, message: "Settings updated successfully." });
+      if (!settings || typeof settings !== 'object') {
+        return NextResponse.json({ error: "Invalid settings payload." }, { status: 400 });
+      }
+
+      // Use a transaction to safely upsert all provided settings dynamically
+      await prisma.$transaction(
+        Object.entries(settings).map(([key, value]) => 
+          prisma.globalSetting.upsert({
+            where: { key },
+            update: { value: String(value) },
+            create: { key, value: String(value) }
+          })
+        )
+      );
+      
+      return NextResponse.json({ success: true, message: "Partner Program settings updated successfully." });
     }
 
     if (actionType === "APPROVE_PAYOUT") {
@@ -49,11 +47,12 @@ export async function POST(req: Request) {
         await tx.user.update({ where: { id: withdrawal.userId }, data: { referralBalance: { increment: withdrawal.amount } } });
       });
 
-      return NextResponse.json({ success: true, message: "Payout rejected and funds returned to user." });
+      return NextResponse.json({ success: true, message: "Payout rejected and funds returned to user's referral balance." });
     }
 
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
   } catch (error) {
+    console.error("Referral Action Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
