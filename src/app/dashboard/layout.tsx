@@ -8,8 +8,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   
   let welcomePromo = null;
 
-  // 1. Live Server-Side Check for Referral Status and Unused Welcome Code
-  if (session?.user?.id) {
+  // 1. Live Server-Side Check using email (since NextAuth types don't include id by default)
+  if (session?.user?.email) {
     try {
       const isReferralActiveSetting = await prisma.globalSetting.findUnique({
         where: { key: 'REFERRAL_ACTIVE' }
@@ -18,14 +18,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
       const isReferralActive = !isReferralActiveSetting || isReferralActiveSetting.value === 'true';
 
       if (isReferralActive) {
-        const shortId = session.user.id.slice(-6).toUpperCase();
-        const promo = await prisma.promoCode.findUnique({
-          where: { code: `WELCOME-${shortId}` }
+        // Fetch the user from the DB to get their ID safely for TypeScript
+        const dbUser = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: { id: true }
         });
-        
-        // Only pass it down if it exists AND has not been used
-        if (promo && promo.timesUsed === 0) {
-          welcomePromo = promo;
+
+        if (dbUser) {
+          const shortId = dbUser.id.slice(-6).toUpperCase();
+          const promo = await prisma.promoCode.findUnique({
+            where: { code: `WELCOME-${shortId}` }
+          });
+          
+          if (promo && promo.timesUsed === 0) {
+            welcomePromo = promo;
+          }
         }
       }
     } catch (error) {
