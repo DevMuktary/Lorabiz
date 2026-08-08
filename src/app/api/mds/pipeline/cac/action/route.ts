@@ -51,68 +51,72 @@ export async function POST(req: Request) {
         }
       }
 
-      let paidAmount = 0;
-
       if (ticketType === "BUSINESS_NAME") {
         const updated = await tx.businessRegistration.update({ where: { id: ticketId }, data: updateData });
         targetRef = updated.trackingId || ticketId;
         clientId = updated.userId;
         regName = updated.proposedName;
 
-        if (actionType === "APPROVE") {
-          const pricing = await tx.servicePricing.findUnique({ where: { serviceKey: "BUSINESS_NAME" } });
-          paidAmount = pricing ? Number(pricing.price) : 25000; // fallback standard
-        }
       } else if (ticketType === "LLC") {
         const updated = await tx.llcRegistration.update({ where: { id: ticketId }, data: updateData });
         targetRef = updated.trackingId || ticketId;
         clientId = updated.userId;
         regName = updated.proposedName || "LLC Application";
-
-        if (actionType === "APPROVE") {
-          const prices = await tx.servicePricing.findMany();
-          const pricingMap = prices.reduce((acc: Record<string, number>, item) => { 
-            acc[item.serviceKey] = Number(item.price); 
-            return acc; 
-          }, {});
-
-          const baseLLCFee = pricingMap["LLC"] || 35000;
-          const extraMillionFee = pricingMap["LLC_EXTRA_MILLION"] || 15000;
-          const totalShares = Number(updated.totalShareCapital) || 1000000;
-          const extraSharesFee = Math.max(0, Math.ceil((totalShares - 1000000) / 1000000)) * extraMillionFee;
-          
-          paidAmount = baseLLCFee + extraSharesFee;
-        }
       }
 
-      // --- NEW: REFERRAL SPEND TRACKING (ON CAC APPROVAL) ---
-      if (actionType === "APPROVE" && paidAmount > 0 && clientId) {
-        const updatedSpender = await tx.user.update({
-          where: { id: clientId },
-          data: { totalSpent: { increment: paidAmount } }
+      // --- NEW: BULLETPROOF REFERRAL LEDGER PAYOUT ---
+      if (actionType === "APPROVE" && clientId) {
+        
+        // 1. Is there an active referral link for this client?
+        const activeReferral = await tx.referral.findUnique({
+          where: { referredUserId: clientId }
         });
 
-        const thresholdSetting = await tx.globalSetting.findUnique({ 
-          where: { key: 'REFERRAL_SPEND_THRESHOLD' } 
-        });
-        const thresholdAmount = thresholdSetting ? Number(thresholdSetting.value) : 5000;
-
-        if (Number(updatedSpender.totalSpent) >= thresholdAmount) {
-          const pendingReferral = await tx.referral.findUnique({
-            where: { referredUserId: clientId }
-          });
-
-          if (pendingReferral && pendingReferral.status === "PENDING") {
-            await tx.referral.update({
-              where: { id: pendingReferral.id },
-              data: { status: "EARNED" }
+        // 2. Check if the Master Kill Switch is ON, and if the referral hasn't expired (12-month limit)
+        if (activeReferral) {
+            const isReferralActiveSetting = await tx.globalSetting.findUnique({ 
+                where: { key: 'REFERRAL_ACTIVE' } 
             });
+            const isReferralActive = !isReferralActiveSetting || isReferralActiveSetting.value === 'true';
+            
+            const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
 
-            await tx.user.update({
-              where: { id: pendingReferral.referrerId },
-              data: { referralBalance: { increment: pendingReferral.rewardAmount } }
-            });
-          }
+            if (isReferralActive && isNotExpired) {
+                // 3. Prevent Double Payouts (Check if we already paid for this EXACT job)
+                const existingCommission = await tx.referralCommission.findUnique({
+                    where: { serviceId: ticketId }
+                });
+
+                if (!existingCommission) {
+                    // 4. Fetch the dynamic fixed price for this specific service from Admin Settings
+                    const serviceSettingKey = ticketType === "LLC" ? 'REF_REWARD_CAC_LLC' : 'REF_REWARD_CAC_BIZ';
+                    const rewardSetting = await tx.globalSetting.findUnique({
+                        where: { key: serviceSettingKey }
+                    });
+                    
+                    // Default to 1000 if admin hasn't configured it yet
+                    const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 1000.00;
+
+                    // 5. Only pay if the admin hasn't set the reward to 0 to disable it
+                    if (commissionAmount > 0) {
+                        // A. Log it in the ledger (CRITICAL)
+                        await tx.referralCommission.create({
+                            data: {
+                                referralId: activeReferral.id,
+                                serviceType: ticketType === "LLC" ? "CAC_LLC" : "CAC_BIZ",
+                                serviceId: ticketId, // The @unique constraint here is our ultimate fraud shield
+                                amount: commissionAmount
+                            }
+                        });
+
+                        // B. Credit the referrer's wallet instantly
+                        await tx.user.update({
+                            where: { id: activeReferral.referrerId },
+                            data: { referralBalance: { increment: commissionAmount } }
+                        });
+                    }
+                }
+            }
         }
       }
       // ------------------------------------------------------
