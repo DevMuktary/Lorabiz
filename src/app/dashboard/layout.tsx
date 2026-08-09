@@ -8,11 +8,12 @@ import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
 import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper"; 
-import { WelcomeBanner } from "@/components/WelcomeBanner"; // <-- ADDED IMPORT
+import { WelcomeBanner } from "@/components/WelcomeBanner"; 
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
-  UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users
+  UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
+  FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator
 } from "@phosphor-icons/react";
 
 type NavLink = {
@@ -54,6 +55,15 @@ const NAVIGATION: NavCategory[] = [
     links: [
       { name: "CAC Post Incorporation", href: "#", icon: Buildings, isComingSoon: true },
       { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
+      { name: "Nigerian Copyright Commission (NCC)", href: "#", icon: Copyright, isComingSoon: true },
+      { name: "Smart Legal Documents", href: "#", icon: FileText, isComingSoon: true },
+      { name: "Build Online Presence", href: "#", icon: Globe, isComingSoon: true },
+      { name: "NAFDAC Registration", href: "#", icon: Flask, isComingSoon: true },
+      { name: "PENCOM Compliance", href: "#", icon: Shield, isComingSoon: true },
+      { name: "SON Certification", href: "#", icon: Certificate, isComingSoon: true },
+      { name: "NEPC Export License", href: "#", icon: AirplaneTilt, isComingSoon: true },
+      { name: "Bureau of Public Procurement (BPP)", href: "#", icon: Suitcase, isComingSoon: true },
+      { name: "Expert Tax Consultation", href: "#", icon: Calculator, isComingSoon: true },
       { name: "SMEDAN", href: "#", icon: Handshake, isComingSoon: true },
     ]
   },
@@ -73,7 +83,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); // NEW STATE FOR DROPDOWN
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); 
   const [sidebarAlert, setSidebarAlert] = useState<{title: string, message: string} | null>(null);
 
   useEffect(() => {
@@ -218,7 +228,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           ))}
         </nav>
-        {/* LOGOUT BUTTON HAS BEEN COMPLETELY REMOVED FROM HERE */}
       </aside>
 
       {/* MAIN CONTENT AREA */}
@@ -282,7 +291,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* PROFILE DROPDOWN MENU */}
               {isProfileDropdownOpen && (
                 <>
-                  {/* Invisible overlay to close dropdown when clicking outside */}
                   <div 
                     className="fixed inset-0 z-[45]" 
                     onClick={() => setIsProfileDropdownOpen(false)} 
@@ -327,7 +335,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
-            <WelcomeBanner /> {/* <-- ADDED BANNER */}
+            <WelcomeBanner /> 
             {children}
           </div>
         </main>
