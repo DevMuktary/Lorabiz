@@ -57,9 +57,33 @@ const SERVICES = [
     active: false,
   },
   {
-    title: "Board Resolution",
-    description: "Generate instant, legally formatted board resolutions and official company documents.",
+    title: "Smart Legal Documents",
+    description: "Generate custom board resolutions, terms of service, privacy policies, and acceptable use agreements.",
     logo: "/file.svg",
+    active: false,
+  },
+  {
+    title: "Build Online Presence",
+    description: "Get a custom domain, professional business email, website, and Google Business Profile.",
+    logo: "/globe.svg",
+    active: false,
+  },
+  {
+    title: "NAFDAC Registration",
+    description: "Register and certify your food, drug, and cosmetic products with NAFDAC.",
+    logo: "/nafdac.png",
+    active: false,
+  },
+  {
+    title: "PENCOM Compliance",
+    description: "Process your Pension Clearance Certificate to meet federal contractor requirements.",
+    logo: "/pencom.jpg",
+    active: false,
+  },
+  {
+    title: "SON Certification",
+    description: "Ensure your products meet the Standard Organisation of Nigeria quality requirements.",
+    logo: "/son.jpg",
     active: false,
   },
   {
