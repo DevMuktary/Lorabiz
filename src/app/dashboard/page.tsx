@@ -186,8 +186,15 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
-  // Partner Announcement Modal shows on every refresh
-  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState<boolean>(true);
+  // Partner Announcement Modal shows on refresh UNLESS user is returning from a payment
+  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
+      if (hasPaymentParam) return false;
+    }
+    return true;
+  });
 
   // Lock body scroll when modal is active
   useEffect(() => {
@@ -222,14 +229,19 @@ export default function DashboardPage() {
   }, []);
 
   // =========================================================================
-  // ROBUST REDIRECT VERIFICATION
+  // ROBUST REDIRECT VERIFICATION (SUPPRESSES ANNOUNCEMENT MODAL ON PAYMENT RETURN)
   // =========================================================================
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const isFunded = params.get("funded");
       const reference = params.get("reference");
+      const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
       
+      if (hasPaymentParam) {
+        setIsPartnerModalOpen(false);
+      }
+
       if (isFunded === "true" && reference) {
         setAlertInfo({
           type: "loading",
@@ -342,31 +354,31 @@ export default function DashboardPage() {
     <div className="space-y-6 pb-12">
 
       {/* ========================================================================= */}
-      {/* 1. CENTER-SCREEN PARTNER ANNOUNCEMENT MODAL (SHOWS ON EVERY REFRESH)       */}
+      {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP                       */}
       {/* ========================================================================= */}
       {isPartnerModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[99999] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div 
             className="fixed inset-0" 
             onClick={() => setIsPartnerModalOpen(false)} 
           />
 
-          <div className="relative w-full max-w-lg bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200">
             {/* Top Accent Strip */}
-            <div className="h-2 bg-gradient-to-r from-primary via-indigo-600 to-primary" />
+            <div className="h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-primary" />
 
-            <div className="p-6 sm:p-8">
+            <div className="p-5 sm:p-6">
               {/* Header with High-Visibility Close Button */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                    <Handshake className="h-6 w-6" weight="bold" />
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <Handshake className="h-5 w-5" weight="bold" />
                   </div>
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-primary">
                       Partner Announcement
                     </span>
-                    <h3 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                    <h3 className="text-lg font-black text-foreground tracking-tight leading-tight">
                       Earn With LoraBiz
                     </h3>
                   </div>
@@ -375,54 +387,48 @@ export default function DashboardPage() {
                 {/* Highly Prominent Close Button */}
                 <button
                   onClick={() => setIsPartnerModalOpen(false)}
-                  className="h-9 w-9 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
-                  aria-label="Close modal"
+                  className="h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
+                  aria-label="Close announcement"
                   title="Close and go to dashboard"
                 >
-                  <X className="h-5 w-5" weight="bold" />
+                  <X className="h-4 w-4" weight="bold" />
                 </button>
               </div>
 
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Refer business owners and entrepreneurs to LoraBiz. Whenever they register a CAC business or file for SCUML, you earn instant cash commissions paid directly to your Nigerian bank account.
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Refer business owners and entrepreneurs to LoraBiz. Whenever they purchase <strong className="text-foreground font-semibold">any service</strong> (CAC, SCUML, NIN, Tax ID, and more — excluding airtime), you earn instant cash commissions paid to your Nigerian bank account.
               </p>
 
-              {/* 3 Simple Value Points */}
-              <div className="my-5 space-y-2.5 bg-secondary/50 p-4 rounded-2xl border border-border text-xs">
-                <div className="flex items-center gap-3">
-                  <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Bank className="h-3 w-3" weight="bold" />
+              {/* 2 Compact Value Points */}
+              <div className="my-4 space-y-2 bg-secondary/50 p-3 rounded-xl border border-border text-[11px]">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-4 w-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Bank className="h-2.5 w-2.5" weight="bold" />
                   </div>
-                  <span className="font-semibold text-foreground">Set up your payout bank details in 60 seconds</span>
+                  <span className="font-semibold text-foreground">Instant cash payouts straight to your bank</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <ShareNetwork className="h-3 w-3" weight="bold" />
+                <div className="flex items-center gap-2.5">
+                  <div className="h-4 w-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <ShareNetwork className="h-2.5 w-2.5" weight="bold" />
                   </div>
-                  <span className="font-semibold text-foreground">Get your unique referral link to share</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Check className="h-3 w-3" weight="bold" />
-                  </div>
-                  <span className="font-semibold text-foreground">Automated cash commissions on every completed filing</span>
+                  <span className="font-semibold text-foreground">Personalized referral links to share anywhere</span>
                 </div>
               </div>
 
               {/* Action Buttons: Crystal Clear & High Contrast */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
                 <Link
                   href="/dashboard/referrals"
                   onClick={() => setIsPartnerModalOpen(false)}
-                  className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all"
+                  className="w-full sm:flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all"
                 >
                   <span>Go to Partner Hub</span>
-                  <ArrowRight className="h-4 w-4" weight="bold" />
+                  <ArrowRight className="h-3.5 w-3.5" weight="bold" />
                 </Link>
                 
                 <button
                   onClick={() => setIsPartnerModalOpen(false)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-3 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Skip & Open Dashboard
                 </button>
