@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { sanitizeEmailHtml } from "@/lib/sanitize-email";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +97,7 @@ export async function PATCH(
         title: body.title !== undefined ? body.title.trim() : existing.title,
         subject: body.subject !== undefined ? body.subject.trim() : existing.subject,
         previewText: body.previewText !== undefined ? body.previewText?.trim() : existing.previewText,
-        content: body.content !== undefined ? body.content : existing.content,
+        content: body.content !== undefined ? sanitizeEmailHtml(body.content) : existing.content,
         senderName: body.senderName !== undefined ? body.senderName?.trim() : existing.senderName,
         targetAudience: body.targetAudience !== undefined ? body.targetAudience : existing.targetAudience,
       },

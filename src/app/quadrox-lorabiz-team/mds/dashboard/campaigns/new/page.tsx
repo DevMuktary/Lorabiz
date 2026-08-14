@@ -21,6 +21,7 @@ import {
   Check,
   Plus,
 } from "lucide-react";
+import { sanitizeEmailHtml } from "@/lib/sanitize-email";
 
 const AUDIENCE_SEGMENTS = [
   {
@@ -320,6 +321,8 @@ export default function NewCampaignPage() {
       .replace(/\{\{\s*email\s*\}\}/gi, sample.email)
       .replace(/\{\{\s*referralCode\s*\}\}/gi, sample.referralCode);
 
+    const sanitizedBody = sanitizeEmailHtml(processed);
+
     return `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f5f7; padding: 24px 12px;">
         <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
@@ -327,7 +330,7 @@ export default function NewCampaignPage() {
             <img src="https://lorabiz.com/logo.png" alt="LoraBiz" style="height: 28px; width: auto;" />
           </div>
           <div style="padding: 24px; color: #334155; line-height: 1.6; font-size: 14px;">
-            ${processed}
+            ${sanitizedBody}
           </div>
           <div style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 11px; color: #64748b;">
             <p style="margin: 0 0 6px;">You are receiving this email as a registered user of LoraBiz.</p>

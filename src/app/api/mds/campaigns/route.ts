@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
+import { sanitizeEmailHtml } from "@/lib/sanitize-email";
+
 export const dynamic = "force-dynamic";
 
 export async function GET() {
@@ -70,13 +72,15 @@ export async function POST(req: Request) {
       );
     }
 
+    const sanitizedContent = sanitizeEmailHtml(content);
+
     const campaign = await prisma.$transaction(async (tx) => {
       const created = await tx.emailCampaign.create({
         data: {
           title: title.trim(),
           subject: subject.trim(),
           previewText: previewText ? previewText.trim() : null,
-          content,
+          content: sanitizedContent,
           senderName: senderName ? senderName.trim() : "LoraBiz",
           targetAudience: targetAudience || { segment: "ALL" },
           status: "DRAFT",

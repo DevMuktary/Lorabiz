@@ -1,5 +1,6 @@
 // src/lib/email.ts
 import crypto from "crypto";
+import { sanitizeEmailHtml } from "@/lib/sanitize-email";
 
 export async function sendEmail({ 
   to, 
@@ -732,6 +733,7 @@ export async function sendCampaignBroadcastEmail({
   const interpolatedSubject = interpolateMergeTags(subject, userMetadata);
   const interpolatedPreview = previewText ? interpolateMergeTags(previewText, userMetadata) : "";
   const interpolatedContent = interpolateMergeTags(rawContent, userMetadata);
+  const sanitizedContent = sanitizeEmailHtml(interpolatedContent);
 
   let unsubscribeUrl: string | undefined;
   if (userId) {
@@ -739,7 +741,7 @@ export async function sendCampaignBroadcastEmail({
     unsubscribeUrl = `${baseUrl.replace(/\/$/, "")}/unsubscribe?uid=${encodeURIComponent(userId)}&email=${encodeURIComponent(to)}&token=${token}`;
   }
 
-  const htmlBody = getCampaignLayout(interpolatedContent, interpolatedPreview, unsubscribeUrl);
+  const htmlBody = getCampaignLayout(sanitizedContent, interpolatedPreview, unsubscribeUrl);
 
   return sendEmail({
     to,
@@ -772,11 +774,12 @@ export async function sendTestCampaignEmail({
 
   const testSubject = `[TEST PREVIEW] ${interpolateMergeTags(subject, testMetadata)}`;
   const interpolatedPreview = previewText ? interpolateMergeTags(previewText, testMetadata) : "";
+  const sanitizedContent = sanitizeEmailHtml(interpolateMergeTags(rawContent, testMetadata));
   const interpolatedContent = `
     <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #92400e;">
       <strong>⚠️ Campaign Preview Mode:</strong> This is a test broadcast dispatched to ${to}. Placeholders have been populated with sample merge data.
     </div>
-    ${interpolateMergeTags(rawContent, testMetadata)}
+    ${sanitizedContent}
   `;
 
   const dummyUnsubscribeUrl = `${baseUrl.replace(/\/$/, "")}/unsubscribe?preview=true`;

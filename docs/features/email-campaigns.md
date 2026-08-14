@@ -102,5 +102,10 @@ The template compiler automatically substitutes the following merge tokens:
    - Marketing emails include a footer link to `/unsubscribe`.
    - The link contains an HMAC-SHA256 signature (`uid`, `email`, `token`) to prevent unauthorized unsubscriptions.
    - Unsubscribed users (`isSubscribedToMarketing: false`) are automatically excluded from subsequent marketing broadcasts while retaining critical transactional notifications.
-4. **Deliverability & Test Mode**:
+4. **HTML Sanitization & Defense-in-Depth XSS Prevention**:
+   - Uses a centralized sanitizer (`src/lib/sanitize-email.ts`) powered by `isomorphic-dompurify`.
+   - **Allowed Elements**: Preserves all legitimate email markup including layout tables (`table`, `tr`, `td`, `th`), inline styling (`style`), typography (`h1`-`h6`, `p`, `strong`, `em`), images (`img`), links (`a`), and merge tags (`{{firstName}}`).
+   - **Strictly Stripped**: Malicious scripts (`<script>`), iframes, form elements, event handlers (`onerror`, `onclick`, `onload`), and dangerous URI schemes (`javascript:`, `data:text/html`).
+   - **Multi-Layer Enforcement**: Sanitization runs both on the client (during live preview in the Campaign Composer) and on the server boundary (`POST /api/mds/campaigns`, `PATCH /api/mds/campaigns/[id]`, `POST /api/mds/campaigns/test`, and inside `sendCampaignBroadcastEmail`).
+5. **Deliverability & Test Mode**:
    - Admins can dispatch an instant single-recipient test email to any address with sample merge data before launching to the entire user base.
