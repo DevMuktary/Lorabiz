@@ -215,43 +215,43 @@ export default function DocumentsHubPage() {
         </Link>
       </div>
 
-      {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-card via-card to-secondary/40 border border-border p-6 sm:p-8 shadow-sm">
-        <div className="max-w-2xl space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-            <Sparkle className="h-3.5 w-3.5" weight="fill" />
+      {/* Header Banner - Sleek and Compact so services are immediately visible */}
+      <div className="relative overflow-hidden rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+            <Sparkle className="h-3 w-3" weight="fill" />
             <span>Legal & Corporate Secretarial</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
             Smart Legal Documents
           </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Generate legally watertight resolutions and contracts tailored for Nigerian companies under CAMA 2020. Instant download in high-resolution PDF and PNG.
+          <p className="text-xs text-muted-foreground">
+            CAMA 2020 certified resolutions and corporate contracts with instant PDF & PNG downloads.
           </p>
         </div>
 
         {/* Tab Toggle */}
-        <div className="flex items-center gap-3 mt-6 pt-4 border-t border-border/70">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setActiveTab("catalogue")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === "catalogue"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
-            Document Catalogue ({DOCUMENT_CATALOGUE.length})
+            Catalogue ({DOCUMENT_CATALOGUE.length})
           </button>
           
           <button
             onClick={() => setActiveTab("vault")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === "vault"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
-            <span>My Document Vault</span>
+            <span>Document History</span>
             <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-background/20 font-mono">
               {userVault.length}
             </span>
@@ -364,7 +364,7 @@ export default function DocumentsHubPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. USER DOCUMENT VAULT VIEW                                               */}
+      {/* 2. USER DOCUMENT HISTORY VIEW                                             */}
       {/* ========================================================================= */}
       {activeTab === "vault" && (
         <div className="space-y-6">
@@ -377,7 +377,7 @@ export default function DocumentsHubPage() {
               <div className="h-16 w-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <FileText className="h-8 w-8" weight="fill" />
               </div>
-              <h3 className="text-lg font-bold text-foreground">Your Vault is Empty</h3>
+              <h3 className="text-lg font-bold text-foreground">No Document History Yet</h3>
               <p className="text-xs text-muted-foreground mt-1 mb-6 leading-relaxed">
                 You have not generated any legal documents yet. Start with our Smart Board Resolution generator for corporate bank accounts.
               </p>
@@ -393,11 +393,11 @@ export default function DocumentsHubPage() {
             <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
               <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-bold text-foreground">Generated Documents Vault</h2>
+                  <h2 className="text-base font-bold text-foreground">Document History</h2>
                   <p className="text-xs text-muted-foreground">All generated resolutions are stored permanently here for easy re-download.</p>
                 </div>
                 <span className="text-xs font-bold px-3 py-1 bg-secondary rounded-full border border-border">
-                  {userVault.length} Stored
+                  {userVault.length} Generated
                 </span>
               </div>
 

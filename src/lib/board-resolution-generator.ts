@@ -62,6 +62,7 @@ export interface StructuredResolutionOutput {
     isSignatory: boolean;
     signatureUrl?: string;
   }>;
+  logoUrl?: string;
   sealUrl?: string;
 }
 
@@ -76,7 +77,7 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
   const currency = data.accountCurrency || "NGN (Nigerian Naira)";
   const venue = data.meetingVenue || data.registeredAddress || "the registered office of the Company";
   
-  const signatoriesList = data.directors.filter(d => d.isSignatory);
+  const signatoriesList = (data.directors || []).filter(d => d.isSignatory);
   const signatoryNames = signatoriesList.map(s => `${s.fullName} (${s.designation})`).join(", ");
 
   let mandateDescription = "";
@@ -144,12 +145,13 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
     operativeClauses,
     mandateClause: mandateDescription,
     certificationText: `We hereby certify that the foregoing is a true, authentic, and correct extract from the Minutes of the Meeting of the Board of Directors of ${companyNameUpper} duly convened and held on the date specified above, and that the said resolutions are in accordance with the Articles of Association and the Companies and Allied Matters Act (CAMA 2020).`,
-    signatories: data.directors.map(d => ({
+    signatories: (data.directors || []).map(d => ({
       name: d.fullName,
       role: d.designation === "Other" && d.customDesignation ? d.customDesignation : d.designation,
       isSignatory: d.isSignatory,
       signatureUrl: d.signatureUrl
     })),
+    logoUrl: data.logoUrl,
     sealUrl: data.sealUrl
   };
 }
@@ -162,7 +164,7 @@ export async function generateAIBoardResolution(formData: BoardResolutionFormDat
   const fallback = generateDeterministicResolution(formData);
   
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  if (!apiKey || !apiKey.trim()) {
     return fallback;
   }
 
@@ -190,7 +192,7 @@ Strict Requirements:
 - Signing Mandate Rule: ${formData.signingMandate} (${formData.customMandateText || "Standard"})
 - Custom Purpose Notes: ${formData.customPurposeDescription || "Standard account/gateway onboarding"}
 - Directors & Signatories:
-${formData.directors.map(d => `  * ${d.fullName} - ${d.designation} (Signatory: ${d.isSignatory ? "YES" : "NO"})`).join("\n")}
+${(formData.directors || []).map(d => `  * ${d.fullName} - ${d.designation} (Signatory: ${d.isSignatory ? "YES" : "NO"})`).join("\n")}
 
 Respond ONLY with a JSON object matching this schema:
 {
@@ -237,10 +239,11 @@ Respond ONLY with a JSON object matching this schema:
       return fallback;
     }
 
-    // Merge uploaded signature and seal URLs from user form data
+    // Merge uploaded logo, seal and signature URLs from user form data
+    parsed.logoUrl = formData.logoUrl;
     parsed.sealUrl = formData.sealUrl;
     parsed.signatories = parsed.signatories.map((sig, idx) => {
-      const match = formData.directors.find(d => d.fullName.toLowerCase().trim() === sig.name.toLowerCase().trim()) || formData.directors[idx];
+      const match = (formData.directors || []).find(d => d.fullName.toLowerCase().trim() === sig.name.toLowerCase().trim()) || formData.directors[idx];
       return {
         ...sig,
         signatureUrl: match?.signatureUrl
@@ -248,8 +251,8 @@ Respond ONLY with a JSON object matching this schema:
     });
 
     return parsed;
-  } catch (error) {
-    console.error("AI Resolution Generation Error (falling back to deterministic):", error);
+  } catch (error: any) {
+    console.warn("AI Resolution Generation fallback (using CAMA 2020 standard):", error?.message || error);
     return fallback;
   }
 }

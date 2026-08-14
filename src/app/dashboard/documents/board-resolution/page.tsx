@@ -31,7 +31,8 @@ import {
   UploadSimple,
   Stamp,
   Lock,
-  CurrencyCircleDollar
+  Pen,
+  ArrowCounterClockwise
 } from "@phosphor-icons/react";
 import { 
   BoardResolutionFormData, 
@@ -39,6 +40,7 @@ import {
   StructuredResolutionOutput 
 } from "@/lib/board-resolution-generator";
 import ResolutionDocumentView from "@/components/features/documents/ResolutionDocumentView";
+import CanvasSignatureModal from "@/components/features/documents/CanvasSignatureModal";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 
 const NIGERIAN_PAYMENT_GATEWAYS = [
@@ -66,6 +68,8 @@ const PRESET_ACCENT_COLORS = [
   { name: "Deep Teal", hex: "#115e59" },
 ];
 
+const LOCAL_STORAGE_DRAFT_KEY = "lorabiz_board_res_draft";
+
 export default function BoardResolutionBuilderPage() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -77,14 +81,17 @@ export default function BoardResolutionBuilderPage() {
   const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // User Wallet State
-  const [walletBalance, setWalletBalance] = useState<number>(0);
+  // User Wallet State (null = loading)
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [isFundWalletOpen, setIsFundWalletOpen] = useState(false);
   const [isPaymentChoiceModalOpen, setIsPaymentChoiceModalOpen] = useState(false);
 
-  // Upload States
+  // Upload & Signature States
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingSeal, setUploadingSeal] = useState(false);
   const [uploadingSignatureId, setUploadingSignatureId] = useState<string | null>(null);
+  const [drawingSignatureDirectorId, setDrawingSignatureDirectorId] = useState<string | null>(null);
+  const [draftRestoredNotice, setDraftRestoredNotice] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState<BoardResolutionFormData>({
@@ -96,22 +103,15 @@ export default function BoardResolutionBuilderPage() {
     purposeCategory: "BANK_ACCOUNT",
     targetInstitution: "",
     institutionBranch: "",
-    accountCurrency: "NGN (Nigerian Naira)",
+    accountCurrency: "NGN (Nigerian Naira / ₦)",
     customPurposeDescription: "",
-    signingMandate: "ANY_TWO",
+    signingMandate: "ANY_ONE",
     customMandateText: "",
     directors: [
       {
         id: "dir_1",
         fullName: "",
         designation: "Managing Director / CEO",
-        isSignatory: true,
-        signatureUrl: "",
-      },
-      {
-        id: "dir_2",
-        fullName: "",
-        designation: "Director",
         isSignatory: true,
         signatureUrl: "",
       }
@@ -133,13 +133,38 @@ export default function BoardResolutionBuilderPage() {
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 5000);
+    setTimeout(() => setToast(null), 5500);
   };
 
+  // Restore Draft from LocalStorage on mount
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.companyName) {
+          setFormData(parsed);
+          setDraftRestoredNotice(true);
+          setTimeout(() => setDraftRestoredNotice(false), 6000);
+        }
+      }
+    } catch {}
     fetchBanks();
     fetchWallet();
   }, []);
+
+  // Auto-Save Draft to LocalStorage
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      try {
+        if (formData.companyName || formData.targetInstitution || formData.directors[0]?.fullName) {
+          localStorage.setItem(LOCAL_STORAGE_DRAFT_KEY, JSON.stringify(formData));
+        }
+      } catch {}
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [formData]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -150,6 +175,38 @@ export default function BoardResolutionBuilderPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleClearDraft = () => {
+    localStorage.removeItem(LOCAL_STORAGE_DRAFT_KEY);
+    setFormData({
+      companyName: "",
+      rcNumber: "",
+      registeredAddress: "",
+      meetingDate: new Date().toISOString().split("T")[0],
+      meetingVenue: "",
+      purposeCategory: "BANK_ACCOUNT",
+      targetInstitution: "",
+      institutionBranch: "",
+      accountCurrency: "NGN (Nigerian Naira / ₦)",
+      customPurposeDescription: "",
+      signingMandate: "ANY_ONE",
+      customMandateText: "",
+      directors: [
+        {
+          id: "dir_1",
+          fullName: "",
+          designation: "Managing Director / CEO",
+          isSignatory: true,
+          signatureUrl: "",
+        }
+      ],
+      accentColor: "#0f172a",
+      logoUrl: "",
+      sealUrl: "",
+    });
+    setDraftRestoredNotice(false);
+    showToast("Draft cleared successfully.", "info");
+  };
 
   const fetchBanks = async () => {
     setLoadingBanks(true);
@@ -174,19 +231,55 @@ export default function BoardResolutionBuilderPage() {
         setWalletBalance(Number(json.wallet.balance));
       } else if (json?.balance !== undefined) {
         setWalletBalance(Number(json.balance));
+      } else {
+        setWalletBalance(0);
       }
     } catch (error) {
       console.error("Failed to fetch wallet:", error);
+      setWalletBalance(0);
     }
   };
 
   // Upload Handlers
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Company logo file exceeds the 5MB limit. Please upload a smaller file.", "error");
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: uploadData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setFormData(prev => ({ ...prev, logoUrl: data.url }));
+        showToast("Company logo uploaded successfully!", "success");
+      } else {
+        showToast(data.error || "Failed to upload logo.", "error");
+      }
+    } catch {
+      showToast("Network error uploading logo. Please try again.", "error");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleSealUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      showToast("Company stamp file exceeds the 5MB size limit.", "error");
+      showToast("Company stamp file exceeds the 5MB limit. Please upload a smaller file.", "error");
       return;
     }
 
@@ -219,7 +312,7 @@ export default function BoardResolutionBuilderPage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      showToast("Signature image exceeds the 5MB size limit.", "error");
+      showToast("Signature image exceeds the 5MB limit.", "error");
       return;
     }
 
@@ -266,7 +359,7 @@ export default function BoardResolutionBuilderPage() {
 
   const removeDirector = (id: string) => {
     if (formData.directors.length <= 1) {
-      showToast("You need at least one director or secretary in the resolution.", "error");
+      showToast("You need at least one director or officer in the resolution.", "error");
       return;
     }
     setFormData(prev => ({
@@ -280,6 +373,26 @@ export default function BoardResolutionBuilderPage() {
       ...prev,
       directors: prev.directors.map(d => d.id === id ? { ...d, ...updates } : d)
     }));
+  };
+
+  const handleMandateChange = (mandate: "ANY_ONE" | "ANY_TWO" | "CHAIRMAN_AND_SECRETARY" | "ALL_DIRECTORS" | "CUSTOM") => {
+    setFormData(prev => {
+      let updatedDirectors = [...prev.directors];
+      if (mandate === "ANY_TWO" && updatedDirectors.length < 2) {
+        updatedDirectors.push({
+          id: `dir_${Date.now()}`,
+          fullName: "",
+          designation: "Director",
+          isSignatory: true,
+          signatureUrl: "",
+        });
+      }
+      return {
+        ...prev,
+        signingMandate: mandate,
+        directors: updatedDirectors,
+      };
+    });
   };
 
   // Validation
@@ -306,7 +419,7 @@ export default function BoardResolutionBuilderPage() {
   const validateStep2 = () => {
     const emptyName = formData.directors.find(d => !d.fullName.trim());
     if (emptyName) {
-      showToast("Please fill in the full names for all directors in the list.", "error");
+      showToast("Please fill in the full legal names for all directors in the list.", "error");
       return false;
     }
     const hasSignatory = formData.directors.some(d => d.isSignatory);
@@ -314,7 +427,24 @@ export default function BoardResolutionBuilderPage() {
       showToast("At least one director must be marked as an Authorized Signatory.", "error");
       return false;
     }
+    if (formData.signingMandate === "ANY_TWO" && formData.directors.length < 2) {
+      showToast("The 'Any Two Jointly' mandate requires at least 2 directors. Please add another director.", "error");
+      return false;
+    }
     return true;
+  };
+
+  // Step Indicator Click Navigation
+  const handleStepClick = (targetStep: 1 | 2 | 3) => {
+    if (targetStep === 1) {
+      setCurrentStep(1);
+    } else if (targetStep === 2) {
+      if (validateStep1()) setCurrentStep(2);
+    } else if (targetStep === 3) {
+      if (validateStep1() && validateStep2()) {
+        handleProceedToPreview();
+      }
+    }
   };
 
   // Move to Preview
@@ -347,9 +477,9 @@ export default function BoardResolutionBuilderPage() {
   const handlePayFromWallet = async () => {
     setIsPaymentChoiceModalOpen(false);
 
-    if (walletBalance < price) {
+    if (walletBalance === null || walletBalance < price) {
       setIsFundWalletOpen(true);
-      showToast(`Your wallet balance is ₦${walletBalance.toLocaleString()}. Please fund at least ₦${(price - walletBalance).toLocaleString()} to proceed.`, "info");
+      showToast(`Your wallet balance is ₦${(walletBalance || 0).toLocaleString()}. Please fund at least ₦${(price - (walletBalance || 0)).toLocaleString()} to proceed.`, "info");
       return;
     }
 
@@ -368,7 +498,7 @@ export default function BoardResolutionBuilderPage() {
       const json = await res.json();
       if (json.success && json.document) {
         setFinalDocument(json.document);
-        showToast("Payment successful! Your official document is unlocked and emailed to you.", "success");
+        showToast("Payment successful! Your official certified document is unlocked and emailed to you.", "success");
         fetchWallet();
       } else {
         showToast(json.message || "Generation failed.", "error");
@@ -389,32 +519,52 @@ export default function BoardResolutionBuilderPage() {
     b.name.toLowerCase().includes(bankSearch.toLowerCase())
   );
 
+  const activeDrawingDirector = formData.directors.find(d => d.id === drawingSignatureDirectorId);
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300 pb-16">
       
-      {/* Toast Notification */}
+      {/* High-Contrast Toast Notification */}
       {toast && (
-        <div className="fixed top-24 right-4 z-[100] animate-in slide-in-from-right-8 fade-in duration-300">
-          <div className={`flex items-center gap-3 p-4 pr-10 rounded-2xl shadow-2xl border text-foreground ${
+        <div className="fixed top-24 right-4 z-[100000] animate-in slide-in-from-right-8 fade-in duration-300">
+          <div className={`flex items-center gap-3 p-4 pr-10 rounded-2xl shadow-2xl border font-bold text-xs ${
             toast.type === "success" 
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+              ? "bg-emerald-600 border-emerald-500 text-white"
               : toast.type === "error"
-              ? "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300"
-              : "bg-card border-border"
+              ? "bg-red-600 border-red-500 text-white shadow-red-950/40"
+              : "bg-slate-900 border-slate-700 text-white"
           }`}>
-            <CheckCircle className="h-5 w-5 shrink-0 text-primary" weight="fill" />
-            <p className="text-xs font-semibold">{toast.message}</p>
+            <CheckCircle className="h-5 w-5 shrink-0" weight="fill" />
+            <p>{toast.message}</p>
             <button 
               onClick={() => setToast(null)} 
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 opacity-70 hover:opacity-100"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-white/80 hover:text-white"
             >
-              <X className="h-3.5 w-3.5" weight="bold" />
+              <X className="h-4 w-4" weight="bold" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Top Nav Bar: High-Contrast Back Button + Wallet Balance */}
+      {/* Auto-Draft Restored Banner */}
+      {draftRestoredNotice && (
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-secondary/80 border border-border text-xs text-foreground animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-500" weight="fill" />
+            <span>Auto-saved draft restored from your last session.</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearDraft}
+            className="text-xs font-bold text-red-500 hover:underline flex items-center gap-1"
+          >
+            <ArrowCounterClockwise className="h-3.5 w-3.5" />
+            <span>Clear Draft & Reset</span>
+          </button>
+        </div>
+      )}
+
+      {/* Top Nav Bar: High-Contrast Back Button + Wallet Balance Display */}
       <div className="flex items-center justify-between">
         <Link 
           href="/dashboard/documents"
@@ -426,11 +576,18 @@ export default function BoardResolutionBuilderPage() {
 
         <div className="flex items-center gap-2 text-xs font-bold bg-secondary px-3.5 py-2 rounded-xl border border-border text-foreground">
           <Wallet className="h-4 w-4 text-primary" weight="bold" />
-          <span>Wallet: ₦{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          {walletBalance === null ? (
+            <div className="flex items-center gap-1.5 text-muted-foreground font-semibold">
+              <Spinner className="h-3 w-3 animate-spin text-primary" />
+              <span>Loading...</span>
+            </div>
+          ) : (
+            <span>Wallet: ₦{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          )}
         </div>
       </div>
 
-      {/* Header & Step Wizard Indicator */}
+      {/* Header & Step Wizard Indicator (Clickable Steps) */}
       <div className="space-y-4">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 mb-2">
@@ -445,33 +602,55 @@ export default function BoardResolutionBuilderPage() {
           </p>
         </div>
 
-        {/* Step Progress Bar */}
+        {/* Step Progress Bar with Direct Click Navigation */}
         <div className="grid grid-cols-3 gap-2 pt-2">
-          <div className={`p-3 rounded-2xl border transition-all ${
-            currentStep >= 1 ? "bg-primary/10 border-primary text-primary" : "bg-secondary/40 border-border text-muted-foreground"
-          }`}>
+          <button
+            type="button"
+            onClick={() => handleStepClick(1)}
+            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+              currentStep === 1 
+                ? "bg-primary/10 border-primary text-primary shadow-sm" 
+                : currentStep > 1
+                ? "bg-card border-border text-foreground hover:border-primary/50"
+                : "bg-secondary/40 border-border text-muted-foreground"
+            }`}
+          >
             <span className="text-[10px] font-black uppercase tracking-widest block">Step 1</span>
-            <span className="text-xs font-bold">Company & Bank</span>
-          </div>
+            <span className="text-xs font-bold">Company Details</span>
+          </button>
 
-          <div className={`p-3 rounded-2xl border transition-all ${
-            currentStep >= 2 ? "bg-primary/10 border-primary text-primary" : "bg-secondary/40 border-border text-muted-foreground"
-          }`}>
+          <button
+            type="button"
+            onClick={() => handleStepClick(2)}
+            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+              currentStep === 2 
+                ? "bg-primary/10 border-primary text-primary shadow-sm" 
+                : currentStep > 2
+                ? "bg-card border-border text-foreground hover:border-primary/50"
+                : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/30"
+            }`}
+          >
             <span className="text-[10px] font-black uppercase tracking-widest block">Step 2</span>
             <span className="text-xs font-bold">Directors & Mandate</span>
-          </div>
+          </button>
 
-          <div className={`p-3 rounded-2xl border transition-all ${
-            currentStep === 3 ? "bg-primary/10 border-primary text-primary" : "bg-secondary/40 border-border text-muted-foreground"
-          }`}>
+          <button
+            type="button"
+            onClick={() => handleStepClick(3)}
+            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+              currentStep === 3 
+                ? "bg-primary/10 border-primary text-primary shadow-sm" 
+                : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/30"
+            }`}
+          >
             <span className="text-[10px] font-black uppercase tracking-widest block">Step 3</span>
             <span className="text-xs font-bold">Preview & Download</span>
-          </div>
+          </button>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* STEP 1: COMPANY & BANK / GATEWAY DETAILS                                  */}
+      {/* STEP 1: COMPANY DETAILS & PURPOSE                                         */}
       {/* ========================================================================= */}
       {currentStep === 1 && (
         <div className="p-6 sm:p-8 rounded-3xl bg-card border border-border shadow-sm space-y-6">
@@ -480,12 +659,12 @@ export default function BoardResolutionBuilderPage() {
               <Buildings className="h-5 w-5" weight="bold" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground">Company & Purpose Details</h2>
+              <h2 className="text-base font-bold text-foreground">Company Details</h2>
               <p className="text-xs text-muted-foreground">Tell us about your company and the financial institution you are opening with.</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-start">
             {/* Company Name */}
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-bold text-foreground">
@@ -501,7 +680,7 @@ export default function BoardResolutionBuilderPage() {
             </div>
 
             {/* RC / BN Number */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 min-w-0">
               <label className="text-xs font-bold text-foreground">
                 RC Number or Business Name Number <span className="text-muted-foreground text-[10px] font-normal">(Optional)</span>
               </label>
@@ -514,8 +693,8 @@ export default function BoardResolutionBuilderPage() {
               />
             </div>
 
-            {/* Meeting Date */}
-            <div className="space-y-1.5">
+            {/* Date of Board Meeting (No overlapping bug) */}
+            <div className="space-y-1.5 min-w-0">
               <label className="text-xs font-bold text-foreground">
                 Date of Board Meeting <span className="text-primary">*</span>
               </label>
@@ -541,8 +720,69 @@ export default function BoardResolutionBuilderPage() {
               />
             </div>
 
-            {/* Company Stamp / Seal Upload (Optional) */}
-            <div className="space-y-1.5 sm:col-span-2 p-4 rounded-2xl bg-secondary/30 border border-border">
+            {/* Official Company Logo Upload (Compulsory / Strongly Recommended) */}
+            <div className="space-y-2 p-4 rounded-2xl bg-secondary/30 border border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Buildings className="h-4 w-4 text-primary" weight="bold" />
+                  <label className="text-xs font-bold text-foreground">
+                    Official Company Logo <span className="text-primary text-[10px] font-bold">(Recommended)</span>
+                  </label>
+                </div>
+                {formData.logoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, logoUrl: "" })}
+                    className="text-xs text-red-500 hover:underline font-semibold"
+                  >
+                    Remove Logo
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Renders on the top letterhead of your certified board extract. Max 5MB • PNG, JPG, or SVG.
+              </p>
+
+              {formData.logoUrl ? (
+                <div className="flex items-center gap-3 pt-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={formData.logoUrl} 
+                    alt="Company Logo" 
+                    className="h-14 max-w-[140px] rounded-xl border border-border object-contain bg-white p-1 shadow-sm" 
+                  />
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    Logo attached to letterhead
+                  </span>
+                </div>
+              ) : (
+                <div className="pt-1">
+                  <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-sm">
+                    {uploadingLogo ? (
+                      <>
+                        <Spinner className="h-4 w-4 animate-spin text-primary" weight="bold" />
+                        <span>Uploading Logo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadSimple className="h-4 w-4 text-primary" weight="bold" />
+                        <span>Upload Company Logo</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/svg+xml"
+                      onChange={handleLogoUpload}
+                      disabled={uploadingLogo}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {/* Official Company Stamp / Seal Upload */}
+            <div className="space-y-2 p-4 rounded-2xl bg-secondary/30 border border-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Stamp className="h-4 w-4 text-primary" weight="bold" />
@@ -561,23 +801,23 @@ export default function BoardResolutionBuilderPage() {
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                If uploaded, your official seal will be placed on the resolution extract. If not uploaded, no dummy seal is displayed.
+                Official seal will be stamped on the resolution extract. Max 5MB • PNG or JPG.
               </p>
 
               {formData.sealUrl ? (
-                <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-1">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img 
                     src={formData.sealUrl} 
                     alt="Company Stamp" 
-                    className="h-16 w-16 rounded-full border border-border object-contain bg-white p-1" 
+                    className="h-14 w-14 rounded-full border border-border object-contain bg-white p-1 shadow-sm" 
                   />
                   <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    Official seal uploaded successfully
+                    Official seal attached
                   </span>
                 </div>
               ) : (
-                <div className="pt-2">
+                <div className="pt-1">
                   <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-sm">
                     {uploadingSeal ? (
                       <>
@@ -587,7 +827,7 @@ export default function BoardResolutionBuilderPage() {
                     ) : (
                       <>
                         <UploadSimple className="h-4 w-4 text-primary" weight="bold" />
-                        <span>Upload Company Stamp (PNG / JPG)</span>
+                        <span>Upload Company Seal</span>
                       </>
                     )}
                     <input
@@ -652,7 +892,7 @@ export default function BoardResolutionBuilderPage() {
               </div>
             </div>
 
-            {/* Target Institution (Searchable Paystack Bank List or Gateway Selector) */}
+            {/* Target Institution */}
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-bold text-foreground">
                 {formData.purposeCategory === "PAYMENT_GATEWAY" ? "Payment Gateway Name" : "Bank / Financial Institution Name"} <span className="text-primary">*</span>
@@ -744,7 +984,7 @@ export default function BoardResolutionBuilderPage() {
             </div>
 
             {/* Optional Branch Location */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 min-w-0">
               <label className="text-xs font-bold text-foreground">
                 Branch / Location <span className="text-muted-foreground text-[10px] font-normal">(Optional)</span>
               </label>
@@ -757,8 +997,8 @@ export default function BoardResolutionBuilderPage() {
               />
             </div>
 
-            {/* Account Currency Selection */}
-            <div className="space-y-1.5">
+            {/* Account Currency Selection (Includes GHS Cedi & Beautified UI) */}
+            <div className="space-y-1.5 min-w-0">
               <label className="text-xs font-bold text-foreground">
                 Account Currency
               </label>
@@ -766,12 +1006,13 @@ export default function BoardResolutionBuilderPage() {
                 <select
                   value={formData.accountCurrency}
                   onChange={(e) => setFormData({ ...formData, accountCurrency: e.target.value })}
-                  className="w-full h-11 px-4 pr-10 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground appearance-none cursor-pointer"
+                  className="w-full h-11 px-4 pr-10 rounded-xl bg-secondary/50 border border-border text-xs sm:text-sm font-semibold focus:outline-none focus:border-primary text-foreground appearance-none cursor-pointer shadow-inner"
                 >
-                  <option value="NGN (Nigerian Naira)">NGN (Nigerian Naira)</option>
-                  <option value="USD (United States Dollar)">USD (United States Dollar)</option>
-                  <option value="EUR (Euro)">EUR (Euro)</option>
-                  <option value="GBP (British Pound)">GBP (British Pound)</option>
+                  <option value="NGN (Nigerian Naira / ₦)">NGN (Nigerian Naira / ₦)</option>
+                  <option value="USD (United States Dollar / $)">USD (United States Dollar / $)</option>
+                  <option value="GBP (British Pound / £)">GBP (British Pound / £)</option>
+                  <option value="EUR (Euro / €)">EUR (Euro / €)</option>
+                  <option value="GHS (Ghanaian Cedi / GH₵)">GHS (Ghanaian Cedi / GH₵)</option>
                   <option value="Multi-Currency (NGN & Domiciliary)">Multi-Currency (NGN & Domiciliary)</option>
                 </select>
                 <CaretDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -889,7 +1130,7 @@ export default function BoardResolutionBuilderPage() {
             </div>
             <div>
               <h2 className="text-base font-bold text-foreground">Board of Directors & Signing Mandate</h2>
-              <p className="text-xs text-muted-foreground">List the directors, designate signatories, and optionally upload signature images.</p>
+              <p className="text-xs text-muted-foreground">List the directors, designate signatories, and draw or upload digital signatures.</p>
             </div>
           </div>
 
@@ -901,20 +1142,7 @@ export default function BoardResolutionBuilderPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, signingMandate: "ANY_TWO" })}
-                className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                  formData.signingMandate === "ANY_TWO"
-                    ? "bg-primary/10 border-primary text-foreground shadow-sm"
-                    : "bg-secondary/30 border-border text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <span className="text-xs font-bold block text-foreground">Any Two (2) Directors Jointly</span>
-                <span className="text-[10px] text-muted-foreground">Standard Nigerian corporate banking requirement (Category A + Category B)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, signingMandate: "ANY_ONE" })}
+                onClick={() => handleMandateChange("ANY_ONE")}
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                   formData.signingMandate === "ANY_ONE"
                     ? "bg-primary/10 border-primary text-foreground shadow-sm"
@@ -927,7 +1155,20 @@ export default function BoardResolutionBuilderPage() {
 
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, signingMandate: "CHAIRMAN_AND_SECRETARY" })}
+                onClick={() => handleMandateChange("ANY_TWO")}
+                className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                  formData.signingMandate === "ANY_TWO"
+                    ? "bg-primary/10 border-primary text-foreground shadow-sm"
+                    : "bg-secondary/30 border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span className="text-xs font-bold block text-foreground">Any Two (2) Directors Jointly</span>
+                <span className="text-[10px] text-muted-foreground">Standard Nigerian corporate banking requirement (Category A + Category B)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleMandateChange("CHAIRMAN_AND_SECRETARY")}
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                   formData.signingMandate === "CHAIRMAN_AND_SECRETARY"
                     ? "bg-primary/10 border-primary text-foreground shadow-sm"
@@ -940,7 +1181,7 @@ export default function BoardResolutionBuilderPage() {
 
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, signingMandate: "ALL_DIRECTORS" })}
+                onClick={() => handleMandateChange("ALL_DIRECTORS")}
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                   formData.signingMandate === "ALL_DIRECTORS"
                     ? "bg-primary/10 border-primary text-foreground shadow-sm"
@@ -1025,7 +1266,7 @@ export default function BoardResolutionBuilderPage() {
                     </div>
                   </div>
 
-                  {/* Signatory Checkbox & Optional Signature Upload */}
+                  {/* Signatory Checkbox & Canvas Signature / File Upload */}
                   <div className="pt-2 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
                       <input
@@ -1037,15 +1278,15 @@ export default function BoardResolutionBuilderPage() {
                       <span>Authorized to operate/sign on account & gateway</span>
                     </label>
 
-                    {/* Signature Upload */}
-                    <div className="flex items-center gap-2">
+                    {/* Signature Options */}
+                    <div className="flex items-center gap-2 flex-wrap">
                       {director.signatureUrl ? (
                         <div className="flex items-center gap-2">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img 
                             src={director.signatureUrl} 
                             alt="Signature" 
-                            className="h-8 max-w-[90px] object-contain border border-border rounded bg-white p-0.5" 
+                            className="h-9 max-w-[110px] object-contain border border-border rounded-lg bg-white p-1 shadow-sm" 
                           />
                           <button
                             type="button"
@@ -1056,26 +1297,39 @@ export default function BoardResolutionBuilderPage() {
                           </button>
                         </div>
                       ) : (
-                        <label className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground font-semibold text-[11px] rounded-lg cursor-pointer transition-colors">
-                          {uploadingSignatureId === director.id ? (
-                            <>
-                              <Spinner className="h-3 w-3 animate-spin text-primary" weight="bold" />
-                              <span>Uploading...</span>
-                            </>
-                          ) : (
-                            <>
-                              <UploadSimple className="h-3 w-3 text-primary" weight="bold" />
-                              <span>Upload Signature (Optional)</span>
-                            </>
-                          )}
-                          <input
-                            type="file"
-                            accept="image/png, image/jpeg"
-                            onChange={(e) => handleDirectorSignatureUpload(director.id, e)}
-                            disabled={uploadingSignatureId === director.id}
-                            className="hidden"
-                          />
-                        </label>
+                        <div className="flex items-center gap-1.5">
+                          {/* Option 1: Draw Signature Pad */}
+                          <button
+                            type="button"
+                            onClick={() => setDrawingSignatureDirectorId(director.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-bold text-[11px] rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Pen className="h-3.5 w-3.5" weight="bold" />
+                            <span>Draw Signature</span>
+                          </button>
+
+                          {/* Option 2: Upload Signature Image */}
+                          <label className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground font-semibold text-[11px] rounded-lg cursor-pointer transition-colors">
+                            {uploadingSignatureId === director.id ? (
+                              <>
+                                <Spinner className="h-3 w-3 animate-spin text-primary" weight="bold" />
+                                <span>Uploading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <UploadSimple className="h-3 w-3 text-muted-foreground" weight="bold" />
+                                <span>Upload File</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/png, image/jpeg"
+                              onChange={(e) => handleDirectorSignatureUpload(director.id, e)}
+                              disabled={uploadingSignatureId === director.id}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1177,7 +1431,7 @@ export default function BoardResolutionBuilderPage() {
                     </div>
                     <div>
                       <h3 className="text-sm font-black">Official Document Unlocked & Emailed!</h3>
-                      <p className="text-xs opacity-90">Your high-resolution PDF has been sent to your email and saved to your Document Vault.</p>
+                      <p className="text-xs opacity-90">Your high-resolution PDF has been sent to your email and saved to your Document History.</p>
                     </div>
                   </div>
 
@@ -1185,7 +1439,7 @@ export default function BoardResolutionBuilderPage() {
                     href="/dashboard/documents"
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors shrink-0"
                   >
-                    Go to My Vault
+                    Go to Document History
                   </Link>
                 </div>
               )}
@@ -1230,6 +1484,21 @@ export default function BoardResolutionBuilderPage() {
       )}
 
       {/* ========================================================================= */}
+      {/* DRAW SIGNATURE MODAL                                                      */}
+      {/* ========================================================================= */}
+      <CanvasSignatureModal
+        isOpen={drawingSignatureDirectorId !== null}
+        onClose={() => setDrawingSignatureDirectorId(null)}
+        signerName={activeDrawingDirector?.fullName || "Director / Signatory"}
+        onSave={(dataUrl) => {
+          if (drawingSignatureDirectorId) {
+            updateDirector(drawingSignatureDirectorId, { signatureUrl: dataUrl });
+            showToast("Digital signature saved!", "success");
+          }
+        }}
+      />
+
+      {/* ========================================================================= */}
       {/* DUAL PAYMENT METHOD SELECTION MODAL                                       */}
       {/* ========================================================================= */}
       {isPaymentChoiceModalOpen && (
@@ -1270,7 +1539,7 @@ export default function BoardResolutionBuilderPage() {
                 <div className="text-right">
                   <span className="text-[11px] font-bold text-muted-foreground block">Your Wallet Balance</span>
                   <span className="text-sm font-black text-primary">
-                    ₦{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {walletBalance === null ? "..." : `₦${walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                   </span>
                 </div>
               </div>
@@ -1291,9 +1560,9 @@ export default function BoardResolutionBuilderPage() {
                         Pay from Wallet Balance
                       </span>
                       <span className="text-[11px] text-muted-foreground">
-                        {walletBalance >= price 
+                        {walletBalance !== null && walletBalance >= price 
                           ? "Instant 1-click debit and immediate generation" 
-                          : `Balance is ₦${walletBalance.toLocaleString()} (Top-up required)`}
+                          : `Balance is ₦${(walletBalance || 0).toLocaleString()} (Top-up required)`}
                       </span>
                     </div>
                   </div>
@@ -1314,7 +1583,7 @@ export default function BoardResolutionBuilderPage() {
                         Pay Online (Card / Bank Transfer)
                       </span>
                       <span className="text-[11px] text-muted-foreground">
-                        Secure instant checkout via Korapay & Paystack
+                        Instant gateway top-up via Korapay & Paystack
                       </span>
                     </div>
                   </div>
@@ -1334,6 +1603,7 @@ export default function BoardResolutionBuilderPage() {
       <FundWalletModal
         isOpen={isFundWalletOpen}
         onClose={() => setIsFundWalletOpen(false)}
+        initialAmount={Math.max(100, price - (walletBalance || 0))}
         onSuccess={() => {
           setIsFundWalletOpen(false);
           fetchWallet();

@@ -49,10 +49,10 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
 
   const handlePay = async () => {
     if (!amount || Number(amount) < 100) return alert("Minimum amount is ₦100");
-    
+
     setIsProcessing(true);
     setGatewayLoading(true);
-    
+
     try {
       const res = await fetch("/api/payment/checkout", {
         method: "POST",
@@ -92,7 +92,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
             <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/20 animate-ping opacity-75" />
             <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/50 animate-[spin_8s_linear_infinite]" />
             <div className="absolute inset-6 rounded-full border border-dotted border-amber-400/60 animate-[spin_5s_linear_infinite_reverse]" />
-            
+
             <div className="absolute -top-1 -right-2 text-amber-400 animate-bounce delay-100">
               <MusicNotes size={26} weight="fill" />
             </div>
@@ -135,10 +135,10 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
       {/* Main Modal Content */}
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
         <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 relative border border-slate-100">
-          <button 
+          <button
             onClick={() => {
               if (!isProcessing) onClose();
-            }} 
+            }}
             className="absolute top-5 right-5 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" weight="bold" />
@@ -160,11 +160,10 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
                   type="button"
                   onClick={() => setAmount(amt.toString())}
                   disabled={isProcessing}
-                  className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all cursor-pointer disabled:opacity-50 ${
-                    amount === amt.toString() 
-                      ? "border-[#ff3f7a] bg-[#ff3f7a]/5 text-[#ff3f7a] shadow-sm" 
+                  className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all cursor-pointer disabled:opacity-50 ${amount === amt.toString()
+                      ? "border-[#ff3f7a] bg-[#ff3f7a]/5 text-[#ff3f7a] shadow-sm"
                       : "border-slate-100 text-slate-600 hover:border-slate-300 bg-slate-50/50"
-                  }`}
+                    }`}
                 >
                   ₦{amt.toLocaleString()}
                 </button>
@@ -175,7 +174,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
               <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Custom Amount</label>
               <div className="relative">
                 <span className="absolute left-4 top-4 text-slate-400 font-bold text-lg">₦</span>
-                <Input 
+                <Input
                   type="number"
                   value={amount}
                   disabled={isProcessing}
@@ -186,7 +185,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
               </div>
             </div>
 
-            <Button 
+            <Button
               type="button"
               onClick={handlePay}
               disabled={isProcessing || !amount || Number(amount) < 100}

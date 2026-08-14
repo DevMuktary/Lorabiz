@@ -42,6 +42,7 @@ export interface ResolutionDocProps {
       isSignatory: boolean;
       signatureUrl?: string;
     }>;
+    logoUrl?: string;
     sealUrl?: string;
   };
   accentColor?: string;
@@ -66,6 +67,7 @@ export default function ResolutionDocumentView({
   const docRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = React.useState<"pdf" | "png" | null>(null);
 
+  const effectiveLogoUrl = logoUrl || data?.logoUrl;
   const effectiveSealUrl = propsSealUrl || data?.sealUrl;
 
   const handleDownloadPDF = async () => {
@@ -236,10 +238,10 @@ export default function ResolutionDocumentView({
           {/* ========================================================================= */}
           <div className="border-b-2 pb-6 mb-6" style={{ borderColor: accentColor }}>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-              {logoUrl ? (
+              {effectiveLogoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img 
-                  src={logoUrl} 
+                  src={effectiveLogoUrl} 
                   alt="Company Logo" 
                   className="max-h-16 max-w-[180px] object-contain shrink-0" 
                 />
