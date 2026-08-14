@@ -144,6 +144,9 @@ model User {
   // --- STAFF ASSIGNMENTS ---
   assignedBiz      BusinessRegistration[] @relation("BizStaffAssignment")
   assignedLlcs     LlcRegistration[]      @relation("LlcStaffAssignment")
+  
+  // --- SMART LEGAL DOCUMENTS ---
+  documents        GeneratedDocument[]
 }
 
 // ==========================================
@@ -750,5 +753,59 @@ model AutomatedEmailLog {
   @@index([userId])
   @@index([emailType])
   @@index([sentAt])
+}
+
+// ==========================================
+// SMART LEGAL DOCUMENTS
+// ==========================================
+
+enum DocumentServiceType {
+  BOARD_RESOLUTION
+  NDA
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+  FOUNDERS_AGREEMENT
+  EMPLOYMENT_CONTRACT
+  SERVICE_AGREEMENT
+  MOU
+}
+
+enum DocumentStatus {
+  DRAFT
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+model GeneratedDocument {
+  id              String              @id @default(cuid())
+  userId          String
+  documentType    DocumentServiceType
+  title           String              // e.g., "Board Resolution - Corporate Bank Account Opening"
+  companyName     String
+  status          DocumentStatus      @default(COMPLETED)
+  
+  // Customization & Meta
+  accentColor     String?             @default("#0f172a")
+  logoUrl         String?
+  formData        Json                // Complete input payload
+  structuredData  Json?               // AI-formatted clauses, recitals, signatories
+  
+  // Output artifacts
+  pdfUrl          String?             // PDF download URL or Base64 URI
+  imageUrl        String?             // PNG download URL or Base64 URI
+  
+  // Payment tracking
+  amountPaid      Decimal             @db.Decimal(10, 2)
+  transactionRef  String              @unique
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([documentType])
+  @@index([createdAt])
 }
 

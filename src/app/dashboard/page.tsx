@@ -80,6 +80,16 @@ const LIVE_SERVICES: ServiceItem[] = [
     active: true,
   },
   {
+    title: "Smart Legal Documents",
+    category: "Legal & Corporate Secretarial",
+    description: "Generate official Board Resolutions, NDAs, and corporate agreements tailored for Nigerian banks & KYC.",
+    logo: "/cac.png",
+    href: "/dashboard/documents",
+    turnaround: "Instant Download",
+    actionText: "Generate Documents",
+    active: true,
+  },
+  {
     title: "Airtime & Utilities",
     category: "VTU Telecom Gateway",
     description: "Instant airtime top-up, mobile data bundles, and bill payments from your wallet balance.",
@@ -104,13 +114,6 @@ const UPCOMING_SERVICES: ServiceItem[] = [
     category: "Copyright Protection",
     description: "Safeguard software source code, creative publications, audio-visuals, and artistic assets.",
     logo: "/ncc.jpg",
-    active: false,
-  },
-  {
-    title: "Smart Legal Documents",
-    category: "Legal & Contracts",
-    description: "Generate legally compliant NDAs, board resolutions, terms of service, and partnership deeds.",
-    logo: "/file.svg",
     active: false,
   },
   {
@@ -611,7 +614,7 @@ export default function DashboardPage() {
             </h2>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              5 Live
+              6 Live
             </span>
           </div>
         </div>

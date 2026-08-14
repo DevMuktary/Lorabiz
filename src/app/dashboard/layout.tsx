@@ -46,6 +46,7 @@ const NAVIGATION: NavCategory[] = [
     links: [
       { name: "CAC Services", href: "/dashboard/cac", icon: Buildings },
       { name: "SCUML", href: "/dashboard/scuml", icon: ShieldCheck },
+      { name: "Smart Legal Documents", href: "/dashboard/documents", icon: FileText },
       { name: "NIN Services", href: "/dashboard/tools/nin-slip", icon: IdentificationCard },
       { name: "Airtime", href: "/dashboard/airtime", icon: DeviceMobile },
       { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },
@@ -57,7 +58,6 @@ const NAVIGATION: NavCategory[] = [
       { name: "CAC Post Incorporation", href: "#", icon: Buildings, isComingSoon: true },
       { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
       { name: "Nigerian Copyright Commission (NCC)", href: "#", icon: Copyright, isComingSoon: true },
-      { name: "Smart Legal Documents", href: "#", icon: FileText, isComingSoon: true },
       { name: "Build Online Presence", href: "#", icon: Globe, isComingSoon: true },
       { name: "NAFDAC Registration", href: "#", icon: Flask, isComingSoon: true },
       { name: "PENCOM Compliance", href: "#", icon: Shield, isComingSoon: true },
@@ -120,6 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (found) return found.name;
     }
     if (pathname.includes("/dashboard/cac")) return "CAC Services";
+    if (pathname.includes("/dashboard/documents")) return "Smart Legal Documents";
     if (pathname.includes("/dashboard/tools/nin-slip")) return "NIN Services";
     if (pathname.includes("/dashboard/transactions")) return "Transactions";
     if (pathname.includes("/dashboard/scuml")) return "SCUML";

@@ -954,4 +954,71 @@ export async function sendAbandonedCacReminderEmail({
   });
 }
 
+// ==========================================
+// SMART LEGAL DOCUMENTS NOTIFICATIONS
+// ==========================================
+
+export async function sendDocumentGeneratedEmail({
+  to,
+  firstName = "Valued Client",
+  documentTitle,
+  companyName,
+  documentId,
+  pdfBase64,
+  baseUrl = "https://lorabiz.com",
+}: {
+  to: string;
+  firstName?: string;
+  documentTitle: string;
+  companyName: string;
+  documentId: string;
+  pdfBase64?: string;
+  baseUrl?: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const downloadUrl = `${baseUrl.replace(/\/$/, "")}/dashboard/documents`;
+  const subject = `Your Document is Ready: ${documentTitle} (${companyName})`;
+  const previewText = `Your official ${documentTitle} for ${companyName} has been generated and is ready for download.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Legal Document Ready 🎉</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Your official <strong>${documentTitle}</strong> for <strong>${companyName}</strong> has been successfully generated and formatted in accordance with Nigerian corporate compliance standards.</p>
+    
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+      <p style="margin: 0 0 6px; font-size: 13px; color: #64748b;">Document Information:</p>
+      <p style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a;">${documentTitle}</p>
+      <p style="margin: 4px 0 0; font-size: 13px; color: #475569;">Company: <strong>${companyName}</strong></p>
+      <p style="margin: 4px 0 0; font-size: 12px; color: #64748b;">Vault Reference: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${documentId}</code></p>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">We have securely attached the high-resolution PDF directly to this email for your convenience. You can also view, manage, or re-download high-resolution PDF and PNG copies anytime from your <strong>LoraBiz Document Vault</strong>.</p>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${downloadUrl}" style="background-color: #0f172a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Open Document Vault</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 12px; line-height: 1.5;">This document is generated based on the information provided and standard corporate governance templates under CAMA 2020. LoraBiz is a legal technology platform and does not provide formal legal representation.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const attachments: { name: string; mime_type: string; content: string }[] = [];
+  if (pdfBase64) {
+    attachments.push({
+      name: `${documentTitle.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`,
+      mime_type: "application/pdf",
+      content: pdfBase64.replace(/^data:application\/pdf;base64,/, ""),
+    });
+  }
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+
+  return sendEmail({
+    to,
+    subject,
+    htmlBody,
+    attachments,
+  });
+}
+
 

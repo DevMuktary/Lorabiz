@@ -18,7 +18,16 @@ async function main() {
     // 🚨 NEW: NIN Slip Prices moved here!
     { serviceKey: "NIN_REGULAR", title: "Regular Official Slip", price: 500.00 },
     { serviceKey: "NIN_STANDARD", title: "Standard Biometric Slip", price: 700.00 },
-    { serviceKey: "NIN_PREMIUM", title: "Premium Card Layout", price: 1000.00 }
+    { serviceKey: "NIN_PREMIUM", title: "Premium Card Layout", price: 1000.00 },
+    // 📜 SMART LEGAL DOCUMENTS
+    { serviceKey: "DOC_BOARD_RESOLUTION", title: "Smart Board Resolution", price: 3500.00 },
+    { serviceKey: "DOC_NDA", title: "Non-Disclosure Agreement (NDA)", price: 5000.00 },
+    { serviceKey: "DOC_TERMS_OF_SERVICE", title: "Terms of Service & Privacy Policy", price: 7500.00 },
+    { serviceKey: "DOC_PRIVACY_POLICY", title: "Privacy Policy (NDPR Compliant)", price: 5000.00 },
+    { serviceKey: "DOC_FOUNDERS_AGREEMENT", title: "Founders' Agreement", price: 10000.00 },
+    { serviceKey: "DOC_EMPLOYMENT_CONTRACT", title: "Employment Contract", price: 6000.00 },
+    { serviceKey: "DOC_SERVICE_AGREEMENT", title: "Service Level Agreement (SLA)", price: 6000.00 },
+    { serviceKey: "DOC_MOU", title: "Memorandum of Understanding (MOU)", price: 6000.00 }
   ]
 
   for (const p of prices) {
