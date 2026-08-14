@@ -1,4 +1,5 @@
 // src/lib/email.ts
+import crypto from "crypto";
 
 export async function sendEmail({ 
   to, 
@@ -587,3 +588,204 @@ export async function sendTaxIdFailedEmail({
   `;
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
 }
+
+// ============================================================================
+// EMAIL CAMPAIGN & BROADCAST UTILITIES
+// ============================================================================
+
+const UNSUBSCRIBE_SECRET = process.env.NEXTAUTH_SECRET || "lorabiz-campaign-unsubscribe-secret-salt";
+
+export function generateUnsubscribeToken(userId: string, email: string): string {
+  return crypto
+    .createHmac("sha256", UNSUBSCRIBE_SECRET)
+    .update(`${userId}:${email.toLowerCase().trim()}`)
+    .digest("hex");
+}
+
+export function verifyUnsubscribeToken(userId: string, email: string, token: string): boolean {
+  try {
+    const expected = generateUnsubscribeToken(userId, email);
+    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(token, "hex"));
+  } catch {
+    return false;
+  }
+}
+
+export function getCampaignLayout(content: string, previewText: string = "", unsubscribeUrl?: string) {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>LoraBiz Announcement</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f5f7; color: #1e293b; -webkit-font-smoothing: antialiased;">
+      
+      <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; color: #f4f5f7; line-height: 1px;">
+        ${previewText}
+        &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #f4f5f7; margin: 0; padding: 40px 16px;">
+        <tr>
+          <td align="center">
+            <table width="100%" max-width="560" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); border: 1px solid #e2e8f0; width: 100%; max-width: 560px; margin: 0 auto;">
+              
+              <!-- Header -->
+              <tr>
+                <td align="center" style="background-color: #0f172a; padding: 28px 32px;">
+                  <img src="https://lorabiz.com/logo.png" alt="LoraBiz" width="150" height="auto" style="display: block; border: 0; outline: none; text-decoration: none;" />
+                </td>
+              </tr>
+
+              <!-- Main Body Content -->
+              <tr>
+                <td style="padding: 32px; background-color: #ffffff; color: #334155; line-height: 1.65; font-size: 15px; font-family: sans-serif;">
+                  ${content}
+                </td>
+              </tr>
+
+              <!-- Footer Banner -->
+              <tr>
+                <td align="center" style="padding: 0; background-color: #ffffff;">
+                  <img src="https://lorabiz.com/lorabiz-footer.jpg" alt="LoraBiz Services" width="560" height="auto" style="display: block; border: 0; max-width: 100%; height: auto; outline: none;" />
+                </td>
+              </tr>
+
+              <!-- Footer Details & Unsubscribe -->
+              <tr>
+                <td align="center" style="background-color: #f8fafc; padding: 24px 32px; border-top: 1px solid #f1f5f9;">
+                  <p style="color: #64748b; font-size: 12px; margin: 0 0 10px; line-height: 1.6; font-family: sans-serif;">
+                    You are receiving this email as a registered user of LoraBiz.<br/>
+                    &copy; ${new Date().getFullYear()} Quadrox Technologies Limited. All rights reserved.
+                  </p>
+                  ${
+                    unsubscribeUrl
+                      ? `<p style="margin: 0; font-size: 11px; font-family: sans-serif;">
+                          <a href="${unsubscribeUrl}" style="color: #94a3b8; text-decoration: underline;">Unsubscribe from marketing emails</a>
+                         </p>`
+                      : ""
+                  }
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+export function interpolateMergeTags(
+  template: string,
+  user: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email: string;
+    referralCode?: string | null;
+  }
+): string {
+  const firstName = user.firstName?.trim() || "Valued Client";
+  const lastName = user.lastName?.trim() || "";
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Valued Client";
+  const email = user.email;
+  const referralCode = user.referralCode || "";
+
+  return template
+    .replace(/\{\{\s*firstName\s*\}\}/gi, firstName)
+    .replace(/\{\{\s*first_name\s*\}\}/gi, firstName)
+    .replace(/\{\{\s*lastName\s*\}\}/gi, lastName)
+    .replace(/\{\{\s*last_name\s*\}\}/gi, lastName)
+    .replace(/\{\{\s*fullName\s*\}\}/gi, fullName)
+    .replace(/\{\{\s*full_name\s*\}\}/gi, fullName)
+    .replace(/\{\{\s*name\s*\}\}/gi, firstName)
+    .replace(/\{\{\s*email\s*\}\}/gi, email)
+    .replace(/\{\{\s*referralCode\s*\}\}/gi, referralCode)
+    .replace(/\{\{\s*referral_code\s*\}\}/gi, referralCode);
+}
+
+export async function sendCampaignBroadcastEmail({
+  to,
+  userId,
+  subject,
+  previewText,
+  rawContent,
+  userMetadata,
+  baseUrl = "https://lorabiz.com",
+}: {
+  to: string;
+  userId?: string;
+  subject: string;
+  previewText?: string;
+  rawContent: string;
+  userMetadata: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email: string;
+    referralCode?: string | null;
+  };
+  baseUrl?: string;
+}) {
+  const interpolatedSubject = interpolateMergeTags(subject, userMetadata);
+  const interpolatedPreview = previewText ? interpolateMergeTags(previewText, userMetadata) : "";
+  const interpolatedContent = interpolateMergeTags(rawContent, userMetadata);
+
+  let unsubscribeUrl: string | undefined;
+  if (userId) {
+    const token = generateUnsubscribeToken(userId, to);
+    unsubscribeUrl = `${baseUrl.replace(/\/$/, "")}/unsubscribe?uid=${encodeURIComponent(userId)}&email=${encodeURIComponent(to)}&token=${token}`;
+  }
+
+  const htmlBody = getCampaignLayout(interpolatedContent, interpolatedPreview, unsubscribeUrl);
+
+  return sendEmail({
+    to,
+    subject: interpolatedSubject,
+    htmlBody,
+  });
+}
+
+export async function sendTestCampaignEmail({
+  to,
+  subject,
+  previewText,
+  rawContent,
+  sampleName = "Test Recipient",
+  baseUrl = "https://lorabiz.com",
+}: {
+  to: string;
+  subject: string;
+  previewText?: string;
+  rawContent: string;
+  sampleName?: string;
+  baseUrl?: string;
+}) {
+  const testMetadata = {
+    firstName: sampleName.split(" ")[0] || "Jane",
+    lastName: sampleName.split(" ")[1] || "Doe",
+    email: to,
+    referralCode: "TEST-REF-999",
+  };
+
+  const testSubject = `[TEST PREVIEW] ${interpolateMergeTags(subject, testMetadata)}`;
+  const interpolatedPreview = previewText ? interpolateMergeTags(previewText, testMetadata) : "";
+  const interpolatedContent = `
+    <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #92400e;">
+      <strong>⚠️ Campaign Preview Mode:</strong> This is a test broadcast dispatched to ${to}. Placeholders have been populated with sample merge data.
+    </div>
+    ${interpolateMergeTags(rawContent, testMetadata)}
+  `;
+
+  const dummyUnsubscribeUrl = `${baseUrl.replace(/\/$/, "")}/unsubscribe?preview=true`;
+  const htmlBody = getCampaignLayout(interpolatedContent, interpolatedPreview, dummyUnsubscribeUrl);
+
+  return sendEmail({
+    to,
+    subject: testSubject,
+    htmlBody,
+  });
+}
+
