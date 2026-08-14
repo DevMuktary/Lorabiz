@@ -6,6 +6,7 @@ import { NotificationEvent } from "@/services/notifications";
 import { notificationQueue } from "@/lib/queue";
 import { redis } from "@/lib/redis";
 import { sendScumlSubmittedEmail } from "@/lib/email";
+import { logUserActivity } from "@/lib/activity-logger";
 
 export async function POST(req: Request) {
   console.log("\n==============================================");
@@ -221,7 +222,70 @@ export async function POST(req: Request) {
       }
 
       if (isPaymentFullySuccessful) {
-        if (serviceType === "scuml" && scumlDraft && registrationId) {
+        if (serviceType === "wallet_funding") {
+          // Log wallet funding activity
+          logUserActivity({
+            userId: user.id,
+            action: "WALLET_FUNDING_SUCCESS",
+            category: "WALLET",
+            description: `Wallet funded with ₦${amountPaid.toLocaleString()}`,
+            referenceId: reference,
+            metadata: { amount: amountPaid },
+            req,
+          });
+
+          // Check if this is the user's first successful wallet funding
+          try {
+            const alreadySentFundingEmail = await prisma.automatedEmailLog.findFirst({
+              where: {
+                userId: user.id,
+                emailType: "FIRST_WALLET_FUNDING",
+              },
+            });
+
+            if (!alreadySentFundingEmail) {
+              const currentWallet = await prisma.wallet.findUnique({
+                where: { userId: user.id },
+              });
+              const currentBalance = currentWallet ? Number(currentWallet.balance) : amountPaid;
+
+              const host = req.headers.get("host") || "lorabiz.com";
+              const protocol = host.includes("localhost") ? "http" : "https";
+              const baseUrl = `${protocol}://${host}`;
+
+              await notificationQueue.add(
+                "send-first-wallet-funding-email",
+                {
+                  type: "FIRST_WALLET_FUNDING_EMAIL",
+                  userId: user.id,
+                  email: user.email!,
+                  firstName: user.firstName || "Valued Client",
+                  amount: amountPaid,
+                  balance: currentBalance,
+                  reference,
+                  baseUrl,
+                },
+                {
+                  attempts: 3,
+                  backoff: { type: "exponential", delay: 5000 },
+                  removeOnComplete: true,
+                }
+              );
+            }
+          } catch (fundingErr) {
+            console.error("Failed to check/enqueue first wallet funding email:", fundingErr);
+          }
+        } else if (serviceType === "scuml" && scumlDraft && registrationId) {
+          logUserActivity({
+            userId: user.id,
+            action: "SCUML_SUBMITTED",
+            category: "SERVICES",
+            description: `SCUML certificate application submitted for "${scumlDraft.companyName}"`,
+            referenceId: reference,
+            metadata: { companyName: scumlDraft.companyName, amount: amountPaid },
+            req,
+          });
+
           await redis.del(registrationId);
           try {
             await sendScumlSubmittedEmail({
@@ -235,6 +299,16 @@ export async function POST(req: Request) {
             console.error("Failed to send SCUML email via Webhook:", err);
           }
         } else if (notificationPayload) {
+          logUserActivity({
+            userId: user.id,
+            action: "CAC_APPLICATION_SUBMITTED",
+            category: "CAC",
+            description: `CAC ${serviceType === "llc" ? "Company (LLC)" : "Business Name"} application submitted for "${regName}"`,
+            referenceId: displayId || reference,
+            metadata: { entityType: serviceType, proposedName: regName, amount: amountPaid },
+            req,
+          });
+
           await notificationQueue.add("send-application-notification", notificationPayload, {
             attempts: 3, 
             backoff: { type: "exponential", delay: 5000 }, 

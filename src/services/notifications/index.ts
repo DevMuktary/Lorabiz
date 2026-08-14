@@ -10,7 +10,10 @@ import {
   sendScumlCompletedEmail,
   sendScumlFailedEmail,
   sendTaxIdCompletedEmail,
-  sendTaxIdFailedEmail
+  sendTaxIdFailedEmail,
+  sendWelcomeEmail,
+  sendFirstWalletFundingEmail,
+  sendAbandonedCacReminderEmail,
 } from "@/lib/email";
 
 export type NotificationEvent =
@@ -25,7 +28,10 @@ export type NotificationEvent =
   | { type: "SCUML_COMPLETED"; userId: string; phone: string; email: string; name: string; companyName: string; transactionRef: string; finalCertificateUrl: string; }
   | { type: "SCUML_FAILED"; userId: string; email: string; name: string; companyName: string; transactionRef: string; failureReason: string; refundAmount: number; }
   | { type: "TAXID_COMPLETED"; userId: string; email: string; name: string; requestType: string; taxIdNumber: string; transactionRef: string; taxIdImageUrl?: string; }
-  | { type: "TAXID_FAILED"; userId: string; email: string; name: string; requestType: string; failureReason: string; refundAmount: number; transactionRef: string; };
+  | { type: "TAXID_FAILED"; userId: string; email: string; name: string; requestType: string; failureReason: string; refundAmount: number; transactionRef: string; }
+  | { type: "WELCOME_EMAIL"; userId: string; email: string; firstName: string; baseUrl?: string; }
+  | { type: "FIRST_WALLET_FUNDING_EMAIL"; userId: string; email: string; firstName: string; amount: number; balance: number; reference: string; baseUrl?: string; }
+  | { type: "ABANDONED_CAC_EMAIL"; userId: string; email: string; firstName: string; businessName: string; entityType: string; trackingId: string; registrationId: string; continueUrl: string; };
 
 export async function dispatchNotification(event: NotificationEvent): Promise<void> {
   switch (event.type) {
@@ -217,6 +223,120 @@ export async function dispatchNotification(event: NotificationEvent): Promise<vo
         to: event.email, name: event.name, requestType: event.requestType, 
         failureReason: event.failureReason, refundAmount: event.refundAmount
       });
+      break;
+    }
+
+    // =====================================
+    // AUTOMATED LIFECYCLE EMAILS (WITH DEDUP)
+    // =====================================
+    case "WELCOME_EMAIL": {
+      try {
+        const existing = await prisma.automatedEmailLog.findFirst({
+          where: {
+            userId: event.userId,
+            emailType: "WELCOME",
+          },
+        });
+
+        if (existing) {
+          console.log(`ℹ️ Welcome email already sent to user ${event.userId}. Skipping duplicate.`);
+          break;
+        }
+
+        await sendWelcomeEmail({
+          to: event.email,
+          firstName: event.firstName,
+          baseUrl: event.baseUrl,
+        });
+
+        await prisma.automatedEmailLog.create({
+          data: {
+            userId: event.userId,
+            email: event.email,
+            emailType: "WELCOME",
+            status: "SENT",
+          },
+        });
+      } catch (err: any) {
+        console.error("Failed to dispatch Welcome Email:", err);
+      }
+      break;
+    }
+
+    case "FIRST_WALLET_FUNDING_EMAIL": {
+      try {
+        const existing = await prisma.automatedEmailLog.findFirst({
+          where: {
+            userId: event.userId,
+            emailType: "FIRST_WALLET_FUNDING",
+          },
+        });
+
+        if (existing) {
+          console.log(`ℹ️ First wallet funding email already sent to user ${event.userId}. Skipping duplicate.`);
+          break;
+        }
+
+        await sendFirstWalletFundingEmail({
+          to: event.email,
+          firstName: event.firstName,
+          amount: event.amount,
+          balance: event.balance,
+          reference: event.reference,
+          baseUrl: event.baseUrl,
+        });
+
+        await prisma.automatedEmailLog.create({
+          data: {
+            userId: event.userId,
+            email: event.email,
+            emailType: "FIRST_WALLET_FUNDING",
+            entityId: event.reference,
+            status: "SENT",
+          },
+        });
+      } catch (err: any) {
+        console.error("Failed to dispatch First Wallet Funding Email:", err);
+      }
+      break;
+    }
+
+    case "ABANDONED_CAC_EMAIL": {
+      try {
+        const existing = await prisma.automatedEmailLog.findFirst({
+          where: {
+            userId: event.userId,
+            emailType: "ABANDONED_CAC",
+            entityId: event.registrationId,
+          },
+        });
+
+        if (existing) {
+          console.log(`ℹ️ Abandoned CAC reminder already sent for registration ${event.registrationId}. Skipping duplicate.`);
+          break;
+        }
+
+        await sendAbandonedCacReminderEmail({
+          to: event.email,
+          firstName: event.firstName,
+          businessName: event.businessName,
+          entityType: event.entityType,
+          trackingId: event.trackingId,
+          continueUrl: event.continueUrl,
+        });
+
+        await prisma.automatedEmailLog.create({
+          data: {
+            userId: event.userId,
+            email: event.email,
+            emailType: "ABANDONED_CAC",
+            entityId: event.registrationId,
+            status: "SENT",
+          },
+        });
+      } catch (err: any) {
+        console.error("Failed to dispatch Abandoned CAC Reminder Email:", err);
+      }
       break;
     }
   }

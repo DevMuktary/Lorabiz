@@ -13,7 +13,8 @@ import {
   SquaresFour, Buildings, ShieldCheck, Copyright, 
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
-  FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator
+  FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
+  ClockCounterClockwise
 } from "@phosphor-icons/react";
 
 type NavLink = {
@@ -70,6 +71,7 @@ const NAVIGATION: NavCategory[] = [
   {
     category: "Management",
     links: [
+      { name: "Activity History", href: "/dashboard/activity", icon: ClockCounterClockwise },
       { name: "Profile Settings", href: "/dashboard/settings", icon: UserCircle },
     ]
   }

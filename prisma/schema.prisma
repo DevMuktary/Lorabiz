@@ -137,6 +137,10 @@ model User {
   campaignsCreated EmailCampaign[]    @relation("CampaignAuthor")
   campaignLogs     EmailCampaignLog[]
   
+  // --- USER ACTIVITY & AUTOMATED EMAIL LOGS ---
+  activityLogs       UserActivityLog[]
+  automatedEmailLogs AutomatedEmailLog[]
+  
   // --- STAFF ASSIGNMENTS ---
   assignedBiz      BusinessRegistration[] @relation("BizStaffAssignment")
   assignedLlcs     LlcRegistration[]      @relation("LlcStaffAssignment")
@@ -699,5 +703,52 @@ model EmailCampaignLog {
   @@index([userId])
   @@index([status])
   @@index([email])
+}
+
+// ==========================================
+// USER ACTIVITY & EVENT LOG
+// ==========================================
+
+model UserActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String   // e.g. "USER_REGISTERED", "CAC_DRAFT_STARTED", "WALLET_FUNDING_SUCCESS"
+  category    String   // "AUTH" | "CAC" | "WALLET" | "SERVICES" | "SECURITY"
+  description String   // Clear, human-readable summary
+  status      String   @default("SUCCESS") // "SUCCESS" | "PENDING" | "FAILED"
+  referenceId String?  // e.g. CAC trackingId "849201", Tx Ref "FW_USR_..."
+  metadata    Json?    // Safe metadata only (strictly zero secrets/passwords)
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([category])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ==========================================
+// AUTOMATED EMAIL LOG (DEDUP & AUDIT)
+// ==========================================
+
+model AutomatedEmailLog {
+  id           String    @id @default(cuid())
+  userId       String
+  email        String
+  emailType    String    // "WELCOME", "FIRST_WALLET_FUNDING", "ABANDONED_CAC"
+  entityId     String?   // e.g. Registration ID or Transaction Reference
+  status       String    @default("SENT") // "SENT" | "FAILED"
+  errorMessage String?   @db.Text
+  sentAt       DateTime  @default(now())
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, emailType, entityId])
+  @@index([userId])
+  @@index([emailType])
+  @@index([sentAt])
 }
 

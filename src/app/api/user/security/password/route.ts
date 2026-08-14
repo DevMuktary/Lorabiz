@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordChangeOTP } from "@/lib/email";
+import { logUserActivity } from "@/lib/activity-logger";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
@@ -65,6 +66,14 @@ export async function POST(req: Request) {
         }),
         prisma.otpCode.delete({ where: { email: userEmail } })
       ]);
+
+      logUserActivity({
+        userId: user.id,
+        action: "PASSWORD_CHANGED",
+        category: "SECURITY",
+        description: "Account password updated via OTP verification",
+        req,
+      });
 
       return NextResponse.json({ success: true, message: "Password securely updated." });
     }
