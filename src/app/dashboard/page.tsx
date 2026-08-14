@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { 
   ArrowRight, 
@@ -18,144 +18,161 @@ import {
   CheckCircle, 
   WarningCircle, 
   Clock, 
-  Users
+  Users, 
+  Wallet,
+  Receipt,
+  Buildings,
+  ShieldCheck,
+  IdentificationCard,
+  DeviceMobile,
+  Cards,
+  ArrowUpRight,
+  Handshake,
+  Check
 } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 
-type FilterTab = "ALL" | "LIVE" | "CORPORATE" | "IDENTITY" | "WAITLIST";
-
 interface ServiceItem {
   title: string;
+  category: string;
   description: string;
   logo: string;
   href?: string;
-  active: boolean;
-  category: "CORPORATE" | "IDENTITY" | "UTILITY" | "REGULATORY";
   turnaround?: string;
+  actionText?: string;
+  active: boolean;
 }
 
-const SERVICES: ServiceItem[] = [
+const LIVE_SERVICES: ServiceItem[] = [
   {
-    title: "CAC Registration",
-    description: "Register Business Names, LLCs, Incorporated Trustees, and handle filings.",
+    title: "CAC Company Registration",
+    category: "Corporate Affairs Commission",
+    description: "Incorporate Business Names, Private Limited Companies (LLC), and NGOs with official certificates.",
     logo: "/cac.png",
     href: "/dashboard/cac",
-    active: true,
-    category: "CORPORATE",
     turnaround: "3–5 Working Days",
+    actionText: "Start Registration",
+    active: true,
   },
   {
-    title: "SCUML Certificate",
-    description: "Special Control Unit Against Money Laundering compliance & certificate.",
+    title: "SCUML Compliance Certificate",
+    category: "EFCC / Regulatory",
+    description: "Special Control Unit Against Money Laundering compliance certificate for corporate bank accounts.",
     logo: "/scuml.png",
     href: "/dashboard/scuml",
-    active: true,
-    category: "CORPORATE",
     turnaround: "5–7 Working Days",
+    actionText: "File SCUML Application",
+    active: true,
   },
   {
-    title: "NIMC Services",
-    description: "National Identity Number (NIN) slip verification and instant PDF download.",
+    title: "NIMC Identity (NIN Slips)",
+    category: "National Identity Management",
+    description: "Instant NIN verification, Premium NIN slips, and standard PDF slip downloads.",
     logo: "/nimc.png",
     href: "/dashboard/tools/nin-slip",
-    active: true,
-    category: "IDENTITY",
     turnaround: "Instant Download",
+    actionText: "Generate NIN Slip",
+    active: true,
   },
   {
-    title: "Tax ID (TIN)",
-    description: "Official JTB / FIRS Tax Identification Number processing & verification.",
+    title: "Tax Identification Number (TIN)",
+    category: "Joint Tax Board / FIRS",
+    description: "Official corporate and individual Tax ID processing for tax clearance and banking.",
     logo: "/nrs.png",
     href: "/dashboard/tax-id",
-    active: true,
-    category: "IDENTITY",
     turnaround: "24–48 Hours",
+    actionText: "Process Tax ID",
+    active: true,
   },
   {
-    title: "Airtime & Utilities",
-    description: "Instant mobile airtime and bill payment directly from your wallet.",
+    title: "Airtime & Utility Top-up",
+    category: "Instant VTU Services",
+    description: "Direct mobile airtime and data recharges across all Nigerian telecom networks.",
     logo: "/airtime.png",
     href: "/dashboard/airtime",
-    active: true,
-    category: "UTILITY",
     turnaround: "Instant Delivery",
+    actionText: "Recharge Airtime",
+    active: true,
   },
+];
+
+const UPCOMING_SERVICES: ServiceItem[] = [
   {
-    title: "Trademark (IPO)",
-    description: "Protect your intellectual property, logos, and brand identity in Nigeria.",
+    title: "Trademark & Brand (IPO)",
+    category: "Intellectual Property",
+    description: "Protect brand names, logos, and proprietary trademarks with the Ministry of Industry, Trade & Investment.",
     logo: "/ipo.png",
     active: false,
-    category: "CORPORATE",
   },
   {
-    title: "Copyright Commission",
-    description: "Safeguard creative works, software, music, and literary assets.",
+    title: "Copyright Commission (NCC)",
+    category: "Copyright Protection",
+    description: "Safeguard software source code, creative publications, audio-visuals, and artistic assets.",
     logo: "/ncc.jpg",
     active: false,
-    category: "CORPORATE",
   },
   {
     title: "Smart Legal Documents",
-    description: "Generate compliant board resolutions, NDAs, and business agreements.",
+    category: "Legal & Contracts",
+    description: "Generate legally compliant NDAs, board resolutions, terms of service, and partnership deeds.",
     logo: "/file.svg",
     active: false,
-    category: "IDENTITY",
   },
   {
     title: "Build Online Presence",
-    description: "Custom domain, professional business email, website, and Google profile.",
+    category: "Digital Identity",
+    description: "Custom domain, professional business email accounts, website creation, and Google Business Profile.",
     logo: "/globe.svg",
     active: false,
-    category: "UTILITY",
   },
   {
-    title: "NAFDAC Registration",
-    description: "Register and certify food, drug, and cosmetic products with NAFDAC.",
+    title: "NAFDAC Certification",
+    category: "Food & Drug Administration",
+    description: "Product registration and certification for food, cosmetics, packaged water, and medical items.",
     logo: "/nafdac.png",
     active: false,
-    category: "REGULATORY",
   },
   {
     title: "PENCOM Compliance",
-    description: "Process Pension Clearance Certificates for federal contract eligibility.",
+    category: "National Pension Commission",
+    description: "Process Pension Clearance Certificates required for federal contractor and procurement eligibility.",
     logo: "/pencom.jpg",
     active: false,
-    category: "REGULATORY",
   },
   {
-    title: "SON Certification",
-    description: "Ensure products meet Standard Organisation of Nigeria requirements.",
+    title: "SON Quality Certification",
+    category: "Standards Organisation",
+    description: "Ensure products meet mandatory industrial standards and obtain MANCAP certifications.",
     logo: "/son.jpg",
     active: false,
-    category: "REGULATORY",
   },
   {
     title: "NEPC Export License",
-    description: "Fast-track registration with the Nigerian Export Promotion Council.",
+    category: "Export Promotion Council",
+    description: "Fast-track registration and obtain official export clearance for international commerce.",
     logo: "/nepc.jpg",
     active: false,
-    category: "REGULATORY",
   },
   {
-    title: "Bureau of Public Procurement",
-    description: "Get certified for Federal Government contracts and procurement tenders.",
+    title: "Bureau of Public Procurement (BPP)",
+    category: "Federal Tenders",
+    description: "Register on the National Database of Contractors to bid for Federal Government contracts.",
     logo: "/bpp.png",
     active: false,
-    category: "REGULATORY",
   },
   {
-    title: "Expert Tax Consultation",
-    description: "Connect with certified tax professionals for FIRS compliance and TCC.",
+    title: "Expert Tax & TCC Consultation",
+    category: "FIRS Tax Advisory",
+    description: "One-on-one sessions with chartered accountants for Tax Clearance Certificate filings and auditing.",
     logo: "/nrs.png",
     active: false,
-    category: "IDENTITY",
   },
   {
-    title: "SMEDAN Registration",
-    description: "Official MSME certification with Small and Medium Enterprises agency.",
+    title: "SMEDAN Certification",
+    category: "MSME Development",
+    description: "Official registration with the Small and Medium Enterprises Development Agency of Nigeria.",
     logo: "/smedan.png",
     active: false,
-    category: "CORPORATE",
   },
 ];
 
@@ -174,24 +191,34 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
-  // Active filter tab
-  const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
-
-  // Top banner dismissal state
-  const [isBannerDismissed, setIsBannerDismissed] = useState<boolean>(true);
+  // Partner Announcement Pop-up Modal
+  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const dismissed = localStorage.getItem("lorabiz_partner_banner_v3");
-      setIsBannerDismissed(dismissed === "true");
+      const hasSeenModal = localStorage.getItem("lorabiz_partner_modal_seen_v1");
+      if (!hasSeenModal) {
+        // Show announcement modal on first visit
+        const timer = setTimeout(() => {
+          setIsPartnerModalOpen(true);
+        }, 600);
+        return () => clearTimeout(timer);
+      }
     }
   }, []);
 
-  const handleDismissBanner = () => {
-    setIsBannerDismissed(true);
+  const handleClosePartnerModal = () => {
+    setIsPartnerModalOpen(false);
     if (typeof window !== "undefined") {
-      localStorage.setItem("lorabiz_partner_banner_v3", "true");
+      localStorage.setItem("lorabiz_partner_modal_seen_v1", "true");
     }
+  };
+
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
   };
 
   const fetchBalance = () => {
@@ -227,7 +254,7 @@ export default function DashboardPage() {
         setAlertInfo({
           type: "loading",
           title: "Verifying Payment",
-          message: "Confirming transaction status with the bank..."
+          message: "Confirming transaction status with the banking network..."
         });
 
         fetch('/api/payment/verify', {
@@ -331,314 +358,398 @@ export default function DashboardPage() {
     }
   };
 
-  const filteredServices = useMemo(() => {
-    switch (activeTab) {
-      case "LIVE":
-        return SERVICES.filter(s => s.active);
-      case "CORPORATE":
-        return SERVICES.filter(s => s.category === "CORPORATE");
-      case "IDENTITY":
-        return SERVICES.filter(s => s.category === "IDENTITY" || s.category === "UTILITY");
-      case "WAITLIST":
-        return SERVICES.filter(s => !s.active);
-      case "ALL":
-      default:
-        return SERVICES;
-    }
-  }, [activeTab]);
-
-  const liveCount = SERVICES.filter(s => s.active).length;
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-12">
 
       {/* ========================================================================= */}
-      {/* 1. TOP-OF-PAGE DISMISSIBLE PARTNER PROGRAM PROMOTION BANNER               */}
+      {/* 1. EXECUTIVE WELCOME & GATEWAY STATUS                                     */}
       {/* ========================================================================= */}
-      {!isBannerDismissed && (
-        <div className="relative rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 sm:p-5 border border-indigo-500/30 shadow-md">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pr-8">
-            <div className="flex items-center gap-3.5">
-              <div className="h-10 w-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
-                <Users className="h-5 w-5 text-indigo-300" weight="bold" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+            {getTimeGreeting()}, {firstName}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Access CAC registrations, SCUML compliance, and identity services in Nigeria.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto bg-card border border-border px-3.5 py-1.5 rounded-full shadow-sm text-xs font-semibold text-muted-foreground">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>All Portals Operational</span>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. FINANCIAL COMMAND & ACTION BENTO GRID                                  */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        {/* Main Wallet Financial Hub */}
+        <div className="lg:col-span-7 p-6 sm:p-7 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between relative overflow-hidden group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <Wallet className="h-5 w-5" weight="bold" />
               </div>
-              <div>
-                <h3 className="font-bold text-sm sm:text-base text-white flex items-center gap-2">
-                  Earn with the LoraBiz Partner Program
-                </h3>
-                <p className="text-xs text-slate-300 mt-0.5 max-w-xl leading-relaxed">
-                  Refer clients and earn instant cash commissions on every corporate filing. Set up your payout bank account to start.
-                </p>
-              </div>
+              <span className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
+                Available Wallet Balance
+              </span>
             </div>
 
-            <Link
-              href="/dashboard/referrals"
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-sm shrink-0 whitespace-nowrap"
+            <button 
+              onClick={() => setIsBalanceHidden(!isBalanceHidden)}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-xl transition-colors cursor-pointer"
+              title={isBalanceHidden ? "Show Balance" : "Hide Balance"}
+              aria-label="Toggle balance visibility"
             >
-              <span>View Partner Hub</span>
-              <ArrowRight className="h-3.5 w-3.5" weight="bold" />
+              {isBalanceHidden ? <EyeSlash className="h-4 w-4" weight="bold" /> : <Eye className="h-4 w-4" weight="bold" />}
+            </button>
+          </div>
+
+          <div className="my-3">
+            <div className="text-3xl sm:text-4xl font-black text-foreground tracking-tight flex items-center gap-2">
+              {isLoadingBalance ? (
+                <Spinner className="animate-spin h-7 w-7 text-muted-foreground" weight="bold" />
+              ) : isBalanceHidden ? (
+                <span className="tracking-widest text-2xl font-mono text-muted-foreground">••••••••</span>
+              ) : (
+                <>
+                  <span className="text-2xl font-bold text-muted-foreground">₦</span>
+                  {Number(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ready for instant 1-click checkout across all active compliance portals.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 pt-4 border-t border-border/80">
+            <button 
+              onClick={() => setIsWalletModalOpen(true)}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-2xl font-bold text-xs hover:shadow-lg hover:shadow-primary/25 transition-all active:scale-[0.98] cursor-pointer"
+            >
+              <Plus weight="bold" className="h-4 w-4" />
+              Fund Wallet
+            </button>
+
+            <Link
+              href="/dashboard/transactions"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-3 bg-secondary text-foreground rounded-2xl font-bold text-xs hover:bg-secondary/80 border border-border transition-colors"
+            >
+              <Receipt className="h-4 w-4" />
+              <span>Ledger</span>
+            </Link>
+
+            <Link
+              href="/dashboard/pricing"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-3 bg-secondary text-foreground rounded-2xl font-bold text-xs hover:bg-secondary/80 border border-border transition-colors"
+            >
+              <Tag className="h-4 w-4" />
+              <span>Rates</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Partner Program & Shortcuts Hub */}
+        <div className="lg:col-span-5 flex flex-col justify-between gap-4">
+          
+          {/* Partner Program Teaser Card */}
+          <Link
+            href="/dashboard/referrals"
+            className="p-5 rounded-3xl bg-gradient-to-br from-indigo-950/90 via-slate-900 to-slate-950 text-white border border-indigo-500/30 shadow-sm hover:border-indigo-400/60 transition-all group flex flex-col justify-between"
+          >
+            <div className="flex items-start justify-between">
+              <div className="h-10 w-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                <Users className="h-5 w-5" weight="bold" />
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-300 group-hover:text-white transition-colors">
+                Partner Hub <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </span>
+            </div>
+
+            <div className="mt-4">
+              <h3 className="text-base font-bold text-white tracking-tight">
+                Earn Cash with the Partner Program
+              </h3>
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                Refer business owners and earn commissions directly to your Nigerian bank account.
+              </p>
+            </div>
+          </Link>
+
+          {/* Quick Action Dock */}
+          <div className="p-4 rounded-3xl bg-card border border-border shadow-sm flex items-center justify-between gap-2">
+            <Link
+              href="/dashboard/cac"
+              className="flex-1 flex flex-col items-center justify-center p-2.5 rounded-2xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors group"
+              title="CAC Registration"
+            >
+              <div className="h-9 w-9 rounded-xl bg-secondary flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors mb-1">
+                <Buildings className="h-4 w-4" weight="bold" />
+              </div>
+              <span className="text-[11px] font-bold">CAC</span>
+            </Link>
+
+            <Link
+              href="/dashboard/scuml"
+              className="flex-1 flex flex-col items-center justify-center p-2.5 rounded-2xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors group"
+              title="SCUML Compliance"
+            >
+              <div className="h-9 w-9 rounded-xl bg-secondary flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors mb-1">
+                <ShieldCheck className="h-4 w-4" weight="bold" />
+              </div>
+              <span className="text-[11px] font-bold">SCUML</span>
+            </Link>
+
+            <Link
+              href="/dashboard/tools/nin-slip"
+              className="flex-1 flex flex-col items-center justify-center p-2.5 rounded-2xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors group"
+              title="NIN Services"
+            >
+              <div className="h-9 w-9 rounded-xl bg-secondary flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors mb-1">
+                <IdentificationCard className="h-4 w-4" weight="bold" />
+              </div>
+              <span className="text-[11px] font-bold">NIN</span>
+            </Link>
+
+            <Link
+              href="/dashboard/airtime"
+              className="flex-1 flex flex-col items-center justify-center p-2.5 rounded-2xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors group"
+              title="Airtime Recharge"
+            >
+              <div className="h-9 w-9 rounded-xl bg-secondary flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors mb-1">
+                <DeviceMobile className="h-4 w-4" weight="bold" />
+              </div>
+              <span className="text-[11px] font-bold">Airtime</span>
             </Link>
           </div>
 
-          <button
-            onClick={handleDismissBanner}
-            className="absolute top-3.5 right-3.5 p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-            aria-label="Dismiss banner"
-          >
-            <X className="h-4 w-4" weight="bold" />
-          </button>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. CORE SHOWCASE: LIVE COMPLIANCE SERVICES (ACTIVE & INSTANT)             */}
+      {/* ========================================================================= */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
+          <div>
+            <h2 className="text-xl font-black text-foreground tracking-tight flex items-center gap-2">
+              <span>Active Compliance Services</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                5 Live
+              </span>
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Verified corporate filings, tax registrations, and identity lookups with official turnaround guarantees.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {LIVE_SERVICES.map((service) => (
+            <Link
+              key={service.title}
+              href={service.href!}
+              className="group p-6 rounded-3xl bg-card border border-border hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col justify-between relative overflow-hidden"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-13 w-13 rounded-2xl bg-secondary/80 border border-border/80 p-2.5 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                    <Image 
+                      src={service.logo} 
+                      alt={service.title} 
+                      width={52} 
+                      height={52} 
+                      className="object-contain w-full h-full"
+                    />
+                  </div>
+
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Instant Gateway
+                  </span>
+                </div>
+
+                <div className="mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+                    {service.category}
+                  </span>
+                  <h3 className="text-lg font-bold text-foreground mt-0.5 group-hover:text-primary transition-colors leading-snug">
+                    {service.title}
+                  </h3>
+                </div>
+
+                <p className="text-xs text-muted-foreground leading-relaxed mb-5 line-clamp-3">
+                  {service.description}
+                </p>
+              </div>
+
+              <div>
+                {service.turnaround && (
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground bg-secondary/60 border border-border/70 px-3 py-1.5 rounded-xl w-fit mb-4">
+                    <Clock className="h-3.5 w-3.5 text-primary" weight="bold" />
+                    <span>Turnaround: {service.turnaround}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-center gap-2 w-full py-3 bg-primary text-primary-foreground font-bold text-xs rounded-2xl shadow-sm group-hover:shadow-md group-hover:shadow-primary/20 transition-all">
+                  <span>{service.actionText}</span>
+                  <ArrowRight weight="bold" className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 4. ECOSYSTEM & ROADMAP (UPCOMING SERVICES)                                 */}
+      {/* ========================================================================= */}
+      <div className="space-y-4 pt-4">
+        <div className="border-b border-border pb-3">
+          <h2 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
+            <span>Upcoming Regulatory Services</span>
+            <span className="text-xs font-semibold text-muted-foreground">({UPCOMING_SERVICES.length} in development)</span>
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Join the waitlist to receive early access and launch discounts when these services go live.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {UPCOMING_SERVICES.map((service) => (
+            <div
+              key={service.title}
+              onClick={() => handleWaitlist(service.title)}
+              className="p-5 rounded-2xl bg-card/50 border border-border/70 hover:border-border hover:bg-card transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="h-11 w-11 rounded-xl bg-secondary border border-border p-2 flex items-center justify-center grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+                    <Image 
+                      src={service.logo} 
+                      alt={service.title} 
+                      width={44} 
+                      height={44} 
+                      className="object-contain w-full h-full"
+                    />
+                  </div>
+
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-secondary text-muted-foreground border border-border">
+                    <Sparkle weight="fill" className="h-3 w-3" />
+                    Waitlist
+                  </span>
+                </div>
+
+                <span className="text-[9px] font-extrabold uppercase tracking-widest text-muted-foreground">
+                  {service.category}
+                </span>
+                <h4 className="text-sm font-bold text-foreground mt-0.5 mb-1.5 leading-snug">
+                  {service.title}
+                </h4>
+
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-4">
+                  {service.description}
+                </p>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleWaitlist(service.title);
+                }}
+                className="flex items-center justify-center gap-1.5 w-full py-2 bg-secondary text-foreground font-bold text-xs rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors cursor-pointer"
+              >
+                <span>Notify Me on Launch</span>
+                <ArrowRight weight="bold" className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 5. PARTNER PROGRAM ANNOUNCEMENT POP-UP MODAL                              */}
+      {/* ========================================================================= */}
+      {isPartnerModalOpen && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[99990] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div 
+            className="fixed inset-0" 
+            onClick={handleClosePartnerModal} 
+          />
+
+          <div className="relative w-full max-w-lg bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-950 text-white rounded-3xl border border-indigo-500/40 shadow-2xl p-6 sm:p-8 z-10 animate-in zoom-in-95 duration-200">
+            <button
+              onClick={handleClosePartnerModal}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="h-5 w-5" weight="bold" />
+            </button>
+
+            <div className="h-12 w-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 mb-4">
+              <Handshake className="h-6 w-6" weight="bold" />
+            </div>
+
+            <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/20">
+              New Partner Program
+            </span>
+
+            <h3 className="text-xl sm:text-2xl font-black text-white mt-2 tracking-tight">
+              Earn Cash Commissions on Every Corporate Filing
+            </h3>
+
+            <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+              Introduce business owners and entrepreneurs to LoraBiz. Whenever they register a CAC Business Name, LLC, or SCUML certificate, you earn instant commissions directly to your Nigerian bank account.
+            </p>
+
+            <div className="mt-5 space-y-2.5 bg-white/5 p-4 rounded-2xl border border-white/10 text-xs text-slate-200">
+              <div className="flex items-center gap-2.5">
+                <div className="h-5 w-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-indigo-300 shrink-0">
+                  <Check className="h-3 w-3" weight="bold" />
+                </div>
+                <span>Set up your payout bank details in 60 seconds</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="h-5 w-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-indigo-300 shrink-0">
+                  <Check className="h-3 w-3" weight="bold" />
+                </div>
+                <span>Get your unique referral link to share</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="h-5 w-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-indigo-300 shrink-0">
+                  <Check className="h-3 w-3" weight="bold" />
+                </div>
+                <span>Automated payouts directly to your bank</span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
+              <Link
+                href="/dashboard/referrals"
+                onClick={handleClosePartnerModal}
+                className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs rounded-2xl shadow-lg transition-colors"
+              >
+                <span>Set Up Partner Account & Link</span>
+                <ArrowRight className="h-4 w-4" weight="bold" />
+              </Link>
+              
+              <button
+                onClick={handleClosePartnerModal}
+                className="w-full sm:w-auto px-5 py-3 text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Skip for now
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* 2. BALANCED HEADER & FINANCIAL COMMAND BAR                                */}
-      {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-5 sm:p-6 rounded-2xl border border-border shadow-sm">
-        
-        {/* Left: Clean Welcome Text */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-            Welcome, {firstName}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-            Select a service below to initiate registration or compliance filing.
-          </p>
-        </div>
-
-        {/* Right: Modern Wallet & Pricing Bar */}
-        <div className="flex items-center gap-3 self-start md:self-auto">
-          <div className="flex items-center gap-3 bg-secondary/70 border border-border px-4 py-2.5 rounded-2xl">
-            <div className="flex flex-col">
-              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-tight">
-                Wallet Balance
-              </span>
-              <div className="flex items-center gap-1.5 h-5 mt-0.5">
-                <span className="font-extrabold text-foreground text-sm leading-tight flex items-center">
-                  {isLoadingBalance ? (
-                    <Spinner className="animate-spin h-3.5 w-3.5 text-muted-foreground" weight="bold" />
-                  ) : isBalanceHidden ? (
-                    "••••••••"
-                  ) : (
-                    `₦${Number(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  )}
-                </span>
-                <button 
-                  onClick={() => setIsBalanceHidden(!isBalanceHidden)}
-                  className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer ml-1"
-                  title={isBalanceHidden ? "Show Balance" : "Hide Balance"}
-                  aria-label="Toggle balance visibility"
-                >
-                  {isBalanceHidden ? <EyeSlash weight="bold" className="h-3.5 w-3.5" /> : <Eye weight="bold" className="h-3.5 w-3.5" />}
-                </button>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setIsWalletModalOpen(true)}
-              className="inline-flex items-center gap-1 px-3.5 py-2 bg-primary text-primary-foreground rounded-xl font-bold text-xs hover:shadow-md hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer ml-1"
-            >
-              <Plus weight="bold" className="h-3 w-3" />
-              Fund
-            </button>
-          </div>
-
-          <Link 
-            href="/dashboard/pricing"
-            className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground bg-secondary/50 border border-border px-3.5 py-3 rounded-2xl transition-colors"
-            title="View service pricing"
-          >
-            <Tag weight="bold" className="h-3.5 w-3.5" />
-            Pricing
-          </Link>
-        </div>
-
-        <FundWalletModal 
-          isOpen={isWalletModalOpen} 
-          onClose={() => setIsWalletModalOpen(false)} 
-          onSuccess={(amount) => {
-            setBalance((prev) => (Number(prev) + amount).toString());
-            setAlertInfo({ 
-              type: "success",
-              title: "Funding Successful", 
-              message: `Your wallet was credited with ₦${amount.toLocaleString()}.` 
-            });
-            setTimeout(fetchBalance, 3000); 
-          }}
-          onFailure={(message) => {
-            setAlertInfo({ 
-              type: "warning",
-              title: "Funding Failed", 
-              message: message 
-            });
-          }}
-        />
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. SERVICE CATEGORY FILTER TABS                                           */}
-      {/* ========================================================================= */}
-      <div className="flex items-center justify-between gap-3 border-b border-border/80 pb-3 pt-1">
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
-          <button
-            onClick={() => setActiveTab("ALL")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === "ALL" 
-                ? "bg-primary text-primary-foreground shadow-sm" 
-                : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
-            }`}
-          >
-            All Services ({SERVICES.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("LIVE")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === "LIVE" 
-                ? "bg-primary text-primary-foreground shadow-sm" 
-                : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
-            }`}
-          >
-            Live & Active ({liveCount})
-          </button>
-          <button
-            onClick={() => setActiveTab("CORPORATE")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === "CORPORATE" 
-                ? "bg-primary text-primary-foreground shadow-sm" 
-                : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
-            }`}
-          >
-            Corporate & CAC
-          </button>
-          <button
-            onClick={() => setActiveTab("IDENTITY")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === "IDENTITY" 
-                ? "bg-primary text-primary-foreground shadow-sm" 
-                : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
-            }`}
-          >
-            Identity & Tax
-          </button>
-          <button
-            onClick={() => setActiveTab("WAITLIST")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === "WAITLIST" 
-                ? "bg-primary text-primary-foreground shadow-sm" 
-                : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
-            }`}
-          >
-            Coming Soon
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. REDESIGNED SERVICE CARDS GRID                                          */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {filteredServices.map((service) => {
-          const CardContent = (
-            <div className="flex flex-col h-full">
-              
-              {/* Card Top: Logo & Status Badge */}
-              <div className="flex items-center justify-between mb-4">
-                <div className={`h-12 w-12 rounded-2xl bg-secondary/80 border border-border p-2.5 flex items-center justify-center shadow-inner ${
-                  !service.active ? 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all' : ''
-                }`}>
-                  <Image 
-                    src={service.logo} 
-                    alt={service.title} 
-                    width={48} 
-                    height={48} 
-                    className="object-contain w-full h-full"
-                  />
-                </div>
-
-                {service.active ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Active
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-secondary text-muted-foreground border border-border">
-                    <Sparkle weight="fill" className="h-3 w-3" />
-                    Waitlist
-                  </span>
-                )}
-              </div>
-
-              {/* Title & Description */}
-              <h3 className="text-base font-bold text-foreground mb-1.5 group-hover:text-primary transition-colors text-left leading-snug">
-                {service.title}
-              </h3>
-              
-              <p className="text-xs text-muted-foreground mb-4 text-left leading-relaxed line-clamp-3">
-                {service.description}
-              </p>
-
-              {/* Turnaround Badge (if active) */}
-              {service.turnaround && (
-                <div className="mt-auto mb-4 inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground bg-secondary/40 border border-border px-2.5 py-1 rounded-lg w-fit">
-                  <Clock className="h-3 w-3 text-primary" weight="bold" />
-                  <span>{service.turnaround}</span>
-                </div>
-              )}
-
-              {/* Bottom Action Button */}
-              <div className="mt-auto pt-2">
-                {service.active ? (
-                  <div className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-primary/10 text-primary font-bold text-xs rounded-xl group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                    <span>Access Service</span>
-                    <ArrowRight weight="bold" className="h-3.5 w-3.5" />
-                  </div>
-                ) : (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleWaitlist(service.title);
-                    }}
-                    className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-secondary text-foreground font-bold text-xs rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors cursor-pointer"
-                  >
-                    <span>Join Waitlist</span>
-                    <ArrowRight weight="bold" className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-
-            </div>
-          );
-
-          if (service.active) {
-            return (
-              <Link 
-                href={service.href!} 
-                key={service.title}
-                className="relative group p-5 rounded-2xl border transition-all duration-200 bg-card border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 flex flex-col justify-between"
-              >
-                {CardContent}
-              </Link>
-            );
-          } else {
-            return (
-              <div 
-                key={service.title}
-                onClick={() => setAlertInfo({ 
-                  type: "info",
-                  title: service.title, 
-                  message: "This service is currently in development and will launch shortly." 
-                })}
-                className="relative group p-5 rounded-2xl border transition-all duration-200 bg-card/50 border-border/70 hover:border-border hover:bg-card cursor-pointer flex flex-col justify-between"
-              >
-                {CardContent}
-              </div>
-            );
-          }
-        })}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 5. PROFESSIONAL CLEAN ALERT TOAST                                         */}
+      {/* 6. STATUS ALERT TOAST                                                     */}
       {/* ========================================================================= */}
       {alertInfo && (
         <div className="fixed bottom-6 right-6 bg-card text-foreground px-4 py-3.5 rounded-2xl shadow-2xl z-[99999] flex items-center gap-3.5 animate-in slide-in-from-bottom-5 fade-in duration-200 max-w-sm border border-border">
@@ -661,6 +772,28 @@ export default function DashboardPage() {
           </button>
         </div>
       )}
+
+      {/* Wallet Modal */}
+      <FundWalletModal 
+        isOpen={isWalletModalOpen} 
+        onClose={() => setIsWalletModalOpen(false)} 
+        onSuccess={(amount) => {
+          setBalance((prev) => (Number(prev) + amount).toString());
+          setAlertInfo({ 
+            type: "success",
+            title: "Funding Successful", 
+            message: `Your wallet was credited with ₦${amount.toLocaleString()}.` 
+          });
+          setTimeout(fetchBalance, 3000); 
+        }}
+        onFailure={(message) => {
+          setAlertInfo({ 
+            type: "warning",
+            title: "Funding Failed", 
+            message: message 
+          });
+        }}
+      />
 
       {/* Live Support Script */}
       <Script 
