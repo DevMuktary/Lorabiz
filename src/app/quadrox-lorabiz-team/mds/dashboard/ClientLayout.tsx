@@ -18,7 +18,8 @@ import {
   UserSquare2,
   TicketPercent,
   UserPlus,
-  Mail
+  Mail,
+  Activity
 } from "lucide-react";
 
 export default function ClientLayout({
@@ -61,6 +62,7 @@ export default function ClientLayout({
         { href: "/quadrox-lorabiz-team/mds/dashboard/orders", icon: <Layers size={20} />, label: "Order Pipeline" },
         { href: "/quadrox-lorabiz-team/mds/dashboard/clients", icon: <UserSquare2 size={20} />, label: "Clients Directory" },
         { href: "/quadrox-lorabiz-team/mds/dashboard/staff", icon: <Users size={20} />, label: "Staff Operations" },
+        { href: "/quadrox-lorabiz-team/mds/dashboard/activity", icon: <Activity size={20} />, label: "User Activity" },
       ]
     },
     {

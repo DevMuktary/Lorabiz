@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { generateNumericId } from "@/utils/generateId";
+import { logUserActivity } from "@/lib/activity-logger";
 
 export async function POST(req: Request) {
   try {
@@ -48,6 +49,16 @@ export async function POST(req: Request) {
         }
       });
 
+      logUserActivity({
+        userId: user.id,
+        action: "CAC_DRAFT_STARTED",
+        category: "CAC",
+        description: `Started Company (LLC) registration draft for "${proposedName.toUpperCase()}"`,
+        referenceId: trackingId,
+        metadata: { entityType: "Company (LLC)", proposedName: proposedName.toUpperCase(), category },
+        req,
+      });
+
       return NextResponse.json({ 
         success: true, 
         draftId: draft.id,       // Internal CUID for backend joins/mutations
@@ -77,6 +88,16 @@ export async function POST(req: Request) {
           status: "UNSUBMITTED",
           similarityScore: similarityScore ? similarityScore.toString() : "0",
         }
+      });
+
+      logUserActivity({
+        userId: user.id,
+        action: "CAC_DRAFT_STARTED",
+        category: "CAC",
+        description: `Started Business Name registration draft for "${proposedName.toUpperCase()}"`,
+        referenceId: trackingId,
+        metadata: { entityType, proposedName: proposedName.toUpperCase(), category, ownershipType },
+        req,
       });
 
       return NextResponse.json({ 

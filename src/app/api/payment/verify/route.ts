@@ -4,6 +4,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { redis } from "@/lib/redis";
+import { notificationQueue } from "@/lib/queue";
+import { logUserActivity } from "@/lib/activity-logger";
 
 export async function POST(req: Request) {
   try {
@@ -247,6 +249,63 @@ export async function POST(req: Request) {
 
     if (isScuml && scumlDraft) {
       await redis.del(registrationId);
+    }
+
+    // Non-blocking Activity Logging and Automation Triggers
+    if (reference.startsWith("FW_")) {
+      const user = await prisma.user.findUnique({
+        where: { email: userEmail },
+        include: { wallet: true },
+      });
+
+      if (user) {
+        logUserActivity({
+          userId: user.id,
+          action: "WALLET_FUNDING_SUCCESS",
+          category: "WALLET",
+          description: `Wallet funded with ₦${amountPaid.toLocaleString()}`,
+          referenceId: reference,
+          metadata: { amount: amountPaid },
+          req,
+        });
+
+        try {
+          const alreadySentFundingEmail = await prisma.automatedEmailLog.findFirst({
+            where: {
+              userId: user.id,
+              emailType: "FIRST_WALLET_FUNDING",
+            },
+          });
+
+          if (!alreadySentFundingEmail) {
+            const currentBalance = user.wallet ? Number(user.wallet.balance) : amountPaid;
+            const host = req.headers.get("host") || "lorabiz.com";
+            const protocol = host.includes("localhost") ? "http" : "https";
+            const baseUrl = `${protocol}://${host}`;
+
+            await notificationQueue.add(
+              "send-first-wallet-funding-email",
+              {
+                type: "FIRST_WALLET_FUNDING_EMAIL",
+                userId: user.id,
+                email: user.email,
+                firstName: user.firstName || "Valued Client",
+                amount: amountPaid,
+                balance: currentBalance,
+                reference,
+                baseUrl,
+              },
+              {
+                attempts: 3,
+                backoff: { type: "exponential", delay: 5000 },
+                removeOnComplete: true,
+              }
+            );
+          }
+        } catch (fundingErr) {
+          console.error("Failed to check/enqueue first wallet funding email in verify route:", fundingErr);
+        }
+      }
     }
 
     return NextResponse.json({ success: true, message: "Payment verified successfully!" });

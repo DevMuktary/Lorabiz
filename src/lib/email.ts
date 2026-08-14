@@ -792,3 +792,166 @@ export async function sendTestCampaignEmail({
   });
 }
 
+// ==========================================
+// AUTOMATED LIFECYCLE EMAILS
+// ==========================================
+
+export async function sendWelcomeEmail({
+  to,
+  firstName = "Valued Client",
+  baseUrl = "https://lorabiz.com",
+}: {
+  to: string;
+  firstName?: string;
+  baseUrl?: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const dashboardUrl = `${baseUrl.replace(/\/$/, "")}/dashboard`;
+  const subject = "Welcome to LoraBiz – Let's Get Your Business Ready";
+  const previewText = "Welcome aboard. Here is how to get started with CAC registration, Tax IDs, and more.";
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Welcome to LoraBiz</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Welcome to <strong>LoraBiz</strong>. We are glad to have you join our platform.</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">LoraBiz is designed to make business registration and compliance in Nigeria straightforward, fast, and completely digital. You no longer need to deal with slow manual processes or middle-man markups.</p>
+    
+    <p style="color: #0f172a; font-weight: 600; margin-top: 24px; font-size: 15px;">Here are the services currently available on your dashboard:</p>
+    <ul style="padding-left: 20px; line-height: 1.8; color: #334155; font-size: 14px;">
+      <li><strong>CAC Registration:</strong> Register your Business Name or Company (LLC) with full documentation and real-time status tracking.</li>
+      <li><strong>SCUML Certificate:</strong> Process your Special Control Unit Against Money Laundering compliance certificate.</li>
+      <li><strong>Tax ID (TIN):</strong> Apply for and retrieve your official Tax Identification Number.</li>
+      <li><strong>NIMC Services:</strong> Instantly generate and download standard and premium NIN slips.</li>
+      <li><strong>Airtime & Utilities:</strong> Quick airtime recharges directly from your wallet.</li>
+    </ul>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">We are actively adding more corporate compliance and business tools to the platform, including Trademark registration, NAFDAC certification, and legal document generation.</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">To get started with any service, simply fund your LoraBiz wallet and submit your application in minutes.</p>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${dashboardUrl}" style="background-color: #0f172a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Access Your Dashboard</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you have any questions or need guidance, our support team is available directly through the support icon on your dashboard.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+
+  return sendEmail({
+    to,
+    subject,
+    htmlBody,
+  });
+}
+
+export async function sendFirstWalletFundingEmail({
+  to,
+  firstName = "Valued Client",
+  amount,
+  balance,
+  reference,
+  baseUrl = "https://lorabiz.com",
+}: {
+  to: string;
+  firstName?: string;
+  amount: number;
+  balance: number;
+  reference: string;
+  baseUrl?: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const walletUrl = `${baseUrl.replace(/\/$/, "")}/dashboard/wallet`;
+  const formattedAmount = Number(amount).toLocaleString("en-NG", { minimumFractionDigits: 2 });
+  const formattedBalance = Number(balance).toLocaleString("en-NG", { minimumFractionDigits: 2 });
+  const subject = "Wallet Funded Successfully – Welcome to LoraBiz Wallet";
+  const previewText = `Your wallet has been credited with ₦${formattedAmount}. You are ready to access all LoraBiz services.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Wallet Funded Successfully</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Your LoraBiz wallet has been successfully funded with <strong>₦${formattedAmount}</strong>.</p>
+    
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+      <p style="margin: 0 0 6px; font-size: 13px; color: #64748b;">Transaction Details:</p>
+      <p style="margin: 0; font-size: 14px; color: #0f172a;">Reference: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${reference}</code></p>
+      <p style="margin: 6px 0 0; font-size: 15px; font-weight: 600; color: #059669;">Current Wallet Balance: ₦${formattedBalance}</p>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">Now that your wallet is active, you can use your balance to seamlessly pay for any service on the platform without entering card details each time, including:</p>
+    <ul style="padding-left: 20px; line-height: 1.8; color: #334155; font-size: 14px;">
+      <li>Business Name & LLC registrations</li>
+      <li>SCUML certification filings</li>
+      <li>Tax ID (TIN) processing</li>
+      <li>NIN slip generation & downloads</li>
+      <li>Instant airtime purchases</li>
+    </ul>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${walletUrl}" style="background-color: #0f172a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">View Wallet & Services</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you encounter any difficulty with a transaction or have questions about our services, please click the support icon in your dashboard to reach us immediately.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+
+  return sendEmail({
+    to,
+    subject,
+    htmlBody,
+  });
+}
+
+export async function sendAbandonedCacReminderEmail({
+  to,
+  firstName = "Valued Client",
+  businessName,
+  entityType,
+  trackingId,
+  continueUrl,
+}: {
+  to: string;
+  firstName?: string;
+  businessName: string;
+  entityType: string;
+  trackingId: string;
+  continueUrl: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Continue Your ${entityType} Registration – "${businessName}"`;
+  const previewText = `You started your CAC registration for ${businessName}. Pick up right where you left off.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Continue Your Registration</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We noticed you started your <strong>${entityType}</strong> registration for <strong>"${businessName}"</strong> on LoraBiz, but have not completed the submission yet.</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Your progress has been saved. You can easily pick up where you left off, review your details, and submit your filing for processing.</p>
+
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+      <p style="margin: 0 0 6px; font-size: 13px; color: #64748b;">Application Summary:</p>
+      <p style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a;">${businessName}</p>
+      <p style="margin: 6px 0 0; font-size: 13px; color: #475569;">Tracking ID: <strong>${trackingId}</strong> &bull; Type: <strong>${entityType}</strong></p>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">Completing your registration protects your brand name and gives your business the official legal standing needed to open corporate bank accounts, apply for contracts, and build customer trust.</p>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${continueUrl}" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Continue Registration</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you ran into any issues or need help with proprietor details or document uploads, our support team is available via the dashboard to assist you.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+
+  return sendEmail({
+    to,
+    subject,
+    htmlBody,
+  });
+}
+
+

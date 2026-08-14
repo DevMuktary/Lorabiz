@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { notificationQueue } from "@/lib/queue";
+import { logUserActivity } from "@/lib/activity-logger";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
@@ -148,6 +150,39 @@ export async function POST(req: Request) {
 
       return createdUser;
     });
+
+    // 6. Log User Registration Activity & Dispatch Welcome Email (Non-blocking)
+    logUserActivity({
+      userId: newUser.id,
+      action: "USER_REGISTERED",
+      category: "AUTH",
+      description: "Account created and verified",
+      req,
+    });
+
+    try {
+      const host = req.headers.get("host") || "lorabiz.com";
+      const protocol = host.includes("localhost") ? "http" : "https";
+      const baseUrl = `${protocol}://${host}`;
+
+      await notificationQueue.add(
+        "send-welcome-email",
+        {
+          type: "WELCOME_EMAIL",
+          userId: newUser.id,
+          email: newUser.email,
+          firstName: newUser.firstName || "Valued Client",
+          baseUrl,
+        },
+        {
+          attempts: 3,
+          backoff: { type: "exponential", delay: 5000 },
+          removeOnComplete: true,
+        }
+      );
+    } catch (queueErr) {
+      console.error("Failed to enqueue welcome email:", queueErr);
+    }
 
     return NextResponse.json({ message: "User created successfully", userId: newUser.id }, { status: 201 });
   } catch (error) {
