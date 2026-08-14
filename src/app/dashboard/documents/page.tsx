@@ -204,12 +204,23 @@ export default function DocumentsHubPage() {
         </div>
       )}
 
+      {/* Top Back Navigation Bar */}
+      <div className="flex items-center justify-between">
+        <Link 
+          href="/dashboard"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-card border border-border text-foreground hover:bg-secondary text-xs font-bold transition-all shadow-sm group"
+        >
+          <ArrowRight className="h-4 w-4 rotate-180 text-foreground group-hover:-translate-x-0.5 transition-transform" weight="bold" />
+          <span>Back to Dashboard</span>
+        </Link>
+      </div>
+
       {/* Header Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-card via-card to-secondary/40 border border-border p-6 sm:p-8 shadow-sm">
         <div className="max-w-2xl space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
             <Sparkle className="h-3.5 w-3.5" weight="fill" />
-            <span>AI Legal & Corporate Secretarial</span>
+            <span>Legal & Corporate Secretarial</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
             Smart Legal Documents

@@ -34,6 +34,7 @@ export interface BoardResolutionFormData {
   // Design & Letterhead
   accentColor?: string; // e.g. "#0f172a" or brand color
   logoUrl?: string;
+  sealUrl?: string; // Company stamp/seal image URL
 }
 
 export interface StructuredResolutionOutput {
@@ -59,7 +60,9 @@ export interface StructuredResolutionOutput {
     name: string;
     role: string;
     isSignatory: boolean;
+    signatureUrl?: string;
   }>;
+  sealUrl?: string;
 }
 
 /**
@@ -144,8 +147,10 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
     signatories: data.directors.map(d => ({
       name: d.fullName,
       role: d.designation === "Other" && d.customDesignation ? d.customDesignation : d.designation,
-      isSignatory: d.isSignatory
-    }))
+      isSignatory: d.isSignatory,
+      signatureUrl: d.signatureUrl
+    })),
+    sealUrl: data.sealUrl
   };
 }
 
@@ -164,7 +169,7 @@ export async function generateAIBoardResolution(formData: BoardResolutionFormDat
   try {
     const { client, model } = getAIClient();
 
-    const systemPrompt = `You are a Senior Nigerian Corporate Lawyer and Company Secretary specializing in CAMA 2020 corporate governance, banking compliance (CBN regulations), and fintech onboarding (Paystack, Flutterwave, Moniepoint KYC).
+    const systemPrompt = `You are a Senior Nigerian Corporate Lawyer and Company Secretary specializing in CAMA 2020 corporate governance, banking compliance (CBN regulations), and fintech onboarding (Paystack, Flutterwave, Monnify KYC).
 Your task is to generate a formal, legally watertight Extract of Board Resolution Minutes for a Nigerian registered company.
 Strict Requirements:
 1. Formal Nigerian CAMA 2020 legal tone.
@@ -231,6 +236,16 @@ Respond ONLY with a JSON object matching this schema:
     if (!parsed.recitals || !parsed.operativeClauses || !parsed.signatories) {
       return fallback;
     }
+
+    // Merge uploaded signature and seal URLs from user form data
+    parsed.sealUrl = formData.sealUrl;
+    parsed.signatories = parsed.signatories.map((sig, idx) => {
+      const match = formData.directors.find(d => d.fullName.toLowerCase().trim() === sig.name.toLowerCase().trim()) || formData.directors[idx];
+      return {
+        ...sig,
+        signatureUrl: match?.signatureUrl
+      };
+    });
 
     return parsed;
   } catch (error) {

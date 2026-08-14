@@ -10,7 +10,8 @@ import {
   Building,
   Calendar,
   MapPin,
-  Stamp
+  Stamp,
+  Lock
 } from "@phosphor-icons/react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -39,10 +40,13 @@ export interface ResolutionDocProps {
       name: string;
       role: string;
       isSignatory: boolean;
+      signatureUrl?: string;
     }>;
+    sealUrl?: string;
   };
   accentColor?: string;
   logoUrl?: string;
+  sealUrl?: string;
   isWatermarked?: boolean;
   documentRef?: string;
   onDownloadStart?: () => void;
@@ -53,6 +57,7 @@ export default function ResolutionDocumentView({
   data,
   accentColor = "#0f172a",
   logoUrl,
+  sealUrl: propsSealUrl,
   isWatermarked = false,
   documentRef = "PREVIEW-DRAFT",
   onDownloadStart,
@@ -61,8 +66,10 @@ export default function ResolutionDocumentView({
   const docRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = React.useState<"pdf" | "png" | null>(null);
 
+  const effectiveSealUrl = propsSealUrl || data?.sealUrl;
+
   const handleDownloadPDF = async () => {
-    if (!docRef.current) return;
+    if (!docRef.current || isWatermarked) return;
     setDownloading("pdf");
     onDownloadStart?.();
     try {
@@ -99,7 +106,7 @@ export default function ResolutionDocumentView({
         heightLeft -= pdfHeight;
       }
 
-      const fileName = `${data.letterhead.companyName.replace(/[^a-zA-Z0-9]/g, "_")}_Board_Resolution.pdf`;
+      const fileName = `${(data.letterhead?.companyName || "Company").replace(/[^a-zA-Z0-9]/g, "_")}_Board_Resolution.pdf`;
       pdf.save(fileName);
     } catch (error) {
       console.error("PDF Generation Error:", error);
@@ -110,7 +117,7 @@ export default function ResolutionDocumentView({
   };
 
   const handleDownloadPNG = async () => {
-    if (!docRef.current) return;
+    if (!docRef.current || isWatermarked) return;
     setDownloading("png");
     onDownloadStart?.();
     try {
@@ -123,7 +130,7 @@ export default function ResolutionDocumentView({
       });
 
       const link = document.createElement("a");
-      link.download = `${data.letterhead.companyName.replace(/[^a-zA-Z0-9]/g, "_")}_Board_Resolution.png`;
+      link.download = `${(data.letterhead?.companyName || "Company").replace(/[^a-zA-Z0-9]/g, "_")}_Board_Resolution.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
     } catch (error) {
@@ -135,48 +142,63 @@ export default function ResolutionDocumentView({
   };
 
   const handlePrint = () => {
+    if (isWatermarked) return;
     window.print();
   };
 
   return (
     <div className="space-y-4">
-      {/* Export Toolbar (Only shown when not watermarked or for explicit downloads) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-secondary/60 rounded-2xl border border-border">
-        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-          <ShieldCheck className="h-4 w-4 text-emerald-500" weight="fill" />
-          <span>CAMA 2020 Formatted Extract</span>
+      {/* Top Banner / Toolbar */}
+      {isWatermarked ? (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-900 dark:text-amber-200 shadow-sm">
+          <div className="flex items-center gap-2.5 text-xs font-semibold">
+            <Lock className="h-4 w-4 text-amber-600 shrink-0" weight="bold" />
+            <span>
+              <strong>Draft Preview Mode:</strong> Watermarked for preview. Confirm and pay ₦3,500 to unlock official certified extract, remove watermarks, and download PDF & PNG.
+            </span>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-800 dark:text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 shrink-0">
+            Preview Protection Active
+          </span>
         </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-secondary/60 rounded-2xl border border-border">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <ShieldCheck className="h-4 w-4 text-emerald-500" weight="fill" />
+            <span>Official CAMA 2020 Extract Ready</span>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleDownloadPDF}
-            disabled={downloading !== null}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
-          >
-            <FilePdf className="h-4 w-4" weight="bold" />
-            <span>{downloading === "pdf" ? "Generating PDF..." : "Download PDF"}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={downloading !== null}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+            >
+              <FilePdf className="h-4 w-4" weight="bold" />
+              <span>{downloading === "pdf" ? "Generating PDF..." : "Download PDF"}</span>
+            </button>
 
-          <button
-            onClick={handleDownloadPNG}
-            disabled={downloading !== null}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-secondary hover:bg-secondary/80 text-foreground border border-border font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
-            title="Download PNG Image for online bank/gateway upload"
-          >
-            <ImageIcon className="h-4 w-4" weight="bold" />
-            <span>{downloading === "png" ? "Saving Image..." : "Download Image (PNG)"}</span>
-          </button>
+            <button
+              onClick={handleDownloadPNG}
+              disabled={downloading !== null}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-secondary hover:bg-secondary/80 text-foreground border border-border font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
+              title="Download PNG Image for online bank/gateway upload"
+            >
+              <ImageIcon className="h-4 w-4" weight="bold" />
+              <span>{downloading === "png" ? "Saving Image..." : "Download PNG"}</span>
+            </button>
 
-          <button
-            onClick={handlePrint}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 bg-secondary hover:bg-secondary/80 text-foreground border border-border font-bold text-xs rounded-xl transition-all cursor-pointer"
-            title="Print Document"
-          >
-            <Printer className="h-4 w-4" weight="bold" />
-            <span>Print</span>
-          </button>
+            <button
+              onClick={handlePrint}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 bg-secondary hover:bg-secondary/80 text-foreground border border-border font-bold text-xs rounded-xl transition-all cursor-pointer"
+              title="Print Document"
+            >
+              <Printer className="h-4 w-4" weight="bold" />
+              <span>Print</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Document Canvas (Styled as an elegant A4 Paper Sheet) */}
       <div className="w-full overflow-x-auto pb-4 flex justify-center custom-scrollbar">
@@ -193,17 +215,19 @@ export default function ResolutionDocumentView({
             style={{ backgroundColor: accentColor }}
           />
 
-          {/* Watermark Overlay (If Preview Mode) */}
+          {/* Heavy Anti-Theft Watermark Overlay (If Preview Mode) */}
           {isWatermarked && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 overflow-hidden select-none">
-              <div className="transform -rotate-45 text-center opacity-10">
-                <p className="text-6xl sm:text-7xl font-black font-sans uppercase tracking-widest text-slate-900 whitespace-nowrap">
-                  LORABIZ PREVIEW
-                </p>
-                <p className="text-xl sm:text-2xl font-bold font-sans tracking-widest mt-2 uppercase text-slate-900">
-                  OFFICIAL WATERMARK REMOVED ON DOWNLOAD
-                </p>
-              </div>
+            <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden select-none flex flex-col justify-around py-12">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="transform -rotate-25 whitespace-nowrap text-center opacity-15 select-none">
+                  <span className="text-2xl sm:text-3xl font-black font-sans uppercase tracking-[0.25em] text-red-600 block">
+                    LORABIZ PREVIEW DRAFT • NOT VALID FOR BANK SUBMISSION
+                  </span>
+                  <span className="text-xs font-bold font-sans uppercase tracking-[0.3em] text-slate-800 block mt-1">
+                    PAYMENT REQUIRED TO UNLOCK CERTIFIED COPY • CAMA 2020 EXTRACT
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 
@@ -224,21 +248,21 @@ export default function ResolutionDocumentView({
                   className="h-14 w-14 rounded-xl flex items-center justify-center text-white font-sans font-black text-xl shadow-md shrink-0"
                   style={{ backgroundColor: accentColor }}
                 >
-                  {data.letterhead.companyName.substring(0, 2).toUpperCase()}
+                  {(data.letterhead?.companyName || "AB").substring(0, 2).toUpperCase()}
                 </div>
               )}
 
               <div className="flex-1 text-center sm:text-right font-sans">
                 <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 uppercase">
-                  {data.letterhead.companyName}
+                  {data.letterhead?.companyName}
                 </h1>
-                {data.letterhead.rcNumber && (
+                {data.letterhead?.rcNumber && (
                   <p className="text-xs font-bold text-slate-700 tracking-wider mt-0.5">
                     {data.letterhead.rcNumber}
                   </p>
                 )}
                 <p className="text-[11px] text-slate-600 max-w-sm ml-auto mt-1 leading-tight">
-                  {data.letterhead.registeredAddress}
+                  {data.letterhead?.registeredAddress}
                 </p>
               </div>
             </div>
@@ -253,10 +277,10 @@ export default function ResolutionDocumentView({
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-sans text-slate-600 pt-1">
               <span className="inline-flex items-center gap-1 font-semibold">
-                <Calendar className="h-3.5 w-3.5" /> Date: {data.meetingMetadata.date}
+                <Calendar className="h-3.5 w-3.5" /> Date: {data.meetingMetadata?.date}
               </span>
               <span className="inline-flex items-center gap-1 font-semibold">
-                <MapPin className="h-3.5 w-3.5" /> Venue: {data.meetingMetadata.venue}
+                <MapPin className="h-3.5 w-3.5" /> Venue: {data.meetingMetadata?.venue}
               </span>
             </div>
           </div>
@@ -266,11 +290,11 @@ export default function ResolutionDocumentView({
           {/* ========================================================================= */}
           <div className="space-y-4 my-6 text-justify text-slate-800">
             <p className="font-semibold italic">
-              {data.meetingMetadata.commencementText}
+              {data.meetingMetadata?.commencementText}
             </p>
 
             <div className="space-y-2.5 pl-3 border-l-2 border-slate-200">
-              {data.recitals.map((recital, index) => (
+              {data.recitals?.map((recital, index) => (
                 <p key={index} className="leading-relaxed">
                   {recital}
                 </p>
@@ -282,7 +306,7 @@ export default function ResolutionDocumentView({
           {/* OPERATIVE RESOLUTIONS (RESOLVED THAT...)                                  */}
           {/* ========================================================================= */}
           <div className="space-y-5 my-6 text-slate-800">
-            {data.operativeClauses.map((clause, idx) => (
+            {data.operativeClauses?.map((clause, idx) => (
               <div key={idx} className="space-y-1.5 text-justify">
                 <h3 className="font-sans font-bold text-xs uppercase tracking-wider text-slate-900">
                   {clause.heading}
@@ -312,32 +336,44 @@ export default function ResolutionDocumentView({
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-2">
-              {data.signatories.map((sig, index) => (
+              {data.signatories?.map((sig, index) => (
                 <div key={index} className="space-y-2">
                   <div className="h-12 border-b-2 border-slate-800 flex items-end pb-1">
-                    <span className="text-[11px] text-slate-400 font-mono italic">
-                      [Signature / Authorized Stamp]
-                    </span>
+                    {sig.signatureUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img 
+                        src={sig.signatureUrl} 
+                        alt={`${sig.name} Signature`} 
+                        className="max-h-11 max-w-[150px] object-contain" 
+                      />
+                    ) : (
+                      <div className="w-full" />
+                    )}
                   </div>
                   <div className="text-xs leading-tight">
                     <p className="font-bold text-slate-900 uppercase">{sig.name}</p>
                     <p className="text-slate-600 font-semibold">{sig.role}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      Status: {sig.isSignatory ? "Authorized Signatory" : "Director"} &bull; Date: ___________________
+                      Status: {sig.isSignatory ? "Authorized Signatory" : "Director"} &bull; Date: {data.meetingMetadata?.date}
                     </p>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Corporate Seal Box */}
-            <div className="flex justify-end pt-4">
-              <div className="h-24 w-24 rounded-full border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-center p-1 text-[9px] text-slate-400 font-sans uppercase font-bold tracking-widest">
-                <Stamp className="h-5 w-5 mb-0.5 text-slate-400" />
-                <span>Common</span>
-                <span>Seal</span>
+            {/* Corporate Seal Box (Only rendered if seal is uploaded) */}
+            {effectiveSealUrl && (
+              <div className="flex justify-end pt-4">
+                <div className="h-24 w-24 rounded-full border-2 border-slate-300 p-1 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={effectiveSealUrl} 
+                    alt="Company Stamp" 
+                    className="h-full w-full object-contain rounded-full" 
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* ========================================================================= */}

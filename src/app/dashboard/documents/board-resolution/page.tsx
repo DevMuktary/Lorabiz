@@ -27,7 +27,11 @@ import {
   User,
   Users,
   Palette,
-  Eye
+  Eye,
+  UploadSimple,
+  Stamp,
+  Lock,
+  CurrencyCircleDollar
 } from "@phosphor-icons/react";
 import { 
   BoardResolutionFormData, 
@@ -40,7 +44,7 @@ import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 const NIGERIAN_PAYMENT_GATEWAYS = [
   "Paystack Payments Limited",
   "Flutterwave Technology Solutions",
-  "Moniepoint / TeamApt MFB",
+  "Monnify (TeamApt)",
   "Squad (HabariPay / GTCO)",
   "Interswitch Group / Quickteller",
   "Remita (SystemSpecs)",
@@ -57,6 +61,9 @@ const PRESET_ACCENT_COLORS = [
   { name: "Corporate Burgundy", hex: "#881337" },
   { name: "Classic Slate", hex: "#334155" },
   { name: "Bronze Gold", hex: "#78350f" },
+  { name: "Regal Purple", hex: "#581c87" },
+  { name: "Crimson Red", hex: "#991b1b" },
+  { name: "Deep Teal", hex: "#115e59" },
 ];
 
 export default function BoardResolutionBuilderPage() {
@@ -73,6 +80,11 @@ export default function BoardResolutionBuilderPage() {
   // User Wallet State
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isFundWalletOpen, setIsFundWalletOpen] = useState(false);
+  const [isPaymentChoiceModalOpen, setIsPaymentChoiceModalOpen] = useState(false);
+
+  // Upload States
+  const [uploadingSeal, setUploadingSeal] = useState(false);
+  const [uploadingSignatureId, setUploadingSignatureId] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<BoardResolutionFormData>({
@@ -94,18 +106,19 @@ export default function BoardResolutionBuilderPage() {
         fullName: "",
         designation: "Managing Director / CEO",
         isSignatory: true,
-        bvnOrNin: "",
+        signatureUrl: "",
       },
       {
         id: "dir_2",
         fullName: "",
         designation: "Director",
         isSignatory: true,
-        bvnOrNin: "",
+        signatureUrl: "",
       }
     ],
     accentColor: "#0f172a",
     logoUrl: "",
+    sealUrl: "",
   });
 
   // Preview & Final Generation State
@@ -167,6 +180,73 @@ export default function BoardResolutionBuilderPage() {
     }
   };
 
+  // Upload Handlers
+  const handleSealUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Company stamp file exceeds the 5MB size limit.", "error");
+      return;
+    }
+
+    setUploadingSeal(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: uploadData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setFormData(prev => ({ ...prev, sealUrl: data.url }));
+        showToast("Company seal uploaded successfully!", "success");
+      } else {
+        showToast(data.error || "Failed to upload seal image.", "error");
+      }
+    } catch {
+      showToast("Network error uploading seal. Please try again.", "error");
+    } finally {
+      setUploadingSeal(false);
+    }
+  };
+
+  const handleDirectorSignatureUpload = async (directorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Signature image exceeds the 5MB size limit.", "error");
+      return;
+    }
+
+    setUploadingSignatureId(directorId);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: uploadData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.url) {
+        updateDirector(directorId, { signatureUrl: data.url });
+        showToast("Signature uploaded successfully!", "success");
+      } else {
+        showToast(data.error || "Failed to upload signature.", "error");
+      }
+    } catch {
+      showToast("Network error uploading signature.", "error");
+    } finally {
+      setUploadingSignatureId(null);
+    }
+  };
+
   // Director Management
   const addDirector = () => {
     setFormData(prev => ({
@@ -178,6 +258,7 @@ export default function BoardResolutionBuilderPage() {
           fullName: "",
           designation: "Director",
           isSignatory: true,
+          signatureUrl: "",
         }
       ]
     }));
@@ -185,7 +266,7 @@ export default function BoardResolutionBuilderPage() {
 
   const removeDirector = (id: string) => {
     if (formData.directors.length <= 1) {
-      showToast("You need at least one director or secretary.", "error");
+      showToast("You need at least one director or secretary in the resolution.", "error");
       return;
     }
     setFormData(prev => ({
@@ -213,6 +294,10 @@ export default function BoardResolutionBuilderPage() {
     }
     if (!formData.targetInstitution.trim()) {
       showToast("Please select or enter the target Bank or Payment Gateway.", "error");
+      return false;
+    }
+    if (formData.purposeCategory === "OTHER" && !formData.customPurposeDescription?.trim()) {
+      showToast("Please enter the specific business purpose or custom directives (compulsory for Custom/Other purpose).", "error");
       return false;
     }
     return true;
@@ -251,7 +336,7 @@ export default function BoardResolutionBuilderPage() {
       } else {
         showToast(json.message || "Failed to generate preview.", "error");
       }
-    } catch (e) {
+    } catch {
       showToast("Network error generating preview. Please try again.", "error");
     } finally {
       setGeneratingPreview(false);
@@ -259,9 +344,12 @@ export default function BoardResolutionBuilderPage() {
   };
 
   // Final Generation & Payment
-  const handleConfirmAndPay = async () => {
+  const handlePayFromWallet = async () => {
+    setIsPaymentChoiceModalOpen(false);
+
     if (walletBalance < price) {
       setIsFundWalletOpen(true);
+      showToast(`Your wallet balance is ₦${walletBalance.toLocaleString()}. Please fund at least ₦${(price - walletBalance).toLocaleString()} to proceed.`, "info");
       return;
     }
 
@@ -280,16 +368,21 @@ export default function BoardResolutionBuilderPage() {
       const json = await res.json();
       if (json.success && json.document) {
         setFinalDocument(json.document);
-        showToast("Payment successful! Your official document is ready and emailed to you.", "success");
+        showToast("Payment successful! Your official document is unlocked and emailed to you.", "success");
         fetchWallet();
       } else {
         showToast(json.message || "Generation failed.", "error");
       }
-    } catch (e) {
+    } catch {
       showToast("Network error during payment. Please try again.", "error");
     } finally {
       setIsProcessingPayment(false);
     }
+  };
+
+  const handlePayOnline = () => {
+    setIsPaymentChoiceModalOpen(false);
+    setIsFundWalletOpen(true);
   };
 
   const filteredBanks = banksList.filter(b => 
@@ -309,7 +402,7 @@ export default function BoardResolutionBuilderPage() {
               ? "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300"
               : "bg-card border-border"
           }`}>
-            <CheckCircle className="h-5 w-5 shrink-0" weight="fill" />
+            <CheckCircle className="h-5 w-5 shrink-0 text-primary" weight="fill" />
             <p className="text-xs font-semibold">{toast.message}</p>
             <button 
               onClick={() => setToast(null)} 
@@ -321,18 +414,18 @@ export default function BoardResolutionBuilderPage() {
         </div>
       )}
 
-      {/* Top Nav Back Link */}
+      {/* Top Nav Bar: High-Contrast Back Button + Wallet Balance */}
       <div className="flex items-center justify-between">
         <Link 
           href="/dashboard/documents"
-          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-card border border-border text-foreground hover:bg-secondary text-xs font-bold transition-all shadow-sm group"
         >
-          <ArrowLeft className="h-4 w-4" weight="bold" />
+          <ArrowLeft className="h-4 w-4 text-foreground group-hover:-translate-x-0.5 transition-transform" weight="bold" />
           <span>Back to Legal Documents Hub</span>
         </Link>
 
-        <div className="flex items-center gap-2 text-xs font-bold bg-secondary px-3 py-1.5 rounded-full border border-border">
-          <Wallet className="h-3.5 w-3.5 text-primary" weight="bold" />
+        <div className="flex items-center gap-2 text-xs font-bold bg-secondary px-3.5 py-2 rounded-xl border border-border text-foreground">
+          <Wallet className="h-4 w-4 text-primary" weight="bold" />
           <span>Wallet: ₦{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
         </div>
       </div>
@@ -341,8 +434,8 @@ export default function BoardResolutionBuilderPage() {
       <div className="space-y-4">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 mb-2">
-            <Sparkle className="h-3 w-3" weight="fill" />
-            <span>Smart Resolution Builder</span>
+            <Sparkle className="h-3.5 w-3.5" weight="fill" />
+            <span>Corporate Secretarial & Compliance</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
             Corporate Board Resolution Generator
@@ -402,8 +495,8 @@ export default function BoardResolutionBuilderPage() {
                 type="text"
                 value={formData.companyName}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                placeholder="e.g. QUADROX TECHNOLOGIES LIMITED or GLORIOUS VENTURES"
-                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                placeholder="e.g. ABC GLOBAL VENTURES LIMITED or PRIME HORIZON NIG LTD"
+                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
               />
             </div>
 
@@ -417,7 +510,7 @@ export default function BoardResolutionBuilderPage() {
                 value={formData.rcNumber}
                 onChange={(e) => setFormData({ ...formData, rcNumber: e.target.value })}
                 placeholder="e.g. RC 1928374 or BN 482910"
-                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
               />
             </div>
 
@@ -430,7 +523,7 @@ export default function BoardResolutionBuilderPage() {
                 type="date"
                 value={formData.meetingDate}
                 onChange={(e) => setFormData({ ...formData, meetingDate: e.target.value })}
-                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground"
               />
             </div>
 
@@ -443,9 +536,70 @@ export default function BoardResolutionBuilderPage() {
                 type="text"
                 value={formData.registeredAddress}
                 onChange={(e) => setFormData({ ...formData, registeredAddress: e.target.value })}
-                placeholder="e.g. Plot 14, Adeola Odeku Street, Victoria Island, Lagos State"
-                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                placeholder="e.g. 123 Commercial Avenue, Victoria Island, Lagos State"
+                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
               />
+            </div>
+
+            {/* Company Stamp / Seal Upload (Optional) */}
+            <div className="space-y-1.5 sm:col-span-2 p-4 rounded-2xl bg-secondary/30 border border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Stamp className="h-4 w-4 text-primary" weight="bold" />
+                  <label className="text-xs font-bold text-foreground">
+                    Official Company Stamp / Seal <span className="text-muted-foreground text-[10px] font-normal">(Optional)</span>
+                  </label>
+                </div>
+                {formData.sealUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, sealUrl: "" })}
+                    className="text-xs text-red-500 hover:underline font-semibold"
+                  >
+                    Remove Seal
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                If uploaded, your official seal will be placed on the resolution extract. If not uploaded, no dummy seal is displayed.
+              </p>
+
+              {formData.sealUrl ? (
+                <div className="flex items-center gap-3 pt-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={formData.sealUrl} 
+                    alt="Company Stamp" 
+                    className="h-16 w-16 rounded-full border border-border object-contain bg-white p-1" 
+                  />
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    Official seal uploaded successfully
+                  </span>
+                </div>
+              ) : (
+                <div className="pt-2">
+                  <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-sm">
+                    {uploadingSeal ? (
+                      <>
+                        <Spinner className="h-4 w-4 animate-spin text-primary" weight="bold" />
+                        <span>Uploading Seal...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadSimple className="h-4 w-4 text-primary" weight="bold" />
+                        <span>Upload Company Stamp (PNG / JPG)</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg"
+                      onChange={handleSealUpload}
+                      disabled={uploadingSeal}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Resolution Purpose Type */}
@@ -479,7 +633,7 @@ export default function BoardResolutionBuilderPage() {
                 >
                   <CreditCard className="h-5 w-5 text-primary mb-1.5" weight="bold" />
                   <span className="text-xs font-bold block text-foreground">Payment Gateway KYC</span>
-                  <span className="text-[10px] text-muted-foreground">Paystack, Flutterwave, Squad, etc.</span>
+                  <span className="text-[10px] text-muted-foreground">Paystack, Flutterwave, Monnify, Squad, etc.</span>
                 </button>
 
                 <button
@@ -508,7 +662,7 @@ export default function BoardResolutionBuilderPage() {
                 <div className="relative" ref={dropdownRef}>
                   <div
                     onClick={() => setIsBankDropdownOpen(!isBankDropdownOpen)}
-                    className="flex items-center justify-between h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium cursor-pointer hover:border-primary transition-colors"
+                    className="flex items-center justify-between h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium cursor-pointer hover:border-primary transition-colors text-foreground"
                   >
                     <div className="flex items-center gap-2">
                       <Bank className="h-4 w-4 text-muted-foreground" />
@@ -529,7 +683,7 @@ export default function BoardResolutionBuilderPage() {
                             placeholder="Type bank name (e.g. Access, GTB, Zenith, Moniepoint)..."
                             value={bankSearch}
                             onChange={(e) => setBankSearch(e.target.value)}
-                            className="w-full h-9 pl-9 pr-3 text-xs bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+                            className="w-full h-9 pl-9 pr-3 text-xs bg-background border border-border rounded-lg focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
                           />
                         </div>
                       </div>
@@ -575,7 +729,7 @@ export default function BoardResolutionBuilderPage() {
                     value={formData.targetInstitution}
                     onChange={(e) => setFormData({ ...formData, targetInstitution: e.target.value })}
                     placeholder="e.g. Paystack Payments Limited"
-                    className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                    className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
               ) : (
@@ -584,12 +738,12 @@ export default function BoardResolutionBuilderPage() {
                   value={formData.targetInstitution}
                   onChange={(e) => setFormData({ ...formData, targetInstitution: e.target.value })}
                   placeholder="e.g. Federal Ministry of Industry or Commercial Partner Name"
-                  className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                  className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
                 />
               )}
             </div>
 
-            {/* Optional Branch & Currency */}
+            {/* Optional Branch Location */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground">
                 Branch / Location <span className="text-muted-foreground text-[10px] font-normal">(Optional)</span>
@@ -599,65 +753,111 @@ export default function BoardResolutionBuilderPage() {
                 value={formData.institutionBranch}
                 onChange={(e) => setFormData({ ...formData, institutionBranch: e.target.value })}
                 placeholder="e.g. Victoria Island Branch or Digital Channel"
-                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
               />
             </div>
 
+            {/* Account Currency Selection */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground">
                 Account Currency
               </label>
-              <select
-                value={formData.accountCurrency}
-                onChange={(e) => setFormData({ ...formData, accountCurrency: e.target.value })}
-                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary"
-              >
-                <option value="NGN (Nigerian Naira)">NGN (Nigerian Naira)</option>
-                <option value="USD (United States Dollar)">USD (United States Dollar)</option>
-                <option value="EUR (Euro)">EUR (Euro)</option>
-                <option value="GBP (British Pound)">GBP (British Pound)</option>
-                <option value="Multi-Currency (NGN / Domiciliary)">Multi-Currency (NGN & Domiciliary)</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={formData.accountCurrency}
+                  onChange={(e) => setFormData({ ...formData, accountCurrency: e.target.value })}
+                  className="w-full h-11 px-4 pr-10 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground appearance-none cursor-pointer"
+                >
+                  <option value="NGN (Nigerian Naira)">NGN (Nigerian Naira)</option>
+                  <option value="USD (United States Dollar)">USD (United States Dollar)</option>
+                  <option value="EUR (Euro)">EUR (Euro)</option>
+                  <option value="GBP (British Pound)">GBP (British Pound)</option>
+                  <option value="Multi-Currency (NGN & Domiciliary)">Multi-Currency (NGN & Domiciliary)</option>
+                </select>
+                <CaretDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              </div>
             </div>
 
-            {/* Custom Notes / Specific Purpose Explainer */}
+            {/* Custom Notes / Specific Purpose Explainer (Compulsory when 'OTHER') */}
             <div className="space-y-1.5 sm:col-span-2">
-              <label className="text-xs font-bold text-foreground">
-                Specific Purpose / Custom Clause Instructions <span className="text-muted-foreground text-[10px] font-normal">(Optional)</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-foreground">
+                  Specific Purpose / Custom Clause Details{" "}
+                  {formData.purposeCategory === "OTHER" ? (
+                    <span className="text-primary font-bold">(Compulsory) *</span>
+                  ) : (
+                    <span className="text-muted-foreground text-[10px] font-normal">(Optional)</span>
+                  )}
+                </label>
+              </div>
               <textarea
-                rows={2}
+                rows={3}
                 value={formData.customPurposeDescription}
                 onChange={(e) => setFormData({ ...formData, customPurposeDescription: e.target.value })}
-                placeholder="e.g. Authorize mobile banking app access, corporate debit card issuance, or POS terminal collection."
-                className="w-full p-3 rounded-xl bg-secondary/50 border border-border text-xs font-medium focus:outline-none focus:border-primary resize-none"
+                placeholder={
+                  formData.purposeCategory === "OTHER"
+                    ? "Explain the exact resolution purpose, directive, or authority granted by the Board of Directors..."
+                    : "e.g. Authorize mobile banking app access, corporate debit card issuance, or POS terminal collection."
+                }
+                className={`w-full p-3.5 rounded-xl bg-secondary/50 border text-xs font-medium focus:outline-none focus:border-primary resize-none text-foreground placeholder:text-muted-foreground ${
+                  formData.purposeCategory === "OTHER" && !formData.customPurposeDescription?.trim()
+                    ? "border-primary/50"
+                    : "border-border"
+                }`}
               />
             </div>
 
-            {/* Brand Letterhead Accent Color */}
-            <div className="space-y-2 sm:col-span-2 pt-2 border-t border-border">
+            {/* Canva-Style Circular Color Palette Picker */}
+            <div className="space-y-2.5 sm:col-span-2 pt-2 border-t border-border">
               <div className="flex items-center gap-2">
-                <Palette className="h-4 w-4 text-primary" />
+                <Palette className="h-4 w-4 text-primary" weight="bold" />
                 <label className="text-xs font-bold text-foreground">
                   Letterhead Brand Accent Color
                 </label>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {PRESET_ACCENT_COLORS.map((c) => (
-                  <button
-                    key={c.hex}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, accentColor: c.hex })}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                      formData.accentColor === c.hex
-                        ? "border-primary bg-primary/10 text-foreground"
-                        : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground"
-                    }`}
+              
+              <div className="flex flex-wrap items-center gap-3">
+                {PRESET_ACCENT_COLORS.map((c) => {
+                  const isSelected = formData.accentColor === c.hex;
+                  return (
+                    <button
+                      key={c.hex}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, accentColor: c.hex })}
+                      className="group flex flex-col items-center gap-1 cursor-pointer transition-transform hover:scale-110"
+                      title={c.name}
+                    >
+                      <div 
+                        className={`h-8 w-8 rounded-full shadow-md transition-all flex items-center justify-center ${
+                          isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110" : "border border-border/40"
+                        }`}
+                        style={{ backgroundColor: c.hex }}
+                      >
+                        {isSelected && <Check className="h-3.5 w-3.5 text-white" weight="bold" />}
+                      </div>
+                      <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground">
+                        {c.name.split(" ")[0]}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {/* Custom Color Input Circle */}
+                <div className="flex flex-col items-center gap-1">
+                  <label 
+                    className="h-8 w-8 rounded-full border border-dashed border-border bg-secondary flex items-center justify-center cursor-pointer hover:border-primary transition-colors shadow-sm relative overflow-hidden"
+                    title="Choose Custom Color"
                   >
-                    <span className="h-3 w-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: c.hex }} />
-                    <span>{c.name}</span>
-                  </button>
-                ))}
+                    <Plus className="h-3.5 w-3.5 text-muted-foreground" weight="bold" />
+                    <input
+                      type="color"
+                      value={formData.accentColor || "#0f172a"}
+                      onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })}
+                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                    />
+                  </label>
+                  <span className="text-[10px] font-medium text-muted-foreground">Custom</span>
+                </div>
               </div>
             </div>
 
@@ -689,7 +889,7 @@ export default function BoardResolutionBuilderPage() {
             </div>
             <div>
               <h2 className="text-base font-bold text-foreground">Board of Directors & Signing Mandate</h2>
-              <p className="text-xs text-muted-foreground">List the directors and specify who is authorized to operate the account.</p>
+              <p className="text-xs text-muted-foreground">List the directors, designate signatories, and optionally upload signature images.</p>
             </div>
           </div>
 
@@ -705,7 +905,7 @@ export default function BoardResolutionBuilderPage() {
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                   formData.signingMandate === "ANY_TWO"
                     ? "bg-primary/10 border-primary text-foreground shadow-sm"
-                    : "bg-secondary/30 border-border text-muted-foreground"
+                    : "bg-secondary/30 border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span className="text-xs font-bold block text-foreground">Any Two (2) Directors Jointly</span>
@@ -718,7 +918,7 @@ export default function BoardResolutionBuilderPage() {
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                   formData.signingMandate === "ANY_ONE"
                     ? "bg-primary/10 border-primary text-foreground shadow-sm"
-                    : "bg-secondary/30 border-border text-muted-foreground"
+                    : "bg-secondary/30 border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span className="text-xs font-bold block text-foreground">Any One (1) Director Alone</span>
@@ -731,7 +931,7 @@ export default function BoardResolutionBuilderPage() {
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                   formData.signingMandate === "CHAIRMAN_AND_SECRETARY"
                     ? "bg-primary/10 border-primary text-foreground shadow-sm"
-                    : "bg-secondary/30 border-border text-muted-foreground"
+                    : "bg-secondary/30 border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span className="text-xs font-bold block text-foreground">Chairman + Secretary Jointly</span>
@@ -744,7 +944,7 @@ export default function BoardResolutionBuilderPage() {
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                   formData.signingMandate === "ALL_DIRECTORS"
                     ? "bg-primary/10 border-primary text-foreground shadow-sm"
-                    : "bg-secondary/30 border-border text-muted-foreground"
+                    : "bg-secondary/30 border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span className="text-xs font-bold block text-foreground">All Directors Together</span>
@@ -762,22 +962,22 @@ export default function BoardResolutionBuilderPage() {
               <button
                 type="button"
                 onClick={addDirector}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs rounded-xl transition-colors cursor-pointer border border-primary/20"
               >
                 <Plus className="h-3.5 w-3.5" weight="bold" />
                 <span>Add Another Director</span>
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {formData.directors.map((director, index) => (
                 <div 
                   key={director.id}
-                  className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-3"
+                  className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-3.5"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
-                      Director #{index + 1}
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-primary">
+                      Director / Officer #{index + 1}
                     </span>
                     {formData.directors.length > 1 && (
                       <button
@@ -791,36 +991,42 @@ export default function BoardResolutionBuilderPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-foreground">Full Legal Name</label>
+                      <label className="text-[11px] font-bold text-foreground">
+                        Full Legal Name <span className="text-primary">*</span>
+                      </label>
                       <input
                         type="text"
                         value={director.fullName}
                         onChange={(e) => updateDirector(director.id, { fullName: e.target.value })}
-                        placeholder="e.g. John Chukwuemeka Okafor"
-                        className="w-full h-10 px-3 rounded-lg bg-background border border-border text-xs font-medium focus:outline-none focus:border-primary"
+                        placeholder="e.g. Adebayo Olumide or Chinedu Eze"
+                        className="w-full h-10 px-3 rounded-xl bg-background border border-border text-xs font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
                       />
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-foreground">Designation</label>
-                      <select
-                        value={director.designation}
-                        onChange={(e) => updateDirector(director.id, { designation: e.target.value as any })}
-                        className="w-full h-10 px-3 rounded-lg bg-background border border-border text-xs font-medium focus:outline-none focus:border-primary"
-                      >
-                        <option value="Managing Director / CEO">Managing Director / CEO</option>
-                        <option value="Director">Director</option>
-                        <option value="Company Secretary">Company Secretary</option>
-                        <option value="Chairman">Chairman</option>
-                        <option value="Executive Director">Executive Director</option>
-                        <option value="Other">Other Designation</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={director.designation}
+                          onChange={(e) => updateDirector(director.id, { designation: e.target.value as any })}
+                          className="w-full h-10 px-3 pr-8 rounded-xl bg-background border border-border text-xs font-medium focus:outline-none focus:border-primary text-foreground appearance-none cursor-pointer"
+                        >
+                          <option value="Managing Director / CEO">Managing Director / CEO</option>
+                          <option value="Director">Director</option>
+                          <option value="Company Secretary">Company Secretary</option>
+                          <option value="Chairman">Chairman</option>
+                          <option value="Executive Director">Executive Director</option>
+                          <option value="Other">Other Designation</option>
+                        </select>
+                        <CaretDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
+                  {/* Signatory Checkbox & Optional Signature Upload */}
+                  <div className="pt-2 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
                       <input
                         type="checkbox"
@@ -828,8 +1034,50 @@ export default function BoardResolutionBuilderPage() {
                         onChange={(e) => updateDirector(director.id, { isSignatory: e.target.checked })}
                         className="h-4 w-4 accent-primary rounded cursor-pointer"
                       />
-                      <span>Authorized to sign on bank account / gateway</span>
+                      <span>Authorized to operate/sign on account & gateway</span>
                     </label>
+
+                    {/* Signature Upload */}
+                    <div className="flex items-center gap-2">
+                      {director.signatureUrl ? (
+                        <div className="flex items-center gap-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img 
+                            src={director.signatureUrl} 
+                            alt="Signature" 
+                            className="h-8 max-w-[90px] object-contain border border-border rounded bg-white p-0.5" 
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updateDirector(director.id, { signatureUrl: "" })}
+                            className="text-[11px] text-red-500 hover:underline font-semibold"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground font-semibold text-[11px] rounded-lg cursor-pointer transition-colors">
+                          {uploadingSignatureId === director.id ? (
+                            <>
+                              <Spinner className="h-3 w-3 animate-spin text-primary" weight="bold" />
+                              <span>Uploading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <UploadSimple className="h-3 w-3 text-primary" weight="bold" />
+                              <span>Upload Signature (Optional)</span>
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg"
+                            onChange={(e) => handleDirectorSignatureUpload(director.id, e)}
+                            disabled={uploadingSignatureId === director.id}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -875,7 +1123,7 @@ export default function BoardResolutionBuilderPage() {
           ) : previewData ? (
             <div className="space-y-6">
               
-              {/* Payment Checkout Dock (Top) */}
+              {/* Payment Checkout Banner (Top) */}
               {!finalDocument && (
                 <div className="p-6 rounded-3xl bg-gradient-to-br from-card via-card to-secondary/40 border border-primary/40 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="space-y-1">
@@ -889,7 +1137,7 @@ export default function BoardResolutionBuilderPage() {
                       Unlock Official Certified Extract (PDF + PNG)
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Remove preview watermarks and get immediate high-resolution downloads and email delivery.
+                      Remove draft preview watermarks and get immediate high-resolution downloads and email delivery.
                     </p>
                   </div>
 
@@ -900,7 +1148,7 @@ export default function BoardResolutionBuilderPage() {
                     </div>
 
                     <button
-                      onClick={handleConfirmAndPay}
+                      onClick={() => setIsPaymentChoiceModalOpen(true)}
                       disabled={isProcessingPayment}
                       className="w-full sm:w-auto px-6 py-3.5 bg-primary text-primary-foreground font-black text-xs rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
@@ -929,7 +1177,7 @@ export default function BoardResolutionBuilderPage() {
                     </div>
                     <div>
                       <h3 className="text-sm font-black">Official Document Unlocked & Emailed!</h3>
-                      <p className="text-xs opacity-90">Your high-resolution PDF has been sent to your email and saved to your vault.</p>
+                      <p className="text-xs opacity-90">Your high-resolution PDF has been sent to your email and saved to your Document Vault.</p>
                     </div>
                   </div>
 
@@ -947,6 +1195,7 @@ export default function BoardResolutionBuilderPage() {
                 data={previewData}
                 accentColor={formData.accentColor}
                 logoUrl={formData.logoUrl}
+                sealUrl={formData.sealUrl}
                 isWatermarked={!finalDocument}
                 documentRef={finalDocument?.transactionRef || "PREVIEW-DRAFT-CAMA-2020"}
               />
@@ -980,17 +1229,118 @@ export default function BoardResolutionBuilderPage() {
         </div>
       )}
 
-      {/* Fund Wallet Modal if balance is low */}
+      {/* ========================================================================= */}
+      {/* DUAL PAYMENT METHOD SELECTION MODAL                                       */}
+      {/* ========================================================================= */}
+      {isPaymentChoiceModalOpen && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div 
+            className="fixed inset-0" 
+            onClick={() => setIsPaymentChoiceModalOpen(false)} 
+          />
+
+          <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200">
+            {/* Top Accent Strip */}
+            <div className="h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-primary" />
+
+            <div className="p-5 sm:p-6 space-y-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+                    Document Checkout
+                  </span>
+                  <h3 className="text-lg font-black text-foreground tracking-tight">
+                    Select Payment Method
+                  </h3>
+                </div>
+
+                <button
+                  onClick={() => setIsPaymentChoiceModalOpen(false)}
+                  className="h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <X className="h-4 w-4" weight="bold" />
+                </button>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-secondary/40 border border-border/70 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-muted-foreground block">Board Resolution Fee</span>
+                  <span className="text-xl font-black text-foreground">₦{price.toLocaleString()}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] font-bold text-muted-foreground block">Your Wallet Balance</span>
+                  <span className="text-sm font-black text-primary">
+                    ₦{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Payment Options */}
+              <div className="space-y-3">
+                {/* Option 1: Wallet Balance */}
+                <button
+                  onClick={handlePayFromWallet}
+                  className="w-full p-4 rounded-2xl border border-border hover:border-primary bg-card hover:bg-primary/5 transition-all text-left flex items-center justify-between group cursor-pointer shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Wallet className="h-5 w-5" weight="bold" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold block text-foreground group-hover:text-primary transition-colors">
+                        Pay from Wallet Balance
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {walletBalance >= price 
+                          ? "Instant 1-click debit and immediate generation" 
+                          : `Balance is ₦${walletBalance.toLocaleString()} (Top-up required)`}
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-transform" weight="bold" />
+                </button>
+
+                {/* Option 2: Online Payment (Card / Transfer) */}
+                <button
+                  onClick={handlePayOnline}
+                  className="w-full p-4 rounded-2xl border border-border hover:border-primary bg-card hover:bg-primary/5 transition-all text-left flex items-center justify-between group cursor-pointer shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                      <CreditCard className="h-5 w-5" weight="bold" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold block text-foreground group-hover:text-primary transition-colors">
+                        Pay Online (Card / Bank Transfer)
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Secure instant checkout via Korapay & Paystack
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-transform" weight="bold" />
+                </button>
+              </div>
+
+              <p className="text-[10px] text-center text-muted-foreground">
+                256-Bit Encrypted & Compliant with CBN Corporate Regulations
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fund Wallet Modal */}
       <FundWalletModal
         isOpen={isFundWalletOpen}
         onClose={() => setIsFundWalletOpen(false)}
         onSuccess={() => {
           setIsFundWalletOpen(false);
           fetchWallet();
-          showToast("Wallet funded! You can now proceed with your document generation.", "success");
+          showToast("Payment successful! You can now proceed with your document generation.", "success");
         }}
         onFailure={(msg) => {
-          showToast(msg || "Wallet funding incomplete.", "error");
+          showToast(msg || "Payment was not completed.", "error");
         }}
       />
 

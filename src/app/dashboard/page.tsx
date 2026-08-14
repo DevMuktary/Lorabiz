@@ -83,7 +83,7 @@ const LIVE_SERVICES: ServiceItem[] = [
     title: "Smart Legal Documents",
     category: "Legal & Corporate Secretarial",
     description: "Generate official Board Resolutions, NDAs, and corporate agreements tailored for Nigerian banks & KYC.",
-    logo: "/cac.png",
+    logo: "/legal-doc.svg",
     href: "/dashboard/documents",
     turnaround: "Instant Download",
     actionText: "Generate Documents",
