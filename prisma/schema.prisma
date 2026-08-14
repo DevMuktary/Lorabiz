@@ -57,6 +57,21 @@ enum TwoFactorMethod {
   AUTHENTICATOR
 }
 
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum CampaignDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 // ==========================================
 // MODELS
 // ==========================================
@@ -99,6 +114,9 @@ model User {
   twoFactorMethod  TwoFactorMethod?
   twoFactorSecret  String?         // Stores encrypted Base32 TOTP secret for Google Authenticator
   
+  // Marketing & Email Broadcast Subscriptions
+  isSubscribedToMarketing Boolean  @default(true)
+  
   isSuspended   Boolean   @default(false) // Allows MD to lock out malicious users
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -114,6 +132,10 @@ model User {
   twoFactorCodes   TwoFactorCode[]
   staffActions     StaffActionLog[]
   promoUsages      PromoUsage[]
+  
+  // --- EMAIL CAMPAIGNS ---
+  campaignsCreated EmailCampaign[]    @relation("CampaignAuthor")
+  campaignLogs     EmailCampaignLog[]
   
   // --- STAFF ASSIGNMENTS ---
   assignedBiz      BusinessRegistration[] @relation("BizStaffAssignment")
@@ -628,3 +650,54 @@ model ReferralWithdrawal {
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+// ==========================================
+// EMAIL CAMPAIGNS & BROADCASTS
+// ==========================================
+
+model EmailCampaign {
+  id              String           @id @default(cuid())
+  title           String           // Internal reference name (e.g., "Easter Promo Blast")
+  subject         String           // Public email subject line
+  previewText     String?          // Email preheader text
+  content         String           @db.Text // HTML or rich formatted email body
+  senderName      String           @default("LoraBiz")
+  targetAudience  Json?            // Filter criteria payload e.g. { segment: "ALL" | "REGISTERED" | "NO_ORDERS" }
+  status          CampaignStatus   @default(DRAFT)
+  totalRecipients Int              @default(0)
+  sentCount       Int              @default(0)
+  failedCount     Int              @default(0)
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  createdById     String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  createdBy       User             @relation("CampaignAuthor", fields: [createdById], references: [id])
+  logs            EmailCampaignLog[]
+
+  @@index([createdById])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model EmailCampaignLog {
+  id            String                 @id @default(cuid())
+  campaignId    String
+  userId        String?
+  email         String
+  recipientName String?
+  status        CampaignDeliveryStatus @default(PENDING)
+  errorMessage  String?                @db.Text
+  sentAt        DateTime?
+  createdAt     DateTime               @default(now())
+
+  campaign      EmailCampaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user          User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([userId])
+  @@index([status])
+  @@index([email])
+}
+
