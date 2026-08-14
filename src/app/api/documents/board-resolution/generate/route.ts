@@ -17,16 +17,10 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { formData, paymentMethod = "WALLET", promoCode, pdfBase64, imageBase64, draftId } = body as {
-      formData: BoardResolutionFormData;
-      paymentMethod?: "WALLET" | "ONLINE";
-      promoCode?: string;
-      pdfBase64?: string;
-      imageBase64?: string;
-      draftId?: string;
-    };
+    const { paymentMethod = "WALLET", promoCode, pdfBase64, imageBase64, draftId } = body;
+    const formData: BoardResolutionFormData = body.formData || body;
 
-    if (!formData || !formData.companyName || !formData.registeredAddress || !formData.targetInstitution) {
+    if (!formData || !formData.companyName?.trim() || !formData.registeredAddress?.trim() || !formData.targetInstitution?.trim()) {
       return NextResponse.json({ 
         success: false, 
         message: "Missing required company or institution details." 

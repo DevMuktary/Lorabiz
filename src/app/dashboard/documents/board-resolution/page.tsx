@@ -33,7 +33,6 @@ import {
   Lock,
   Pen,
   Clock,
-  FloppyDisk,
   Folders
 } from "@phosphor-icons/react";
 import { 
@@ -208,7 +207,7 @@ function BoardResolutionBuilderContent() {
     } catch {}
   };
 
-  // 2. Load Draft from backend if URL has ?draftId=...
+  // 2. Load Draft from backend ONLY if URL has explicit ?draftId=...
   useEffect(() => {
     const urlDraftId = searchParams.get("draftId");
     if (urlDraftId) {
@@ -257,17 +256,9 @@ function BoardResolutionBuilderContent() {
       };
       loadDraft();
     } else {
-      // Otherwise check localStorage
+      // Clear any legacy localstorage draft so opening fresh page never auto-fills
       try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_DRAFT_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && parsed.companyName) {
-            setFormData(parsed);
-            setDraftRestoredNotice(`Restored local draft for "${parsed.companyName}"`);
-            setTimeout(() => setDraftRestoredNotice(null), 6000);
-          }
-        }
+        localStorage.removeItem(LOCAL_STORAGE_DRAFT_KEY);
       } catch {}
     }
 
@@ -276,21 +267,8 @@ function BoardResolutionBuilderContent() {
     fetchHistoryCount();
   }, [searchParams]);
 
-  // 3. LocalStorage auto-save
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      try {
-        if (formData.companyName || formData.targetInstitution || formData.directors[0]?.fullName) {
-          localStorage.setItem(LOCAL_STORAGE_DRAFT_KEY, JSON.stringify(formData));
-        }
-      } catch {}
-    }, 500);
-
-    return () => clearTimeout(handler);
-  }, [formData]);
-
-  // 4. Save Draft to Backend API
-  const saveDraftToBackend = async (step: number = currentStep, silent: boolean = false) => {
+  // 3. Save Draft to Backend API (Auto-saves seamlessly as user completes steps)
+  const saveDraftToBackend = async (step: number = currentStep, silent: boolean = true) => {
     if (!formData.companyName && !formData.targetInstitution) {
       if (!silent) showToast("Please enter at least a company name before saving.", "info");
       return;
@@ -534,12 +512,13 @@ function BoardResolutionBuilderContent() {
       const res = await fetch("/api/documents/board-resolution/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ formData })
       });
       const data = await res.json();
+      const resolutionOutput = data.preview || data.data?.preview || data.data?.structuredResolution || data.data;
 
-      if (data.success && data.preview) {
-        setPreviewData(data.preview);
+      if (data.success && resolutionOutput) {
+        setPreviewData(resolutionOutput);
       } else {
         showToast(data.message || "Failed to generate preview. Please try again.", "error");
       }
@@ -611,7 +590,7 @@ function BoardResolutionBuilderContent() {
           <span>Back to Smart Legal Documents Hub</span>
         </Link>
 
-        {/* Right: Actions (History Button, Save Progress, Wallet) */}
+        {/* Right: Actions (History Button, Wallet) */}
         <div className="flex items-center gap-2.5 flex-wrap">
           
           {/* Resolution History Button */}
@@ -628,22 +607,6 @@ function BoardResolutionBuilderContent() {
               </span>
             )}
           </Link>
-
-          {/* Save Draft Action */}
-          <button
-            type="button"
-            onClick={() => saveDraftToBackend(currentStep, false)}
-            disabled={isSavingDraft}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-            title="Save draft to resume later"
-          >
-            {isSavingDraft ? (
-              <Spinner className="h-3.5 w-3.5 animate-spin text-primary" />
-            ) : (
-              <FloppyDisk className="h-3.5 w-3.5 text-muted-foreground" weight="bold" />
-            )}
-            <span>{isSavingDraft ? "Saving..." : "Save Draft"}</span>
-          </button>
 
           {/* Wallet Balance Pill */}
           <div className="flex items-center gap-1.5 text-xs font-bold bg-secondary/80 px-3 py-2 rounded-xl border border-border text-foreground">

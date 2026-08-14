@@ -15,16 +15,21 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { formData } = body as { formData: BoardResolutionFormData };
+    const formData: BoardResolutionFormData = body?.formData || body;
 
-    if (!formData || !formData.companyName || !formData.registeredAddress || !formData.targetInstitution) {
+    if (
+      !formData ||
+      !formData.companyName?.trim() ||
+      !formData.registeredAddress?.trim() ||
+      !formData.targetInstitution?.trim()
+    ) {
       return NextResponse.json({ 
         success: false, 
         message: "Please provide all required fields (Company Name, Address, and Target Bank/Fintech)." 
       }, { status: 400 });
     }
 
-    if (!formData.directors || formData.directors.length === 0) {
+    if (!formData.directors || !Array.isArray(formData.directors) || formData.directors.length === 0) {
       return NextResponse.json({ 
         success: false, 
         message: "Please add at least one Director or Company Secretary." 
@@ -42,8 +47,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
+      preview: structuredResolution,
       data: {
         structuredResolution,
+        preview: structuredResolution,
         previewTimestamp: new Date().toISOString(),
         watermark: "PREVIEW COPY • OFFICIAL WATERMARK WILL BE REMOVED UPON FINAL DOWNLOAD"
       }
