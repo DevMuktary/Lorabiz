@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { NotificationEvent } from "@/services/notifications";
 import { notificationQueue } from "@/lib/queue";
 import { redis } from "@/lib/redis";
-import { sendScumlSubmittedEmail } from "@/lib/email";
+import { sendScumlSubmittedEmail, sendDocumentGeneratedEmail } from "@/lib/email";
 import { logUserActivity } from "@/lib/activity-logger";
+import { generateAIBoardResolution, generateDeterministicResolution } from "@/lib/board-resolution-generator";
 
 export async function POST(req: Request) {
   console.log("\n==============================================");
@@ -40,11 +41,12 @@ export async function POST(req: Request) {
       console.log(`✅ Event Validated. Ref: ${reference} | Amount: ${amountPaid}`);
 
       let userId: string | null = null;
-      let serviceType: "business" | "llc" | "scuml" | "wallet_funding" | null = null;
+      let serviceType: "business" | "llc" | "scuml" | "wallet_funding" | "document" | null = null;
       let registrationId: string | null = null;
       let regName = "Registration";
       let displayId = "";
       let scumlDraft: any = null;
+      let docDraft: any = null;
 
       // =========================================================================
       // 1. STATELESS USER RESOLUTION (ROBUST STRING PARSING)
@@ -54,6 +56,22 @@ export async function POST(req: Request) {
           const temp = reference.replace("FW_USR_", "");
           userId = temp.substring(0, temp.lastIndexOf("_"));
       } 
+      else if (reference.startsWith("ONL_DOC_")) {
+          serviceType = "document";
+          const temp = reference.replace("ONL_DOC_", "");
+          registrationId = temp.substring(0, temp.lastIndexOf("_"));
+          
+          const draftStr = await redis.get(registrationId);
+          if (draftStr) {
+              docDraft = JSON.parse(draftStr);
+              userId = docDraft.userId;
+              regName = docDraft.formData?.companyName || "Company Resolution";
+              displayId = registrationId;
+          } else {
+              console.warn(`⚠️ Document Draft ${registrationId} expired.`);
+              return NextResponse.json({ received: true });
+          }
+      }
       else if (reference.startsWith("ONL_SCUML_")) {
           serviceType = "scuml";
           const temp = reference.replace("ONL_SCUML_", "");
@@ -175,11 +193,37 @@ export async function POST(req: Request) {
                 status: "SUCCESS", 
                 reference: `SRV_PAY_${registrationId}_${Date.now()}`, 
                 description: `Payment for Registration (${regName})`,
-                serviceCategory: serviceType.toUpperCase()
+                serviceCategory: serviceType === "document" ? "SMART_DOCUMENTS" : serviceType.toUpperCase()
               }
             });
 
-            if (serviceType === "business" && registrationId) {
+            if (serviceType === "document" && registrationId && docDraft) {
+              const docFormData = docDraft.formData;
+              let structuredResolution;
+              try {
+                structuredResolution = await generateAIBoardResolution(docFormData);
+              } catch (e) {
+                structuredResolution = generateDeterministicResolution(docFormData);
+              }
+
+              const docTitle = `Board Resolution - ${docFormData.targetInstitution} (${docFormData.purposeCategory === "PAYMENT_GATEWAY" ? "Payment Gateway" : "Corporate Account"})`;
+
+              await tx.generatedDocument.create({
+                data: {
+                  userId: user.id,
+                  documentType: docDraft.documentType || "BOARD_RESOLUTION",
+                  title: docTitle,
+                  companyName: docFormData.companyName,
+                  status: "COMPLETED",
+                  accentColor: docFormData.accentColor || "#0f172a",
+                  logoUrl: docFormData.logoUrl || null,
+                  formData: docFormData as any,
+                  structuredData: structuredResolution as any,
+                  amountPaid: amountPaid,
+                  transactionRef: reference
+                }
+              });
+            } else if (serviceType === "business" && registrationId) {
               await tx.businessRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
             } else if (serviceType === "llc" && registrationId) {
               await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
@@ -274,6 +318,31 @@ export async function POST(req: Request) {
             }
           } catch (fundingErr) {
             console.error("Failed to check/enqueue first wallet funding email:", fundingErr);
+          }
+        } else if (serviceType === "document" && docDraft && registrationId) {
+          logUserActivity({
+            userId: user.id,
+            action: "SMART_DOCUMENT_PURCHASED",
+            category: "SERVICES",
+            description: `Board resolution generated for "${docDraft.formData?.companyName}" via Webhook`,
+            referenceId: reference,
+            metadata: { companyName: docDraft.formData?.companyName, amount: amountPaid },
+            req,
+          });
+
+          await redis.del(registrationId);
+          try {
+            const compName = docDraft.formData?.companyName || "Your Company";
+            const docTitle = `Board Resolution - ${docDraft.formData?.targetInstitution || "Corporate Resolution"}`;
+            await sendDocumentGeneratedEmail({
+              to: user.email!,
+              firstName: user.firstName || "Valued Client",
+              documentTitle: docTitle,
+              companyName: compName,
+              documentId: registrationId,
+            });
+          } catch (err) {
+            console.error("Failed to send Document email via Webhook:", err);
           }
         } else if (serviceType === "scuml" && scumlDraft && registrationId) {
           logUserActivity({

@@ -6,6 +6,8 @@ import { Prisma } from "@prisma/client";
 import { redis } from "@/lib/redis";
 import { notificationQueue } from "@/lib/queue";
 import { logUserActivity } from "@/lib/activity-logger";
+import { sendDocumentGeneratedEmail } from "@/lib/email";
+import { generateAIBoardResolution, generateDeterministicResolution } from "@/lib/board-resolution-generator";
 
 export async function POST(req: Request) {
   try {
@@ -49,10 +51,19 @@ export async function POST(req: Request) {
     // CRITICAL FIX: SAFELY EXTRACT REGISTRATION ID IGNORING UNDERSCORES
     // =====================================================================
     let scumlDraft: any = null;
+    let docDraft: any = null;
     const isScuml = reference.startsWith("ONL_SCUML_");
+    const isDoc = reference.startsWith("ONL_DOC_");
     
     let registrationId = "";
-    if (isScuml) {
+    if (isDoc) {
+      const temp = reference.replace("ONL_DOC_", "");
+      registrationId = temp.substring(0, temp.lastIndexOf("_"));
+      const draftStr = await redis.get(registrationId);
+      if (draftStr) {
+        docDraft = JSON.parse(draftStr);
+      }
+    } else if (isScuml) {
       const temp = reference.replace("ONL_SCUML_", "");
       registrationId = temp.substring(0, temp.lastIndexOf("_")); 
       
@@ -204,12 +215,40 @@ export async function POST(req: Request) {
             type: "DEBIT",
             status: "SUCCESS",
             reference: `SRV_PAY_${registrationId}_${Date.now()}`,
-            description: `Payment for Service Registration`,
-            serviceCategory: isScuml ? "SCUML" : "BUSINESS_NAME"
+            description: isDoc 
+              ? `Payment for Board Resolution (${docDraft?.formData?.companyName || "Document"})`
+              : `Payment for Service Registration`,
+            serviceCategory: isDoc ? "SMART_DOCUMENTS" : isScuml ? "SCUML" : "BUSINESS_NAME"
           }
         });
 
-        if (isScuml) {
+        if (isDoc && docDraft) {
+          const docFormData = docDraft.formData;
+          let structuredResolution;
+          try {
+            structuredResolution = await generateAIBoardResolution(docFormData);
+          } catch (e) {
+            structuredResolution = generateDeterministicResolution(docFormData);
+          }
+
+          const docTitle = `Board Resolution - ${docFormData.targetInstitution} (${docFormData.purposeCategory === "PAYMENT_GATEWAY" ? "Payment Gateway" : "Corporate Account"})`;
+
+          await tx.generatedDocument.create({
+            data: {
+              userId: user.id,
+              documentType: docDraft.documentType || "BOARD_RESOLUTION",
+              title: docTitle,
+              companyName: docFormData.companyName,
+              status: "COMPLETED",
+              accentColor: docFormData.accentColor || "#0f172a",
+              logoUrl: docFormData.logoUrl || null,
+              formData: docFormData as any,
+              structuredData: structuredResolution as any,
+              amountPaid: amountPaid,
+              transactionRef: reference
+            }
+          });
+        } else if (isScuml) {
           if (scumlDraft) {
             await tx.scumlRegistration.create({ 
               data: {
@@ -246,6 +285,37 @@ export async function POST(req: Request) {
         }
       }
     });
+
+    if (isDoc && docDraft) {
+      await redis.del(registrationId);
+      const user = await prisma.user.findUnique({ where: { email: userEmail } });
+      const compName = docDraft.formData?.companyName || "Your Company";
+      const docTitle = `Board Resolution - ${docDraft.formData?.targetInstitution || "Corporate Resolution"}`;
+      
+      try {
+        await sendDocumentGeneratedEmail({
+          to: userEmail,
+          firstName: user?.firstName || "Valued Client",
+          documentTitle: docTitle,
+          companyName: compName,
+          documentId: registrationId,
+        });
+      } catch (err) {
+        console.error("Failed to send Document Email in Verify:", err);
+      }
+
+      if (user) {
+        logUserActivity({
+          userId: user.id,
+          action: "SMART_DOCUMENT_PURCHASED",
+          category: "SERVICES",
+          description: `Smart Legal Document generated: "${docTitle}" for "${compName}"`,
+          referenceId: reference,
+          metadata: { documentTitle: docTitle, companyName: compName, amount: amountPaid },
+          req,
+        });
+      }
+    }
 
     if (isScuml && scumlDraft) {
       await redis.del(registrationId);

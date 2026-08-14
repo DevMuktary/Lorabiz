@@ -4,7 +4,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { notificationQueue } from "@/lib/queue";
-import { sendScumlSubmittedEmail } from "@/lib/email";
+import { sendScumlSubmittedEmail, sendDocumentGeneratedEmail } from "@/lib/email";
+import { generateAIBoardResolution, generateDeterministicResolution } from "@/lib/board-resolution-generator";
 
 export async function POST(req: Request) {
   try {
@@ -89,6 +90,40 @@ export async function POST(req: Request) {
       
       regName = registration.proposedName || "LLC Application";
       displayId = registration.trackingId || registrationId;
+
+    } else if (service === "doc_board_resolution" || service === "document") {
+      promoServiceKey = "DOC_BOARD_RESOLUTION";
+
+      const { documentDraftId, formData: docFormData, documentType = "BOARD_RESOLUTION" } = body;
+      const draftId = documentDraftId || registrationId || `doc_draft_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+
+      if (!docFormData || !docFormData.companyName) {
+        return NextResponse.json({ success: false, message: "Document data is missing." }, { status: 400 });
+      }
+
+      const servicePriceRecord = await prisma.servicePricing.findUnique({ where: { serviceKey: "DOC_BOARD_RESOLUTION" } });
+      baseAmountToPay = servicePriceRecord ? Number(servicePriceRecord.price) : 3500;
+
+      description = `Payment for Board Resolution (${docFormData.companyName})`;
+      reference = `ONL_DOC_${draftId}_${Date.now()}`;
+      callbackPath = `/dashboard/documents/board-resolution?documentDraftId=${draftId}&verifying=true`;
+
+      regName = docFormData.companyName;
+      displayId = draftId;
+
+      // Save draft into Redis for stateless retrieval
+      await redis.set(
+        draftId,
+        JSON.stringify({
+          userId: user.id,
+          documentType,
+          formData: docFormData,
+          amountToPay: baseAmountToPay,
+          createdAt: new Date().toISOString()
+        }),
+        "EX",
+        86400 * 3
+      );
 
     } else if (service === "scuml") {
       promoServiceKey = "SCUML"; 
@@ -240,7 +275,51 @@ export async function POST(req: Request) {
             });
           }
   
-          if (promoServiceKey === "LLC" && registrationId) {
+          let createdDocId: string | null = null;
+
+          if (promoServiceKey === "DOC_BOARD_RESOLUTION") {
+            const { documentDraftId, formData: docFormData, documentType = "BOARD_RESOLUTION" } = body;
+            const draftId = documentDraftId || registrationId;
+            let effectiveFormData = docFormData;
+
+            if (!effectiveFormData && draftId) {
+              const draftStr = await redis.get(draftId);
+              if (draftStr) {
+                const parsed = JSON.parse(draftStr);
+                effectiveFormData = parsed.formData;
+              }
+            }
+
+            if (effectiveFormData) {
+              let structuredResolution;
+              try {
+                structuredResolution = await generateAIBoardResolution(effectiveFormData);
+              } catch (e) {
+                structuredResolution = generateDeterministicResolution(effectiveFormData);
+              }
+
+              const docTitle = `Board Resolution - ${effectiveFormData.targetInstitution} (${effectiveFormData.purposeCategory === "PAYMENT_GATEWAY" ? "Payment Gateway" : "Corporate Account"})`;
+
+              const createdDoc = await tx.generatedDocument.create({
+                data: {
+                  userId: user.id,
+                  documentType: documentType as any,
+                  title: docTitle,
+                  companyName: effectiveFormData.companyName,
+                  status: "COMPLETED",
+                  accentColor: effectiveFormData.accentColor || "#0f172a",
+                  logoUrl: effectiveFormData.logoUrl || null,
+                  formData: effectiveFormData as any,
+                  structuredData: structuredResolution as any,
+                  amountPaid: amountToPay,
+                  transactionRef: txReference
+                }
+              });
+
+              createdDocId = createdDoc.id;
+              if (draftId) await redis.del(draftId);
+            }
+          } else if (promoServiceKey === "LLC" && registrationId) {
             await tx.llcRegistration.update({ where: { id: registrationId }, data: { status: "PENDING" } });
           } else if (promoServiceKey === "SCUML" && registrationId) {
             const draftStr = await redis.get(registrationId);
@@ -269,7 +348,19 @@ export async function POST(req: Request) {
         });
   
         try {
-          if (promoServiceKey === "SCUML") {
+          if (promoServiceKey === "DOC_BOARD_RESOLUTION") {
+            const { formData: docFormData } = body;
+            const compName = docFormData?.companyName || regName;
+            const docTitle = `Board Resolution - ${docFormData?.targetInstitution || "Corporate Resolution"}`;
+            
+            await sendDocumentGeneratedEmail({
+              to: user.email!,
+              firstName: user.firstName,
+              documentTitle: docTitle,
+              companyName: compName,
+              documentId: registrationId || txReference,
+            });
+          } else if (promoServiceKey === "SCUML") {
             await sendScumlSubmittedEmail({
               to: user.email!,
               name: user.firstName || "Customer",

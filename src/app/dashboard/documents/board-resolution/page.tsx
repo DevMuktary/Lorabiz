@@ -41,7 +41,7 @@ import {
 } from "@/lib/board-resolution-generator";
 import ResolutionDocumentView from "@/components/features/documents/ResolutionDocumentView";
 import CanvasSignatureModal from "@/components/features/documents/CanvasSignatureModal";
-import FundWalletModal from "@/components/features/wallet/FundWalletModal";
+import DocumentPaymentModal from "@/components/features/documents/DocumentPaymentModal";
 
 const NIGERIAN_PAYMENT_GATEWAYS = [
   "Paystack Payments Limited",
@@ -81,10 +81,9 @@ export default function BoardResolutionBuilderPage() {
   const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // User Wallet State (null = loading)
+  // Payment Modal State
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [isFundWalletOpen, setIsFundWalletOpen] = useState(false);
-  const [isPaymentChoiceModalOpen, setIsPaymentChoiceModalOpen] = useState(false);
 
   // Upload & Signature States
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -234,8 +233,7 @@ export default function BoardResolutionBuilderPage() {
       } else {
         setWalletBalance(0);
       }
-    } catch (error) {
-      console.error("Failed to fetch wallet:", error);
+    } catch {
       setWalletBalance(0);
     }
   };
@@ -471,48 +469,6 @@ export default function BoardResolutionBuilderPage() {
     } finally {
       setGeneratingPreview(false);
     }
-  };
-
-  // Final Generation & Payment
-  const handlePayFromWallet = async () => {
-    setIsPaymentChoiceModalOpen(false);
-
-    if (walletBalance === null || walletBalance < price) {
-      setIsFundWalletOpen(true);
-      showToast(`Your wallet balance is ₦${(walletBalance || 0).toLocaleString()}. Please fund at least ₦${(price - (walletBalance || 0)).toLocaleString()} to proceed.`, "info");
-      return;
-    }
-
-    setIsProcessingPayment(true);
-    try {
-      const res = await fetch("/api/documents/board-resolution/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          formData,
-          paymentMethod: "WALLET",
-          promoCode: promoCode || undefined,
-        })
-      });
-
-      const json = await res.json();
-      if (json.success && json.document) {
-        setFinalDocument(json.document);
-        showToast("Payment successful! Your official certified document is unlocked and emailed to you.", "success");
-        fetchWallet();
-      } else {
-        showToast(json.message || "Generation failed.", "error");
-      }
-    } catch {
-      showToast("Network error during payment. Please try again.", "error");
-    } finally {
-      setIsProcessingPayment(false);
-    }
-  };
-
-  const handlePayOnline = () => {
-    setIsPaymentChoiceModalOpen(false);
-    setIsFundWalletOpen(true);
   };
 
   const filteredBanks = banksList.filter(b => 
@@ -1402,7 +1358,7 @@ export default function BoardResolutionBuilderPage() {
                     </div>
 
                     <button
-                      onClick={() => setIsPaymentChoiceModalOpen(true)}
+                      onClick={() => setIsPaymentModalOpen(true)}
                       disabled={isProcessingPayment}
                       className="w-full sm:w-auto px-6 py-3.5 bg-primary text-primary-foreground font-black text-xs rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
@@ -1499,121 +1455,21 @@ export default function BoardResolutionBuilderPage() {
       />
 
       {/* ========================================================================= */}
-      {/* DUAL PAYMENT METHOD SELECTION MODAL                                       */}
+      {/* DEDICATED SMART DOCUMENT PAYMENT MODAL (WALLET & ONLINE KORAPAY)           */}
       {/* ========================================================================= */}
-      {isPaymentChoiceModalOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div 
-            className="fixed inset-0" 
-            onClick={() => setIsPaymentChoiceModalOpen(false)} 
-          />
-
-          <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200">
-            {/* Top Accent Strip */}
-            <div className="h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-primary" />
-
-            <div className="p-5 sm:p-6 space-y-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">
-                    Document Checkout
-                  </span>
-                  <h3 className="text-lg font-black text-foreground tracking-tight">
-                    Select Payment Method
-                  </h3>
-                </div>
-
-                <button
-                  onClick={() => setIsPaymentChoiceModalOpen(false)}
-                  className="h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer"
-                >
-                  <X className="h-4 w-4" weight="bold" />
-                </button>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-secondary/40 border border-border/70 flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-muted-foreground block">Board Resolution Fee</span>
-                  <span className="text-xl font-black text-foreground">₦{price.toLocaleString()}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[11px] font-bold text-muted-foreground block">Your Wallet Balance</span>
-                  <span className="text-sm font-black text-primary">
-                    {walletBalance === null ? "..." : `₦${walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-                  </span>
-                </div>
-              </div>
-
-              {/* Payment Options */}
-              <div className="space-y-3">
-                {/* Option 1: Wallet Balance */}
-                <button
-                  onClick={handlePayFromWallet}
-                  className="w-full p-4 rounded-2xl border border-border hover:border-primary bg-card hover:bg-primary/5 transition-all text-left flex items-center justify-between group cursor-pointer shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Wallet className="h-5 w-5" weight="bold" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold block text-foreground group-hover:text-primary transition-colors">
-                        Pay from Wallet Balance
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {walletBalance !== null && walletBalance >= price 
-                          ? "Instant 1-click debit and immediate generation" 
-                          : `Balance is ₦${(walletBalance || 0).toLocaleString()} (Top-up required)`}
-                      </span>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-transform" weight="bold" />
-                </button>
-
-                {/* Option 2: Online Payment (Card / Transfer) */}
-                <button
-                  onClick={handlePayOnline}
-                  className="w-full p-4 rounded-2xl border border-border hover:border-primary bg-card hover:bg-primary/5 transition-all text-left flex items-center justify-between group cursor-pointer shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                      <CreditCard className="h-5 w-5" weight="bold" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold block text-foreground group-hover:text-primary transition-colors">
-                        Pay Online (Card / Bank Transfer)
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        Instant gateway top-up via Korapay & Paystack
-                      </span>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-transform" weight="bold" />
-                </button>
-              </div>
-
-              <p className="text-[10px] text-center text-muted-foreground">
-                256-Bit Encrypted & Compliant with CBN Corporate Regulations
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Fund Wallet Modal */}
-      <FundWalletModal
-        isOpen={isFundWalletOpen}
-        onClose={() => setIsFundWalletOpen(false)}
-        initialAmount={Math.max(100, price - (walletBalance || 0))}
-        onSuccess={() => {
-          setIsFundWalletOpen(false);
-          fetchWallet();
-          showToast("Payment successful! You can now proceed with your document generation.", "success");
-        }}
-        onFailure={(msg) => {
-          showToast(msg || "Payment was not completed.", "error");
+      <DocumentPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        formData={formData}
+        documentType="BOARD_RESOLUTION"
+        onSuccess={(doc) => {
+          setFinalDocument(doc);
+          setIsPaymentModalOpen(false);
+          showToast("Payment successful! Your official certified document is unlocked and emailed to you.", "success");
         }}
       />
 
     </div>
   );
 }
+
