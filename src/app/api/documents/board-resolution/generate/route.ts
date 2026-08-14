@@ -17,12 +17,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { formData, paymentMethod = "WALLET", promoCode, pdfBase64, imageBase64 } = body as {
+    const { formData, paymentMethod = "WALLET", promoCode, pdfBase64, imageBase64, draftId } = body as {
       formData: BoardResolutionFormData;
       paymentMethod?: "WALLET" | "ONLINE";
       promoCode?: string;
       pdfBase64?: string;
       imageBase64?: string;
+      draftId?: string;
     };
 
     if (!formData || !formData.companyName || !formData.registeredAddress || !formData.targetInstitution) {
@@ -125,24 +126,52 @@ export async function POST(req: Request) {
           });
         }
 
-        // Create Generated Document Record
-        const createdDoc = await tx.generatedDocument.create({
-          data: {
-            userId: user.id,
-            documentType: "BOARD_RESOLUTION",
-            title: docTitle,
-            companyName: formData.companyName,
-            status: "COMPLETED",
-            accentColor: formData.accentColor || "#0f172a",
-            logoUrl: formData.logoUrl || null,
-            formData: formData as any,
-            structuredData: structuredResolution as any,
-            pdfUrl: pdfBase64 || null,
-            imageUrl: imageBase64 || null,
-            amountPaid: finalPrice,
-            transactionRef: txReference
+        // Create or Update Generated Document Record
+        let createdDoc;
+        if (draftId) {
+          const existingDraft = await tx.generatedDocument.findFirst({
+            where: { id: draftId, userId: user.id }
+          });
+          if (existingDraft) {
+            createdDoc = await tx.generatedDocument.update({
+              where: { id: draftId },
+              data: {
+                title: docTitle,
+                companyName: formData.companyName,
+                status: "COMPLETED",
+                accentColor: formData.accentColor || "#0f172a",
+                logoUrl: formData.logoUrl || null,
+                formData: formData as any,
+                structuredData: structuredResolution as any,
+                pdfUrl: pdfBase64 || null,
+                imageUrl: imageBase64 || null,
+                amountPaid: finalPrice,
+                transactionRef: txReference,
+                updatedAt: new Date()
+              }
+            });
           }
-        });
+        }
+
+        if (!createdDoc) {
+          createdDoc = await tx.generatedDocument.create({
+            data: {
+              userId: user.id,
+              documentType: "BOARD_RESOLUTION",
+              title: docTitle,
+              companyName: formData.companyName,
+              status: "COMPLETED",
+              accentColor: formData.accentColor || "#0f172a",
+              logoUrl: formData.logoUrl || null,
+              formData: formData as any,
+              structuredData: structuredResolution as any,
+              pdfUrl: pdfBase64 || null,
+              imageUrl: imageBase64 || null,
+              amountPaid: finalPrice,
+              transactionRef: txReference
+            }
+          });
+        }
 
         return createdDoc;
       });

@@ -1,4 +1,5 @@
-import { getAIClient } from "./ai-client";
+import { getDocumentAIProviders, callAnthropicMessages } from "./ai-client";
+import OpenAI from "openai";
 
 export interface DirectorSignatory {
   id: string;
@@ -157,29 +158,26 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
 }
 
 /**
- * AI-enhanced Resolution Builder using AgentRouter / OpenAI.
+ * AI-enhanced Resolution Builder using AgentRouter (Claude-Opus-4-8 / Claude) with fallback to OpenAI and CAMA 2020 deterministic template.
  * Enforces Nigerian corporate law standards and produces structured legal output.
  */
 export async function generateAIBoardResolution(formData: BoardResolutionFormData): Promise<StructuredResolutionOutput> {
   const fallback = generateDeterministicResolution(formData);
-  
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || !apiKey.trim()) {
+  const providers = getDocumentAIProviders();
+
+  if (providers.length === 0) {
     return fallback;
   }
 
-  try {
-    const { client, model } = getAIClient();
-
-    const systemPrompt = `You are a Senior Nigerian Corporate Lawyer and Company Secretary specializing in CAMA 2020 corporate governance, banking compliance (CBN regulations), and fintech onboarding (Paystack, Flutterwave, Monnify KYC).
+  const systemPrompt = `You are a Senior Nigerian Corporate Lawyer and Company Secretary specializing in CAMA 2020 corporate governance, banking compliance (CBN regulations), and fintech onboarding (Paystack, Flutterwave, Monnify KYC).
 Your task is to generate a formal, legally watertight Extract of Board Resolution Minutes for a Nigerian registered company.
 Strict Requirements:
 1. Formal Nigerian CAMA 2020 legal tone.
 2. Direct, actionable operative clauses (RESOLVED THAT, FURTHER RESOLVED THAT).
 3. Clear mandate authority for financial institutions and payment gateways.
-4. Output MUST be valid JSON conforming strictly to the requested schema.`;
+4. Output MUST be valid JSON only conforming strictly to the requested schema. Do not wrap in markdown quotes if raw JSON is requested.`;
 
-    const userPrompt = `Generate a formal Board Resolution Extract based on the following verified company details:
+  const userPrompt = `Generate a formal Board Resolution Extract based on the following verified company details:
 - Company Name: ${formData.companyName}
 - RC/BN Number: ${formData.rcNumber || "N/A"}
 - Registered Office: ${formData.registeredAddress}
@@ -219,40 +217,67 @@ Respond ONLY with a JSON object matching this schema:
   ]
 }`;
 
-    const response = await client.chat.completions.create({
-      model: model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-    });
+  for (const provider of providers) {
+    try {
+      let rawText = "";
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) return fallback;
+      if (provider.provider === "agentrouter-anthropic") {
+        rawText = await callAnthropicMessages(
+          provider.baseURL,
+          provider.apiKey,
+          provider.model,
+          systemPrompt,
+          userPrompt
+        );
+      } else {
+        const client = new OpenAI({
+          apiKey: provider.apiKey,
+          baseURL: provider.baseURL,
+          defaultHeaders: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Lorabiz/1.0",
+            "Accept": "application/json",
+          },
+        });
 
-    const parsed = JSON.parse(content) as StructuredResolutionOutput;
-    
-    // Ensure all critical sections exist
-    if (!parsed.recitals || !parsed.operativeClauses || !parsed.signatories) {
-      return fallback;
+        const response = await client.chat.completions.create({
+          model: provider.model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+        });
+
+        rawText = response.choices[0]?.message?.content || "";
+      }
+
+      if (!rawText) continue;
+
+      // Clean JSON if needed (remove markdown backticks)
+      const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
+      const parsed = JSON.parse(cleanJson) as StructuredResolutionOutput;
+
+      // Ensure critical sections exist
+      if (parsed.recitals && parsed.operativeClauses && parsed.signatories) {
+        parsed.logoUrl = formData.logoUrl;
+        parsed.sealUrl = formData.sealUrl;
+        parsed.signatories = parsed.signatories.map((sig, idx) => {
+          const match = (formData.directors || []).find(d => d.fullName.toLowerCase().trim() === sig.name.toLowerCase().trim()) || formData.directors[idx];
+          return {
+            ...sig,
+            signatureUrl: match?.signatureUrl
+          };
+        });
+
+        return parsed;
+      }
+    } catch (err: any) {
+      console.warn(`[AI Provider Failed: ${provider.provider} (${provider.model})]:`, err?.message || err);
+      // Continue to next provider in fallback chain
     }
-
-    // Merge uploaded logo, seal and signature URLs from user form data
-    parsed.logoUrl = formData.logoUrl;
-    parsed.sealUrl = formData.sealUrl;
-    parsed.signatories = parsed.signatories.map((sig, idx) => {
-      const match = (formData.directors || []).find(d => d.fullName.toLowerCase().trim() === sig.name.toLowerCase().trim()) || formData.directors[idx];
-      return {
-        ...sig,
-        signatureUrl: match?.signatureUrl
-      };
-    });
-
-    return parsed;
-  } catch (error: any) {
-    console.warn("AI Resolution Generation fallback (using CAMA 2020 standard):", error?.message || error);
-    return fallback;
   }
+
+  // Final fallback to CAMA 2020 deterministic generator
+  return fallback;
 }

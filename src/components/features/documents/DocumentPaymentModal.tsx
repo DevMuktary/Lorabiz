@@ -10,6 +10,7 @@ interface DocumentPaymentModalProps {
   onClose: () => void;
   formData: BoardResolutionFormData;
   documentType?: string;
+  draftId?: string;
   onSuccess?: (document: any) => void;
 }
 
@@ -18,6 +19,7 @@ export default function DocumentPaymentModal({
   onClose, 
   formData, 
   documentType = "BOARD_RESOLUTION", 
+  draftId,
   onSuccess 
 }: DocumentPaymentModalProps) {
   const router = useRouter();
@@ -65,6 +67,8 @@ export default function DocumentPaymentModal({
 
     if (isOpen) {
       fetchData();
+      setProcessingState("idle");
+      setErrorMsg(null);
     }
 
     return () => {
@@ -72,61 +76,49 @@ export default function DocumentPaymentModal({
     };
   }, [isOpen]);
 
-  // =====================================================================
-  // 2. ROBUST REDIRECT VERIFICATION ON RETURN FROM KORAPAY
-  // =====================================================================
+  // 2. Handle Online Payment Verification (if redirected back with reference)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const isVerifying = params.get("verifying") === "true";
-      const reference = params.get("reference");
+    if (typeof window === "undefined") return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const reference = urlParams.get("reference");
+    const isVerifying = urlParams.get("verifying");
 
-      if (isVerifying && processingState === "idle") {
-        // Immediately clean the URL so refreshes don't re-trigger verification
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
+    if (isVerifying === "true" && reference && reference.startsWith("ONL_DOC_")) {
+      setProcessingState("verifying");
 
-        if (reference) {
-          verifyOnlinePayment(reference);
-        } else {
-          setErrorMsg("Payment was cancelled or interrupted. No funds were debited.");
+      const verifyPayment = async () => {
+        try {
+          const res = await fetch(`/api/payment/verify?reference=${reference}`);
+          const data = await res.json();
+
+          if (data.success) {
+            setProcessingState("success");
+            if (onSuccess) onSuccess(data.document || data);
+            
+            // Clean URL query
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+
+            setTimeout(() => {
+              router.push("/dashboard/documents/board-resolution/history?success=true");
+            }, 2500);
+          } else {
+            setErrorMsg(data.message || "Payment verification failed. Please contact support.");
+            setProcessingState("idle");
+          }
+        } catch {
+          setErrorMsg("Network error during payment verification.");
           setProcessingState("idle");
         }
-      }
+      };
+
+      verifyPayment();
     }
-  }, [processingState]);
-
-  const verifyOnlinePayment = async (reference: string) => {
-    setProcessingState("verifying");
-    setErrorMsg(null);
-
-    try {
-      const res = await fetch('/api/payment/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference })
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        setProcessingState("success");
-        if (onSuccess) onSuccess(data.document || data);
-        setTimeout(() => {
-          router.refresh(); 
-          router.push("/dashboard/documents?success=true");
-        }, 2500);
-      } else {
-        setErrorMsg(data.message || "Transaction cancelled or failed. Please try again.");
-        setProcessingState("idle");
-      }
-    } catch {
-      setErrorMsg("Verification taking a bit longer. Please check your Document History in a moment.");
-      setProcessingState("idle");
-    }
-  };
+  }, [router, onSuccess]);
 
   const handleApplyPromo = async () => {
-    if (!promoCodeInput.trim() || !servicePrice) return;
+    if (!promoCodeInput.trim()) return;
+    if (!servicePrice) return;
     
     setPromoLoading(true);
     setPromoError(null);
@@ -183,6 +175,8 @@ export default function DocumentPaymentModal({
           paymentMethod: method,
           formData,
           documentType,
+          documentDraftId: draftId,
+          draftId: draftId,
           promoCode: appliedPromo?.code
         })
       });
@@ -200,7 +194,7 @@ export default function DocumentPaymentModal({
         if (onSuccess) onSuccess(data.document || data);
         setTimeout(() => {
           router.refresh(); 
-          router.push("/dashboard/documents?success=true");
+          router.push("/dashboard/documents/board-resolution/history?success=true");
         }, 2000);
       } else if (method === "ONLINE") {
         if (!data.authorizationUrl) {
