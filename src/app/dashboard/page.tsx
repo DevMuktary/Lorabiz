@@ -20,10 +20,6 @@ import {
   Clock, 
   Wallet,
   Receipt,
-  Buildings,
-  ShieldCheck,
-  IdentificationCard,
-  DeviceMobile,
   Handshake,
   Check,
   ShareNetwork,
@@ -193,6 +189,18 @@ export default function DashboardPage() {
   // Partner Announcement Modal shows on every refresh
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState<boolean>(true);
 
+  // Lock body scroll when modal is active
+  useEffect(() => {
+    if (isPartnerModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isPartnerModalOpen]);
+
   const fetchBalance = () => {
     fetch('/api/user/wallet')
       .then(res => res.json())
@@ -337,7 +345,7 @@ export default function DashboardPage() {
       {/* 1. CENTER-SCREEN PARTNER ANNOUNCEMENT MODAL (SHOWS ON EVERY REFRESH)       */}
       {/* ========================================================================= */}
       {isPartnerModalOpen && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[99999] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[99999] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
           <div 
             className="fixed inset-0" 
             onClick={() => setIsPartnerModalOpen(false)} 
@@ -348,10 +356,10 @@ export default function DashboardPage() {
             <div className="h-2 bg-gradient-to-r from-primary via-indigo-600 to-primary" />
 
             <div className="p-6 sm:p-8">
-              {/* Header with Close Button */}
+              {/* Header with High-Visibility Close Button */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <div className="h-12 w-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                     <Handshake className="h-6 w-6" weight="bold" />
                   </div>
                   <div>
@@ -364,10 +372,12 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
+                {/* Highly Prominent Close Button */}
                 <button
                   onClick={() => setIsPartnerModalOpen(false)}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-xl transition-colors cursor-pointer"
+                  className="h-9 w-9 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
                   aria-label="Close modal"
+                  title="Close and go to dashboard"
                 >
                   <X className="h-5 w-5" weight="bold" />
                 </button>
@@ -399,7 +409,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons: Crystal Clear & High Contrast */}
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
                 <Link
                   href="/dashboard/referrals"
@@ -412,9 +422,9 @@ export default function DashboardPage() {
                 
                 <button
                   onClick={() => setIsPartnerModalOpen(false)}
-                  className="w-full sm:w-auto px-5 py-3 text-muted-foreground hover:text-foreground text-xs font-bold transition-colors cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-3 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
-                  Continue to Dashboard
+                  Skip & Open Dashboard
                 </button>
               </div>
             </div>
@@ -439,8 +449,8 @@ export default function DashboardPage() {
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         
-        {/* Left: Compact Wallet Card */}
-        <div className="lg:col-span-6 p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between">
+        {/* Left: Compact Wallet Card with Rounded Tail/Corners */}
+        <div className="lg:col-span-6 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
@@ -503,8 +513,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Right: Quick Actions Dock */}
-        <div className="lg:col-span-6 p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between">
+        {/* Right: Quick Actions Dock with Official Agency Logos */}
+        <div className="lg:col-span-6 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
               Quick Actions
@@ -514,44 +524,68 @@ export default function DashboardPage() {
           <div className="grid grid-cols-4 gap-2">
             <Link
               href="/dashboard/cac"
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-secondary/50 hover:bg-primary/10 border border-border/60 hover:border-primary/30 text-foreground transition-all group"
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
               title="CAC Registration"
             >
-              <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center group-hover:text-primary transition-colors mb-1 shadow-sm">
-                <Buildings className="h-4 w-4" weight="bold" />
+              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <Image 
+                  src="/cac.png" 
+                  alt="CAC" 
+                  width={28} 
+                  height={28} 
+                  className="object-contain" 
+                />
               </div>
               <span className="text-[11px] font-bold">CAC</span>
             </Link>
 
             <Link
               href="/dashboard/scuml"
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-secondary/50 hover:bg-primary/10 border border-border/60 hover:border-primary/30 text-foreground transition-all group"
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
               title="SCUML Certificate"
             >
-              <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center group-hover:text-primary transition-colors mb-1 shadow-sm">
-                <ShieldCheck className="h-4 w-4" weight="bold" />
+              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <Image 
+                  src="/scuml.png" 
+                  alt="SCUML" 
+                  width={28} 
+                  height={28} 
+                  className="object-contain" 
+                />
               </div>
               <span className="text-[11px] font-bold">SCUML</span>
             </Link>
 
             <Link
               href="/dashboard/tools/nin-slip"
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-secondary/50 hover:bg-primary/10 border border-border/60 hover:border-primary/30 text-foreground transition-all group"
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
               title="NIN Services"
             >
-              <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center group-hover:text-primary transition-colors mb-1 shadow-sm">
-                <IdentificationCard className="h-4 w-4" weight="bold" />
+              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <Image 
+                  src="/nimc.png" 
+                  alt="NIMC" 
+                  width={28} 
+                  height={28} 
+                  className="object-contain" 
+                />
               </div>
               <span className="text-[11px] font-bold">NIN</span>
             </Link>
 
             <Link
               href="/dashboard/airtime"
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-secondary/50 hover:bg-primary/10 border border-border/60 hover:border-primary/30 text-foreground transition-all group"
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
               title="Airtime Recharge"
             >
-              <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center group-hover:text-primary transition-colors mb-1 shadow-sm">
-                <DeviceMobile className="h-4 w-4" weight="bold" />
+              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <Image 
+                  src="/airtime.png" 
+                  alt="Airtime" 
+                  width={28} 
+                  height={28} 
+                  className="object-contain" 
+                />
               </div>
               <span className="text-[11px] font-bold">Airtime</span>
             </Link>
@@ -581,7 +615,7 @@ export default function DashboardPage() {
             <Link
               key={service.title}
               href={service.href!}
-              className="group p-5 rounded-2xl bg-card border border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
+              className="group p-5 rounded-3xl bg-card border border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -643,7 +677,7 @@ export default function DashboardPage() {
             <div
               key={service.title}
               onClick={() => handleWaitlist(service.title)}
-              className="p-4 rounded-xl bg-card/50 border border-border/70 hover:border-border hover:bg-card transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+              className="p-4 rounded-2xl bg-card/50 border border-border/70 hover:border-border hover:bg-card transition-all duration-200 flex flex-col justify-between group cursor-pointer"
             >
               <div>
                 <div className="flex items-center justify-between mb-2.5">
