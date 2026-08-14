@@ -19,6 +19,7 @@ import {
   FileEdit,
   ExternalLink,
 } from "lucide-react";
+import { sanitizeEmailHtml } from "@/lib/sanitize-email";
 
 export default function CampaignDetailPage({
   params,
@@ -389,7 +390,7 @@ export default function CampaignDetailPage({
                 </div>
                 <div
                   className="p-6 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: campaign.content }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(campaign.content) }}
                 />
                 <div className="p-4 text-center bg-slate-50 border-t border-slate-100 text-[11px] text-slate-500">
                   <p className="m-0">You are receiving this email as a registered user of LoraBiz.</p>

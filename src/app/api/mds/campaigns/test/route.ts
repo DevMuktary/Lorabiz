@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { sendTestCampaignEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
+import { sanitizeEmailHtml } from "@/lib/sanitize-email";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,13 @@ export async function POST(req: Request) {
     const protocol = host.includes("localhost") ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
 
+    const sanitizedContent = sanitizeEmailHtml(content);
+
     await sendTestCampaignEmail({
       to: testEmail.trim(),
       subject,
       previewText,
-      rawContent: content,
+      rawContent: sanitizedContent,
       sampleName: session.user?.name || "Admin Reviewer",
       baseUrl,
     });
