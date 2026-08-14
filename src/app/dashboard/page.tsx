@@ -18,13 +18,16 @@ import {
   CheckCircle, 
   WarningCircle, 
   Clock, 
-  Users, 
   Wallet,
   Receipt,
   Buildings,
   ShieldCheck,
   IdentificationCard,
-  DeviceMobile
+  DeviceMobile,
+  Handshake,
+  Check,
+  ShareNetwork,
+  Bank
 } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 
@@ -43,27 +46,27 @@ const LIVE_SERVICES: ServiceItem[] = [
   {
     title: "CAC Company Registration",
     category: "Corporate Affairs Commission",
-    description: "Incorporate Business Names, Private Limited Companies (LLC), and NGOs with official certificates.",
+    description: "Register Business Names, Private Limited Companies (LLC), and Incorporated Trustees.",
     logo: "/cac.png",
     href: "/dashboard/cac",
-    turnaround: "3–5 Working Days",
+    turnaround: "30 Mins (BN) • 24–72 Hrs (LLC)",
     actionText: "Start Registration",
     active: true,
   },
   {
-    title: "SCUML Compliance Certificate",
-    category: "EFCC / Regulatory",
-    description: "Special Control Unit Against Money Laundering compliance certificate for corporate bank accounts.",
+    title: "SCUML Certificate",
+    category: "Special Control Unit (EFCC)",
+    description: "Anti-money laundering compliance certificate for corporate bank accounts and DNFBPs.",
     logo: "/scuml.png",
     href: "/dashboard/scuml",
-    turnaround: "5–7 Working Days",
-    actionText: "File SCUML Application",
+    turnaround: "24–72 Hours",
+    actionText: "Apply for SCUML",
     active: true,
   },
   {
     title: "NIMC Identity (NIN Slips)",
     category: "National Identity Management",
-    description: "Instant NIN verification, Premium NIN slips, and standard PDF slip downloads.",
+    description: "Instant NIN verification, high-resolution PDF download, and official plastic card slip.",
     logo: "/nimc.png",
     href: "/dashboard/tools/nin-slip",
     turnaround: "Instant Download",
@@ -71,19 +74,19 @@ const LIVE_SERVICES: ServiceItem[] = [
     active: true,
   },
   {
-    title: "Tax Identification Number (TIN)",
+    title: "Tax ID (TIN)",
     category: "Joint Tax Board / FIRS",
-    description: "Official corporate and individual Tax ID processing for tax clearance and banking.",
+    description: "Official corporate and personal Tax Identification Number processing and verification.",
     logo: "/nrs.png",
     href: "/dashboard/tax-id",
-    turnaround: "24–48 Hours",
+    turnaround: "30 Mins – 1 Hour",
     actionText: "Process Tax ID",
     active: true,
   },
   {
-    title: "Airtime & Utility Top-up",
-    category: "Instant VTU Services",
-    description: "Direct mobile airtime and data recharges across all Nigerian telecom networks.",
+    title: "Airtime & Utilities",
+    category: "VTU Telecom Gateway",
+    description: "Instant airtime top-up, mobile data bundles, and bill payments from your wallet balance.",
     logo: "/airtime.png",
     href: "/dashboard/airtime",
     turnaround: "Instant Delivery",
@@ -157,7 +160,7 @@ const UPCOMING_SERVICES: ServiceItem[] = [
     active: false,
   },
   {
-    title: "Expert Tax & TCC Consultation",
+    title: "Expert Tax Consultation",
     category: "FIRS Tax Advisory",
     description: "One-on-one sessions with chartered accountants for Tax Clearance Certificate filings and auditing.",
     logo: "/nrs.png",
@@ -187,22 +190,8 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
-  // Top Banner dismissal state
-  const [isBannerDismissed, setIsBannerDismissed] = useState<boolean>(true);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isDismissed = localStorage.getItem("lorabiz_partner_banner_closed_v4");
-      setIsBannerDismissed(isDismissed === "true");
-    }
-  }, []);
-
-  const handleDismissBanner = () => {
-    setIsBannerDismissed(true);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("lorabiz_partner_banner_closed_v4", "true");
-    }
-  };
+  // Partner Announcement Modal shows on every refresh
+  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState<boolean>(true);
 
   const fetchBalance = () => {
     fetch('/api/user/wallet')
@@ -345,37 +334,90 @@ export default function DashboardPage() {
     <div className="space-y-6 pb-12">
 
       {/* ========================================================================= */}
-      {/* 1. TOP DISMISSIBLE BANNER (PARTNER PROGRAM)                               */}
+      {/* 1. CENTER-SCREEN PARTNER ANNOUNCEMENT MODAL (SHOWS ON EVERY REFRESH)       */}
       {/* ========================================================================= */}
-      {!isBannerDismissed && (
-        <div className="relative rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-4 py-3 sm:px-5 sm:py-3.5 border border-indigo-500/30 shadow-sm flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 pr-6 min-w-0">
-            <div className="h-8 w-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
-              <Users className="h-4 w-4" weight="bold" />
-            </div>
-            <div className="text-xs sm:text-sm truncate">
-              <span className="font-bold text-white">Earn With LoraBiz: </span>
-              <span className="text-slate-300">Refer businesses and earn instant cash commissions.</span>
-            </div>
-          </div>
+      {isPartnerModalOpen && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[99999] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+          <div 
+            className="fixed inset-0" 
+            onClick={() => setIsPartnerModalOpen(false)} 
+          />
 
-          <div className="flex items-center gap-3 shrink-0">
-            <Link
-              href="/dashboard/referrals"
-              className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-colors whitespace-nowrap"
-            >
-              <span>Learn More</span>
-              <ArrowRight className="h-3 w-3" weight="bold" />
-            </Link>
+          <div className="relative w-full max-w-lg bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200">
+            {/* Top Accent Strip */}
+            <div className="h-2 bg-gradient-to-r from-primary via-indigo-600 to-primary" />
 
-            <button
-              onClick={handleDismissBanner}
-              className="p-1 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-              aria-label="Dismiss banner"
-              title="Dismiss banner"
-            >
-              <X className="h-4 w-4" weight="bold" />
-            </button>
+            <div className="p-6 sm:p-8">
+              {/* Header with Close Button */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                    <Handshake className="h-6 w-6" weight="bold" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+                      Partner Announcement
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                      Earn With LoraBiz
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsPartnerModalOpen(false)}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-xl transition-colors cursor-pointer"
+                  aria-label="Close modal"
+                >
+                  <X className="h-5 w-5" weight="bold" />
+                </button>
+              </div>
+
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Refer business owners and entrepreneurs to LoraBiz. Whenever they register a CAC business or file for SCUML, you earn instant cash commissions paid directly to your Nigerian bank account.
+              </p>
+
+              {/* 3 Simple Value Points */}
+              <div className="my-5 space-y-2.5 bg-secondary/50 p-4 rounded-2xl border border-border text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Bank className="h-3 w-3" weight="bold" />
+                  </div>
+                  <span className="font-semibold text-foreground">Set up your payout bank details in 60 seconds</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <ShareNetwork className="h-3 w-3" weight="bold" />
+                  </div>
+                  <span className="font-semibold text-foreground">Get your unique referral link to share</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3" weight="bold" />
+                  </div>
+                  <span className="font-semibold text-foreground">Automated cash commissions on every completed filing</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                <Link
+                  href="/dashboard/referrals"
+                  onClick={() => setIsPartnerModalOpen(false)}
+                  className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all"
+                >
+                  <span>Go to Partner Hub</span>
+                  <ArrowRight className="h-4 w-4" weight="bold" />
+                </Link>
+                
+                <button
+                  onClick={() => setIsPartnerModalOpen(false)}
+                  className="w-full sm:w-auto px-5 py-3 text-muted-foreground hover:text-foreground text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Continue to Dashboard
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -484,7 +526,7 @@ export default function DashboardPage() {
             <Link
               href="/dashboard/scuml"
               className="flex flex-col items-center justify-center p-2 rounded-xl bg-secondary/50 hover:bg-primary/10 border border-border/60 hover:border-primary/30 text-foreground transition-all group"
-              title="SCUML Compliance"
+              title="SCUML Certificate"
             >
               <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center group-hover:text-primary transition-colors mb-1 shadow-sm">
                 <ShieldCheck className="h-4 w-4" weight="bold" />
@@ -519,7 +561,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. ACTIVE SERVICES (CLEAN, MINIMAL & IMPACTFUL)                            */}
+      {/* 4. ACTIVE SERVICES (EXACT TURNAROUNDS SPECIFIED BY USER)                   */}
       {/* ========================================================================= */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between border-b border-border pb-2.5">
