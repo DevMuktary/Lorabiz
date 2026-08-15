@@ -41,7 +41,18 @@ export interface BoardResolutionFormData {
   savedCurrentStep?: number;
 }
 
-export type ResolutionDesignTheme = "classic-royal" | "modern-executive" | "luxury-crest" | "gazette-formal";
+export type ResolutionDesignTheme = 
+  | "classic-royal" 
+  | "modern-executive" 
+  | "gazette-formal" 
+  | "certified-crest" 
+  | "luxury-crest"
+  | "minimalist-tech" 
+  | "continental-banking" 
+  | "maritime-energy" 
+  | "chancery-legal" 
+  | "apex-enterprise" 
+  | "heritage-corporate";
 
 export interface StructuredResolutionOutput {
   title: string;
@@ -96,15 +107,18 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
   
   // Smart default theme based on purpose
   let defaultTheme: ResolutionDesignTheme = "classic-royal";
-  let defaultAccent = data.accentColor || "#0f172a";
+  let defaultAccent = data.accentColor || "#1e3a8a";
 
   if (data.purposeCategory === "PAYMENT_GATEWAY") {
     defaultTheme = "modern-executive";
-    defaultAccent = data.accentColor || "#1e3a8a";
+    defaultAccent = data.accentColor || "#0f172a";
   } else if (data.purposeCategory === "LOAN_FACILITY") {
-    defaultTheme = "luxury-crest";
-    defaultAccent = data.accentColor || "#78350f";
-  } else if (data.purposeCategory === "GENERAL_CORPORATE" || data.purposeCategory === "OTHER") {
+    defaultTheme = "continental-banking";
+    defaultAccent = data.accentColor || "#1e3a8a";
+  } else if (data.purposeCategory === "GENERAL_CORPORATE") {
+    defaultTheme = "apex-enterprise";
+    defaultAccent = data.accentColor || "#09090b";
+  } else if (data.purposeCategory === "OTHER") {
     defaultTheme = "gazette-formal";
     defaultAccent = data.accentColor || "#334155";
   }
@@ -222,7 +236,7 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
       isSignatory: d.isSignatory,
       signatureUrl: d.signatureUrl
     })),
-    corporateMotto: data.corporateMotto || "INNOVATING SOLUTIONS. | EMPOWERING BUSINESSES. | BUILDING TOMORROW.",
+    corporateMotto: data.corporateMotto || "",
     logoUrl: data.logoUrl,
     sealUrl: data.sealUrl
   };
@@ -239,110 +253,86 @@ function extractJSONFromText(text: string): any {
   const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   try {
     return JSON.parse(cleaned);
-  } catch {
-    // Continue
-  }
+  } catch {}
 
-  // 2. Extract substring between first '{' and last '}'
-  const startIdx = text.indexOf('{');
-  const endIdx = text.lastIndexOf('}');
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    const rawSubstring = text.substring(startIdx, endIdx + 1);
+  // 2. Extract balanced JSON block
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const candidate = text.substring(firstBrace, lastBrace + 1);
     try {
-      return JSON.parse(rawSubstring);
-    } catch {
-      // 3. Try cleaning common JSON syntax quirks (trailing commas, control chars)
-      try {
-        const sanitized = rawSubstring
-          .replace(/,\s*([}\]])/g, '$1')
-          .replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
-        return JSON.parse(sanitized);
-      } catch (e) {
-        console.warn("[extractJSONFromText] Sanitized JSON parse also failed:", e);
-      }
-    }
+      return JSON.parse(candidate);
+    } catch {}
   }
 
   return null;
 }
 
-/**
- * Validates and normalizes parsed AI JSON output into a strict StructuredResolutionOutput object.
- * Falls back gracefully to deterministic legal clauses for any missing sections.
- */
-function normalizeStructuredResolution(
-  parsed: any, 
-  formData: BoardResolutionFormData, 
+function parseAndValidateAIOutput(
+  parsed: any,
+  formData: BoardResolutionFormData,
   fallback: StructuredResolutionOutput
 ): StructuredResolutionOutput {
   if (!parsed || typeof parsed !== "object") return fallback;
 
-  const companyNameUpper = (parsed.letterhead?.companyName || formData.companyName || fallback.letterhead.companyName).toUpperCase();
-  const rcText = parsed.letterhead?.rcNumber !== undefined 
-    ? String(parsed.letterhead.rcNumber) 
-    : fallback.letterhead.rcNumber;
-  const registeredAddress = parsed.letterhead?.registeredAddress || formData.registeredAddress || fallback.letterhead.registeredAddress;
-  const email = parsed.letterhead?.email || formData.companyEmail || fallback.letterhead.email;
-  const phone = parsed.letterhead?.phone || formData.companyPhone || fallback.letterhead.phone;
+  const companyNameUpper = (formData.companyName || parsed.letterhead?.companyName || fallback.letterhead.companyName).toUpperCase();
+  const rcText = formData.rcNumber 
+    ? (formData.rcNumber.toUpperCase().startsWith("RC") ? formData.rcNumber : `RC: ${formData.rcNumber.replace(/^RC:?\s*/i, "")}`)
+    : (parsed.letterhead?.rcNumber || fallback.letterhead.rcNumber);
 
-  const meetingDate = parsed.meetingMetadata?.date || formData.meetingDate || fallback.meetingMetadata.date;
-  const meetingVenue = parsed.meetingMetadata?.venue || formData.meetingVenue || formData.registeredAddress || fallback.meetingMetadata.venue;
+  const registeredAddress = formData.registeredAddress || parsed.letterhead?.registeredAddress || fallback.letterhead.registeredAddress;
+  const email = formData.companyEmail || parsed.letterhead?.email || fallback.letterhead.email;
+  const phone = formData.companyPhone || parsed.letterhead?.phone || fallback.letterhead.phone;
+
+  const meetingDate = formData.meetingDate || parsed.meetingMetadata?.date || fallback.meetingMetadata.date;
+  const meetingVenue = formData.meetingVenue || parsed.meetingMetadata?.venue || fallback.meetingMetadata.venue;
   const commencementText = parsed.meetingMetadata?.commencementText || fallback.meetingMetadata.commencementText;
 
-  // AI Design Theme Selection
-  const validThemes: ResolutionDesignTheme[] = ["classic-royal", "modern-executive", "luxury-crest", "gazette-formal"];
-  const selectedTheme: ResolutionDesignTheme = validThemes.includes(parsed.theme) ? parsed.theme : fallback.theme || "classic-royal";
-  const selectedAccent = formData.accentColor || parsed.accentColor || fallback.accentColor;
-
-  const title = parsed.title || fallback.title || "BOARD RESOLUTION";
-  const subtitle = parsed.subtitle || fallback.subtitle;
-  const preambleText = parsed.preambleText || parsed.preamble || fallback.preambleText;
-  const resolutionLeadIn = parsed.resolutionLeadIn || parsed.leadIn || fallback.resolutionLeadIn;
+  const title = "BOARD RESOLUTION";
+  const subtitle = (parsed.subtitle || fallback.subtitle || "AUTHORIZING CORPORATE BANKING & SETTLEMENT SERVICES").toUpperCase();
+  const preambleText = parsed.preambleText || fallback.preambleText;
+  const resolutionLeadIn = parsed.resolutionLeadIn || fallback.resolutionLeadIn;
   const validityClause = parsed.validityClause || fallback.validityClause;
-  const corporateMotto = parsed.corporateMotto || formData.corporateMotto || fallback.corporateMotto;
+  const certificationText = parsed.certificationText || fallback.certificationText;
 
-  // Numbered Clauses
+  const corporateMotto = formData.corporateMotto || "";
+
+  // Validate theme with all 10 archetypes
+  const validThemes: ResolutionDesignTheme[] = [
+    "classic-royal", 
+    "modern-executive", 
+    "gazette-formal", 
+    "certified-crest", 
+    "luxury-crest", 
+    "minimalist-tech", 
+    "continental-banking", 
+    "maritime-energy", 
+    "chancery-legal", 
+    "apex-enterprise", 
+    "heritage-corporate"
+  ];
+  let selectedTheme: ResolutionDesignTheme = validThemes.includes(parsed.theme) ? parsed.theme : fallback.theme || "classic-royal";
+  if (selectedTheme === "luxury-crest") selectedTheme = "certified-crest";
+  const selectedAccent = formData.accentColor || parsed.accentColor || fallback.accentColor || "#1e3a8a";
+
+  // Validate numberedClauses
   let numberedClauses: string[] = [];
-  const rawNumbered = parsed.numberedClauses || parsed.clausesList || parsed.approvedList;
-  if (Array.isArray(rawNumbered) && rawNumbered.length > 0) {
-    numberedClauses = rawNumbered.map((c: any) => typeof c === "string" ? c : (c.text || String(c)));
+  if (Array.isArray(parsed.numberedClauses) && parsed.numberedClauses.length > 0) {
+    numberedClauses = parsed.numberedClauses.map((c: any) => typeof c === "string" ? c : JSON.stringify(c));
+  } else if (Array.isArray(parsed.operativeClauses) && parsed.operativeClauses.length > 0) {
+    numberedClauses = parsed.operativeClauses.map((c: any) => typeof c === "string" ? c : c.text || JSON.stringify(c));
   } else {
     numberedClauses = fallback.numberedClauses || [];
   }
 
-  // Recitals
-  let recitals: string[] = [];
-  const rawRecitals = parsed.recitals || parsed.whereasClauses;
-  if (Array.isArray(rawRecitals) && rawRecitals.length > 0) {
-    recitals = rawRecitals.map((r: any) => typeof r === "string" ? r : (r.text || String(r)));
-  } else {
-    recitals = fallback.recitals;
-  }
+  // Validate recitals and operative clauses
+  const recitals = Array.isArray(parsed.recitals) && parsed.recitals.length > 0 ? parsed.recitals : fallback.recitals;
+  const operativeClauses = Array.isArray(parsed.operativeClauses) && parsed.operativeClauses.length > 0 
+    ? parsed.operativeClauses 
+    : fallback.operativeClauses;
+  const mandateClause = parsed.mandateClause || fallback.mandateClause;
 
-  // Operative Clauses
-  let operativeClauses: Array<{ heading: string; text: string }> = [];
-  const rawClauses = parsed.operativeClauses || parsed.operative_clauses || parsed.clauses || parsed.resolutions;
-  if (Array.isArray(rawClauses) && rawClauses.length > 0) {
-    operativeClauses = rawClauses.map((c: any, i: number) => {
-      if (typeof c === "string") {
-        return { heading: `${i + 1}. RESOLUTION`, text: c };
-      }
-      return {
-        heading: c.heading || c.title || `${i + 1}. RESOLUTION`,
-        text: c.text || c.content || c.body || String(c)
-      };
-    });
-  } else {
-    operativeClauses = fallback.operativeClauses;
-  }
-
-  // Mandate Clause
-  const mandateClause = parsed.mandateClause || parsed.mandate || fallback.mandateClause;
-
-  // Certification Text
-  const certificationText = parsed.certificationText || parsed.certification || fallback.certificationText;
-
-  // Signatories matching - prioritize user-configured directors and signatures
+  // Strict Director Mapping: Merge AI roles with actual user-entered directors & signatures
   let signatories: Array<{ name: string; role: string; isSignatory: boolean; signatureUrl?: string }> = [];
   if (formData.directors && Array.isArray(formData.directors) && formData.directors.length > 0) {
     signatories = formData.directors.map((d, idx) => {
@@ -423,20 +413,20 @@ export async function generateAIBoardResolution(formData: BoardResolutionFormDat
     return fallback;
   }
 
-  const systemPrompt = `You are a Senior Nigerian Corporate Legal Counsel and Master Document Architect specializing in corporate governance under the Companies and Allied Matters Act (CAMA 2020), banking compliance, and fintech onboarding (Paystack, Flutterwave, Monnify, Interswitch, commercial banks).
-Your goal is to generate a formal, legally pristine Board Resolution formatted cleanly for Nigerian corporate certification and banking KYC.
+  const systemPrompt = `You are a Senior Nigerian Corporate Legal Counsel and Master Document Architect specializing in corporate governance under the Companies and Allied Matters Act (CAMA 2020), banking compliance, and fintech onboarding.
 
 Strict Document Formatting Rules:
 1. Tone: Formal Nigerian CAMA 2020 legal tone.
 2. Title: "BOARD RESOLUTION"
 3. Subtitle: All-caps statement like "AUTHORIZING THE USE OF MONNIFY PAYMENT SERVICES" or "AUTHORIZING THE OPENING OF CORPORATE BANK ACCOUNT WITH ACCESS BANK PLC".
-4. Preamble: "This resolution was duly passed by the Board of Directors of [COMPANY] in accordance with the provisions of the Companies and Allied Matters Act (CAMA 2020) and the Company's Articles of Association."
-5. Resolution Lead-In: "It is hereby resolved that [COMPANY] is authorized to ...\n\nThe Board hereby approves the Company to:"
-6. Numbered Clauses: Provide 5 to 6 concise, powerful numbered clauses detailing the specific authorities granted (e.g. receive electronic payments, execute agreements, open virtual accounts, designate authorized signatories).
-7. Validity Clause: "This resolution shall remain valid unless amended or revoked by a subsequent resolution of the Board."
-8. Certification Text: "This resolution is certified as a true and correct copy of the resolution duly passed by the Board of Directors of [COMPANY]."
-9. Corporate Motto: A clean corporate slogan like "INNOVATING SOLUTIONS. | EMPOWERING BUSINESSES. | BUILDING TOMORROW."
-10. Output MUST be valid JSON only with NO markdown preamble and NO emojis anywhere.`;
+4. Theme: Select the most appropriate theme ID from: ["classic-royal", "modern-executive", "gazette-formal", "certified-crest", "minimalist-tech", "continental-banking", "maritime-energy", "chancery-legal", "apex-enterprise", "heritage-corporate"].
+5. Preamble: "This resolution was duly passed by the Board of Directors of [COMPANY] in accordance with the provisions of the Companies and Allied Matters Act (CAMA 2020) and the Company's Articles of Association."
+6. Resolution Lead-In: "It is hereby resolved that [COMPANY] is authorized to ...\n\nThe Board hereby approves the Company to:"
+7. Numbered Clauses: Provide 5 to 6 concise, powerful numbered clauses detailing the specific authorities granted (e.g. receive electronic payments, execute agreements, open virtual accounts, designate authorized signatories).
+8. Validity Clause: "This resolution shall remain valid unless amended or revoked by a subsequent resolution of the Board."
+9. Certification Text: "This resolution is certified as a true and correct copy of the resolution duly passed by the Board of Directors of [COMPANY]."
+10. Corporate Motto: Only return an empty string "" unless explicitly specified in input.
+11. Output MUST be valid JSON only with NO markdown preamble and NO emojis anywhere.`;
 
   const userPrompt = `Generate a formal Nigerian Board Resolution based on these verified company details:
 - Company Name: ${formData.companyName}
@@ -486,12 +476,14 @@ Respond ONLY with a JSON object matching this schema:
   "validityClause": "This resolution shall remain valid unless amended or revoked by a subsequent resolution of the Board.",
   "mandateClause": "...",
   "certificationText": "This resolution is certified as a true and correct copy of the resolution duly passed by the Board of Directors of ${formData.companyName.toUpperCase()}.",
-  "corporateMotto": "INNOVATING SOLUTIONS. | EMPOWERING BUSINESSES. | BUILDING TOMORROW.",
+  "corporateMotto": "",
   "signatories": [
     ${(formData.directors || []).map(d => `{"name": "${d.fullName}", "role": "${d.designation}", "isSignatory": ${Boolean(d.isSignatory)}}`).join(",\n    ")}
   ],
   "designNotes": "Clean executive layout tailored for financial compliance"
-}`;
+}
+
+Ensure the output is 100% valid JSON matching this schema exactly.`;
 
   try {
     console.log(`[AgentRouter AI] Requesting AI resolution for ${formData.companyName} with model ${model}...`);
@@ -510,7 +502,7 @@ Respond ONLY with a JSON object matching this schema:
     if (rawText) {
       const parsed = extractJSONFromText(rawText);
       if (parsed) {
-        const normalized = normalizeStructuredResolution(parsed, formData, fallback);
+        const normalized = parseAndValidateAIOutput(parsed, formData, fallback);
         console.log(`[AgentRouter AI] Successfully parsed and normalized AI resolution for ${formData.companyName}.`);
         return normalized;
       } else {

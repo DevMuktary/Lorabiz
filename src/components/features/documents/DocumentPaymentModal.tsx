@@ -88,7 +88,11 @@ export default function DocumentPaymentModal({
 
       const verifyPayment = async () => {
         try {
-          const res = await fetch(`/api/payment/verify?reference=${reference}`);
+          const res = await fetch("/api/payment/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reference })
+          });
           const data = await res.json();
 
           if (data.success) {
@@ -103,11 +107,11 @@ export default function DocumentPaymentModal({
               router.push("/dashboard/documents/board-resolution/history?success=true");
             }, 2500);
           } else {
-            setErrorMsg(data.message || "Payment verification failed. Please contact support.");
+            setErrorMsg(data.message || "Payment verification failed or transaction was cancelled.");
             setProcessingState("idle");
           }
         } catch {
-          setErrorMsg("Network error during payment verification.");
+          setErrorMsg("Network error during payment verification. Please check your history or retry.");
           setProcessingState("idle");
         }
       };
@@ -250,6 +254,17 @@ export default function DocumentPaymentModal({
           <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
             <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-[#ff3f7a] rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setGatewayLoading(false);
+              setProcessingState("idle");
+            }}
+            className="mt-6 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer"
+          >
+            Cancel / Choose Another Method
+          </button>
         </div>
       )}
 

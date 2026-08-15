@@ -24,6 +24,9 @@ export async function GET() {
       NIN_REGULAR: pricingMap.NIN_REGULAR || 500,
       NIN_STANDARD: pricingMap.NIN_STANDARD || 700,
       NIN_PREMIUM: pricingMap.NIN_PREMIUM || 1000,
+      // 🚨 SMART LEGAL DOCUMENTS PRICING
+      DOC_BOARD_RESOLUTION: pricingMap.DOC_BOARD_RESOLUTION || 3500,
+      DOC_SHAREHOLDERS_RESOLUTION: pricingMap.DOC_SHAREHOLDERS_RESOLUTION || 3500,
     };
 
     return NextResponse.json({ success: true, data: defaultPricing });

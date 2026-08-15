@@ -227,14 +227,25 @@ function BoardResolutionBuilderContent() {
   const [finalDocument, setFinalDocument] = useState<any | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
-  const price = 3500;
+  const [price, setPrice] = useState<number>(3500);
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5500);
   };
 
-  // 1. Load History count for Header badge
+  // 1. Load dynamic pricing from API
+  const fetchPricing = async () => {
+    try {
+      const res = await fetch("/api/pricing");
+      const data = await res.json();
+      if (data.success && data.data?.DOC_BOARD_RESOLUTION) {
+        setPrice(Number(data.data.DOC_BOARD_RESOLUTION));
+      }
+    } catch {}
+  };
+
+  // 2. Load History count for Header badge
   const fetchHistoryCount = async () => {
     try {
       const res = await fetch("/api/documents/board-resolution/history");
@@ -245,7 +256,7 @@ function BoardResolutionBuilderContent() {
     } catch {}
   };
 
-  // 2. Load Draft from backend ONLY if URL has explicit ?draftId=...
+  // 3. Load Draft from backend ONLY if URL has explicit ?draftId=...
   useEffect(() => {
     const urlDraftId = searchParams.get("draftId");
     if (urlDraftId) {
@@ -283,11 +294,11 @@ function BoardResolutionBuilderContent() {
               accentColor: rawDraft.accentColor || json.data.accentColor || "#0f172a",
               logoUrl: rawDraft.logoUrl || json.data.logoUrl || "",
               sealUrl: rawDraft.sealUrl || "",
+              corporateMotto: rawDraft.corporateMotto || "",
             });
-            if (rawDraft.savedCurrentStep && (rawDraft.savedCurrentStep === 1 || rawDraft.savedCurrentStep === 2 || rawDraft.savedCurrentStep === 3)) {
-              setCurrentStep(rawDraft.savedCurrentStep);
-            }
-            setDraftRestoredNotice(`Draft resumed for "${json.data.companyName}"`);
+            // Resuming always brings user to Step 1 to review all information
+            setCurrentStep(1);
+            setDraftRestoredNotice(`Draft resumed for "${json.data.companyName}" (Reviewing Step 1)`);
             setTimeout(() => setDraftRestoredNotice(null), 6000);
           }
         } catch (err) {
@@ -302,6 +313,7 @@ function BoardResolutionBuilderContent() {
       } catch {}
     }
 
+    fetchPricing();
     fetchBanks();
     fetchWallet();
     fetchHistoryCount();
@@ -1012,6 +1024,23 @@ function BoardResolutionBuilderContent() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Corporate Motto / Slogan (Optional) */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-xs font-bold text-foreground">
+                Corporate Motto / Slogan <span className="text-muted-foreground text-[10px] font-normal">(Optional — leave blank if none)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.corporateMotto || ""}
+                onChange={(e) => setFormData({ ...formData, corporateMotto: e.target.value })}
+                placeholder="e.g. INNOVATING SOLUTIONS • EMPOWERING BUSINESSES (Optional)"
+                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                If provided, this appears neatly in the document footer. If left blank, no footer slogan will be rendered.
+              </p>
             </div>
 
             {/* Purpose Category Selection */}
