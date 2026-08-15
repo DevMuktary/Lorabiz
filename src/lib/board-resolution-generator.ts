@@ -158,6 +158,140 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
 }
 
 /**
+ * Robust JSON extractor that handles markdown code fences, pre/post conversational text,
+ * and edge cases in LLM responses.
+ */
+function extractJSONFromText(text: string): any {
+  if (!text || typeof text !== "string") return null;
+
+  // 1. Direct clean parse
+  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // Continue
+  }
+
+  // 2. Extract substring between first '{' and last '}'
+  const startIdx = text.indexOf('{');
+  const endIdx = text.lastIndexOf('}');
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const rawSubstring = text.substring(startIdx, endIdx + 1);
+    try {
+      return JSON.parse(rawSubstring);
+    } catch {
+      // 3. Try cleaning common JSON syntax quirks (trailing commas, control chars)
+      try {
+        const sanitized = rawSubstring
+          .replace(/,\s*([}\]])/g, '$1')
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+        return JSON.parse(sanitized);
+      } catch (e) {
+        console.warn("[extractJSONFromText] Sanitized JSON parse also failed:", e);
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Validates and normalizes parsed AI JSON output into a strict StructuredResolutionOutput object.
+ * Falls back gracefully to deterministic legal clauses for any missing sections.
+ */
+function normalizeStructuredResolution(
+  parsed: any, 
+  formData: BoardResolutionFormData, 
+  fallback: StructuredResolutionOutput
+): StructuredResolutionOutput {
+  if (!parsed || typeof parsed !== "object") return fallback;
+
+  const companyNameUpper = (parsed.letterhead?.companyName || formData.companyName || fallback.letterhead.companyName).toUpperCase();
+  const rcText = parsed.letterhead?.rcNumber !== undefined 
+    ? String(parsed.letterhead.rcNumber) 
+    : fallback.letterhead.rcNumber;
+  const registeredAddress = parsed.letterhead?.registeredAddress || formData.registeredAddress || fallback.letterhead.registeredAddress;
+
+  const meetingDate = parsed.meetingMetadata?.date || formData.meetingDate || fallback.meetingMetadata.date;
+  const meetingVenue = parsed.meetingMetadata?.venue || formData.meetingVenue || formData.registeredAddress || fallback.meetingMetadata.venue;
+  const commencementText = parsed.meetingMetadata?.commencementText || fallback.meetingMetadata.commencementText;
+
+  // Recitals
+  let recitals: string[] = [];
+  const rawRecitals = parsed.recitals || parsed.whereasClauses || parsed.preamble;
+  if (Array.isArray(rawRecitals) && rawRecitals.length > 0) {
+    recitals = rawRecitals.map((r: any) => typeof r === "string" ? r : (r.text || String(r)));
+  } else {
+    recitals = fallback.recitals;
+  }
+
+  // Operative Clauses
+  let operativeClauses: Array<{ heading: string; text: string }> = [];
+  const rawClauses = parsed.operativeClauses || parsed.operative_clauses || parsed.clauses || parsed.resolutions;
+  if (Array.isArray(rawClauses) && rawClauses.length > 0) {
+    operativeClauses = rawClauses.map((c: any, i: number) => {
+      if (typeof c === "string") {
+        return { heading: `${i + 1}. RESOLUTION`, text: c };
+      }
+      return {
+        heading: c.heading || c.title || `${i + 1}. RESOLUTION`,
+        text: c.text || c.content || c.body || String(c)
+      };
+    });
+  } else {
+    operativeClauses = fallback.operativeClauses;
+  }
+
+  // Mandate Clause
+  const mandateClause = parsed.mandateClause || parsed.mandate || fallback.mandateClause;
+
+  // Certification Text
+  const certificationText = parsed.certificationText || parsed.certification || fallback.certificationText;
+
+  // Signatories matching
+  let signatories: Array<{ name: string; role: string; isSignatory: boolean; signatureUrl?: string }> = [];
+  const rawSignatories = parsed.signatories || parsed.signatoryList || parsed.directors;
+  if (Array.isArray(rawSignatories) && rawSignatories.length > 0) {
+    signatories = rawSignatories.map((sig: any, idx: number) => {
+      const name = typeof sig === "string" ? sig : (sig.name || sig.fullName || `Director ${idx + 1}`);
+      const role = typeof sig === "object" ? (sig.role || sig.designation || "Director") : "Director";
+      const isSignatory = typeof sig === "object" ? (sig.isSignatory !== undefined ? Boolean(sig.isSignatory) : true) : true;
+      
+      const match = (formData.directors || []).find(d => d.fullName.toLowerCase().trim() === name.toLowerCase().trim()) || formData.directors[idx];
+      return {
+        name,
+        role,
+        isSignatory,
+        signatureUrl: match?.signatureUrl
+      };
+    });
+  } else {
+    signatories = fallback.signatories;
+  }
+
+  return {
+    title: parsed.title || fallback.title,
+    letterhead: {
+      companyName: companyNameUpper,
+      rcNumber: rcText,
+      registeredAddress: registeredAddress,
+    },
+    meetingMetadata: {
+      date: meetingDate,
+      venue: meetingVenue,
+      commencementText: commencementText,
+    },
+    recitals,
+    operativeClauses,
+    mandateClause,
+    certificationText,
+    signatories,
+    logoUrl: formData.logoUrl || parsed.logoUrl,
+    sealUrl: formData.sealUrl || parsed.sealUrl,
+  };
+}
+
+/**
  * AI-enhanced Resolution Builder using AgentRouter (gpt-5.6-sol) with fallback to CAMA 2020 deterministic template.
  * Enforces Nigerian corporate law standards and produces structured legal output.
  */
@@ -166,6 +300,7 @@ export async function generateAIBoardResolution(formData: BoardResolutionFormDat
   const { client, model, apiKey } = getWorkingAgentRouterClient();
 
   if (!apiKey) {
+    console.log("[Board Resolution Generator] No AGENTROUTER_API_KEY set. Using CAMA 2020 deterministic template.");
     return fallback;
   }
 
@@ -175,7 +310,7 @@ Strict Requirements:
 1. Formal Nigerian CAMA 2020 legal tone.
 2. Direct, actionable operative clauses (RESOLVED THAT, FURTHER RESOLVED THAT).
 3. Clear mandate authority for financial institutions and payment gateways.
-4. Output MUST be valid JSON only conforming strictly to the requested schema.`;
+4. Output MUST be valid JSON only conforming strictly to the requested schema. Do not include markdown preamble or conversational explanations outside the JSON object.`;
 
   const userPrompt = `Generate a formal Board Resolution Extract based on the following verified company details:
 - Company Name: ${formData.companyName}
@@ -218,6 +353,7 @@ Respond ONLY with a JSON object matching this schema:
 }`;
 
   try {
+    console.log(`[AgentRouter AI] Requesting AI resolution for ${formData.companyName} with model ${model}...`);
     const response = await client.chat.completions.create({
       model: model,
       messages: [
@@ -228,30 +364,23 @@ Respond ONLY with a JSON object matching this schema:
     });
 
     const rawText = response?.choices?.[0]?.message?.content || "";
+    console.log(`[AgentRouter AI] Received ${rawText.length} characters of response.`);
+
     if (rawText) {
-      // Clean JSON if needed (remove markdown backticks)
-      const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-      const parsed = JSON.parse(cleanJson) as StructuredResolutionOutput;
-
-      // Ensure critical sections exist
-      if (parsed.recitals && parsed.operativeClauses && parsed.signatories) {
-        parsed.logoUrl = formData.logoUrl;
-        parsed.sealUrl = formData.sealUrl;
-        parsed.signatories = parsed.signatories.map((sig, idx) => {
-          const match = (formData.directors || []).find(d => d.fullName.toLowerCase().trim() === sig.name.toLowerCase().trim()) || formData.directors[idx];
-          return {
-            ...sig,
-            signatureUrl: match?.signatureUrl
-          };
-        });
-
-        return parsed;
+      const parsed = extractJSONFromText(rawText);
+      if (parsed) {
+        const normalized = normalizeStructuredResolution(parsed, formData, fallback);
+        console.log(`[AgentRouter AI] Successfully parsed and normalized AI resolution for ${formData.companyName}.`);
+        return normalized;
+      } else {
+        console.warn("[AgentRouter AI] JSON parsing failed on raw output preview:", rawText.slice(0, 300));
       }
     }
   } catch (err: any) {
-    console.warn(`[AgentRouter AI Call Failed (${model})]:`, err?.message || err);
+    console.error(`[AgentRouter AI Call Failed (${model})]:`, err?.message || err);
   }
 
   // Final fallback to CAMA 2020 deterministic generator
+  console.log(`[Board Resolution Generator] Falling back to CAMA 2020 deterministic template for ${formData.companyName}.`);
   return fallback;
 }
