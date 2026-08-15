@@ -1,5 +1,4 @@
-import { getDocumentAIProviders, callAnthropicMessages } from "./ai-client";
-import OpenAI from "openai";
+import { getWorkingAgentRouterClient } from "./ai-client";
 
 export interface DirectorSignatory {
   id: string;
@@ -36,13 +35,14 @@ export interface BoardResolutionFormData {
   accentColor?: string; // e.g. "#0f172a" or brand color
   logoUrl?: string;
   sealUrl?: string; // Company stamp/seal image URL
+  savedCurrentStep?: number;
 }
 
 export interface StructuredResolutionOutput {
   title: string;
   letterhead: {
     companyName: string;
-    rcNumber: string;
+    rcNumber?: string;
     registeredAddress: string;
   };
   meetingMetadata: {
@@ -134,7 +134,7 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
     title: `EXTRACT OF THE MINUTES OF THE MEETING OF THE BOARD OF DIRECTORS OF ${companyNameUpper}`,
     letterhead: {
       companyName: companyNameUpper,
-      rcNumber: rcText,
+      rcNumber: rcText || undefined,
       registeredAddress: data.registeredAddress || "Federal Republic of Nigeria",
     },
     meetingMetadata: {
@@ -158,14 +158,14 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
 }
 
 /**
- * AI-enhanced Resolution Builder using AgentRouter (Claude-Opus-4-8 / Claude) with fallback to OpenAI and CAMA 2020 deterministic template.
+ * AI-enhanced Resolution Builder using AgentRouter (gpt-5.6-sol) with fallback to CAMA 2020 deterministic template.
  * Enforces Nigerian corporate law standards and produces structured legal output.
  */
 export async function generateAIBoardResolution(formData: BoardResolutionFormData): Promise<StructuredResolutionOutput> {
   const fallback = generateDeterministicResolution(formData);
-  const providers = getDocumentAIProviders();
+  const { client, model, apiKey } = getWorkingAgentRouterClient();
 
-  if (providers.length === 0) {
+  if (!apiKey) {
     return fallback;
   }
 
@@ -175,7 +175,7 @@ Strict Requirements:
 1. Formal Nigerian CAMA 2020 legal tone.
 2. Direct, actionable operative clauses (RESOLVED THAT, FURTHER RESOLVED THAT).
 3. Clear mandate authority for financial institutions and payment gateways.
-4. Output MUST be valid JSON only conforming strictly to the requested schema. Do not wrap in markdown quotes if raw JSON is requested.`;
+4. Output MUST be valid JSON only conforming strictly to the requested schema.`;
 
   const userPrompt = `Generate a formal Board Resolution Extract based on the following verified company details:
 - Company Name: ${formData.companyName}
@@ -217,43 +217,18 @@ Respond ONLY with a JSON object matching this schema:
   ]
 }`;
 
-  for (const provider of providers) {
-    try {
-      let rawText = "";
+  try {
+    const response = await client.chat.completions.create({
+      model: model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.2,
+    });
 
-      if (provider.provider === "agentrouter-anthropic") {
-        rawText = await callAnthropicMessages(
-          provider.baseURL,
-          provider.apiKey,
-          provider.model,
-          systemPrompt,
-          userPrompt
-        );
-      } else {
-        const client = new OpenAI({
-          apiKey: provider.apiKey,
-          baseURL: provider.baseURL,
-          defaultHeaders: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Lorabiz/1.0",
-            "Accept": "application/json",
-          },
-        });
-
-        const response = await client.chat.completions.create({
-          model: provider.model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.2,
-        });
-
-        rawText = response.choices[0]?.message?.content || "";
-      }
-
-      if (!rawText) continue;
-
+    const rawText = response?.choices?.[0]?.message?.content || "";
+    if (rawText) {
       // Clean JSON if needed (remove markdown backticks)
       const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
       const parsed = JSON.parse(cleanJson) as StructuredResolutionOutput;
@@ -272,10 +247,9 @@ Respond ONLY with a JSON object matching this schema:
 
         return parsed;
       }
-    } catch (err: any) {
-      console.warn(`[AI Provider Failed: ${provider.provider} (${provider.model})]:`, err?.message || err);
-      // Continue to next provider in fallback chain
     }
+  } catch (err: any) {
+    console.warn(`[AgentRouter AI Call Failed (${model})]:`, err?.message || err);
   }
 
   // Final fallback to CAMA 2020 deterministic generator
