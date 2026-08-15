@@ -475,6 +475,7 @@ export default function DocumentsHubPage() {
                 data={selectedDoc.structuredData}
                 accentColor={selectedDoc.accentColor || "#0f172a"}
                 logoUrl={selectedDoc.logoUrl}
+                sealUrl={selectedDoc.sealUrl || selectedDoc.formData?.sealUrl}
                 isWatermarked={false}
                 documentRef={selectedDoc.transactionRef}
               />

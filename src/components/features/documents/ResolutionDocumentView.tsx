@@ -243,6 +243,7 @@ export default function ResolutionDocumentView({
                 <img 
                   src={effectiveLogoUrl} 
                   alt="Company Logo" 
+                  crossOrigin="anonymous"
                   className="max-h-16 max-w-[180px] object-contain shrink-0" 
                 />
               ) : (
@@ -346,6 +347,7 @@ export default function ResolutionDocumentView({
                       <img 
                         src={sig.signatureUrl} 
                         alt={`${sig.name} Signature`} 
+                        crossOrigin="anonymous"
                         className="max-h-11 max-w-[150px] object-contain" 
                       />
                     ) : (
@@ -371,6 +373,7 @@ export default function ResolutionDocumentView({
                   <img 
                     src={effectiveSealUrl} 
                     alt="Company Stamp" 
+                    crossOrigin="anonymous"
                     className="h-full w-full object-contain rounded-full" 
                   />
                 </div>

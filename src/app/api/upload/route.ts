@@ -10,8 +10,16 @@ cloudinary.config({
 
 // Enforce 5MB limit
 const MAX_FILE_SIZE = 5 * 1024 * 1024; 
-// Only allow safe document types
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+// Only allow safe document & image types
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+  "image/webp",
+  "image/svg+xml",
+  "image/gif",
+  "application/pdf"
+];
 
 export async function POST(req: NextRequest) {
   try {

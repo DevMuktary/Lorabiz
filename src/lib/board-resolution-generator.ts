@@ -248,23 +248,37 @@ function normalizeStructuredResolution(
   // Certification Text
   const certificationText = parsed.certificationText || parsed.certification || fallback.certificationText;
 
-  // Signatories matching
+  // Signatories matching - prioritize user-configured directors and signatures
   let signatories: Array<{ name: string; role: string; isSignatory: boolean; signatureUrl?: string }> = [];
-  const rawSignatories = parsed.signatories || parsed.signatoryList || parsed.directors;
-  if (Array.isArray(rawSignatories) && rawSignatories.length > 0) {
-    signatories = rawSignatories.map((sig: any, idx: number) => {
-      const name = typeof sig === "string" ? sig : (sig.name || sig.fullName || `Director ${idx + 1}`);
-      const role = typeof sig === "object" ? (sig.role || sig.designation || "Director") : "Director";
-      const isSignatory = typeof sig === "object" ? (sig.isSignatory !== undefined ? Boolean(sig.isSignatory) : true) : true;
-      
-      const match = (formData.directors || []).find(d => d.fullName.toLowerCase().trim() === name.toLowerCase().trim()) || formData.directors[idx];
+  if (formData.directors && Array.isArray(formData.directors) && formData.directors.length > 0) {
+    signatories = formData.directors.map((d, idx) => {
+      const rawSignatories = parsed.signatories || parsed.signatoryList || parsed.directors;
+      const aiMatch = Array.isArray(rawSignatories) 
+        ? rawSignatories.find((s: any) => {
+            const sName = (typeof s === "string" ? s : (s?.name || s?.fullName || "")).toLowerCase().trim();
+            const dName = (d.fullName || "").toLowerCase().trim();
+            return sName && dName && (sName.includes(dName) || dName.includes(sName));
+          }) || rawSignatories[idx]
+        : null;
+
+      const role = d.designation === "Other" && d.customDesignation 
+        ? d.customDesignation 
+        : (d.designation || (aiMatch && typeof aiMatch === "object" ? aiMatch.role : "Director"));
+
       return {
-        name,
-        role,
-        isSignatory,
-        signatureUrl: match?.signatureUrl
+        name: d.fullName || `Director ${idx + 1}`,
+        role: role || "Director",
+        isSignatory: d.isSignatory !== undefined ? Boolean(d.isSignatory) : true,
+        signatureUrl: d.signatureUrl || undefined
       };
     });
+  } else if (Array.isArray(parsed.signatories) && parsed.signatories.length > 0) {
+    signatories = parsed.signatories.map((sig: any, idx: number) => ({
+      name: typeof sig === "string" ? sig : (sig.name || sig.fullName || `Director ${idx + 1}`),
+      role: typeof sig === "object" ? (sig.role || sig.designation || "Director") : "Director",
+      isSignatory: typeof sig === "object" ? (sig.isSignatory !== undefined ? Boolean(sig.isSignatory) : true) : true,
+      signatureUrl: undefined
+    }));
   } else {
     signatories = fallback.signatories;
   }
@@ -286,8 +300,8 @@ function normalizeStructuredResolution(
     mandateClause,
     certificationText,
     signatories,
-    logoUrl: formData.logoUrl || parsed.logoUrl,
-    sealUrl: formData.sealUrl || parsed.sealUrl,
+    logoUrl: formData.logoUrl || parsed.logoUrl || fallback.logoUrl || undefined,
+    sealUrl: formData.sealUrl || parsed.sealUrl || fallback.sealUrl || undefined,
   };
 }
 

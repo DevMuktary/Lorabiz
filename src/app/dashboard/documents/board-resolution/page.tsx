@@ -1448,7 +1448,7 @@ function BoardResolutionBuilderContent() {
                               )}
                               <input
                                 type="file"
-                                accept="image/png, image/jpeg"
+                                accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml"
                                 onChange={(e) => handleDirectorSignatureUpload(director.id, e)}
                                 disabled={isSigUploading}
                                 className="hidden"
