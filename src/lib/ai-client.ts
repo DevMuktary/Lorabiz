@@ -13,16 +13,19 @@ export interface AIProviderConfig {
 /**
  * Resolves the primary and fallback AI configurations based on environment variables.
  * Priority:
- * 1. Dedicated Document Key (DOC_OPEN_AI_KEY, DOC_ANTHROPIC_AUTH_TOKEN, ANTHROPIC_AUTH_TOKEN)
- * 2. General OPENAI_API_KEY (used for categorization / fallback)
+ * 1. Dedicated Document Key / AgentRouter (ANTHROPIC_AUTH_TOKEN, DOC_ANTHROPIC_AUTH_TOKEN, AGENTROUTER_API_KEY, ANTHROPIC_API_KEY, DOC_OPEN_AI_KEY)
+ * 2. General OPENAI_API_KEY (used as fallback if available)
  */
 export function getDocumentAIProviders(): AIProviderConfig[] {
   const providers: AIProviderConfig[] = [];
 
-  const docKey = (
-    process.env.DOC_OPEN_AI_KEY ||
-    process.env.DOC_ANTHROPIC_AUTH_TOKEN ||
+  // Dedicated AgentRouter / Anthropic Keys
+  const anthropicKey = (
     process.env.ANTHROPIC_AUTH_TOKEN ||
+    process.env.DOC_ANTHROPIC_AUTH_TOKEN ||
+    process.env.AGENTROUTER_API_KEY ||
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.DOC_OPEN_AI_KEY ||
     ""
   ).trim().replace(/^['"]|['"]$/g, "");
 
@@ -31,29 +34,31 @@ export function getDocumentAIProviders(): AIProviderConfig[] {
     ""
   ).trim().replace(/^['"]|['"]$/g, "");
 
-  // 1. Primary Priority: Dedicated Document Key / AgentRouter Claude
-  if (docKey) {
-    const anthropicBaseURL = (process.env.ANTHROPIC_BASE_URL || "https://agentrouter.org").trim().replace(/\/+$/, "");
-    const anthropicModel = (process.env.ANTHROPIC_MODEL || "claude-opus-4-8").trim();
+  // 1. Primary Priority: Dedicated AgentRouter Claude (Anthropic Messages API)
+  if (anthropicKey) {
+    const rawBaseURL = process.env.ANTHROPIC_BASE_URL || "https://agentrouter.org";
+    const cleanBaseURL = rawBaseURL.trim().replace(/^['"]|['"]$/g, "").replace(/\/+$/, "").replace(/\/v1$/, "");
+    const anthropicModel = (process.env.ANTHROPIC_MODEL || "claude-opus-4-6").trim().replace(/^['"]|['"]$/g, "");
 
+    // Primary: Anthropic Messages API on AgentRouter
     providers.push({
       provider: "agentrouter-anthropic",
-      apiKey: docKey,
-      baseURL: anthropicBaseURL,
+      apiKey: anthropicKey,
+      baseURL: cleanBaseURL,
       model: anthropicModel,
     });
 
-    // Also support OpenAI-compatible endpoint on AgentRouter
+    // Secondary fallback: OpenAI-compatible endpoint on AgentRouter
     providers.push({
       provider: "agentrouter-openai",
-      apiKey: docKey,
-      baseURL: "https://agentrouter.org/v1",
-      model: anthropicModel.startsWith("claude") ? anthropicModel : "claude-opus-4-8",
+      apiKey: anthropicKey,
+      baseURL: `${cleanBaseURL}/v1`,
+      model: anthropicModel,
     });
   }
 
-  // 2. Secondary Priority / Categorization Fallback: General OPENAI_API_KEY
-  if (generalOpenAIKey) {
+  // 2. Tertiary Fallback: General OPENAI_API_KEY (if provided and different from anthropicKey)
+  if (generalOpenAIKey && generalOpenAIKey !== anthropicKey) {
     const isProjectKey = generalOpenAIKey.startsWith("sk-proj-") || generalOpenAIKey.startsWith("sk-");
     const openAIBase = process.env.OPENAI_BASE_URL
       ? process.env.OPENAI_BASE_URL.trim().replace(/\/+$/, "")
@@ -108,14 +113,15 @@ export async function callAnthropicMessages(
   systemPrompt: string,
   userPrompt: string
 ): Promise<string> {
-  const endpoint = `${baseURL.replace(/\/+$/, "")}/v1/messages`;
+  const cleanBase = baseURL.trim().replace(/\/+$/, "").replace(/\/v1$/, "");
+  const endpoint = `${cleanBase}/v1/messages`;
   
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
       "Authorization": `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
       "User-Agent": "Lorabiz/1.0 (Node.js)",
     },

@@ -20,7 +20,10 @@ export async function GET() {
     }
 
     const documents = await prisma.generatedDocument.findMany({
-      where: { userId: user.id },
+      where: { 
+        userId: user.id,
+        status: "COMPLETED",
+      },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
