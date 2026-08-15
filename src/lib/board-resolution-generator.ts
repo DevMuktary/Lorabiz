@@ -42,7 +42,7 @@ export interface StructuredResolutionOutput {
   title: string;
   letterhead: {
     companyName: string;
-    rcNumber?: string;
+    rcNumber: string;
     registeredAddress: string;
   };
   meetingMetadata: {
@@ -134,7 +134,7 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
     title: `EXTRACT OF THE MINUTES OF THE MEETING OF THE BOARD OF DIRECTORS OF ${companyNameUpper}`,
     letterhead: {
       companyName: companyNameUpper,
-      rcNumber: rcText || undefined,
+      rcNumber: rcText || "",
       registeredAddress: data.registeredAddress || "Federal Republic of Nigeria",
     },
     meetingMetadata: {
