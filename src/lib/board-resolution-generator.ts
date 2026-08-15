@@ -38,8 +38,12 @@ export interface BoardResolutionFormData {
   savedCurrentStep?: number;
 }
 
+export type ResolutionDesignTheme = "classic-royal" | "modern-executive" | "luxury-crest" | "gazette-formal";
+
 export interface StructuredResolutionOutput {
   title: string;
+  theme?: ResolutionDesignTheme;
+  accentColor?: string;
   letterhead: {
     companyName: string;
     rcNumber: string;
@@ -65,6 +69,7 @@ export interface StructuredResolutionOutput {
   }>;
   logoUrl?: string;
   sealUrl?: string;
+  designNotes?: string;
 }
 
 /**
@@ -78,6 +83,21 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
   const currency = data.accountCurrency || "NGN (Nigerian Naira)";
   const venue = data.meetingVenue || data.registeredAddress || "the registered office of the Company";
   
+  // Smart default theme based on purpose
+  let defaultTheme: ResolutionDesignTheme = "classic-royal";
+  let defaultAccent = data.accentColor || "#0f172a";
+
+  if (data.purposeCategory === "PAYMENT_GATEWAY") {
+    defaultTheme = "modern-executive";
+    defaultAccent = data.accentColor || "#1e3a8a";
+  } else if (data.purposeCategory === "LOAN_FACILITY") {
+    defaultTheme = "luxury-crest";
+    defaultAccent = data.accentColor || "#78350f";
+  } else if (data.purposeCategory === "GENERAL_CORPORATE" || data.purposeCategory === "OTHER") {
+    defaultTheme = "gazette-formal";
+    defaultAccent = data.accentColor || "#334155";
+  }
+
   const signatoriesList = (data.directors || []).filter(d => d.isSignatory);
   const signatoryNames = signatoriesList.map(s => `${s.fullName} (${s.designation})`).join(", ");
 
@@ -132,6 +152,8 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
 
   return {
     title: `EXTRACT OF THE MINUTES OF THE MEETING OF THE BOARD OF DIRECTORS OF ${companyNameUpper}`,
+    theme: defaultTheme,
+    accentColor: defaultAccent,
     letterhead: {
       companyName: companyNameUpper,
       rcNumber: rcText || "",
@@ -216,6 +238,11 @@ function normalizeStructuredResolution(
   const meetingVenue = parsed.meetingMetadata?.venue || formData.meetingVenue || formData.registeredAddress || fallback.meetingMetadata.venue;
   const commencementText = parsed.meetingMetadata?.commencementText || fallback.meetingMetadata.commencementText;
 
+  // AI Design Theme Selection
+  const validThemes: ResolutionDesignTheme[] = ["classic-royal", "modern-executive", "luxury-crest", "gazette-formal"];
+  const selectedTheme: ResolutionDesignTheme = validThemes.includes(parsed.theme) ? parsed.theme : fallback.theme || "classic-royal";
+  const selectedAccent = formData.accentColor || parsed.accentColor || fallback.accentColor;
+
   // Recitals
   let recitals: string[] = [];
   const rawRecitals = parsed.recitals || parsed.whereasClauses || parsed.preamble;
@@ -285,6 +312,8 @@ function normalizeStructuredResolution(
 
   return {
     title: parsed.title || fallback.title,
+    theme: selectedTheme,
+    accentColor: selectedAccent,
     letterhead: {
       companyName: companyNameUpper,
       rcNumber: rcText,
@@ -302,6 +331,7 @@ function normalizeStructuredResolution(
     signatories,
     logoUrl: formData.logoUrl || parsed.logoUrl || fallback.logoUrl || undefined,
     sealUrl: formData.sealUrl || parsed.sealUrl || fallback.sealUrl || undefined,
+    designNotes: parsed.designNotes || undefined
   };
 }
 
@@ -318,13 +348,15 @@ export async function generateAIBoardResolution(formData: BoardResolutionFormDat
     return fallback;
   }
 
-  const systemPrompt = `You are a Senior Nigerian Corporate Lawyer and Company Secretary specializing in CAMA 2020 corporate governance, banking compliance (CBN regulations), and fintech onboarding (Paystack, Flutterwave, Monnify KYC).
-Your task is to generate a formal, legally watertight Extract of Board Resolution Minutes for a Nigerian registered company.
+  const systemPrompt = `You are a Senior Nigerian Corporate Lawyer and Master Legal Document Visual Architect specializing in CAMA 2020 corporate governance, banking compliance (CBN regulations), and fintech onboarding (Paystack, Flutterwave, Monnify KYC).
+Your task is to generate a bespoke, formal, legally watertight Extract of Board Resolution Minutes for a Nigerian registered company, and architect its visual document presentation archetype.
+
 Strict Requirements:
 1. Formal Nigerian CAMA 2020 legal tone.
 2. Direct, actionable operative clauses (RESOLVED THAT, FURTHER RESOLVED THAT).
 3. Clear mandate authority for financial institutions and payment gateways.
-4. Output MUST be valid JSON only conforming strictly to the requested schema. Do not include markdown preamble or conversational explanations outside the JSON object.`;
+4. Select the optimal visual design theme ("classic-royal" | "modern-executive" | "luxury-crest" | "gazette-formal") matching the institution and corporate profile.
+5. Output MUST be valid JSON only conforming strictly to the requested schema. Do not include markdown preamble or conversational explanations outside the JSON object.`;
 
   const userPrompt = `Generate a formal Board Resolution Extract based on the following verified company details:
 - Company Name: ${formData.companyName}
@@ -344,6 +376,8 @@ ${(formData.directors || []).map(d => `  * ${d.fullName} - ${d.designation} (Sig
 Respond ONLY with a JSON object matching this schema:
 {
   "title": "EXTRACT OF THE MINUTES OF THE MEETING OF THE BOARD OF DIRECTORS OF...",
+  "theme": "classic-royal" | "modern-executive" | "luxury-crest" | "gazette-formal",
+  "accentColor": "#0f172a",
   "letterhead": {
     "companyName": "...",
     "rcNumber": "...",
@@ -363,7 +397,8 @@ Respond ONLY with a JSON object matching this schema:
   "certificationText": "...",
   "signatories": [
     { "name": "...", "role": "...", "isSignatory": true }
-  ]
+  ],
+  "designNotes": "Short sentence explaining design selection"
 }`;
 
   try {

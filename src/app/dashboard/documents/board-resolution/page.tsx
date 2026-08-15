@@ -71,6 +71,44 @@ const PRESET_ACCENT_COLORS = [
 
 const LOCAL_STORAGE_DRAFT_KEY = "lorabiz_board_res_draft";
 
+const GENERATION_STAGES = [
+  {
+    step: "01",
+    title: "Analyzing Corporate Structure & CAMA 2020 Mandates",
+    desc: "Validating company credentials, directorship quorum, and statutory authority under Nigerian law.",
+    icon: "⚖️",
+    badge: "Stage 1/5"
+  },
+  {
+    step: "02",
+    title: "AI Architecting Bespoke Visual Layout & Typography",
+    desc: "Designing tailored heraldic letterhead, security frames, and certified typography archetype.",
+    icon: "🎨",
+    badge: "Stage 2/5"
+  },
+  {
+    step: "03",
+    title: "Synthesizing Bank & Fintech Operative Clauses",
+    desc: "Drafting watertight resolutions tailored specifically for the target financial institution.",
+    icon: "🏦",
+    badge: "Stage 3/5"
+  },
+  {
+    step: "04",
+    title: "Engraving Company Seal, Signatures & Attestation",
+    desc: "Binding digital director signatures, corporate seal badge, and verification reference hash.",
+    icon: "🖋️",
+    badge: "Stage 4/5"
+  },
+  {
+    step: "05",
+    title: "Rendering High-Definition Document Snapshot",
+    desc: "Finalizing rasterization for photorealistic presentation and download.",
+    icon: "✨",
+    badge: "Stage 5/5"
+  }
+];
+
 /**
  * Robust XHR File Uploader with Live Progress Percentage (0% - 100%)
  */
@@ -184,6 +222,9 @@ function BoardResolutionBuilderContent() {
 
   // Preview & Final Generation State
   const [generatingPreview, setGeneratingPreview] = useState(false);
+  const [generationStageIndex, setGenerationStageIndex] = useState(0);
+  const [generationProgress, setGenerationProgress] = useState(15);
+  const [generationSeconds, setGenerationSeconds] = useState(0);
   const [previewData, setPreviewData] = useState<StructuredResolutionOutput | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [finalDocument, setFinalDocument] = useState<any | null>(null);
@@ -506,7 +547,28 @@ function BoardResolutionBuilderContent() {
 
     setCurrentStep(3);
     setGeneratingPreview(true);
+    setGenerationStageIndex(0);
+    setGenerationProgress(15);
+    setGenerationSeconds(0);
     saveDraftToBackend(3, true);
+
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setGenerationSeconds(elapsed);
+
+      setGenerationProgress((prev) => {
+        if (prev < 90) {
+          const next = prev + Math.floor(Math.random() * 8 + 4);
+          if (next >= 25 && next < 50) setGenerationStageIndex(1);
+          else if (next >= 50 && next < 70) setGenerationStageIndex(2);
+          else if (next >= 70 && next < 85) setGenerationStageIndex(3);
+          else if (next >= 85) setGenerationStageIndex(4);
+          return Math.min(next, 92);
+        }
+        return prev;
+      });
+    }, 900);
 
     try {
       const res = await fetch("/api/documents/board-resolution/preview", {
@@ -518,14 +580,22 @@ function BoardResolutionBuilderContent() {
       const resolutionOutput = data.preview || data.data?.preview || data.data?.structuredResolution || data.data;
 
       if (data.success && resolutionOutput) {
-        setPreviewData(resolutionOutput);
+        setGenerationProgress(100);
+        setGenerationStageIndex(4);
+        setTimeout(() => {
+          clearInterval(timer);
+          setPreviewData(resolutionOutput);
+          setGeneratingPreview(false);
+        }, 500);
       } else {
+        clearInterval(timer);
+        setGeneratingPreview(false);
         showToast(data.message || "Failed to generate preview. Please try again.", "error");
       }
     } catch {
-      showToast("Network error generating preview.", "error");
-    } finally {
+      clearInterval(timer);
       setGeneratingPreview(false);
+      showToast("Network error generating preview.", "error");
     }
   };
 
@@ -1497,12 +1567,83 @@ function BoardResolutionBuilderContent() {
         <div className="space-y-6">
           
           {generatingPreview ? (
-            <div className="p-12 rounded-3xl bg-card border border-border text-center space-y-4 shadow-sm">
-              <Spinner className="h-10 w-10 animate-spin text-primary mx-auto" weight="bold" />
-              <h3 className="text-base font-bold text-foreground">Formatting Your Board Resolution...</h3>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Applying CAMA 2020 operative clauses and tailoring the extract for {formData.targetInstitution}.
-              </p>
+            <div className="relative overflow-hidden p-8 sm:p-12 rounded-3xl bg-card border border-border/80 text-center shadow-xl space-y-8 animate-in fade-in zoom-in-95 duration-300">
+              
+              {/* Background glowing gradient orbs */}
+              <div className="absolute -top-24 -left-24 w-72 h-72 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Central Pulsing AI Badge */}
+              <div className="relative flex items-center justify-center mx-auto w-28 h-28">
+                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-60" />
+                <div className="absolute inset-1.5 rounded-full border-2 border-dashed border-primary/50 animate-[spin_10s_linear_infinite]" />
+                <div className="absolute inset-4 rounded-full border border-dotted border-amber-400/60 animate-[spin_6s_linear_infinite_reverse]" />
+                <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-tr from-primary via-indigo-600 to-purple-600 flex items-center justify-center shadow-xl shadow-primary/30 text-white border border-white/20">
+                  <span className="text-2xl animate-bounce">{GENERATION_STAGES[generationStageIndex]?.icon || "✨"}</span>
+                </div>
+              </div>
+
+              {/* Title & Current Stage Description */}
+              <div className="space-y-2 max-w-lg mx-auto">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                  <Sparkle className="h-3.5 w-3.5 animate-pulse" weight="fill" />
+                  <span>LoraBiz AI Legal Architect &bull; {GENERATION_STAGES[generationStageIndex]?.badge}</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-foreground tracking-tight transition-all">
+                  {GENERATION_STAGES[generationStageIndex]?.title}
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed transition-all">
+                  {GENERATION_STAGES[generationStageIndex]?.desc}
+                </p>
+              </div>
+
+              {/* Live Progress Bar with Percentage */}
+              <div className="max-w-md mx-auto space-y-2">
+                <div className="flex items-center justify-between text-xs font-black">
+                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Designing Visual Extract</span>
+                  <span className="text-primary font-mono">{generationProgress}%</span>
+                </div>
+                <div className="w-full h-2.5 bg-secondary rounded-full overflow-hidden border border-border/60 p-0.5 shadow-inner">
+                  <div 
+                    className="h-full bg-gradient-to-r from-primary via-indigo-500 to-purple-500 rounded-full transition-all duration-500 shadow-sm"
+                    style={{ width: `${generationProgress}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Multi-stage Milestones Ticker */}
+              <div className="max-w-md mx-auto grid grid-cols-5 gap-2 pt-2">
+                {GENERATION_STAGES.map((st, idx) => {
+                  const isDone = idx < generationStageIndex;
+                  const isCurrent = idx === generationStageIndex;
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`p-2 rounded-xl border text-center transition-all text-[10px] font-bold ${
+                        isDone 
+                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400" 
+                          : isCurrent 
+                          ? "bg-primary/10 border-primary text-primary shadow-sm" 
+                          : "bg-secondary/30 border-border/50 text-muted-foreground opacity-40"
+                      }`}
+                    >
+                      <div className="text-sm mb-0.5">{isDone ? "✓" : st.icon}</div>
+                      <span className="truncate block">{st.step}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Reassuring tips & legal compliance note */}
+              <div className="pt-2 max-w-md mx-auto text-[11px] text-muted-foreground bg-secondary/30 p-3 rounded-2xl border border-border/60 flex items-center justify-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" weight="fill" />
+                <span>
+                  {generationSeconds > 6
+                    ? `Designing bespoke typography and clauses for ${formData.targetInstitution || "the bank"}...`
+                    : `Ensuring strict CAMA 2020 compliance & CBN KYC verification standards.`}
+                </span>
+              </div>
+
             </div>
           ) : previewData ? (
             <div className="space-y-6">
