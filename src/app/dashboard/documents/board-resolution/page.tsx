@@ -76,35 +76,30 @@ const GENERATION_STAGES = [
     step: "01",
     title: "Analyzing Corporate Structure & CAMA 2020 Mandates",
     desc: "Validating company credentials, directorship quorum, and statutory authority under Nigerian law.",
-    icon: "⚖️",
     badge: "Stage 1/5"
   },
   {
     step: "02",
-    title: "AI Architecting Bespoke Visual Layout & Typography",
+    title: "Architecting Formal Visual Layout & Typography",
     desc: "Designing tailored heraldic letterhead, security frames, and certified typography archetype.",
-    icon: "🎨",
     badge: "Stage 2/5"
   },
   {
     step: "03",
     title: "Synthesizing Bank & Fintech Operative Clauses",
     desc: "Drafting watertight resolutions tailored specifically for the target financial institution.",
-    icon: "🏦",
     badge: "Stage 3/5"
   },
   {
     step: "04",
     title: "Engraving Company Seal, Signatures & Attestation",
     desc: "Binding digital director signatures, corporate seal badge, and verification reference hash.",
-    icon: "🖋️",
     badge: "Stage 4/5"
   },
   {
     step: "05",
     title: "Rendering High-Definition Document Snapshot",
     desc: "Finalizing rasterization for photorealistic presentation and download.",
-    icon: "✨",
     badge: "Stage 5/5"
   }
 ];
@@ -197,6 +192,8 @@ function BoardResolutionBuilderContent() {
     companyName: "",
     rcNumber: "",
     registeredAddress: "",
+    companyEmail: "",
+    companyPhone: "",
     meetingDate: new Date().toISOString().split("T")[0],
     meetingVenue: "",
     purposeCategory: "BANK_ACCOUNT",
@@ -263,6 +260,8 @@ function BoardResolutionBuilderContent() {
               companyName: rawDraft.companyName || "",
               rcNumber: rawDraft.rcNumber || "",
               registeredAddress: rawDraft.registeredAddress || "",
+              companyEmail: rawDraft.companyEmail || "",
+              companyPhone: rawDraft.companyPhone || "",
               meetingDate: rawDraft.meetingDate || new Date().toISOString().split("T")[0],
               meetingVenue: rawDraft.meetingVenue || "",
               purposeCategory: rawDraft.purposeCategory || "BANK_ACCOUNT",
@@ -821,6 +820,34 @@ function BoardResolutionBuilderContent() {
                 value={formData.registeredAddress}
                 onChange={(e) => setFormData({ ...formData, registeredAddress: e.target.value })}
                 placeholder="e.g. 123 Commercial Avenue, Victoria Island, Lagos State"
+                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+
+            {/* Official Company Email */}
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-xs font-bold text-foreground">
+                Company Official Email <span className="text-muted-foreground text-[10px] font-normal">(Optional • for letterhead)</span>
+              </label>
+              <input
+                type="email"
+                value={formData.companyEmail || ""}
+                onChange={(e) => setFormData({ ...formData, companyEmail: e.target.value })}
+                placeholder="e.g. info@company.com or contact@xato.ng"
+                className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+
+            {/* Official Company Phone */}
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-xs font-bold text-foreground">
+                Company Official Phone <span className="text-muted-foreground text-[10px] font-normal">(Optional • for letterhead)</span>
+              </label>
+              <input
+                type="tel"
+                value={formData.companyPhone || ""}
+                onChange={(e) => setFormData({ ...formData, companyPhone: e.target.value })}
+                placeholder="e.g. +234 816 143 7292"
                 className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border text-sm font-medium focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
               />
             </div>
@@ -1571,23 +1598,28 @@ function BoardResolutionBuilderContent() {
               
               {/* Background glowing gradient orbs */}
               <div className="absolute -top-24 -left-24 w-72 h-72 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-              {/* Central Pulsing AI Badge */}
-              <div className="relative flex items-center justify-center mx-auto w-28 h-28">
-                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-60" />
-                <div className="absolute inset-1.5 rounded-full border-2 border-dashed border-primary/50 animate-[spin_10s_linear_infinite]" />
-                <div className="absolute inset-4 rounded-full border border-dotted border-amber-400/60 animate-[spin_6s_linear_infinite_reverse]" />
-                <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-tr from-primary via-indigo-600 to-purple-600 flex items-center justify-center shadow-xl shadow-primary/30 text-white border border-white/20">
-                  <span className="text-2xl animate-bounce">{GENERATION_STAGES[generationStageIndex]?.icon || "✨"}</span>
+              {/* Central Premium AI Seal Emblem */}
+              <div className="relative flex items-center justify-center mx-auto w-32 h-32">
+                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-50" />
+                <div className="absolute -inset-2 rounded-full border-2 border-dashed border-amber-500/50 animate-[spin_12s_linear_infinite]" />
+                <div className="absolute -inset-0.5 rounded-full border border-dotted border-primary/60 animate-[spin_8s_linear_infinite_reverse]" />
+                <div className="relative h-24 w-24 rounded-full overflow-hidden shadow-2xl shadow-primary/40 border-2 border-amber-400/80 bg-slate-950 flex items-center justify-center p-0.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src="/legal-seal-emblem.jpg" 
+                    alt="Corporate Legal Seal" 
+                    className="w-full h-full object-cover rounded-full filter contrast-110" 
+                  />
                 </div>
               </div>
 
               {/* Title & Current Stage Description */}
               <div className="space-y-2 max-w-lg mx-auto">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                  <Sparkle className="h-3.5 w-3.5 animate-pulse" weight="fill" />
-                  <span>LoraBiz AI Legal Architect &bull; {GENERATION_STAGES[generationStageIndex]?.badge}</span>
+                  <ShieldCheck className="h-3.5 w-3.5" weight="fill" />
+                  <span>LoraBiz Legal Document Architect &bull; {GENERATION_STAGES[generationStageIndex]?.badge}</span>
                 </div>
                 <h3 className="text-lg sm:text-xl font-black text-foreground tracking-tight transition-all">
                   {GENERATION_STAGES[generationStageIndex]?.title}
@@ -1600,12 +1632,12 @@ function BoardResolutionBuilderContent() {
               {/* Live Progress Bar with Percentage */}
               <div className="max-w-md mx-auto space-y-2">
                 <div className="flex items-center justify-between text-xs font-black">
-                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Designing Visual Extract</span>
+                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Architecting Resolution Extract</span>
                   <span className="text-primary font-mono">{generationProgress}%</span>
                 </div>
                 <div className="w-full h-2.5 bg-secondary rounded-full overflow-hidden border border-border/60 p-0.5 shadow-inner">
                   <div 
-                    className="h-full bg-gradient-to-r from-primary via-indigo-500 to-purple-500 rounded-full transition-all duration-500 shadow-sm"
+                    className="h-full bg-gradient-to-r from-primary via-indigo-500 to-amber-500 rounded-full transition-all duration-500 shadow-sm"
                     style={{ width: `${generationProgress}%` }}
                   />
                 </div>
@@ -1619,16 +1651,24 @@ function BoardResolutionBuilderContent() {
                   return (
                     <div 
                       key={idx} 
-                      className={`p-2 rounded-xl border text-center transition-all text-[10px] font-bold ${
+                      className={`p-2.5 rounded-xl border text-center transition-all text-[11px] font-bold ${
                         isDone 
                           ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400" 
                           : isCurrent 
-                          ? "bg-primary/10 border-primary text-primary shadow-sm" 
+                          ? "bg-primary/10 border-primary text-primary shadow-sm ring-2 ring-primary/20" 
                           : "bg-secondary/30 border-border/50 text-muted-foreground opacity-40"
                       }`}
                     >
-                      <div className="text-sm mb-0.5">{isDone ? "✓" : st.icon}</div>
-                      <span className="truncate block">{st.step}</span>
+                      <div className="flex items-center justify-center mb-1">
+                        {isDone ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" weight="bold" />
+                        ) : isCurrent ? (
+                          <Spinner className="h-3.5 w-3.5 text-primary animate-spin" weight="bold" />
+                        ) : (
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
+                        )}
+                      </div>
+                      <span className="truncate block font-mono text-[10px] tracking-wider">STAGE {st.step}</span>
                     </div>
                   );
                 })}
@@ -1639,8 +1679,8 @@ function BoardResolutionBuilderContent() {
                 <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" weight="fill" />
                 <span>
                   {generationSeconds > 6
-                    ? `Designing bespoke typography and clauses for ${formData.targetInstitution || "the bank"}...`
-                    : `Ensuring strict CAMA 2020 compliance & CBN KYC verification standards.`}
+                    ? `Synthesizing certified clauses for ${formData.targetInstitution || "the designated institution"}...`
+                    : `Formatting in accordance with CAMA 2020 & CBN KYC banking directives.`}
                 </span>
               </div>
 

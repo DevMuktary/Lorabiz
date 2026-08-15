@@ -14,6 +14,9 @@ export interface BoardResolutionFormData {
   companyName: string;
   rcNumber?: string;
   registeredAddress: string;
+  companyEmail?: string;
+  companyPhone?: string;
+  corporateMotto?: string;
   meetingDate: string;
   meetingVenue?: string;
   
@@ -42,18 +45,25 @@ export type ResolutionDesignTheme = "classic-royal" | "modern-executive" | "luxu
 
 export interface StructuredResolutionOutput {
   title: string;
+  subtitle?: string; // e.g. "AUTHORIZING THE USE OF MONNIFY PAYMENT SERVICES"
   theme?: ResolutionDesignTheme;
   accentColor?: string;
   letterhead: {
     companyName: string;
     rcNumber: string;
     registeredAddress: string;
+    email?: string;
+    phone?: string;
   };
   meetingMetadata: {
     date: string;
     venue: string;
     commencementText: string;
   };
+  preambleText?: string;
+  resolutionLeadIn?: string;
+  numberedClauses?: string[];
+  validityClause?: string;
   recitals: string[]; // "WHEREAS..." clauses
   operativeClauses: Array<{
     heading: string;
@@ -67,6 +77,7 @@ export interface StructuredResolutionOutput {
     isSignatory: boolean;
     signatureUrl?: string;
   }>;
+  corporateMotto?: string;
   logoUrl?: string;
   sealUrl?: string;
   designNotes?: string;
@@ -78,7 +89,7 @@ export interface StructuredResolutionOutput {
  */
 export function generateDeterministicResolution(data: BoardResolutionFormData): StructuredResolutionOutput {
   const companyNameUpper = (data.companyName || "THE COMPANY").toUpperCase();
-  const rcText = data.rcNumber ? `(RC: ${data.rcNumber.replace(/^RC:?\s*/i, "")})` : "";
+  const rcText = data.rcNumber ? (data.rcNumber.toUpperCase().startsWith("RC") ? data.rcNumber : `RC: ${data.rcNumber.replace(/^RC:?\s*/i, "")}`) : "";
   const instName = data.targetInstitution || "THE FINANCIAL INSTITUTION";
   const currency = data.accountCurrency || "NGN (Nigerian Naira)";
   const venue = data.meetingVenue || data.registeredAddress || "the registered office of the Company";
@@ -113,6 +124,36 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
   } else {
     mandateDescription = data.customMandateText || "The designated authorized signatories as stipulated herein are authorized to operate on behalf of the Company.";
   }
+
+  const subtitle = data.purposeCategory === "PAYMENT_GATEWAY"
+    ? `AUTHORIZING THE USE OF ${instName.toUpperCase()} PAYMENT SERVICES`
+    : `AUTHORIZING THE OPENING OF CORPORATE BANK ACCOUNT WITH ${instName.toUpperCase()}`;
+
+  const preambleText = `This resolution was duly passed by the Board of Directors of ${companyNameUpper} in accordance with the provisions of the Companies and Allied Matters Act (CAMA 2020) and the Company's Articles of Association.`;
+
+  const resolutionLeadIn = data.purposeCategory === "PAYMENT_GATEWAY"
+    ? `It is hereby resolved that ${companyNameUpper} is authorized to register, integrate, and utilize the payment collection and settlement services provided by ${instName} for the purpose of supporting its business operations.\n\nThe Board hereby approves the Company to:`
+    : `It is hereby resolved that ${companyNameUpper} is authorized to establish, operate, and maintain corporate banking facilities and account(s) with ${instName} (${currency}) for the purpose of supporting its business operations.\n\nThe Board hereby approves the Company to:`;
+
+  const numberedClauses = data.purposeCategory === "PAYMENT_GATEWAY"
+    ? [
+        "Receive electronic payments from customers, clients, partners, and other third parties across all approved digital channels.",
+        "Process payments relating to airtime, data subscriptions, utility bills, digital products, educational services, examination fees, and digital financial services.",
+        "Operate and manage Virtual Accounts, settlement accounts, and fintech solutions offered through the payment infrastructure.",
+        `Open, manage, and maintain all necessary virtual collection accounts, settlement accounts, and disbursement channels required for the efficient operation of ${instName} services.`,
+        `Execute all agreements, documents, integrations, API configurations, and compliance requirements necessary to facilitate the Company's use of ${instName}'s payment infrastructure.`,
+        "Authorize the designated executive officers or appointed representatives of the Company to act on behalf of the Company in matters relating to the implementation and administration of these services."
+      ]
+    : [
+        `Open and maintain a corporate banking account (Currency: ${currency}) in the name of the Company with ${instName}${data.institutionBranch ? ` at its ${data.institutionBranch}` : ""}.`,
+        "Honor and pay all cheques, drafts, electronic fund transfers, and debit orders drawn upon the said account by authorized signatories.",
+        "Submit and execute all mandate cards, corporate indemnities, electronic banking agreements, and KYC documentation required by the Bank.",
+        `Empower designated authorized signatories (${mandateDescription}) to operate, manage, and sign on behalf of the Company.`,
+        "Authorize the Bank to debit the Company's account for all official charges, statutory fees, and lawful transactions processed in the normal course of business.",
+        "Furnish the Bank with a certified copy of the Company's memorandum, articles of association, and directorship extract as required under CAMA 2020."
+      ];
+
+  const validityClause = "This resolution shall remain valid unless amended or revoked by a subsequent resolution of the Board.";
 
   const recitals: string[] = [
     `WHEREAS ${companyNameUpper} is a duly incorporated entity under the laws of the Federal Republic of Nigeria (Companies and Allied Matters Act, CAMA 2020);`,
@@ -151,29 +192,37 @@ export function generateDeterministicResolution(data: BoardResolutionFormData): 
   }
 
   return {
-    title: `EXTRACT OF THE MINUTES OF THE MEETING OF THE BOARD OF DIRECTORS OF ${companyNameUpper}`,
+    title: "BOARD RESOLUTION",
+    subtitle: subtitle,
     theme: defaultTheme,
     accentColor: defaultAccent,
     letterhead: {
       companyName: companyNameUpper,
       rcNumber: rcText || "",
       registeredAddress: data.registeredAddress || "Federal Republic of Nigeria",
+      email: data.companyEmail || undefined,
+      phone: data.companyPhone || undefined,
     },
     meetingMetadata: {
       date: data.meetingDate || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
       venue: venue,
       commencementText: `At an extraordinary meeting of the Board of Directors of ${companyNameUpper} ${rcText}, held on ${data.meetingDate || "the specified date"} at ${venue}, the following resolutions were unanimously passed:`
     },
+    preambleText,
+    resolutionLeadIn,
+    numberedClauses,
+    validityClause,
     recitals,
     operativeClauses,
     mandateClause: mandateDescription,
-    certificationText: `We hereby certify that the foregoing is a true, authentic, and correct extract from the Minutes of the Meeting of the Board of Directors of ${companyNameUpper} duly convened and held on the date specified above, and that the said resolutions are in accordance with the Articles of Association and the Companies and Allied Matters Act (CAMA 2020).`,
+    certificationText: `This resolution is certified as a true and correct copy of the resolution duly passed by the Board of Directors of ${companyNameUpper}.`,
     signatories: (data.directors || []).map(d => ({
       name: d.fullName,
       role: d.designation === "Other" && d.customDesignation ? d.customDesignation : d.designation,
       isSignatory: d.isSignatory,
       signatureUrl: d.signatureUrl
     })),
+    corporateMotto: data.corporateMotto || "INNOVATING SOLUTIONS. | EMPOWERING BUSINESSES. | BUILDING TOMORROW.",
     logoUrl: data.logoUrl,
     sealUrl: data.sealUrl
   };
@@ -233,6 +282,8 @@ function normalizeStructuredResolution(
     ? String(parsed.letterhead.rcNumber) 
     : fallback.letterhead.rcNumber;
   const registeredAddress = parsed.letterhead?.registeredAddress || formData.registeredAddress || fallback.letterhead.registeredAddress;
+  const email = parsed.letterhead?.email || formData.companyEmail || fallback.letterhead.email;
+  const phone = parsed.letterhead?.phone || formData.companyPhone || fallback.letterhead.phone;
 
   const meetingDate = parsed.meetingMetadata?.date || formData.meetingDate || fallback.meetingMetadata.date;
   const meetingVenue = parsed.meetingMetadata?.venue || formData.meetingVenue || formData.registeredAddress || fallback.meetingMetadata.venue;
@@ -243,9 +294,25 @@ function normalizeStructuredResolution(
   const selectedTheme: ResolutionDesignTheme = validThemes.includes(parsed.theme) ? parsed.theme : fallback.theme || "classic-royal";
   const selectedAccent = formData.accentColor || parsed.accentColor || fallback.accentColor;
 
+  const title = parsed.title || fallback.title || "BOARD RESOLUTION";
+  const subtitle = parsed.subtitle || fallback.subtitle;
+  const preambleText = parsed.preambleText || parsed.preamble || fallback.preambleText;
+  const resolutionLeadIn = parsed.resolutionLeadIn || parsed.leadIn || fallback.resolutionLeadIn;
+  const validityClause = parsed.validityClause || fallback.validityClause;
+  const corporateMotto = parsed.corporateMotto || formData.corporateMotto || fallback.corporateMotto;
+
+  // Numbered Clauses
+  let numberedClauses: string[] = [];
+  const rawNumbered = parsed.numberedClauses || parsed.clausesList || parsed.approvedList;
+  if (Array.isArray(rawNumbered) && rawNumbered.length > 0) {
+    numberedClauses = rawNumbered.map((c: any) => typeof c === "string" ? c : (c.text || String(c)));
+  } else {
+    numberedClauses = fallback.numberedClauses || [];
+  }
+
   // Recitals
   let recitals: string[] = [];
-  const rawRecitals = parsed.recitals || parsed.whereasClauses || parsed.preamble;
+  const rawRecitals = parsed.recitals || parsed.whereasClauses;
   if (Array.isArray(rawRecitals) && rawRecitals.length > 0) {
     recitals = rawRecitals.map((r: any) => typeof r === "string" ? r : (r.text || String(r)));
   } else {
@@ -311,24 +378,32 @@ function normalizeStructuredResolution(
   }
 
   return {
-    title: parsed.title || fallback.title,
+    title,
+    subtitle,
     theme: selectedTheme,
     accentColor: selectedAccent,
     letterhead: {
       companyName: companyNameUpper,
       rcNumber: rcText,
       registeredAddress: registeredAddress,
+      email,
+      phone
     },
     meetingMetadata: {
       date: meetingDate,
       venue: meetingVenue,
       commencementText: commencementText,
     },
+    preambleText,
+    resolutionLeadIn,
+    numberedClauses,
+    validityClause,
     recitals,
     operativeClauses,
     mandateClause,
     certificationText,
     signatories,
+    corporateMotto,
     logoUrl: formData.logoUrl || parsed.logoUrl || fallback.logoUrl || undefined,
     sealUrl: formData.sealUrl || parsed.sealUrl || fallback.sealUrl || undefined,
     designNotes: parsed.designNotes || undefined
@@ -337,7 +412,7 @@ function normalizeStructuredResolution(
 
 /**
  * AI-enhanced Resolution Builder using AgentRouter (gpt-5.6-sol) with fallback to CAMA 2020 deterministic template.
- * Enforces Nigerian corporate law standards and produces structured legal output.
+ * Enforces Nigerian corporate law standards and produces structured legal output matching verified corporate board resolutions.
  */
 export async function generateAIBoardResolution(formData: BoardResolutionFormData): Promise<StructuredResolutionOutput> {
   const fallback = generateDeterministicResolution(formData);
@@ -348,24 +423,31 @@ export async function generateAIBoardResolution(formData: BoardResolutionFormDat
     return fallback;
   }
 
-  const systemPrompt = `You are a Senior Nigerian Corporate Lawyer and Master Legal Document Visual Architect specializing in CAMA 2020 corporate governance, banking compliance (CBN regulations), and fintech onboarding (Paystack, Flutterwave, Monnify KYC).
-Your task is to generate a bespoke, formal, legally watertight Extract of Board Resolution Minutes for a Nigerian registered company, and architect its visual document presentation archetype.
+  const systemPrompt = `You are a Senior Nigerian Corporate Legal Counsel and Master Document Architect specializing in corporate governance under the Companies and Allied Matters Act (CAMA 2020), banking compliance, and fintech onboarding (Paystack, Flutterwave, Monnify, Interswitch, commercial banks).
+Your goal is to generate a formal, legally pristine Board Resolution formatted cleanly for Nigerian corporate certification and banking KYC.
 
-Strict Requirements:
-1. Formal Nigerian CAMA 2020 legal tone.
-2. Direct, actionable operative clauses (RESOLVED THAT, FURTHER RESOLVED THAT).
-3. Clear mandate authority for financial institutions and payment gateways.
-4. Select the optimal visual design theme ("classic-royal" | "modern-executive" | "luxury-crest" | "gazette-formal") matching the institution and corporate profile.
-5. Output MUST be valid JSON only conforming strictly to the requested schema. Do not include markdown preamble or conversational explanations outside the JSON object.`;
+Strict Document Formatting Rules:
+1. Tone: Formal Nigerian CAMA 2020 legal tone.
+2. Title: "BOARD RESOLUTION"
+3. Subtitle: All-caps statement like "AUTHORIZING THE USE OF MONNIFY PAYMENT SERVICES" or "AUTHORIZING THE OPENING OF CORPORATE BANK ACCOUNT WITH ACCESS BANK PLC".
+4. Preamble: "This resolution was duly passed by the Board of Directors of [COMPANY] in accordance with the provisions of the Companies and Allied Matters Act (CAMA 2020) and the Company's Articles of Association."
+5. Resolution Lead-In: "It is hereby resolved that [COMPANY] is authorized to ...\n\nThe Board hereby approves the Company to:"
+6. Numbered Clauses: Provide 5 to 6 concise, powerful numbered clauses detailing the specific authorities granted (e.g. receive electronic payments, execute agreements, open virtual accounts, designate authorized signatories).
+7. Validity Clause: "This resolution shall remain valid unless amended or revoked by a subsequent resolution of the Board."
+8. Certification Text: "This resolution is certified as a true and correct copy of the resolution duly passed by the Board of Directors of [COMPANY]."
+9. Corporate Motto: A clean corporate slogan like "INNOVATING SOLUTIONS. | EMPOWERING BUSINESSES. | BUILDING TOMORROW."
+10. Output MUST be valid JSON only with NO markdown preamble and NO emojis anywhere.`;
 
-  const userPrompt = `Generate a formal Board Resolution Extract based on the following verified company details:
+  const userPrompt = `Generate a formal Nigerian Board Resolution based on these verified company details:
 - Company Name: ${formData.companyName}
 - RC/BN Number: ${formData.rcNumber || "N/A"}
 - Registered Office: ${formData.registeredAddress}
+- Company Email: ${formData.companyEmail || "N/A"}
+- Company Phone: ${formData.companyPhone || "N/A"}
 - Meeting Date: ${formData.meetingDate}
 - Meeting Venue: ${formData.meetingVenue || formData.registeredAddress}
 - Purpose Type: ${formData.purposeCategory}
-- Financial Institution / Gateway: ${formData.targetInstitution}
+- Target Financial Institution / Gateway: ${formData.targetInstitution}
 - Branch / Details: ${formData.institutionBranch || "Head Office / Digital Channel"}
 - Account Currency: ${formData.accountCurrency || "NGN"}
 - Signing Mandate Rule: ${formData.signingMandate} (${formData.customMandateText || "Standard"})
@@ -375,30 +457,40 @@ ${(formData.directors || []).map(d => `  * ${d.fullName} - ${d.designation} (Sig
 
 Respond ONLY with a JSON object matching this schema:
 {
-  "title": "EXTRACT OF THE MINUTES OF THE MEETING OF THE BOARD OF DIRECTORS OF...",
+  "title": "BOARD RESOLUTION",
+  "subtitle": "AUTHORIZING THE USE OF ... SERVICES",
   "theme": "classic-royal" | "modern-executive" | "luxury-crest" | "gazette-formal",
-  "accentColor": "#0f172a",
+  "accentColor": "${formData.accentColor || "#0f172a"}",
   "letterhead": {
-    "companyName": "...",
-    "rcNumber": "...",
-    "registeredAddress": "..."
+    "companyName": "${formData.companyName.toUpperCase()}",
+    "rcNumber": "${formData.rcNumber || ""}",
+    "registeredAddress": "${formData.registeredAddress}",
+    "email": "${formData.companyEmail || ""}",
+    "phone": "${formData.companyPhone || ""}"
   },
   "meetingMetadata": {
-    "date": "...",
-    "venue": "...",
+    "date": "${formData.meetingDate}",
+    "venue": "${formData.meetingVenue || formData.registeredAddress}",
     "commencementText": "..."
   },
-  "recitals": ["WHEREAS clause 1", "WHEREAS clause 2"],
-  "operativeClauses": [
-    { "heading": "1. OPENING OF ACCOUNT / SERVICE", "text": "RESOLVED THAT..." },
-    { "heading": "2. AUTHORIZED SIGNATORIES", "text": "FURTHER RESOLVED THAT..." }
+  "preambleText": "This resolution was duly passed by the Board of Directors of ... in accordance with the provisions of the Companies and Allied Matters Act (CAMA 2020) and the Company's Articles of Association.",
+  "resolutionLeadIn": "It is hereby resolved that ... is authorized to ...\n\nThe Board hereby approves the Company to:",
+  "numberedClauses": [
+    "Receive electronic payments from customers, clients, partners, and other third parties.",
+    "Process payments relating to airtime, data subscriptions, utility bills, and other digital financial services.",
+    "Operate and manage Virtual Top-Up (VTU) services and other fintech solutions offered by the Company.",
+    "Open, manage, and maintain all necessary virtual accounts, settlement accounts, and payment channels.",
+    "Execute all agreements, documents, integrations, API configurations, and compliance requirements.",
+    "Authorize the Chief Executive Officer or any duly appointed representative to act on behalf of the Company."
   ],
+  "validityClause": "This resolution shall remain valid unless amended or revoked by a subsequent resolution of the Board.",
   "mandateClause": "...",
-  "certificationText": "...",
+  "certificationText": "This resolution is certified as a true and correct copy of the resolution duly passed by the Board of Directors of ${formData.companyName.toUpperCase()}.",
+  "corporateMotto": "INNOVATING SOLUTIONS. | EMPOWERING BUSINESSES. | BUILDING TOMORROW.",
   "signatories": [
-    { "name": "...", "role": "...", "isSignatory": true }
+    ${(formData.directors || []).map(d => `{"name": "${d.fullName}", "role": "${d.designation}", "isSignatory": ${Boolean(d.isSignatory)}}`).join(",\n    ")}
   ],
-  "designNotes": "Short sentence explaining design selection"
+  "designNotes": "Clean executive layout tailored for financial compliance"
 }`;
 
   try {
