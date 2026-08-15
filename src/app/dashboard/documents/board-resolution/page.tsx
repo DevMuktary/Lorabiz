@@ -298,37 +298,25 @@ function BoardResolutionBuilderContent() {
           <span className="hidden sm:inline">Legal Documents Hub</span>
         </Link>
 
-        {/* Right: Action Buttons (View Examples, Resolution History, Wallet) - Always side-by-side */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-nowrap shrink-0">
-          {/* View Examples Button */}
-          <button
-            type="button"
-            onClick={() => setIsExampleModalOpen(true)}
-            className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary text-[11px] sm:text-xs font-bold shadow-sm transition-all cursor-pointer shrink-0"
-            title="Preview 10 A4 Document Archetypes"
-          >
-            <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" weight="bold" />
-            <span className="hidden xs:inline sm:inline">Examples</span>
-            <span className="xs:hidden sm:hidden">Templates</span>
-          </button>
-
+        {/* Right: History & Wallet Balance */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Resolution History Button */}
           <Link
             href="/dashboard/documents/board-resolution/history"
-            className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-[11px] sm:text-xs font-bold shadow-sm transition-all shrink-0 cursor-pointer active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-xs font-bold shadow-sm transition-all shrink-0 cursor-pointer active:scale-95"
             title="View Drafts & Completed Resolutions"
           >
-            <Folders className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" weight="bold" />
+            <Folders className="h-4 w-4 text-primary" weight="bold" />
             <span>History</span>
             {historyCount !== null && historyCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black bg-primary/10 text-primary border border-primary/20">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-primary/10 text-primary border border-primary/20">
                 {historyCount}
               </span>
             )}
           </Link>
 
           {/* Wallet Balance Pill */}
-          <div className="inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold bg-card px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-border text-foreground shrink-0 shadow-sm">
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold bg-card px-3 py-2 rounded-xl border border-border text-foreground shrink-0 shadow-sm">
             <Wallet className="h-3.5 w-3.5 text-primary shrink-0" weight="bold" />
             {walletBalance === null ? (
               <span className="text-muted-foreground font-medium">...</span>
@@ -339,19 +327,32 @@ function BoardResolutionBuilderContent() {
         </div>
       </div>
 
-      {/* Page Title & Description */}
+      {/* Page Title, Description & Examples Action */}
       <div className="space-y-4 pt-1">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 mb-2">
-            <Sparkle className="h-3.5 w-3.5" weight="fill" />
-            <span>Corporate Secretarial & Compliance</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 mb-2">
+              <Sparkle className="h-3.5 w-3.5" weight="fill" />
+              <span>Corporate Secretarial & Compliance</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+              Board Resolution Generator
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              Create certified CAMA 2020 board extracts for Nigerian commercial banks & fintech KYC onboarding.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-            Board Resolution Generator
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Create certified CAMA 2020 board extracts for Nigerian commercial banks & fintech KYC onboarding.
-          </p>
+
+          {/* Moved Down: View Examples Button */}
+          <button
+            type="button"
+            onClick={() => setIsExampleModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary text-xs font-bold shadow-sm transition-all cursor-pointer shrink-0 self-start sm:self-center"
+            title="Preview 10 A4 Document Archetypes"
+          >
+            <Eye className="h-4 w-4" weight="bold" />
+            <span>View Examples</span>
+          </button>
         </div>
 
         {/* Restored Draft Notice */}
