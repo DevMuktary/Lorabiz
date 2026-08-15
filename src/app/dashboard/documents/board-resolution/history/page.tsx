@@ -476,13 +476,6 @@ export default function BoardResolutionHistoryPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleDownloadPdf(previewDoc)}
-                  className="px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-sm hover:bg-primary/90 transition-all cursor-pointer"
-                >
-                  <DownloadSimple weight="bold" className="h-3.5 w-3.5" />
-                  <span>Download PDF</span>
-                </button>
-                <button
                   onClick={() => setPreviewDoc(null)}
                   className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
@@ -498,6 +491,8 @@ export default function BoardResolutionHistoryPage() {
                   accentColor={previewDoc.accentColor || previewDoc.formData?.accentColor || "#0f172a"}
                   logoUrl={previewDoc.logoUrl || previewDoc.formData?.logoUrl}
                   sealUrl={previewDoc.formData?.sealUrl}
+                  isWatermarked={previewDoc.status === "DRAFT"}
+                  documentRef={previewDoc.transactionRef || previewDoc.id}
                 />
               </div>
             </div>

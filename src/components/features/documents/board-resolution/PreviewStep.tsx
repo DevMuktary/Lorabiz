@@ -53,7 +53,7 @@ export default function PreviewStep({
     setGenerationError(null);
 
     try {
-      const response = await fetch("/api/documents/board-resolution/generate", {
+      const response = await fetch("/api/documents/board-resolution/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -63,22 +63,25 @@ export default function PreviewStep({
       });
 
       const data = await response.json();
+      const resolvedStructuredData = data.preview || data.data?.structuredResolution || data.data?.preview || data.data;
 
-      if (data.success && data.data) {
-        setFinalDocument(data.data);
-        showToast("Board resolution generated successfully!", "success");
+      if (data.success && resolvedStructuredData) {
+        setFinalDocument({
+          structuredData: resolvedStructuredData,
+          status: "DRAFT",
+          transactionRef: data.data?.transactionRef || undefined
+        });
+        showToast("Board resolution draft prepared successfully!", "success");
 
         // Cache the generated structured data back to draft in Redis
-        if (data.data.structuredData) {
-          onSaveDraftToBackend(4, true, data.data.structuredData);
-        }
+        onSaveDraftToBackend(4, true, resolvedStructuredData);
       } else {
-        setGenerationError(data.error || "Failed to generate board resolution. Please try again.");
-        showToast(data.error || "Generation encountered an issue.", "error");
+        setGenerationError(data.error || data.message || "Failed to generate board resolution preview. Please try again.");
+        showToast(data.error || data.message || "Generation encountered an issue.", "error");
       }
     } catch (err: any) {
       console.error("AI Generation error:", err);
-      setGenerationError("A network error occurred while generating the resolution. Please check your connection and retry.");
+      setGenerationError("A network error occurred while compiling the resolution. Please check your connection and retry.");
       showToast("Network error during document synthesis.", "error");
     } finally {
       setIsGenerating(false);

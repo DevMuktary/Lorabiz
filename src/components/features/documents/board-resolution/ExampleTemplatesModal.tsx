@@ -546,35 +546,58 @@ export default function ExampleTemplatesModal({
       </div>
 
       {/* Main Center Area: Carousel Navigation + A4 Document Canvas */}
-      <div className="w-full max-w-5xl flex items-center justify-between gap-2 sm:gap-4 my-4 flex-1">
-        {/* Left Arrow Button */}
+      <div className="w-full max-w-5xl flex items-center justify-center gap-2 sm:gap-5 my-3 sm:my-4 flex-1 relative min-h-0">
+        {/* Left Arrow Button (Desktop Side / Mobile Floating) */}
         <button
           type="button"
           onClick={handlePrev}
-          className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 shadow-xl"
+          className="hidden sm:flex h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 shadow-2xl"
           title="Previous Template (Left Arrow)"
         >
           <CaretLeft className="h-7 w-7" weight="bold" />
         </button>
 
         {/* Center A4 Document Container */}
-        <div className="flex-1 max-w-3xl overflow-hidden rounded-2xl shadow-2xl border border-white/10 bg-white">
+        <div className="w-full max-w-3xl max-h-[72vh] sm:max-h-[78vh] overflow-y-auto rounded-2xl shadow-2xl border border-white/20 bg-white custom-scrollbar p-1">
           <ResolutionDocumentView
             data={currentTemplate.sampleData}
             accentColor={currentTemplate.accentColor}
             isWatermarked={false}
+            hideToolbar={true}
+            hideThemeSelector={true}
+            hideWatermarkNotice={true}
             documentRef={`SAMPLE-${currentTemplate.id.toUpperCase()}`}
           />
         </div>
 
-        {/* Right Arrow Button */}
+        {/* Right Arrow Button (Desktop Side / Mobile Floating) */}
         <button
           type="button"
           onClick={handleNext}
-          className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 shadow-xl"
+          className="hidden sm:flex h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 shadow-2xl"
           title="Next Template (Right Arrow)"
         >
           <CaretRight className="h-7 w-7" weight="bold" />
+        </button>
+      </div>
+
+      {/* Mobile-Only Arrow Nav Bar */}
+      <div className="w-full flex sm:hidden items-center justify-between gap-3 py-1.5 shrink-0">
+        <button
+          type="button"
+          onClick={handlePrev}
+          className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer"
+        >
+          <CaretLeft className="h-4 w-4" weight="bold" />
+          <span>Previous Template</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleNext}
+          className="flex-1 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-md"
+        >
+          <span>Next Template</span>
+          <CaretRight className="h-4 w-4" weight="bold" />
         </button>
       </div>
 

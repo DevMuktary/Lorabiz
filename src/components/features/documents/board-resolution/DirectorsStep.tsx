@@ -51,10 +51,43 @@ export default function DirectorsStep({
   const [signatureUploadPercent, setSignatureUploadPercent] = useState<Record<string, number>>({});
 
   const handleMandateChange = (mandate: typeof MANDATE_RULES[number]["id"]) => {
-    setFormData(prev => ({
-      ...prev,
-      signingMandate: mandate
-    }));
+    setFormData(prev => {
+      let updatedDirectors = [...prev.directors];
+
+      // If mandate requires at least 2 signatories
+      if (mandate === "ANY_TWO" || mandate === "CHAIRMAN_AND_SECRETARY" || mandate === "ALL_DIRECTORS") {
+        if (updatedDirectors.length < 2) {
+          const newId = `dir_${Date.now()}`;
+          const newDirector: DirectorSignatory = {
+            id: newId,
+            fullName: "",
+            designation: mandate === "CHAIRMAN_AND_SECRETARY" ? "Company Secretary" : "Director",
+            isSignatory: true
+          };
+          updatedDirectors = [...updatedDirectors, newDirector];
+        }
+
+        if (mandate === "CHAIRMAN_AND_SECRETARY") {
+          if (updatedDirectors[0] && updatedDirectors[0].designation === "Director") {
+            updatedDirectors[0] = { ...updatedDirectors[0], designation: "Chairman", isSignatory: true };
+          }
+          if (updatedDirectors[1] && updatedDirectors[1].designation === "Director") {
+            updatedDirectors[1] = { ...updatedDirectors[1], designation: "Company Secretary", isSignatory: true };
+          }
+        }
+      } else if (mandate === "ANY_ONE") {
+        // If 2nd director was auto-added and is completely empty, trim back to 1
+        if (updatedDirectors.length === 2 && !updatedDirectors[1].fullName?.trim() && !updatedDirectors[1].signatureUrl) {
+          updatedDirectors = [updatedDirectors[0]];
+        }
+      }
+
+      return {
+        ...prev,
+        signingMandate: mandate,
+        directors: updatedDirectors
+      };
+    });
   };
 
   const handleAddDirector = () => {

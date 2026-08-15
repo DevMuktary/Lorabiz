@@ -286,49 +286,50 @@ function BoardResolutionBuilderContent() {
       )}
 
       {/* Top Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-5">
+      <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-4 pt-1">
         {/* Left: Back Link */}
         <Link 
           href="/dashboard/documents"
-          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors group"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors group shrink-0"
         >
           <div className="h-8 w-8 rounded-xl bg-card border border-border flex items-center justify-center group-hover:bg-secondary transition-colors">
             <ArrowLeft className="h-4 w-4" weight="bold" />
           </div>
-          <span>Back to Legal Documents Hub</span>
+          <span className="hidden sm:inline">Legal Documents Hub</span>
         </Link>
 
-        {/* Right: Actions (View Examples, Resolution History, Wallet) */}
-        <div className="flex items-center gap-2 sm:gap-2.5 flex-nowrap overflow-x-auto py-1">
+        {/* Right: Action Buttons (View Examples, Resolution History, Wallet) - Always side-by-side */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-nowrap shrink-0">
           {/* View Examples Button */}
           <button
             type="button"
             onClick={() => setIsExampleModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary text-xs font-bold shadow-sm transition-all cursor-pointer shrink-0"
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary text-[11px] sm:text-xs font-bold shadow-sm transition-all cursor-pointer shrink-0"
             title="Preview 10 A4 Document Archetypes"
           >
-            <Eye className="h-4 w-4" weight="bold" />
-            <span>View Examples</span>
+            <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" weight="bold" />
+            <span className="hidden xs:inline sm:inline">Examples</span>
+            <span className="xs:hidden sm:hidden">Templates</span>
           </button>
 
           {/* Resolution History Button */}
           <Link
             href="/dashboard/documents/board-resolution/history"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-card hover:bg-secondary border border-border text-foreground text-xs font-bold shadow-sm transition-all shrink-0"
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-[11px] sm:text-xs font-bold shadow-sm transition-all shrink-0 cursor-pointer active:scale-95"
             title="View Drafts & Completed Resolutions"
           >
-            <Folders className="h-4 w-4 text-primary" weight="bold" />
+            <Folders className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" weight="bold" />
             <span>History</span>
             {historyCount !== null && historyCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-primary/10 text-primary border border-primary/20">
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black bg-primary/10 text-primary border border-primary/20">
                 {historyCount}
               </span>
             )}
           </Link>
 
           {/* Wallet Balance Pill */}
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold bg-secondary/80 px-3 py-2 rounded-xl border border-border text-foreground shrink-0">
-            <Wallet className="h-3.5 w-3.5 text-primary" weight="bold" />
+          <div className="inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold bg-card px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-border text-foreground shrink-0 shadow-sm">
+            <Wallet className="h-3.5 w-3.5 text-primary shrink-0" weight="bold" />
             {walletBalance === null ? (
               <span className="text-muted-foreground font-medium">...</span>
             ) : (

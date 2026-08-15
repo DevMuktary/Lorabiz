@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { 
   FilePdf, 
   Image as ImageIcon, 
@@ -69,6 +69,9 @@ export interface ResolutionDocProps {
   sealUrl?: string;
   isWatermarked?: boolean;
   documentRef?: string;
+  hideToolbar?: boolean;
+  hideThemeSelector?: boolean;
+  hideWatermarkNotice?: boolean;
   onDownloadStart?: () => void;
   onDownloadEnd?: () => void;
 }
@@ -159,6 +162,9 @@ export default function ResolutionDocumentView({
   sealUrl: propsSealUrl,
   isWatermarked = false,
   documentRef = "PREVIEW-DRAFT",
+  hideToolbar = false,
+  hideThemeSelector = false,
+  hideWatermarkNotice = false,
   onDownloadStart,
   onDownloadEnd,
 }: ResolutionDocProps) {
@@ -168,6 +174,14 @@ export default function ResolutionDocumentView({
   // Normalize active theme (mapping legacy luxury-crest to certified-crest)
   const initialTheme = (data?.theme === "luxury-crest" ? "certified-crest" : data?.theme) || "classic-royal";
   const [activeTheme, setActiveTheme] = useState<ResolutionDesignTheme>(initialTheme);
+
+  // Keep activeTheme in sync when parent passes new data/theme (e.g. carousel switcher)
+  useEffect(() => {
+    if (data?.theme) {
+      const nextTheme = (data.theme === "luxury-crest" ? "certified-crest" : data.theme) as ResolutionDesignTheme;
+      setActiveTheme(nextTheme);
+    }
+  }, [data?.theme]);
 
   const effectiveAccentColor = propsAccentColor || data?.accentColor || 
     THEME_OPTIONS.find(t => t.id === activeTheme)?.defaultAccent || "#1e3a8a";
@@ -298,113 +312,121 @@ export default function ResolutionDocumentView({
   return (
     <div className="space-y-4">
       {/* Top Banner / Toolbar */}
-      {isWatermarked ? (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-900 dark:text-amber-200 shadow-sm">
-          <div className="flex items-center gap-2.5 text-xs font-semibold">
-            <Lock className="h-4 w-4 text-amber-600 shrink-0" weight="bold" />
-            <span>
-              <strong>Draft Preview Mode:</strong> Protected for preview. Complete payment to unlock the unwatermarked official certified extract with high-DPI image and PDF export.
-            </span>
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-800 dark:text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 shrink-0">
-            Preview Mode
-          </span>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-secondary/60 rounded-2xl border border-border">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <ShieldCheck className="h-4 w-4 text-emerald-500" weight="fill" />
-            <span>Official CAMA 2020 Extract Ready & Certified</span>
-          </div>
+      {!hideToolbar && (
+        <>
+          {isWatermarked ? (
+            !hideWatermarkNotice && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-900 dark:text-amber-200 shadow-sm">
+                <div className="flex items-center gap-2.5 text-xs font-semibold">
+                  <Lock className="h-4 w-4 text-amber-600 shrink-0" weight="bold" />
+                  <span>
+                    <strong>Draft Preview Mode:</strong> Protected for preview. Complete payment to unlock the unwatermarked official certified extract with high-DPI image and PDF export.
+                  </span>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-800 dark:text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 shrink-0">
+                  Preview Mode
+                </span>
+              </div>
+            )
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-secondary/60 rounded-2xl border border-border">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 text-emerald-500" weight="fill" />
+                <span>Official CAMA 2020 Extract Ready & Certified</span>
+              </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={handleDownloadPDF}
-              disabled={downloading !== null}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
-            >
-              <FilePdf className="h-4 w-4" weight="bold" />
-              <span>{downloading === "pdf" ? "Generating PDF..." : "Download PDF"}</span>
-            </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={downloading !== null}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <FilePdf className="h-4 w-4" weight="bold" />
+                  <span>{downloading === "pdf" ? "Generating PDF..." : "Download PDF"}</span>
+                </button>
 
-            <button
-              onClick={handleDownloadPNG}
-              disabled={downloading !== null}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-secondary hover:bg-secondary/80 text-foreground border border-border font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
-              title="Download High-DPI PNG Image snapshot"
-            >
-              <ImageIcon className="h-4 w-4" weight="bold" />
-              <span>{downloading === "png" ? "Saving Image..." : "Download PNG Image"}</span>
-            </button>
+                <button
+                  onClick={handleDownloadPNG}
+                  disabled={downloading !== null}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-secondary hover:bg-secondary/80 text-foreground border border-border font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                  title="Download High-DPI PNG Image snapshot"
+                >
+                  <ImageIcon className="h-4 w-4" weight="bold" />
+                  <span>{downloading === "png" ? "Saving Image..." : "Download PNG Image"}</span>
+                </button>
 
-            <button
-              onClick={handlePrint}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 bg-secondary hover:bg-secondary/80 text-foreground border border-border font-bold text-xs rounded-xl transition-all cursor-pointer"
-              title="Print Document"
-            >
-              <Printer className="h-4 w-4" weight="bold" />
-              <span>Print</span>
-            </button>
-          </div>
-        </div>
+                <button
+                  onClick={handlePrint}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 bg-secondary hover:bg-secondary/80 text-foreground border border-border font-bold text-xs rounded-xl transition-all cursor-pointer"
+                  title="Print Document"
+                >
+                  <Printer className="h-4 w-4" weight="bold" />
+                  <span>Print</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ========================================================================= */}
       {/* 10-ARCHETYPE SELECTOR TOOLBAR                                             */}
       {/* ========================================================================= */}
-      <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-sm space-y-3">
-        <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2.5">
-          <div className="flex items-center gap-2">
-            <Sparkle className="h-4 w-4 text-primary" weight="fill" />
-            <span className="text-xs font-black uppercase tracking-wider text-foreground">
-              Select Document Archetype (10 Templates Available):
+      {!hideThemeSelector && (
+        <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-sm space-y-3">
+          <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkle className="h-4 w-4 text-primary" weight="fill" />
+              <span className="text-xs font-black uppercase tracking-wider text-foreground">
+                Select Document Archetype (10 Templates Available):
+              </span>
+            </div>
+            <span className="text-[11px] font-bold text-muted-foreground">
+              Active: <span className="text-foreground font-black">{THEME_OPTIONS.find(t => t.id === activeTheme)?.name || "Corporate Standard"}</span>
             </span>
           </div>
-          <span className="text-[11px] font-bold text-muted-foreground">
-            Active: <span className="text-foreground font-black">{THEME_OPTIONS.find(t => t.id === activeTheme)?.name || "Corporate Standard"}</span>
-          </span>
-        </div>
 
-        {/* 10 Theme Pills Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-          {THEME_OPTIONS.map((theme) => {
-            const Icon = theme.icon;
-            const isSelected = activeTheme === theme.id;
-            // Never show AI match on gazette-formal as per guidelines
-            const isAIChosen = theme.id !== "gazette-formal" && (data?.theme === "luxury-crest" ? "certified-crest" : data?.theme || "classic-royal") === theme.id;
+          {/* 10 Theme Pills Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+            {THEME_OPTIONS.map((theme) => {
+              const Icon = theme.icon;
+              const isSelected = activeTheme === theme.id;
+              // Never show AI match on gazette-formal as per guidelines
+              const isAIChosen = theme.id !== "gazette-formal" && (data?.theme === "luxury-crest" ? "certified-crest" : data?.theme || "classic-royal") === theme.id;
 
-            return (
-              <button
-                key={theme.id}
-                type="button"
-                onClick={() => setActiveTheme(theme.id)}
-                className={`relative flex items-center gap-2 p-2.5 rounded-xl text-left text-xs font-bold transition-all cursor-pointer border ${
-                  isSelected
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm scale-[1.02] ring-2 ring-primary/20"
-                    : "bg-secondary/40 hover:bg-secondary text-foreground border-border"
-                }`}
-                title={theme.description}
-              >
-                <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${
-                  isSelected ? "bg-white/20 text-white" : "bg-card border border-border text-primary"
-                }`}>
-                  <Icon className="h-4 w-4" weight={isSelected ? "fill" : "bold"} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="block truncate text-[11px] font-bold">{theme.name}</span>
-                  {isAIChosen && (
-                    <span className={`text-[9px] font-black uppercase tracking-wider block ${
-                      isSelected ? "text-white/80" : "text-primary"
-                    }`}>
-                      AI Match
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={theme.id}
+                  type="button"
+                  onClick={() => setActiveTheme(theme.id)}
+                  className={`relative flex items-center gap-2 p-2.5 rounded-xl text-left text-xs font-bold transition-all cursor-pointer border ${
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm scale-[1.02] ring-2 ring-primary/20"
+                      : "bg-secondary/40 hover:bg-secondary text-foreground border-border"
+                  }`}
+                  title={theme.description}
+                >
+                  <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${
+                    isSelected ? "bg-white/20 text-white" : "bg-card border border-border text-primary"
+                  }`}>
+                    <Icon className="h-4 w-4" weight={isSelected ? "fill" : "bold"} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate text-[11px] font-bold">{theme.name}</span>
+                    {isAIChosen && (
+                      <span className={`text-[9px] font-black uppercase tracking-wider block ${
+                        isSelected ? "text-white/80" : "text-primary"
+                      }`}>
+                        AI Match
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
       {/* MAIN DOCUMENT CANVAS (A4 PHOTOREALISTIC RENDERING)                         */}
