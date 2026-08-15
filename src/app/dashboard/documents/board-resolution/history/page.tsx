@@ -98,11 +98,10 @@ export default function BoardResolutionHistoryPage() {
         setDraftDocs(prev => prev.filter(d => d.id !== draftToDelete.id));
         showToast("Draft discarded successfully.");
       } else {
-        alert(data.message || "Failed to delete draft.");
+        showToast(data.error || "Failed to delete draft.");
       }
-    } catch (err) {
-      console.error("Error deleting draft:", err);
-      alert("An error occurred while deleting draft.");
+    } catch {
+      showToast("Network error deleting draft.");
     } finally {
       setIsDeletingDraft(false);
       setDraftToDelete(null);
@@ -113,8 +112,7 @@ export default function BoardResolutionHistoryPage() {
     if (doc.pdfUrl) {
       const link = document.createElement("a");
       link.href = doc.pdfUrl;
-      const safeName = (doc.companyName || "Board_Resolution").replace(/[^a-zA-Z0-9_-]/g, "_");
-      link.download = `${safeName}_Board_Resolution.pdf`;
+      link.download = `${(doc.companyName || "Board_Resolution").replace(/[^a-zA-Z0-9_-]/g, "_")}_Resolution.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -157,7 +155,7 @@ export default function BoardResolutionHistoryPage() {
   });
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto relative pb-16 px-4 sm:px-6">
+    <div className="space-y-8 max-w-6xl mx-auto relative pb-20 px-4 sm:px-6">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -171,23 +169,23 @@ export default function BoardResolutionHistoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-6">
         <div className="flex items-center gap-3.5">
           <Link 
-            href="/dashboard/documents"
-            className="h-10 w-10 flex items-center justify-center bg-card border border-border rounded-xl hover:bg-secondary/70 transition-colors shadow-sm"
-            title="Back to Documents Hub"
+            href="/dashboard/documents/board-resolution"
+            className="h-10 w-10 flex items-center justify-center bg-card border border-border rounded-xl hover:bg-secondary transition-colors shadow-sm"
+            title="Back to Board Resolution Generator"
           >
             <ArrowLeft weight="bold" className="h-5 w-5" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                Smart Legal Documents
+                Corporate Records
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight mt-1 text-foreground">
               Board Resolution History
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              Resume unsubmitted drafts and access certified CAMA 2020 board resolutions.
+              Resume saved drafts and access certified CAMA 2020 board resolutions.
             </p>
           </div>
         </div>
@@ -293,7 +291,7 @@ export default function BoardResolutionHistoryPage() {
         </div>
       </div>
 
-      {/* Main Table Card */}
+      {/* Main Table Flow */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         {isLoading ? (
           <div className="p-16 flex flex-col items-center justify-center text-muted-foreground space-y-3">
@@ -391,7 +389,7 @@ export default function BoardResolutionHistoryPage() {
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                             <Clock weight="fill" className="h-3 w-3" />
-                            <span>Draft (Step {savedStep}/3)</span>
+                            <span>Draft (Step {savedStep}/4)</span>
                           </span>
                         )}
                       </td>

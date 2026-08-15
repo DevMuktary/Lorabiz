@@ -3,7 +3,7 @@ import { getWorkingAgentRouterClient } from "./ai-client";
 export interface DirectorSignatory {
   id: string;
   fullName: string;
-  designation: "Managing Director / CEO" | "Director" | "Company Secretary" | "Chairman" | "Executive Director" | "Other";
+  designation: "Managing Director / CEO" | "Director" | "Company Secretary" | "Chairman" | "Executive Director" | "Proprietor" | "Other";
   customDesignation?: string;
   isSignatory: boolean;
   bvnOrNin?: string;

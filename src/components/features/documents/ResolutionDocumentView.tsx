@@ -166,7 +166,7 @@ export default function ResolutionDocumentView({
   const [downloading, setDownloading] = useState<"pdf" | "png" | null>(null);
 
   // Normalize active theme (mapping legacy luxury-crest to certified-crest)
-  const initialTheme = (data.theme === "luxury-crest" ? "certified-crest" : data.theme) || "classic-royal";
+  const initialTheme = (data?.theme === "luxury-crest" ? "certified-crest" : data?.theme) || "classic-royal";
   const [activeTheme, setActiveTheme] = useState<ResolutionDesignTheme>(initialTheme);
 
   const effectiveAccentColor = propsAccentColor || data?.accentColor || 
@@ -370,7 +370,8 @@ export default function ResolutionDocumentView({
           {THEME_OPTIONS.map((theme) => {
             const Icon = theme.icon;
             const isSelected = activeTheme === theme.id;
-            const isAIChosen = (data.theme === "luxury-crest" ? "certified-crest" : data.theme || "classic-royal") === theme.id;
+            // Never show AI match on gazette-formal as per guidelines
+            const isAIChosen = theme.id !== "gazette-formal" && (data?.theme === "luxury-crest" ? "certified-crest" : data?.theme || "classic-royal") === theme.id;
 
             return (
               <button
@@ -411,7 +412,9 @@ export default function ResolutionDocumentView({
       <div className="w-full overflow-x-auto pb-6 flex justify-center custom-scrollbar">
         <div 
           ref={docRef}
-          className="relative bg-white text-slate-900 shadow-2xl transition-all duration-300 max-w-[820px] w-full min-h-[1100px] select-text flex flex-col justify-between"
+          className={`relative text-slate-900 shadow-2xl transition-all duration-300 max-w-[820px] w-full min-h-[1100px] select-text flex flex-col justify-between ${
+            activeTheme === "chancery-legal" ? "bg-[#faf8f3]" : "bg-white"
+          }`}
           style={{
             boxShadow: "0 15px 45px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.06)",
             fontFamily: getFontFamily(),
@@ -437,7 +440,8 @@ export default function ResolutionDocumentView({
           <div className={`p-8 sm:p-12 pb-6 flex-1 space-y-6 ${
             activeTheme === "gazette-formal" ? "border-[3px] border-double border-slate-800 m-3" :
             activeTheme === "certified-crest" || activeTheme === "luxury-crest" ? "border-2 border-amber-800/40 m-2 outline outline-1 outline-amber-800/20 outline-offset-4" :
-            activeTheme === "heritage-corporate" ? "border border-rose-950/30 m-2" : ""
+            activeTheme === "heritage-corporate" ? "border border-rose-950/30 m-2" : 
+            activeTheme === "maritime-energy" ? "border-l-[6px] border-slate-900 pl-6 sm:pl-10" : ""
           }`}>
 
             {/* =================================================================== */}
@@ -489,16 +493,18 @@ export default function ResolutionDocumentView({
                   <span>[JURISDICTION: NIGERIA / CAMA 2020]</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h1 className="text-xl sm:text-2xl font-black tracking-tight uppercase text-slate-950">
-                      {companyName}
-                    </h1>
-                    <p className="text-xs text-slate-600 mt-0.5">{registeredAddress}</p>
+                  <div className="flex items-center gap-3.5">
+                    {effectiveLogoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={effectiveLogoUrl} alt="Logo" crossOrigin="anonymous" className="max-h-12 max-w-[100px] object-contain shrink-0" />
+                    )}
+                    <div>
+                      <h1 className="text-xl sm:text-2xl font-black tracking-tight uppercase text-slate-950">
+                        {companyName}
+                      </h1>
+                      <p className="text-xs text-slate-600 mt-0.5">{registeredAddress}</p>
+                    </div>
                   </div>
-                  {effectiveLogoUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={effectiveLogoUrl} alt="Logo" crossOrigin="anonymous" className="max-h-12 max-w-[100px] object-contain shrink-0" />
-                  )}
                 </div>
               </div>
             )}
@@ -513,16 +519,23 @@ export default function ResolutionDocumentView({
                   <span>CAMA 2020 SECTION 88</span>
                 </div>
                 <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <h1 className="text-lg sm:text-xl font-black uppercase text-slate-950">
-                      {companyName}
-                    </h1>
-                    {rcNumber && <p className="text-xs font-bold text-slate-700">{rcNumber.toUpperCase().startsWith("RC") ? rcNumber : `RC: ${rcNumber}`}</p>}
-                    <p className="text-[11.5px] text-slate-600">{registeredAddress}</p>
+                  <div className="flex items-start gap-3.5">
+                    {effectiveLogoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={effectiveLogoUrl} alt="Logo" crossOrigin="anonymous" className="max-h-14 max-w-[110px] object-contain shrink-0 pt-0.5" />
+                    )}
+                    <div className="space-y-1">
+                      <h1 className="text-lg sm:text-xl font-black uppercase text-slate-950">
+                        {companyName}
+                      </h1>
+                      {rcNumber && <p className="text-xs font-bold text-slate-700">{rcNumber.toUpperCase().startsWith("RC") ? rcNumber : `RC: ${rcNumber}`}</p>}
+                      <p className="text-[11.5px] text-slate-600">{registeredAddress}</p>
+                    </div>
                   </div>
-                  <div className="text-right text-xs space-y-1">
+                  <div className="text-right text-xs space-y-1 shrink-0">
                     <p className="font-bold text-slate-900">EXTRACT DATE: {meetingDate}</p>
                     {companyEmail && <p className="text-[11px] text-slate-600">{companyEmail}</p>}
+                    {companyPhone && <p className="text-[11px] text-slate-600">{companyPhone}</p>}
                   </div>
                 </div>
               </div>
@@ -532,13 +545,20 @@ export default function ResolutionDocumentView({
             {/* ARCHETYPE 4: OFFICIAL GAZETTE                                       */}
             {/* =================================================================== */}
             {activeTheme === "gazette-formal" && (
-              <div className="border-b-2 border-slate-900 pb-4 text-center space-y-1">
+              <div className="border-b-2 border-slate-900 pb-4 text-center space-y-1.5">
+                {effectiveLogoUrl && (
+                  <div className="flex justify-center pb-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={effectiveLogoUrl} alt="Logo" crossOrigin="anonymous" className="max-h-12 max-w-[110px] object-contain" />
+                  </div>
+                )}
                 <p className="text-[11px] font-bold tracking-widest uppercase text-slate-700">FEDERAL REPUBLIC OF NIGERIA</p>
                 <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-950">
                   {companyName}
                 </h1>
                 <p className="text-xs font-bold text-slate-800">{rcNumber ? (rcNumber.toUpperCase().startsWith("RC") ? rcNumber : `RC: ${rcNumber}`) : "REGISTERED IN ACCORDANCE WITH CAMA 2020"}</p>
                 <p className="text-[11px] text-slate-600 italic">{registeredAddress}</p>
+                <p className="text-[10.5px] text-slate-500 font-bold uppercase pt-0.5">RESOLUTION EXTRACT DATE: {meetingDate}</p>
               </div>
             )}
 
@@ -548,9 +568,16 @@ export default function ResolutionDocumentView({
             {activeTheme === "apex-enterprise" && (
               <div className="pb-4 font-sans">
                 <div className="p-4 rounded-xl bg-slate-950 text-white flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">CORPORATE GOVERNANCE RESOLUTION</span>
-                    <h1 className="text-base sm:text-lg font-black uppercase tracking-tight text-white">{companyName}</h1>
+                  <div className="flex items-center gap-3.5">
+                    {effectiveLogoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={effectiveLogoUrl} alt="Logo" crossOrigin="anonymous" className="max-h-12 max-w-[100px] object-contain shrink-0 rounded bg-white/10 p-1" />
+                    )}
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">CORPORATE GOVERNANCE RESOLUTION</span>
+                      <h1 className="text-base sm:text-lg font-black uppercase tracking-tight text-white">{companyName}</h1>
+                      <p className="text-[11px] text-slate-300 truncate max-w-sm">{registeredAddress}</p>
+                    </div>
                   </div>
                   <div className="text-right text-[11px] space-y-0.5 shrink-0">
                     <span className="block font-bold text-amber-400">{rcNumber || "RC: REGISTERED"}</span>
@@ -561,9 +588,83 @@ export default function ResolutionDocumentView({
             )}
 
             {/* =================================================================== */}
-            {/* DEFAULT ARCHETYPES (CLASSIC ROYAL, CHANCERY, CREST, MARITIME, ETC) */}
+            {/* ARCHETYPE 6: CHANCERY LEGALIST (WARM PARCHMENT / BARRISTER)        */}
             {/* =================================================================== */}
-            {!["modern-executive", "minimalist-tech", "continental-banking", "gazette-formal", "apex-enterprise"].includes(activeTheme) && (
+            {activeTheme === "chancery-legal" && (
+              <div className="border-b-[2.5px] border-double border-purple-900/60 pb-4">
+                <div className="flex items-start gap-4 justify-between">
+                  <div className="flex items-start gap-4">
+                    {effectiveLogoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={effectiveLogoUrl} alt="Logo" crossOrigin="anonymous" className="max-h-16 max-w-[120px] object-contain shrink-0 pt-0.5" />
+                    ) : (
+                      <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white font-sans font-black text-xl shadow-sm shrink-0" style={{ backgroundColor: effectiveAccentColor }}>
+                        {companyName.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="space-y-0.5">
+                      <p className="text-[10.5px] uppercase tracking-widest text-purple-950 font-bold">Chancery Legal Chambers Extract</p>
+                      <h1 className="text-base sm:text-lg font-black tracking-tight uppercase leading-tight" style={{ color: effectiveAccentColor }}>
+                        {companyName}
+                      </h1>
+                      {rcNumber && (
+                        <p className="text-xs font-bold text-slate-800 tracking-wide">
+                          {rcNumber.toUpperCase().startsWith("RC") ? rcNumber : `RC: ${rcNumber.replace(/^RC:?\s*/i, "")}`}
+                        </p>
+                      )}
+                      <p className="text-[11px] text-slate-700 max-w-md leading-snug">{registeredAddress}</p>
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-slate-700 shrink-0">
+                    <p className="font-bold">Date: {meetingDate}</p>
+                    {companyEmail && <p className="text-[11px] text-slate-600">{companyEmail}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* =================================================================== */}
+            {/* ARCHETYPE 7: MARITIME & ENERGY (INDUSTRIAL SLATE BOXED)            */}
+            {/* =================================================================== */}
+            {activeTheme === "maritime-energy" && (
+              <div className="border-b-[3px] border-slate-900 pb-4 font-sans">
+                <div className="flex items-start gap-4 justify-between">
+                  <div className="flex items-start gap-4">
+                    {effectiveLogoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={effectiveLogoUrl} alt="Logo" crossOrigin="anonymous" className="max-h-16 max-w-[120px] object-contain shrink-0 pt-0.5" />
+                    ) : (
+                      <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white font-sans font-black text-xl shadow-sm shrink-0 bg-slate-900">
+                        {companyName.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="space-y-0.5">
+                      <div className="inline-block px-2 py-0.5 bg-slate-900 text-white text-[9.5px] font-black uppercase tracking-wider rounded mb-1">
+                        Maritime & Energy Corporate Extract
+                      </div>
+                      <h1 className="text-lg sm:text-xl font-black tracking-tight uppercase leading-tight text-slate-950">
+                        {companyName}
+                      </h1>
+                      {rcNumber && (
+                        <p className="text-xs font-bold text-slate-800">
+                          {rcNumber.toUpperCase().startsWith("RC") ? rcNumber : `RC: ${rcNumber.replace(/^RC:?\s*/i, "")}`}
+                        </p>
+                      )}
+                      <p className="text-[11px] text-slate-700 max-w-md leading-snug">{registeredAddress}</p>
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-slate-900 shrink-0">
+                    <p className="font-black">DATE: {meetingDate}</p>
+                    {companyEmail && <p className="text-[11px] text-slate-600">{companyEmail}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* =================================================================== */}
+            {/* DEFAULT ARCHETYPES (CLASSIC ROYAL, CREST, HERITAGE)                */}
+            {/* =================================================================== */}
+            {!["modern-executive", "minimalist-tech", "continental-banking", "gazette-formal", "apex-enterprise", "chancery-legal", "maritime-energy"].includes(activeTheme) && (
               <div className="border-b-[2.5px] pb-4" style={{ borderColor: effectiveAccentColor }}>
                 <div className="flex items-start gap-4 justify-between">
                   <div className="flex items-start gap-4">
@@ -618,7 +719,7 @@ export default function ResolutionDocumentView({
             <div className="text-[12px] sm:text-[12.5px] text-slate-800 leading-relaxed text-justify space-y-3">
               <p>{preambleText}</p>
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-[11.5px] italic text-slate-700">
-                {data.meetingMetadata?.commencementText || `At a meeting of the Board of Directors of ${companyName} duly convened and held on ${meetingDate}, the following resolutions were unanimously passed:`}
+                {data?.meetingMetadata?.commencementText || `At a meeting of the Board of Directors of ${companyName} duly convened and held on ${meetingDate}, the following resolutions were unanimously passed:`}
               </div>
               <p className="whitespace-pre-line font-medium text-slate-900 pt-1">
                 {resolutionLeadIn}
@@ -630,7 +731,9 @@ export default function ResolutionDocumentView({
             {/* =================================================================== */}
             <div className="space-y-2.5 pt-1">
               {numberedClauses.map((clause, idx) => (
-                <div key={idx} className="flex items-start gap-3 text-[12px] sm:text-[12.5px] text-slate-900 leading-relaxed text-justify">
+                <div key={idx} className={`flex items-start gap-3 text-[12px] sm:text-[12.5px] text-slate-900 leading-relaxed text-justify ${
+                  activeTheme === "maritime-energy" ? "p-2.5 bg-slate-50 border border-slate-200 rounded-lg" : ""
+                }`}>
                   <span 
                     className="h-5 w-5 rounded-full text-white text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5 font-sans"
                     style={{ backgroundColor: effectiveAccentColor }}
@@ -699,7 +802,7 @@ export default function ResolutionDocumentView({
                 ))}
               </div>
 
-              {/* Company Seal Stamp Badge (If uploaded) */}
+              {/* Company Seal Stamp Badge (ONLY IF UPLOADED BY USER) */}
               {effectiveSealUrl && (
                 <div className="flex justify-end pt-1">
                   <div className="h-20 w-20 rounded-full border-2 border-slate-300 p-0.5 flex items-center justify-center shadow-sm">
