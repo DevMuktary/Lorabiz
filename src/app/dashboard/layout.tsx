@@ -46,7 +46,7 @@ const NAVIGATION: NavCategory[] = [
     links: [
       { name: "CAC Services", href: "/dashboard/cac", icon: Buildings },
       { name: "SCUML", href: "/dashboard/scuml", icon: ShieldCheck },
-      { name: "NIN Services", href: "/dashboard/tools/nin-slip", icon: IdentificationCard },
+      { name: "NIN Services", href: "/dashboard/nin", icon: IdentificationCard },
       { name: "Airtime", href: "/dashboard/airtime", icon: DeviceMobile },
       { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },
     ]
@@ -120,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (found) return found.name;
     }
     if (pathname.includes("/dashboard/cac")) return "CAC Services";
-    if (pathname.includes("/dashboard/tools/nin-slip")) return "NIN Services";
+    if (pathname.includes("/dashboard/nin") || pathname.includes("/dashboard/tools/nin-slip")) return "NIN Services";
     if (pathname.includes("/dashboard/transactions")) return "Transactions";
     if (pathname.includes("/dashboard/scuml")) return "SCUML";
     if (pathname.includes("/dashboard/airtime")) return "Airtime";

@@ -60,13 +60,13 @@ const LIVE_SERVICES: ServiceItem[] = [
     active: true,
   },
   {
-    title: "NIMC Identity (NIN Slips)",
+    title: "NIN Identity Services",
     category: "National Identity Management",
-    description: "Instant NIN verification, high-resolution PDF download, and official plastic card slip.",
+    description: "Instant NIN verification, slip printing, IPE clearance, profile validation, and data personalization.",
     logo: "/nimc.png",
-    href: "/dashboard/tools/nin-slip",
-    turnaround: "Instant Download",
-    actionText: "Generate NIN Slip",
+    href: "/dashboard/nin",
+    turnaround: "Instant & 24–48 Hours",
+    actionText: "Explore NIN Services",
     active: true,
   },
   {
@@ -563,7 +563,7 @@ export default function DashboardPage() {
             </Link>
 
             <Link
-              href="/dashboard/tools/nin-slip"
+              href="/dashboard/nin"
               className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
               title="NIN Services"
             >
