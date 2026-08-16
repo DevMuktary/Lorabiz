@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { 
   ArrowRight, Sparkle, X, Info, ArrowLeft, 
-  IdentificationCard, ShieldCheck, CheckCircle2, Clock 
+  ShieldCheck, CheckCircle2, Clock 
 } from "lucide-react";
 
 interface NinServiceCard {
