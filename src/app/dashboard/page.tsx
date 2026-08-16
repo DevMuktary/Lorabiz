@@ -62,10 +62,10 @@ const LIVE_SERVICES: ServiceItem[] = [
   {
     title: "NIN Identity Services",
     category: "National Identity Management",
-    description: "Instant NIN verification, slip printing, IPE clearance, profile validation, and data personalization.",
+    description: "Instant NIN verification, slip printing, IPE clearance, validation, and personalization.",
     logo: "/nimc.png",
     href: "/dashboard/nin",
-    turnaround: "Instant & 24–48 Hours",
+    turnaround: "Instant – 24 Hours",
     actionText: "Explore NIN Services",
     active: true,
   },

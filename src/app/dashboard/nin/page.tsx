@@ -33,16 +33,16 @@ const NIN_SERVICES: NinServiceCard[] = [
   {
     title: "IPE Clearance",
     category: "NIMC Exception Resolution",
-    description: "Resolve Initial Processing Exceptions (IPE) on enrollment records, clear tracking errors, or retrieve and link existing NIN profiles.",
-    turnaround: "24–48 Hours",
+    description: "Resolve Initial Processing Exceptions (IPE) on enrollment records or retrieve your NIN record using your Tracking ID.",
+    turnaround: "1–24 Hours",
     logo: "/nimc.png",
     active: false,
     tag: "In Pipeline",
   },
   {
     title: "NIN Validation",
-    category: "Database Synchronization",
-    description: "Validate and sync recent profile modifications (e.g. name, DOB, address) so updated details reflect across immigration, banks, and NIMC portals.",
+    category: "Record Validation & Updates",
+    description: "Validate your NIN record to reflect recent modifications (e.g. name update) or fix records showing 'No Record' or search issues.",
     turnaround: "1–24 Hours",
     logo: "/nimc.png",
     active: false,
@@ -51,8 +51,8 @@ const NIN_SERVICES: NinServiceCard[] = [
   {
     title: "NIN Personalization",
     category: "Tracking ID Activation",
-    description: "Process and activate newly enrolled NIN profiles using an enrollment Tracking ID to generate and release the official NIN record.",
-    turnaround: "24–48 Hours",
+    description: "Submit your enrollment Tracking ID to process, personalize, and retrieve your NIN if registration was interrupted or pending.",
+    turnaround: "1–24 Hours",
     logo: "/nimc.png",
     active: false,
     tag: "Coming Soon",
@@ -137,7 +137,7 @@ export default function NinHubPage() {
               NIN Identity Services
             </h1>
             <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-              Verify identity slips, resolve enrollment exceptions, and synchronize NIMC database records.
+              Verify identity slips, resolve enrollment exceptions, and validate NIMC records.
             </p>
           </div>
         </div>

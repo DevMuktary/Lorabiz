@@ -159,10 +159,10 @@ When a new service (e.g., IPE Clearance, NIN Personalization, NIN Validation) is
 
 ### Service Expansion Roadmap:
 1. ✅ **NIN Verification & Slips**: Fully operational under `/dashboard/nin/slips` with dynamic pricing (`NIN_REGULAR`, `NIN_STANDARD`, `NIN_PREMIUM`). Instant official PDF download.
-2. ⏳ **IPE Clearance**: Initial Processing Exception resolution on enrollment records, clearing tracking ID exceptions, resolving duplicate/held enrollment profiles, or retrieving/linking existing NIN profiles (TAT: 24–48 Hours). Next in queue.
-3. ⏳ **NIN Validation**: Synchronizing recent profile modifications (e.g. name change, DOB correction) across NIMC and external verification portals (banks, immigration, CAC) (TAT: 1–24 Hours).
-4. ⏳ **NIN Personalization**: Activating newly enrolled profiles using an enrollment Tracking ID to generate and release the official NIN record (TAT: 24–48 Hours).
+2. ⏳ **IPE Clearance**: Resolution of Initial Processing Exceptions (IPE) on enrollment records or retrieving/clearing NIN records using an enrollment Tracking ID (TAT: 1–24 Hours). Next in queue.
+3. ⏳ **NIN Validation**: Validating NIN records to reflect recent modifications (e.g. name update) or resolving records showing "No Record" / search issues (TAT: 1–24 Hours).
+4. ⏳ **NIN Personalization**: Submitting enrollment Tracking IDs to process, personalize, and retrieve NINs where registration was interrupted by network drops or pending completion (TAT: 1–24 Hours).
 
 ---
 
-*Last Updated: 2026-08-16 | Maintained continuously as project memory.*
+*Last Updated: 2026-08-17 | Maintained continuously as project memory.*
