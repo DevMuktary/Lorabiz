@@ -116,13 +116,17 @@ function BoardResolutionBuilderContent() {
     async function fetchWallet() {
       if (!session?.user) return;
       try {
-        const res = await fetch("/api/wallet/balance");
+        const res = await fetch("/api/user/wallet");
         const data = await res.json();
-        if (data.success && typeof data.balance === "number") {
-          setWalletBalance(data.balance);
+        if (data.success) {
+          const bal = data.wallet?.balance ?? data.balance ?? 0;
+          setWalletBalance(Number(bal));
+        } else {
+          setWalletBalance(0);
         }
       } catch (err) {
         console.error("Failed to fetch wallet balance:", err);
+        setWalletBalance(0);
       }
     }
     fetchWallet();
@@ -196,8 +200,9 @@ function BoardResolutionBuilderContent() {
       try {
         const res = await fetch(`/api/documents/board-resolution/draft?id=${id}`);
         const json = await res.json();
-        if (json.success && json.draft) {
-          const loadedData = json.draft.formData || {};
+        const draftObj = json.draft || json.data;
+        if (json.success && draftObj) {
+          const loadedData = draftObj.formData || {};
           setDraftId(id);
           setFormData(prev => ({
             ...prev,
@@ -205,17 +210,17 @@ function BoardResolutionBuilderContent() {
             directors: loadedData.directors?.length ? loadedData.directors : prev.directors
           }));
 
-          if (json.draft.structuredData) {
+          if (draftObj.structuredData) {
             setFinalDocument({
-              structuredData: json.draft.structuredData,
-              status: json.draft.status || "DRAFT",
-              transactionRef: json.draft.transactionRef
+              structuredData: draftObj.structuredData,
+              status: draftObj.status || "DRAFT",
+              transactionRef: draftObj.transactionRef
             });
           }
 
-          // Always start at Step 1 for full verification
-          goToStep(1);
-          setDraftRestoredNotice(`Resumed draft for "${loadedData.companyName || "Company"}"`);
+          const targetStep = (loadedData.savedCurrentStep as (1 | 2 | 3 | 4)) || 1;
+          goToStep(targetStep);
+          setDraftRestoredNotice(`Resumed draft for "${loadedData.companyName || "Company"}" (Step ${targetStep}/4)`);
         }
       } catch (err) {
         console.error("Failed to restore draft:", err);

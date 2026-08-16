@@ -190,7 +190,7 @@ export default function ResolutionDocumentView({
 
   const companyName = data?.letterhead?.companyName || "THE COMPANY LIMITED";
   const rcNumber = data?.letterhead?.rcNumber || "";
-  const registeredAddress = data?.letterhead?.registeredAddress || "Federal Republic of Nigeria";
+  const registeredAddress = data?.letterhead?.registeredAddress || "Lagos State, Nigeria";
   const companyEmail = data?.letterhead?.email;
   const companyPhone = data?.letterhead?.phone;
   const meetingDate = data?.meetingMetadata?.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -535,27 +535,27 @@ export default function ResolutionDocumentView({
             {/* ARCHETYPE 3: CONTINENTAL BANKING (TIER-1 COMPLIANCE)                */}
             {/* =================================================================== */}
             {activeTheme === "continental-banking" && (
-              <div className="border-b-2 border-slate-800 pb-4 font-sans">
-                <div className="bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 mb-3 rounded flex items-center justify-between">
-                  <span>FEDERAL REPUBLIC OF NIGERIA • STATUTORY COMPLIANCE EXTRACT</span>
-                  <span>CAMA 2020 SECTION 88</span>
-                </div>
+              <div className="border-b-2 pb-4 font-sans" style={{ borderColor: effectiveAccentColor }}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3.5">
-                    {effectiveLogoUrl && (
+                    {effectiveLogoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={effectiveLogoUrl} alt="Logo" crossOrigin="anonymous" className="max-h-14 max-w-[110px] object-contain shrink-0 pt-0.5" />
+                    ) : (
+                      <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white font-sans font-black text-xl shadow-sm shrink-0" style={{ backgroundColor: effectiveAccentColor }}>
+                        {companyName.substring(0, 2).toUpperCase()}
+                      </div>
                     )}
-                    <div className="space-y-1">
-                      <h1 className="text-lg sm:text-xl font-black uppercase text-slate-950">
+                    <div className="space-y-0.5">
+                      <h1 className="text-lg sm:text-xl font-black uppercase tracking-tight text-slate-950">
                         {companyName}
                       </h1>
                       {rcNumber && <p className="text-xs font-bold text-slate-700">{rcNumber.toUpperCase().startsWith("RC") ? rcNumber : `RC: ${rcNumber}`}</p>}
-                      <p className="text-[11.5px] text-slate-600">{registeredAddress}</p>
+                      <p className="text-[11.5px] text-slate-600 max-w-md">{registeredAddress}</p>
                     </div>
                   </div>
                   <div className="text-right text-xs space-y-1 shrink-0">
-                    <p className="font-bold text-slate-900">EXTRACT DATE: {meetingDate}</p>
+                    <p className="font-bold text-slate-900">DATE: {meetingDate}</p>
                     {companyEmail && <p className="text-[11px] text-slate-600">{companyEmail}</p>}
                     {companyPhone && <p className="text-[11px] text-slate-600">{companyPhone}</p>}
                   </div>
@@ -567,20 +567,19 @@ export default function ResolutionDocumentView({
             {/* ARCHETYPE 4: OFFICIAL GAZETTE                                       */}
             {/* =================================================================== */}
             {activeTheme === "gazette-formal" && (
-              <div className="border-b-2 border-slate-900 pb-4 text-center space-y-1.5">
+              <div className="border-b-2 border-slate-900 pb-4 text-center space-y-1">
                 {effectiveLogoUrl && (
                   <div className="flex justify-center pb-1">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={effectiveLogoUrl} alt="Logo" crossOrigin="anonymous" className="max-h-12 max-w-[110px] object-contain" />
                   </div>
                 )}
-                <p className="text-[11px] font-bold tracking-widest uppercase text-slate-700">FEDERAL REPUBLIC OF NIGERIA</p>
                 <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-950">
                   {companyName}
                 </h1>
-                <p className="text-xs font-bold text-slate-800">{rcNumber ? (rcNumber.toUpperCase().startsWith("RC") ? rcNumber : `RC: ${rcNumber}`) : "REGISTERED IN ACCORDANCE WITH CAMA 2020"}</p>
+                <p className="text-xs font-bold text-slate-800">{rcNumber ? (rcNumber.toUpperCase().startsWith("RC") ? rcNumber : `RC: ${rcNumber}`) : "REGISTERED IN ACCORDANCE WITH CAMA"}</p>
                 <p className="text-[11px] text-slate-600 italic">{registeredAddress}</p>
-                <p className="text-[10.5px] text-slate-500 font-bold uppercase pt-0.5">RESOLUTION EXTRACT DATE: {meetingDate}</p>
+                <p className="text-[10.5px] text-slate-500 font-bold uppercase pt-0.5">DATE: {meetingDate}</p>
               </div>
             )}
 

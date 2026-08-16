@@ -363,7 +363,7 @@ const TEMPLATE_PREVIEWS: Array<{
         venue: "Chancery Chambers, Victoria Island, Lagos",
         commencementText: "At a general meeting of the Board of Directors duly constituted in accordance with law:"
       },
-      preambleText: "WHEREAS the Company is duly registered and authorized under the laws of the Federal Republic of Nigeria.",
+      preambleText: "WHEREAS the Company is duly registered and authorized under the laws of Nigeria in accordance with CAMA 2020.",
       resolutionLeadIn: "NOW THEREFORE BE IT RESOLVED BY THE BOARD OF DIRECTORS AS FOLLOWS:",
       numberedClauses: [
         "THAT the Company establish a fiduciary client escrow account with First Bank of Nigeria Limited.",
@@ -508,26 +508,26 @@ export default function ExampleTemplatesModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex flex-col items-center justify-between p-3 sm:p-5 overflow-hidden animate-in fade-in duration-200 select-none">
+    <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex flex-col items-center justify-between p-2 sm:p-4 md:p-5 overflow-hidden animate-in fade-in duration-200 select-none">
       {/* Modal Top Header Bar */}
       <div className="w-full max-w-5xl flex items-center justify-between gap-3 pb-2.5 border-b border-white/10 shrink-0">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className="h-9 w-9 rounded-xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shrink-0">
-            <Icon className="h-4.5 w-4.5" weight="bold" />
+            <Icon className="h-5 w-5" weight="bold" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-black text-white tracking-tight">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm sm:text-base font-black text-white tracking-tight truncate">
                 {currentTemplate.name}
               </h2>
-              <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-primary/20 text-primary border border-primary/30">
+              <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-primary/20 text-primary border border-primary/30 shrink-0">
                 {currentTemplate.badge}
               </span>
-              <span className="text-[11px] sm:text-xs text-white/50 font-mono">
+              <span className="text-[11px] sm:text-xs text-white/50 font-mono shrink-0">
                 ({currentIndex + 1} of {TEMPLATE_PREVIEWS.length})
               </span>
             </div>
-            <p className="text-[11px] text-white/70 truncate max-w-sm sm:max-w-xl">
+            <p className="text-[11px] text-white/70 truncate max-w-xs sm:max-w-xl">
               {currentTemplate.description}
             </p>
           </div>
@@ -537,28 +537,28 @@ export default function ExampleTemplatesModal({
         <button
           type="button"
           onClick={onClose}
-          className="h-9 w-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 shrink-0"
+          className="h-9 w-9 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition-all cursor-pointer border border-white/10 shrink-0"
           title="Close Examples (ESC)"
         >
           <X className="h-4 w-4" weight="bold" />
         </button>
       </div>
 
-      {/* Main Center Area: Fixed A4 Paper Sheet (Zero Internal Scrolling) with Side Navigation Buttons */}
+      {/* Main Center Area: Fixed A4 Paper Sheet (Zero Internal Scrolling) with Large Side Navigation Buttons */}
       <div className="w-full max-w-5xl flex items-center justify-center gap-2 sm:gap-6 my-auto flex-1 relative min-h-0 py-1">
-        {/* Left Arrow Button */}
+        {/* Large Prominent Left Arrow Button */}
         <button
           type="button"
           onClick={handlePrev}
-          className="h-11 w-11 sm:h-13 sm:w-13 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer shadow-2xl shrink-0 z-20"
-          title="Previous Example (Left Arrow)"
+          className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-90 text-white border border-white/30 flex flex-col items-center justify-center transition-all cursor-pointer shadow-2xl shrink-0 z-20 group hover:border-primary"
+          title="Previous Template (Left Arrow)"
         >
-          <CaretLeft className="h-6 w-6 sm:h-7 sm:w-7" weight="bold" />
+          <CaretLeft className="h-7 w-7 sm:h-8 sm:w-8 group-hover:-translate-x-0.5 transition-transform" weight="bold" />
         </button>
 
         {/* TRUE A4 PAPER SHEET (Aspect 210/297, Scaled To Viewport, NO SCROLLBARS) */}
         <div 
-          className={`h-[68vh] sm:h-[75vh] md:h-[78vh] max-h-[820px] aspect-[210/297] text-slate-900 shadow-2xl rounded-sm border border-slate-300 relative overflow-hidden flex flex-col justify-between p-3.5 sm:p-5 md:p-6 select-none transition-all duration-300 shrink-0 ${
+          className={`h-[62vh] sm:h-[72vh] md:h-[76vh] max-h-[820px] aspect-[210/297] text-slate-900 shadow-2xl rounded-sm border border-slate-300 relative overflow-hidden flex flex-col justify-between p-3 sm:p-5 md:p-6 select-none transition-all duration-300 shrink-0 ${
             currentTemplate.id === "chancery-legal" ? "bg-[#faf8f3]" : "bg-white"
           }`}
           style={{
@@ -569,51 +569,51 @@ export default function ExampleTemplatesModal({
           }}
         >
           {/* Inner Archetype Framing */}
-          <div className={`flex-1 flex flex-col justify-between space-y-2 sm:space-y-3 ${
-            currentTemplate.id === "gazette-formal" ? "border-[2px] border-double border-slate-800 p-2 sm:p-3" :
-            currentTemplate.id === "certified-crest" ? "border border-amber-800/40 outline outline-1 outline-amber-800/20 outline-offset-2 p-2 sm:p-3" :
-            currentTemplate.id === "heritage-corporate" ? "border border-rose-950/30 p-2 sm:p-3" :
-            currentTemplate.id === "maritime-energy" ? "border-l-[4px] border-slate-900 pl-2.5 sm:pl-4" : ""
+          <div className={`flex-1 flex flex-col justify-between space-y-1.5 sm:space-y-2.5 ${
+            currentTemplate.id === "gazette-formal" ? "border-[2px] border-double border-slate-800 p-2 sm:p-2.5" :
+            currentTemplate.id === "certified-crest" ? "border border-amber-800/40 outline outline-1 outline-amber-800/20 outline-offset-2 p-2 sm:p-2.5" :
+            currentTemplate.id === "heritage-corporate" ? "border border-rose-950/30 p-2 sm:p-2.5" :
+            currentTemplate.id === "maritime-energy" ? "border-l-[4px] border-slate-900 pl-2.5 sm:pl-3.5" : ""
           }`}>
             
-            {/* 1. LETTERHEAD HEADER */}
-            <div className="border-b pb-2" style={{ borderColor: currentTemplate.accentColor }}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+            {/* 1. CLEAN LETTERHEAD HEADER (NO FEDERAL REPUBLIC / NO ARTIFICIAL LABELS) */}
+            <div className="border-b pb-1.5 sm:pb-2" style={{ borderColor: currentTemplate.accentColor }}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
                   <div 
-                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center text-white font-black text-xs sm:text-sm shrink-0 shadow-sm"
+                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center text-white font-sans font-black text-xs sm:text-sm shrink-0 shadow-sm"
                     style={{ backgroundColor: currentTemplate.accentColor }}
                   >
                     {currentTemplate.sampleData.letterhead.companyName.substring(0, 2).toUpperCase()}
                   </div>
                   <div>
-                    <h1 className="text-[10px] sm:text-[12px] md:text-[13px] font-black uppercase tracking-tight text-slate-900 leading-tight">
+                    <h1 className="text-[9.5px] sm:text-[11.5px] md:text-[12.5px] font-black uppercase tracking-tight text-slate-900 leading-tight">
                       {currentTemplate.sampleData.letterhead.companyName}
                     </h1>
-                    <p className="text-[7.5px] sm:text-[9px] text-slate-600 font-semibold leading-tight">
+                    <p className="text-[7px] sm:text-[8.5px] text-slate-600 font-semibold leading-tight mt-0.5">
                       {currentTemplate.sampleData.letterhead.rcNumber} &bull; {currentTemplate.sampleData.letterhead.registeredAddress}
+                    </p>
+                    <p className="text-[6.5px] sm:text-[7.5px] text-slate-500 font-medium">
+                      {currentTemplate.sampleData.letterhead.email} &bull; {currentTemplate.sampleData.letterhead.phone}
                     </p>
                   </div>
                 </div>
 
-                <div className="text-right hidden xs:block">
-                  <span className="inline-block px-1.5 py-0.5 rounded text-[7px] sm:text-[8px] font-black uppercase tracking-wider text-white" style={{ backgroundColor: currentTemplate.accentColor }}>
-                    CAMA 2020
+                <div className="text-right shrink-0">
+                  <span className="text-[7.5px] sm:text-[8.5px] text-slate-800 font-bold block">
+                    Date: {currentTemplate.sampleData.meetingMetadata?.date}
                   </span>
-                  <p className="text-[7.5px] sm:text-[8.5px] text-slate-500 font-mono mt-0.5">
-                    {currentTemplate.sampleData.meetingMetadata?.date}
-                  </p>
                 </div>
               </div>
             </div>
 
             {/* 2. RESOLUTION TITLE */}
-            <div className="text-center py-0.5 sm:py-1">
-              <h2 className="text-[11px] sm:text-[13px] md:text-[14px] font-black uppercase tracking-wider text-slate-900 leading-snug">
+            <div className="text-center py-0.5">
+              <h2 className="text-[10px] sm:text-[12px] md:text-[13px] font-black uppercase tracking-wider text-slate-900 leading-snug">
                 {currentTemplate.sampleData.title}
               </h2>
               <p 
-                className="text-[8px] sm:text-[9.5px] font-bold uppercase tracking-wide leading-tight mt-0.5"
+                className="text-[7.5px] sm:text-[9px] font-bold uppercase tracking-wide leading-tight mt-0.5"
                 style={{ color: currentTemplate.accentColor }}
               >
                 {currentTemplate.sampleData.subtitle}
@@ -621,22 +621,22 @@ export default function ExampleTemplatesModal({
             </div>
 
             {/* 3. PREAMBLE / MEETING COMMENCEMENT */}
-            <div className="bg-slate-50/80 rounded p-1.5 sm:p-2 border border-slate-200/60 text-[7.5px] sm:text-[9px] text-slate-700 leading-snug">
+            <div className="bg-slate-50/90 rounded p-1.5 sm:p-2 border border-slate-200/70 text-[7px] sm:text-[8.5px] text-slate-700 leading-snug">
               <p className="font-semibold italic">
                 {currentTemplate.sampleData.meetingMetadata?.commencementText}
               </p>
             </div>
 
             {/* 4. NUMBERED RESOLUTION CLAUSES */}
-            <div className="space-y-1 sm:space-y-1.5 flex-1">
-              <p className="text-[8px] sm:text-[9.5px] font-bold text-slate-900 leading-tight">
+            <div className="space-y-1 flex-1">
+              <p className="text-[7.5px] sm:text-[8.5px] font-bold text-slate-900 leading-tight">
                 IT WAS UNANIMOUSLY RESOLVED AS FOLLOWS:
               </p>
               <div className="space-y-1">
                 {currentTemplate.sampleData.numberedClauses?.slice(0, 4).map((clause, idx) => (
-                  <div key={idx} className="flex items-start gap-1.5 text-[7.5px] sm:text-[8.5px] md:text-[9px] text-slate-800 leading-snug">
+                  <div key={idx} className="flex items-start gap-1.5 text-[7px] sm:text-[8px] md:text-[8.5px] text-slate-800 leading-snug">
                     <span 
-                      className="h-3.5 w-3.5 sm:h-4 sm:w-4 rounded-full flex items-center justify-center text-white font-mono font-bold text-[7px] sm:text-[8px] shrink-0 mt-0.5"
+                      className="h-3.5 w-3.5 sm:h-4 sm:w-4 rounded-full flex items-center justify-center text-white font-mono font-bold text-[6.5px] sm:text-[7.5px] shrink-0 mt-0.5"
                       style={{ backgroundColor: currentTemplate.accentColor }}
                     >
                       {idx + 1}
@@ -647,52 +647,99 @@ export default function ExampleTemplatesModal({
               </div>
             </div>
 
-            {/* 5. SIGNING MANDATE & CERTIFICATION */}
-            <div className="pt-1 border-t border-slate-200/80 flex items-center justify-between text-[7.5px] sm:text-[8.5px] text-slate-700">
-              <div>
-                <span className="font-bold text-slate-900">Signing Mandate: </span>
-                <span className="font-semibold">{currentTemplate.sampleData.mandateClause}</span>
-              </div>
-              <span className="text-slate-500 font-mono text-[7px] sm:text-[8px]">Ref: CAMA/2026/{currentTemplate.id.toUpperCase().substring(0, 6)}</span>
+            {/* 5. VALIDITY STATEMENT */}
+            <div className="text-[7px] sm:text-[8px] text-slate-800 leading-snug">
+              <p className="font-medium">{currentTemplate.sampleData.validityClause}</p>
             </div>
 
-            {/* 6. SIGNATORIES DOCKET */}
-            <div className="pt-1.5 sm:pt-2 border-t-2 grid grid-cols-2 gap-3 sm:gap-4 items-end" style={{ borderColor: currentTemplate.accentColor }}>
+            {/* 6. AUTHENTIC SIGNATORY DOCKETS (EXACT REFERENCE FORMAT) */}
+            <div className="pt-1.5 border-t grid grid-cols-2 gap-2 sm:gap-3" style={{ borderColor: currentTemplate.accentColor }}>
               {currentTemplate.sampleData.signatories.map((sig, idx) => (
-                <div key={idx} className="text-left space-y-0.5">
-                  <div className="h-6 sm:h-7 border-b border-dashed border-slate-400 flex items-end pb-0.5">
-                    <span className="font-serif italic text-[9px] sm:text-[11px] text-slate-700 tracking-wider">
-                      {sig.name}
-                    </span>
+                <div key={idx} className="p-1.5 sm:p-2 rounded bg-slate-50/80 border border-slate-200 font-sans text-[7px] sm:text-[8px] space-y-0.5 leading-tight">
+                  <div className="grid grid-cols-[55px_1fr] gap-0.5">
+                    <span className="font-bold text-slate-600 uppercase text-[6.5px] sm:text-[7.5px]">DIRECTOR</span>
+                    <span className="font-black text-slate-950 uppercase truncate">: {sig.name}</span>
                   </div>
-                  <p className="text-[8px] sm:text-[9px] font-black text-slate-900 uppercase truncate">
-                    {sig.name}
-                  </p>
-                  <p className="text-[7px] sm:text-[8px] text-slate-600 font-semibold truncate">
-                    {sig.role}
-                  </p>
+                  <div className="grid grid-cols-[55px_1fr] gap-0.5">
+                    <span className="font-bold text-slate-600 uppercase text-[6.5px] sm:text-[7.5px]">POSITION</span>
+                    <span className="font-semibold text-slate-800 truncate">: {sig.role}</span>
+                  </div>
+                  <div className="grid grid-cols-[55px_1fr] gap-0.5">
+                    <span className="font-bold text-slate-600 uppercase text-[6.5px] sm:text-[7.5px]">COMPANY</span>
+                    <span className="text-slate-800 uppercase truncate">: {currentTemplate.sampleData.letterhead.companyName}</span>
+                  </div>
+                  <div className="grid grid-cols-[55px_1fr] gap-0.5">
+                    <span className="font-bold text-slate-600 uppercase text-[6.5px] sm:text-[7.5px]">DATE</span>
+                    <span className="text-slate-800 truncate">: {currentTemplate.sampleData.meetingMetadata?.date}</span>
+                  </div>
+                  <div className="grid grid-cols-[55px_1fr] gap-0.5 items-center pt-0.5 border-t border-slate-200">
+                    <span className="font-bold text-slate-600 uppercase text-[6.5px] sm:text-[7.5px]">SIGNATURE</span>
+                    <span className="font-serif italic text-[8px] sm:text-[9.5px] text-slate-700">: {sig.name}</span>
+                  </div>
                 </div>
               ))}
             </div>
 
+            {/* 7. CERTIFICATION NOTE */}
+            <div className="pt-0.5">
+              <p className="text-[6.5px] sm:text-[7.5px] italic text-slate-600 leading-tight">
+                {currentTemplate.sampleData.certificationText}
+              </p>
+            </div>
+
           </div>
+
+          {/* 8. CORPORATE MOTTO FOOTER BAR */}
+          {currentTemplate.sampleData.corporateMotto && (
+            <div 
+              className="w-full py-1 sm:py-1.5 px-3 text-center text-white text-[7.5px] sm:text-[9px] font-sans font-bold uppercase tracking-widest mt-1"
+              style={{ backgroundColor: currentTemplate.accentColor }}
+            >
+              {currentTemplate.sampleData.corporateMotto}
+            </div>
+          )}
         </div>
 
-        {/* Right Arrow Button */}
+        {/* Large Prominent Right Arrow Button */}
         <button
           type="button"
           onClick={handleNext}
-          className="h-11 w-11 sm:h-13 sm:w-13 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer shadow-2xl shrink-0 z-20"
-          title="Next Example (Right Arrow)"
+          className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-90 text-white border border-white/30 flex flex-col items-center justify-center transition-all cursor-pointer shadow-2xl shrink-0 z-20 group hover:border-primary"
+          title="Next Template (Right Arrow)"
         >
-          <CaretRight className="h-6 w-6 sm:h-7 sm:w-7" weight="bold" />
+          <CaretRight className="h-7 w-7 sm:h-8 sm:w-8 group-hover:translate-x-0.5 transition-transform" weight="bold" />
         </button>
       </div>
 
-      {/* Modal Bottom Dot Navigation & Quick Switcher */}
-      <div className="w-full max-w-5xl flex items-center justify-between gap-3 pt-2 border-t border-white/10 shrink-0">
-        {/* Dot Indicators */}
-        <div className="flex items-center gap-1.5">
+      {/* Modal Bottom: Mobile Friendly Navigation Buttons & Dot Switcher */}
+      <div className="w-full max-w-5xl flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2 border-t border-white/10 shrink-0">
+        {/* Mobile Quick Action Buttons (< Previous & Next >) */}
+        <div className="flex sm:hidden items-center justify-between w-full gap-2">
+          <button
+            type="button"
+            onClick={handlePrev}
+            className="flex-1 py-2 px-3 rounded-xl bg-white/15 active:bg-white/25 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-white/20 cursor-pointer"
+          >
+            <CaretLeft className="h-4 w-4" weight="bold" />
+            <span>Previous</span>
+          </button>
+          
+          <span className="text-xs text-white/60 font-mono px-2 shrink-0">
+            {currentIndex + 1} / {TEMPLATE_PREVIEWS.length}
+          </span>
+
+          <button
+            type="button"
+            onClick={handleNext}
+            className="flex-1 py-2 px-3 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+          >
+            <span>Next</span>
+            <CaretRight className="h-4 w-4" weight="bold" />
+          </button>
+        </div>
+
+        {/* Desktop Dot Indicators */}
+        <div className="hidden sm:flex items-center gap-1.5">
           {TEMPLATE_PREVIEWS.map((tpl, idx) => {
             const isSelected = idx === currentIndex;
             return (
@@ -712,14 +759,14 @@ export default function ExampleTemplatesModal({
         </div>
 
         {/* Keyboard Hint & Done CTA */}
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] sm:text-[11px] text-white/50 hidden sm:inline">
-            Use <kbd className="px-1 py-0.5 bg-white/10 rounded text-[9px] text-white font-mono">&larr;</kbd> <kbd className="px-1 py-0.5 bg-white/10 rounded text-[9px] text-white font-mono">&rarr;</kbd> keys to cycle
+        <div className="hidden sm:flex items-center gap-3">
+          <span className="text-[10px] sm:text-[11px] text-white/50">
+            Use <kbd className="px-1 py-0.5 bg-white/10 rounded text-[9px] text-white font-mono">&larr;</kbd> <kbd className="px-1 py-0.5 bg-white/10 rounded text-[9px] text-white font-mono">&rarr;</kbd> arrow keys to switch
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 sm:px-5 sm:py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:bg-primary/90 transition-all cursor-pointer"
+            className="px-5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:bg-primary/90 transition-all cursor-pointer"
           >
             Done Viewing
           </button>
