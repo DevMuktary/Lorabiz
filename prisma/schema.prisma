@@ -125,6 +125,7 @@ model User {
   llcRegistrations LlcRegistration[]
   ninRequests      NinRequestLog[]
   ninIpeRequests   NinIpeRequest[]
+  ninValidationRequests NinValidationRequest[]
   scumlRequests    ScumlRegistration[]
   taxIdRequests    TaxIdRequest[]
   notifications    InAppNotification[]
@@ -371,6 +372,39 @@ model NinIpeRequest {
 
   @@index([userId, status])
   @@index([trackingId])
+}
+
+enum NinValidationCategory {
+  NO_RECORD_FOUND
+  VNIN_VALIDATION
+  UPDATE_RECORD_MOD
+}
+
+enum NinValidationStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model NinValidationRequest {
+  id             String                @id @default(cuid())
+  userId         String
+  category       NinValidationCategory
+  nin            String
+  status         NinValidationStatus   @default(PROCESSING)
+  amountCharged  Decimal               @db.Decimal(10, 2)
+  transactionRef String                @unique
+  failureReason  String?               @db.Text
+  adminNotes     String?               @db.Text
+  completedAt    DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([nin])
+  @@index([category])
 }
 
 // ==========================================

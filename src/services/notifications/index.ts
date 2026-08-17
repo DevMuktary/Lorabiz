@@ -11,6 +11,8 @@ import {
   sendScumlFailedEmail,
   sendTaxIdCompletedEmail,
   sendTaxIdFailedEmail,
+  sendNinValidationCompletedEmail,
+  sendNinValidationFailedEmail,
   sendWelcomeEmail,
   sendFirstWalletFundingEmail,
   sendAbandonedCacReminderEmail,
@@ -29,6 +31,8 @@ export type NotificationEvent =
   | { type: "SCUML_FAILED"; userId: string; email: string; name: string; companyName: string; transactionRef: string; failureReason: string; refundAmount: number; }
   | { type: "TAXID_COMPLETED"; userId: string; email: string; name: string; requestType: string; taxIdNumber: string; transactionRef: string; taxIdImageUrl?: string; }
   | { type: "TAXID_FAILED"; userId: string; email: string; name: string; requestType: string; failureReason: string; refundAmount: number; transactionRef: string; }
+  | { type: "NIN_VALIDATION_COMPLETED"; userId: string; email: string; name: string; category: string; nin: string; transactionRef: string; }
+  | { type: "NIN_VALIDATION_FAILED"; userId: string; email: string; name: string; category: string; nin: string; failureReason: string; refundAmount: number; transactionRef: string; }
   | { type: "WELCOME_EMAIL"; userId: string; email: string; firstName: string; baseUrl?: string; }
   | { type: "FIRST_WALLET_FUNDING_EMAIL"; userId: string; email: string; firstName: string; amount: number; balance: number; reference: string; baseUrl?: string; }
   | { type: "ABANDONED_CAC_EMAIL"; userId: string; email: string; firstName: string; businessName: string; entityType: string; trackingId: string; registrationId: string; continueUrl: string; };
@@ -222,6 +226,53 @@ export async function dispatchNotification(event: NotificationEvent): Promise<vo
       await sendTaxIdFailedEmail({
         to: event.email, name: event.name, requestType: event.requestType, 
         failureReason: event.failureReason, refundAmount: event.refundAmount
+      });
+      break;
+    }
+
+    // =====================================
+    // NIN VALIDATION NOTIFICATIONS
+    // =====================================
+    case "NIN_VALIDATION_COMPLETED": {
+      const masked = event.nin.length >= 4 ? `*******${event.nin.slice(-4)}` : event.nin;
+      await prisma.inAppNotification.create({
+        data: {
+          userId: event.userId,
+          title: "NIN Validation Successful! 🎉",
+          message: `Your validation for ${event.category} (${masked}) is complete.`,
+          type: "success",
+          link: `/dashboard/nin/validation/history`,
+        },
+      });
+      await sendNinValidationCompletedEmail({
+        to: event.email,
+        name: event.name,
+        nin: event.nin,
+        category: event.category,
+        transactionRef: event.transactionRef,
+      });
+      break;
+    }
+
+    case "NIN_VALIDATION_FAILED": {
+      const masked = event.nin.length >= 4 ? `*******${event.nin.slice(-4)}` : event.nin;
+      await prisma.inAppNotification.create({
+        data: {
+          userId: event.userId,
+          title: "NIN Validation Failed ⚠️",
+          message: `Validation for ${event.category} (${masked}) could not be completed. Reason: ${event.failureReason}`,
+          type: "warning",
+          link: `/dashboard/nin/validation/history`,
+        },
+      });
+      await sendNinValidationFailedEmail({
+        to: event.email,
+        name: event.name,
+        nin: event.nin,
+        category: event.category,
+        transactionRef: event.transactionRef,
+        failureReason: event.failureReason,
+        refundAmount: event.refundAmount,
       });
       break;
     }

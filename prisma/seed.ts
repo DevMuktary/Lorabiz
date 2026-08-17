@@ -19,7 +19,10 @@ async function main() {
     { serviceKey: "NIN_REGULAR", title: "Regular Official Slip", price: 500.00 },
     { serviceKey: "NIN_STANDARD", title: "Standard Biometric Slip", price: 700.00 },
     { serviceKey: "NIN_PREMIUM", title: "Premium Card Layout", price: 1000.00 },
-    { serviceKey: "NIN_IPE_CLEARANCE", title: "IPE Clearance (Exception Resolution)", price: 2500.00 }
+    { serviceKey: "NIN_IPE_CLEARANCE", title: "IPE Clearance (Exception Resolution)", price: 2500.00 },
+    { serviceKey: "NIN_VALIDATION_NO_RECORD", title: "NIN Validation (No Record Found)", price: 2000.00 },
+    { serviceKey: "NIN_VALIDATION_VNIN", title: "NIN Validation (VNIN Validation)", price: 2500.00 },
+    { serviceKey: "NIN_VALIDATION_MOD", title: "NIN Validation (Update Record / Mod)", price: 3000.00 }
   ]
 
   for (const p of prices) {

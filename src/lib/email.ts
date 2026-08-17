@@ -659,6 +659,81 @@ export async function sendNinIpeFailedEmail({
 }
 
 // ============================================================================
+// NIMC NIN VALIDATION NOTIFICATIONS
+// ============================================================================
+
+export async function sendNinValidationCompletedEmail({
+  to, name, nin, category, transactionRef
+}: { to: string; name: string; nin: string; category: string; transactionRef: string; }) {
+  const maskedNin = nin.length >= 4 ? `*******${nin.slice(-4)}` : nin;
+  const subject = `Your NIN Validation is Complete 🎉`;
+  const previewText = `Your NIN (${maskedNin}) validation request for "${category}" has been successfully completed.`;
+
+  const content = `
+    <h2 style="color: #047857; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Validation Successful! 🎉</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Great news! Your National Identification Number (NIN) validation request has been successfully resolved and processed.
+    </p>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Validation Category:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right;">${category}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">NIN:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${maskedNin}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Reference:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right; font-family: monospace;">${transactionRef}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Status:</td>
+          <td style="font-weight: 700; color: #047857; text-align: right;">COMPLETED</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      Please note: While the validation is completed on our end, central database synchronization on official verification portals may take up to 72 hours to reflect nationwide.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/validation/history" style="display: inline-block; background-color: #047857; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to Validation History</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinValidationFailedEmail({
+  to, name, nin, category, transactionRef, failureReason, refundAmount
+}: { to: string; name: string; nin: string; category: string; transactionRef: string; failureReason: string; refundAmount: number; }) {
+  const maskedNin = nin.length >= 4 ? `*******${nin.slice(-4)}` : nin;
+  const subject = `Update on Your NIN Validation Request`;
+  const previewText = `Your NIN validation request for "${category}" could not be completed.`;
+
+  const content = `
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Validation Request Failed</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Unfortunately, your NIN validation request for <strong>${category}</strong> (NIN: <code style="font-family: monospace;">${maskedNin}</code>) could not be completed.
+    </p>
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 24px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 12px; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Reason</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6; white-space: pre-wrap;">${failureReason}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      ${refundAmount > 0 ? `A refund of <strong>₦${refundAmount.toLocaleString()}</strong> has been credited back to your Lorabiz Wallet.` : 'Please check your dashboard for full details.'}
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/validation/history" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to Validation History</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+
+// ============================================================================
 // EMAIL CAMPAIGN & BROADCAST UTILITIES
 // ============================================================================
 

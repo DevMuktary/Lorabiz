@@ -33,6 +33,13 @@ export async function GET() {
       prisma.ninIpeRequest.count({ where: { status: "FAILED" } }),
     ]);
 
+    // 2c. Fetch counts for NIN Validation Requests
+    const [valProcessing, valCompleted, valFailed] = await Promise.all([
+      prisma.ninValidationRequest.count({ where: { status: "PROCESSING" } }),
+      prisma.ninValidationRequest.count({ where: { status: "COMPLETED" } }),
+      prisma.ninValidationRequest.count({ where: { status: "FAILED" } }),
+    ]);
+
     // 3. Fetch counts for SCUML
     const [scumlPending, scumlProcessing, scumlCompleted] = await Promise.all([
       prisma.scumlRegistration.count({ where: { status: "PENDING" } }),
@@ -76,6 +83,13 @@ export async function GET() {
       failed: ipeFailed,
     };
 
+    const ninValidationMetrics = {
+      pending: valProcessing,
+      completed: valCompleted,
+      queried: 0,
+      failed: valFailed,
+    };
+
     const scumlMetrics = {
       pending: scumlPending + scumlProcessing, 
       completed: scumlCompleted,
@@ -99,10 +113,10 @@ export async function GET() {
 
     // Calculate Global Totals
     const globalMetrics = {
-      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending,
-      completed: cacMetrics.completed + ninMetrics.completed + ipeMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
+      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending,
+      completed: cacMetrics.completed + ninMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
       queried: cacMetrics.queried, 
-      failed: cacMetrics.failed + ninMetrics.failed + ipeMetrics.failed,
+      failed: cacMetrics.failed + ninMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed,
     };
 
     // Construct the structured response
@@ -116,6 +130,15 @@ export async function GET() {
           metrics: cacMetrics,
           subCategories: ["Business Names", "LLC Formations"],
           href: "/quadrox-lorabiz-team/mds/dashboard/orders/cac",
+          isAutomated: false
+        },
+        {
+          id: "nin-validation",
+          name: "NIN Validation Pipeline",
+          description: "Manual operations ledger for No Record Found, VNIN, and Mod Validation requests.",
+          metrics: ninValidationMetrics,
+          subCategories: ["No Record Found", "VNIN Validation", "Update Record (Mod)"],
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/nin-validation",
           isAutomated: false
         },
         {

@@ -43,11 +43,12 @@ const NIN_SERVICES: NinServiceCard[] = [
   {
     title: "NIN Validation",
     category: "Record Validation & Updates",
-    description: "Validate your NIN record to reflect recent modifications (e.g. name update) or fix records showing 'No Record' or search issues.",
-    turnaround: "1–24 Hours",
+    description: "Validate your NIN record to reflect recent modifications (e.g. name or biometric update) or resolve records showing 'No Record' or VNIN sync issues.",
+    turnaround: "24–48 Hours",
     logo: "/nimc.png",
-    active: false,
-    tag: "Coming Soon",
+    href: "/dashboard/nin/validation",
+    active: true,
+    tag: "Active",
   },
   {
     title: "NIN Personalization",
