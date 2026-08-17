@@ -33,7 +33,7 @@ const NIN_SERVICES: NinServiceCard[] = [
   {
     title: "IPE Clearance",
     category: "In-Processing Error",
-    description: "Clear In-Processing Errors (IPE) on enrollment records to unblock and retrieve your pending NIN.",
+    description: "Clear In-Processing Errors on your NIN",
     turnaround: "~24 Hours",
     logo: "/nimc.png",
     href: "/dashboard/nin/ipe",

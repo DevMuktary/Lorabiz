@@ -14,7 +14,7 @@ import {
   Handshake, IdentificationCard, DeviceMobile, Wallet, 
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
   FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
-  ClockCounterClockwise
+  ClockCounterClockwise, Code
 } from "@phosphor-icons/react";
 
 type NavLink = {
@@ -49,6 +49,12 @@ const NAVIGATION: NavCategory[] = [
       { name: "NIN Services", href: "/dashboard/nin", icon: IdentificationCard },
       { name: "Airtime", href: "/dashboard/airtime", icon: DeviceMobile },
       { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },
+    ]
+  },
+  {
+    category: "Developer",
+    links: [
+      { name: "Developer API", href: "#", icon: Code, isComingSoon: true, showSoonBadge: true },
     ]
   },
   {

@@ -41,6 +41,18 @@ export async function POST(req: Request) {
     });
 
     if (!user || !user.wallet) return NextResponse.json({ error: "User or wallet not found" }, { status: 404 });
+
+    // Check service killswitch
+    const targetServiceKey = type === "CORPORATE" ? "TAX_ID_CORPORATE" : "TAX_ID_INDIVIDUAL";
+    const taxIdPricing = await prisma.servicePricing.findUnique({
+      where: { serviceKey: targetServiceKey }
+    });
+    if (taxIdPricing && !taxIdPricing.isActive) {
+      return NextResponse.json({ 
+        error: taxIdPricing.maintenanceMsg || "Tax ID processing is currently undergoing maintenance." 
+      }, { status: 400 });
+    }
+
     if (Number(user.wallet.balance) < price) return NextResponse.json({ error: "Insufficient wallet balance." }, { status: 400 });
 
     const transactionRef = `TIN-${generateNumericId(8)}`;

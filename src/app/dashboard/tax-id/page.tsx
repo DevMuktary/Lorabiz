@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   Info, CheckCircle, X, WarningCircle, ArrowRight, ListDashes, 
-  ArrowLeft, Tag, IdentificationCard, Buildings, CaretDown, CaretUp, Wallet, SmileySad 
+  ArrowLeft, Tag, IdentificationCard, Buildings, CaretDown, CaretUp 
 } from "@phosphor-icons/react";
 
 type TaxIdType = "INDIVIDUAL" | "CORPORATE";
@@ -21,6 +21,7 @@ const CORPORATE_CATEGORIES = [
 
 export default function TaxIdPage() {
   const [isActive, setIsActive] = useState(true);
+  const [maintenanceMsg, setMaintenanceMsg] = useState("");
   const [reqType, setReqType] = useState<TaxIdType>("INDIVIDUAL");
   
   const [prices, setPrices] = useState({ individual: 0, corporate: 0 });
@@ -51,9 +52,10 @@ export default function TaxIdPage() {
     setMounted(true);
     const fetchPricingAndWallet = async () => {
       try {
-        const [priceRes, walletRes] = await Promise.all([
+        const [priceRes, walletRes, settingsRes] = await Promise.all([
           fetch("/api/pricing"),
-          fetch("/api/user/wallet")
+          fetch("/api/user/wallet"),
+          fetch("/api/settings/global")
         ]);
         const priceData = await priceRes.json();
         if (priceData.success) {
@@ -66,6 +68,13 @@ export default function TaxIdPage() {
           const walletData = await walletRes.json();
           if (walletData.balance !== undefined) {
             setWalletBalance(walletData.balance);
+          }
+        }
+        const settingsData = await settingsRes.json();
+        if (settingsData.success && settingsData.settings) {
+          setIsActive(settingsData.settings.taxIdEnabled ?? true);
+          if (settingsData.settings.taxIdReason) {
+            setMaintenanceMsg(settingsData.settings.taxIdReason);
           }
         }
       } catch (err) {
@@ -128,15 +137,23 @@ export default function TaxIdPage() {
     setErrorMsg("");
 
     try {
-      const payload: any = { type: reqType };
+      const payload: any = { 
+        type: reqType,
+        price: currentPrice,
+      };
+
       if (reqType === "INDIVIDUAL") {
-        payload.nin = nin.trim();
-        payload.firstName = firstName.trim();
-        payload.lastName = lastName.trim();
-        payload.dob = dob;
+        payload.individualData = {
+          nin: nin.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          dob: dob
+        };
       } else {
-        payload.cacNumber = cacNumber.trim();
-        payload.category = corpCategory;
+        payload.corporateData = {
+          cacNumber: cacNumber.trim(),
+          category: corpCategory
+        };
       }
 
       const res = await fetch("/api/tax-id", {
@@ -148,7 +165,7 @@ export default function TaxIdPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to process request");
+        throw new Error(data.error || data.message || "Failed to process request");
       }
 
       // Success -> Redirect to history
@@ -164,6 +181,15 @@ export default function TaxIdPage() {
       <div className="p-8 text-center bg-card border border-border rounded-2xl max-w-xl mx-auto mt-12 space-y-4">
         <WarningCircle weight="duotone" className="h-16 w-16 text-yellow-500 mx-auto" />
         <h2 className="text-2xl font-black text-foreground">Service Temporarily Unavailable</h2>
+        <p className="text-muted-foreground text-sm max-w-md mx-auto">
+          {maintenanceMsg || "Tax ID (TIN) processing is currently undergoing maintenance. Please check back later."}
+        </p>
+        <Link 
+          href="/dashboard" 
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-secondary text-foreground text-sm font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground transition-colors"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Dashboard
+        </Link>
       </div>
     );
   }
@@ -338,7 +364,9 @@ export default function TaxIdPage() {
               </button>
             </div>
           </form>
-        </div>        {/* Info Sidebar */}
+        </div>
+
+        {/* Info Sidebar */}
         <div className="space-y-6">
           <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24">
             <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground mb-5">Why you need a TIN</h3>
@@ -414,7 +442,7 @@ export default function TaxIdPage() {
                 <div className="space-y-4">
                   <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 space-y-1.5">
                     <div className="flex items-center gap-2 font-bold text-sm">
-                      <SmileySad weight="duotone" className="h-5 w-5 shrink-0 text-amber-500" />
+                      <span className="text-xl">😭</span>
                       <span>Insufficient Wallet Balance</span>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">

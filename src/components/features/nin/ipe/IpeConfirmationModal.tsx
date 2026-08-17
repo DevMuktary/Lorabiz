@@ -106,7 +106,7 @@ export function IpeConfirmationModal({
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 space-y-1.5">
                 <div className="flex items-center gap-2 font-bold text-sm">
-                  <SmileySad weight="duotone" className="h-5 w-5 shrink-0 text-amber-500" />
+                  <span className="text-xl">😭</span>
                   <span>Insufficient Wallet Balance</span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">

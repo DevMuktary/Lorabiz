@@ -48,6 +48,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Check service killswitch
+    const scumlPricing = await prisma.servicePricing.findUnique({
+      where: { serviceKey: "SCUML" }
+    });
+    if (scumlPricing && !scumlPricing.isActive) {
+      return NextResponse.json({ 
+        success: false, 
+        error: scumlPricing.maintenanceMsg || "SCUML registration is currently undergoing maintenance." 
+      }, { status: 400 });
+    }
+
     // Generate a unique draft key for Redis
     const draftId = `scuml_draft_${generateNumericId(8)}`;
 

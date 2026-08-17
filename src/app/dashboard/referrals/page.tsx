@@ -438,7 +438,7 @@ export default function ReferralsPage() {
                   onClick={() => setActiveTab("history")}
                   className={`pb-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === "history" ? "border-[#ff3f7a] text-[#ff3f7a]" : "border-transparent text-muted-foreground hover:text-foreground"}`}
                 >
-                  Earnings Ledger
+                  Earnings History
                 </button>
               </div>
 

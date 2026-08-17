@@ -56,14 +56,26 @@ export default function ScumlPage() {
     }
   }, []);
 
-  // Fetch Live Pricing from DB
+  const [maintenanceMsg, setMaintenanceMsg] = useState("");
+
+  // Fetch Live Pricing and Service Status from DB
   useEffect(() => {
     const fetchPricing = async () => {
       try {
-        const res = await fetch("/api/pricing");
-        const data = await res.json();
-        if (data.success && data.data.SCUML) {
-          setPrice(data.data.SCUML);
+        const [priceRes, settingsRes] = await Promise.all([
+          fetch("/api/pricing"),
+          fetch("/api/settings/global")
+        ]);
+        const priceData = await priceRes.json();
+        if (priceData.success && priceData.data.SCUML) {
+          setPrice(priceData.data.SCUML);
+        }
+        const settingsData = await settingsRes.json();
+        if (settingsData.success && settingsData.settings) {
+          setIsActive(settingsData.settings.scumlEnabled ?? true);
+          if (settingsData.settings.scumlReason) {
+            setMaintenanceMsg(settingsData.settings.scumlReason);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch price:", err);
@@ -156,12 +168,18 @@ export default function ScumlPage() {
 
   if (!isActive) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <Image src="/scuml.png" alt="SCUML" width={80} height={80} className="mb-4 opacity-50 grayscale" />
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <Image src="/scuml.png" alt="SCUML" width={80} height={80} className="opacity-50 grayscale" />
         <h2 className="text-2xl font-black text-foreground">Service Temporarily Unavailable</h2>
-        <p className="text-muted-foreground mt-2 max-w-md">
-          SCUML registration is currently undergoing maintenance. Please check back later.
+        <p className="text-muted-foreground text-sm max-w-md">
+          {maintenanceMsg || "SCUML registration is currently undergoing maintenance. Please check back later."}
         </p>
+        <Link 
+          href="/dashboard" 
+          className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-foreground text-sm font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground transition-colors"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Dashboard
+        </Link>
       </div>
     );
   }

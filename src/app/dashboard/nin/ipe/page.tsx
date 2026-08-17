@@ -129,7 +129,7 @@ export default function IpeClearancePage() {
             </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">IPE Clearance</h1>
             <p className="text-muted-foreground text-sm">
-              Clear In-Processing Errors (IPE) on enrollment records to unblock your NIN.
+              Clear In-Processing Errors on your NIN.
             </p>
           </div>
         </div>
