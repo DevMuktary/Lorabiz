@@ -66,8 +66,9 @@ export default function TaxIdPage() {
         }
         if (walletRes.ok) {
           const walletData = await walletRes.json();
-          if (walletData.balance !== undefined) {
-            setWalletBalance(walletData.balance);
+          const balance = walletData.wallet?.balance ?? walletData.balance;
+          if (balance !== undefined && balance !== null) {
+            setWalletBalance(Number(balance));
           }
         }
         const settingsData = await settingsRes.json();
@@ -360,7 +361,7 @@ export default function TaxIdPage() {
               </label>
 
               <button type="submit" disabled={!consentChecked || isLoadingPrice} className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md cursor-pointer">
-                {isLoadingPrice ? "Loading pricing..." : `Submit Application & Pay ₦${currentPrice.toLocaleString()}`}
+                {isLoadingPrice ? "Loading pricing..." : "Submit Application"}
               </button>
             </div>
           </form>
