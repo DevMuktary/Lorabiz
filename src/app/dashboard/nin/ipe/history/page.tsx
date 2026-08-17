@@ -1,16 +1,20 @@
+// src/app/dashboard/nin/ipe/history/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { 
   ArrowLeft, 
-  History, 
-  KeyRound, 
+  ListDashes, 
   Plus, 
-  RefreshCw, 
+  ArrowsClockwise, 
   ShieldCheck, 
-  Wallet 
-} from "lucide-react";
+  CheckCircle,
+  Clock,
+  XCircle,
+  Tag
+} from "@phosphor-icons/react";
 import { IpeHistoryStats } from "@/components/features/nin/ipe/IpeHistoryStats";
 import { IpeHistoryTable } from "@/components/features/nin/ipe/IpeHistoryTable";
 import { IpeRequestRecord } from "@/components/features/nin/ipe/IpeDetailsModal";
@@ -57,7 +61,6 @@ export default function IpeHistoryPage() {
       const data = await res.json();
 
       if (data.success) {
-        // Refresh local requests array
         await fetchHistory();
         
         if (data.request?.status === "COMPLETED") {
@@ -76,91 +79,90 @@ export default function IpeHistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 pb-20">
+    <div className="space-y-6 max-w-6xl mx-auto relative pb-12 animate-in fade-in duration-200">
       
-      {/* Top Header & Breadcrumbs */}
-      <div className="border-b border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/nin"
-              className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Link href="/dashboard" className="hover:text-slate-600 dark:hover:text-slate-300">Dashboard</Link>
-                <span>/</span>
-                <Link href="/dashboard/nin" className="hover:text-slate-600 dark:hover:text-slate-300">NIMC Services</Link>
-                <span>/</span>
-                <Link href="/dashboard/nin/ipe" className="hover:text-slate-600 dark:hover:text-slate-300">IPE Clearance</Link>
-                <span>/</span>
-                <span className="text-slate-800 dark:text-slate-200 font-semibold">History & Status</span>
-              </div>
-              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 mt-0.5">
-                <History className="w-5 h-5 text-emerald-600" />
-                IPE Clearance History
-              </h1>
+      {/* Back Breadcrumb */}
+      <Link 
+        href="/dashboard/nin/ipe" 
+        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl"
+      >
+        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to IPE Clearance
+      </Link>
+
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
+        <div className="flex items-center gap-3.5">
+          <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
+            <Image 
+              src="/nimc.png" 
+              alt="NIMC Logo" 
+              width={40} 
+              height={40} 
+              className="object-contain" 
+              priority 
+            />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
+              <ShieldCheck weight="bold" className="h-3 w-3" />
+              NIMC Exception Gateway
             </div>
+            <h1 className="text-2xl font-black text-foreground tracking-tight">IPE History & Status</h1>
+            <p className="text-muted-foreground text-sm">
+              Track real-time status and retrieve cleared NIN records.
+            </p>
           </div>
+        </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => fetchHistory(true)}
-              disabled={isRefreshing}
-              className="h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-emerald-600" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => fetchHistory(true)}
+            disabled={isRefreshing}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground text-xs sm:text-sm font-bold rounded-xl border border-border transition-all cursor-pointer disabled:opacity-50"
+          >
+            <ArrowsClockwise weight="bold" className={`h-4 w-4 ${isRefreshing ? "animate-spin text-primary" : ""}`} />
+            <span>Refresh</span>
+          </button>
 
-            <Link
-              href="/dashboard/nin/ipe"
-              className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New IPE Request</span>
-            </Link>
-          </div>
-
+          <Link 
+            href="/dashboard/nin/ipe" 
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground text-xs sm:text-sm font-bold rounded-xl shadow-md hover:opacity-90 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus weight="bold" className="h-4 w-4" />
+            <span>New Request</span>
+          </Link>
         </div>
       </div>
 
-      {/* Main Container */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
-        
-        {/* Toast Notification */}
-        {toastMessage && (
-          <div className="p-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs sm:text-sm font-medium shadow-2xl flex items-center justify-between gap-4 animate-in slide-in-from-top-3 duration-200">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
-              <span>{toastMessage}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setToastMessage(null)}
-              className="text-slate-400 hover:text-white dark:hover:text-slate-900 text-xs"
-            >
-              Dismiss
-            </button>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="p-4 rounded-2xl bg-card border border-border shadow-xl flex items-center justify-between gap-3 text-xs sm:text-sm font-medium animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2 text-foreground font-bold">
+            <CheckCircle weight="fill" className="h-5 w-5 text-emerald-500 shrink-0" />
+            <span>{toastMessage}</span>
           </div>
-        )}
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="text-xs text-muted-foreground hover:text-foreground font-bold cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
-        {/* Statistics Cards */}
-        <IpeHistoryStats stats={stats} />
+      {/* Statistics Cards */}
+      <IpeHistoryStats stats={stats} />
 
-        {/* History Table */}
-        <IpeHistoryTable
-          requests={requests}
-          isLoading={isLoading}
-          onRefresh={() => fetchHistory(true)}
-          onSyncStatus={handleSyncStatus}
-        />
+      {/* History Table */}
+      <IpeHistoryTable
+        requests={requests}
+        isLoading={isLoading}
+        onRefresh={() => fetchHistory(true)}
+        onSyncStatus={handleSyncStatus}
+      />
 
-      </div>
     </div>
   );
 }

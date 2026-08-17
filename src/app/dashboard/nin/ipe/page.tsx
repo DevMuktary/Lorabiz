@@ -1,27 +1,27 @@
+// src/app/dashboard/nin/ipe/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, 
-  CheckCircle2, 
+  ArrowRight, 
+  ListDashes, 
+  Info, 
+  CheckCircle, 
   Clock, 
-  History, 
-  KeyRound, 
-  RefreshCw, 
-  ShieldCheck, 
-  Sparkles,
-  Wallet
-} from "lucide-react";
+  Spinner,
+  ShieldCheck
+} from "@phosphor-icons/react";
 import { IpeSubmissionForm } from "@/components/features/nin/ipe/IpeSubmissionForm";
 
 export default function IpeClearancePage() {
-  const router = useRouter();
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [servicePrice, setServicePrice] = useState<number>(2500);
   const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showIntroModal, setShowIntroModal] = useState<boolean>(true);
   const [submittedResult, setSubmittedResult] = useState<{ reference: string; trackingId: string } | null>(null);
 
   useEffect(() => {
@@ -49,135 +49,239 @@ export default function IpeClearancePage() {
     setSubmittedResult(result);
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 pb-20">
-      
-      {/* Top Header & Breadcrumbs */}
-      <div className="border-b border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/nin"
-              className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Link href="/dashboard" className="hover:text-slate-600 dark:hover:text-slate-300">Dashboard</Link>
-                <span>/</span>
-                <Link href="/dashboard/nin" className="hover:text-slate-600 dark:hover:text-slate-300">NIMC Services</Link>
-                <span>/</span>
-                <span className="text-slate-800 dark:text-slate-200 font-semibold">IPE Clearance</span>
-              </div>
-              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 mt-0.5">
-                <KeyRound className="w-5 h-5 text-emerald-600" />
-                IPE Exception Clearance
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/nin/ipe/history"
-              className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-sm transition-all"
-            >
-              <History className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>View History & Status</span>
-            </Link>
-
-            <Link
-              href="/dashboard/wallet"
-              className="h-10 px-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition-all"
-            >
-              <Wallet className="w-4 h-4" />
-              <span>₦{walletBalance.toLocaleString()}</span>
-            </Link>
-          </div>
-
-        </div>
+  if (!isServiceActive && !isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <h2 className="text-2xl font-black text-foreground">Service Temporarily Unavailable</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          The NIMC IPE Clearance service is undergoing scheduled system maintenance. Please check back shortly.
+        </p>
+        <Link 
+          href="/dashboard/nin" 
+          className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-foreground text-sm font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground transition-colors"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" /> Back to NIN Services
+        </Link>
       </div>
+    );
+  }
 
-      {/* Main Page Body */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        
-        {submittedResult ? (
-          /* Post-Submission Success State */
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-10 shadow-xl text-center space-y-6 animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
-              <CheckCircle2 className="w-8 h-8" />
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto relative pb-12 animate-in fade-in duration-200">
+      
+      {/* Intro Modal (Processing Timeline & IPE Explanation) */}
+      {showIntroModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
+                <Info weight="fill" className="h-6 w-6 text-blue-500" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-500">NIMC Clearance Guidance</span>
+                <h2 className="text-xl font-black text-foreground">Processing Timeline</h2>
+              </div>
             </div>
-
-            <div className="space-y-2 max-w-md mx-auto">
-              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                Request Submitted Successfully
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Your IPE Clearance request for Tracking ID <strong className="font-mono text-slate-800 dark:text-slate-200">{submittedResult.trackingId}</strong> has been submitted to NIMC.
+            
+            <div className="space-y-3.5 text-sm text-muted-foreground leading-relaxed">
+              <p>
+                An <strong className="text-foreground">Initial Processing Exception (IPE)</strong> — also known in NIMC systems as an <strong className="text-foreground">In-Processing Error</strong> — occurs when biometric deduplication (e.g. fingerprint conflict) or validation holds occur during enrollment.
+              </p>
+              <div className="p-3.5 rounded-2xl bg-secondary/60 border border-border text-xs text-foreground font-medium flex items-center gap-2.5">
+                <Clock weight="bold" className="h-5 w-5 text-primary shrink-0" />
+                <span>This service will be processed within <strong>~24 hours</strong>. Please ensure the Tracking ID you are submitting actually has an IPE issue.</span>
+              </div>
+              <p className="text-xs">
+                Once cleared by the NIMC gateway, your 11-digit NIN record is released and can immediately be verified or printed as an official slip.
               </p>
             </div>
 
-            {/* Quick Status Notice */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 max-w-md mx-auto text-left space-y-2 text-xs">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Reference:</span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{submittedResult.reference}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Status:</span>
-                <span className="font-bold text-amber-600 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  PROCESSING
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Time:</span>
-                <span className="text-slate-700 dark:text-slate-300 font-medium">~24 Hours</span>
-              </div>
-            </div>
+            <button 
+              type="button"
+              onClick={() => setShowIntroModal(false)}
+              className="mt-6 w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity cursor-pointer shadow-md"
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
 
-            <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-              We will send you an email notification as soon as the exception is cleared. You can track real-time progress on your History page.
+      {/* Back Breadcrumb */}
+      <Link 
+        href="/dashboard/nin" 
+        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl"
+      >
+        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to NIN Services
+      </Link>
+
+      {/* Page Header matching Tax ID */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
+        <div className="flex items-center gap-3.5">
+          <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
+            <Image 
+              src="/nimc.png" 
+              alt="NIMC Logo" 
+              width={40} 
+              height={40} 
+              className="object-contain" 
+              priority 
+            />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
+              <ShieldCheck weight="bold" className="h-3 w-3" />
+              National Identity Management Commission
+            </div>
+            <h1 className="text-2xl font-black text-foreground tracking-tight">IPE Clearance</h1>
+            <p className="text-muted-foreground text-sm">
+              Clear Initial Processing Exceptions (IPE) / In-Processing Errors on enrollment records.
             </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-              <Link
-                href="/dashboard/nin/ipe/history"
-                className="w-full sm:w-auto h-12 px-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all"
-              >
-                <History className="w-4 h-4" />
-                <span>Go to History & Tracking</span>
-              </Link>
-              
-              <button
-                type="button"
-                onClick={() => setSubmittedResult(null)}
-                className="w-full sm:w-auto h-12 px-6 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-sm transition-colors"
-              >
-                Submit Another Request
-              </button>
-            </div>
           </div>
-        ) : isLoading ? (
-          /* Loading Skeleton */
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center">
-            <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
-              <RefreshCw className="w-8 h-8 animate-spin text-emerald-600" />
-              <span className="text-sm font-medium">Loading IPE clearance service details...</span>
-            </div>
-          </div>
-        ) : (
-          /* Submission Form */
-          <IpeSubmissionForm
-            walletBalance={walletBalance}
-            servicePrice={servicePrice}
-            isServiceActive={isServiceActive}
-            onSuccess={handleSuccess}
-          />
-        )}
+        </div>
 
+        <Link 
+          href="/dashboard/nin/ipe/history" 
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground text-sm font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all group shrink-0"
+        >
+          <ListDashes weight="bold" className="h-4 w-4" />
+          <span>View History & Status</span>
+          <ArrowRight weight="bold" className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+        </Link>
       </div>
+
+      {/* Post-Submission Success State */}
+      {submittedResult ? (
+        <div className="bg-card border border-border rounded-3xl p-8 sm:p-10 shadow-xl text-center space-y-6 max-w-2xl mx-auto animate-in zoom-in-95 duration-200">
+          <div className="h-16 w-16 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-inner border border-emerald-500/20">
+            <CheckCircle weight="fill" className="h-9 w-9" />
+          </div>
+
+          <div className="space-y-2 max-w-md mx-auto">
+            <h2 className="text-2xl font-black text-foreground">
+              Clearance Request Submitted
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Your IPE clearance request for Tracking ID <strong className="font-mono text-foreground">{submittedResult.trackingId}</strong> has been transmitted to NIMC.
+            </p>
+          </div>
+
+          <div className="bg-secondary/60 border border-border rounded-2xl p-5 max-w-md mx-auto text-left space-y-2.5 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Reference:</span>
+              <span className="font-mono font-bold text-foreground">{submittedResult.reference}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Status:</span>
+              <span className="font-bold text-amber-500 flex items-center gap-1">
+                <Clock weight="bold" className="h-3.5 w-3.5" />
+                PROCESSING
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Estimated Turnaround:</span>
+              <span className="text-foreground font-semibold">~24 Hours</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            You will receive an automated email notification as soon as the exception is cleared. You can track real-time progress on your History page.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <Link
+              href="/dashboard/nin/ipe/history"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-md hover:opacity-90 flex items-center justify-center gap-2 transition-all"
+            >
+              <ListDashes weight="bold" className="h-4 w-4" />
+              <span>Go to History & Tracking</span>
+            </Link>
+            
+            <button
+              type="button"
+              onClick={() => setSubmittedResult(null)}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-border bg-secondary hover:bg-secondary/80 text-foreground font-bold text-sm transition-colors cursor-pointer"
+            >
+              Submit Another Request
+            </button>
+          </div>
+        </div>
+      ) : isLoading ? (
+        /* Loading Skeleton */
+        <div className="bg-card border border-border rounded-3xl p-12 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Spinner className="h-8 w-8 animate-spin text-primary" weight="bold" />
+            <span className="text-sm font-medium">Loading IPE clearance service details...</span>
+          </div>
+        </div>
+      ) : (
+        /* 3-Column Standard Tax ID Layout */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Main Form (Left 2 cols) */}
+          <div className="lg:col-span-2">
+            <IpeSubmissionForm
+              walletBalance={walletBalance}
+              servicePrice={servicePrice}
+              isServiceActive={isServiceActive}
+              onSuccess={handleSuccess}
+            />
+          </div>
+
+          {/* Info Sidebar (Right 1 col) matching Tax ID */}
+          <div className="space-y-6">
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24 space-y-5">
+              <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground">
+                Why you need IPE Clearance
+              </h3>
+              
+              <ul className="space-y-4">
+                <li className="flex gap-3">
+                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
+                    1
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">Clear In-Processing Errors</h4>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                      Resolves biometric deduplication holds (Error 50) and data conflicts flagged during initial enrollment.
+                    </p>
+                  </div>
+                </li>
+
+                <li className="flex gap-3">
+                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">Unblock NIN Release</h4>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                      Releases your pending 11-digit National Identification Number so official slips can be printed.
+                    </p>
+                  </div>
+                </li>
+
+                <li className="flex gap-3">
+                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">Official Channel Processing</h4>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                      Transmitted directly to NIMC gateway with ~24 hours turnaround and instant email notification.
+                    </p>
+                  </div>
+                </li>
+              </ul>
+
+              <div className="p-3.5 rounded-xl bg-secondary/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
+                <strong className="text-foreground">Need help?</strong> If your Tracking ID has been in processing beyond 24 hours, reach out to our team using the live support widget.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+
     </div>
   );
 }

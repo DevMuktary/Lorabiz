@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { 
   ArrowRight, 
@@ -185,6 +186,11 @@ export default function DashboardPage() {
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Partner Announcement Modal shows on refresh UNLESS user is returning from a payment
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState<boolean>(() => {
@@ -354,12 +360,12 @@ export default function DashboardPage() {
     <div className="space-y-6 pb-12">
 
       {/* ========================================================================= */}
-      {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP                       */}
+      {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP (FULL-VIEWPORT BACKDROP) */}
       {/* ========================================================================= */}
-      {isPartnerModalOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      {mounted && isPartnerModalOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 min-h-screen w-screen bg-background/80 dark:bg-background/85 backdrop-blur-md z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div 
-            className="fixed inset-0" 
+            className="fixed inset-0 min-h-screen w-screen" 
             onClick={() => setIsPartnerModalOpen(false)} 
           />
 
@@ -435,7 +441,8 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ========================================================================= */}

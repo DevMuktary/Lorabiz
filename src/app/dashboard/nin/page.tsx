@@ -32,8 +32,8 @@ const NIN_SERVICES: NinServiceCard[] = [
   },
   {
     title: "IPE Clearance",
-    category: "NIMC Exception Resolution",
-    description: "Resolve Initial Processing Exceptions (IPE) on enrollment records or retrieve your NIN record using your Tracking ID.",
+    category: "Initial Processing Exception",
+    description: "Clear Initial Processing Exceptions (IPE) / In-Processing Errors on enrollment records to unblock and retrieve your pending NIN.",
     turnaround: "~24 Hours",
     logo: "/nimc.png",
     href: "/dashboard/nin/ipe",
