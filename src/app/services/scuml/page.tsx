@@ -100,14 +100,16 @@ export default function SCUMLRegistrationPage() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300">
+    <div className="relative min-h-screen bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300 overflow-x-clip">
       <Navbar />
 
       <main className="pt-24 pb-20">
         
         <section className="relative pt-20 pb-16 px-6">
-          {/* PINK/RED BRAND GLOW */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
+          {/* PINK/RED BRAND GLOW (safely contained to eliminate horizontal scrollbar/overflow) */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
+          </div>
           
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <div className="w-full lg:w-[55%] z-10">
