@@ -1,12 +1,12 @@
-// src/app/dashboard/tax-id/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { 
   Info, CheckCircle, X, WarningCircle, ArrowRight, ListDashes, 
-  ArrowLeft, Tag, IdentificationCard, Buildings, CaretDown, CaretUp 
+  ArrowLeft, Tag, IdentificationCard, Buildings, CaretDown, CaretUp, Wallet, SmileySad 
 } from "@phosphor-icons/react";
 
 type TaxIdType = "INDIVIDUAL" | "CORPORATE";
@@ -25,6 +25,8 @@ export default function TaxIdPage() {
   
   const [prices, setPrices] = useState({ individual: 0, corporate: 0 });
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [mounted, setMounted] = useState(false);
   
   const [showIntroModal, setShowIntroModal] = useState(true);
 
@@ -46,23 +48,33 @@ export default function TaxIdPage() {
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchPricing = async () => {
+    setMounted(true);
+    const fetchPricingAndWallet = async () => {
       try {
-        const res = await fetch("/api/pricing");
-        const data = await res.json();
-        if (data.success) {
+        const [priceRes, walletRes] = await Promise.all([
+          fetch("/api/pricing"),
+          fetch("/api/user/wallet")
+        ]);
+        const priceData = await priceRes.json();
+        if (priceData.success) {
           setPrices({
-            individual: data.data.TAX_ID_INDIVIDUAL || 500,
-            corporate: data.data.TAX_ID_CORPORATE || 1000
+            individual: priceData.data.TAX_ID_INDIVIDUAL || 500,
+            corporate: priceData.data.TAX_ID_CORPORATE || 1000
           });
         }
+        if (walletRes.ok) {
+          const walletData = await walletRes.json();
+          if (walletData.balance !== undefined) {
+            setWalletBalance(walletData.balance);
+          }
+        }
       } catch (err) {
-        console.error("Failed to fetch price");
+        console.error("Failed to fetch initial data", err);
       } finally {
         setIsLoadingPrice(false);
       }
     };
-    fetchPricing();
+    fetchPricingAndWallet();
   }, []);
 
   // Close custom dropdown when clicking outside
@@ -77,19 +89,35 @@ export default function TaxIdPage() {
   }, []);
 
   const currentPrice = reqType === "INDIVIDUAL" ? prices.individual : prices.corporate;
+  const isInsufficientBalance = walletBalance < currentPrice;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
-    
-    if (!consentChecked) return;
-    if (reqType === "INDIVIDUAL" && nin.length !== 11) {
-      setErrorMsg("NIN must be exactly 11 digits.");
+
+    if (!consentChecked) {
+      setErrorMsg("You must accept the terms to proceed.");
       return;
     }
-    if (reqType === "CORPORATE" && !corpCategory) {
-      setErrorMsg("Please select your registration category.");
-      return;
+
+    if (reqType === "INDIVIDUAL") {
+      if (!nin || nin.length !== 11) {
+        setErrorMsg("Valid 11-digit NIN is required.");
+        return;
+      }
+      if (!firstName || !lastName || !dob) {
+        setErrorMsg("First name, Last name and Date of birth are required.");
+        return;
+      }
+    } else {
+      if (!cacNumber) {
+        setErrorMsg("CAC registration number is required.");
+        return;
+      }
+      if (!corpCategory) {
+        setErrorMsg("Please select a corporate category.");
+        return;
+      }
     }
 
     setIsConfirmModalOpen(true);
@@ -100,33 +128,41 @@ export default function TaxIdPage() {
     setErrorMsg("");
 
     try {
+      const payload: any = { type: reqType };
+      if (reqType === "INDIVIDUAL") {
+        payload.nin = nin.trim();
+        payload.firstName = firstName.trim();
+        payload.lastName = lastName.trim();
+        payload.dob = dob;
+      } else {
+        payload.cacNumber = cacNumber.trim();
+        payload.category = corpCategory;
+      }
+
       const res = await fetch("/api/tax-id", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: reqType,
-          individualData: reqType === "INDIVIDUAL" ? { nin, firstName, lastName, dob } : null,
-          corporateData: reqType === "CORPORATE" ? { cacNumber, category: corpCategory } : null,
-          price: currentPrice
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Something went wrong.");
 
-      setIsConfirmModalOpen(false);
-      window.location.href = "/dashboard/tax-id/history?success=true";
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to process request");
+      }
 
+      // Success -> Redirect to history
+      window.location.href = "/dashboard/tax-id/history";
     } catch (err: any) {
-      setErrorMsg(err.message);
-    } finally {
+      setErrorMsg(err.message || "An unexpected error occurred. Please try again.");
       setIsSubmitting(false);
     }
   };
 
   if (!isActive) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="p-8 text-center bg-card border border-border rounded-2xl max-w-xl mx-auto mt-12 space-y-4">
+        <WarningCircle weight="duotone" className="h-16 w-16 text-yellow-500 mx-auto" />
         <h2 className="text-2xl font-black text-foreground">Service Temporarily Unavailable</h2>
       </div>
     );
@@ -136,9 +172,9 @@ export default function TaxIdPage() {
     <div className="space-y-6 max-w-6xl mx-auto relative">
       
       {/* Intro Modal (Processing Timeline) */}
-      {showIntroModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500">
+      {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-6 fade-in duration-300">
             <div className="flex items-center gap-4 mb-4">
               <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
                 <Info weight="fill" className="h-6 w-6 text-blue-500" />
@@ -158,12 +194,13 @@ export default function TaxIdPage() {
             <button 
               type="button"
               onClick={() => setShowIntroModal(false)}
-              className="mt-8 w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity"
+              className="mt-8 w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
             >
               I Understand
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit">
@@ -190,7 +227,7 @@ export default function TaxIdPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
+          <form onSubmit={handleOpenConfirm} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
             
             {/* Toggle Tabs */}
             <div className="space-y-4">
@@ -201,14 +238,16 @@ export default function TaxIdPage() {
                   onClick={() => setReqType("INDIVIDUAL")}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${reqType === "INDIVIDUAL" ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  <IdentificationCard weight={reqType === "INDIVIDUAL" ? "fill" : "regular"} className="h-5 w-5" /> Individual
+                  <IdentificationCard weight="bold" className="h-4 w-4" />
+                  Individual (NIN)
                 </button>
                 <button
                   type="button"
                   onClick={() => setReqType("CORPORATE")}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${reqType === "CORPORATE" ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  <Buildings weight={reqType === "CORPORATE" ? "fill" : "regular"} className="h-5 w-5" /> Corporate
+                  <Buildings weight="bold" className="h-4 w-4" />
+                  Non-Individual (CAC)
                 </button>
               </div>
 
@@ -294,7 +333,7 @@ export default function TaxIdPage() {
                 </span>
               </label>
 
-              <button type="submit" disabled={!consentChecked || isLoadingPrice} className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md">
+              <button type="submit" disabled={!consentChecked || isLoadingPrice} className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md cursor-pointer">
                 {isLoadingPrice ? "Loading pricing..." : `Submit Application & Pay ₦${currentPrice.toLocaleString()}`}
               </button>
             </div>
@@ -324,14 +363,14 @@ export default function TaxIdPage() {
 
       </div>
 
-      {isConfirmModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
+      {mounted && isConfirmModalOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-6 duration-300">
             <div className="p-6 md:p-8 space-y-6">
               
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black">Confirm Request</h3>
-                <button onClick={() => setIsConfirmModalOpen(false)} disabled={isSubmitting} className="p-1 hover:bg-secondary rounded-full transition-colors disabled:opacity-50">
+                <button onClick={() => setIsConfirmModalOpen(false)} disabled={isSubmitting} className="p-1 hover:bg-secondary rounded-full transition-colors disabled:opacity-50 cursor-pointer">
                   <X weight="bold" className="h-5 w-5" />
                 </button>
               </div>
@@ -371,17 +410,67 @@ export default function TaxIdPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setIsConfirmModalOpen(false)} disabled={isSubmitting} className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-50">
-                  Cancel
-                </button>
-                <button onClick={confirmAndPay} disabled={isSubmitting} className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                  {isSubmitting ? "Processing..." : <><CheckCircle weight="bold" className="h-4 w-4" /> Pay & Submit</>}
-                </button>
-              </div>
+              {/* Insufficient balance warning inside modal */}
+              {isInsufficientBalance ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                      <SmileySad weight="fill" className="h-5 w-5 shrink-0" />
+                      <span>Insufficient Wallet Balance</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Your balance is <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong>, but this request requires <strong className="text-foreground">₦{currentPrice.toLocaleString()}</strong>.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button 
+                      type="button"
+                      onClick={() => setIsConfirmModalOpen(false)} 
+                      className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <Link
+                      href="/dashboard"
+                      className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm text-center shadow-md cursor-pointer"
+                    >
+                      <Wallet weight="bold" className="h-4 w-4" /> Go to Dashboard
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex justify-between text-xs text-muted-foreground px-1">
+                    <span>Balance After Debit:</span>
+                    <span className="font-bold text-foreground">₦{(walletBalance - currentPrice).toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button 
+                      type="button"
+                      onClick={() => setIsConfirmModalOpen(false)} 
+                      disabled={isSubmitting} 
+                      className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-50 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={confirmAndPay} 
+                      disabled={isSubmitting} 
+                      className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
+                    >
+                      {isSubmitting ? "Processing..." : <><CheckCircle weight="bold" className="h-4 w-4" /> Pay & Submit</>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

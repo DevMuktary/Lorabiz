@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -22,9 +23,11 @@ export default function IpeClearancePage() {
   const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showIntroModal, setShowIntroModal] = useState<boolean>(true);
+  const [mounted, setMounted] = useState<boolean>(false);
   const [submittedResult, setSubmittedResult] = useState<{ reference: string; trackingId: string } | null>(null);
 
   useEffect(() => {
+    setMounted(true);
     fetchInitialData();
   }, []);
 
@@ -69,42 +72,33 @@ export default function IpeClearancePage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto relative pb-12 animate-in fade-in duration-200">
       
-      {/* Intro Modal (Processing Timeline & IPE Explanation) */}
-      {showIntroModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500">
+      {/* Intro Modal (Processing Timeline) */}
+      {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-6 fade-in duration-300">
             <div className="flex items-center gap-4 mb-4">
               <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
                 <Info weight="fill" className="h-6 w-6 text-blue-500" />
               </div>
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-500">NIMC Clearance Guidance</span>
-                <h2 className="text-xl font-black text-foreground">Processing Timeline</h2>
-              </div>
+              <h2 className="text-xl font-black text-foreground">Processing Timeline</h2>
             </div>
             
-            <div className="space-y-3.5 text-sm text-muted-foreground leading-relaxed">
+            <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
               <p>
-                An <strong className="text-foreground">In-Processing Error (IPE)</strong> is a NIMC status flag that occurs when an applicant's National Identification Number (NIN) registration or Tracking ID is delayed, blocked, or fails to generate because of data conflicts or deduplication holds in the central database.
-              </p>
-              <div className="p-3.5 rounded-2xl bg-secondary/60 border border-border text-xs text-foreground font-medium flex items-center gap-2.5">
-                <Clock weight="bold" className="h-5 w-5 text-primary shrink-0" />
-                <span>This service will be processed within <strong>~24 hours</strong>. Please ensure the Tracking ID you are submitting actually has an IPE issue.</span>
-              </div>
-              <p className="text-xs">
-                Once cleared by the NIMC gateway, your 11-digit NIN record is released and can immediately be verified or printed as an official slip.
+                This service will be processed within <strong className="text-foreground">~24 hours</strong>. Please ensure the Tracking ID you are submitting actually has an In-Processing Error issue.
               </p>
             </div>
 
             <button 
               type="button"
               onClick={() => setShowIntroModal(false)}
-              className="mt-6 w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity cursor-pointer shadow-md"
+              className="mt-8 w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity cursor-pointer shadow-md"
             >
               I Understand
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Back Breadcrumb */}

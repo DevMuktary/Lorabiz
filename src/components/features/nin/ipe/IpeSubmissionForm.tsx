@@ -2,17 +2,12 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { 
   Tag, 
-  Clock, 
   Key, 
   CheckCircle, 
   WarningCircle, 
-  ArrowRight, 
-  Wallet, 
-  SmileySad,
-  ShieldCheck
+  ShieldCheck 
 } from "@phosphor-icons/react";
 import { IpeConfirmationModal } from "./IpeConfirmationModal";
 
@@ -37,8 +32,7 @@ export function IpeSubmissionForm({
 
   const sanitizedTrackingId = trackingId.trim().toUpperCase();
   const isValidTrackingId = sanitizedTrackingId.length >= 8 && sanitizedTrackingId.length <= 30;
-  const isBalanceSufficient = walletBalance >= servicePrice;
-  const canSubmit = isValidTrackingId && attestationsAccepted && isServiceActive && isBalanceSufficient;
+  const canSubmit = isValidTrackingId && attestationsAccepted && isServiceActive;
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,13 +45,6 @@ export function IpeSubmissionForm({
 
     if (!attestationsAccepted) {
       setErrorMessage("Please check the authorization box to proceed.");
-      return;
-    }
-
-    if (!isBalanceSufficient) {
-      setErrorMessage(
-        `Insufficient wallet balance. You need ₦${servicePrice.toLocaleString()} to submit this request.`
-      );
       return;
     }
 
@@ -105,31 +92,12 @@ export function IpeSubmissionForm({
       
       <form onSubmit={handleFormSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
         
-        {/* Header Badges & Pricing */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-foreground">
-              Clearance Application
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Submit your NIMC enrollment Tracking ID for In-Processing Error resolution.
-            </p>
-          </div>
-
-          <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-1.5 rounded-xl w-fit">
-            <Tag weight="fill" className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Processing Fee: ₦{servicePrice.toLocaleString()}
-            </span>
-          </div>
-        </div>
-
-        {/* Turnaround Notice */}
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-700 dark:text-amber-300 flex items-start gap-3">
-          <Clock weight="fill" className="h-5 w-5 shrink-0 mt-0.5 text-amber-500" />
-          <p className="text-xs sm:text-sm leading-relaxed font-medium">
-            This service will be processed within <strong>~24 hours</strong>. Please ensure the Tracking ID you are submitting actually has an IPE issue.
-          </p>
+        {/* Processing Fee Tag Badge */}
+        <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit">
+          <Tag weight="fill" className="h-4 w-4" />
+          <span className="text-xs font-bold uppercase tracking-wider">
+            Processing Fee: ₦{servicePrice.toLocaleString()}
+          </span>
         </div>
 
         {/* Error Alert Box */}
@@ -145,7 +113,7 @@ export function IpeSubmissionForm({
           <label htmlFor="trackingId" className="text-sm font-bold text-foreground flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <Key weight="bold" className="h-4 w-4 text-primary" />
-              NIMC Tracking ID
+              National Identity Number (NIMC) Tracking ID
             </span>
             <span className="text-xs font-mono font-normal text-muted-foreground">
               {sanitizedTrackingId.length} chars
@@ -188,39 +156,6 @@ export function IpeSubmissionForm({
             I confirm that I am the applicant or a designated agent authorized to request IPE clearance for this Tracking ID.
           </span>
         </label>
-
-        {/* Insufficient Wallet Balance Custom Card (With Appealing Crying Icon & Direct Dashboard Link) */}
-        {!isBalanceSufficient && (
-          <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3 animate-in fade-in duration-300">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <SmileySad weight="duotone" className="h-6 w-6 animate-pulse text-amber-500" />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
-                  <span>Insufficient Wallet Balance</span>
-                  <span className="text-base">🥺</span>
-                </h4>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Available: <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong> • Required: <strong className="text-foreground">₦{servicePrice.toLocaleString()}</strong>
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              You need at least <strong className="text-foreground">₦{servicePrice.toLocaleString()}</strong> in your wallet to process this IPE clearance. Please head to your dashboard to fund your wallet.
-            </p>
-
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:opacity-90 transition-all cursor-pointer"
-            >
-              <Wallet weight="bold" className="h-4 w-4" />
-              <span>Go to Dashboard / Fund Wallet</span>
-              <ArrowRight weight="bold" className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        )}
 
         {/* Action Button */}
         <div className="pt-2">

@@ -1,7 +1,8 @@
 // src/components/features/nin/ipe/IpeDetailsModal.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { 
   X, 
@@ -55,8 +56,13 @@ export function IpeDetailsModal({
   const [copied, setCopied] = useState(false);
   const [isMasked, setIsMasked] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen || !request) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !request || !mounted || typeof document === "undefined") return null;
 
   const handleCopyNin = (nin: string) => {
     navigator.clipboard.writeText(nin);
@@ -91,12 +97,12 @@ export function IpeDetailsModal({
 
   const displayedNin = request.resolvedNin
     ? isMasked
-      ? `${request.resolvedNin.slice(0, 3)}*****${request.resolvedNin.slice(-3)}`
+    ? `${request.resolvedNin.slice(0, 3)}*****${request.resolvedNin.slice(-3)}`
       : request.resolvedNin
     : "Pending Release";
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-card border border-border w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
         
         {/* Header */}
@@ -342,6 +348,7 @@ export function IpeDetailsModal({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

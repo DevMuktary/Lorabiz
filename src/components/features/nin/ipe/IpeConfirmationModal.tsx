@@ -1,15 +1,18 @@
 // src/components/features/nin/ipe/IpeConfirmationModal.tsx
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import Link from "next/link";
 import { 
   X, 
   CheckCircle, 
   Clock, 
-  Key, 
-  WarningCircle, 
   ShieldCheck, 
-  Spinner 
+  Spinner,
+  SmileySad,
+  Wallet,
+  ArrowRight
 } from "@phosphor-icons/react";
 
 interface IpeConfirmationModalProps {
@@ -31,14 +34,20 @@ export function IpeConfirmationModal({
   price,
   walletBalance,
 }: IpeConfirmationModalProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   const remainingBalance = walletBalance - price;
   const isInsufficient = walletBalance < price;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+  return createPortal(
+    <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-6 duration-300">
         
         <div className="p-6 md:p-8 space-y-6">
           {/* Header */}
@@ -90,55 +99,84 @@ export function IpeConfirmationModal({
                 ₦{price.toLocaleString()}
               </span>
             </div>
+          </div>
 
-            <div className="flex justify-between text-[11px] pt-1 text-muted-foreground">
-              <span>Balance After Debit</span>
-              <span className={isInsufficient ? "text-destructive font-bold" : "font-medium"}>
-                ₦{remainingBalance.toLocaleString()}
-              </span>
+          {/* If insufficient balance: display crying/sad alert with link to /dashboard */}
+          {isInsufficient ? (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <SmileySad weight="fill" className="h-5 w-5 shrink-0 text-amber-500" />
+                  <span>Insufficient Wallet Balance</span>
+                  <span className="text-base">🥺</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Your balance is <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong>, but this clearance requires <strong className="text-foreground">₦{price.toLocaleString()}</strong>.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <Link
+                  href="/dashboard"
+                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm text-center shadow-md cursor-pointer"
+                >
+                  <Wallet weight="bold" className="h-4 w-4" />
+                  <span>Go to Dashboard</span>
+                  <ArrowRight weight="bold" className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-between text-xs text-muted-foreground px-1">
+                <span>Balance After Debit:</span>
+                <span className="font-bold text-foreground">₦{remainingBalance.toLocaleString()}</span>
+              </div>
 
-          {/* Notice inside modal */}
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-[11px] text-amber-700 dark:text-amber-300 flex items-start gap-2">
-            <WarningCircle weight="bold" className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
-            <span>Please ensure the Tracking ID actually has an active In-Processing Error (IPE). Results will be delivered within ~24 hours.</span>
-          </div>
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isLoading}
+                  className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
 
-          {/* Actions matching Tax ID modal */}
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isLoading}
-              className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-50 cursor-pointer"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={isLoading || isInsufficient}
-              className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
-            >
-              {isLoading ? (
-                <>
-                  <Spinner weight="bold" className="h-4 w-4 animate-spin" />
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle weight="bold" className="h-4 w-4" />
-                  <span>Pay & Submit</span>
-                </>
-              )}
-            </button>
-          </div>
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  disabled={isLoading}
+                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
+                >
+                  {isLoading ? (
+                    <>
+                      <Spinner weight="bold" className="h-4 w-4 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle weight="bold" className="h-4 w-4" />
+                      <span>Pay & Submit</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
