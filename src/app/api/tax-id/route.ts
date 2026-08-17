@@ -10,10 +10,14 @@ import { sendTaxIdSubmittedEmail } from "@/lib/email";
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.email) {
+      return NextResponse.json({ success: false, error: "Unauthorized access. Please log in." }, { status: 401 });
+    }
 
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ success: false, error: "User account not found." }, { status: 404 });
+    }
 
     const history = await prisma.taxIdRequest.findMany({
       where: { userId: user.id },
@@ -23,56 +27,96 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, history });
   } catch (error) {
     console.error("Tax ID History Fetch Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Failed to fetch Tax ID application history." }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.email) {
+      return NextResponse.json({ success: false, error: "Unauthorized access. Please log in." }, { status: 401 });
+    }
 
     const data = await req.json();
     const { type, individualData, corporateData, price } = data;
+
+    if (!type || (type !== "INDIVIDUAL" && type !== "CORPORATE")) {
+      return NextResponse.json({ success: false, error: "Invalid request type specified." }, { status: 400 });
+    }
 
     const user = await prisma.user.findUnique({ 
       where: { email: session.user.email },
       include: { wallet: true }
     });
 
-    if (!user || !user.wallet) return NextResponse.json({ error: "User or wallet not found" }, { status: 404 });
+    if (!user || !user.wallet) {
+      return NextResponse.json({ success: false, error: "User account or wallet not found." }, { status: 404 });
+    }
 
-    // Check service killswitch
+    // Check service killswitch & get authoritative price
     const targetServiceKey = type === "CORPORATE" ? "TAX_ID_CORPORATE" : "TAX_ID_INDIVIDUAL";
     const taxIdPricing = await prisma.servicePricing.findUnique({
       where: { serviceKey: targetServiceKey }
     });
+
     if (taxIdPricing && !taxIdPricing.isActive) {
       return NextResponse.json({ 
+        success: false,
         error: taxIdPricing.maintenanceMsg || "Tax ID processing is currently undergoing maintenance." 
       }, { status: 400 });
     }
 
-    if (Number(user.wallet.balance) < price) return NextResponse.json({ error: "Insufficient wallet balance." }, { status: 400 });
+    const defaultPrice = type === "CORPORATE" ? 1000 : 500;
+    const finalPrice = taxIdPricing ? Number(taxIdPricing.price) : (Number(price) || defaultPrice);
+
+    const userBalance = Number(user.wallet.balance);
+    if (userBalance < finalPrice) {
+      return NextResponse.json({ 
+        success: false, 
+        error: `Insufficient wallet balance. This service costs ₦${finalPrice.toLocaleString()} but your balance is ₦${userBalance.toLocaleString()}. Please fund your wallet to proceed.` 
+      }, { status: 400 });
+    }
+
+    // Input validation
+    if (type === "INDIVIDUAL") {
+      if (!individualData?.nin || !individualData?.firstName || !individualData?.lastName || !individualData?.dob) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Please fill in all required fields (NIN, First Name, Last Name, Date of Birth)." 
+        }, { status: 400 });
+      }
+    } else {
+      if (!corporateData?.cacNumber) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Please provide a valid CAC Registration Number (RC/BN)." 
+        }, { status: 400 });
+      }
+    }
 
     const transactionRef = `TIN-${generateNumericId(8)}`;
 
     const result = await prisma.$transaction(async (tx) => {
       const updatedWallet = await tx.wallet.update({
         where: { id: user.wallet!.id },
-        data: { balance: { decrement: price } }
+        data: { balance: { decrement: finalPrice } }
       });
+
+      const updatedBalance = Number(updatedWallet.balance);
+      const balanceBeforeUpdate = updatedBalance + finalPrice;
 
       await tx.transaction.create({
         data: {
           walletId: user.wallet!.id,
-          amount: price,
-          balanceBefore: user.wallet!.balance,
-          balanceAfter: updatedWallet.balance,
+          amount: finalPrice,
+          balanceBefore: balanceBeforeUpdate,
+          balanceAfter: updatedBalance,
           type: "DEBIT",
           status: "SUCCESS",
           reference: transactionRef,
-          description: `Tax ID Generation (${type})`
+          serviceCategory: "TAX_ID",
+          description: `Tax ID Generation (${type === "CORPORATE" ? "Corporate" : "Individual"})`
         }
       });
 
@@ -80,13 +124,13 @@ export async function POST(req: Request) {
         data: {
           userId: user.id,
           type,
-          nin: individualData?.nin,
-          firstName: individualData?.firstName,
-          lastName: individualData?.lastName,
-          dob: individualData?.dob,
-          cacNumber: corporateData?.cacNumber,
-          corporateCategory: corporateData?.category,
-          amountPaid: price,
+          nin: individualData?.nin || null,
+          firstName: individualData?.firstName || null,
+          lastName: individualData?.lastName || null,
+          dob: individualData?.dob || null,
+          cacNumber: corporateData?.cacNumber || null,
+          corporateCategory: corporateData?.category || null,
+          amountPaid: finalPrice,
           transactionRef
         }
       });
@@ -108,8 +152,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: result });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Tax ID Submission Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      error: error?.message || "An unexpected error occurred while processing your request." 
+    }, { status: 500 });
   }
 }

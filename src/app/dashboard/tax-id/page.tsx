@@ -163,10 +163,10 @@ export default function TaxIdPage() {
         body: JSON.stringify(payload)
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || data.message || "Failed to process request");
+        throw new Error(data.error || data.message || "Failed to process request. Please check your details and try again.");
       }
 
       // Success -> Redirect to history
@@ -437,6 +437,13 @@ export default function TaxIdPage() {
                   <span className="font-black text-primary text-xl leading-none">₦{currentPrice.toLocaleString()}</span>
                 </div>
               </div>
+
+              {errorMsg && !isInsufficientBalance && (
+                <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex items-center gap-2.5 text-xs font-semibold">
+                  <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
 
               {/* Insufficient balance warning inside modal */}
               {isInsufficientBalance ? (
