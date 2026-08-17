@@ -107,7 +107,7 @@ async function handleSync(req: NextRequest) {
 
           completedCount++;
         } else if (parsed.normalizedStatus === "FAILED") {
-          const failureReason = parsed.message || "Exception resolution rejected by provider.";
+          const failureReason = parsed.message || "Clearance rejected by provider.";
           const refundAmount = Number(item.amountCharged);
 
           await prisma.$transaction(async (tx) => {

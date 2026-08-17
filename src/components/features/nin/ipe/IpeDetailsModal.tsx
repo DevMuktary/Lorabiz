@@ -162,7 +162,7 @@ export function IpeDetailsModal({
               <div className="space-y-1 text-xs">
                 <span className="font-bold block">Clearance In Processing</span>
                 <p className="leading-relaxed">
-                  This request is actively being processed by the NIMC exception gateway. Processing typically completes within ~24 hours. You will receive an automated email notification as soon as the result is ready.
+                  This request is actively being processed by the NIMC clearance gateway. Processing typically completes within ~24 hours. You will receive an automated email notification as soon as the result is ready.
                 </p>
               </div>
             </div>
@@ -172,9 +172,9 @@ export function IpeDetailsModal({
             <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-3 text-emerald-700 dark:text-emerald-300">
               <CheckCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5 text-emerald-500" />
               <div className="space-y-1 text-xs">
-                <span className="font-bold block">Exception Resolved Successfully</span>
+                <span className="font-bold block">In-Processing Error Resolved Successfully</span>
                 <p className="leading-relaxed">
-                  The initial processing exception for Tracking ID <strong>{request.trackingId}</strong> has been cleared, and your National Identification Number (NIN) has been released.
+                  The In-Processing Error for Tracking ID <strong>{request.trackingId}</strong> has been cleared, and your National Identification Number (NIN) has been released.
                 </p>
               </div>
             </div>
@@ -186,7 +186,7 @@ export function IpeDetailsModal({
               <div className="space-y-1 text-xs">
                 <span className="font-bold block">Request Unsuccessful</span>
                 <p className="leading-relaxed">
-                  {request.failureReason || request.apiMessage || "The exception clearance could not be completed for this Tracking ID. A full wallet refund has been processed."}
+                  {request.failureReason || request.apiMessage || "The clearance could not be completed for this Tracking ID. A full wallet refund has been processed."}
                 </p>
               </div>
             </div>

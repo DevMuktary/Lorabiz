@@ -32,8 +32,8 @@ const NIN_SERVICES: NinServiceCard[] = [
   },
   {
     title: "IPE Clearance",
-    category: "Initial Processing Exception",
-    description: "Clear Initial Processing Exceptions (IPE) / In-Processing Errors on enrollment records to unblock and retrieve your pending NIN.",
+    category: "In-Processing Error",
+    description: "Clear In-Processing Errors (IPE) on enrollment records to unblock and retrieve your pending NIN.",
     turnaround: "~24 Hours",
     logo: "/nimc.png",
     href: "/dashboard/nin/ipe",
@@ -138,7 +138,7 @@ export default function NinHubPage() {
               NIN Identity Services
             </h1>
             <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-              Verify identity slips, resolve enrollment exceptions, and validate NIMC records.
+              Verify identity slips, resolve In-Processing Errors, and validate NIMC records.
             </p>
           </div>
         </div>

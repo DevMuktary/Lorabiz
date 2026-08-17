@@ -105,7 +105,7 @@ export default function IpeHistoryPage() {
           <div>
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
               <ShieldCheck weight="bold" className="h-3 w-3" />
-              NIMC Exception Gateway
+              NIMC Error Clearance Gateway
             </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">IPE History & Status</h1>
             <p className="text-muted-foreground text-sm">

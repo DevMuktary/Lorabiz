@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
 
     // If status has transitioned to FAILED
     if (parsed.normalizedStatus === "FAILED") {
-      const failureReason = parsed.message || "Exception resolution rejected or failed at provider.";
+      const failureReason = parsed.message || "Clearance rejected or failed at provider.";
       const refundAmount = Number(ipeRequest.amountCharged);
 
       const updated = await prisma.$transaction(async (tx) => {

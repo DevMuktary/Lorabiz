@@ -85,7 +85,7 @@ export default function IpeClearancePage() {
             
             <div className="space-y-3.5 text-sm text-muted-foreground leading-relaxed">
               <p>
-                An <strong className="text-foreground">Initial Processing Exception (IPE)</strong> — also known in NIMC systems as an <strong className="text-foreground">In-Processing Error</strong> — occurs when biometric deduplication (e.g. fingerprint conflict) or validation holds occur during enrollment.
+                An <strong className="text-foreground">In-Processing Error (IPE)</strong> is a NIMC status flag that occurs when an applicant's National Identification Number (NIN) registration or Tracking ID is delayed, blocked, or fails to generate because of data conflicts or deduplication holds in the central database.
               </p>
               <div className="p-3.5 rounded-2xl bg-secondary/60 border border-border text-xs text-foreground font-medium flex items-center gap-2.5">
                 <Clock weight="bold" className="h-5 w-5 text-primary shrink-0" />
@@ -135,7 +135,7 @@ export default function IpeClearancePage() {
             </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">IPE Clearance</h1>
             <p className="text-muted-foreground text-sm">
-              Clear Initial Processing Exceptions (IPE) / In-Processing Errors on enrollment records.
+              Clear In-Processing Errors (IPE) on enrollment records to unblock your NIN.
             </p>
           </div>
         </div>
@@ -185,7 +185,7 @@ export default function IpeClearancePage() {
           </div>
 
           <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-            You will receive an automated email notification as soon as the exception is cleared. You can track real-time progress on your History page.
+            You will receive an automated email notification as soon as the error is cleared. You can track real-time progress on your History page.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">

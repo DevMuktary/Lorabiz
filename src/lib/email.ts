@@ -598,13 +598,13 @@ export async function sendNinIpeCompletedEmail({
   to, name, trackingId, reference
 }: { to: string; name: string; trackingId: string; reference: string; }) {
   const subject = `Your IPE Clearance Request is Complete`;
-  const previewText = `The initial processing exception for Tracking ID ${trackingId} has been resolved.`;
+  const previewText = `The In-Processing Error for Tracking ID ${trackingId} has been resolved.`;
 
   const content = `
     <h2 style="color: #047857; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">IPE Clearance Completed</h2>
     <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
       Hello <strong>${name}</strong>,<br/>
-      Great news! Your NIMC IPE (Initial Processing Exception) clearance request has been successfully processed and resolved.
+      Great news! Your NIMC IPE (In-Processing Error) clearance request has been successfully processed and resolved.
     </p>
     <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">

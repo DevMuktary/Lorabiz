@@ -102,7 +102,7 @@ export function IpeConfirmationModal({
           {/* Notice inside modal */}
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-[11px] text-amber-700 dark:text-amber-300 flex items-start gap-2">
             <WarningCircle weight="bold" className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
-            <span>Please ensure the Tracking ID actually has an active IPE exception. Results will be delivered within ~24 hours.</span>
+            <span>Please ensure the Tracking ID actually has an active In-Processing Error (IPE). Results will be delivered within ~24 hours.</span>
           </div>
 
           {/* Actions matching Tax ID modal */}

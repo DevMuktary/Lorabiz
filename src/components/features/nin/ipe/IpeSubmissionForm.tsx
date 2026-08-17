@@ -112,7 +112,7 @@ export function IpeSubmissionForm({
               Clearance Application
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Submit your NIMC enrollment Tracking ID for exception resolution.
+              Submit your NIMC enrollment Tracking ID for In-Processing Error resolution.
             </p>
           </div>
 
