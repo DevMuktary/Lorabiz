@@ -15,10 +15,11 @@ async function main() {
     { serviceKey: "SCUML", title: "SCUML Certificate Registration", price: 320000.00 },
     { serviceKey: "TAX_ID_INDIVIDUAL", title: "Individual Tax ID (TIN)", price: 500.00 },
     { serviceKey: "TAX_ID_CORPORATE", title: "Corporate Tax ID (TIN)", price: 1000.00 },
-    // 🚨 NEW: NIN Slip Prices moved here!
+    // 🚨 NEW: NIN Slip & Identity Service Prices moved here!
     { serviceKey: "NIN_REGULAR", title: "Regular Official Slip", price: 500.00 },
     { serviceKey: "NIN_STANDARD", title: "Standard Biometric Slip", price: 700.00 },
-    { serviceKey: "NIN_PREMIUM", title: "Premium Card Layout", price: 1000.00 }
+    { serviceKey: "NIN_PREMIUM", title: "Premium Card Layout", price: 1000.00 },
+    { serviceKey: "NIN_IPE_CLEARANCE", title: "IPE Clearance (Exception Resolution)", price: 2500.00 }
   ]
 
   for (const p of prices) {

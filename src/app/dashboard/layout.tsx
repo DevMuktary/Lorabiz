@@ -120,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (found) return found.name;
     }
     if (pathname.includes("/dashboard/cac")) return "CAC Services";
-    if (pathname.includes("/dashboard/nin") || pathname.includes("/dashboard/tools/nin-slip")) return "NIN Services";
+    if (pathname.includes("/dashboard/nin")) return "NIN Services";
     if (pathname.includes("/dashboard/transactions")) return "Transactions";
     if (pathname.includes("/dashboard/scuml")) return "SCUML";
     if (pathname.includes("/dashboard/airtime")) return "Airtime";

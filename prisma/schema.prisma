@@ -124,6 +124,7 @@ model User {
   registrations    BusinessRegistration[]
   llcRegistrations LlcRegistration[]
   ninRequests      NinRequestLog[]
+  ninIpeRequests   NinIpeRequest[]
   scumlRequests    ScumlRegistration[]
   taxIdRequests    TaxIdRequest[]
   notifications    InAppNotification[]
@@ -334,6 +335,42 @@ model NinRequestLog {
   createdAt     DateTime @default(now())
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NinIpeStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model NinIpeRequest {
+  id            String       @id @default(cuid())
+  userId        String
+  trackingId    String
+  reference     String       @unique // Matches ledger transaction reference
+  externalReqId String?      // requestId returned by AgentHub
+  status        NinIpeStatus @default(PROCESSING)
+  
+  // Resolved details when completed
+  resolvedNin   String?      // 11-digit NIN
+  fullName      String?
+  dob           String?
+  gender        String?
+  photoUrl      String?
+  
+  apiMessage    String?
+  failureReason String?
+  amountCharged Decimal      @db.Decimal(10, 2)
+  apiResponse   Json?
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  completedAt   DateTime?
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([trackingId])
 }
 
 // ==========================================

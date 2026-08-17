@@ -58,6 +58,7 @@ This document serves as the persistent project memory for LoraBiz. It records th
   - `SCUML`
   - `TAX_ID_INDIVIDUAL`, `TAX_ID_CORPORATE`
   - `NIN_REGULAR`, `NIN_STANDARD`, `NIN_PREMIUM`
+  - `NIN_IPE_CLEARANCE` (NIMC Initial Processing Exception clearance)
 
 ### Referral Ledger System
 - `Referral`: Tracks the 12-month referral relationship.
@@ -70,6 +71,7 @@ This document serves as the persistent project memory for LoraBiz. It records th
 - `ScumlRegistration`: SCUML compliance application and certificates.
 - `TaxIdRequest`: Individual & Corporate Tax ID generation.
 - `NinRequestLog`: NIN query audit log (`ninMasked`, `slipType`, `amountCharged`, `status`, `reference`, `pdfUrl`).
+- `NinIpeRequest`: NIMC IPE exception clearance records (`trackingId`, `reference`, `externalReqId`, `status: PROCESSING | COMPLETED | FAILED`, `resolvedNin`, `fullName`, `dob`, `gender`, `photoUrl`, `amountCharged`, `apiResponse`).
 
 ---
 
@@ -79,6 +81,10 @@ This document serves as the persistent project memory for LoraBiz. It records th
 Protected by NextAuth middleware (requires `role === "USER"`):
 - `/dashboard`: Main Service Hub & Quick Actions Dock.
 - `/dashboard/cac`: CAC Hub (New incorporation, registered businesses, LLCs).
+- `/dashboard/nin`: NIMC Services Hub (NIN Slips, IPE Clearance).
+- `/dashboard/nin/slips`: NIN verification & slip downloads (Regular, Standard, Premium).
+- `/dashboard/nin/ipe`: IPE Clearance submission form (Tracking ID input, statutory attestation, wallet debit).
+- `/dashboard/nin/ipe/history`: Dedicated IPE Clearance history and real-time status tracker.
 - `/dashboard/scuml`: SCUML certificate application.
 - `/dashboard/tax-id`: Individual and Corporate TIN processing.
 - `/dashboard/airtime`: Airtime & data top-up gateway.
@@ -155,10 +161,9 @@ When a new service (e.g., IPE Clearance, NIN Personalization, NIN Validation) is
   - Components: `src/components/features/nin/slips/` (`NinResultModal.tsx`, `NinHistorySection.tsx`)
   - Backend API: `src/app/api/nin/slips/route.ts` (Generates slips via DataVerify API, uploads to Cloudinary, executes atomic wallet transactions and referral ledger payouts)
   - History API: `src/app/api/nin/slips/history/route.ts` (Fetches user-scoped 24-hour slip print logs)
-  - Legacy Redirections: `/dashboard/tools/nin-slip` redirects to `/dashboard/nin/slips`; `/api/tools/nin-slip` delegates to `/api/nin/slips`.
 
 ### Service Expansion Roadmap:
-1. ✅ **NIN Verification & Slips**: Fully operational under `/dashboard/nin/slips` with dynamic pricing (`NIN_REGULAR`, `NIN_STANDARD`, `NIN_PREMIUM`). Instant official PDF download.
+1. ✅ **NIN Verification & Slips**: Fully operational under `/dashboard/nin/slips` with dynamic pricing (`NIN_REGULAR`, `NIN_STANDARD`, `NIN_PREMIUM`). Instant official PDF download. All legacy `/tools/` routes and API proxies have been completely purged from the repository for a clean architecture.
 2. ⏳ **IPE Clearance**: Resolution of Initial Processing Exceptions (IPE) on enrollment records or retrieving/clearing NIN records using an enrollment Tracking ID (TAT: 1–24 Hours). Next in queue.
 3. ⏳ **NIN Validation**: Validating NIN records to reflect recent modifications (e.g. name update) or resolving records showing "No Record" / search issues (TAT: 1–24 Hours).
 4. ⏳ **NIN Personalization**: Submitting enrollment Tracking IDs to process, personalize, and retrieve NINs where registration was interrupted by network drops or pending completion (TAT: 1–24 Hours).
