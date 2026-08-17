@@ -9,11 +9,9 @@ import {
   CheckCircle, 
   Clock, 
   ShieldCheck, 
-  Loader2, 
-  ArrowRight,
-  Fingerprint,
-  Layers
-} from "lucide-react";
+  Spinner, 
+  ArrowRight
+} from "@phosphor-icons/react";
 
 interface ValidationConfirmationModalProps {
   isOpen: boolean;
@@ -46,7 +44,6 @@ export function ValidationConfirmationModal({
 
   const remainingBalance = walletBalance - price;
   const isInsufficient = walletBalance < price;
-  const maskedNin = nin.length >= 4 ? `*******${nin.slice(-4)}` : nin;
 
   return createPortal(
     <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200">
@@ -56,12 +53,12 @@ export function ValidationConfirmationModal({
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                <ShieldCheck className="h-5 w-5 text-primary" />
+              <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <ShieldCheck weight="bold" className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-foreground tracking-tight">Confirm Validation</h3>
-                <p className="text-xs text-muted-foreground">Verify details before wallet debit.</p>
+                <h3 className="text-lg font-black text-foreground">Confirm Validation</h3>
+                <p className="text-xs text-muted-foreground">Verify details before debit.</p>
               </div>
             </div>
 
@@ -71,37 +68,33 @@ export function ValidationConfirmationModal({
               disabled={isLoading}
               className="p-1 hover:bg-secondary rounded-full transition-colors disabled:opacity-50 text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              <X className="h-5 w-5" />
+              <X weight="bold" className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Breakdown Box */}
+          {/* Breakdown Box matching Tax ID & IPE */}
           <div className="bg-secondary/50 rounded-2xl p-4 space-y-2.5 border border-border text-xs sm:text-sm">
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-muted-foreground" /> Category
-              </span>
-              <span className="font-bold text-foreground text-right">{categoryLabel}</span>
+              <span className="text-muted-foreground">Category</span>
+              <span className="font-bold text-foreground">{categoryLabel}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground flex items-center gap-1.5">
-                <Fingerprint className="h-3.5 w-3.5 text-muted-foreground" /> NIN
-              </span>
+              <span className="text-muted-foreground">NIN</span>
               <span className="font-mono font-bold text-foreground tracking-wider bg-background px-2 py-0.5 rounded-lg border border-border">
                 {nin}
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-primary" /> Turnaround
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Clock weight="bold" className="h-3.5 w-3.5 text-primary" /> Turnaround
               </span>
               <span className="font-semibold text-foreground">24–48 Hours</span>
             </div>
 
             <div className="flex justify-between items-end border-t border-border pt-3 mt-3">
-              <span className="text-muted-foreground text-xs sm:text-sm">Validation Fee</span>
+              <span className="text-muted-foreground text-xs sm:text-sm">Total Cost</span>
               <span className="font-black text-primary text-xl leading-none">
                 ₦{price.toLocaleString()}
               </span>
@@ -117,7 +110,7 @@ export function ValidationConfirmationModal({
                   <span>Insufficient Wallet Balance</span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Your balance is <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong>, but this service requires <strong className="text-foreground">₦{price.toLocaleString()}</strong>.
+                  Your balance is <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong>, but this validation requires <strong className="text-foreground">₦{price.toLocaleString()}</strong>.
                 </p>
               </div>
 
@@ -135,7 +128,7 @@ export function ValidationConfirmationModal({
                   className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 text-sm text-center shadow-md cursor-pointer whitespace-nowrap"
                 >
                   <span>Go to Dashboard</span>
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight weight="bold" className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -164,12 +157,12 @@ export function ValidationConfirmationModal({
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Spinner weight="bold" className="h-4 w-4 animate-spin" />
                       <span>Processing...</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="h-4 w-4" />
+                      <CheckCircle weight="bold" className="h-4 w-4" />
                       <span>Pay & Submit</span>
                     </>
                   )}
