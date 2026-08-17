@@ -639,7 +639,7 @@ export async function sendNinIpeFailedEmail({
   const previewText = `Your IPE clearance request for Tracking ID ${trackingId} could not be completed.`;
 
   const content = `
-    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">IPE Clearance Request Unsuccessful</h2>
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">IPE Clearance Request Failed</h2>
     <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
       Hello <strong>${name}</strong>,<br/>
       Your IPE Clearance request for Tracking ID <strong>${trackingId}</strong> (Reference: <code style="font-family: monospace;">${reference}</code>) could not be resolved by the identity service provider.

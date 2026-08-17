@@ -33,7 +33,8 @@ export default function SettingsDashboard() {
   // Visually group the Global Services for a cleaner dashboard based on their serviceKey
   const cacGroup = allServices.filter(s => !s.serviceKey.includes("SCUML") && !s.serviceKey.includes("TAX_ID") && !s.serviceKey.startsWith("NIN"));
   const complianceGroup = allServices.filter(s => s.serviceKey.includes("SCUML") || s.serviceKey.includes("TAX_ID"));
-  const ninGroup = allServices.filter(s => s.serviceKey.startsWith("NIN"));
+  const ipeGroup = allServices.filter(s => s.serviceKey.includes("IPE"));
+  const ninGroup = allServices.filter(s => s.serviceKey.startsWith("NIN") && !s.serviceKey.includes("IPE"));
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300 pb-12">
@@ -90,12 +91,27 @@ export default function SettingsDashboard() {
             </section>
           )}
 
+          {/* NIMC IPE CLEARANCE SECTION */}
+          {ipeGroup.length > 0 && (
+            <section>
+              <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+                <Fingerprint size={20} className="text-teal-500 mr-2" />
+                <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">NIMC IPE Clearance</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                {ipeGroup.map(service => (
+                  <ServiceConfigCard key={service.id} service={service} />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* NIN SECTION (Now using the working uppercase global services!) */}
           {ninGroup.length > 0 && (
             <section>
               <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
                 <Fingerprint size={20} className="text-blue-500 mr-2" />
-                <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Identity Services (NIN API)</h2>
+                <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Identity Services (NIN Slips API)</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {ninGroup.map(service => (

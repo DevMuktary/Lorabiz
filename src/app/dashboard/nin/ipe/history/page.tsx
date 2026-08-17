@@ -66,7 +66,7 @@ export default function IpeHistoryPage() {
         if (data.request?.status === "COMPLETED") {
           setToastMessage(`Clearance Complete! NIN: ${data.request.resolvedNin || "Released"}`);
         } else if (data.request?.status === "FAILED") {
-          setToastMessage("Clearance request was unsuccessful. Refund processed.");
+          setToastMessage("Clearance request failed. Refund processed.");
         } else {
           setToastMessage(data.message || "Status checked: Still processing.");
         }

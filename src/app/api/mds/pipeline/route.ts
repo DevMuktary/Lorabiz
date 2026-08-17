@@ -26,6 +26,13 @@ export async function GET() {
       prisma.ninRequestLog.count({ where: { status: "FAILED" } }),
     ]);
 
+    // 2b. Fetch counts for IPE Clearance Requests
+    const [ipeProcessing, ipeCompleted, ipeFailed] = await Promise.all([
+      prisma.ninIpeRequest.count({ where: { status: "PROCESSING" } }),
+      prisma.ninIpeRequest.count({ where: { status: "COMPLETED" } }),
+      prisma.ninIpeRequest.count({ where: { status: "FAILED" } }),
+    ]);
+
     // 3. Fetch counts for SCUML
     const [scumlPending, scumlProcessing, scumlCompleted] = await Promise.all([
       prisma.scumlRegistration.count({ where: { status: "PENDING" } }),
@@ -62,6 +69,13 @@ export async function GET() {
       failed: ninFailed,
     };
 
+    const ipeMetrics = {
+      pending: ipeProcessing,
+      completed: ipeCompleted,
+      queried: 0,
+      failed: ipeFailed,
+    };
+
     const scumlMetrics = {
       pending: scumlPending + scumlProcessing, 
       completed: scumlCompleted,
@@ -85,10 +99,10 @@ export async function GET() {
 
     // Calculate Global Totals
     const globalMetrics = {
-      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending,
-      completed: cacMetrics.completed + ninMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
+      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending,
+      completed: cacMetrics.completed + ninMetrics.completed + ipeMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
       queried: cacMetrics.queried, 
-      failed: cacMetrics.failed + ninMetrics.failed,
+      failed: cacMetrics.failed + ninMetrics.failed + ipeMetrics.failed,
     };
 
     // Construct the structured response
@@ -123,12 +137,12 @@ export async function GET() {
           isAutomated: false
         },
         {
-          id: "utilities",
-          name: "Utility Vending",
-          description: "Automated Airtime & Data VTU via external API integration.",
-          metrics: utilityMetrics,
-          subCategories: ["Airtime Recharge", "Data Plans"],
-          href: "#", // Placeholder until you build the MDS view for Utilities
+          id: "ipe",
+          name: "NIMC IPE Clearance",
+          description: "Automated resolution gateway for In-Processing Errors on National Identity Number tracking IDs.",
+          metrics: ipeMetrics,
+          subCategories: ["In-Processing Error", "NIMC Tracking ID", "Automated Sync"],
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/ipe",
           isAutomated: true
         },
         {
@@ -138,6 +152,15 @@ export async function GET() {
           metrics: ninMetrics,
           subCategories: ["NIN Slips"],
           href: "/quadrox-lorabiz-team/mds/dashboard/orders/nin",
+          isAutomated: true
+        },
+        {
+          id: "utilities",
+          name: "Utility Vending",
+          description: "Automated Airtime & Data VTU via external API integration.",
+          metrics: utilityMetrics,
+          subCategories: ["Airtime Recharge", "Data Plans"],
+          href: "#", // Placeholder until you build the MDS view for Utilities
           isAutomated: true
         }
       ]

@@ -46,7 +46,7 @@ export function IpeHistoryStats({ stats }: IpeStatsProps) {
       borderColor: "border-emerald-500/20",
     },
     {
-      title: "Unsuccessful",
+      title: "Failed",
       value: stats.failed,
       icon: XCircle,
       color: "text-destructive",

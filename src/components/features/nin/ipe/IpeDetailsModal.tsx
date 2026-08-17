@@ -190,7 +190,7 @@ export function IpeDetailsModal({
             <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-start gap-3 text-destructive">
               <XCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
               <div className="space-y-1 text-xs">
-                <span className="font-bold block">Request Unsuccessful</span>
+                <span className="font-bold block">Request Failed</span>
                 <p className="leading-relaxed">
                   {request.failureReason || request.apiMessage || "The clearance could not be completed for this Tracking ID. A full wallet refund has been processed."}
                 </p>

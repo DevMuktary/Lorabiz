@@ -22,6 +22,9 @@ export async function GET() {
       
       // NIN Metrics
       ninSlipsCompletedToday, totalNinSlips,
+
+      // NIN IPE Clearance Metrics
+      ipePending, ipeCompletedToday, totalIpe,
       
       // SCUML Metrics
       scumlPending, scumlCompletedToday, totalScuml,
@@ -46,6 +49,10 @@ export async function GET() {
       
       prisma.ninRequestLog.count({ where: { status: "SUCCESS", createdAt: { gte: today } } }),
       prisma.ninRequestLog.count({ where: { status: "SUCCESS" } }),
+
+      prisma.ninIpeRequest.count({ where: { status: "PROCESSING" } }),
+      prisma.ninIpeRequest.count({ where: { status: "COMPLETED", completedAt: { gte: today } } }),
+      prisma.ninIpeRequest.count(),
       
       prisma.scumlRegistration.count({ where: { status: "PENDING" } }),
       prisma.scumlRegistration.count({ where: { status: "COMPLETED", updatedAt: { gte: today } } }),
@@ -110,11 +117,12 @@ export async function GET() {
 
     // 4. DYNAMIC Service Distribution Percentages
     const totalCacServices = totalBizNames + totalLlcs;
-    const totalServices = totalCacServices + totalNinSlips + totalScuml + totalTaxId || 1; // Prevent division by zero
+    const totalServices = totalCacServices + totalNinSlips + totalIpe + totalScuml + totalTaxId || 1; // Prevent division by zero
     
     const rawDistribution = [
       { name: 'CAC Registrations', count: totalCacServices },
       { name: 'NIMC Slips', count: totalNinSlips },
+      { name: 'NIMC IPE Clearance', count: totalIpe },
       { name: 'SCUML Certificates', count: totalScuml },
       { name: 'Tax ID (TIN)', count: totalTaxId },
     ];
@@ -141,14 +149,14 @@ export async function GET() {
     return NextResponse.json({
       kpis: {
         revenue30d,
-        pendingOrders: bizNamesPending + llcsPending + scumlPending + taxIdPending, // Global pending count
+        pendingOrders: bizNamesPending + llcsPending + ipePending + scumlPending + taxIdPending, // Global pending count
         avgTat: avgTatFormatted,
         activeUsers: usersCount
       },
       pipeline: {
-        pending: bizNamesPending + llcsPending + scumlPending + taxIdPending,
+        pending: bizNamesPending + llcsPending + ipePending + scumlPending + taxIdPending,
         queried: bizNamesQueried + llcsQueried,
-        completedToday: bizNamesApprovedToday + llcsApprovedToday + ninSlipsCompletedToday + scumlCompletedToday + taxIdCompletedToday
+        completedToday: bizNamesApprovedToday + llcsApprovedToday + ninSlipsCompletedToday + ipeCompletedToday + scumlCompletedToday + taxIdCompletedToday
       },
       charts: {
         revenueData: revenueChartData,

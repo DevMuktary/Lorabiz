@@ -165,8 +165,8 @@ async function handleSync(req: NextRequest) {
             await prisma.inAppNotification.create({
               data: {
                 userId: item.user.id,
-                title: "IPE Clearance Unsuccessful",
-                message: `Your IPE clearance request for Tracking ID ${item.trackingId} was not successful. Refund processed.`,
+                title: "IPE Clearance Failed",
+                message: `Your IPE clearance request for Tracking ID ${item.trackingId} has failed. Refund processed.`,
                 type: "warning",
                 link: "/dashboard/nin/ipe/history",
               },

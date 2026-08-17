@@ -125,7 +125,7 @@ export function IpeHistoryTable({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "ALL" ? "All Submissions" : tab === "PROCESSING" ? "In Processing" : tab === "COMPLETED" ? "Completed" : "Unsuccessful"}
+              {tab === "ALL" ? "All Submissions" : tab === "PROCESSING" ? "In Processing" : tab === "COMPLETED" ? "Completed" : "Failed"}
             </button>
           ))}
         </div>
@@ -227,7 +227,7 @@ export function IpeHistoryTable({
                         {item.status === "FAILED" && (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
                             <XCircle weight="fill" className="h-3.5 w-3.5" />
-                            Unsuccessful
+                            Failed
                           </span>
                         )}
                       </td>

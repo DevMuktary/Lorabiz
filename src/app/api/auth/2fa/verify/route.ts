@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { verify } from "otplib";
+import { logUserActivity } from "@/lib/activity-logger";
 
 export async function POST(req: Request) {
   try {
@@ -98,6 +99,20 @@ export async function POST(req: Request) {
         ipAddress,
         userAgent,
         details: `Passed MFA challenge using ${user.twoFactorMethod}`,
+      },
+    });
+
+    logUserActivity({
+      userId: user.id,
+      action: "USER_LOGIN_2FA",
+      category: "AUTH",
+      description: `${user.role === 'ADMIN' ? 'Administrator' : user.role === 'STAFF' ? 'Staff Member' : 'User'} signed in via 2FA (${user.twoFactorMethod})`,
+      status: "SUCCESS",
+      req,
+      metadata: {
+        email: user.email,
+        role: user.role,
+        method: user.twoFactorMethod,
       },
     });
 
