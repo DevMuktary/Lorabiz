@@ -226,7 +226,7 @@ export default function IpeClearancePage() {
           <div className="space-y-6">
             <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24 space-y-5">
               <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground">
-                Why you need IPE Clearance
+                How to Track Your Request
               </h3>
               
               <ul className="space-y-4">
@@ -235,9 +235,9 @@ export default function IpeClearancePage() {
                     1
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-foreground">Clear In-Processing Errors</h4>
+                    <h4 className="text-xs font-bold text-foreground">Gateway Submission</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Resolves biometric deduplication holds (Error 50) and data conflicts flagged during initial enrollment.
+                      Your Tracking ID is immediately queued and transmitted to the NIMC gateway.
                     </p>
                   </div>
                 </li>
@@ -247,9 +247,9 @@ export default function IpeClearancePage() {
                     2
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-foreground">Unblock NIN Release</h4>
+                    <h4 className="text-xs font-bold text-foreground">Automated Status Sync</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Releases your pending 11-digit National Identification Number so official slips can be printed.
+                      Our background system periodically syncs with NIMC to verify when the error clears.
                     </p>
                   </div>
                 </li>
@@ -259,16 +259,16 @@ export default function IpeClearancePage() {
                     3
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-foreground">Official Channel Processing</h4>
+                    <h4 className="text-xs font-bold text-foreground">Instant Notification</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Transmitted directly to NIMC gateway with ~24 hours turnaround and instant email notification.
+                      You will receive an email once resolved. You can also view full details from your History page.
                     </p>
                   </div>
                 </li>
               </ul>
 
               <div className="p-3.5 rounded-xl bg-secondary/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">Need help?</strong> If your Tracking ID has been in processing beyond 24 hours, reach out to our team using the live support widget.
+                <strong className="text-foreground">Need help?</strong> If your request is delayed beyond 24 hours, reach out to our team using the live support widget.
               </div>
             </div>
           </div>

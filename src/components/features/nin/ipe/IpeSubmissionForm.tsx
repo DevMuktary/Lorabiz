@@ -165,7 +165,7 @@ export function IpeSubmissionForm({
             className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md cursor-pointer text-sm"
           >
             <ShieldCheck weight="bold" className="h-4 w-4" />
-            <span>Submit Clearance & Pay ₦{servicePrice.toLocaleString()}</span>
+            <span>Submit IPE Clearance</span>
           </button>
         </div>
 

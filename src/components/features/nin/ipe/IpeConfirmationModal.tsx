@@ -101,14 +101,13 @@ export function IpeConfirmationModal({
             </div>
           </div>
 
-          {/* If insufficient balance: display crying/sad alert with link to /dashboard */}
+          {/* If insufficient balance: display clean alert with link to /dashboard */}
           {isInsufficient ? (
             <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 space-y-2">
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 space-y-1.5">
                 <div className="flex items-center gap-2 font-bold text-sm">
-                  <SmileySad weight="fill" className="h-5 w-5 shrink-0 text-amber-500" />
+                  <SmileySad weight="duotone" className="h-5 w-5 shrink-0 text-amber-500" />
                   <span>Insufficient Wallet Balance</span>
-                  <span className="text-base">🥺</span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Your balance is <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong>, but this clearance requires <strong className="text-foreground">₦{price.toLocaleString()}</strong>.
@@ -126,11 +125,10 @@ export function IpeConfirmationModal({
 
                 <Link
                   href="/dashboard"
-                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm text-center shadow-md cursor-pointer"
+                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 text-sm text-center shadow-md cursor-pointer whitespace-nowrap"
                 >
-                  <Wallet weight="bold" className="h-4 w-4" />
                   <span>Go to Dashboard</span>
-                  <ArrowRight weight="bold" className="h-3.5 w-3.5" />
+                  <ArrowRight weight="bold" className="h-4 w-4" />
                 </Link>
               </div>
             </div>

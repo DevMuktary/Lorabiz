@@ -338,9 +338,7 @@ export default function TaxIdPage() {
               </button>
             </div>
           </form>
-        </div>
-
-        {/* Info Sidebar */}
+        </div>        {/* Info Sidebar */}
         <div className="space-y-6">
           <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24">
             <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground mb-5">Why you need a TIN</h3>
@@ -363,6 +361,7 @@ export default function TaxIdPage() {
 
       </div>
 
+      {/* Confirmation Modal */}
       {mounted && isConfirmModalOpen && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-6 duration-300">
@@ -413,9 +412,9 @@ export default function TaxIdPage() {
               {/* Insufficient balance warning inside modal */}
               {isInsufficientBalance ? (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 space-y-2">
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 space-y-1.5">
                     <div className="flex items-center gap-2 font-bold text-sm">
-                      <SmileySad weight="fill" className="h-5 w-5 shrink-0" />
+                      <SmileySad weight="duotone" className="h-5 w-5 shrink-0 text-amber-500" />
                       <span>Insufficient Wallet Balance</span>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
@@ -433,9 +432,10 @@ export default function TaxIdPage() {
                     </button>
                     <Link
                       href="/dashboard"
-                      className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm text-center shadow-md cursor-pointer"
+                      className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 text-sm text-center shadow-md cursor-pointer whitespace-nowrap"
                     >
-                      <Wallet weight="bold" className="h-4 w-4" /> Go to Dashboard
+                      <span>Go to Dashboard</span>
+                      <ArrowRight weight="bold" className="h-4 w-4" />
                     </Link>
                   </div>
                 </div>
