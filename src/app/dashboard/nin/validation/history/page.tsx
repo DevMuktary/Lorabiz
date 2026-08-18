@@ -153,28 +153,83 @@ export default function NinValidationHistoryPage() {
         </div>
       </div>
 
-      {/* KPI Stats Cards matching IPE History */}
+      {/* KPI Stats Cards - Interactive Filtering */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Submissions</p>
-          <p className="text-2xl font-black text-foreground mt-1">{stats.total}</p>
-        </div>
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wider">In Processing</p>
-          <p className="text-2xl font-black mt-1">{stats.processing}</p>
-        </div>
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wider">Validated</p>
-          <p className="text-2xl font-black mt-1">{stats.completed}</p>
-        </div>
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wider">Failed / Rejected</p>
-          <p className="text-2xl font-black mt-1">{stats.failed}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab("ALL")}
+          className={`text-left p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
+            activeTab === "ALL"
+              ? "ring-2 ring-primary border-primary bg-primary/5 shadow-md"
+              : "bg-card border-border hover:border-primary/40 shadow-sm"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === "ALL" ? "text-foreground" : "text-muted-foreground"}`}>
+              Total Submissions
+            </p>
+            <ListDashes weight={activeTab === "ALL" ? "fill" : "bold"} className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <p className="text-2xl font-black text-foreground mt-2">{stats.total}</p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("PROCESSING")}
+          className={`text-left p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
+            activeTab === "PROCESSING"
+              ? "ring-2 ring-amber-500 border-amber-500 bg-amber-500/15 shadow-md"
+              : "bg-amber-500/5 border-amber-500/20 hover:border-amber-500/50 shadow-sm"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              In Processing
+            </p>
+            <Clock weight={activeTab === "PROCESSING" ? "fill" : "bold"} className="h-4 w-4 text-amber-500" />
+          </div>
+          <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-2">{stats.processing}</p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("COMPLETED")}
+          className={`text-left p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
+            activeTab === "COMPLETED"
+              ? "ring-2 ring-emerald-500 border-emerald-500 bg-emerald-500/15 shadow-md"
+              : "bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/50 shadow-sm"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              Validated
+            </p>
+            <CheckCircle weight={activeTab === "COMPLETED" ? "fill" : "bold"} className="h-4 w-4 text-emerald-500" />
+          </div>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{stats.completed}</p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("FAILED")}
+          className={`text-left p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
+            activeTab === "FAILED"
+              ? "ring-2 ring-rose-500 border-rose-500 bg-rose-500/15 shadow-md"
+              : "bg-rose-500/5 border-rose-500/20 hover:border-rose-500/50 shadow-sm"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+              Failed / Rejected
+            </p>
+            <XCircle weight={activeTab === "FAILED" ? "fill" : "bold"} className="h-4 w-4 text-rose-500" />
+          </div>
+          <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-2">{stats.failed}</p>
+        </button>
       </div>
 
       {/* Main Container */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col">
+      <div className="bg-card border border-border rounded-2xl shadow-sm flex flex-col">
         
         {/* Navigation Tabs */}
         <div className="flex overflow-x-auto border-b border-border scrollbar-hide bg-secondary/30">

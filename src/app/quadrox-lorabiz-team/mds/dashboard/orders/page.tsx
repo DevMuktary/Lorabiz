@@ -139,29 +139,25 @@ function ServiceFolderCard({ service }: { service: any }) {
       </div>
 
       {/* Middle Section: Metrics Ribbon */}
-      <div className={`grid gap-3 mb-8 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 shadow-inner ${isAutomated ? "grid-cols-2" : "grid-cols-4"}`}>
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 mb-8 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 shadow-inner">
         
-        {!isAutomated && (
-          <div className="text-center border-r border-slate-200 dark:border-slate-800">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Action Req.</p>
-            <p className="text-xl font-black text-amber-600 dark:text-amber-400 tabular-nums">{service.metrics.pending}</p>
-          </div>
-        )}
+        <div className="text-center border-r border-slate-200 dark:border-slate-800">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 truncate">Processing</p>
+          <p className="text-xl font-black text-amber-600 dark:text-amber-400 tabular-nums">{service.metrics.pending}</p>
+        </div>
 
-        <div className={`text-center border-r border-slate-200 dark:border-slate-800 ${isAutomated ? "" : ""}`}>
-          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Completed</p>
+        <div className="text-center border-r border-slate-200 dark:border-slate-800">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 truncate">Completed</p>
           <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{service.metrics.completed}</p>
         </div>
 
-        {!isAutomated && (
-          <div className="text-center border-r border-slate-200 dark:border-slate-800">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Queried</p>
-            <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{service.metrics.queried}</p>
-          </div>
-        )}
+        <div className="text-center border-r border-slate-200 dark:border-slate-800">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 truncate">Queried</p>
+          <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{service.metrics.queried || 0}</p>
+        </div>
 
         <div className="text-center">
-          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Failed</p>
+          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 truncate">Failed</p>
           <p className="text-xl font-black text-rose-600 dark:text-rose-400 tabular-nums">{service.metrics.failed}</p>
         </div>
       </div>
@@ -179,7 +175,7 @@ function ServiceFolderCard({ service }: { service: any }) {
           href={service.href}
           className="flex items-center text-sm font-black text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors py-2 px-3 bg-teal-50 dark:bg-teal-500/10 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-500/20"
         >
-          {isAutomated ? "View Logs" : "Open Directory"} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+          {service.href === "#" ? "Coming Soon" : "Open Pipeline"} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
     </div>

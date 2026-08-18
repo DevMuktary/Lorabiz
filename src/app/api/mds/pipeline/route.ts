@@ -180,7 +180,7 @@ export async function GET() {
           metrics: ipeMetrics,
           subCategories: ["In-Processing Error", "NIMC Tracking ID", "Automated / Manual Sync"],
           href: "/quadrox-lorabiz-team/mds/dashboard/orders/ipe",
-          isAutomated: true
+          isAutomated: false
         },
         {
           id: "personalization",
@@ -189,7 +189,7 @@ export async function GET() {
           metrics: personalizationMetrics,
           subCategories: ["Enrollment Tracking ID", "NIN Activation", "Slip Generation"],
           href: "/quadrox-lorabiz-team/mds/dashboard/orders/personalization",
-          isAutomated: true
+          isAutomated: false
         },
         {
           id: "nin",

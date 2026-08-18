@@ -53,12 +53,17 @@ export function PersonalizationDetailsModal({
   const [mounted, setMounted] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [currentRecord, setCurrentRecord] = useState<PersonalizationRequestRecord | null>(request);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!isOpen || !mounted || !request || typeof document === "undefined") return null;
+  useEffect(() => {
+    setCurrentRecord(request);
+  }, [request]);
+
+  if (!isOpen || !mounted || !currentRecord || typeof document === "undefined") return null;
 
   const handleCopy = (key: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -67,22 +72,49 @@ export function PersonalizationDetailsModal({
   };
 
   const handleSyncClick = async () => {
+    if (!currentRecord) return;
     setIsSyncing(true);
     try {
-      await onSync(request.reference);
+      // First query status API directly to immediately update local modal view
+      const res = await fetch(`/api/nin/personalization/status?reference=${encodeURIComponent(currentRecord.reference)}`);
+      const data = await res.json();
+
+      if (data.success && data.request) {
+        const reqData = data.request;
+        setCurrentRecord((prev) => prev ? {
+          ...prev,
+          status: reqData.status || prev.status,
+          resolvedNin: reqData.resolvedNin || prev.resolvedNin,
+          fullName: reqData.fullName || prev.fullName,
+          dob: reqData.dob || prev.dob,
+          gender: reqData.gender || prev.gender,
+          phone: reqData.phone || prev.phone,
+          residenceState: reqData.residenceState || prev.residenceState,
+          photoUrl: reqData.photoUrl || prev.photoUrl,
+          pdfUrl: reqData.pdfUrl || prev.pdfUrl,
+          failureReason: reqData.failureReason || prev.failureReason,
+          apiMessage: reqData.apiMessage || prev.apiMessage,
+          completedAt: reqData.completedAt || prev.completedAt,
+        } : null);
+      }
+
+      // Notify parent to refresh table
+      await onSync(currentRecord.reference);
+    } catch (err) {
+      console.error("Status sync failed:", err);
     } finally {
       setIsSyncing(false);
     }
   };
 
   const statusBadge =
-    request.status === "COMPLETED"
+    currentRecord.status === "COMPLETED"
       ? {
           bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
           icon: <CheckCircle weight="fill" className="h-4 w-4" />,
           label: "Completed",
         }
-      : request.status === "FAILED"
+      : currentRecord.status === "FAILED"
       ? {
           bg: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
           icon: <XCircle weight="fill" className="h-4 w-4" />,
@@ -96,7 +128,7 @@ export function PersonalizationDetailsModal({
 
   return createPortal(
     <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-6 duration-300 max-h-[90vh] flex flex-col">
+      <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl animate-in slide-in-from-bottom-6 duration-300 max-h-[90vh] flex flex-col">
         
         {/* Modal Header */}
         <div className="p-6 border-b border-border flex items-center justify-between">
@@ -106,7 +138,7 @@ export function PersonalizationDetailsModal({
             </div>
             <div>
               <h3 className="text-lg font-black text-foreground">Personalization Details</h3>
-              <p className="text-xs text-muted-foreground font-mono">Ref: {request.reference}</p>
+              <p className="text-xs text-muted-foreground font-mono">Ref: {currentRecord.reference}</p>
             </div>
           </div>
 
@@ -133,7 +165,7 @@ export function PersonalizationDetailsModal({
               </div>
             </div>
 
-            {request.status === "PROCESSING" && (
+            {currentRecord.status === "PROCESSING" && (
               <button
                 type="button"
                 onClick={handleSyncClick}
@@ -141,23 +173,23 @@ export function PersonalizationDetailsModal({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl shadow hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
               >
                 <ArrowsClockwise weight="bold" className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                <span>Sync Status</span>
+                <span>{isSyncing ? "Syncing..." : "Sync Status"}</span>
               </button>
             )}
           </div>
 
           {/* Resolved NIN Banner if completed */}
-          {request.resolvedNin && (
+          {currentRecord.resolvedNin && (
             <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                 National Identification Number (NIN)
               </span>
               <div className="text-3xl font-mono font-black text-emerald-700 dark:text-emerald-300 tracking-wider flex items-center justify-center gap-3">
-                <span>{request.resolvedNin}</span>
+                <span>{currentRecord.resolvedNin}</span>
                 <button
                   type="button"
-                  onClick={() => handleCopy("NIN", request.resolvedNin!)}
-                  className="p-1.5 rounded-lg bg-card border border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 transition-colors shadow-sm"
+                  onClick={() => handleCopy("NIN", currentRecord.resolvedNin!)}
+                  className="p-1.5 rounded-lg bg-card border border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 transition-colors shadow-sm cursor-pointer"
                   title="Copy NIN"
                 >
                   {copiedKey === "NIN" ? (
@@ -171,7 +203,7 @@ export function PersonalizationDetailsModal({
           )}
 
           {/* PDF Slip Download Preview */}
-          {request.pdfUrl && (
+          {currentRecord.pdfUrl && (
             <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
@@ -183,8 +215,8 @@ export function PersonalizationDetailsModal({
                 </div>
               </div>
               <a
-                href={request.pdfUrl.startsWith("data:") ? request.pdfUrl : `data:application/pdf;base64,${request.pdfUrl}`}
-                download={`NIN_Slip_${request.resolvedNin || request.trackingId}.pdf`}
+                href={currentRecord.pdfUrl.startsWith("data:") ? currentRecord.pdfUrl : `data:application/pdf;base64,${currentRecord.pdfUrl}`}
+                download={`NIN_Slip_${currentRecord.resolvedNin || currentRecord.trackingId}.pdf`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:opacity-90 text-primary-foreground text-xs font-bold rounded-xl shadow transition-opacity"
               >
                 <Download weight="bold" className="h-3.5 w-3.5" />
@@ -194,14 +226,14 @@ export function PersonalizationDetailsModal({
           )}
 
           {/* Failure Banner */}
-          {request.status === "FAILED" && (
+          {currentRecord.status === "FAILED" && (
             <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 space-y-1.5">
               <div className="flex items-center gap-2 text-xs font-bold text-destructive">
                 <WarningCircle weight="fill" className="h-4 w-4" />
                 <span>Personalization Outcome: Unsuccessful</span>
               </div>
               <p className="text-xs text-destructive/90 leading-relaxed">
-                {request.failureReason || "The identity gateway was unable to personalize this tracking ID."}
+                {currentRecord.failureReason || "The identity gateway was unable to personalize this tracking ID."}
               </p>
               <p className="text-[11px] text-muted-foreground pt-1 border-t border-destructive/20 font-medium">
                 Please contact support if you require assistance with this enrollment tracking ID.
@@ -218,25 +250,25 @@ export function PersonalizationDetailsModal({
               <div className="p-3 bg-secondary/40 rounded-xl border border-border">
                 <span className="text-[10px] text-muted-foreground block">Full Name</span>
                 <span className="text-xs font-bold text-foreground">
-                  {request.fullName || "—"}
+                  {currentRecord.fullName || "—"}
                 </span>
               </div>
               <div className="p-3 bg-secondary/40 rounded-xl border border-border">
                 <span className="text-[10px] text-muted-foreground block">Date of Birth</span>
                 <span className="text-xs font-bold text-foreground">
-                  {request.dob || "—"}
+                  {currentRecord.dob || "—"}
                 </span>
               </div>
               <div className="p-3 bg-secondary/40 rounded-xl border border-border">
                 <span className="text-[10px] text-muted-foreground block">Gender</span>
                 <span className="text-xs font-bold text-foreground">
-                  {request.gender || "—"}
+                  {currentRecord.gender || "—"}
                 </span>
               </div>
               <div className="p-3 bg-secondary/40 rounded-xl border border-border">
                 <span className="text-[10px] text-muted-foreground block">Phone</span>
                 <span className="text-xs font-bold text-foreground">
-                  {request.phone || "—"}
+                  {currentRecord.phone || "—"}
                 </span>
               </div>
             </div>
@@ -247,11 +279,11 @@ export function PersonalizationDetailsModal({
             <div className="flex justify-between items-center py-1 border-b border-border/60">
               <span className="text-muted-foreground">Tracking ID:</span>
               <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
-                <span>{request.trackingId}</span>
+                <span>{currentRecord.trackingId}</span>
                 <button
                   type="button"
-                  onClick={() => handleCopy("TRACKING", request.trackingId)}
-                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => handleCopy("TRACKING", currentRecord.trackingId)}
+                  className="text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   {copiedKey === "TRACKING" ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
                 </button>
@@ -260,13 +292,13 @@ export function PersonalizationDetailsModal({
 
             <div className="flex justify-between items-center py-1 border-b border-border/60">
               <span className="text-muted-foreground">Amount Paid:</span>
-              <span className="font-bold text-foreground">₦{request.amountCharged.toLocaleString()}</span>
+              <span className="font-bold text-foreground">₦{Number(currentRecord.amountCharged).toLocaleString()}</span>
             </div>
 
             <div className="flex justify-between items-center py-1">
               <span className="text-muted-foreground">Date Submitted:</span>
               <span className="text-foreground">
-                {new Date(request.createdAt).toLocaleDateString("en-NG", {
+                {new Date(currentRecord.createdAt).toLocaleDateString("en-NG", {
                   year: "numeric",
                   month: "short",
                   day: "numeric",

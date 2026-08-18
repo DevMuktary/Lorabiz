@@ -21,6 +21,8 @@ interface IpeHistoryTableProps {
   isLoading: boolean;
   onRefresh: () => Promise<void>;
   onSyncStatus: (reference: string) => Promise<void>;
+  activeStatus?: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED";
+  onStatusChange?: (status: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED") => void;
 }
 
 export function IpeHistoryTable({
@@ -28,13 +30,24 @@ export function IpeHistoryTable({
   isLoading,
   onRefresh,
   onSyncStatus,
+  activeStatus: parentActiveStatus,
+  onStatusChange,
 }: IpeHistoryTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
+  const [internalStatus, setInternalStatus] = useState<"ALL" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
   const [selectedRecord, setSelectedRecord] = useState<IpeRequestRecord | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [syncingRef, setSyncingRef] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const statusFilter = parentActiveStatus !== undefined ? parentActiveStatus : internalStatus;
+  const setStatusFilter = (status: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED") => {
+    if (onStatusChange) {
+      onStatusChange(status);
+    } else {
+      setInternalStatus(status);
+    }
+  };
 
   // Filter requests by search term and status
   const filteredRequests = useMemo(() => {
@@ -133,7 +146,7 @@ export function IpeHistoryTable({
       </div>
 
       {/* Table Container */}
-      <div className="border border-border rounded-2xl overflow-hidden">
+      <div className="border border-border rounded-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs sm:text-sm">
             <thead>

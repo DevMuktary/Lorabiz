@@ -117,30 +117,65 @@ export default function PersonalizationPipelinePage() {
         </div>
       </div>
 
-      {/* Metrics Row */}
+      {/* Metrics Row - Interactive Filtering */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setActiveTab("ALL")}
+          className={`text-left p-4 rounded-2xl border transition-all cursor-pointer ${
+            activeTab === "ALL"
+              ? "ring-2 ring-zinc-900 dark:ring-white border-zinc-900 dark:border-white bg-zinc-100 dark:bg-zinc-800 shadow-md"
+              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 shadow-sm"
+          }`}
+        >
           <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Total Requests</span>
           <div className="text-2xl font-black text-zinc-900 dark:text-white mt-1">{stats.total}</div>
-        </div>
-        <div className="bg-amber-500/5 dark:bg-amber-500/10 p-4 rounded-2xl border border-amber-500/20 shadow-sm">
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("PROCESSING")}
+          className={`text-left p-4 rounded-2xl border transition-all cursor-pointer ${
+            activeTab === "PROCESSING"
+              ? "ring-2 ring-amber-500 border-amber-500 bg-amber-500/15 shadow-md"
+              : "bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20 hover:border-amber-500/50 shadow-sm"
+          }`}
+        >
           <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
             <Clock size={14} /> In Processing
           </span>
           <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{stats.processing}</div>
-        </div>
-        <div className="bg-emerald-500/5 dark:bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 shadow-sm">
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("COMPLETED")}
+          className={`text-left p-4 rounded-2xl border transition-all cursor-pointer ${
+            activeTab === "COMPLETED"
+              ? "ring-2 ring-emerald-500 border-emerald-500 bg-emerald-500/15 shadow-md"
+              : "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/50 shadow-sm"
+          }`}
+        >
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
             <CheckCircle2 size={14} /> Completed
           </span>
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.completed}</div>
-        </div>
-        <div className="bg-rose-500/5 dark:bg-rose-500/10 p-4 rounded-2xl border border-rose-500/20 shadow-sm">
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("FAILED")}
+          className={`text-left p-4 rounded-2xl border transition-all cursor-pointer ${
+            activeTab === "FAILED"
+              ? "ring-2 ring-rose-500 border-rose-500 bg-rose-500/15 shadow-md"
+              : "bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/20 hover:border-rose-500/50 shadow-sm"
+          }`}
+        >
           <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
-            <XCircle size={14} /> Failed / Refunded
+            <XCircle size={14} /> Failed / Rejected
           </span>
           <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{stats.failed}</div>
-        </div>
+        </button>
       </div>
 
       {/* Filter and Search Bar */}
@@ -175,7 +210,7 @@ export default function PersonalizationPipelinePage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === tab
                   ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -188,7 +223,7 @@ export default function PersonalizationPipelinePage() {
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-medium">
             <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 uppercase tracking-wider font-bold">

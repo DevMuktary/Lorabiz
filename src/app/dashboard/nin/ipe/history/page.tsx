@@ -27,6 +27,7 @@ export default function IpeHistoryPage() {
     completed: 0,
     failed: 0,
   });
+  const [activeFilter, setActiveFilter] = useState<"ALL" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -152,8 +153,12 @@ export default function IpeHistoryPage() {
         </div>
       )}
 
-      {/* Statistics Cards */}
-      <IpeHistoryStats stats={stats} />
+      {/* Statistics Cards - Interactive Filtering */}
+      <IpeHistoryStats
+        stats={stats}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+      />
 
       {/* History Table */}
       <IpeHistoryTable
@@ -161,6 +166,8 @@ export default function IpeHistoryPage() {
         isLoading={isLoading}
         onRefresh={() => fetchHistory(true)}
         onSyncStatus={handleSyncStatus}
+        activeStatus={activeFilter}
+        onStatusChange={setActiveFilter}
       />
 
     </div>

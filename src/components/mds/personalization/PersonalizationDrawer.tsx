@@ -26,8 +26,10 @@ export default function PersonalizationDrawer({
   const [gender, setGender] = useState("");
   const [phone, setPhone] = useState("");
   const [residenceState, setResidenceState] = useState("");
+  const [pdfUrl, setPdfUrl] = useState("");
   const [failureReason, setFailureReason] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
+  const [issueRefund, setIssueRefund] = useState(false);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -47,6 +49,18 @@ export default function PersonalizationDrawer({
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setPdfUrl(result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleActionSubmit = async () => {
@@ -70,13 +84,15 @@ export default function PersonalizationDrawer({
         payload.gender = gender.trim() || undefined;
         payload.phone = phone.trim() || undefined;
         payload.residenceState = residenceState.trim() || undefined;
+        payload.pdfUrl = pdfUrl.trim() || undefined;
         payload.adminNotes = adminNotes.trim() || undefined;
       } else if (actionType === "FAIL") {
         if (!failureReason.trim()) {
           throw new Error("Please specify the failure/rejection reason.");
         }
-        payload.action = "MARK_FAILED_REFUND";
+        payload.action = "REJECT";
         payload.reason = failureReason.trim();
+        payload.issueRefund = issueRefund;
         payload.adminNotes = adminNotes.trim() || undefined;
       } else {
         throw new Error("No action selected");
@@ -317,7 +333,7 @@ export default function PersonalizationDrawer({
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => setActionType("SYNC")}
-                    className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
+                    className={`p-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
                       actionType === "SYNC"
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
                         : "bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400"
@@ -329,7 +345,7 @@ export default function PersonalizationDrawer({
 
                   <button
                     onClick={() => setActionType("COMPLETE")}
-                    className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
+                    className={`p-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
                       actionType === "COMPLETE"
                         ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
                         : "bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400"
@@ -341,14 +357,14 @@ export default function PersonalizationDrawer({
 
                   <button
                     onClick={() => setActionType("FAIL")}
-                    className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
+                    className={`p-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
                       actionType === "FAIL"
                         ? "bg-rose-600 text-white border-rose-600 shadow-md"
                         : "bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400"
                     }`}
                   >
                     <XCircle size={14} className="mx-auto mb-1.5" />
-                    Reject & Refund
+                    Reject / Fail
                   </button>
                 </div>
               </div>
@@ -357,11 +373,12 @@ export default function PersonalizationDrawer({
               {actionType === "SYNC" && (
                 <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-700 dark:text-indigo-300 space-y-2">
                   <div className="font-bold flex items-center gap-1.5">
-                    <RefreshCw size={14} className="animate-spin" /> Query Identity Gateway (DataVerify)
+                    <RefreshCw size={14} className="animate-spin" /> Query Identity Gateway
                   </div>
                   <p>
-                    This will poll the upstream DataVerify server with Tracking ID{" "}
-                    <strong className="font-mono">{ticket.trackingId}</strong>. If completed, the NIN and demographics will be retrieved and stored automatically.
+                    {ticket.provider === "MANUAL" || !ticket.externalTxId
+                      ? "This order is managed manually in-house. Sync will retrieve the latest internal database status without calling external upstream servers."
+                      : `Query live gateway status for Tracking ID ${ticket.trackingId}. If completed upstream, NIN and demographics will be retrieved.`}
                   </p>
                 </div>
               )}
@@ -379,6 +396,19 @@ export default function PersonalizationDrawer({
                       onChange={(e) => setResolvedNin(e.target.value.replace(/\D/g, ""))}
                       placeholder="e.g. 12345678901"
                       className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm font-mono font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">
+                      NIMC Registered Phone Number (Optional)
+                    </label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. 08012345678"
+                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                     />
                   </div>
 
@@ -421,6 +451,39 @@ export default function PersonalizationDrawer({
                       />
                     </div>
                   </div>
+
+                  {/* Slip Document Upload / Input */}
+                  <div>
+                    <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">
+                      Attach Official NIN Slip (PDF or Link, Optional)
+                    </label>
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        accept="application/pdf,image/*"
+                        onChange={handlePdfUpload}
+                        className="w-full text-xs text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-950 dark:file:text-emerald-300"
+                      />
+                      {pdfUrl && (
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          ✓ Slip attachment loaded ({pdfUrl.slice(0, 30)}...)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">
+                      Internal Staff Notes (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={adminNotes}
+                      onChange={(e) => setAdminNotes(e.target.value)}
+                      placeholder="e.g. Fulfilled via NIMC portal manual entry."
+                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -438,9 +501,24 @@ export default function PersonalizationDrawer({
                       className="w-full p-3 bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-900 rounded-lg text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"
                     />
                   </div>
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
-                    ⚠️ Marking as failed will immediately refund ₦{Number(ticket.amountCharged).toLocaleString()} to the user&apos;s wallet.
-                  </p>
+
+                  {/* Manual Refund Checkbox */}
+                  <div className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-rose-200 dark:border-rose-900/60 space-y-1.5">
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={issueRefund}
+                        onChange={(e) => setIssueRefund(e.target.checked)}
+                        className="h-4 w-4 rounded border-zinc-300 text-rose-600 focus:ring-rose-500"
+                      />
+                      <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                        Issue wallet refund of ₦{Number(ticket.amountCharged).toLocaleString()} to client
+                      </span>
+                    </label>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 pl-6 leading-relaxed">
+                      By platform policy, personalization is non-refundable. Check this box only if you want to manually authorize a wallet refund.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -448,7 +526,7 @@ export default function PersonalizationDrawer({
                 <button
                   onClick={handleActionSubmit}
                   disabled={isProcessing}
-                  className="w-full py-3 rounded-xl bg-zinc-900 hover:bg-black dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 text-white text-xs font-bold shadow-lg flex items-center justify-center transition-all"
+                  className="w-full py-3 rounded-xl bg-zinc-900 hover:bg-black dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 text-white text-xs font-bold shadow-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isProcessing ? (
                     <RefreshCw size={16} className="animate-spin mr-2" />

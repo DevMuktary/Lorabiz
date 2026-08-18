@@ -18,17 +18,30 @@ interface PersonalizationHistoryTableProps {
   requests: PersonalizationRequestRecord[];
   onSync: (reference: string) => Promise<void>;
   isLoading: boolean;
+  activeStatus?: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED";
+  onStatusChange?: (status: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED") => void;
 }
 
 export function PersonalizationHistoryTable({
   requests,
   onSync,
   isLoading,
+  activeStatus: parentActiveStatus,
+  onStatusChange,
 }: PersonalizationHistoryTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeStatus, setActiveStatus] = useState<"ALL" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
+  const [internalStatus, setInternalStatus] = useState<"ALL" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
   const [selectedRecord, setSelectedRecord] = useState<PersonalizationRequestRecord | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const activeStatus = parentActiveStatus !== undefined ? parentActiveStatus : internalStatus;
+  const setActiveStatus = (status: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED") => {
+    if (onStatusChange) {
+      onStatusChange(status);
+    } else {
+      setInternalStatus(status);
+    }
+  };
 
   const handleCopy = (id: string, text: string, e: React.MouseEvent) => {
     e.stopPropagation();

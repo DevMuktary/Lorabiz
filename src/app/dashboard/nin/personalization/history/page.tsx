@@ -23,6 +23,7 @@ export default function PersonalizationHistoryPage() {
     completed: 0,
     failed: 0,
   });
+  const [activeFilter, setActiveFilter] = useState<"ALL" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -62,7 +63,7 @@ export default function PersonalizationHistoryPage() {
         if (data.request?.status === "COMPLETED") {
           setToastMessage(`Personalization Complete! NIN: ${data.request.resolvedNin || "Resolved"}`);
         } else if (data.request?.status === "FAILED") {
-          setToastMessage("Personalization request rejected. Wallet refunded.");
+          setToastMessage("Personalization request was unsuccessful.");
         } else {
           setToastMessage(data.message || "Status checked: Still processing.");
         }
@@ -138,14 +139,20 @@ export default function PersonalizationHistoryPage() {
         </div>
       )}
 
-      {/* Metrics Row */}
-      <PersonalizationHistoryStats stats={stats} />
+      {/* Metrics Row - Interactive Filtering */}
+      <PersonalizationHistoryStats
+        stats={stats}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+      />
 
       {/* History Table */}
       <PersonalizationHistoryTable
         requests={requests}
         onSync={handleSyncStatus}
         isLoading={isLoading}
+        activeStatus={activeFilter}
+        onStatusChange={setActiveFilter}
       />
     </div>
   );

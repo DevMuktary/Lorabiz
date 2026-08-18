@@ -63,23 +63,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         success: true,
         request: personalizationRequest,
-        message: `Request is already ${personalizationRequest.status.toLowerCase()}.`,
+        message: `Request is ${personalizationRequest.status.toLowerCase()}.`,
         alreadyFinalized: true,
       });
     }
 
-    // If manual operator routing, status updates are performed by staff
-    if (personalizationRequest.provider === "MANUAL") {
+    // If manual operator routing or no external transaction ID, return current DB state
+    if (personalizationRequest.provider === "MANUAL" || !personalizationRequest.externalTxId) {
       return NextResponse.json({
         success: true,
         request: personalizationRequest,
-        message: "Your application is currently queued with our verification team for manual processing.",
+        message: "Your application is currently processing with our verification team.",
       });
     }
 
-    // Query DataVerify for live status
+    // Query live gateway status for automated provider orders
     const statusResult = await checkDataVerifyPersonalizationStatus(
-      personalizationRequest.externalTxId || undefined,
+      personalizationRequest.externalTxId,
       personalizationRequest.trackingId
     );
 

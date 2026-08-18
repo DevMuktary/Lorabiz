@@ -28,6 +28,7 @@ export async function POST(req: Request) {
       residenceState,
       pdfUrl,
       adminNotes,
+      issueRefund,
     } = await req.json();
 
     if (!id && !reference) {
@@ -47,17 +48,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Personalization request record not found" }, { status: 404 });
     }
 
-    // ACTION 1: Live Status Sync with DataVerify
+    // ACTION 1: Status Sync
     if (action === "SYNC_STATUS") {
+      // If manual provider or no external transaction ID, do not query external gateway
+      if (pznItem.provider === "MANUAL" || !pznItem.externalTxId) {
+        return NextResponse.json({
+          success: true,
+          message: `Record status is ${pznItem.status} (Managed internally by staff).`,
+          request: pznItem,
+        });
+      }
+
       const statusResult = await checkDataVerifyPersonalizationStatus(
-        pznItem.externalTxId || undefined,
+        pznItem.externalTxId,
         pznItem.trackingId
       );
 
       if (!statusResult.success || !statusResult.data) {
         return NextResponse.json({
           success: false,
-          message: statusResult.error || "Failed to query status from DataVerify",
+          message: statusResult.error || "Failed to query live status from upstream gateway",
         });
       }
 
@@ -115,7 +125,7 @@ export async function POST(req: Request) {
           },
         });
 
-        // Notify client
+        // Notify client (Strictly no auto-refund)
         try {
           await dispatchNotification({
             type: "NIN_PERSONALIZATION_FAILED",
@@ -131,23 +141,24 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
           success: true,
-          message: "Request marked as Failed (No refund: provider charges upfront).",
+          message: "Request marked as Failed (No refund: non-refundable service).",
         });
       } else {
         return NextResponse.json({
           success: true,
-          message: `Request is currently processing on DataVerify: ${parsed.message || "In progress"}`,
+          message: `Request is currently processing: ${parsed.message || "In progress"}`,
         });
       }
     }
 
-    // ACTION 2: Manual Admin Refund & Mark Failed
-    if (action === "MARK_FAILED_REFUND") {
-      const failureReason = reason || "Admin manual rejection: Tracking ID invalid or unresolvable.";
-      const refundAmount = Number(pznItem.amountCharged);
+    // ACTION 2: Manual Admin Reject / Fail Order (with optional manual refund checkbox)
+    if (action === "MARK_FAILED_REFUND" || action === "REJECT" || action === "FAIL") {
+      const failureReason = reason || "Tracking ID invalid or unresolvable by identity authority.";
+      const shouldRefund = issueRefund === true;
+      const refundAmount = shouldRefund ? Number(pznItem.amountCharged) : 0;
 
       await prisma.$transaction(async (tx) => {
-        if (pznItem.user.wallet && refundAmount > 0) {
+        if (shouldRefund && pznItem.user.wallet && refundAmount > 0) {
           const currentBal = Number(pznItem.user.wallet.balance);
           const refundedBal = currentBal + refundAmount;
 
@@ -166,7 +177,7 @@ export async function POST(req: Request) {
               status: "SUCCESS",
               reference: `REFUND_MANUAL_${pznItem.reference}`,
               serviceCategory: "REFUND",
-              description: `Admin Refund: NIN Personalization (${pznItem.trackingId})`,
+              description: `Staff Manual Refund: NIN Personalization (${pznItem.trackingId})`,
             },
           });
         }
@@ -187,7 +198,7 @@ export async function POST(req: Request) {
           userId: session.user.id,
           action: "REJECTED_NIN_PERSONALIZATION",
           targetId: pznItem.reference,
-          details: `Admin refunded ₦${refundAmount} for Personalization Tracking ID ${pznItem.trackingId}. Reason: ${failureReason}`,
+          details: `Staff marked Personalization Tracking ID ${pznItem.trackingId} as FAILED. Refund: ₦${refundAmount}. Reason: ${failureReason}`,
         },
       });
 
@@ -206,14 +217,16 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         success: true,
-        message: "Request successfully marked as Failed and ₦" + refundAmount.toLocaleString() + " refunded to client.",
+        message: shouldRefund
+          ? `Request marked as Failed and ₦${refundAmount.toLocaleString()} refunded to client wallet.`
+          : "Request marked as Failed (No refund issued).",
       });
     }
 
-    // ACTION 3: Manual Admin Mark Completed
+    // ACTION 3: Manual Staff Mark Completed
     if (action === "MARK_COMPLETED") {
-      if (!resolvedNin) {
-        return NextResponse.json({ success: false, message: "Please provide the 11-digit resolved NIN" }, { status: 400 });
+      if (!resolvedNin || resolvedNin.trim().length !== 11) {
+        return NextResponse.json({ success: false, message: "Please provide a valid 11-digit resolved NIN" }, { status: 400 });
       }
 
       const updated = await prisma.ninPersonalizationRequest.update({

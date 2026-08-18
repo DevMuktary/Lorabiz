@@ -57,12 +57,17 @@ export function IpeDetailsModal({
   const [isMasked, setIsMasked] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [currentRecord, setCurrentRecord] = useState<IpeRequestRecord | null>(request);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!isOpen || !request || !mounted || typeof document === "undefined") return null;
+  useEffect(() => {
+    setCurrentRecord(request);
+  }, [request]);
+
+  if (!isOpen || !currentRecord || !mounted || typeof document === "undefined") return null;
 
   const handleCopyNin = (nin: string) => {
     navigator.clipboard.writeText(nin);
@@ -71,10 +76,34 @@ export function IpeDetailsModal({
   };
 
   const handleManualSync = async () => {
-    if (!onSyncStatus || isSyncing) return;
+    if (isSyncing || !currentRecord) return;
     setIsSyncing(true);
     try {
-      await onSyncStatus(request.reference);
+      // First query status API directly to immediately update local modal view
+      const res = await fetch(`/api/nin/ipe/status?reference=${encodeURIComponent(currentRecord.reference)}`);
+      const data = await res.json();
+
+      if (data.success && data.request) {
+        const reqData = data.request;
+        setCurrentRecord((prev) => prev ? {
+          ...prev,
+          status: reqData.status || prev.status,
+          resolvedNin: reqData.resolvedNin || prev.resolvedNin,
+          fullName: reqData.fullName || prev.fullName,
+          dob: reqData.dob || prev.dob,
+          gender: reqData.gender || prev.gender,
+          photoUrl: reqData.photoUrl || prev.photoUrl,
+          failureReason: reqData.failureReason || prev.failureReason,
+          apiMessage: reqData.apiMessage || prev.apiMessage,
+          completedAt: reqData.completedAt || prev.completedAt,
+        } : null);
+      }
+
+      if (onSyncStatus) {
+        await onSyncStatus(currentRecord.reference);
+      }
+    } catch (err) {
+      console.error("IPE status sync failed:", err);
     } finally {
       setIsSyncing(false);
     }
@@ -95,15 +124,15 @@ export function IpeDetailsModal({
     }
   };
 
-  const displayedNin = request.resolvedNin
+  const displayedNin = currentRecord.resolvedNin
     ? isMasked
-    ? `${request.resolvedNin.slice(0, 3)}*****${request.resolvedNin.slice(-3)}`
-      : request.resolvedNin
+    ? `${currentRecord.resolvedNin.slice(0, 3)}*****${currentRecord.resolvedNin.slice(-3)}`
+      : currentRecord.resolvedNin
     : "Pending Release";
 
   return createPortal(
     <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-card border border-border w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+      <div className="bg-card border border-border w-full max-w-2xl rounded-3xl shadow-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="p-6 border-b border-border flex items-center justify-between bg-secondary/30">
@@ -118,24 +147,24 @@ export function IpeDetailsModal({
                 </h3>
                 <span
                   className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                    request.status === "COMPLETED"
+                    currentRecord.status === "COMPLETED"
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                      : request.status === "FAILED"
+                      : currentRecord.status === "FAILED"
                       ? "bg-destructive/10 text-destructive border border-destructive/20"
                       : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                   }`}
                 >
-                  {request.status}
+                  {currentRecord.status}
                 </span>
               </div>
               <p className="text-xs font-mono text-muted-foreground mt-0.5">
-                Ref: {request.reference}
+                Ref: {currentRecord.reference}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {request.status === "PROCESSING" && onSyncStatus && (
+            {currentRecord.status === "PROCESSING" && (
               <button
                 type="button"
                 onClick={handleManualSync}
@@ -162,7 +191,7 @@ export function IpeDetailsModal({
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
           
           {/* Status Alert Banner */}
-          {request.status === "PROCESSING" && (
+          {currentRecord.status === "PROCESSING" && (
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3 text-amber-700 dark:text-amber-300">
               <Clock weight="fill" className="h-5 w-5 shrink-0 mt-0.5 text-amber-500" />
               <div className="space-y-1 text-xs">
@@ -174,32 +203,32 @@ export function IpeDetailsModal({
             </div>
           )}
 
-          {request.status === "COMPLETED" && (
+          {currentRecord.status === "COMPLETED" && (
             <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-3 text-emerald-700 dark:text-emerald-300">
               <CheckCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5 text-emerald-500" />
               <div className="space-y-1 text-xs">
                 <span className="font-bold block">In-Processing Error Resolved Successfully</span>
                 <p className="leading-relaxed">
-                  The In-Processing Error for Tracking ID <strong>{request.trackingId}</strong> has been cleared, and your National Identification Number (NIN) has been released.
+                  The In-Processing Error for Tracking ID <strong>{currentRecord.trackingId}</strong> has been cleared, and your National Identification Number (NIN) has been released.
                 </p>
               </div>
             </div>
           )}
 
-          {request.status === "FAILED" && (
+          {currentRecord.status === "FAILED" && (
             <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-start gap-3 text-destructive">
               <XCircle weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
               <div className="space-y-1 text-xs">
                 <span className="font-bold block">Request Failed</span>
                 <p className="leading-relaxed">
-                  {request.failureReason || request.apiMessage || "The clearance could not be completed for this Tracking ID. A full wallet refund has been processed."}
+                  {currentRecord.failureReason || currentRecord.apiMessage || "The clearance could not be completed for this Tracking ID. A full wallet refund has been processed."}
                 </p>
               </div>
             </div>
           )}
 
           {/* Resolved NIN Box (When Available) */}
-          {request.resolvedNin && (
+          {currentRecord.resolvedNin && (
             <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-6 shadow-xl space-y-4">
               <div className="flex items-center justify-between text-xs text-slate-400">
                 <span className="font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
@@ -223,7 +252,7 @@ export function IpeDetailsModal({
 
                 <button
                   type="button"
-                  onClick={() => handleCopyNin(request.resolvedNin!)}
+                  onClick={() => handleCopyNin(currentRecord.resolvedNin!)}
                   className="h-10 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold transition-all flex items-center gap-2 shrink-0 shadow-lg shadow-emerald-500/20 cursor-pointer"
                 >
                   {copied ? (
@@ -243,7 +272,7 @@ export function IpeDetailsModal({
           )}
 
           {/* Demographics & Photo Preview (If returned by API) */}
-          {(request.fullName || request.dob || request.gender || request.photoUrl) && (
+          {(currentRecord.fullName || currentRecord.dob || currentRecord.gender || currentRecord.photoUrl) && (
             <div className="bg-secondary/40 rounded-2xl p-5 border border-border space-y-4">
               <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <User weight="bold" className="h-3.5 w-3.5 text-primary" />
@@ -251,41 +280,41 @@ export function IpeDetailsModal({
               </h4>
 
               <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
-                {request.photoUrl && (
-                  <div className="w-20 h-24 rounded-xl overflow-hidden bg-secondary border border-border shrink-0 shadow-sm relative">
+                {currentRecord.photoUrl && (
+                  <div className="w-20 h-24 rounded-xl bg-secondary border border-border shrink-0 shadow-sm relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={request.photoUrl.startsWith("data:") ? request.photoUrl : `data:image/jpeg;base64,${request.photoUrl}`}
+                      src={currentRecord.photoUrl.startsWith("data:") ? currentRecord.photoUrl : `data:image/jpeg;base64,${currentRecord.photoUrl}`}
                       alt="NIMC Applicant Photo"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover rounded-xl"
                     />
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 text-xs">
-                  {request.fullName && (
+                  {currentRecord.fullName && (
                     <div>
                       <span className="text-muted-foreground block">Full Name:</span>
                       <span className="font-bold text-foreground text-sm">
-                        {request.fullName}
+                        {currentRecord.fullName}
                       </span>
                     </div>
                   )}
 
-                  {request.dob && (
+                  {currentRecord.dob && (
                     <div>
                       <span className="text-muted-foreground block">Date of Birth:</span>
                       <span className="font-bold text-foreground">
-                        {request.dob}
+                        {currentRecord.dob}
                       </span>
                     </div>
                   )}
 
-                  {request.gender && (
+                  {currentRecord.gender && (
                     <div>
                       <span className="text-muted-foreground block">Gender:</span>
                       <span className="font-bold text-foreground uppercase">
-                        {request.gender}
+                        {currentRecord.gender}
                       </span>
                     </div>
                   )}
@@ -295,40 +324,40 @@ export function IpeDetailsModal({
           )}
 
           {/* Audit Details Breakdown */}
-          <div className="border border-border rounded-2xl overflow-hidden divide-y divide-border text-xs">
+          <div className="border border-border rounded-2xl divide-y divide-border text-xs">
             <div className="p-3.5 flex justify-between items-center bg-secondary/30">
               <span className="text-muted-foreground">Tracking ID:</span>
               <span className="font-mono font-bold text-foreground">
-                {request.trackingId}
+                {currentRecord.trackingId}
               </span>
             </div>
 
             <div className="p-3.5 flex justify-between items-center">
               <span className="text-muted-foreground">Transaction Reference:</span>
               <span className="font-mono text-foreground font-bold">
-                {request.reference}
+                {currentRecord.reference}
               </span>
             </div>
 
             <div className="p-3.5 flex justify-between items-center bg-secondary/30">
               <span className="text-muted-foreground">Amount Charged:</span>
               <span className="font-bold text-foreground">
-                ₦{Number(request.amountCharged).toLocaleString()}
+                ₦{Number(currentRecord.amountCharged).toLocaleString()}
               </span>
             </div>
 
             <div className="p-3.5 flex justify-between items-center">
               <span className="text-muted-foreground">Submitted Date:</span>
               <span className="text-foreground">
-                {formattedDate(request.createdAt)}
+                {formattedDate(currentRecord.createdAt)}
               </span>
             </div>
 
-            {request.completedAt && (
+            {currentRecord.completedAt && (
               <div className="p-3.5 flex justify-between items-center bg-secondary/30">
                 <span className="text-muted-foreground">Completed Date:</span>
                 <span className="text-foreground">
-                  {formattedDate(request.completedAt)}
+                  {formattedDate(currentRecord.completedAt)}
                 </span>
               </div>
             )}
