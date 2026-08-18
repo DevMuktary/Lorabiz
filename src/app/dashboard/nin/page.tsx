@@ -53,7 +53,7 @@ const NIN_SERVICES: NinServiceCard[] = [
   {
     title: "NIN Personalization",
     category: "Enrollment Personalization",
-    description: "Submit your enrollment tracking ID for personalization (and maybe retrieve your verified identity slip).",
+    description: "Submit your enrollment tracking ID for personalization.",
     turnaround: "1–24 Hours",
     logo: "/nimc.png",
     href: "/dashboard/nin/personalization",

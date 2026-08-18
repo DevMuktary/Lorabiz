@@ -14,6 +14,7 @@ import {
   Fingerprint
 } from "@phosphor-icons/react";
 import { PersonalizationSubmissionForm } from "@/components/features/nin/personalization/PersonalizationSubmissionForm";
+import { PersonalizationNoticeModal } from "@/components/features/nin/personalization/PersonalizationNoticeModal";
 
 export default function NinPersonalizationPage() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
@@ -21,6 +22,7 @@ export default function NinPersonalizationPage() {
   const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [submittedResult, setSubmittedResult] = useState<{ reference: string; trackingId: string } | null>(null);
+  const [showNoticeModal, setShowNoticeModal] = useState<boolean>(true);
 
   useEffect(() => {
     fetchInitialData();
@@ -66,6 +68,12 @@ export default function NinPersonalizationPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto relative pb-12 animate-in fade-in duration-200">
+      {/* Notice Modal (I Understand) */}
+      <PersonalizationNoticeModal 
+        isOpen={showNoticeModal} 
+        onClose={() => setShowNoticeModal(false)} 
+      />
+
       {/* Back Breadcrumb */}
       <Link 
         href="/dashboard/nin" 
@@ -94,7 +102,7 @@ export default function NinPersonalizationPage() {
             </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">NIN Personalization</h1>
             <p className="text-muted-foreground text-sm">
-              Submit your enrollment tracking ID for personalization (and maybe retrieve your verified identity slip).
+              Submit your enrollment tracking ID for personalization.
             </p>
           </div>
         </div>
@@ -107,20 +115,6 @@ export default function NinPersonalizationPage() {
           <span>View History & Slips</span>
           <ArrowRight weight="bold" className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </Link>
-      </div>
-
-      {/* Notice Banner */}
-      <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-l-4 border-amber-500 p-4 sm:p-5 rounded-2xl border border-amber-500/20 space-y-2">
-        <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
-          <Clock weight="bold" className="h-4 w-4 shrink-0" />
-          <span>Turnaround Time: 1 – 24 Hours (slight delay may occur on weekends)</span>
-        </div>
-        <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed font-medium">
-          Submit your enrollment tracking ID for personalization (and maybe retrieve your verified identity slip).
-        </p>
-        <p className="text-[11px] sm:text-xs text-amber-700 dark:text-amber-300 font-bold leading-relaxed pt-1 border-t border-amber-500/20">
-          ⚠️ Strict No-Refund Policy: This service is non-refundable once submitted, as provider fulfillment costs are billed 100% upfront.
-        </p>
       </div>
 
       {/* Post-Submission Success State */}
@@ -236,16 +230,16 @@ export default function NinPersonalizationPage() {
                     3
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-foreground">Record & Slip Retrieval</h4>
+                    <h4 className="text-xs font-bold text-foreground">NIN & Slip Generation</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Retrieve your resolved NIN details, and maybe download your verified identity slip.
+                      Get your resolved National Identity Number (NIN) and download your identity slip.
                     </p>
                   </div>
                 </li>
               </ul>
 
               <div className="p-3.5 rounded-xl bg-secondary/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">Strict Policy:</strong> Personalization requests are non-refundable once submitted.
+                <strong className="text-foreground">No Refund Policy:</strong> Personalization requests are non-refundable once submitted.
               </div>
             </div>
           </div>

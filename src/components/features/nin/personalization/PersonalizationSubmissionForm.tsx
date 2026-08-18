@@ -101,7 +101,7 @@ export function PersonalizationSubmissionForm({
         <div className="space-y-1">
           <h2 className="text-xl font-bold text-foreground">NIN Personalization Request</h2>
           <p className="text-sm text-muted-foreground">
-            Submit your enrollment tracking ID for personalization (and maybe retrieve your verified identity slip).
+            Submit your enrollment tracking ID for personalization.
           </p>
         </div>
 

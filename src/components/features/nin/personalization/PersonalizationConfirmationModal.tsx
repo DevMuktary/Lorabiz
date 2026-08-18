@@ -93,7 +93,7 @@ export function PersonalizationConfirmationModal({
             </div>
 
             <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
-              ⚠️ <strong>Strict No Refund:</strong> Billed 100% upfront upon transmission.
+              ⚠️ <strong>No Refund Policy:</strong> Non-refundable once submitted (billed 100% upfront).
             </div>
 
             <div className="flex justify-between items-end border-t border-border pt-3 mt-3">
