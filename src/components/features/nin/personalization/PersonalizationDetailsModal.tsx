@@ -53,6 +53,7 @@ export function PersonalizationDetailsModal({
   const [mounted, setMounted] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "info" | "error"; message: string } | null>(null);
   const [currentRecord, setCurrentRecord] = useState<PersonalizationRequestRecord | null>(request);
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export function PersonalizationDetailsModal({
 
   useEffect(() => {
     setCurrentRecord(request);
+    setSyncFeedback(null);
   }, [request]);
 
   if (!isOpen || !mounted || !currentRecord || typeof document === "undefined") return null;
@@ -74,6 +76,7 @@ export function PersonalizationDetailsModal({
   const handleSyncClick = async () => {
     if (!currentRecord) return;
     setIsSyncing(true);
+    setSyncFeedback(null);
     try {
       // First query status API directly to immediately update local modal view
       const res = await fetch(`/api/nin/personalization/status?reference=${encodeURIComponent(currentRecord.reference)}`);
@@ -96,12 +99,38 @@ export function PersonalizationDetailsModal({
           apiMessage: reqData.apiMessage || prev.apiMessage,
           completedAt: reqData.completedAt || prev.completedAt,
         } : null);
+
+        if (reqData.status === "COMPLETED") {
+          setSyncFeedback({
+            type: "success",
+            message: data.message || `Personalization Complete! Resolved NIN: ${reqData.resolvedNin || "Generated"}`
+          });
+        } else if (reqData.status === "FAILED") {
+          setSyncFeedback({
+            type: "error",
+            message: reqData.failureReason || data.message || "Personalization outcome: Unsuccessful"
+          });
+        } else {
+          setSyncFeedback({
+            type: "info",
+            message: data.message || "Verification in progress. Your request is currently being processed."
+          });
+        }
+      } else {
+        setSyncFeedback({
+          type: "error",
+          message: data.message || "Unable to sync status at this moment."
+        });
       }
 
       // Notify parent to refresh table
       await onSync(currentRecord.reference);
     } catch (err) {
       console.error("Status sync failed:", err);
+      setSyncFeedback({
+        type: "error",
+        message: "Failed to connect to gateway. Please try again."
+      });
     } finally {
       setIsSyncing(false);
     }
@@ -177,6 +206,31 @@ export function PersonalizationDetailsModal({
               </button>
             )}
           </div>
+
+          {/* In-Modal Realtime Sync Feedback Banner */}
+          {syncFeedback && (
+            <div className={`p-3.5 rounded-2xl text-xs font-semibold flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200 ${
+              syncFeedback.type === "success" 
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20" 
+                : syncFeedback.type === "error"
+                ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20"
+                : "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20"
+            }`}>
+              {syncFeedback.type === "success" && <CheckCircle weight="fill" className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />}
+              {syncFeedback.type === "error" && <XCircle weight="fill" className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />}
+              {syncFeedback.type === "info" && <Clock weight="fill" className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />}
+              <div className="flex-1 leading-relaxed">
+                {syncFeedback.message}
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setSyncFeedback(null)} 
+                className="opacity-70 hover:opacity-100 cursor-pointer p-0.5 -mr-1"
+              >
+                <X weight="bold" className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* Resolved NIN Banner if completed */}
           {currentRecord.resolvedNin && (

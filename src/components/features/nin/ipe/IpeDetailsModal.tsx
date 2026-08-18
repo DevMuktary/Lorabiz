@@ -56,6 +56,7 @@ export function IpeDetailsModal({
   const [copied, setCopied] = useState(false);
   const [isMasked, setIsMasked] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "info" | "error"; message: string } | null>(null);
   const [mounted, setMounted] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<IpeRequestRecord | null>(request);
 
@@ -65,6 +66,7 @@ export function IpeDetailsModal({
 
   useEffect(() => {
     setCurrentRecord(request);
+    setSyncFeedback(null);
   }, [request]);
 
   if (!isOpen || !currentRecord || !mounted || typeof document === "undefined") return null;
@@ -78,6 +80,7 @@ export function IpeDetailsModal({
   const handleManualSync = async () => {
     if (isSyncing || !currentRecord) return;
     setIsSyncing(true);
+    setSyncFeedback(null);
     try {
       // First query status API directly to immediately update local modal view
       const res = await fetch(`/api/nin/ipe/status?reference=${encodeURIComponent(currentRecord.reference)}`);
@@ -97,6 +100,28 @@ export function IpeDetailsModal({
           apiMessage: reqData.apiMessage || prev.apiMessage,
           completedAt: reqData.completedAt || prev.completedAt,
         } : null);
+
+        if (reqData.status === "COMPLETED") {
+          setSyncFeedback({
+            type: "success",
+            message: data.message || `IPE Clearance Complete! Resolved NIN: ${reqData.resolvedNin || "Generated"}`
+          });
+        } else if (reqData.status === "FAILED") {
+          setSyncFeedback({
+            type: "error",
+            message: reqData.failureReason || data.message || "IPE Clearance outcome: Unsuccessful"
+          });
+        } else {
+          setSyncFeedback({
+            type: "info",
+            message: data.message || "Verification in progress. Your clearance request is currently processing."
+          });
+        }
+      } else {
+        setSyncFeedback({
+          type: "error",
+          message: data.message || "Unable to sync status at this moment."
+        });
       }
 
       if (onSyncStatus) {
@@ -104,6 +129,10 @@ export function IpeDetailsModal({
       }
     } catch (err) {
       console.error("IPE status sync failed:", err);
+      setSyncFeedback({
+        type: "error",
+        message: "Failed to connect to gateway. Please try again."
+      });
     } finally {
       setIsSyncing(false);
     }
@@ -190,6 +219,31 @@ export function IpeDetailsModal({
         {/* Scrollable Content */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
           
+          {/* In-Modal Realtime Sync Feedback Banner */}
+          {syncFeedback && (
+            <div className={`p-3.5 rounded-2xl text-xs font-semibold flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200 ${
+              syncFeedback.type === "success" 
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20" 
+                : syncFeedback.type === "error"
+                ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20"
+                : "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20"
+            }`}>
+              {syncFeedback.type === "success" && <CheckCircle weight="fill" className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />}
+              {syncFeedback.type === "error" && <XCircle weight="fill" className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />}
+              {syncFeedback.type === "info" && <Clock weight="fill" className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />}
+              <div className="flex-1 leading-relaxed">
+                {syncFeedback.message}
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setSyncFeedback(null)} 
+                className="opacity-70 hover:opacity-100 cursor-pointer p-0.5 -mr-1"
+              >
+                <X weight="bold" className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Status Alert Banner */}
           {currentRecord.status === "PROCESSING" && (
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3 text-amber-700 dark:text-amber-300">

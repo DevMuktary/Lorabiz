@@ -36,8 +36,15 @@ export default function PersonalizationHistoryPage() {
       const data = await res.json();
 
       if (data.success) {
-        setRequests(data.requests || []);
-        setStats(data.stats || { total: 0, processing: 0, completed: 0, failed: 0 });
+        const loadedRequests = data.requests || [];
+        setRequests(loadedRequests);
+        const calculatedStats = data.stats || data.metrics || {
+          total: loadedRequests.length,
+          processing: loadedRequests.filter((r: any) => r.status === "PROCESSING").length,
+          completed: loadedRequests.filter((r: any) => r.status === "COMPLETED").length,
+          failed: loadedRequests.filter((r: any) => r.status === "FAILED").length,
+        };
+        setStats(calculatedStats);
         setWalletBalance(data.walletBalance || 0);
       }
     } catch (err) {

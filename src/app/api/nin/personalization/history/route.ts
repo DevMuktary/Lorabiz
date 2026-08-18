@@ -66,15 +66,18 @@ export async function GET(req: NextRequest) {
         }),
       ]);
 
+    const statsData = {
+      total: totalCount,
+      processing: processingCount,
+      completed: completedCount,
+      failed: failedCount,
+    };
+
     return NextResponse.json({
       success: true,
       requests,
-      metrics: {
-        total: totalCount,
-        processing: processingCount,
-        completed: completedCount,
-        failed: failedCount,
-      },
+      stats: statsData,
+      metrics: statsData,
       walletBalance: user.wallet ? Number(user.wallet.balance) : 0,
     });
   } catch (error: any) {
