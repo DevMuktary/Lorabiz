@@ -40,6 +40,13 @@ export async function GET() {
       prisma.ninValidationRequest.count({ where: { status: "FAILED" } }),
     ]);
 
+    // 2d. Fetch counts for NIN Personalization Requests
+    const [pznProcessing, pznCompleted, pznFailed] = await Promise.all([
+      prisma.ninPersonalizationRequest.count({ where: { status: "PROCESSING" } }),
+      prisma.ninPersonalizationRequest.count({ where: { status: "COMPLETED" } }),
+      prisma.ninPersonalizationRequest.count({ where: { status: "FAILED" } }),
+    ]);
+
     // 3. Fetch counts for SCUML
     const [scumlPending, scumlProcessing, scumlCompleted] = await Promise.all([
       prisma.scumlRegistration.count({ where: { status: "PENDING" } }),
@@ -90,6 +97,13 @@ export async function GET() {
       failed: valFailed,
     };
 
+    const personalizationMetrics = {
+      pending: pznProcessing,
+      completed: pznCompleted,
+      queried: 0,
+      failed: pznFailed,
+    };
+
     const scumlMetrics = {
       pending: scumlPending + scumlProcessing, 
       completed: scumlCompleted,
@@ -113,10 +127,10 @@ export async function GET() {
 
     // Calculate Global Totals
     const globalMetrics = {
-      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending,
-      completed: cacMetrics.completed + ninMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
+      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending,
+      completed: cacMetrics.completed + ninMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
       queried: cacMetrics.queried, 
-      failed: cacMetrics.failed + ninMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed,
+      failed: cacMetrics.failed + ninMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed,
     };
 
     // Construct the structured response
@@ -162,10 +176,19 @@ export async function GET() {
         {
           id: "ipe",
           name: "NIMC IPE Clearance",
-          description: "Automated resolution gateway for In-Processing Errors on National Identity Number tracking IDs.",
+          description: "Resolution gateway for In-Processing Errors on National Identity Number tracking IDs.",
           metrics: ipeMetrics,
-          subCategories: ["In-Processing Error", "NIMC Tracking ID", "Automated Sync"],
+          subCategories: ["In-Processing Error", "NIMC Tracking ID", "Automated / Manual Sync"],
           href: "/quadrox-lorabiz-team/mds/dashboard/orders/ipe",
+          isAutomated: true
+        },
+        {
+          id: "personalization",
+          name: "NIN Personalization",
+          description: "Tracking ID activation, personalization, and NIN slip retrieval pipeline.",
+          metrics: personalizationMetrics,
+          subCategories: ["Enrollment Tracking ID", "NIN Activation", "Slip Generation"],
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/personalization",
           isAutomated: true
         },
         {

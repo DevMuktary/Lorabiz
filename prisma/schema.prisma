@@ -126,6 +126,7 @@ model User {
   ninRequests      NinRequestLog[]
   ninIpeRequests   NinIpeRequest[]
   ninValidationRequests NinValidationRequest[]
+  ninPersonalizationRequests NinPersonalizationRequest[]
   scumlRequests    ScumlRegistration[]
   taxIdRequests    TaxIdRequest[]
   notifications    InAppNotification[]
@@ -349,11 +350,13 @@ model NinIpeRequest {
   userId        String
   trackingId    String
   reference     String       @unique // Matches ledger transaction reference
-  externalReqId String?      // requestId returned by AgentHub
+  provider      String       @default("DATAVERIFY") // "DATAVERIFY" | "AGENTHUB" | "MANUAL"
+  externalReqId String?      // requestId returned by AgentHub or transaction_id from DataVerify
   status        NinIpeStatus @default(PROCESSING)
   
   // Resolved details when completed
   resolvedNin   String?      // 11-digit NIN
+  newTrackingId String?      // New tracking ID if updated
   fullName      String?
   dob           String?
   gender        String?
@@ -361,6 +364,7 @@ model NinIpeRequest {
   
   apiMessage    String?
   failureReason String?
+  adminNotes    String?      @db.Text
   amountCharged Decimal      @db.Decimal(10, 2)
   apiResponse   Json?
   
@@ -372,6 +376,49 @@ model NinIpeRequest {
 
   @@index([userId, status])
   @@index([trackingId])
+}
+
+enum NinPersonalizationStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model NinPersonalizationRequest {
+  id            String                   @id @default(cuid())
+  userId        String
+  trackingId    String
+  reference     String                   @unique // Matches ledger transaction reference
+  provider      String                   @default("DATAVERIFY") // "DATAVERIFY" | "MANUAL"
+  externalTxId  String?                  // transaction_id returned by DataVerify
+  status        NinPersonalizationStatus @default(PROCESSING)
+  
+  // Resolved details when completed
+  resolvedNin   String?                  // 11-digit NIN
+  fullName      String?
+  dob           String?
+  gender        String?
+  phone         String?
+  residenceState String?
+  photoUrl      String?                  @db.Text
+  pdfUrl        String?                  @db.Text // PDF slip base64 or URL
+  userData      Json?                    // Complete personal details returned by DataVerify
+  
+  apiMessage    String?
+  failureReason String?                  @db.Text
+  adminNotes    String?                  @db.Text
+  amountCharged Decimal                  @db.Decimal(10, 2)
+  apiResponse   Json?
+  
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  completedAt   DateTime?
+
+  user          User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([trackingId])
+  @@index([reference])
 }
 
 enum NinValidationCategory {

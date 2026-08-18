@@ -7,7 +7,23 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    // 1. FETCH ALL SETTINGS DIRECTLY (No auto-creation)
+    // Ensure NIN_PERSONALIZATION exists in ServicePricing
+    const existingPzn = await prisma.servicePricing.findUnique({
+      where: { serviceKey: "NIN_PERSONALIZATION" },
+    });
+
+    if (!existingPzn) {
+      await prisma.servicePricing.create({
+        data: {
+          serviceKey: "NIN_PERSONALIZATION",
+          title: "NIN Personalization",
+          price: 1500.0,
+          isActive: true,
+        },
+      });
+    }
+
+    // 1. FETCH ALL SETTINGS DIRECTLY
     const cacPricing = await prisma.servicePricing.findMany({ 
       orderBy: { serviceKey: 'asc' } 
     });

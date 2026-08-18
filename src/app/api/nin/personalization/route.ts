@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { submitIpeClearance } from "@/lib/agenthub";
-import { submitDataVerifyIpe } from "@/lib/dataverify";
+import { submitDataVerifyPersonalization } from "@/lib/dataverify";
 import { logUserActivity } from "@/lib/activity-logger";
 
 export async function POST(req: NextRequest) {
@@ -46,22 +45,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check ServicePricing configuration
+    // Check ServicePricing configuration for NIN_PERSONALIZATION
     const servicePricing = await prisma.servicePricing.findUnique({
-      where: { serviceKey: "NIN_IPE_CLEARANCE" },
+      where: { serviceKey: "NIN_PERSONALIZATION" },
     });
 
     if (servicePricing && !servicePricing.isActive) {
       return NextResponse.json(
         {
           success: false,
-          message: servicePricing.maintenanceMsg || "IPE Clearance service is currently unavailable for maintenance.",
+          message: servicePricing.maintenanceMsg || "NIN Personalization service is currently unavailable for maintenance.",
         },
         { status: 400 }
       );
     }
 
-    const requiredAmount = servicePricing ? Number(servicePricing.price) : 2500.0;
+    const requiredAmount = servicePricing ? Number(servicePricing.price) : 1500.0;
     const currentBalance = Number(user.wallet.balance);
 
     if (currentBalance < requiredAmount) {
@@ -74,8 +73,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if there is already an ongoing request for the same tracking ID by this user
-    const existingActiveRequest = await prisma.ninIpeRequest.findFirst({
+    // Check if there is already an ongoing processing request for the same tracking ID by this user
+    const existingActiveRequest = await prisma.ninPersonalizationRequest.findFirst({
       where: {
         userId: user.id,
         trackingId: sanitizedTrackingId,
@@ -87,7 +86,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: `You already have an active IPE clearance request in processing for Tracking ID ${sanitizedTrackingId} (Reference: ${existingActiveRequest.reference}).`,
+          message: `You already have an active personalization request in processing for Tracking ID ${sanitizedTrackingId} (Reference: ${existingActiveRequest.reference}).`,
         },
         { status: 409 }
       );
@@ -95,58 +94,44 @@ export async function POST(req: NextRequest) {
 
     // Fetch active provider from GlobalSettings
     const providerSetting = await prisma.globalSetting.findUnique({
-      where: { key: "NIN_IPE_PROVIDER" },
+      where: { key: "NIN_PERSONALIZATION_PROVIDER" },
     });
-    const activeProvider = (providerSetting?.value || "DATAVERIFY").toUpperCase(); // "DATAVERIFY" | "AGENTHUB" | "MANUAL"
+    const activeProvider = (providerSetting?.value || "DATAVERIFY").toUpperCase(); // "DATAVERIFY" | "MANUAL"
 
     // Generate unique reference
-    const reference = `IPE_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const reference = `PZN_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-    let externalReqId: string | null = null;
-    let apiMessage = "Request submitted successfully. Processing in progress.";
+    let externalTxId: string | null = null;
+    let apiMessage = "Personalization request accepted. Processing in progress.";
     let rawApiResponse: unknown = null;
 
     if (activeProvider === "DATAVERIFY") {
-      const dvRes = await submitDataVerifyIpe(sanitizedTrackingId);
-      if (!dvRes.success || !dvRes.data?.status) {
+      const dataVerifyRes = await submitDataVerifyPersonalization(sanitizedTrackingId);
+
+      if (!dataVerifyRes.success || !dataVerifyRes.data?.status) {
         return NextResponse.json(
           {
             success: false,
             message:
-              dvRes.error ||
-              "Unable to submit IPE request to identity gateway (DataVerify). Please verify your Tracking ID and try again.",
+              dataVerifyRes.error ||
+              "Unable to submit personalization request to identity gateway. Please verify your Tracking ID and try again.",
           },
           { status: 422 }
         );
       }
-      externalReqId = dvRes.data.transaction_id || null;
-      apiMessage = dvRes.data.message || apiMessage;
-      rawApiResponse = dvRes.data;
-    } else if (activeProvider === "AGENTHUB") {
-      const agentHubResponse = await submitIpeClearance(sanitizedTrackingId, reference);
-      if (!agentHubResponse.success || !agentHubResponse.data?.status) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              agentHubResponse.error ||
-              "Unable to submit IPE request to identity gateway (AgentHub). Please verify your Tracking ID and try again.",
-          },
-          { status: 422 }
-        );
-      }
-      externalReqId = agentHubResponse.data.requestId || null;
-      apiMessage = agentHubResponse.data?.message || apiMessage;
-      rawApiResponse = agentHubResponse.data;
+
+      externalTxId = dataVerifyRes.data.transaction_id || null;
+      apiMessage = dataVerifyRes.data.message || apiMessage;
+      rawApiResponse = dataVerifyRes.data;
     } else {
-      // Manual Operator queue
-      apiMessage = "Request queued for manual operator verification and clearance.";
+      // Manual Operator routing
+      apiMessage = "Request queued for manual verification and personalization processing.";
     }
 
     const newBalance = currentBalance - requiredAmount;
 
-    // Execute atomic transaction for wallet debit, ledger record, and IPE request creation
-    const createdIpe = await prisma.$transaction(async (tx) => {
+    // Execute atomic transaction for wallet debit, ledger record, and Personalization request creation
+    const createdPersonalization = await prisma.$transaction(async (tx) => {
       // 1. Debit Wallet
       await tx.wallet.update({
         where: { id: user.wallet!.id },
@@ -164,18 +149,18 @@ export async function POST(req: NextRequest) {
           status: "SUCCESS",
           reference: reference,
           serviceCategory: "IDENTITY",
-          description: `NIMC IPE Clearance Service - Tracking ID: ${sanitizedTrackingId}`,
+          description: `NIMC NIN Personalization Service - Tracking ID: ${sanitizedTrackingId}`,
         },
       });
 
-      // 3. Create IPE Request (starts in PROCESSING state)
-      const ipeRecord = await tx.ninIpeRequest.create({
+      // 3. Create Personalization Request
+      const record = await tx.ninPersonalizationRequest.create({
         data: {
           userId: user.id,
           trackingId: sanitizedTrackingId,
           reference: reference,
-          provider: activeProvider === "AGENTHUB" ? "AGENTHUB" : activeProvider === "MANUAL" ? "MANUAL" : "DATAVERIFY",
-          externalReqId: externalReqId,
+          provider: activeProvider === "MANUAL" ? "MANUAL" : "DATAVERIFY",
+          externalTxId: externalTxId,
           status: "PROCESSING",
           amountCharged: requiredAmount,
           apiMessage: apiMessage,
@@ -206,7 +191,7 @@ export async function POST(req: NextRequest) {
               data: {
                 referralId: activeReferral.id,
                 serviceType: "NIN",
-                serviceId: ipeRecord.id,
+                serviceId: record.id,
                 amount: commissionAmount,
               },
             });
@@ -219,15 +204,15 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      return ipeRecord;
+      return record;
     });
 
     // Log Activity
     await logUserActivity({
       userId: user.id,
-      action: "NIN_IPE_CLEARANCE_SUBMITTED",
+      action: "NIN_PERSONALIZATION_SUBMITTED",
       category: "SERVICES",
-      description: `Submitted NIMC IPE clearance for Tracking ID: ${sanitizedTrackingId}`,
+      description: `Submitted NIN Personalization for Tracking ID: ${sanitizedTrackingId}`,
       status: "SUCCESS",
       referenceId: reference,
       req,
@@ -236,21 +221,70 @@ export async function POST(req: NextRequest) {
         reference,
         provider: activeProvider,
         amountCharged: requiredAmount,
-        requestId: externalReqId,
+        transactionId: externalTxId,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: "IPE Clearance request submitted successfully. Processing has started.",
-      reference: createdIpe.reference,
-      requestId: externalReqId,
+      message: "NIN Personalization request submitted successfully. Processing has started.",
+      reference: createdPersonalization.reference,
+      transactionId: externalTxId,
       status: "PROCESSING",
     });
   } catch (error: any) {
-    console.error("❌ NIN IPE Submission Error:", error);
+    console.error("❌ NIN Personalization Submission Error:", error);
     return NextResponse.json(
-      { success: false, message: error.message || "An unexpected error occurred during submission." },
+      { success: false, message: error.message || "An unexpected error occurred during personalization submission." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized access." },
+        { status: 401 }
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        wallet: true,
+        ninPersonalizationRequests: {
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        },
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: "User not found." },
+        { status: 404 }
+      );
+    }
+
+    const pricing = await prisma.servicePricing.findUnique({
+      where: { serviceKey: "NIN_PERSONALIZATION" },
+    });
+
+    return NextResponse.json({
+      success: true,
+      price: pricing ? Number(pricing.price) : 1500,
+      isActive: pricing ? pricing.isActive : true,
+      maintenanceMsg: pricing?.maintenanceMsg || null,
+      walletBalance: user.wallet ? Number(user.wallet.balance) : 0,
+      recentRequests: user.ninPersonalizationRequests,
+    });
+  } catch (error: any) {
+    console.error("❌ NIN Personalization Info GET Error:", error);
+    return NextResponse.json(
+      { success: false, message: error.message || "Error fetching service details." },
       { status: 500 }
     );
   }

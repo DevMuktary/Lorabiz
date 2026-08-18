@@ -31,31 +31,77 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "IPE request record not found" }, { status: 404 });
     }
 
-    // ACTION 1: Live Status Sync with AgentHub
+    // ACTION 1: Live Status Sync
     if (action === "SYNC_STATUS") {
-      const statusResult = await checkIpeClearanceStatus(ipeItem.reference);
+      let isCompleted = false;
+      let isFailed = false;
+      let resolvedNin: string | undefined;
+      let newTrackingId: string | undefined;
+      let fullName: string | undefined;
+      let dob: string | undefined;
+      let gender: string | undefined;
+      let photoUrl: string | undefined;
+      let failureReason: string | undefined;
+      let apiMsg: string | undefined;
+      let rawResponse: any = null;
 
-      if (!statusResult.success || !statusResult.data) {
-        return NextResponse.json({
-          success: false,
-          message: statusResult.error || "Failed to query status from AgentHub",
-        });
+      if (ipeItem.provider === "DATAVERIFY") {
+        const { checkDataVerifyIpeStatus, parseDataVerifyIpeResult } = await import("@/lib/dataverify");
+        const dvRes = await checkDataVerifyIpeStatus(ipeItem.trackingId);
+        if (!dvRes.success || !dvRes.data) {
+          return NextResponse.json({
+            success: false,
+            message: dvRes.error || "Failed to query status from DataVerify",
+          });
+        }
+        rawResponse = dvRes.data;
+        const parsed = parseDataVerifyIpeResult(dvRes.data);
+        apiMsg = parsed.message;
+        if (parsed.normalizedStatus === "COMPLETED") {
+          isCompleted = true;
+          resolvedNin = parsed.resolvedNin;
+          newTrackingId = parsed.newTrackingId;
+        } else if (parsed.normalizedStatus === "FAILED") {
+          isFailed = true;
+          failureReason = parsed.errorDetail || parsed.message || "Clearance failed.";
+        }
+      } else {
+        const statusResult = await checkIpeClearanceStatus(ipeItem.reference);
+        if (!statusResult.success || !statusResult.data) {
+          return NextResponse.json({
+            success: false,
+            message: statusResult.error || "Failed to query status from AgentHub",
+          });
+        }
+        rawResponse = statusResult.data;
+        const parsed = parseIpeStatusResponse(statusResult.data);
+        apiMsg = parsed.message;
+        if (parsed.normalizedStatus === "COMPLETED") {
+          isCompleted = true;
+          resolvedNin = parsed.resolvedNin;
+          fullName = parsed.fullName;
+          dob = parsed.dob;
+          gender = parsed.gender;
+          photoUrl = parsed.photoUrl;
+        } else if (parsed.normalizedStatus === "FAILED") {
+          isFailed = true;
+          failureReason = parsed.message || "Clearance rejected by AgentHub.";
+        }
       }
 
-      const parsed = parseIpeStatusResponse(statusResult.data);
-
-      if (parsed.normalizedStatus === "COMPLETED") {
+      if (isCompleted) {
         const updated = await prisma.ninIpeRequest.update({
           where: { id: ipeItem.id },
           data: {
             status: "COMPLETED",
-            resolvedNin: parsed.resolvedNin || ipeItem.resolvedNin,
-            fullName: parsed.fullName || ipeItem.fullName,
-            dob: parsed.dob || ipeItem.dob,
-            gender: parsed.gender || ipeItem.gender,
-            photoUrl: parsed.photoUrl || ipeItem.photoUrl,
-            apiMessage: parsed.message || "Clearance Successful",
-            apiResponse: statusResult.data as any,
+            resolvedNin: resolvedNin || ipeItem.resolvedNin,
+            newTrackingId: newTrackingId || ipeItem.newTrackingId,
+            fullName: fullName || ipeItem.fullName,
+            dob: dob || ipeItem.dob,
+            gender: gender || ipeItem.gender,
+            photoUrl: photoUrl || ipeItem.photoUrl,
+            apiMessage: apiMsg || "Clearance Successful",
+            apiResponse: rawResponse,
             completedAt: new Date(),
           },
         });
@@ -90,8 +136,8 @@ export async function POST(req: Request) {
           message: "IPE Clearance Completed and NIN released!",
           request: updated,
         });
-      } else if (parsed.normalizedStatus === "FAILED") {
-        const failureReason = parsed.message || "Clearance rejected by identity provider.";
+      } else if (isFailed) {
+        const finalFailureReason = failureReason || "Clearance rejected by identity gateway.";
         const refundAmount = Number(ipeItem.amountCharged);
 
         await prisma.$transaction(async (tx) => {
@@ -123,9 +169,9 @@ export async function POST(req: Request) {
             where: { id: ipeItem.id },
             data: {
               status: "FAILED",
-              failureReason: failureReason,
-              apiMessage: parsed.message,
-              apiResponse: statusResult.data as any,
+              failureReason: finalFailureReason,
+              apiMessage: apiMsg || "Clearance Failed",
+              apiResponse: rawResponse,
             },
           });
         });
@@ -137,7 +183,7 @@ export async function POST(req: Request) {
             name: ipeItem.user.firstName,
             trackingId: ipeItem.trackingId,
             reference: ipeItem.reference,
-            failureReason,
+            failureReason: finalFailureReason,
             refundAmount,
           });
         } catch (e) {}
@@ -162,7 +208,7 @@ export async function POST(req: Request) {
       } else {
         return NextResponse.json({
           success: true,
-          message: `Request is currently ${parsed.normalizedStatus} on AgentHub: ${parsed.message || "Still in progress"}`,
+          message: `Request is currently processing: ${apiMsg || "Still in progress"}`,
         });
       }
     }
