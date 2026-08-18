@@ -73,16 +73,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "User wallet not found." }, { status: 404 });
     }
 
-    // Map slipType to ServicePricing serviceKey
-    const dbKeyMap: Record<string, string> = {
+    // Map slipType to ServicePricing serviceKey (Decoupled for Phone vs NIN)
+    const dbKeyMapNIN: Record<string, string> = {
       "nin_basic": "NIN_BASIC",
       "nin_vnin": "NIN_VNIN",
       "nin_regular": "NIN_REGULAR",
       "nin_standard": "NIN_STANDARD",
       "nin_premium": "NIN_PREMIUM"
     };
+
+    const dbKeyMapPhone: Record<string, string> = {
+      "nin_regular": "NIN_PHONE_REGULAR",
+      "nin_standard": "NIN_PHONE_STANDARD",
+      "nin_premium": "NIN_PHONE_PREMIUM"
+    };
     
-    const serviceKey = dbKeyMap[slipType];
+    const serviceKey = isPhoneSearch ? dbKeyMapPhone[slipType] : dbKeyMapNIN[slipType];
 
     const pricing = await prisma.servicePricing.findUnique({
       where: { serviceKey }
@@ -91,7 +97,7 @@ export async function POST(req: NextRequest) {
     if (!pricing || !pricing.isActive) {
       return NextResponse.json({ 
         success: false, 
-        message: pricing?.maintenanceMsg || "Selected slip service is currently unavailable for maintenance." 
+        message: pricing?.maintenanceMsg || (isPhoneSearch ? "This slip format is currently unavailable for phone verification." : "This slip format is currently unavailable for maintenance.") 
       }, { status: 400 });
     }
 

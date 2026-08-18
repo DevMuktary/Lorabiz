@@ -54,6 +54,7 @@ export default function NinByPhonePage() {
     loading: boolean;
     phoneSearchActive: boolean;
     prices: Record<string, number>;
+    activeMap: Record<string, boolean>;
   }>({
     loading: true,
     phoneSearchActive: true,
@@ -61,6 +62,11 @@ export default function NinByPhonePage() {
       nin_regular: 500,
       nin_standard: 700,
       nin_premium: 1000,
+    },
+    activeMap: {
+      nin_regular: true,
+      nin_standard: true,
+      nin_premium: true,
     },
   });
 
@@ -108,15 +114,30 @@ export default function NinByPhonePage() {
 
       if (statusData.success && statusData.status) {
         const pMap = statusData.pricing || {};
+        const isMasterPhoneActive = statusData.status.phoneSearchActive !== false;
+
+        const activeMap: Record<string, boolean> = {
+          nin_regular: (pMap.NIN_PHONE_REGULAR?.isActive !== false) && isMasterPhoneActive,
+          nin_standard: (pMap.NIN_PHONE_STANDARD?.isActive !== false) && isMasterPhoneActive,
+          nin_premium: (pMap.NIN_PHONE_PREMIUM?.isActive !== false) && isMasterPhoneActive,
+        };
+
         setStatusState({
           loading: false,
-          phoneSearchActive: statusData.status.phoneSearchActive,
+          phoneSearchActive: isMasterPhoneActive,
           prices: {
-            nin_regular: pMap.NIN_REGULAR?.price || 500,
-            nin_standard: pMap.NIN_STANDARD?.price || 700,
-            nin_premium: pMap.NIN_PREMIUM?.price || 1000,
+            nin_regular: pMap.NIN_PHONE_REGULAR?.price || 500,
+            nin_standard: pMap.NIN_PHONE_STANDARD?.price || 700,
+            nin_premium: pMap.NIN_PHONE_PREMIUM?.price || 1000,
           },
+          activeMap,
         });
+
+        // Ensure selected slip is active, otherwise switch to first active
+        if (!activeMap[slipType]) {
+          const firstActive = PHONE_SLIP_OPTIONS.find(o => activeMap[o.id]);
+          if (firstActive) setSlipType(firstActive.id);
+        }
       } else {
         setStatusState(prev => ({ ...prev, loading: false }));
       }
@@ -142,6 +163,10 @@ export default function NinByPhonePage() {
     }
     if (!statusState.phoneSearchActive) {
       setError("Phone search is currently offline for maintenance. Please switch to NIN query.");
+      return;
+    }
+    if (!statusState.activeMap[slipType]) {
+      setError("The selected slip format is currently unavailable for phone verification.");
       return;
     }
     if (!attestation1 || !attestation2) {
@@ -217,6 +242,7 @@ export default function NinByPhonePage() {
 
   const selectedOption = PHONE_SLIP_OPTIONS.find(o => o.id === slipType) || PHONE_SLIP_OPTIONS[2];
   const currentPrice = statusState.prices[slipType] || selectedOption.defaultPrice;
+  const isSelectedSlipAvailable = statusState.activeMap[slipType] !== false && statusState.phoneSearchActive;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
@@ -299,7 +325,7 @@ export default function NinByPhonePage() {
           </div>
         </div>
 
-        {/* Slips Radio List with Eye + "View Example" & No Explanation Text */}
+        {/* Slips Radio List with Eye + "View Example" & Maintenance Badges */}
         <div className="space-y-3">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
             Select Slip Format
@@ -308,14 +334,19 @@ export default function NinByPhonePage() {
           <div className="space-y-2">
             {PHONE_SLIP_OPTIONS.map((option) => {
               const isSelected = slipType === option.id;
+              const isAvailable = statusState.activeMap[option.id] !== false && statusState.phoneSearchActive;
               const price = statusState.prices[option.id] || option.defaultPrice;
 
               return (
                 <div
                   key={option.id}
-                  onClick={() => setSlipType(option.id)}
+                  onClick={() => {
+                    if (isAvailable) setSlipType(option.id);
+                  }}
                   className={`p-3.5 sm:p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
-                    isSelected
+                    !isAvailable
+                      ? "opacity-50 bg-secondary/20 border-border/60 cursor-not-allowed"
+                      : isSelected
                       ? "bg-secondary/70 border-sky-500 shadow-sm cursor-pointer"
                       : "bg-card border-border hover:bg-secondary/40 cursor-pointer"
                   }`}
@@ -324,13 +355,18 @@ export default function NinByPhonePage() {
                     <input 
                       type="radio" 
                       name="slipType" 
+                      disabled={!isAvailable}
                       checked={isSelected} 
-                      onChange={() => setSlipType(option.id)} 
-                      className="text-sky-500 focus:ring-sky-500 cursor-pointer"
+                      onChange={() => {
+                        if (isAvailable) setSlipType(option.id);
+                      }} 
+                      className="text-sky-500 focus:ring-sky-500 cursor-pointer disabled:cursor-not-allowed"
                     />
                     
                     <div className="flex items-center flex-wrap gap-2.5">
-                      <span className="font-bold text-sm text-foreground">{option.label}</span>
+                      <span className={`font-bold text-sm ${!isAvailable ? "text-muted-foreground" : "text-foreground"}`}>
+                        {option.label}
+                      </span>
                       
                       {/* Clickable Eye Icon + "View Example" Text */}
                       <button 
@@ -345,10 +381,16 @@ export default function NinByPhonePage() {
                         <Eye size={14} weight="bold" />
                         <span>View Example</span>
                       </button>
+
+                      {!isAvailable && (
+                        <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                          Unavailable
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <div className="font-black text-sm text-foreground shrink-0 pl-2">
+                  <div className={`font-black text-sm shrink-0 pl-2 ${!isAvailable ? "text-muted-foreground line-through" : "text-foreground"}`}>
                     ₦{price.toLocaleString()}
                   </div>
                 </div>
@@ -383,7 +425,7 @@ export default function NinByPhonePage() {
         {/* Submit */}
         <Button
           type="submit"
-          disabled={!attestation1 || !attestation2 || phoneNumber.length !== 11 || !statusState.phoneSearchActive}
+          disabled={!attestation1 || !attestation2 || phoneNumber.length !== 11 || !statusState.phoneSearchActive || !isSelectedSlipAvailable}
           className="w-full h-12 font-black text-sm bg-sky-500 text-white hover:bg-sky-600 rounded-xl shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
           <Sparkle size={18} weight="fill" />

@@ -62,7 +62,7 @@ async function generateDataVerifySlip(
     if (!apiKey) {
       return {
         success: false,
-        error: "DataVerify API key is not configured on server.",
+        error: "Identity verification gateway is temporarily offline for maintenance.",
         provider: "DATAVERIFY",
         isInfraError: true,
       };
@@ -72,9 +72,6 @@ async function generateDataVerifySlip(
     if (searchType === "PHONE") {
       endpointFile = `${slipType}_phone.php`;
     } else {
-      if (slipType === "nin_basic") {
-        endpointUrlDataVerify("nin_basic_slip.php");
-      }
       if (slipType === "nin_basic") endpointFile = "nin_basic_slip.php";
       else if (slipType === "nin_vnin") endpointFile = "vnin_slip.php";
       else endpointFile = `${slipType}.php`;
@@ -104,7 +101,7 @@ async function generateDataVerifySlip(
       const isTimeout = fetchErr.name === "AbortError";
       return {
         success: false,
-        error: isTimeout ? "DataVerify provider request timed out." : "DataVerify network connection failed.",
+        error: isTimeout ? "Verification request timed out. Please try again in a few moments." : "Network connection to verification gateway failed. Please try again.",
         provider: "DATAVERIFY",
         isInfraError: true,
       };
@@ -115,7 +112,7 @@ async function generateDataVerifySlip(
     if (response.status >= 500) {
       return {
         success: false,
-        error: `DataVerify provider returned server error (HTTP ${response.status}).`,
+        error: "Verification gateway is temporarily experiencing high traffic. Please try again shortly.",
         provider: "DATAVERIFY",
         isInfraError: true,
       };
@@ -126,7 +123,7 @@ async function generateDataVerifySlip(
     if (!data) {
       return {
         success: false,
-        error: "Invalid JSON response from DataVerify.",
+        error: "Unable to process verification slip response. Please try again.",
         provider: "DATAVERIFY",
         isInfraError: true,
       };
@@ -135,20 +132,29 @@ async function generateDataVerifySlip(
     const isSuccess = (data.status === "success" || data.response_code === "00") && Boolean(data.pdf_base64);
 
     if (!isSuccess) {
-      const errMsg = data.message || data.error || "DataVerify could not generate slip.";
-      // Detect if this is an insufficient balance or provider service outage vs invalid NIN user error
-      const lower = errMsg.toLowerCase();
+      const rawErrMsg = data.message || data.error || "Could not generate verification slip with the provided details.";
+      const lower = rawErrMsg.toLowerCase();
       const isInfra =
         lower.includes("insufficient balance") ||
         lower.includes("wallet low") ||
         lower.includes("service down") ||
         lower.includes("maintenance") ||
-        lower.includes("internal error");
+        lower.includes("internal error") ||
+        lower.includes("database") ||
+        lower.includes("503") ||
+        lower.includes("500") ||
+        lower.includes("dataverify") ||
+        lower.includes("slipapi");
+
+      let cleanError = rawErrMsg;
+      if (isInfra) {
+        cleanError = "Verification service is temporarily undergoing scheduled maintenance. Please try again shortly.";
+      }
 
       return {
         success: false,
-        error: errMsg,
-        message: errMsg,
+        error: cleanError,
+        message: cleanError,
         provider: "DATAVERIFY",
         isInfraError: isInfra,
       };
@@ -179,10 +185,11 @@ async function generateDataVerifySlip(
       provider: "DATAVERIFY",
     };
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Unexpected error during DataVerify slip execution";
+    const errorMsg = err instanceof Error ? err.message : "Unexpected error during slip execution";
+    console.error("❌ [Identity Router Error]:", errorMsg);
     return {
       success: false,
-      error: errorMsg,
+      error: "An unexpected error occurred while processing your verification slip. Please try again.",
       provider: "DATAVERIFY",
       isInfraError: true,
     };
@@ -224,7 +231,7 @@ export async function executeNinSlipGeneration(
     if (!isSlipApiSupported) {
       return {
         success: false,
-        error: `The selected slip type (${slipType}) is not supported by SlipAPI. Please select Standard or Premium Slip.`,
+        error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip.",
         provider: "SLIPAPI",
       };
     }
@@ -253,32 +260,52 @@ export async function executeNinSlipGeneration(
 
       // Attempt fallback if supported on SlipAPI
       if (isSlipApiSupported) {
-        console.warn(`⚠️ [NIN Provider Router] DataVerify failed with infra error (${primaryResult.error}). Failing over to SlipAPI for ${slipType}...`);
+        console.warn(`⚠️ [NIN Provider Router] Primary provider returned infra error (${primaryResult.error}). Failing over to backup provider for ${slipType}...`);
         const fallbackResult = await generateSlipApiSlip(slipType, identifier, searchType);
         if (fallbackResult.success) {
           return fallbackResult;
         }
+        // If fallback also failed, return clean sanitized message
+        return {
+          success: false,
+          error: fallbackResult.error || "Identity verification is temporarily unavailable. Please try again shortly.",
+          provider: "SLIPAPI",
+        };
+      } else {
+        // Slip not supported on fallback
+        return {
+          success: false,
+          error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip, or check back shortly.",
+          provider: "DATAVERIFY",
+        };
       }
     }
 
-    // Return primary error if fallback not possible or also failed
+    // Return primary error if not an infrastructure issue (e.g. invalid NIN or not found)
     return primaryResult;
   } else {
     // DataVerify is currently in degraded state
     if (isSlipApiSupported) {
-      console.log(`ℹ️ [NIN Provider Router] DataVerify in degraded state. Routing directly to SlipAPI for ${slipType}...`);
+      console.log(`ℹ️ [NIN Provider Router] Primary provider in degraded state. Routing directly to backup provider for ${slipType}...`);
       const slipApiResult = await generateSlipApiSlip(slipType, identifier, searchType);
       if (slipApiResult.success) {
         return slipApiResult;
       }
-      // If SlipAPI fails too, probe DataVerify as a last ditch
-      console.log("ℹ️ [NIN Provider Router] SlipAPI also failed, attempting DataVerify probe...");
-      return await generateDataVerifySlip(slipType, identifier, searchType);
+      // Probe primary as last resort
+      const probeResult = await generateDataVerifySlip(slipType, identifier, searchType);
+      if (probeResult.success) {
+        return probeResult;
+      }
+      return {
+        success: false,
+        error: "Verification service is temporarily experiencing high traffic. Please try again in a few moments.",
+        provider: "DATAVERIFY",
+      };
     } else {
       // Slip not supported by SlipAPI (e.g. basic or vnin)
       return {
         success: false,
-        error: `DataVerify is temporarily unavailable and this slip type is not supported by our backup provider. Please select Standard or Premium Slip.`,
+        error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip, or check back shortly.",
         provider: "DATAVERIFY",
       };
     }

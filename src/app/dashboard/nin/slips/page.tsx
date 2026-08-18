@@ -37,7 +37,26 @@ export default function NinSlipsHubPage() {
         {/* 2 Centered Options */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
           
-          {/* Query by Phone Number */}
+          {/* Option 1: Query by NIN Number */}
+          <Link
+            href="/dashboard/nin/slips/nin"
+            className="group p-5 sm:p-6 rounded-2xl bg-secondary/30 hover:bg-[#ff3f7a]/10 border-2 border-border hover:border-[#ff3f7a]/60 transition-all duration-200 flex flex-col justify-between space-y-4 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-12 h-12 rounded-xl bg-[#ff3f7a]/10 text-[#ff3f7a] flex items-center justify-center border border-[#ff3f7a]/20 group-hover:scale-105 transition-transform">
+                <IdentificationCard size={28} weight="duotone" />
+              </div>
+              <ArrowRight size={18} className="text-muted-foreground group-hover:text-[#ff3f7a] group-hover:translate-x-1 transition-all" weight="bold" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-black text-foreground group-hover:text-[#ff3f7a] transition-colors">
+                Query by NIN Number
+              </h3>
+            </div>
+          </Link>
+
+          {/* Option 2: Query by Phone Number */}
           <Link
             href="/dashboard/nin/slips/phone"
             className="group p-5 sm:p-6 rounded-2xl bg-secondary/30 hover:bg-sky-500/10 border-2 border-border hover:border-sky-500/60 transition-all duration-200 flex flex-col justify-between space-y-4 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
@@ -52,25 +71,6 @@ export default function NinSlipsHubPage() {
             <div>
               <h3 className="text-base font-black text-foreground group-hover:text-sky-500 transition-colors">
                 Query by Phone Number
-              </h3>
-            </div>
-          </Link>
-
-          {/* Query by NIN */}
-          <Link
-            href="/dashboard/nin/slips/nin"
-            className="group p-5 sm:p-6 rounded-2xl bg-secondary/30 hover:bg-[#ff3f7a]/10 border-2 border-border hover:border-[#ff3f7a]/60 transition-all duration-200 flex flex-col justify-between space-y-4 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-12 h-12 rounded-xl bg-[#ff3f7a]/10 text-[#ff3f7a] flex items-center justify-center border border-[#ff3f7a]/20 group-hover:scale-105 transition-transform">
-                <IdentificationCard size={28} weight="duotone" />
-              </div>
-              <ArrowRight size={18} className="text-muted-foreground group-hover:text-[#ff3f7a] group-hover:translate-x-1 transition-all" weight="bold" />
-            </div>
-
-            <div>
-              <h3 className="text-base font-black text-foreground group-hover:text-[#ff3f7a] transition-colors">
-                Query by NIN
               </h3>
             </div>
           </Link>

@@ -14,6 +14,10 @@ export async function GET() {
       { serviceKey: "NIN_REGULAR", title: "Regular Official Slip", price: 500.0 },
       { serviceKey: "NIN_STANDARD", title: "Standard Biometric Slip", price: 700.0 },
       { serviceKey: "NIN_PREMIUM", title: "Premium Card Layout", price: 1000.0 },
+      // Phone Query Slips
+      { serviceKey: "NIN_PHONE_REGULAR", title: "Phone Query - Regular Slip", price: 500.0 },
+      { serviceKey: "NIN_PHONE_STANDARD", title: "Phone Query - Standard Slip", price: 700.0 },
+      { serviceKey: "NIN_PHONE_PREMIUM", title: "Phone Query - Premium Slip", price: 1000.0 },
       { serviceKey: "NIN_PERSONALIZATION", title: "NIN Personalization", price: 1500.0 },
       { serviceKey: "NIN_IPE_CLEARANCE", title: "IPE Clearance (Exception Resolution)", price: 2500.0 },
       { serviceKey: "NIN_VALIDATION_NO_RECORD", title: "NIN Validation (No Record Found)", price: 2000.0 },

@@ -68,7 +68,7 @@ export default function NinByNinPage() {
     loading: boolean;
     availableSlips: string[];
     prices: Record<string, number>;
-    isDegraded: boolean;
+    activeMap: Record<string, boolean>;
   }>({
     loading: true,
     availableSlips: ["nin_basic", "nin_regular", "nin_standard", "nin_premium", "nin_vnin"],
@@ -79,7 +79,13 @@ export default function NinByNinPage() {
       nin_premium: 1000,
       nin_vnin: 500,
     },
-    isDegraded: false,
+    activeMap: {
+      nin_basic: true,
+      nin_regular: true,
+      nin_standard: true,
+      nin_premium: true,
+      nin_vnin: true,
+    },
   });
 
   const [attestation1, setAttestation1] = useState(false);
@@ -126,9 +132,19 @@ export default function NinByNinPage() {
 
       if (statusData.success && statusData.status) {
         const pMap = statusData.pricing || {};
+        const availableFromRouter = statusData.status.availableNINSlips || ["nin_basic", "nin_regular", "nin_standard", "nin_premium", "nin_vnin"];
+
+        const activeMap: Record<string, boolean> = {
+          nin_basic: (pMap.NIN_BASIC?.isActive !== false) && availableFromRouter.includes("nin_basic"),
+          nin_regular: (pMap.NIN_REGULAR?.isActive !== false) && availableFromRouter.includes("nin_regular"),
+          nin_standard: (pMap.NIN_STANDARD?.isActive !== false) && availableFromRouter.includes("nin_standard"),
+          nin_premium: (pMap.NIN_PREMIUM?.isActive !== false) && availableFromRouter.includes("nin_premium"),
+          nin_vnin: (pMap.NIN_VNIN?.isActive !== false) && availableFromRouter.includes("nin_vnin"),
+        };
+
         setStatusState({
           loading: false,
-          availableSlips: statusData.status.availableNINSlips || ["nin_basic", "nin_regular", "nin_standard", "nin_premium", "nin_vnin"],
+          availableSlips: availableFromRouter,
           prices: {
             nin_basic: pMap.NIN_BASIC?.price || 400,
             nin_regular: pMap.NIN_REGULAR?.price || 500,
@@ -136,8 +152,14 @@ export default function NinByNinPage() {
             nin_premium: pMap.NIN_PREMIUM?.price || 1000,
             nin_vnin: pMap.NIN_VNIN?.price || 500,
           },
-          isDegraded: statusData.status.isDataVerifyDegraded || statusData.status.activeRouting === "SLIPAPI",
+          activeMap,
         });
+
+        // Ensure selected slip is active, otherwise switch to first active
+        if (!activeMap[slipType]) {
+          const firstActive = NIN_SLIP_OPTIONS.find(o => activeMap[o.id]);
+          if (firstActive) setSlipType(firstActive.id);
+        }
       } else {
         setStatusState(prev => ({ ...prev, loading: false }));
       }
@@ -165,8 +187,8 @@ export default function NinByNinPage() {
       setError("You must check all statutory attestations to proceed.");
       return;
     }
-    if (!statusState.availableSlips.includes(slipType)) {
-      setError("The selected slip type is temporarily offline. Please select Standard or Premium.");
+    if (!statusState.activeMap[slipType]) {
+      setError("The selected slip format is currently unavailable. Please choose another slip format.");
       return;
     }
 
@@ -238,6 +260,7 @@ export default function NinByNinPage() {
 
   const selectedOption = NIN_SLIP_OPTIONS.find(o => o.id === slipType) || NIN_SLIP_OPTIONS[3];
   const currentPrice = statusState.prices[slipType] || selectedOption.defaultPrice;
+  const isSelectedSlipAvailable = statusState.activeMap[slipType] !== false;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
@@ -273,14 +296,6 @@ export default function NinByNinPage() {
           </p>
         </div>
       </div>
-
-      {/* Provider degradation banner */}
-      {statusState.isDegraded && (
-        <div className="bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-2.5 animate-in fade-in">
-          <Wrench size={18} weight="fill" className="shrink-0 text-amber-500" />
-          <span>Backup router active: Standard & Premium slips are available.</span>
-        </div>
-      )}
 
       {/* Form */}
       <form onSubmit={handleOpenConfirm} className="space-y-6">
@@ -320,7 +335,7 @@ export default function NinByNinPage() {
           </div>
         </div>
 
-        {/* Slips Radio List with Eye + "View Example" Previews & No Explanation Text */}
+        {/* Slips Radio List with Eye + "View Example" Previews & Clean Status Badges */}
         <div className="space-y-3">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
             Select Slip Format
@@ -329,7 +344,7 @@ export default function NinByNinPage() {
           <div className="space-y-2">
             {NIN_SLIP_OPTIONS.map((option) => {
               const isSelected = slipType === option.id;
-              const isAvailable = statusState.availableSlips.includes(option.id);
+              const isAvailable = statusState.activeMap[option.id] !== false;
               const price = statusState.prices[option.id] || option.defaultPrice;
 
               return (
@@ -340,7 +355,7 @@ export default function NinByNinPage() {
                   }}
                   className={`p-3.5 sm:p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
                     !isAvailable
-                      ? "opacity-50 bg-secondary/20 border-border cursor-not-allowed"
+                      ? "opacity-50 bg-secondary/20 border-border/60 cursor-not-allowed"
                       : isSelected
                       ? "bg-secondary/70 border-[#ff3f7a] shadow-sm cursor-pointer"
                       : "bg-card border-border hover:bg-secondary/40 cursor-pointer"
@@ -355,11 +370,13 @@ export default function NinByNinPage() {
                       onChange={() => {
                         if (isAvailable) setSlipType(option.id);
                       }} 
-                      className="text-[#ff3f7a] focus:ring-[#ff3f7a] cursor-pointer"
+                      className="text-[#ff3f7a] focus:ring-[#ff3f7a] cursor-pointer disabled:cursor-not-allowed"
                     />
                     
                     <div className="flex items-center flex-wrap gap-2.5">
-                      <span className="font-bold text-sm text-foreground">{option.label}</span>
+                      <span className={`font-bold text-sm ${!isAvailable ? "text-muted-foreground" : "text-foreground"}`}>
+                        {option.label}
+                      </span>
                       
                       {/* Clickable Eye Icon + "View Example" Text */}
                       <button 
@@ -376,14 +393,14 @@ export default function NinByNinPage() {
                       </button>
 
                       {!isAvailable && (
-                        <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 px-2 py-0.5 rounded">
-                          Offline
+                        <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                          Unavailable
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="font-black text-sm text-foreground shrink-0 pl-2">
+                  <div className={`font-black text-sm shrink-0 pl-2 ${!isAvailable ? "text-muted-foreground line-through" : "text-foreground"}`}>
                     ₦{price.toLocaleString()}
                   </div>
                 </div>
@@ -418,7 +435,7 @@ export default function NinByNinPage() {
         {/* Submit */}
         <Button
           type="submit"
-          disabled={!attestation1 || !attestation2 || nin.length !== 11}
+          disabled={!attestation1 || !attestation2 || nin.length !== 11 || !isSelectedSlipAvailable}
           className="w-full h-12 font-black text-sm bg-[#ff3f7a] text-white hover:bg-[#e02b62] rounded-xl shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
           <Sparkle size={18} weight="fill" />

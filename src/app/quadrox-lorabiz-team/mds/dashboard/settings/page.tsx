@@ -94,12 +94,16 @@ export default function SettingsDashboard() {
   const ipeGroup = allServices.filter((s) => s.serviceKey.includes("IPE"));
   const personalizationGroup = allServices.filter((s) => s.serviceKey.includes("PERSONALIZATION"));
   const ninValidationGroup = allServices.filter((s) => s.serviceKey.includes("NIN_VALIDATION"));
-  const ninSlipsGroup = allServices.filter(
+  const ninNumberSlipsGroup = allServices.filter(
     (s) =>
-      s.serviceKey.startsWith("NIN") &&
+      s.serviceKey.startsWith("NIN_") &&
+      !s.serviceKey.includes("PHONE") &&
       !s.serviceKey.includes("IPE") &&
       !s.serviceKey.includes("PERSONALIZATION") &&
-      !s.serviceKey.includes("NIN_VALIDATION")
+      !s.serviceKey.includes("VALIDATION")
+  );
+  const ninPhoneSlipsGroup = allServices.filter(
+    (s) => s.serviceKey.startsWith("NIN_PHONE_")
   );
 
   return (
@@ -620,18 +624,36 @@ export default function SettingsDashboard() {
             </section>
           )}
 
-          {/* NIN SLIPS SECTION (SEPARATE) */}
-          {ninSlipsGroup.length > 0 && (
+          {/* NIN NUMBER SLIPS SECTION (SEPARATE) */}
+          {ninNumberSlipsGroup.length > 0 && (
             <section>
               <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
                 <Fingerprint size={20} className="text-blue-500 mr-2" />
                 <div>
-                  <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Identity Services (NIN Slips & Verification API)</h2>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Pricing and controls for official NIMC PDF slips generation (Regular, Standard, Premium).</p>
+                  <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">NIN Number Slips (Query by 11-digit NIN)</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Pricing and active toggles for slips generated via direct 11-digit NIN (Basic, VNIN, Regular, Standard, Premium).</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                {ninSlipsGroup.map((service) => (
+                {ninNumberSlipsGroup.map((service) => (
+                  <ServiceConfigCard key={service.id} service={service} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* NIN PHONE QUERY SLIPS SECTION (SEPARATE) */}
+          {ninPhoneSlipsGroup.length > 0 && (
+            <section>
+              <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+                <Fingerprint size={20} className="text-sky-500 mr-2" />
+                <div>
+                  <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Phone Number Slips (Query by Registered Phone)</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Independent pricing and active toggles for slips generated via registered SIM phone numbers (Regular, Standard, Premium).</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                {ninPhoneSlipsGroup.map((service) => (
                   <ServiceConfigCard key={service.id} service={service} />
                 ))}
               </div>

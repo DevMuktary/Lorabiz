@@ -8,13 +8,16 @@ export async function GET() {
   try {
     const status = await getNinSlipProviderStatus();
 
-    // Fetch live pricing for all NIN slips
+    // Fetch live pricing for all NIN & Phone search slips
     const slipKeys = [
       "NIN_BASIC",
       "NIN_VNIN",
       "NIN_REGULAR",
       "NIN_STANDARD",
       "NIN_PREMIUM",
+      "NIN_PHONE_REGULAR",
+      "NIN_PHONE_STANDARD",
+      "NIN_PHONE_PREMIUM",
     ];
 
     const pricingList = await prisma.servicePricing.findMany({

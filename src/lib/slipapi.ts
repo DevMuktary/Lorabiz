@@ -72,7 +72,7 @@ export async function generateSlipApiSlip(
     if (!apiKey) {
       return {
         success: false,
-        error: "SlipAPI API Key is not configured on the server.",
+        error: "Identity verification gateway is temporarily offline for maintenance.",
         provider: "SLIPAPI",
       };
     }
@@ -96,7 +96,7 @@ export async function generateSlipApiSlip(
       } else {
         return {
           success: false,
-          error: `Slip type '${slipType}' is not supported by SlipAPI.`,
+          error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip.",
           provider: "SLIPAPI",
         };
       }
@@ -111,18 +111,43 @@ export async function generateSlipApiSlip(
       payload.phone = identifier.trim();
     }
 
-    const response = await fetch(endpointUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+    let response: Response;
+    try {
+      response = await fetch(endpointUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      const isTimeout = fetchErr.name === "AbortError";
+      return {
+        success: false,
+        error: isTimeout ? "Verification request timed out. Please try again shortly." : "Network connection to verification gateway failed. Please try again.",
+        provider: "SLIPAPI",
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (response.status >= 500) {
+      return {
+        success: false,
+        error: "Verification service is temporarily experiencing high traffic. Please try again shortly.",
+        provider: "SLIPAPI",
+      };
+    }
 
     const data: SlipApiResponse = await response.json().catch(() => ({
       status: "error",
-      error: `Invalid response format from SlipAPI (HTTP ${response.status})`,
+      error: "Unable to process verification slip response.",
     }));
 
     const isSuccess =
@@ -131,14 +156,15 @@ export async function generateSlipApiSlip(
       Boolean(data.pdf_base64);
 
     if (!isSuccess) {
-      const errorMsg =
-        data.error ||
-        data.message ||
-        `Slip generation failed on SlipAPI with HTTP ${response.status}`;
+      let rawMsg = data.error || data.message || "Could not generate verification slip with the provided details.";
+      const lower = rawMsg.toLowerCase();
+      if (lower.includes("slipapi") || lower.includes("dataverify") || lower.includes("http") || lower.includes("server error")) {
+        rawMsg = "Verification gateway is temporarily busy. Please check your details or try again shortly.";
+      }
       return {
         success: false,
-        error: errorMsg,
-        message: errorMsg,
+        error: rawMsg,
+        message: rawMsg,
         provider: "SLIPAPI",
       };
     }
@@ -166,11 +192,11 @@ export async function generateSlipApiSlip(
       provider: "SLIPAPI",
     };
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Network error during SlipAPI request";
-    console.error("❌ [SlipAPI Error]:", errorMsg);
+    const errorMsg = err instanceof Error ? err.message : "Unexpected error during slip processing";
+    console.error("❌ [Slip Gateway Error]:", errorMsg);
     return {
       success: false,
-      error: errorMsg,
+      error: "An unexpected error occurred while processing your verification slip. Please try again.",
       provider: "SLIPAPI",
     };
   }
