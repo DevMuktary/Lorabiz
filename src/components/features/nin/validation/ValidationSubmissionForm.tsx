@@ -10,8 +10,7 @@ import {
   Circle,
   WarningCircle, 
   ShieldCheck,
-  IdentificationCard,
-  Tag
+  IdentificationCard
 } from "@phosphor-icons/react";
 import { ValidationConfirmationModal } from "./ValidationConfirmationModal";
 
@@ -31,19 +30,16 @@ const CATEGORIES = [
   {
     id: "NO_RECORD_FOUND",
     label: "No Record Found",
-    description: "Resolve NINs returning 'No Record Found' across official verification portals.",
     icon: MagnifyingGlass,
   },
   {
     id: "VNIN_VALIDATION",
     label: "VNIN Validation",
-    description: "Validate and synchronize Virtual NIN (vNIN) generation & verification records.",
     icon: QrCode,
   },
   {
     id: "UPDATE_RECORD_MOD",
     label: "Update Record (Mod Validation)",
-    description: "Push and synchronize recent modification updates (name, DOB, phone, etc.).",
     icon: ArrowsClockwise,
   },
 ];
@@ -129,7 +125,7 @@ export function ValidationSubmissionForm({
   return (
     <div className="space-y-6">
       
-      <form onSubmit={handleFormSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
+      <form onSubmit={handleFormSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-7">
         
         {/* Error Alert Box */}
         {errorMessage && (
@@ -139,18 +135,13 @@ export function ValidationSubmissionForm({
           </div>
         )}
 
-        {/* Step 1: Category Selection Cards */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-bold text-foreground">
-              1. Select Validation Category
-            </label>
-            <span className="text-xs text-muted-foreground">
-              Choose the issue to resolve
-            </span>
-          </div>
+        {/* Step 1: Category Selection Cards (Clean, Simple, No Long Explanations) */}
+        <div className="space-y-3">
+          <label className="text-sm font-bold text-foreground block">
+            1. Select Validation Category
+          </label>
           
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {CATEGORIES.map((cat) => {
               const isSelected = selectedCategory === cat.id;
               const catPrice = pricing[cat.id]?.price ?? 2000;
@@ -161,15 +152,15 @@ export function ValidationSubmissionForm({
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`w-full p-4 md:p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-start justify-between gap-4 ${
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-4 ${
                     isSelected
                       ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-sm"
                       : "border-border hover:border-primary/40 bg-background/50 hover:bg-secondary/30"
                   }`}
                 >
-                  <div className="flex items-start gap-3.5 sm:gap-4">
+                  <div className="flex items-center gap-3.5">
                     <div
-                      className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                      className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
                         isSelected
                           ? "bg-primary text-primary-foreground shadow-sm"
                           : "bg-secondary text-muted-foreground"
@@ -178,19 +169,12 @@ export function ValidationSubmissionForm({
                       <IconComponent weight={isSelected ? "bold" : "regular"} className="h-5 w-5" />
                     </div>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`font-black text-sm ${isSelected ? "text-foreground" : "text-foreground"}`}>
-                          {cat.label}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {cat.description}
-                      </p>
-                    </div>
+                    <span className="font-bold text-sm text-foreground">
+                      {cat.label}
+                    </span>
                   </div>
 
-                  <div className="flex flex-col items-end shrink-0 gap-2">
+                  <div className="flex items-center shrink-0 gap-3">
                     <div className={`px-2.5 py-1 rounded-lg text-xs font-black tracking-tight border ${
                       isSelected 
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
@@ -199,7 +183,7 @@ export function ValidationSubmissionForm({
                       ₦{catPrice.toLocaleString()}
                     </div>
 
-                    <div className="mt-1">
+                    <div>
                       {isSelected ? (
                         <CheckCircle weight="fill" className="h-5 w-5 text-primary" />
                       ) : (
@@ -214,7 +198,7 @@ export function ValidationSubmissionForm({
         </div>
 
         {/* Step 2: 11-Digit NIN Input Field */}
-        <div className="space-y-3 pt-6 border-t border-border">
+        <div className="space-y-2.5 pt-5 border-t border-border">
           <label htmlFor="nin" className="text-sm font-bold text-foreground flex items-center justify-between">
             <span className="flex items-center gap-2">
               <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
@@ -251,13 +235,10 @@ export function ValidationSubmissionForm({
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground pl-1">
-            Please double-check that every single digit is accurate before proceeding.
-          </p>
         </div>
 
         {/* Step 3: Concise Attestation Checkbox */}
-        <div className="space-y-4 pt-6 border-t border-border">
+        <div className="space-y-4 pt-5 border-t border-border">
           <label className="flex items-start gap-3 p-4 bg-secondary/40 hover:bg-secondary/60 rounded-xl cursor-pointer border border-border/80 transition-colors select-none">
             <input
               type="checkbox"
