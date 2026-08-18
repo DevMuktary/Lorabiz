@@ -33,9 +33,10 @@ export interface SlipHistoryItem {
 
 interface NinHistorySectionProps {
   history: SlipHistoryItem[];
+  title?: string;
 }
 
-export default function NinHistorySection({ history }: NinHistorySectionProps) {
+export default function NinHistorySection({ history, title = "24-Hour Print History" }: NinHistorySectionProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<SlipHistoryItem | null>(null);
@@ -102,11 +103,11 @@ export default function NinHistorySection({ history }: NinHistorySectionProps) {
     <div className="pt-8 border-t border-border space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <ClockCounterClockwise size={22} className="text-[#ff3f7a]" weight="bold" />
-          <h2 className="text-lg font-black text-foreground">24-Hour Print History & Applicant Records</h2>
+          <ClockCounterClockwise size={20} className="text-[#ff3f7a]" weight="bold" />
+          <h2 className="text-base font-black text-foreground">{title}</h2>
         </div>
-        <span className="text-xs font-bold text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-          24-Hour Retention Window
+        <span className="text-[11px] font-bold text-muted-foreground bg-secondary px-2.5 py-1 rounded-full border border-border">
+          24-Hour Purge Window
         </span>
       </div>
 

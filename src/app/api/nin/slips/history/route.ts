@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) {
@@ -21,18 +21,32 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const searchTypeFilter = searchParams.get("searchType"); // "NIN" | "PHONE" | null
+
     // Calculate timestamp for 24 hours ago
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Fetch logs within the last 24 hours that were successful and belong exclusively to this user
+    const whereClause: any = {
+      userId: user.id,
+      status: "SUCCESS",
+      createdAt: {
+        gte: twentyFourHoursAgo
+      }
+    };
+
+    if (searchTypeFilter === "PHONE") {
+      whereClause.searchType = "PHONE";
+    } else if (searchTypeFilter === "NIN") {
+      whereClause.OR = [
+        { searchType: "NIN" },
+        { searchType: null }
+      ];
+    }
+
+    // Fetch logs within the last 24 hours
     const logs = await prisma.ninRequestLog.findMany({
-      where: {
-        userId: user.id,
-        status: "SUCCESS",
-        createdAt: {
-          gte: twentyFourHoursAgo
-        }
-      },
+      where: whereClause,
       orderBy: {
         createdAt: "desc"
       }
