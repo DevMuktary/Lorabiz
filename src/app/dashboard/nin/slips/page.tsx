@@ -6,10 +6,10 @@ import { ArrowLeft, ArrowRight, IdentificationCard, DeviceMobile } from "@phosph
 
 export default function NinSlipsHubPage() {
   return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-6 font-sans select-none relative animate-in fade-in duration-300 min-h-[70vh] flex flex-col justify-center">
+    <div className="max-w-2xl mx-auto p-4 sm:p-6 font-sans select-none relative animate-in fade-in duration-300 min-h-[75vh] flex flex-col justify-center">
       
       {/* Back Link */}
-      <div className="mb-6">
+      <div className="mb-4">
         <Link 
           href="/dashboard/nin" 
           className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-xl cursor-pointer"
@@ -20,24 +20,21 @@ export default function NinSlipsHubPage() {
       </div>
 
       {/* Centered Selection Banner */}
-      <div className="bg-card border border-border rounded-3xl p-6 sm:p-10 shadow-lg text-center space-y-8 relative overflow-hidden">
+      <div className="bg-card border border-border rounded-3xl p-6 sm:p-10 shadow-xl text-center space-y-7 relative overflow-hidden">
         
         {/* Header */}
         <div className="space-y-3">
-          <div className="h-14 w-14 rounded-2xl bg-secondary mx-auto flex items-center justify-center p-2.5 border border-border shadow-sm">
-            <Image src="/nimc.png" width={40} height={40} alt="NIMC" className="object-contain" priority />
+          <div className="h-16 w-16 rounded-2xl bg-secondary mx-auto flex items-center justify-center p-3 border border-border shadow-sm">
+            <Image src="/nimc.png" width={46} height={46} alt="NIMC" className="object-contain" priority />
           </div>
-          <div className="space-y-1">
+          <div>
             <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
               Select Verification Method
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Choose how you would like to query the NIMC database:
-            </p>
           </div>
         </div>
 
-        {/* 2 Options */}
+        {/* 2 Centered Options */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
           
           {/* Query by Phone Number */}
@@ -56,9 +53,6 @@ export default function NinSlipsHubPage() {
               <h3 className="text-base font-black text-foreground group-hover:text-sky-500 transition-colors">
                 Query by Phone Number
               </h3>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Generate official verification slips using your SIM-linked phone number.
-              </p>
             </div>
           </Link>
 
@@ -78,9 +72,6 @@ export default function NinSlipsHubPage() {
               <h3 className="text-base font-black text-foreground group-hover:text-[#ff3f7a] transition-colors">
                 Query by NIN
               </h3>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Generate official verification slips using your 11-digit National Identity Number.
-              </p>
             </div>
           </Link>
 

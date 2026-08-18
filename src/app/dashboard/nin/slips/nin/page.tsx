@@ -5,62 +5,64 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   ArrowLeft, WarningCircle, Eye, X, Check,
-  Sparkle, ShieldCheck, CheckCircle, Wrench
+  Sparkle, ShieldCheck, CheckCircle, Wrench, DeviceMobile
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import NinResultModal, { DemographicData } from "@/components/features/nin/slips/NinResultModal";
 import NinHistorySection, { SlipHistoryItem } from "@/components/features/nin/slips/NinHistorySection";
+import SlipConfirmationModal from "@/components/features/nin/slips/SlipConfirmationModal";
 
 interface SlipOption {
-  id: "nin_basic" | "nin_vnin" | "nin_regular" | "nin_standard" | "nin_premium";
+  id: "nin_basic" | "nin_regular" | "nin_standard" | "nin_premium" | "nin_vnin";
   label: string;
-  desc: string;
   img: string;
   defaultPrice: number;
 }
 
+// User-specified exact ordering:
+// 1. Basic Slip (₦400)
+// 2. Regular Slip (₦500)
+// 3. Standard Slip (₦700)
+// 4. Premium Slip (₦1,000)
+// 5. VNIN Slip (₦500) — at the very bottom
 const NIN_SLIP_OPTIONS: SlipOption[] = [
   { 
     id: "nin_basic", 
     label: "Basic Slip", 
-    desc: "Compact text verification slip.", 
     img: "/examples/nin_regular_example.png",
     defaultPrice: 400 
   },
   { 
-    id: "nin_vnin", 
-    label: "VNIN Slip", 
-    desc: "Tokenized Virtual NIN format.", 
-    img: "/examples/nin_regular_example.png",
-    defaultPrice: 500 
-  },
-  { 
     id: "nin_regular", 
     label: "Regular Slip", 
-    desc: "Standard long format for official & corporate filings.", 
     img: "/examples/nin_regular_example.png",
     defaultPrice: 500 
   },
   { 
     id: "nin_standard", 
-    label: "Standard Biometric Slip", 
-    desc: "Biometric layout with photo & QR verification.", 
+    label: "Standard Slip", 
     img: "/examples/nin_standard_example.png",
     defaultPrice: 700 
   },
   { 
     id: "nin_premium", 
-    label: "Premium Card Slip", 
-    desc: "Full-colour card format for PVC printing.", 
+    label: "Premium Slip", 
     img: "/examples/nin_premium_example.png",
     defaultPrice: 1000 
+  },
+  { 
+    id: "nin_vnin", 
+    label: "VNIN Slip", 
+    img: "/examples/nin_regular_example.png",
+    defaultPrice: 500 
   },
 ];
 
 export default function NinByNinPage() {
   const [nin, setNin] = useState("");
-  const [slipType, setSlipType] = useState<"nin_basic" | "nin_vnin" | "nin_regular" | "nin_standard" | "nin_premium">("nin_premium");
+  const [slipType, setSlipType] = useState<"nin_basic" | "nin_regular" | "nin_standard" | "nin_premium" | "nin_vnin">("nin_premium");
+  const [walletBalance, setWalletBalance] = useState<number>(0);
   
   const [statusState, setStatusState] = useState<{
     loading: boolean;
@@ -69,13 +71,13 @@ export default function NinByNinPage() {
     isDegraded: boolean;
   }>({
     loading: true,
-    availableSlips: ["nin_basic", "nin_vnin", "nin_regular", "nin_standard", "nin_premium"],
+    availableSlips: ["nin_basic", "nin_regular", "nin_standard", "nin_premium", "nin_vnin"],
     prices: {
       nin_basic: 400,
-      nin_vnin: 500,
       nin_regular: 500,
       nin_standard: 700,
       nin_premium: 1000,
+      nin_vnin: 500,
     },
     isDegraded: false,
   });
@@ -88,12 +90,8 @@ export default function NinByNinPage() {
     isOpen: false, src: "", label: ""
   });
 
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    identifier: string;
-    slipLabel: string;
-    price: number;
-  }>({ isOpen: false, identifier: "", slipLabel: "", price: 0 });
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [resultModal, setResultModal] = useState<{
     isOpen: boolean;
@@ -112,25 +110,31 @@ export default function NinByNinPage() {
 
   const loadData = async () => {
     try {
-      const [statusRes, historyRes] = await Promise.all([
+      const [statusRes, historyRes, walletRes] = await Promise.all([
         fetch("/api/nin/slips/status", { cache: "no-store" }),
         fetch("/api/nin/slips/history?searchType=NIN", { cache: "no-store" }),
+        fetch("/api/user/wallet", { cache: "no-store" }),
       ]);
 
       const statusData = await statusRes.json();
       const historyData = await historyRes.json();
+      const walletData = await walletRes.json();
+
+      if (walletData.success) {
+        setWalletBalance(typeof walletData.balance === "number" ? walletData.balance : (walletData.wallet?.balance || 0));
+      }
 
       if (statusData.success && statusData.status) {
         const pMap = statusData.pricing || {};
         setStatusState({
           loading: false,
-          availableSlips: statusData.status.availableNINSlips || ["nin_basic", "nin_vnin", "nin_regular", "nin_standard", "nin_premium"],
+          availableSlips: statusData.status.availableNINSlips || ["nin_basic", "nin_regular", "nin_standard", "nin_premium", "nin_vnin"],
           prices: {
             nin_basic: pMap.NIN_BASIC?.price || 400,
-            nin_vnin: pMap.NIN_VNIN?.price || 500,
             nin_regular: pMap.NIN_REGULAR?.price || 500,
             nin_standard: pMap.NIN_STANDARD?.price || 700,
             nin_premium: pMap.NIN_PREMIUM?.price || 1000,
+            nin_vnin: pMap.NIN_VNIN?.price || 500,
           },
           isDegraded: statusData.status.isDataVerifyDegraded || statusData.status.activeRouting === "SLIPAPI",
         });
@@ -151,7 +155,7 @@ export default function NinByNinPage() {
     loadData();
   }, []);
 
-  const handleGenerateSlip = (e: React.FormEvent) => {
+  const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{11}$/.test(nin.trim())) {
       setError("Please provide a valid 11-digit NIN.");
@@ -167,19 +171,13 @@ export default function NinByNinPage() {
     }
 
     setError(null);
-    const selectedOption = NIN_SLIP_OPTIONS.find(o => o.id === slipType);
-    const price = statusState.prices[slipType] || selectedOption?.defaultPrice || 1000;
-
-    setConfirmModal({
-      isOpen: true,
-      identifier: nin.trim(),
-      slipLabel: selectedOption?.label || "NIN Slip",
-      price,
-    });
+    setIsConfirmOpen(true);
   };
 
   const executeSlipGeneration = async () => {
-    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    setIsConfirmOpen(false);
+    setIsGenerating(true);
+
     const selectedOption = NIN_SLIP_OPTIONS.find(o => o.id === slipType);
 
     setResultModal({
@@ -203,6 +201,7 @@ export default function NinByNinPage() {
       });
 
       const data = await res.json();
+      setIsGenerating(false);
 
       if (!res.ok || !data.success || !data.pdfBase64) {
         setResultModal({
@@ -228,6 +227,7 @@ export default function NinByNinPage() {
       loadData();
 
     } catch (err: any) {
+      setIsGenerating(false);
       setResultModal({
         isOpen: true,
         status: "error",
@@ -236,16 +236,17 @@ export default function NinByNinPage() {
     }
   };
 
-  const currentPrice = statusState.prices[slipType] || 1000;
+  const selectedOption = NIN_SLIP_OPTIONS.find(o => o.id === slipType) || NIN_SLIP_OPTIONS[3];
+  const currentPrice = statusState.prices[slipType] || selectedOption.defaultPrice;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
       
-      {/* Top Navigation */}
-      <div className="flex items-center justify-between">
+      {/* Top Navigation - Cleanly Separated */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Link 
           href="/dashboard/nin/slips" 
-          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-xl cursor-pointer"
+          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/60 hover:bg-secondary px-3.5 py-2 rounded-xl cursor-pointer w-fit"
         >
           <ArrowLeft weight="bold" className="h-3.5 w-3.5" />
           Back to Verification Methods
@@ -253,9 +254,10 @@ export default function NinByNinPage() {
 
         <Link
           href="/dashboard/nin/slips/phone"
-          className="text-xs font-bold text-sky-500 hover:text-sky-400 transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 bg-sky-500/10 hover:bg-sky-500/15 border border-sky-500/20 px-3.5 py-2 rounded-xl transition-all w-fit cursor-pointer"
         >
-          Switch to Phone Number query &rarr;
+          <DeviceMobile size={15} weight="bold" />
+          <span>Switch to Phone Number Query &rarr;</span>
         </Link>
       </div>
 
@@ -281,7 +283,7 @@ export default function NinByNinPage() {
       )}
 
       {/* Form */}
-      <form onSubmit={handleGenerateSlip} className="space-y-6">
+      <form onSubmit={handleOpenConfirm} className="space-y-6">
         
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl text-destructive text-sm font-bold flex items-center gap-2.5 animate-in shake">
@@ -318,13 +320,13 @@ export default function NinByNinPage() {
           </div>
         </div>
 
-        {/* Slips Radio List with Eye Example Previews */}
+        {/* Slips Radio List with Eye + "View Example" Previews & No Explanation Text */}
         <div className="space-y-3">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
             Select Slip Format
           </label>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {NIN_SLIP_OPTIONS.map((option) => {
               const isSelected = slipType === option.id;
               const isAvailable = statusState.availableSlips.includes(option.id);
@@ -344,7 +346,7 @@ export default function NinByNinPage() {
                       : "bg-card border-border hover:bg-secondary/40 cursor-pointer"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3.5">
                     <input 
                       type="radio" 
                       name="slipType" 
@@ -353,32 +355,31 @@ export default function NinByNinPage() {
                       onChange={() => {
                         if (isAvailable) setSlipType(option.id);
                       }} 
-                      className="text-[#ff3f7a] focus:ring-[#ff3f7a]"
+                      className="text-[#ff3f7a] focus:ring-[#ff3f7a] cursor-pointer"
                     />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-foreground">{option.label}</span>
-                        
-                        {/* Eye Example Preview Button */}
-                        <button 
-                          type="button" 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setLightbox({ isOpen: true, src: option.img, label: option.label }); 
-                          }} 
-                          className="text-muted-foreground hover:text-[#ff3f7a] p-1 transition-colors cursor-pointer"
-                          title={`Preview ${option.label} Example`}
-                        >
-                          <Eye size={16} weight="bold" />
-                        </button>
+                    
+                    <div className="flex items-center flex-wrap gap-2.5">
+                      <span className="font-bold text-sm text-foreground">{option.label}</span>
+                      
+                      {/* Clickable Eye Icon + "View Example" Text */}
+                      <button 
+                        type="button" 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setLightbox({ isOpen: true, src: option.img, label: option.label }); 
+                        }} 
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-[#ff3f7a] bg-secondary hover:bg-secondary/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                        title={`View ${option.label} Example`}
+                      >
+                        <Eye size={14} weight="bold" />
+                        <span>View Example</span>
+                      </button>
 
-                        {!isAvailable && (
-                          <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 px-1.5 py-0.2 rounded">
-                            Offline
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{option.desc}</p>
+                      {!isAvailable && (
+                        <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 px-2 py-0.5 rounded">
+                          Offline
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -398,7 +399,7 @@ export default function NinByNinPage() {
               type="checkbox"
               checked={attestation1}
               onChange={(e) => setAttestation1(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded text-[#ff3f7a] focus:ring-[#ff3f7a] border-border"
+              className="mt-0.5 h-4 w-4 rounded text-[#ff3f7a] focus:ring-[#ff3f7a] border-border cursor-pointer"
             />
             <span>I declare that I am the owner of this NIN or have lawful consent to query this record.</span>
           </label>
@@ -408,7 +409,7 @@ export default function NinByNinPage() {
               type="checkbox"
               checked={attestation2}
               onChange={(e) => setAttestation2(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded text-[#ff3f7a] focus:ring-[#ff3f7a] border-border"
+              className="mt-0.5 h-4 w-4 rounded text-[#ff3f7a] focus:ring-[#ff3f7a] border-border cursor-pointer"
             />
             <span>I authorize the fee of <strong>₦{currentPrice.toLocaleString()}</strong> to be debited from my wallet.</span>
           </label>
@@ -426,53 +427,19 @@ export default function NinByNinPage() {
 
       </form>
 
-      {/* CONFIRMATION MODAL */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-left space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-black text-foreground">Confirm Generation</h3>
-              <button
-                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground"
-              >
-                <X size={14} weight="bold" />
-              </button>
-            </div>
-
-            <div className="bg-secondary/40 p-3.5 rounded-xl border border-border space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">NIN:</span>
-                <span className="font-mono font-bold text-foreground">{confirmModal.identifier}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Slip:</span>
-                <span className="font-bold text-foreground">{confirmModal.slipLabel}</span>
-              </div>
-              <div className="flex justify-between border-t border-border/50 pt-2 text-sm font-black">
-                <span>Charge:</span>
-                <span className="text-[#ff3f7a]">₦{confirmModal.price.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
-              <Button
-                variant="outline"
-                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                className="h-11 rounded-xl font-bold border-border"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={executeSlipGeneration}
-                className="h-11 rounded-xl font-black bg-[#ff3f7a] text-white hover:bg-[#e02b62]"
-              >
-                Confirm & Pay
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* CONFIRMATION & INSUFFICIENT BALANCE MODAL (WITH SPECIMEN PREVIEW) */}
+      <SlipConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={executeSlipGeneration}
+        isLoading={isGenerating}
+        identifier={nin.trim()}
+        searchType="NIN"
+        slipLabel={selectedOption.label}
+        slipImage={selectedOption.img}
+        price={currentPrice}
+        walletBalance={walletBalance}
+      />
 
       {/* LIGHTBOX SPECIMEN PREVIEW OVERLAY */}
       {lightbox.isOpen && (
@@ -482,7 +449,7 @@ export default function NinByNinPage() {
         >
           <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-card border border-border px-4 py-2.5 rounded-t-2xl flex items-center justify-between">
-              <span className="text-sm font-bold text-foreground">{lightbox.label} Example</span>
+              <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
               <button 
                 onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
                 className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full cursor-pointer"

@@ -5,40 +5,41 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   ArrowLeft, WarningCircle, Eye, X, Check,
-  Sparkle, ShieldCheck, CheckCircle, Wrench
+  Sparkle, ShieldCheck, CheckCircle, Wrench, IdentificationCard
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import NinResultModal, { DemographicData } from "@/components/features/nin/slips/NinResultModal";
 import NinHistorySection, { SlipHistoryItem } from "@/components/features/nin/slips/NinHistorySection";
+import SlipConfirmationModal from "@/components/features/nin/slips/SlipConfirmationModal";
 
 interface SlipOption {
   id: "nin_regular" | "nin_standard" | "nin_premium";
   label: string;
-  desc: string;
   img: string;
   defaultPrice: number;
 }
 
+// User-specified ordering for Phone Query:
+// 1. Regular Slip (₦500)
+// 2. Standard Slip (₦700)
+// 3. Premium Slip (₦1,000)
 const PHONE_SLIP_OPTIONS: SlipOption[] = [
   { 
     id: "nin_regular", 
     label: "Regular Slip", 
-    desc: "Standard long format for official & corporate filings.", 
     img: "/examples/nin_regular_example.png",
     defaultPrice: 500 
   },
   { 
     id: "nin_standard", 
-    label: "Standard Biometric Slip", 
-    desc: "Biometric layout with photo & QR verification.", 
+    label: "Standard Slip", 
     img: "/examples/nin_standard_example.png",
     defaultPrice: 700 
   },
   { 
     id: "nin_premium", 
-    label: "Premium Card Slip", 
-    desc: "Full-colour card format for PVC printing.", 
+    label: "Premium Slip", 
     img: "/examples/nin_premium_example.png",
     defaultPrice: 1000 
   },
@@ -47,6 +48,7 @@ const PHONE_SLIP_OPTIONS: SlipOption[] = [
 export default function NinByPhonePage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [slipType, setSlipType] = useState<"nin_regular" | "nin_standard" | "nin_premium">("nin_premium");
+  const [walletBalance, setWalletBalance] = useState<number>(0);
   
   const [statusState, setStatusState] = useState<{
     loading: boolean;
@@ -70,12 +72,8 @@ export default function NinByPhonePage() {
     isOpen: false, src: "", label: ""
   });
 
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    identifier: string;
-    slipLabel: string;
-    price: number;
-  }>({ isOpen: false, identifier: "", slipLabel: "", price: 0 });
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [resultModal, setResultModal] = useState<{
     isOpen: boolean;
@@ -94,13 +92,19 @@ export default function NinByPhonePage() {
 
   const loadData = async () => {
     try {
-      const [statusRes, historyRes] = await Promise.all([
+      const [statusRes, historyRes, walletRes] = await Promise.all([
         fetch("/api/nin/slips/status", { cache: "no-store" }),
         fetch("/api/nin/slips/history?searchType=PHONE", { cache: "no-store" }),
+        fetch("/api/user/wallet", { cache: "no-store" }),
       ]);
 
       const statusData = await statusRes.json();
       const historyData = await historyRes.json();
+      const walletData = await walletRes.json();
+
+      if (walletData.success) {
+        setWalletBalance(typeof walletData.balance === "number" ? walletData.balance : (walletData.wallet?.balance || 0));
+      }
 
       if (statusData.success && statusData.status) {
         const pMap = statusData.pricing || {};
@@ -130,7 +134,7 @@ export default function NinByPhonePage() {
     loadData();
   }, []);
 
-  const handleGenerateSlip = (e: React.FormEvent) => {
+  const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{11}$/.test(phoneNumber.trim())) {
       setError("Please provide a valid 11-digit Phone Number.");
@@ -146,19 +150,13 @@ export default function NinByPhonePage() {
     }
 
     setError(null);
-    const selectedOption = PHONE_SLIP_OPTIONS.find(o => o.id === slipType);
-    const price = statusState.prices[slipType] || selectedOption?.defaultPrice || 1000;
-
-    setConfirmModal({
-      isOpen: true,
-      identifier: phoneNumber.trim(),
-      slipLabel: selectedOption?.label || "NIN Slip",
-      price,
-    });
+    setIsConfirmOpen(true);
   };
 
   const executeSlipGeneration = async () => {
-    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    setIsConfirmOpen(false);
+    setIsGenerating(true);
+
     const selectedOption = PHONE_SLIP_OPTIONS.find(o => o.id === slipType);
 
     setResultModal({
@@ -182,6 +180,7 @@ export default function NinByPhonePage() {
       });
 
       const data = await res.json();
+      setIsGenerating(false);
 
       if (!res.ok || !data.success || !data.pdfBase64) {
         setResultModal({
@@ -207,6 +206,7 @@ export default function NinByPhonePage() {
       loadData();
 
     } catch (err: any) {
+      setIsGenerating(false);
       setResultModal({
         isOpen: true,
         status: "error",
@@ -215,16 +215,17 @@ export default function NinByPhonePage() {
     }
   };
 
-  const currentPrice = statusState.prices[slipType] || 1000;
+  const selectedOption = PHONE_SLIP_OPTIONS.find(o => o.id === slipType) || PHONE_SLIP_OPTIONS[2];
+  const currentPrice = statusState.prices[slipType] || selectedOption.defaultPrice;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
       
-      {/* Top Navigation */}
-      <div className="flex items-center justify-between">
+      {/* Top Navigation - Cleanly Separated */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Link 
           href="/dashboard/nin/slips" 
-          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-xl cursor-pointer"
+          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/60 hover:bg-secondary px-3.5 py-2 rounded-xl cursor-pointer w-fit"
         >
           <ArrowLeft weight="bold" className="h-3.5 w-3.5" />
           Back to Verification Methods
@@ -232,9 +233,10 @@ export default function NinByPhonePage() {
 
         <Link
           href="/dashboard/nin/slips/nin"
-          className="text-xs font-bold text-[#ff3f7a] hover:text-[#e02b62] transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-[#ff3f7a] bg-[#ff3f7a]/10 hover:bg-[#ff3f7a]/15 border border-[#ff3f7a]/20 px-3.5 py-2 rounded-xl transition-all w-fit cursor-pointer"
         >
-          Switch to NIN query &rarr;
+          <IdentificationCard size={15} weight="bold" />
+          <span>Switch to NIN Query &rarr;</span>
         </Link>
       </div>
 
@@ -251,16 +253,16 @@ export default function NinByPhonePage() {
         </div>
       </div>
 
-      {/* Maintenance Banner */}
+      {/* Outage banner if phone search is globally disabled */}
       {!statusState.phoneSearchActive && (
-        <div className="bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-2.5 animate-in fade-in">
+        <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-2.5 animate-in fade-in">
           <Wrench size={18} weight="fill" className="shrink-0 text-amber-500" />
-          <span>Phone search is currently down for maintenance. Please switch to NIN query.</span>
+          <span>NIMC Phone Number search is temporarily offline for maintenance. Please switch to 11-digit NIN search.</span>
         </div>
       )}
 
       {/* Form */}
-      <form onSubmit={handleGenerateSlip} className="space-y-6">
+      <form onSubmit={handleOpenConfirm} className="space-y-6">
         
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl text-destructive text-sm font-bold flex items-center gap-2.5 animate-in shake">
@@ -272,7 +274,7 @@ export default function NinByPhonePage() {
         {/* Input */}
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex justify-between">
-            <span>11-Digit Phone Number</span>
+            <span>11-Digit SIM Phone Number</span>
             <span className="font-mono text-[11px]">{phoneNumber.length}/11</span>
           </label>
           <div className="relative">
@@ -280,15 +282,14 @@ export default function NinByPhonePage() {
               type="text"
               inputMode="numeric"
               maxLength={11}
-              disabled={!statusState.phoneSearchActive}
               value={phoneNumber}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, "");
                 setPhoneNumber(val);
                 if (error) setError(null);
               }}
-              placeholder="Enter 11-digit Phone (e.g. 08012345678)"
-              className="h-12 bg-card border border-border text-base font-mono font-bold pl-4 pr-10 rounded-xl disabled:opacity-60"
+              placeholder="e.g. 08012345678"
+              className="h-12 bg-card border border-border text-base font-mono font-bold pl-4 pr-10 rounded-xl"
             />
             {phoneNumber.length === 11 && (
               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500">
@@ -298,13 +299,13 @@ export default function NinByPhonePage() {
           </div>
         </div>
 
-        {/* Slips Radio List with Eye Example Previews */}
+        {/* Slips Radio List with Eye + "View Example" & No Explanation Text */}
         <div className="space-y-3">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
             Select Slip Format
           </label>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {PHONE_SLIP_OPTIONS.map((option) => {
               const isSelected = slipType === option.id;
               const price = statusState.prices[option.id] || option.defaultPrice;
@@ -312,46 +313,38 @@ export default function NinByPhonePage() {
               return (
                 <div
                   key={option.id}
-                  onClick={() => {
-                    if (statusState.phoneSearchActive) setSlipType(option.id);
-                  }}
+                  onClick={() => setSlipType(option.id)}
                   className={`p-3.5 sm:p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
-                    !statusState.phoneSearchActive
-                      ? "opacity-50 bg-secondary/20 border-border cursor-not-allowed"
-                      : isSelected
+                    isSelected
                       ? "bg-secondary/70 border-sky-500 shadow-sm cursor-pointer"
                       : "bg-card border-border hover:bg-secondary/40 cursor-pointer"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3.5">
                     <input 
                       type="radio" 
                       name="slipType" 
-                      disabled={!statusState.phoneSearchActive}
                       checked={isSelected} 
-                      onChange={() => {
-                        if (statusState.phoneSearchActive) setSlipType(option.id);
-                      }} 
-                      className="text-sky-500 focus:ring-sky-500"
+                      onChange={() => setSlipType(option.id)} 
+                      className="text-sky-500 focus:ring-sky-500 cursor-pointer"
                     />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-foreground">{option.label}</span>
-                        
-                        {/* Eye Example Preview Button */}
-                        <button 
-                          type="button" 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setLightbox({ isOpen: true, src: option.img, label: option.label }); 
-                          }} 
-                          className="text-muted-foreground hover:text-sky-500 p-1 transition-colors cursor-pointer"
-                          title={`Preview ${option.label} Example`}
-                        >
-                          <Eye size={16} weight="bold" />
-                        </button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{option.desc}</p>
+                    
+                    <div className="flex items-center flex-wrap gap-2.5">
+                      <span className="font-bold text-sm text-foreground">{option.label}</span>
+                      
+                      {/* Clickable Eye Icon + "View Example" Text */}
+                      <button 
+                        type="button" 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setLightbox({ isOpen: true, src: option.img, label: option.label }); 
+                        }} 
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-sky-500 bg-secondary hover:bg-secondary/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                        title={`View ${option.label} Example`}
+                      >
+                        <Eye size={14} weight="bold" />
+                        <span>View Example</span>
+                      </button>
                     </div>
                   </div>
 
@@ -369,21 +362,19 @@ export default function NinByPhonePage() {
           <label className="flex items-start gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">
             <input
               type="checkbox"
-              disabled={!statusState.phoneSearchActive}
               checked={attestation1}
               onChange={(e) => setAttestation1(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded text-sky-500 focus:ring-sky-500 border-border"
+              className="mt-0.5 h-4 w-4 rounded text-sky-500 focus:ring-sky-500 border-border cursor-pointer"
             />
-            <span>I declare that I am the owner of this mobile number or have lawful consent to query this record.</span>
+            <span>I declare that I am the owner of this phone number or have lawful consent to query this record.</span>
           </label>
 
           <label className="flex items-start gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">
             <input
               type="checkbox"
-              disabled={!statusState.phoneSearchActive}
               checked={attestation2}
               onChange={(e) => setAttestation2(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded text-sky-500 focus:ring-sky-500 border-border"
+              className="mt-0.5 h-4 w-4 rounded text-sky-500 focus:ring-sky-500 border-border cursor-pointer"
             />
             <span>I authorize the fee of <strong>₦{currentPrice.toLocaleString()}</strong> to be debited from my wallet.</span>
           </label>
@@ -392,7 +383,7 @@ export default function NinByPhonePage() {
         {/* Submit */}
         <Button
           type="submit"
-          disabled={!statusState.phoneSearchActive || !attestation1 || !attestation2 || phoneNumber.length !== 11}
+          disabled={!attestation1 || !attestation2 || phoneNumber.length !== 11 || !statusState.phoneSearchActive}
           className="w-full h-12 font-black text-sm bg-sky-500 text-white hover:bg-sky-600 rounded-xl shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
           <Sparkle size={18} weight="fill" />
@@ -401,53 +392,19 @@ export default function NinByPhonePage() {
 
       </form>
 
-      {/* CONFIRMATION MODAL */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-left space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-black text-foreground">Confirm Generation</h3>
-              <button
-                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground"
-              >
-                <X size={14} weight="bold" />
-              </button>
-            </div>
-
-            <div className="bg-secondary/40 p-3.5 rounded-xl border border-border space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Phone Number:</span>
-                <span className="font-mono font-bold text-foreground">{confirmModal.identifier}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Slip:</span>
-                <span className="font-bold text-foreground">{confirmModal.slipLabel}</span>
-              </div>
-              <div className="flex justify-between border-t border-border/50 pt-2 text-sm font-black">
-                <span>Charge:</span>
-                <span className="text-sky-500">₦{confirmModal.price.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
-              <Button
-                variant="outline"
-                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                className="h-11 rounded-xl font-bold border-border"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={executeSlipGeneration}
-                className="h-11 rounded-xl font-black bg-sky-500 text-white hover:bg-sky-600"
-              >
-                Confirm & Pay
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* CONFIRMATION & INSUFFICIENT BALANCE MODAL (WITH SPECIMEN PREVIEW) */}
+      <SlipConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={executeSlipGeneration}
+        isLoading={isGenerating}
+        identifier={phoneNumber.trim()}
+        searchType="PHONE"
+        slipLabel={selectedOption.label}
+        slipImage={selectedOption.img}
+        price={currentPrice}
+        walletBalance={walletBalance}
+      />
 
       {/* LIGHTBOX SPECIMEN PREVIEW OVERLAY */}
       {lightbox.isOpen && (
@@ -457,7 +414,7 @@ export default function NinByPhonePage() {
         >
           <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-card border border-border px-4 py-2.5 rounded-t-2xl flex items-center justify-between">
-              <span className="text-sm font-bold text-foreground">{lightbox.label} Example</span>
+              <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
               <button 
                 onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
                 className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full cursor-pointer"
@@ -490,7 +447,7 @@ export default function NinByPhonePage() {
       />
 
       {/* PHONE SPECIFIC HISTORY (LAST 24 HOURS) */}
-      <NinHistorySection history={history} title="Phone Query History (Last 24 Hours)" />
+      <NinHistorySection history={history} title="Phone Verification History (Last 24 Hours)" />
 
     </div>
   );
