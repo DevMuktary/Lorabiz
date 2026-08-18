@@ -15,6 +15,7 @@ export default function SettingsDashboard() {
   });
   const [isSavingProviders, setIsSavingProviders] = useState(false);
   const [providerSavedSuccess, setProviderSavedSuccess] = useState(false);
+  const [providerError, setProviderError] = useState<string | null>(null);
 
   const fetchSettings = async () => {
     setIsLoading(true);
@@ -50,17 +51,22 @@ export default function SettingsDashboard() {
   const handleSaveProviders = async () => {
     setIsSavingProviders(true);
     setProviderSavedSuccess(false);
+    setProviderError(null);
     try {
       const res = await fetch("/api/mds/settings/providers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(providers),
       });
-      if (!res.ok) throw new Error("Failed to update providers");
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to update providers");
+      }
       setProviderSavedSuccess(true);
       setTimeout(() => setProviderSavedSuccess(false), 3500);
-    } catch (err) {
-      alert("Failed to save provider routing settings.");
+    } catch (err: any) {
+      setProviderError(err.message || "Failed to save provider routing settings.");
+      setTimeout(() => setProviderError(null), 5000);
     } finally {
       setIsSavingProviders(false);
     }
@@ -78,11 +84,13 @@ export default function SettingsDashboard() {
   );
   const ipeGroup = allServices.filter((s) => s.serviceKey.includes("IPE"));
   const personalizationGroup = allServices.filter((s) => s.serviceKey.includes("PERSONALIZATION"));
-  const ninGroup = allServices.filter(
+  const ninValidationGroup = allServices.filter((s) => s.serviceKey.includes("NIN_VALIDATION"));
+  const ninSlipsGroup = allServices.filter(
     (s) =>
       s.serviceKey.startsWith("NIN") &&
       !s.serviceKey.includes("IPE") &&
-      !s.serviceKey.includes("PERSONALIZATION")
+      !s.serviceKey.includes("PERSONALIZATION") &&
+      !s.serviceKey.includes("NIN_VALIDATION")
   );
 
   return (
@@ -157,6 +165,22 @@ export default function SettingsDashboard() {
                 </button>
               </div>
 
+              {/* Provider Error Banner */}
+              {providerError && (
+                <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={16} className="text-rose-400 shrink-0" />
+                    <span>{providerError}</span>
+                  </div>
+                  <button
+                    onClick={() => setProviderError(null)}
+                    className="text-rose-400 hover:text-white text-xs font-bold px-2 py-1 rounded"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* IPE Clearance Routing Card */}
                 <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-5 flex flex-col justify-between">
@@ -204,7 +228,7 @@ export default function SettingsDashboard() {
                       <label
                         className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
                           providers.ipeProvider === "AGENTHUB"
-                            ? "bg-indigo-600/15 border-indigo-500 text-white"
+                            ? "bg-teal-600/15 border-teal-500 text-white"
                             : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                         }`}
                       >
@@ -215,17 +239,17 @@ export default function SettingsDashboard() {
                             value="AGENTHUB"
                             checked={providers.ipeProvider === "AGENTHUB"}
                             onChange={(e) => setProviders({ ...providers, ipeProvider: e.target.value })}
-                            className="text-indigo-600 focus:ring-indigo-500"
+                            className="text-teal-500 focus:ring-teal-500"
                           />
                           <div>
                             <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
                               AgentHub API
-                              <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded font-mono">AUTOMATED</span>
+                              <span className="text-[10px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-mono">SECONDARY</span>
                             </div>
-                            <div className="text-xs text-zinc-400">agenthub.ng automated clearing endpoint</div>
+                            <div className="text-xs text-zinc-400">agenthub.com.ng automated fallback provider</div>
                           </div>
                         </div>
-                        <Cpu size={18} className={providers.ipeProvider === "AGENTHUB" ? "text-indigo-400" : "text-zinc-600"} />
+                        <Cpu size={18} className={providers.ipeProvider === "AGENTHUB" ? "text-teal-400" : "text-zinc-600"} />
                       </label>
 
                       {/* Option 3: Manual Staff Operations */}
@@ -395,15 +419,36 @@ export default function SettingsDashboard() {
             </section>
           )}
 
-          {/* NIN SLIPS SECTION */}
-          {ninGroup.length > 0 && (
+          {/* NIN VALIDATION SECTION (SEPARATE) */}
+          {ninValidationGroup.length > 0 && (
+            <section>
+              <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+                <Fingerprint size={20} className="text-purple-500 mr-2" />
+                <div>
+                  <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">NIN Record Validation</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Pricing and status configuration for record validation, VNIN validation, and modification syncing.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                {ninValidationGroup.map((service) => (
+                  <ServiceConfigCard key={service.id} service={service} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* NIN SLIPS SECTION (SEPARATE) */}
+          {ninSlipsGroup.length > 0 && (
             <section>
               <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
                 <Fingerprint size={20} className="text-blue-500 mr-2" />
-                <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Identity Services (NIN Slips API)</h2>
+                <div>
+                  <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Identity Services (NIN Slips & Verification API)</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Pricing and controls for official NIMC PDF slips generation (Regular, Standard, Premium).</p>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                {ninGroup.map((service) => (
+                {ninSlipsGroup.map((service) => (
                   <ServiceConfigCard key={service.id} service={service} />
                 ))}
               </div>
@@ -433,6 +478,8 @@ function ServiceConfigCard({ service }: { service: any }) {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const isChanged =
     current.isActive !== savedState.isActive ||
@@ -441,6 +488,8 @@ function ServiceConfigCard({ service }: { service: any }) {
 
   const handleSave = async () => {
     setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
     try {
       const res = await fetch("/api/mds/settings/pricing/action", {
         method: "POST",
@@ -455,11 +504,17 @@ function ServiceConfigCard({ service }: { service: any }) {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to save");
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Failed to save settings");
+      }
 
       setSavedState({ ...current });
-    } catch (err) {
-      alert("Error saving settings. Please try again.");
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      setSaveError(err.message || "Error saving settings. Please try again.");
+      setTimeout(() => setSaveError(null), 4000);
     } finally {
       setIsSaving(false);
     }
@@ -467,13 +522,13 @@ function ServiceConfigCard({ service }: { service: any }) {
 
   return (
     <div
-      className={`flex flex-col bg-white dark:bg-zinc-900 rounded-2xl border-2 transition-colors shadow-sm overflow-hidden ${
+      className={`flex flex-col bg-white dark:bg-zinc-900 rounded-2xl border-2 transition-colors shadow-sm ${
         !current.isActive ? "border-red-200 dark:border-red-500/30" : "border-transparent dark:border-zinc-800"
       }`}
     >
       {/* Header */}
       <div
-        className={`px-4 sm:px-5 py-3 sm:py-4 border-b flex justify-between items-start ${
+        className={`px-4 sm:px-5 py-3 sm:py-4 border-b flex justify-between items-start rounded-t-2xl ${
           !current.isActive
             ? "bg-red-50 dark:bg-red-500/5 border-red-100 dark:border-red-500/20"
             : "bg-zinc-50 dark:bg-zinc-900/50 border-zinc-100 dark:border-zinc-800"
@@ -504,7 +559,22 @@ function ServiceConfigCard({ service }: { service: any }) {
       </div>
 
       {/* Body */}
-      <div className="p-4 sm:p-5 flex-1 space-y-5">
+      <div className="p-4 sm:p-5 flex-1 space-y-4">
+        {/* Save feedback banner */}
+        {saveSuccess && (
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
+            <CheckCircle2 size={14} />
+            <span>Settings saved successfully!</span>
+          </div>
+        )}
+
+        {saveError && (
+          <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
+            <AlertTriangle size={14} />
+            <span>{saveError}</span>
+          </div>
+        )}
+
         {/* Price Input */}
         <div>
           <label className="text-xs font-bold uppercase text-zinc-500 mb-1.5 block">Client Cost (₦)</label>
@@ -525,7 +595,7 @@ function ServiceConfigCard({ service }: { service: any }) {
             <AlertTriangle size={14} className="mr-1.5" /> Downtime Notice
           </label>
           <textarea
-            rows={4}
+            rows={3}
             value={current.maintenanceMsg}
             onChange={(e) => setCurrent({ ...current, maintenanceMsg: e.target.value })}
             placeholder="Explain to users why this service is currently unavailable..."
@@ -540,13 +610,13 @@ function ServiceConfigCard({ service }: { service: any }) {
       </div>
 
       {/* Footer / Save Action */}
-      <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
+      <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 rounded-b-2xl">
         <button
           onClick={handleSave}
           disabled={!isChanged || isSaving}
           className={`w-full py-3 rounded-lg flex items-center justify-center text-sm font-bold transition-all ${
             isChanged
-              ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+              ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md cursor-pointer active:scale-95"
               : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
           }`}
         >

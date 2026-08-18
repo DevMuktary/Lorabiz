@@ -17,7 +17,7 @@ export async function GET() {
       where: { email: session.user.email },
     });
 
-    if (!staffUser || staffUser.role !== "STAFF") {
+    if (!staffUser || staffUser.role === "USER") {
       return NextResponse.json(
         { success: false, message: "Access forbidden." },
         { status: 403 }
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       where: { email: session.user.email },
     });
 
-    if (!staffUser || staffUser.role !== "STAFF") {
+    if (!staffUser || staffUser.role === "USER") {
       return NextResponse.json(
         { success: false, message: "Only administrators can change provider routing." },
         { status: 403 }

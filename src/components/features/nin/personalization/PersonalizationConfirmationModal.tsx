@@ -89,7 +89,11 @@ export function PersonalizationConfirmationModal({
               <span className="text-muted-foreground flex items-center gap-1">
                 <Clock weight="bold" className="h-3.5 w-3.5 text-primary" /> Turnaround
               </span>
-              <span className="font-semibold text-foreground">~24 Hours</span>
+              <span className="font-semibold text-foreground text-right">1 – 24 Hours (weekend delay possible)</span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
+              ⚠️ <strong>Strict No Refund:</strong> Billed 100% upfront upon transmission.
             </div>
 
             <div className="flex justify-between items-end border-t border-border pt-3 mt-3">

@@ -101,7 +101,7 @@ export function PersonalizationSubmissionForm({
         <div className="space-y-1">
           <h2 className="text-xl font-bold text-foreground">NIN Personalization Request</h2>
           <p className="text-sm text-muted-foreground">
-            Activate and personalize your enrollment tracking ID to generate your National Identification Number (NIN) and official slip.
+            Submit your enrollment tracking ID for personalization (and maybe retrieve your verified identity slip).
           </p>
         </div>
 
@@ -142,32 +142,26 @@ export function PersonalizationSubmissionForm({
           </p>
         </div>
 
-        {/* Attestation Checkbox */}
+        {/* Attestation Checkbox (Minimized) */}
         <div className="pt-2">
-          <label className="flex items-start gap-3 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition-colors">
+          <label className="flex items-center gap-3 p-3.5 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition-colors">
             <input
               type="checkbox"
               checked={attestationsAccepted}
               onChange={(e) => setAttestationsAccepted(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+              className="h-4 w-4 rounded border-input text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer shrink-0"
             />
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-foreground flex items-center gap-1">
-                <ShieldCheck weight="bold" className="h-3.5 w-3.5 text-primary" />
-                Applicant Statutory Authorization
-              </span>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                I hereby declare that this Tracking ID belongs to the applicant and authorize Lorabiz to transmit this request to the identity gateway for personalization and slip retrieval.
-              </p>
-            </div>
+            <span className="text-xs font-medium text-foreground leading-relaxed">
+              I confirm that this Tracking ID is correct and authorize Lorabiz to process this personalization request.
+            </span>
           </label>
         </div>
 
         {/* Submit Button */}
         <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs text-muted-foreground text-center sm:text-left">
-            <span>Turnaround Time: </span>
-            <strong className="text-foreground">~24 Hours</strong>
+            <span>Turnaround: </span>
+            <strong className="text-foreground">1 – 24 Hours (slight delay on weekends)</strong>
           </div>
 
           <button

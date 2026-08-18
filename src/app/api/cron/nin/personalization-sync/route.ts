@@ -107,46 +107,19 @@ async function handleSync(req: NextRequest) {
 
           completedCount++;
         } else if (parsed.normalizedStatus === "FAILED") {
-          const refundAmount = Number(item.amountCharged);
           const failureReason =
             parsed.errorDetail ||
             parsed.message ||
             "Personalization request was rejected by identity gateway.";
 
-          const refundRef = `REF_PZN_${Date.now()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-          await prisma.$transaction(async (tx) => {
-            // Refund user wallet
-            const updatedWallet = await tx.wallet.update({
-              where: { userId: item.user.id },
-              data: { balance: { increment: refundAmount } },
-            });
-
-            // Record refund ledger entry
-            await tx.transaction.create({
-              data: {
-                walletId: updatedWallet.id,
-                amount: refundAmount,
-                balanceBefore: Number(updatedWallet.balance) - refundAmount,
-                balanceAfter: Number(updatedWallet.balance),
-                type: "CREDIT",
-                status: "SUCCESS",
-                reference: refundRef,
-                serviceCategory: "REFUND",
-                description: `Refund: NIN Personalization Failed (${item.trackingId})`,
-              },
-            });
-
-            // Update request
-            await tx.ninPersonalizationRequest.update({
-              where: { id: item.id },
-              data: {
-                status: "FAILED",
-                failureReason: failureReason,
-                apiMessage: parsed.message || "Personalization Failed",
-                apiResponse: statusResult.data as any,
-              },
-            });
+          await prisma.ninPersonalizationRequest.update({
+            where: { id: item.id },
+            data: {
+              status: "FAILED",
+              failureReason: failureReason,
+              apiMessage: parsed.message || "Personalization Failed",
+              apiResponse: statusResult.data as any,
+            },
           });
 
           // Dispatch failed notification
@@ -159,7 +132,7 @@ async function handleSync(req: NextRequest) {
               trackingId: item.trackingId,
               reference: item.reference,
               failureReason: failureReason,
-              refundAmount: refundAmount,
+              refundAmount: 0,
             });
           } catch (notifErr) {
             console.error(`❌ [Cron Personalization] Notification error for ${item.reference}:`, notifErr);

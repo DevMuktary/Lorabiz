@@ -104,42 +104,15 @@ export async function POST(req: Request) {
         });
       } else if (parsed.normalizedStatus === "FAILED") {
         const failureReason = parsed.errorDetail || parsed.message || "Personalization rejected by identity gateway.";
-        const refundAmount = Number(pznItem.amountCharged);
 
-        await prisma.$transaction(async (tx) => {
-          if (pznItem.user.wallet && refundAmount > 0) {
-            const currentBal = Number(pznItem.user.wallet.balance);
-            const refundedBal = currentBal + refundAmount;
-
-            await tx.wallet.update({
-              where: { id: pznItem.user.wallet.id },
-              data: { balance: refundedBal },
-            });
-
-            await tx.transaction.create({
-              data: {
-                walletId: pznItem.user.wallet.id,
-                amount: refundAmount,
-                balanceBefore: currentBal,
-                balanceAfter: refundedBal,
-                type: "CREDIT",
-                status: "SUCCESS",
-                reference: `REFUND_${pznItem.reference}`,
-                serviceCategory: "REFUND",
-                description: `Refund: NIN Personalization Failed (${pznItem.trackingId})`,
-              },
-            });
-          }
-
-          await tx.ninPersonalizationRequest.update({
-            where: { id: pznItem.id },
-            data: {
-              status: "FAILED",
-              failureReason: failureReason,
-              apiMessage: parsed.message,
-              apiResponse: statusResult.data as any,
-            },
-          });
+        await prisma.ninPersonalizationRequest.update({
+          where: { id: pznItem.id },
+          data: {
+            status: "FAILED",
+            failureReason: failureReason,
+            apiMessage: parsed.message,
+            apiResponse: statusResult.data as any,
+          },
         });
 
         // Notify client
@@ -152,13 +125,13 @@ export async function POST(req: Request) {
             trackingId: pznItem.trackingId,
             reference: pznItem.reference,
             failureReason: failureReason,
-            refundAmount: refundAmount,
+            refundAmount: 0,
           });
         } catch (e) {}
 
         return NextResponse.json({
           success: true,
-          message: "Request marked as Failed and refund credited to user wallet.",
+          message: "Request marked as Failed (No refund: provider charges upfront).",
         });
       } else {
         return NextResponse.json({

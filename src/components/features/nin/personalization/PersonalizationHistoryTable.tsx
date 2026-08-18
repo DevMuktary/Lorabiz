@@ -87,7 +87,7 @@ export function PersonalizationHistoryTable({
       </div>
 
       {/* Table Container */}
-      <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-2xl shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs sm:text-sm font-medium">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground uppercase text-[11px] font-bold tracking-wider">

@@ -94,7 +94,7 @@ export default function NinPersonalizationPage() {
             </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">NIN Personalization</h1>
             <p className="text-muted-foreground text-sm">
-              Activate enrollment tracking ID and retrieve verified National Identity slip.
+              Submit your enrollment tracking ID for personalization (and maybe retrieve your verified identity slip).
             </p>
           </div>
         </div>
@@ -109,6 +109,20 @@ export default function NinPersonalizationPage() {
         </Link>
       </div>
 
+      {/* Notice Banner */}
+      <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-l-4 border-amber-500 p-4 sm:p-5 rounded-2xl border border-amber-500/20 space-y-2">
+        <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
+          <Clock weight="bold" className="h-4 w-4 shrink-0" />
+          <span>Turnaround Time: 1 – 24 Hours (slight delay may occur on weekends)</span>
+        </div>
+        <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed font-medium">
+          Submit your enrollment tracking ID for personalization (and maybe retrieve your verified identity slip).
+        </p>
+        <p className="text-[11px] sm:text-xs text-amber-700 dark:text-amber-300 font-bold leading-relaxed pt-1 border-t border-amber-500/20">
+          ⚠️ Strict No-Refund Policy: This service is non-refundable once submitted, as provider fulfillment costs are billed 100% upfront.
+        </p>
+      </div>
+
       {/* Post-Submission Success State */}
       {submittedResult ? (
         <div className="bg-card border border-border rounded-3xl p-8 sm:p-10 shadow-xl text-center space-y-6 max-w-2xl mx-auto animate-in zoom-in-95 duration-200">
@@ -121,7 +135,7 @@ export default function NinPersonalizationPage() {
               Personalization Request Submitted
             </h2>
             <p className="text-sm text-muted-foreground">
-              Your tracking ID <strong className="font-mono text-foreground">{submittedResult.trackingId}</strong> has been transmitted for personalization and verification.
+              Your tracking ID <strong className="font-mono text-foreground">{submittedResult.trackingId}</strong> has been transmitted for personalization.
             </p>
           </div>
 
@@ -138,13 +152,13 @@ export default function NinPersonalizationPage() {
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Estimated Turnaround:</span>
-              <span className="text-foreground font-semibold">~24 Hours</span>
+              <span className="text-muted-foreground">Turnaround:</span>
+              <span className="text-foreground font-semibold">1 – 24 Hours (slight delay on weekends)</span>
             </div>
           </div>
 
           <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-            You will receive an automated notification as soon as personalization completes. If rejected, your wallet is refunded automatically.
+            You will receive an automated notification as soon as personalization processing completes.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -200,7 +214,7 @@ export default function NinPersonalizationPage() {
                   <div>
                     <h4 className="text-xs font-bold text-foreground">Tracking ID Submission</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Enter the tracking ID from your enrollment slip. Wallet is charged only upon successful transmission.
+                      Submit your enrollment tracking ID for personalization.
                     </p>
                   </div>
                 </li>
@@ -210,9 +224,9 @@ export default function NinPersonalizationPage() {
                     2
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-foreground">Activation & Processing</h4>
+                    <h4 className="text-xs font-bold text-foreground">Gateway Processing</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      The identity authority personalizes your enrollment record and generates your 11-digit NIN.
+                      Processed within 1 to 24 hours (slight delay may occur on weekends).
                     </p>
                   </div>
                 </li>
@@ -222,16 +236,16 @@ export default function NinPersonalizationPage() {
                     3
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-foreground">Slip Retrieval & Auto-Refund</h4>
+                    <h4 className="text-xs font-bold text-foreground">Record & Slip Retrieval</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Your standard PDF slip is generated for download. If rejected outright, funds are automatically refunded.
+                      Retrieve your resolved NIN details, and maybe download your verified identity slip.
                     </p>
                   </div>
                 </li>
               </ul>
 
               <div className="p-3.5 rounded-xl bg-secondary/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">Have questions?</strong> Contact support anytime if you need clarification regarding your enrollment slip.
+                <strong className="text-foreground">Strict Policy:</strong> Personalization requests are non-refundable once submitted.
               </div>
             </div>
           </div>

@@ -145,48 +145,21 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // If status has transitioned to FAILED -> Auto-Refund and forward exact reason
+    // If status has transitioned to FAILED -> Record failure (Non-refundable service)
     if (parsed.normalizedStatus === "FAILED") {
-      const refundAmount = Number(personalizationRequest.amountCharged);
       const failureReason =
         parsed.errorDetail ||
         parsed.message ||
         "Personalization request was rejected by identity authority.";
 
-      const refundRef = `REF_PZN_${Date.now()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-      const updated = await prisma.$transaction(async (tx) => {
-        // Refund Wallet
-        const updatedWallet = await tx.wallet.update({
-          where: { userId: user.id },
-          data: { balance: { increment: refundAmount } },
-        });
-
-        // Create Refund Ledger Transaction
-        await tx.transaction.create({
-          data: {
-            walletId: updatedWallet.id,
-            amount: refundAmount,
-            balanceBefore: Number(updatedWallet.balance) - refundAmount,
-            balanceAfter: Number(updatedWallet.balance),
-            type: "CREDIT",
-            status: "SUCCESS",
-            reference: refundRef,
-            serviceCategory: "REFUND",
-            description: `Refund: NIN Personalization Request Failed (${personalizationRequest.trackingId})`,
-          },
-        });
-
-        // Update Personalization Request
-        return await tx.ninPersonalizationRequest.update({
-          where: { id: personalizationRequest.id },
-          data: {
-            status: "FAILED",
-            failureReason: failureReason,
-            apiMessage: parsed.message || "Personalization Failed",
-            apiResponse: statusResult.data as any,
-          },
-        });
+      const updated = await prisma.ninPersonalizationRequest.update({
+        where: { id: personalizationRequest.id },
+        data: {
+          status: "FAILED",
+          failureReason: failureReason,
+          apiMessage: parsed.message || "Personalization Failed",
+          apiResponse: statusResult.data as any,
+        },
       });
 
       // Dispatch Failed Notification & Email
@@ -199,7 +172,7 @@ export async function GET(req: NextRequest) {
           trackingId: personalizationRequest.trackingId,
           reference: personalizationRequest.reference,
           failureReason: failureReason,
-          refundAmount: refundAmount,
+          refundAmount: 0,
         });
       } catch (notifErr) {
         console.error("❌ Failed to send personalization failed notification:", notifErr);
@@ -218,7 +191,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         success: false,
         request: updated,
-        message: `Personalization failed: ${failureReason}. ₦${refundAmount.toLocaleString()} has been refunded to your wallet.`,
+        message: `Personalization failed: ${failureReason}.`,
       });
     }
 

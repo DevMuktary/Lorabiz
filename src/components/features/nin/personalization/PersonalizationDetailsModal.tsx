@@ -86,7 +86,7 @@ export function PersonalizationDetailsModal({
       ? {
           bg: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
           icon: <XCircle weight="fill" className="h-4 w-4" />,
-          label: "Failed (Refunded)",
+          label: "Failed",
         }
       : {
           bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
@@ -179,7 +179,7 @@ export function PersonalizationDetailsModal({
                 </div>
                 <div>
                   <div className="text-xs font-bold text-foreground">Official NIN Slip Ready</div>
-                  <div className="text-[11px] text-muted-foreground">Download standard verified PDF slip</div>
+                  <div className="text-[11px] text-muted-foreground">Download verified identity slip</div>
                 </div>
               </div>
               <a
@@ -204,7 +204,7 @@ export function PersonalizationDetailsModal({
                 {request.failureReason || "The identity gateway was unable to personalize this tracking ID."}
               </p>
               <p className="text-[11px] text-muted-foreground pt-1 border-t border-destructive/20 font-medium">
-                💰 ₦{request.amountCharged.toLocaleString()} was automatically credited back to your wallet.
+                Please contact support if you require assistance with this enrollment tracking ID.
               </p>
             </div>
           )}
