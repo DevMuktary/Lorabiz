@@ -3,12 +3,15 @@
 
 import React, { useState } from "react";
 import { 
-  Tag, 
-  Key, 
+  MagnifyingGlass,
+  QrCode,
+  ArrowsClockwise,
   CheckCircle, 
+  Circle,
   WarningCircle, 
   ShieldCheck,
-  IdentificationCard
+  IdentificationCard,
+  Tag
 } from "@phosphor-icons/react";
 import { ValidationConfirmationModal } from "./ValidationConfirmationModal";
 
@@ -25,9 +28,24 @@ interface ValidationSubmissionFormProps {
 }
 
 const CATEGORIES = [
-  { id: "NO_RECORD_FOUND", label: "No Record Found" },
-  { id: "VNIN_VALIDATION", label: "VNIN Validation" },
-  { id: "UPDATE_RECORD_MOD", label: "Update Record (Mod)" },
+  {
+    id: "NO_RECORD_FOUND",
+    label: "No Record Found",
+    description: "Resolve NINs returning 'No Record Found' across official verification portals.",
+    icon: MagnifyingGlass,
+  },
+  {
+    id: "VNIN_VALIDATION",
+    label: "VNIN Validation",
+    description: "Validate and synchronize Virtual NIN (vNIN) generation & verification records.",
+    icon: QrCode,
+  },
+  {
+    id: "UPDATE_RECORD_MOD",
+    label: "Update Record (Mod Validation)",
+    description: "Push and synchronize recent modification updates (name, DOB, phone, etc.).",
+    icon: ArrowsClockwise,
+  },
 ];
 
 export function ValidationSubmissionForm({
@@ -111,16 +129,8 @@ export function ValidationSubmissionForm({
   return (
     <div className="space-y-6">
       
-      <form onSubmit={handleFormSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+      <form onSubmit={handleFormSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
         
-        {/* Processing Fee Tag Badge */}
-        <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit">
-          <Tag weight="fill" className="h-4 w-4" />
-          <span className="text-xs font-bold uppercase tracking-wider">
-            Processing Fee: ₦{currentPrice.toLocaleString()}
-          </span>
-        </div>
-
         {/* Error Alert Box */}
         {errorMessage && (
           <div className="p-4 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 flex items-start gap-3 animate-in fade-in">
@@ -129,51 +139,99 @@ export function ValidationSubmissionForm({
           </div>
         )}
 
-        {/* 1. Category Selection Tabs */}
-        <div className="space-y-3">
-          <label className="text-sm font-bold text-foreground">
-            1. Select Validation Category
-          </label>
+        {/* Step 1: Category Selection Cards */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-bold text-foreground">
+              1. Select Validation Category
+            </label>
+            <span className="text-xs text-muted-foreground">
+              Choose the issue to resolve
+            </span>
+          </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-secondary/60 p-1.5 rounded-xl border border-border">
+          <div className="space-y-3">
             {CATEGORIES.map((cat) => {
               const isSelected = selectedCategory === cat.id;
               const catPrice = pricing[cat.id]?.price ?? 2000;
+              const IconComponent = cat.icon;
 
               return (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`flex flex-col items-center justify-center py-3 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`w-full p-4 md:p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-start justify-between gap-4 ${
                     isSelected
-                      ? "bg-background shadow-sm text-primary border border-border"
-                      : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                      ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-sm"
+                      : "border-border hover:border-primary/40 bg-background/50 hover:bg-secondary/30"
                   }`}
                 >
-                  <span className="font-black text-xs">{cat.label}</span>
-                  <span className="text-[11px] font-semibold text-muted-foreground mt-0.5">
-                    ₦{catPrice.toLocaleString()}
-                  </span>
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div
+                      className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-secondary text-muted-foreground"
+                      }`}
+                    >
+                      <IconComponent weight={isSelected ? "bold" : "regular"} className="h-5 w-5" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`font-black text-sm ${isSelected ? "text-foreground" : "text-foreground"}`}>
+                          {cat.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {cat.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end shrink-0 gap-2">
+                    <div className={`px-2.5 py-1 rounded-lg text-xs font-black tracking-tight border ${
+                      isSelected 
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
+                        : "bg-secondary text-muted-foreground border-border"
+                    }`}>
+                      ₦{catPrice.toLocaleString()}
+                    </div>
+
+                    <div className="mt-1">
+                      {isSelected ? (
+                        <CheckCircle weight="fill" className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Circle weight="regular" className="h-5 w-5 text-muted-foreground/40" />
+                      )}
+                    </div>
+                  </div>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* 2. 11-Digit NIN Input Field */}
-        <div className="space-y-2 pt-2 border-t border-border">
+        {/* Step 2: 11-Digit NIN Input Field */}
+        <div className="space-y-3 pt-6 border-t border-border">
           <label htmlFor="nin" className="text-sm font-bold text-foreground flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <IdentificationCard weight="bold" className="h-4 w-4 text-primary" />
-              National Identity Number (NIN)
+            <span className="flex items-center gap-2">
+              <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
+                2
+              </span>
+              <span>National Identity Number (NIN)</span>
             </span>
-            <span className="text-xs font-mono font-normal text-muted-foreground">
+            <span className="text-xs font-mono font-medium text-muted-foreground">
               {sanitizedNin.length} / 11 digits
             </span>
           </label>
 
           <div className="relative">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <IdentificationCard weight="bold" className="h-5 w-5" />
+            </div>
+
             <input
               id="nin"
               type="text"
@@ -183,43 +241,44 @@ export function ValidationSubmissionForm({
               required
               value={sanitizedNin}
               onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))}
-              placeholder="Enter your 11-digit NIN"
-              className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-sm font-mono tracking-wider font-bold text-foreground placeholder:font-sans placeholder:tracking-normal placeholder:font-normal placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+              placeholder="Enter 11-digit NIN (e.g. 12345678901)"
+              className="w-full bg-background border border-border rounded-xl pl-12 pr-12 py-3.5 text-sm sm:text-base font-mono tracking-wider font-bold text-foreground placeholder:font-sans placeholder:tracking-normal placeholder:font-normal placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none transition-all"
             />
+
             {isValidNin && (
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 animate-in zoom-in-50 duration-200">
                 <CheckCircle weight="fill" className="h-5 w-5" />
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground pl-1">
             Please double-check that every single digit is accurate before proceeding.
           </p>
         </div>
 
-        {/* Concise Statutory Attestation */}
-        <label className="flex items-start gap-3 p-4 bg-secondary/50 rounded-xl cursor-pointer border border-transparent hover:border-border transition-colors select-none">
-          <input
-            type="checkbox"
-            required
-            checked={attestationsAccepted}
-            onChange={(e) => setAttestationsAccepted(e.target.checked)}
-            className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer shrink-0"
-          />
-          <span className="text-xs text-muted-foreground leading-relaxed">
-            I confirm that I am the applicant or authorized agent submitting this NIN for validation.
-          </span>
-        </label>
+        {/* Step 3: Concise Attestation Checkbox */}
+        <div className="space-y-4 pt-6 border-t border-border">
+          <label className="flex items-start gap-3 p-4 bg-secondary/40 hover:bg-secondary/60 rounded-xl cursor-pointer border border-border/80 transition-colors select-none">
+            <input
+              type="checkbox"
+              required
+              checked={attestationsAccepted}
+              onChange={(e) => setAttestationsAccepted(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer shrink-0"
+            />
+            <span className="text-xs text-muted-foreground leading-relaxed">
+              I confirm that I am the applicant or an authorized agent submitting this NIN for validation.
+            </span>
+          </label>
 
-        {/* Action Button */}
-        <div className="pt-2">
+          {/* Action Button */}
           <button
             type="submit"
             disabled={!canSubmit || isSubmitting}
             className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md cursor-pointer text-sm"
           >
             <ShieldCheck weight="bold" className="h-4 w-4" />
-            <span>Submit NIN Validation</span>
+            <span>Submit NIN Validation · ₦{currentPrice.toLocaleString()}</span>
           </button>
         </div>
 
