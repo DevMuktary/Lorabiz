@@ -2,12 +2,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { 
-  Tag, 
-  Key, 
-  CheckCircle, 
-  WarningCircle, 
-  ShieldCheck 
+import {
+  Tag,
+  Key,
+  CheckCircle,
+  WarningCircle,
+  ShieldCheck
 } from "@phosphor-icons/react";
 import { IpeConfirmationModal } from "./IpeConfirmationModal";
 
@@ -89,9 +89,9 @@ export function IpeSubmissionForm({
 
   return (
     <div className="space-y-6">
-      
+
       <form onSubmit={handleFormSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
-        
+
         {/* Processing Fee Tag Badge */}
         <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit">
           <Tag weight="fill" className="h-4 w-4" />
@@ -137,9 +137,9 @@ export function IpeSubmissionForm({
               </div>
             )}
           </div>
-          
+
           <p className="text-xs text-muted-foreground">
-            Found on your official NIMC enrollment slip (usually 15 alphanumeric characters).
+            Found on your NIMC enrollment slip (usually 15 alphanumeric characters).
           </p>
         </div>
 

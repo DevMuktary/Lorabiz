@@ -18,7 +18,7 @@ async function main() {
     // 🚨 NIN Slip & Identity Service Prices (Query by NIN)
     { serviceKey: "NIN_BASIC", title: "Basic NIN Slip", price: 400.00 },
     { serviceKey: "NIN_VNIN", title: "VNIN Verification Slip", price: 500.00 },
-    { serviceKey: "NIN_REGULAR", title: "Regular Official Slip", price: 500.00 },
+    { serviceKey: "NIN_REGULAR", title: "Regular  Slip", price: 500.00 },
     { serviceKey: "NIN_STANDARD", title: "Standard Biometric Slip", price: 700.00 },
     { serviceKey: "NIN_PREMIUM", title: "Premium Card Layout", price: 1000.00 },
     // 🚨 Phone Query NIN Slip Prices
@@ -57,15 +57,15 @@ async function main() {
       create: { key: s.key, value: s.value, description: s.description },
     })
   }
-  
+
   console.log("Global settings seeded successfully.")
 }
 
 main()
-  .catch((e) => { 
-    console.error(e); 
-    process.exit(1); 
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
   })
-  .finally(async () => { 
-    await prisma.$disconnect(); 
+  .finally(async () => {
+    await prisma.$disconnect();
   })

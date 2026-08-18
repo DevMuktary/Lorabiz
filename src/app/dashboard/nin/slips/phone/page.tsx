@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { 
+import {
   ArrowLeft, WarningCircle, Eye, X, Check,
   Sparkle, ShieldCheck, CheckCircle, Wrench, IdentificationCard
 } from "@phosphor-icons/react";
@@ -25,23 +25,23 @@ interface SlipOption {
 // 2. Standard Slip (₦700)
 // 3. Premium Slip (₦1,000)
 const PHONE_SLIP_OPTIONS: SlipOption[] = [
-  { 
-    id: "nin_regular", 
-    label: "Regular Slip", 
+  {
+    id: "nin_regular",
+    label: "Regular Slip",
     img: "/examples/nin_regular_example.png",
-    defaultPrice: 500 
+    defaultPrice: 500
   },
-  { 
-    id: "nin_standard", 
-    label: "Standard Slip", 
+  {
+    id: "nin_standard",
+    label: "Standard Slip",
     img: "/examples/nin_standard_example.png",
-    defaultPrice: 700 
+    defaultPrice: 700
   },
-  { 
-    id: "nin_premium", 
-    label: "Premium Slip", 
+  {
+    id: "nin_premium",
+    label: "Premium Slip",
     img: "/examples/nin_premium_example.png",
-    defaultPrice: 1000 
+    defaultPrice: 1000
   },
 ];
 
@@ -49,7 +49,7 @@ export default function NinByPhonePage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [slipType, setSlipType] = useState<"nin_regular" | "nin_standard" | "nin_premium">("nin_premium");
   const [walletBalance, setWalletBalance] = useState<number>(0);
-  
+
   const [statusState, setStatusState] = useState<{
     loading: boolean;
     phoneSearchActive: boolean;
@@ -246,11 +246,11 @@ export default function NinByPhonePage() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
-      
+
       {/* Top Navigation - Cleanly Separated */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <Link 
-          href="/dashboard/nin/slips" 
+        <Link
+          href="/dashboard/nin/slips"
           className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/60 hover:bg-secondary px-3.5 py-2 rounded-xl cursor-pointer w-fit"
         >
           <ArrowLeft weight="bold" className="h-3.5 w-3.5" />
@@ -274,7 +274,7 @@ export default function NinByPhonePage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-foreground">Query Identity by Phone Number</h1>
           <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-0.5">
-            Generate and download official NIMC verification slips using a SIM-linked phone number.
+            Generate and download NIMC verification slips using a NIN-linked phone number.
           </p>
         </div>
       </div>
@@ -289,7 +289,7 @@ export default function NinByPhonePage() {
 
       {/* Form */}
       <form onSubmit={handleOpenConfirm} className="space-y-6">
-        
+
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl text-destructive text-sm font-bold flex items-center gap-2.5 animate-in shake">
             <WarningCircle weight="fill" size={18} className="shrink-0" />
@@ -343,38 +343,37 @@ export default function NinByPhonePage() {
                   onClick={() => {
                     if (isAvailable) setSlipType(option.id);
                   }}
-                  className={`p-3.5 sm:p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
-                    !isAvailable
+                  className={`p-3.5 sm:p-4 rounded-xl border-2 flex items-center justify-between transition-all ${!isAvailable
                       ? "opacity-50 bg-secondary/20 border-border/60 cursor-not-allowed"
                       : isSelected
-                      ? "bg-secondary/70 border-sky-500 shadow-sm cursor-pointer"
-                      : "bg-card border-border hover:bg-secondary/40 cursor-pointer"
-                  }`}
+                        ? "bg-secondary/70 border-sky-500 shadow-sm cursor-pointer"
+                        : "bg-card border-border hover:bg-secondary/40 cursor-pointer"
+                    }`}
                 >
                   <div className="flex items-center gap-3.5">
-                    <input 
-                      type="radio" 
-                      name="slipType" 
+                    <input
+                      type="radio"
+                      name="slipType"
                       disabled={!isAvailable}
-                      checked={isSelected} 
+                      checked={isSelected}
                       onChange={() => {
                         if (isAvailable) setSlipType(option.id);
-                      }} 
+                      }}
                       className="text-sky-500 focus:ring-sky-500 cursor-pointer disabled:cursor-not-allowed"
                     />
-                    
+
                     <div className="flex items-center flex-wrap gap-2.5">
                       <span className={`font-bold text-sm ${!isAvailable ? "text-muted-foreground" : "text-foreground"}`}>
                         {option.label}
                       </span>
-                      
+
                       {/* Clickable Eye Icon + "View Example" Text */}
-                      <button 
-                        type="button" 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setLightbox({ isOpen: true, src: option.img, label: option.label }); 
-                        }} 
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightbox({ isOpen: true, src: option.img, label: option.label });
+                        }}
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-sky-500 bg-secondary hover:bg-secondary/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                         title={`View ${option.label} Example`}
                       >
@@ -450,14 +449,14 @@ export default function NinByPhonePage() {
 
       {/* LIGHTBOX SPECIMEN PREVIEW OVERLAY */}
       {lightbox.isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
           <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-card border border-border px-4 py-2.5 rounded-t-2xl flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
-              <button 
+              <button
                 onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
                 className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full cursor-pointer"
               >
