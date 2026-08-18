@@ -9,9 +9,16 @@ import {
 export default function SettingsDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [allServices, setAllServices] = useState<any[]>([]);
-  const [providers, setProviders] = useState<{ ipeProvider: string; personalizationProvider: string }>({
+  const [providers, setProviders] = useState<{
+    ipeProvider: string;
+    personalizationProvider: string;
+    ninSlipProvider: string;
+    ninPhoneSearchActive: boolean;
+  }>({
     ipeProvider: "DATAVERIFY",
     personalizationProvider: "DATAVERIFY",
+    ninSlipProvider: "AUTO",
+    ninPhoneSearchActive: true,
   });
   const [isSavingProviders, setIsSavingProviders] = useState(false);
   const [providerSavedSuccess, setProviderSavedSuccess] = useState(false);
@@ -35,6 +42,8 @@ export default function SettingsDashboard() {
         setProviders({
           ipeProvider: pResult.ipeProvider || "DATAVERIFY",
           personalizationProvider: pResult.personalizationProvider || "DATAVERIFY",
+          ninSlipProvider: pResult.ninSlipProvider || "AUTO",
+          ninPhoneSearchActive: pResult.ninPhoneSearchActive !== undefined ? pResult.ninPhoneSearchActive : true,
         });
       }
     } catch (error) {
@@ -351,6 +360,180 @@ export default function SettingsDashboard() {
                           </div>
                         </div>
                         <ShieldCheck size={18} className={providers.personalizationProvider === "MANUAL" ? "text-amber-400" : "text-zinc-600"} />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* NIN Slips & Verification Provider Routing Card (NEW) */}
+                <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
+                        NIN Verification Slips Gateway
+                      </span>
+                      <span className="text-xs text-zinc-400">Active: <strong className="text-white">{providers.ninSlipProvider}</strong></span>
+                    </div>
+                    <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+                      Control automatic failover between DataVerify and backup SlipAPI, or force a specific provider.
+                    </p>
+
+                    <div className="space-y-2.5">
+                      {/* Option 1: Auto Failover */}
+                      <label
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          providers.ninSlipProvider === "AUTO"
+                            ? "bg-purple-600/15 border-purple-500 text-white"
+                            : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ninSlipProvider"
+                            value="AUTO"
+                            checked={providers.ninSlipProvider === "AUTO"}
+                            onChange={(e) => setProviders({ ...providers, ninSlipProvider: e.target.value })}
+                            className="text-purple-600 focus:ring-purple-500"
+                          />
+                          <div>
+                            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                              Auto-Failover (Smart Router)
+                              <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-mono">RECOMMENDED</span>
+                            </div>
+                            <div className="text-xs text-zinc-400">DataVerify Primary &rarr; Auto failover to SlipAPI on outage</div>
+                          </div>
+                        </div>
+                        <Cpu size={18} className={providers.ninSlipProvider === "AUTO" ? "text-purple-400" : "text-zinc-600"} />
+                      </label>
+
+                      {/* Option 2: Force DataVerify */}
+                      <label
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          providers.ninSlipProvider === "DATAVERIFY"
+                            ? "bg-indigo-600/15 border-indigo-500 text-white"
+                            : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ninSlipProvider"
+                            value="DATAVERIFY"
+                            checked={providers.ninSlipProvider === "DATAVERIFY"}
+                            onChange={(e) => setProviders({ ...providers, ninSlipProvider: e.target.value })}
+                            className="text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <div>
+                            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                              Force DataVerify Only
+                              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-mono">PRIMARY</span>
+                            </div>
+                            <div className="text-xs text-zinc-400">Direct DataVerify (Basic, VNIN, Regular, Standard, Premium)</div>
+                          </div>
+                        </div>
+                        <Server size={18} className={providers.ninSlipProvider === "DATAVERIFY" ? "text-indigo-400" : "text-zinc-600"} />
+                      </label>
+
+                      {/* Option 3: Force SlipAPI */}
+                      <label
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          providers.ninSlipProvider === "SLIPAPI"
+                            ? "bg-teal-600/15 border-teal-500 text-white"
+                            : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ninSlipProvider"
+                            value="SLIPAPI"
+                            checked={providers.ninSlipProvider === "SLIPAPI"}
+                            onChange={(e) => setProviders({ ...providers, ninSlipProvider: e.target.value })}
+                            className="text-teal-500 focus:ring-teal-500"
+                          />
+                          <div>
+                            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                              Force SlipAPI Only
+                              <span className="text-[10px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-mono">BACKUP</span>
+                            </div>
+                            <div className="text-xs text-zinc-400">Direct SlipAPI.com (Standard & Premium slips)</div>
+                          </div>
+                        </div>
+                        <ShieldCheck size={18} className={providers.ninSlipProvider === "SLIPAPI" ? "text-teal-400" : "text-zinc-600"} />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* NIN Phone Search Master Switch Card (NEW) */}
+                <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-full border border-sky-500/20">
+                        Phone Number Search Switch
+                      </span>
+                      <span className="text-xs text-zinc-400">
+                        Status: <strong className={providers.ninPhoneSearchActive ? "text-emerald-400" : "text-rose-400"}>{providers.ninPhoneSearchActive ? "ACTIVE" : "OFFLINE"}</strong>
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+                      Enable or disable user verification using SIM-linked Phone Numbers across the platform.
+                    </p>
+
+                    <div className="space-y-2.5">
+                      {/* Active Toggle */}
+                      <label
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          providers.ninPhoneSearchActive
+                            ? "bg-emerald-600/15 border-emerald-500 text-white"
+                            : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ninPhoneSearchActive"
+                            checked={providers.ninPhoneSearchActive === true}
+                            onChange={() => setProviders({ ...providers, ninPhoneSearchActive: true })}
+                            className="text-emerald-500 focus:ring-emerald-500"
+                          />
+                          <div>
+                            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                              Phone Search Enabled
+                              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono">ONLINE</span>
+                            </div>
+                            <div className="text-xs text-zinc-400">Users can generate slips via registered phone number</div>
+                          </div>
+                        </div>
+                        <CheckCircle2 size={18} className={providers.ninPhoneSearchActive ? "text-emerald-400" : "text-zinc-600"} />
+                      </label>
+
+                      {/* Disabled Toggle */}
+                      <label
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          !providers.ninPhoneSearchActive
+                            ? "bg-rose-600/15 border-rose-500 text-white"
+                            : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ninPhoneSearchActive"
+                            checked={providers.ninPhoneSearchActive === false}
+                            onChange={() => setProviders({ ...providers, ninPhoneSearchActive: false })}
+                            className="text-rose-500 focus:ring-rose-500"
+                          />
+                          <div>
+                            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                              Disable Phone Search (Maintenance)
+                              <span className="text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded font-mono">OFFLINE</span>
+                            </div>
+                            <div className="text-xs text-zinc-400">Phone search shows maintenance banner & guides to NIN lookup</div>
+                          </div>
+                        </div>
+                        <AlertTriangle size={18} className={!providers.ninPhoneSearchActive ? "text-rose-400" : "text-zinc-600"} />
                       </label>
                     </div>
                   </div>

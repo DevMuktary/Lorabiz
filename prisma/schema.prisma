@@ -328,15 +328,31 @@ model NinSlipPricing {
 model NinRequestLog {
   id            String   @id @default(cuid())
   userId        String
-  ninMasked     String   // Storing masked NIN (e.g., "********123") for privacy & audit
+  ninMasked     String   // Storing masked NIN or Phone (e.g., "********123") for privacy & audit
   slipType      String
   amountCharged Decimal  @db.Decimal(10, 2)
   status        String   // "SUCCESS" | "FAILED"
   reference     String   @unique // Links to Wallet Transaction reference
-  pdfUrl        String?
+  pdfUrl        String?  @db.Text
+  
+  // Extracted demographic details for 24-hour retention
+  searchType    String?  @default("NIN") // "NIN" | "PHONE"
+  fullName      String?
+  firstName     String?
+  lastName      String?
+  middleName    String?
+  gender        String?
+  dob           String?
+  phone         String?
+  address       String?  @db.Text
+  userData      Json?
+  providerUsed  String?  @default("DATAVERIFY")
+
   createdAt     DateTime @default(now())
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 enum NinIpeStatus {
@@ -622,9 +638,10 @@ model BlockedIp {
 model GlobalSetting {
   id          String   @id @default(cuid())
   key         String   @unique // e.g., "SUPPORT_WHATSAPP"
-  value       String
+  value       String   @db.Text
   description String?
   updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 }
 
 // ==========================================
@@ -869,4 +886,5 @@ model AutomatedEmailLog {
   @@index([emailType])
   @@index([sentAt])
 }
+
 

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -36,12 +38,35 @@ export async function GET() {
       }
     });
 
+    const slipTypeLabelMap: Record<string, string> = {
+      "nin_basic": "Basic NIN Slip",
+      "nin_vnin": "VNIN Verification Slip",
+      "nin_regular": "Regular Official Slip",
+      "nin_standard": "Standard Biometric Slip",
+      "nin_premium": "Premium Card Slip"
+    };
+
     // Format for the frontend UI
     const formattedHistory = logs.map((log) => ({
       id: log.id,
       ninMasked: log.ninMasked,
-      slipType: log.slipType === "nin_premium" ? "Premium Card Slip" : log.slipType === "nin_standard" ? "Standard Biometric Slip" : "Regular Slip",
+      rawSlipType: log.slipType,
+      slipType: slipTypeLabelMap[log.slipType] || log.slipType,
+      searchType: log.searchType || "NIN",
+      amountCharged: Number(log.amountCharged),
+      reference: log.reference,
+      fullName: log.fullName || undefined,
+      firstName: log.firstName || undefined,
+      lastName: log.lastName || undefined,
+      middleName: log.middleName || undefined,
+      gender: log.gender || undefined,
+      dob: log.dob || undefined,
+      phone: log.phone || undefined,
+      address: log.address || undefined,
+      userData: log.userData || undefined,
+      providerUsed: log.providerUsed || undefined,
       createdAt: new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAtFull: log.createdAt,
       pdfUrl: log.pdfUrl || undefined
     }));
 

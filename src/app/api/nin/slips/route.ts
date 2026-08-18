@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { v2 as cloudinary } from "cloudinary";
 import { logUserActivity } from "@/lib/activity-logger";
+import { executeNinSlipGeneration } from "@/lib/nin-slips-provider";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -18,19 +19,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Unauthorized access. Please log in." }, { status: 401 });
     }
 
-    const { identifier, searchType, slipType, attestationsAccepted } = await req.json();
+    const { identifier, searchType = "NIN", slipType, attestationsAccepted } = await req.json();
 
-    if (!identifier || !/^\d{11}$/.test(identifier)) {
-      return NextResponse.json({ success: false, message: `Please provide a valid 11-digit ${searchType === "PHONE" ? "Phone Number" : "NIN"}.` }, { status: 400 });
+    if (!identifier || !/^\d{11}$/.test(identifier.trim())) {
+      return NextResponse.json({ 
+        success: false, 
+        message: `Please provide a valid 11-digit ${searchType === "PHONE" ? "Phone Number" : "NIN"}.` 
+      }, { status: 400 });
     }
 
-    const validTypes = ["nin_premium", "nin_standard", "nin_regular"];
-    if (!slipType || !validTypes.includes(slipType)) {
-      return NextResponse.json({ success: false, message: "Invalid slip type selected." }, { status: 400 });
+    // Supported Slip Types
+    const validNinSlipTypes = ["nin_basic", "nin_vnin", "nin_regular", "nin_standard", "nin_premium"];
+    const validPhoneSlipTypes = ["nin_regular", "nin_standard", "nin_premium"];
+
+    const isPhoneSearch = searchType === "PHONE";
+    const allowedSlipTypes = isPhoneSearch ? validPhoneSlipTypes : validNinSlipTypes;
+
+    if (!slipType || !allowedSlipTypes.includes(slipType)) {
+      return NextResponse.json({ 
+        success: false, 
+        message: isPhoneSearch 
+          ? "Phone search only supports Regular, Standard, and Premium slips."
+          : "Invalid slip type selected." 
+      }, { status: 400 });
     }
 
     if (!attestationsAccepted) {
-      return NextResponse.json({ success: false, message: "You must accept the legal statutory disclaimers to proceed." }, { status: 400 });
+      return NextResponse.json({ 
+        success: false, 
+        message: "You must accept the statutory disclaimers to proceed." 
+      }, { status: 400 });
+    }
+
+    // Check Phone Search Master Toggle if searching by Phone
+    if (isPhoneSearch) {
+      const phoneSetting = await prisma.globalSetting.findUnique({
+        where: { key: "NIN_PHONE_SEARCH_ACTIVE" }
+      });
+      if (phoneSetting && phoneSetting.value.toLowerCase() === "false") {
+        return NextResponse.json({
+          success: false,
+          message: "NIN Verification by Phone Number is temporarily offline for maintenance. Please use 11-digit NIN verification."
+        }, { status: 503 });
+      }
     }
 
     const user = await prisma.user.findUnique({
@@ -42,8 +73,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "User wallet not found." }, { status: 404 });
     }
 
-    // Map to the Unified ServicePricing Table
+    // Map slipType to ServicePricing serviceKey
     const dbKeyMap: Record<string, string> = {
+      "nin_basic": "NIN_BASIC",
+      "nin_vnin": "NIN_VNIN",
       "nin_regular": "NIN_REGULAR",
       "nin_standard": "NIN_STANDARD",
       "nin_premium": "NIN_PREMIUM"
@@ -72,38 +105,18 @@ export async function POST(req: NextRequest) {
       }, { status: 402 }); 
     }
 
-    const apiKey = process.env.DATAVERIFY_API_KEY;
-    if (!apiKey) {
-      console.error("❌ DataVerify API Key missing from environment variables.");
-      return NextResponse.json({ success: false, message: "Server configuration error. Please contact technical support." }, { status: 500 });
-    }
+    // Execute slip generation via multi-provider failover router
+    const result = await executeNinSlipGeneration(slipType, identifier.trim(), isPhoneSearch ? "PHONE" : "NIN");
 
-    // Determine endpoint
-    const endpointFile = searchType === "PHONE" ? `${slipType}_phone.php` : `${slipType}.php`;
-    const url = `https://dataverify.com.ng/developers/nin_slips/${endpointFile}`;
-
-    const requestBody = {
-      api_key: apiKey,
-      nin: identifier,
-      phone: identifier 
-    };
-
-    const apiResponse = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
-
-    const data = await apiResponse.json();
-
-    if (!apiResponse.ok || data.status !== "success" || !data.pdf_base64) {
+    if (!result.success || !result.pdfBase64) {
       return NextResponse.json({ 
         success: false, 
-        message: data.message || `Could not retrieve slip via ${searchType === "PHONE" ? "Phone Number" : "NIN"}. Please verify and try again.` 
+        message: result.error || result.message || `Could not generate slip via ${isPhoneSearch ? "Phone Number" : "NIN"}. Please check the number and try again.` 
       }, { status: 422 });
     }
 
-    const dataUri = `data:application/pdf;base64,${data.pdf_base64}`;
+    // Upload PDF to Cloudinary for permanent storage
+    const dataUri = `data:application/pdf;base64,${result.pdfBase64}`;
     let securePdfUrl: string | null = null;
 
     try {
@@ -113,15 +126,16 @@ export async function POST(req: NextRequest) {
       });
       securePdfUrl = uploadResult.secure_url;
     } catch (cloudErr) {
-      console.error("❌ Cloudinary PDF Upload Warning:", cloudErr);
+      console.warn("⚠️ Cloudinary PDF Upload Warning (using base64 fallback):", cloudErr);
     }
 
     const maskedIdentifier = `${identifier.slice(0, 3)}*****${identifier.slice(-3)}`;
-    const referencePrefix = searchType === "PHONE" ? "TEL" : "NIN";
+    const referencePrefix = isPhoneSearch ? "TEL" : "NIN";
     const reference = `${referencePrefix}_${slipType.toUpperCase()}_${Date.now()}`;
     const newBalance = currentBalance - requiredAmount;
 
-    await prisma.$transaction(async (tx) => {
+    // Database transaction: debit wallet, log transaction, save demographic details to NinRequestLog
+    const ninLog = await prisma.$transaction(async (tx) => {
       await tx.wallet.update({
         where: { id: user.wallet!.id },
         data: { balance: newBalance }
@@ -141,7 +155,7 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      const ninLog = await tx.ninRequestLog.create({
+      const log = await tx.ninRequestLog.create({
         data: {
           userId: user.id,
           ninMasked: maskedIdentifier,
@@ -149,7 +163,18 @@ export async function POST(req: NextRequest) {
           amountCharged: requiredAmount,
           status: "SUCCESS",
           reference: reference,
-          pdfUrl: securePdfUrl 
+          pdfUrl: securePdfUrl || dataUri,
+          searchType: isPhoneSearch ? "PHONE" : "NIN",
+          fullName: result.fullName,
+          firstName: result.firstName,
+          lastName: result.lastName,
+          middleName: result.middleName,
+          gender: result.gender,
+          dob: result.dob,
+          phone: result.phone,
+          address: result.address,
+          userData: (result.userData as any) || undefined,
+          providerUsed: result.provider,
         }
       });
 
@@ -167,7 +192,7 @@ export async function POST(req: NextRequest) {
 
         if (isReferralActive && isNotExpired) {
           const existingCommission = await tx.referralCommission.findUnique({
-            where: { serviceId: ninLog.id } 
+            where: { serviceId: log.id } 
           });
 
           if (!existingCommission) {
@@ -182,7 +207,7 @@ export async function POST(req: NextRequest) {
                 data: {
                   referralId: activeReferral.id,
                   serviceType: "NIN",
-                  serviceId: ninLog.id, 
+                  serviceId: log.id, 
                   amount: commissionAmount
                 }
               });
@@ -195,32 +220,52 @@ export async function POST(req: NextRequest) {
           }
         }
       }
+
+      return log;
     });
 
-    // Record user activity safely
+    // Record user activity
     await logUserActivity({
       userId: user.id,
       action: "NIN_SLIP_GENERATED",
       category: "SERVICES",
-      description: `Generated ${pricing.title} for ${maskedIdentifier}`,
+      description: `Generated ${pricing.title} for ${maskedIdentifier} (${result.fullName || "Verified Citizen"})`,
       status: "SUCCESS",
       referenceId: reference,
       req,
       metadata: {
         slipType,
-        searchType,
-        amount: requiredAmount
+        searchType: isPhoneSearch ? "PHONE" : "NIN",
+        amount: requiredAmount,
+        providerUsed: result.provider,
+        fullName: result.fullName,
       }
     });
 
     return NextResponse.json({
       success: true,
-      pdfBase64: data.pdf_base64,
-      pdfUrl: securePdfUrl
+      pdfBase64: result.pdfBase64,
+      pdfUrl: securePdfUrl || dataUri,
+      userData: result.userData,
+      fullName: result.fullName,
+      firstName: result.firstName,
+      lastName: result.lastName,
+      middleName: result.middleName,
+      gender: result.gender,
+      dob: result.dob,
+      phone: result.phone,
+      address: result.address,
+      nin: result.nin,
+      reference: reference,
+      providerUsed: result.provider,
+      message: result.message || "NIN slip generated successfully.",
     });
 
   } catch (error: any) {
     console.error("❌ NIN Slip API Error:", error);
-    return NextResponse.json({ success: false, message: "An unexpected server error occurred." }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      message: error.message || "An unexpected server error occurred." 
+    }, { status: 500 });
   }
 }

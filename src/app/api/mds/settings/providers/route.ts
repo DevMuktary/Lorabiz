@@ -24,12 +24,18 @@ export async function GET() {
       );
     }
 
-    const [ipeSetting, pznSetting] = await Promise.all([
+    const [ipeSetting, pznSetting, slipSetting, phoneSetting] = await Promise.all([
       prisma.globalSetting.findUnique({
         where: { key: "NIN_IPE_PROVIDER" },
       }),
       prisma.globalSetting.findUnique({
         where: { key: "NIN_PERSONALIZATION_PROVIDER" },
+      }),
+      prisma.globalSetting.findUnique({
+        where: { key: "NIN_SLIP_PROVIDER" },
+      }),
+      prisma.globalSetting.findUnique({
+        where: { key: "NIN_PHONE_SEARCH_ACTIVE" },
       }),
     ]);
 
@@ -37,6 +43,8 @@ export async function GET() {
       success: true,
       ipeProvider: ipeSetting?.value || "DATAVERIFY",
       personalizationProvider: pznSetting?.value || "DATAVERIFY",
+      ninSlipProvider: slipSetting?.value || "AUTO",
+      ninPhoneSearchActive: phoneSetting ? phoneSetting.value.toLowerCase() !== "false" : true,
     });
   } catch (error: any) {
     console.error("❌ Provider Settings GET Error:", error);
@@ -68,7 +76,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { ipeProvider, personalizationProvider } = await req.json();
+    const { ipeProvider, personalizationProvider, ninSlipProvider, ninPhoneSearchActive } = await req.json();
 
     const updates: Promise<any>[] = [];
 
@@ -100,6 +108,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (ninSlipProvider && ["AUTO", "DATAVERIFY", "SLIPAPI"].includes(ninSlipProvider.toUpperCase())) {
+      updates.push(
+        prisma.globalSetting.upsert({
+          where: { key: "NIN_SLIP_PROVIDER" },
+          update: { value: ninSlipProvider.toUpperCase() },
+          create: {
+            key: "NIN_SLIP_PROVIDER",
+            value: ninSlipProvider.toUpperCase(),
+            description: "Active routing provider for NIN Slips (AUTO | DATAVERIFY | SLIPAPI)",
+          },
+        })
+      );
+    }
+
+    if (typeof ninPhoneSearchActive === "boolean") {
+      updates.push(
+        prisma.globalSetting.upsert({
+          where: { key: "NIN_PHONE_SEARCH_ACTIVE" },
+          update: { value: ninPhoneSearchActive ? "true" : "false" },
+          create: {
+            key: "NIN_PHONE_SEARCH_ACTIVE",
+            value: ninPhoneSearchActive ? "true" : "false",
+            description: "Whether NIN Search by Phone is active (true | false)",
+          },
+        })
+      );
+    }
+
     await Promise.all(updates);
 
     // Record staff audit log
@@ -107,7 +143,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId: staffUser.id,
         action: "UPDATE_IDENTITY_PROVIDERS",
-        details: `Updated identity providers -> IPE: ${ipeProvider || "UNCHANGED"}, Personalization: ${personalizationProvider || "UNCHANGED"}`,
+        details: `Updated identity providers -> IPE: ${ipeProvider || "UNCHANGED"}, Personalization: ${personalizationProvider || "UNCHANGED"}, NIN Slips: ${ninSlipProvider || "UNCHANGED"}, Phone Search: ${ninPhoneSearchActive !== undefined ? ninPhoneSearchActive : "UNCHANGED"}`,
       },
     });
 
@@ -116,6 +152,8 @@ export async function POST(req: NextRequest) {
       message: "Identity provider routing settings saved successfully.",
       ipeProvider: ipeProvider?.toUpperCase(),
       personalizationProvider: personalizationProvider?.toUpperCase(),
+      ninSlipProvider: ninSlipProvider?.toUpperCase(),
+      ninPhoneSearchActive,
     });
   } catch (error: any) {
     console.error("❌ Provider Settings POST Error:", error);
