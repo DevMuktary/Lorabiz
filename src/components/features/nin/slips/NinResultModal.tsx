@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { CircleNotch, Check, Trash, DownloadSimple, WarningCircle, User, Phone, MapPin, Calendar, IdentificationBadge, Sparkle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { parseDemographics } from "@/lib/demographics-parser";
@@ -52,8 +53,13 @@ export default function NinResultModal({
   onClose,
 }: NinResultModalProps) {
   const [downloadStarted, setDownloadStarted] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   const triggerPdfDownload = (base64Data?: string, url?: string, idNum?: string) => {
     setDownloadStarted(true);
@@ -92,9 +98,14 @@ export default function NinResultModal({
   const resolvedAddress = demo.address;
   const resolvedPhoto = propPhoto ? (propPhoto.startsWith("data:") ? propPhoto : `data:image/jpeg;base64,${propPhoto}`) : demo.photo;
 
-  return (
-    <div className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none">
-      <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center relative space-y-6 max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
+  return createPortal(
+    <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div 
+        className="fixed inset-0 min-h-screen w-screen" 
+        onClick={status !== "loading" ? onClose : undefined} 
+      />
+
+      <div className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-center p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
         
         {/* DOWNLOAD STARTED BANNER */}
         {downloadStarted && (
@@ -274,6 +285,7 @@ export default function NinResultModal({
         )}
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -225,17 +225,24 @@ export default function BvnSlipVerificationPage() {
     }
   };
 
+  const isAnyModalOpen = showIntroModal || isConfirmOpen || resultModalState.isOpen || lightbox.isOpen;
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
+    <div className={`space-y-6 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300 transition-opacity ${mounted && isAnyModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
       
       {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching SCUML/Tax ID) */}
       {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-[99999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto overscroll-contain touch-none"
+          className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setShowIntroModal(false)}
         >
           <div 
-            className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500 relative text-left overscroll-contain touch-pan-y"
+            className="fixed inset-0 min-h-screen w-screen" 
+            onClick={() => setShowIntroModal(false)} 
+          />
+
+          <div 
+            className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 md:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <button 
@@ -496,13 +503,18 @@ export default function BvnSlipVerificationPage() {
       />
 
       {/* Lightbox Specimen Preview Modal */}
-      {lightbox.isOpen && (
+      {mounted && lightbox.isOpen && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none"
+          className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
-          <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200 overscroll-contain touch-pan-y" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full bg-card border border-border px-4 py-2.5 rounded-t-2xl flex items-center justify-between">
+          <div 
+            className="fixed inset-0 min-h-screen w-screen" 
+            onClick={() => setLightbox({ isOpen: false, src: "", label: "" })} 
+          />
+
+          <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full bg-card border-b border-border px-5 py-3.5 flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
               <button 
                 type="button" 
@@ -512,7 +524,7 @@ export default function BvnSlipVerificationPage() {
                 <X size={18} weight="bold" />
               </button>
             </div>
-            <div className="relative w-full h-80 sm:h-96 bg-card border-x border-b border-border rounded-b-2xl overflow-hidden p-3 flex items-center justify-center">
+            <div className="relative w-full h-80 sm:h-96 bg-card overflow-hidden p-3 flex items-center justify-center">
               <div className="relative w-full h-full">
                 <Image 
                   src={lightbox.src} 
@@ -524,7 +536,8 @@ export default function BvnSlipVerificationPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

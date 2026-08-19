@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -34,16 +35,27 @@ export default function BvnConfirmationModal({
   price,
   walletBalance,
 }: BvnConfirmationModalProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   const isInsufficient = walletBalance < price;
   const remainingBalance = Math.max(0, walletBalance - price);
   const shortfall = Math.max(0, price - walletBalance);
   const maskedBvn = bvn.length === 11 ? `${bvn.slice(0, 3)}*****${bvn.slice(-3)}` : bvn;
 
-  return (
-    <div className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none">
-      <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-left space-y-5 relative max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
+  return createPortal(
+    <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div 
+        className="fixed inset-0 min-h-screen w-screen" 
+        onClick={onClose} 
+      />
+
+      <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 space-y-5 max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-3">
@@ -238,6 +250,7 @@ export default function BvnConfirmationModal({
         )}
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

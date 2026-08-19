@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -98,6 +99,11 @@ export default function NinByNinPage() {
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [resultModal, setResultModal] = useState<{
     isOpen: boolean;
@@ -264,8 +270,10 @@ export default function NinByNinPage() {
   const currentPrice = statusState.prices[slipType] || selectedOption.defaultPrice;
   const isSelectedSlipAvailable = statusState.activeMap[slipType] !== false;
 
+  const isAnyModalOpen = isConfirmOpen || resultModal.isOpen || lightbox.isOpen;
+
   return (
-    <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
+    <div className={`space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300 transition-opacity ${mounted && isAnyModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
       
       {/* Top Navigation - Cleanly Separated */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -461,13 +469,18 @@ export default function NinByNinPage() {
       />
 
       {/* LIGHTBOX SPECIMEN PREVIEW OVERLAY */}
-      {lightbox.isOpen && (
+      {mounted && lightbox.isOpen && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none"
+          className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
-          <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200 overscroll-contain touch-pan-y" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full bg-card border border-border px-4 py-2.5 rounded-t-2xl flex items-center justify-between">
+          <div 
+            className="fixed inset-0 min-h-screen w-screen" 
+            onClick={() => setLightbox({ isOpen: false, src: "", label: "" })} 
+          />
+
+          <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full bg-card border-b border-border px-5 py-3.5 flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
               <button 
                 onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
@@ -476,13 +489,14 @@ export default function NinByNinPage() {
                 <X weight="bold" size={16} />
               </button>
             </div>
-            <div className="relative w-full h-[60vh] bg-card border-x border-b border-border rounded-b-2xl overflow-hidden p-3 flex items-center justify-center">
+            <div className="relative w-full h-[60vh] bg-card overflow-hidden p-3 flex items-center justify-center">
               <div className="relative w-full h-full">
                 <Image src={lightbox.src} alt={lightbox.label} fill className="object-contain" priority />
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* RESULT MODAL */}

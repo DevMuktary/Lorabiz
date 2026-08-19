@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
   ClockCounterClockwise, FilePdf, DownloadSimple, SpinnerGap, CheckCircle, 
   Eye, User, Phone, MapPin, Calendar, IdentificationBadge, X, Trash
@@ -43,6 +44,11 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
   const [successId, setSuccessId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<SlipHistoryItem | null>(null);
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Silent Blob Downloader
   const handleDirectDownload = async (item: SlipHistoryItem) => {
@@ -244,131 +250,139 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
       )}
 
       {/* APPLICANT DETAILS MODAL */}
-      {selectedDetails && (() => {
-        const selectedDemo = parseDemographics(selectedDetails.userData, selectedDetails.fullName);
-        const detailsFullName = selectedDemo.fullName || selectedDetails.fullName || "Applicant Identity";
-        const detailsPhoto = selectedDemo.photo;
-        const detailsDob = selectedDemo.dob || selectedDetails.dob;
-        const detailsGender = selectedDemo.gender || selectedDetails.gender;
-        const detailsPhone = selectedDemo.phone || selectedDetails.phone;
-        const detailsNin = selectedDemo.nin || selectedDetails.userData?.nin || selectedDetails.ninMasked;
-        const detailsAddress = selectedDemo.address || selectedDetails.address;
+      {mounted && selectedDetails && typeof document !== "undefined" && createPortal(
+        (() => {
+          const selectedDemo = parseDemographics(selectedDetails.userData, selectedDetails.fullName);
+          const detailsFullName = selectedDemo.fullName || selectedDetails.fullName || "Applicant Identity";
+          const detailsPhoto = selectedDemo.photo;
+          const detailsDob = selectedDemo.dob || selectedDetails.dob;
+          const detailsGender = selectedDemo.gender || selectedDetails.gender;
+          const detailsPhone = selectedDemo.phone || selectedDetails.phone;
+          const detailsNin = selectedDemo.nin || selectedDetails.userData?.nin || selectedDetails.ninMasked;
+          const detailsAddress = selectedDemo.address || selectedDetails.address;
 
-        return (
-          <div className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none">
-            <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-7 shadow-2xl animate-in zoom-in-95 duration-200 space-y-5 text-left relative max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-border pb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
-                    <IdentificationBadge size={22} weight="bold" />
+          return (
+            <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+              <div 
+                className="fixed inset-0 min-h-screen w-screen" 
+                onClick={() => setSelectedDetails(null)} 
+              />
+
+              <div className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between border-b border-border pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
+                      <IdentificationBadge size={22} weight="bold" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-foreground">Applicant Identity Details</h3>
+                      <p className="text-xs text-muted-foreground">{selectedDetails.slipType} • {selectedDetails.reference}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base font-black text-foreground">Applicant Identity Details</h3>
-                    <p className="text-xs text-muted-foreground">{selectedDetails.slipType} • {selectedDetails.reference}</p>
+                  <button
+                    onClick={() => setSelectedDetails(null)}
+                    className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors cursor-pointer"
+                  >
+                    <X size={16} weight="bold" />
+                  </button>
+                </div>
+
+                {/* Applicant Name & Photo */}
+                <div className="bg-secondary/40 p-4 rounded-2xl border border-border flex items-center gap-3.5">
+                  {detailsPhoto ? (
+                    <img
+                      src={detailsPhoto}
+                      alt={detailsFullName}
+                      className="w-14 h-16 object-cover rounded-xl border border-[#ff3f7a]/30 shadow bg-secondary shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-[#ff3f7a]/10 border border-[#ff3f7a]/20 flex items-center justify-center text-[#ff3f7a] shrink-0">
+                      <User size={24} weight="bold" />
+                    </div>
+                  )}
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">Full Name</span>
+                    <p className="text-base font-black text-foreground break-words">{detailsFullName}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setSelectedDetails(null)}
-                  className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
-                >
-                  <X size={16} weight="bold" />
-                </button>
-              </div>
 
-              {/* Applicant Name & Photo */}
-              <div className="bg-secondary/40 p-4 rounded-2xl border border-border flex items-center gap-3.5">
-                {detailsPhoto ? (
-                  <img
-                    src={detailsPhoto}
-                    alt={detailsFullName}
-                    className="w-14 h-16 object-cover rounded-xl border border-[#ff3f7a]/30 shadow bg-secondary shrink-0"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-[#ff3f7a]/10 border border-[#ff3f7a]/20 flex items-center justify-center text-[#ff3f7a] shrink-0">
-                    <User size={24} weight="bold" />
+                {/* Grid Information */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-secondary/30 p-3 rounded-xl border border-border">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                      <User size={12} className="text-[#ff3f7a]" /> National ID (NIN)
+                    </span>
+                    <p className="text-xs font-mono font-bold text-foreground mt-0.5">
+                      {detailsNin}
+                    </p>
+                  </div>
+
+                  {detailsDob && (
+                    <div className="bg-secondary/30 p-3 rounded-xl border border-border">
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                        <Calendar size={12} className="text-[#ff3f7a]" /> Date of Birth
+                      </span>
+                      <p className="text-xs font-bold text-foreground mt-0.5">{detailsDob}</p>
+                    </div>
+                  )}
+
+                  {detailsGender && (
+                    <div className="bg-secondary/30 p-3 rounded-xl border border-border">
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground">Gender</span>
+                      <p className="text-xs font-bold text-foreground mt-0.5 uppercase">{detailsGender}</p>
+                    </div>
+                  )}
+
+                  {detailsPhone && (
+                    <div className="bg-secondary/30 p-3 rounded-xl border border-border">
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                        <Phone size={12} className="text-[#ff3f7a]" /> Phone Number
+                      </span>
+                      <p className="text-xs font-mono font-bold text-foreground mt-0.5">{detailsPhone}</p>
+                    </div>
+                  )}
+                </div>
+
+                {detailsAddress && (
+                  <div className="bg-secondary/30 p-3 rounded-xl border border-border">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                      <MapPin size={12} className="text-[#ff3f7a]" /> Residential Address
+                    </span>
+                    <p className="text-xs font-medium text-foreground mt-0.5">{detailsAddress}</p>
                   </div>
                 )}
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">Full Name</span>
-                  <p className="text-base font-black text-foreground break-words">{detailsFullName}</p>
-                </div>
-              </div>
 
-              {/* Grid Information */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-secondary/30 p-3 rounded-xl border border-border">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                    <User size={12} className="text-[#ff3f7a]" /> National ID (NIN)
-                  </span>
-                  <p className="text-xs font-mono font-bold text-foreground mt-0.5">
-                    {detailsNin}
+                {/* Retention alert */}
+                <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-start gap-2.5">
+                  <Trash size={16} className="text-amber-500 shrink-0 mt-0.5" weight="fill" />
+                  <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                    This verification record will be automatically deleted from our servers 24 hours after generation.
                   </p>
                 </div>
 
-                {detailsDob && (
-                  <div className="bg-secondary/30 p-3 rounded-xl border border-border">
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                      <Calendar size={12} className="text-[#ff3f7a]" /> Date of Birth
-                    </span>
-                    <p className="text-xs font-bold text-foreground mt-0.5">{detailsDob}</p>
-                  </div>
-                )}
-
-                {detailsGender && (
-                  <div className="bg-secondary/30 p-3 rounded-xl border border-border">
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Gender</span>
-                    <p className="text-xs font-bold text-foreground mt-0.5 uppercase">{detailsGender}</p>
-                  </div>
-                )}
-
-                {detailsPhone && (
-                  <div className="bg-secondary/30 p-3 rounded-xl border border-border">
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                      <Phone size={12} className="text-[#ff3f7a]" /> Phone Number
-                    </span>
-                    <p className="text-xs font-mono font-bold text-foreground mt-0.5">{detailsPhone}</p>
-                  </div>
-                )}
-              </div>
-
-              {detailsAddress && (
-                <div className="bg-secondary/30 p-3 rounded-xl border border-border">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                    <MapPin size={12} className="text-[#ff3f7a]" /> Residential Address
-                  </span>
-                  <p className="text-xs font-medium text-foreground mt-0.5">{detailsAddress}</p>
+                {/* Actions */}
+                <div className="flex gap-2.5 pt-2">
+                  <Button
+                    onClick={() => handleDirectDownload(selectedDetails)}
+                    className="flex-1 h-11 font-black bg-[#ff3f7a] text-white hover:bg-[#e02b62] rounded-xl cursor-pointer"
+                  >
+                    <DownloadSimple size={16} className="mr-2" weight="bold" /> Re-Download Official PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedDetails(null)}
+                    className="h-11 px-5 font-bold bg-secondary/60 border-border text-foreground hover:bg-secondary rounded-xl cursor-pointer"
+                  >
+                    Close
+                  </Button>
                 </div>
-              )}
-
-              {/* Retention alert */}
-              <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-start gap-2.5">
-                <Trash size={16} className="text-amber-500 shrink-0 mt-0.5" weight="fill" />
-                <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                  This verification record will be automatically deleted from our servers 24 hours after generation.
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2.5 pt-2">
-                <Button
-                  onClick={() => handleDirectDownload(selectedDetails)}
-                  className="flex-1 h-11 font-black bg-[#ff3f7a] text-white hover:bg-[#e02b62] rounded-xl cursor-pointer"
-                >
-                  <DownloadSimple size={16} className="mr-2" weight="bold" /> Re-Download Official PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedDetails(null)}
-                  className="h-11 px-5 font-bold bg-secondary/60 border-border text-foreground hover:bg-secondary rounded-xl cursor-pointer"
-                >
-                  Close
-                </Button>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })(),
+        document.body
+      )}
     </div>
   );
 }

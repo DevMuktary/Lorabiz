@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
   ClockCounterClockwise, FilePdf, DownloadSimple, SpinnerGap, CheckCircle, 
   Eye, User, Phone, MapPin, Calendar, IdentificationBadge, X, Trash
@@ -42,6 +43,11 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
   const [successId, setSuccessId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<BvnHistoryItem | null>(null);
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Silent Blob Downloader
   const handleDirectDownload = async (item: BvnHistoryItem) => {
@@ -249,122 +255,130 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
       )}
 
       {/* DETAILS MODAL */}
-      {selectedDetails && (() => {
-        const selectedDemo = parseDemographics(selectedDetails.userData, selectedDetails.fullName);
-        const detailsFullName = selectedDemo.fullName || selectedDetails.fullName || "Verified BVN Record";
-        const detailsPhoto = selectedDemo.photo;
-        const detailsDob = selectedDemo.dob || selectedDetails.dob;
-        const detailsGender = selectedDemo.gender || selectedDetails.gender;
-        const detailsPhone = selectedDemo.phone || selectedDetails.phone;
-        const detailsBvn = selectedDemo.bvn || selectedDetails.bvnMasked;
-        const detailsAddress = selectedDemo.address || selectedDetails.address;
+      {mounted && selectedDetails && typeof document !== "undefined" && createPortal(
+        (() => {
+          const selectedDemo = parseDemographics(selectedDetails.userData, selectedDetails.fullName);
+          const detailsFullName = selectedDemo.fullName || selectedDetails.fullName || "Verified BVN Record";
+          const detailsPhoto = selectedDemo.photo;
+          const detailsDob = selectedDemo.dob || selectedDetails.dob;
+          const detailsGender = selectedDemo.gender || selectedDetails.gender;
+          const detailsPhone = selectedDemo.phone || selectedDetails.phone;
+          const detailsBvn = selectedDemo.bvn || selectedDetails.bvnMasked;
+          const detailsAddress = selectedDemo.address || selectedDetails.address;
 
-        return (
-          <div className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none">
-            <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 text-left relative max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                    <IdentificationBadge size={18} weight="bold" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-foreground">Verified BVN Record</h4>
-                    <p className="text-[10px] text-muted-foreground">Authenticated NIBSS Identity Data</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedDetails(null)}
-                  className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  <X size={14} weight="bold" />
-                </button>
-              </div>
+          return (
+            <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+              <div 
+                className="fixed inset-0 min-h-screen w-screen" 
+                onClick={() => setSelectedDetails(null)} 
+              />
 
-              <div className="space-y-3 bg-secondary/40 p-4 rounded-2xl border border-border text-xs">
-                <div className="flex items-center gap-3">
-                  {detailsPhoto ? (
-                    <img
-                      src={detailsPhoto}
-                      alt={detailsFullName}
-                      className="w-12 h-14 object-cover rounded-xl border border-emerald-500/30 shadow bg-secondary shrink-0"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0">
-                      <User size={20} weight="bold" />
+              <div className="relative w-full max-w-md bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                      <IdentificationBadge size={18} weight="bold" />
                     </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground block">Full Name</span>
-                    <p className="font-black text-foreground text-sm break-words">{detailsFullName}</p>
+                    <div>
+                      <h4 className="text-sm font-black text-foreground">Verified BVN Record</h4>
+                      <p className="text-[10px] text-muted-foreground">Authenticated NIBSS Identity Data</p>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => setSelectedDetails(null)}
+                    className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <X size={14} weight="bold" />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border/40">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                      <User size={11} /> BVN
-                    </span>
-                    <p className="font-mono font-bold text-foreground mt-0.5">{detailsBvn}</p>
+                <div className="space-y-3 bg-secondary/40 p-4 rounded-2xl border border-border text-xs">
+                  <div className="flex items-center gap-3">
+                    {detailsPhoto ? (
+                      <img
+                        src={detailsPhoto}
+                        alt={detailsFullName}
+                        className="w-12 h-14 object-cover rounded-xl border border-emerald-500/30 shadow bg-secondary shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0">
+                        <User size={20} weight="bold" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Full Name</span>
+                      <p className="font-black text-foreground text-sm break-words">{detailsFullName}</p>
+                    </div>
                   </div>
 
-                  {detailsDob && (
+                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border/40">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                        <Calendar size={11} /> Date of Birth
+                        <User size={11} /> BVN
                       </span>
-                      <p className="font-bold text-foreground mt-0.5">{detailsDob}</p>
+                      <p className="font-mono font-bold text-foreground mt-0.5">{detailsBvn}</p>
                     </div>
-                  )}
 
-                  {detailsGender && (
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground">Gender</span>
-                      <p className="font-bold text-foreground mt-0.5 uppercase">{detailsGender}</p>
-                    </div>
-                  )}
+                    {detailsDob && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                          <Calendar size={11} /> Date of Birth
+                        </span>
+                        <p className="font-bold text-foreground mt-0.5">{detailsDob}</p>
+                      </div>
+                    )}
 
-                  {detailsPhone && (
-                    <div>
+                    {detailsGender && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground">Gender</span>
+                        <p className="font-bold text-foreground mt-0.5 uppercase">{detailsGender}</p>
+                      </div>
+                    )}
+
+                    {detailsPhone && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                          <Phone size={11} /> Phone
+                        </span>
+                        <p className="font-mono font-bold text-foreground mt-0.5">{detailsPhone}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {detailsAddress && (
+                    <div className="pt-2 border-t border-border/40">
                       <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                        <Phone size={11} /> Phone
+                        <MapPin size={11} /> Address
                       </span>
-                      <p className="font-mono font-bold text-foreground mt-0.5">{detailsPhone}</p>
+                      <p className="text-foreground mt-0.5 leading-relaxed">{detailsAddress}</p>
                     </div>
                   )}
                 </div>
 
-                {detailsAddress && (
-                  <div className="pt-2 border-t border-border/40">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                      <MapPin size={11} /> Address
-                    </span>
-                    <p className="text-foreground mt-0.5 leading-relaxed">{detailsAddress}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    handleDirectDownload(selectedDetails);
-                    setSelectedDetails(null);
-                  }}
-                  className="flex-1 h-11 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs cursor-pointer shadow-md"
-                >
-                  <DownloadSimple size={16} className="mr-1.5" weight="bold" /> Download PDF Slip
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedDetails(null)}
-                  className="h-11 px-4 font-bold border-border rounded-xl text-xs cursor-pointer"
-                >
-                  Close
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      handleDirectDownload(selectedDetails);
+                      setSelectedDetails(null);
+                    }}
+                    className="flex-1 h-11 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs cursor-pointer shadow-md"
+                  >
+                    <DownloadSimple size={16} className="mr-1.5" weight="bold" /> Download PDF Slip
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedDetails(null)}
+                    className="h-11 px-4 font-bold border-border rounded-xl text-xs cursor-pointer"
+                  >
+                    Close
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })(),
+        document.body
+      )}
     </div>
   );
 }
