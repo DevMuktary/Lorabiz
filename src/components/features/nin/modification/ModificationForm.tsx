@@ -632,8 +632,8 @@ export function ModificationForm({
 
       {/* 5. Review & Confirmation Modal */}
       {showReviewModal && activePricing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/95 backdrop-blur-xl animate-in fade-in duration-200">
-          <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-lg w-full overflow-hidden text-foreground">
+        <div className="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-6 py-6 sm:py-10 bg-black/95 backdrop-blur-xl animate-in fade-in duration-200">
+          <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-lg w-full mx-auto overflow-hidden text-foreground my-auto">
             
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-border bg-card flex items-center justify-between">
@@ -656,7 +656,7 @@ export function ModificationForm({
             </div>
 
             {/* Modal Body */}
-            <div className="p-4 sm:p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 space-y-4">
               
               {errorMessage && (
                 <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">

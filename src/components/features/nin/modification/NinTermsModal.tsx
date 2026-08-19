@@ -178,8 +178,8 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-2xl w-full max-h-[94vh] sm:max-h-[90vh] flex flex-col overflow-hidden text-foreground">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/95 backdrop-blur-xl p-3 sm:p-6 py-6 sm:py-10 animate-in fade-in duration-200">
+      <div className="max-w-2xl w-full mx-auto bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden text-foreground my-auto">
         
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-border bg-card flex items-center gap-3">
@@ -191,13 +191,13 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
               NIN Modification Terms & Authorization
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Please review the terms and provide your digital signature below to access NIN Modification services.
+              Read the terms below and provide your signature at the bottom to proceed.
             </p>
           </div>
         </div>
 
-        {/* Scrollable Terms Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-foreground/90 leading-relaxed max-h-[42vh] sm:max-h-[44vh] bg-secondary/10 border-b border-border">
+        {/* Full Flowing Terms Content (No inner scroll box) */}
+        <div className="p-4 sm:p-6 space-y-4 text-xs sm:text-sm text-foreground/90 leading-relaxed bg-secondary/10 border-b border-border">
           
           {/* Section 1 */}
           <div className="p-3.5 sm:p-4 rounded-xl bg-card border border-border space-y-1">
@@ -256,7 +256,7 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
 
         </div>
 
-        {/* Form: Full Name, Signature Pad, and Binding Agreement */}
+        {/* Bottom Signature & Authorization Section */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 bg-card">
           
           {errorMsg && (
