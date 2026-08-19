@@ -64,6 +64,7 @@ export async function GET() {
       success: true,
       walletBalance: user.wallet ? Number(user.wallet.balance) : 0,
       hasConsented: !!user.ninModificationConsent,
+      userFullName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       pricing,
     });
   } catch (error) {

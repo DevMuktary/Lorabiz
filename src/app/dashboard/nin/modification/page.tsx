@@ -45,6 +45,7 @@ export default function NinModificationPage() {
       if (data.success) {
         setWalletBalance(data.walletBalance || 0);
         if (data.pricing) setPricing(data.pricing);
+        if (data.userFullName) setUserFullName(data.userFullName);
         setHasConsented(data.hasConsented);
         if (!data.hasConsented) {
           setShowTermsModal(true);

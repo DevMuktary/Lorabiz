@@ -7,10 +7,7 @@ import {
   CheckCircle, 
   PenNib, 
   Eraser, 
-  LockKey, 
-  ArrowRight,
-  Spinner,
-  FileText
+  Spinner
 } from "@phosphor-icons/react";
 
 interface NinTermsModalProps {
@@ -31,6 +28,18 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawing = useRef(false);
 
+  // Prevent background page scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (userFullName) {
       setFullName((prev) => prev || userFullName);
@@ -38,7 +47,7 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
     }
   }, [userFullName]);
 
-  // Set up high-DPI canvas
+  // Set up high-DPI signature canvas
   useEffect(() => {
     if (!isOpen || signatureMode !== "draw") return;
     const canvas = canvasRef.current;
@@ -52,7 +61,7 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
-    ctx.strokeStyle = "#1e293b";
+    ctx.strokeStyle = "#0f172a";
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -138,7 +147,7 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
     }
 
     if (!agreedToTerms) {
-      setErrorMsg("You must accept the terms and legal authorization to proceed.");
+      setErrorMsg("You must accept the terms to proceed.");
       return;
     }
 
@@ -169,103 +178,100 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden text-foreground">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-2xl w-full max-h-[94vh] sm:max-h-[90vh] flex flex-col overflow-hidden text-foreground">
         
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-border bg-card/60 flex items-center gap-3.5">
-          <div className="h-11 w-11 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
-            <ShieldCheck weight="duotone" className="h-6 w-6" />
+        <div className="p-4 sm:p-6 border-b border-border bg-card flex items-center gap-3">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
+            <ShieldCheck weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           <div>
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-1">
-              Legal Compliance & Verification
-            </div>
-            <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
-              NIN Modification Authorization & Terms of Agreement
+            <h2 className="text-base sm:text-xl font-black text-foreground tracking-tight">
+              NIN Modification Terms & Authorization
             </h2>
-            <p className="text-xs text-muted-foreground">
-              Please read carefully and execute your digital signature before accessing NIN Modification services.
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Please review the terms and provide your digital signature below to access NIN Modification services.
             </p>
           </div>
         </div>
 
         {/* Scrollable Terms Content */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-xs sm:text-sm text-foreground/90 leading-relaxed max-h-[45vh] bg-secondary/10 border-b border-border">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-foreground/90 leading-relaxed max-h-[42vh] sm:max-h-[44vh] bg-secondary/10 border-b border-border">
           
           {/* Section 1 */}
-          <div className="p-4 rounded-xl bg-card border border-border space-y-1.5">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-card border border-border space-y-1">
             <div className="flex items-center gap-2 font-bold text-foreground">
-              <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-black">1</span>
+              <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-black shrink-0">1</span>
               <span>Authorization to Act on Your Behalf (Independent Agency)</span>
             </div>
-            <p className="text-muted-foreground pl-7 text-xs">
-              I, the applicant/user, explicitly authorize <strong>LoraBiz</strong> (operated by <strong>Quadrox Technologies Ltd</strong>) and its licensed technical partners to securely access, transmit, and process my National Identification Number (NIN) data solely for the requested modification. I understand that <strong>LoraBiz is an independent technology and agency partner and is NOT the National Identity Management Commission (NIMC)</strong>.
+            <p className="text-muted-foreground pl-7 text-xs sm:text-xs">
+              I, the user, authorize <strong>LoraBiz</strong> and its designated technical agents to access, transmit, and submit my personal identification data (including my NIN) to process the requested record modification. I understand that <strong>LoraBiz is an independent processing agent and is NOT the National Identity Management Commission (NIMC)</strong>.
             </p>
           </div>
 
           {/* Section 2 */}
-          <div className="p-4 rounded-xl bg-card border border-border space-y-1.5">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-card border border-border space-y-1">
             <div className="flex items-center gap-2 font-bold text-foreground">
-              <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-black">2</span>
+              <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-black shrink-0">2</span>
               <span>Voluntary Consent & Agency Engagement</span>
             </div>
-            <p className="text-muted-foreground pl-7 text-xs">
-              NIMC recommends that NIN modifications be performed personally. By accepting this agreement, I confirm that due to technical difficulties, digital literacy constraints, geographic distance, or personal convenience, I voluntarily appoint and authorize LoraBiz to perform this modification as my authorized processing agent.
+            <p className="text-muted-foreground pl-7 text-xs sm:text-xs">
+              NIMC recommends that NIN modifications be performed personally. By accepting this agreement, I confirm that due to technical difficulties, illiteracy, distance, or convenience, I voluntarily appoint LoraBiz to perform this modification on my behalf as an authorized agent.
             </p>
           </div>
 
           {/* Section 3 */}
-          <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-1.5">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-1">
             <div className="flex items-center gap-2 font-bold text-amber-700 dark:text-amber-400">
-              <span className="h-5 w-5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-center font-black">3</span>
-              <span>Zero-Tolerance Policy on Identity Fraud & Strict Anti-Tampering</span>
+              <span className="h-5 w-5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-center font-black shrink-0">3</span>
+              <span>Strict Ownership Declaration & Anti-Tampering Notice</span>
             </div>
-            <p className="text-amber-900/80 dark:text-amber-200/80 pl-7 text-xs">
-              <strong>CRITICAL STATUTORY NOTICE:</strong> You certify under penalty of perjury, the NIMC Act (No. 23 of 2007), and the Cybercrimes (Prohibition, Prevention, etc.) Act that you are either the legitimate, registered owner of the NIN or hold explicit, lawful, and written power of attorney from the NIN holder. <strong>LoraBiz maintains complete forensic audit trails (including IP address, browser fingerprint, digital signature, and submission timestamps)</strong> and will immediately hand over all records to law enforcement (DSS, EFCC, and Nigerian Police Force) in the event of unauthorized modifications or identity impersonation.
+            <p className="text-amber-900/80 dark:text-amber-200/80 pl-7 text-xs sm:text-xs">
+              I declare under penalty of perjury and cybercrime laws that I am the sole owner of the submitted NIN or possess verifiable written consent from the owner. <strong>LoraBiz maintains complete audit logs (including IP address, browser fingerprint, digital signature, and timestamps)</strong> and cooperates fully with law enforcement in cases of identity theft or fraudulent submissions.
             </p>
           </div>
 
           {/* Section 4 */}
-          <div className="p-4 rounded-xl bg-card border border-border space-y-1.5">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-card border border-border space-y-1">
             <div className="flex items-center gap-2 font-bold text-foreground">
-              <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-black">4</span>
-              <span>Service Fees, Processing Liberty & No-Refund Policy</span>
+              <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-black shrink-0">4</span>
+              <span>Service Fees & No-Refund Policy</span>
             </div>
-            <p className="text-muted-foreground pl-7 text-xs">
-              All fees charged for NIN modifications are non-refundable once work commences. Wallet funds are non-withdrawable. In the event of a processing failure arising exclusively from verified administrative or provider registry errors, refunds are granted strictly as wallet credits at administrative discretion. Submissions containing fraudulent or unverifiable data will be rejected with forfeiture of fees.
+            <p className="text-muted-foreground pl-7 text-xs sm:text-xs">
+              All service fees are non-refundable once work commences. Wallet funds are non-withdrawable. If a service fails due to a verified administrative error, refunds are credited back to your wallet at administrative discretion.
             </p>
           </div>
 
           {/* Section 5 */}
-          <div className="p-4 rounded-xl bg-card border border-border space-y-1.5">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-card border border-border space-y-1">
             <div className="flex items-center gap-2 font-bold text-foreground">
-              <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-black">5</span>
-              <span>Registry Synchronization & Third-Party Propagation Delays</span>
+              <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-black shrink-0">5</span>
+              <span>Third-Party Network Propagation Delays</span>
             </div>
-            <p className="text-muted-foreground pl-7 text-xs">
-              I acknowledge that upon successful conclusion of the modification by LoraBiz, reflecting the updated details across commercial banks, telecom operators (SIM-NIN linking), and third-party portals depends entirely on external replication schedules over which LoraBiz has no direct control.
+            <p className="text-muted-foreground pl-7 text-xs sm:text-xs">
+              I understand that downstream data synchronization across commercial banks, telecom operators (SIM-NIN links), and immigration portals is subject to external synchronization intervals outside LoraBiz's control.
             </p>
           </div>
 
         </div>
 
         {/* Form: Full Name, Signature Pad, and Binding Agreement */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 bg-card">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 bg-card">
           
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
               <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             
             {/* Full Legal Name */}
             <div>
-              <label className="block text-xs font-bold text-foreground mb-1.5">
-                Full Legal Name of Applicant / Authorized Agent <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-foreground mb-1">
+                Full Legal Name <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -276,13 +282,13 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
                 required
               />
               <p className="text-[10px] text-muted-foreground mt-1">
-                Must match your legal government identification name.
+                Enter your official identification name.
               </p>
             </div>
 
             {/* Signature Mode Selector */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <PenNib weight="bold" className="h-3.5 w-3.5 text-primary" />
                   Digital Signature <span className="text-rose-500">*</span>
@@ -316,7 +322,7 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
                     onTouchStart={startDrawing}
                     onTouchMove={draw}
                     onTouchEnd={stopDrawing}
-                    className="w-full h-24 rounded-xl border border-border bg-white cursor-crosshair touch-none shadow-inner"
+                    className="w-full h-24 sm:h-28 rounded-xl border border-border bg-white cursor-crosshair touch-none shadow-inner"
                   />
                   {hasDrawn && (
                     <button
@@ -331,7 +337,7 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
                   )}
                   {!hasDrawn && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-400 text-xs font-medium">
-                      Sign with mouse or finger here
+                      Sign with finger or mouse here
                     </div>
                   )}
                 </div>
@@ -341,8 +347,8 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
                     type="text"
                     value={typedSignature}
                     onChange={(e) => setTypedSignature(e.target.value)}
-                    placeholder="Type your signature here..."
-                    className="w-full h-24 px-4 py-2 rounded-xl bg-white border border-border text-slate-900 font-serif italic text-2xl flex items-center justify-center text-center shadow-inner focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Type your signature..."
+                    className="w-full h-24 sm:h-28 px-4 py-2 rounded-xl bg-white border border-border text-slate-900 font-serif italic text-xl sm:text-2xl flex items-center justify-center text-center shadow-inner focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               )}
@@ -350,32 +356,27 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
 
           </div>
 
-          {/* Agreement Checkbox */}
+          {/* Shortened Agreement Checkbox */}
           <div className="pt-2 border-t border-border">
             <label className="flex items-start gap-2.5 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500 transition-all cursor-pointer"
+                className="mt-0.5 h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500 transition-all cursor-pointer"
               />
               <span className="text-xs text-foreground font-medium">
-                I hereby declare that all statements provided are true and accurate. I explicitly authorize LoraBiz (Quadrox Technologies Ltd) to process my NIN modification, accept the no-refund policy, and acknowledge that falsification of identity details constitutes a criminal offense under Nigerian Law.
+                I confirm that all statements provided are true and accurate. I voluntarily authorize LoraBiz to process my NIN modification under the stated terms.
               </span>
             </label>
           </div>
 
           {/* Submit Action */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <LockKey weight="bold" className="h-3.5 w-3.5 text-emerald-500" />
-              <span>Signed records are cryptographically timestamped & stored.</span>
-            </div>
-
+          <div className="flex items-center justify-end pt-1">
             <button
               type="submit"
               disabled={isSubmitting || !agreedToTerms || !fullName.trim()}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md transition-all"
             >
               {isSubmitting ? (
                 <>
@@ -385,7 +386,7 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
               ) : (
                 <>
                   <CheckCircle weight="bold" className="h-4 w-4" />
-                  I Agree & Authorize LoraBiz
+                  Agree & Authorize LoraBiz
                 </>
               )}
             </button>
