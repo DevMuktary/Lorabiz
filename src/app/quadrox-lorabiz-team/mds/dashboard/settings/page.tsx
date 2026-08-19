@@ -100,10 +100,14 @@ export default function SettingsDashboard() {
       !s.serviceKey.includes("PHONE") &&
       !s.serviceKey.includes("IPE") &&
       !s.serviceKey.includes("PERSONALIZATION") &&
-      !s.serviceKey.includes("VALIDATION")
+      !s.serviceKey.includes("VALIDATION") &&
+      !s.serviceKey.startsWith("NIN_MOD_")
   );
   const ninPhoneSlipsGroup = allServices.filter(
     (s) => s.serviceKey.startsWith("NIN_PHONE_")
+  );
+  const ninModificationGroup = allServices.filter(
+    (s) => s.serviceKey.startsWith("NIN_MOD_")
   );
 
   return (
@@ -654,6 +658,24 @@ export default function SettingsDashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {ninPhoneSlipsGroup.map((service) => (
+                  <ServiceConfigCard key={service.id} service={service} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* NIN MODIFICATION SECTION */}
+          {ninModificationGroup.length > 0 && (
+            <section>
+              <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+                <Fingerprint size={20} className="text-amber-500 mr-2" />
+                <div>
+                  <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">NIN Modification Services</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Pricing and status configuration for Change of Name, Change of Phone Number, and Change of Address.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                {ninModificationGroup.map((service) => (
                   <ServiceConfigCard key={service.id} service={service} />
                 ))}
               </div>

@@ -800,6 +800,168 @@ export async function sendNinPersonalizationFailedEmail({
   return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
 }
 
+// ============================================================================
+// NIN MODIFICATION EMAILS
+// ============================================================================
+
+const MODIFICATION_TYPE_TITLES: Record<string, string> = {
+  CHANGE_OF_NAME: "Change of Name",
+  CHANGE_OF_PHONE: "Change of Phone Number",
+  CHANGE_OF_ADDRESS: "Change of Address",
+};
+
+export async function sendNinModificationSubmittedEmail({
+  to, name, trackingId, type, amount
+}: { to: string; name: string; trackingId: string; type: string; amount: number; }) {
+  const typeLabel = MODIFICATION_TYPE_TITLES[type] || "NIN Modification";
+  const subject = `NIN Modification Request Received - ${trackingId}`;
+  const previewText = `We have received your NIN ${typeLabel} request (${trackingId}).`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Modification Request Received</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      We have received your request for <strong>NIN ${typeLabel}</strong>. Our processing team is reviewing your submission.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Tracking ID:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Service Type:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">${typeLabel}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Amount Paid:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">₦${amount.toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Initial Status:</td>
+          <td style="font-weight: 700; color: #d97706; text-align: right;">PENDING</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      You will receive real-time email notifications as your request moves to processing and completion.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/modification" style="display: inline-block; background-color: #047857; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Track Request on Dashboard</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinModificationProcessingEmail({
+  to, name, trackingId, type
+}: { to: string; name: string; trackingId: string; type: string; }) {
+  const typeLabel = MODIFICATION_TYPE_TITLES[type] || "NIN Modification";
+  const subject = `Your NIN Modification Request is in Processing - ${trackingId}`;
+  const previewText = `Your NIN ${typeLabel} request (${trackingId}) is now being processed.`;
+
+  const content = `
+    <h2 style="color: #0369a1; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Modification In Processing</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Great news! Your request for <strong>NIN ${typeLabel}</strong> (Tracking ID: <strong>${trackingId}</strong>) has been picked up and is actively being processed with the identity registry.
+    </p>
+    <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #0369a1; padding: 6px 0;">Tracking ID:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="color: #0369a1; padding: 6px 0;">Modification:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">${typeLabel}</td>
+        </tr>
+        <tr>
+          <td style="color: #0369a1; padding: 6px 0;">Status:</td>
+          <td style="font-weight: 700; color: #0284c7; text-align: right;">PROCESSING</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      You will receive another update once the modification is concluded and your official transaction slip is ready.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/modification" style="display: inline-block; background-color: #0284c7; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">View Dashboard</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinModificationCompletedEmail({
+  to, name, trackingId, type, slipUrl
+}: { to: string; name: string; trackingId: string; type: string; slipUrl?: string; }) {
+  const typeLabel = MODIFICATION_TYPE_TITLES[type] || "NIN Modification";
+  const subject = `NIN Modification Completed - ${trackingId}`;
+  const previewText = `Your NIN ${typeLabel} is complete. Download your official modification slip.`;
+
+  const content = `
+    <h2 style="color: #047857; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Modification Successfully Completed 🎉</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Your request for <strong>NIN ${typeLabel}</strong> (Tracking ID: <strong>${trackingId}</strong>) has been successfully concluded and finalized!
+    </p>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Tracking ID:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Service Type:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">${typeLabel}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Status:</td>
+          <td style="font-weight: 700; color: #047857; text-align: right;">COMPLETED</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      Your official modification slip has been generated. You can download and save it directly from your dashboard.
+    </p>
+    <div style="text-align: center; margin-bottom: 20px;">
+      ${slipUrl ? `<a href="${slipUrl}" target="_blank" style="display: inline-block; background-color: #047857; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif; margin-right: 10px;">Download Modification Slip</a>` : ''}
+      <a href="https://lorabiz.com/dashboard/nin/modification" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">View on Dashboard</a>
+    </div>
+    <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0;">
+      Please note: Third-party systems (such as commercial banks or telecom providers) may require additional synchronization cycles to reflect the new update across their network.
+    </p>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinModificationRejectedEmail({
+  to, name, trackingId, type, reason, refundAmount
+}: { to: string; name: string; trackingId: string; type: string; reason: string; refundAmount?: number; }) {
+  const typeLabel = MODIFICATION_TYPE_TITLES[type] || "NIN Modification";
+  const subject = `Update on Your NIN Modification Request - ${trackingId}`;
+  const previewText = `Your NIN ${typeLabel} request (${trackingId}) could not be completed.`;
+
+  const content = `
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Modification Request Update</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Your request for <strong>NIN ${typeLabel}</strong> (Tracking ID: <strong>${trackingId}</strong>) could not be completed due to the following reason:
+    </p>
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 24px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 12px; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Reason for Rejection</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6; white-space: pre-wrap;">${reason}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      ${(refundAmount && refundAmount > 0) ? `A refund of <strong>₦${refundAmount.toLocaleString()}</strong> has been credited back to your LoraBiz Wallet.` : 'Please review the reason above and reach out to support if you need further clarification.'}
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/modification" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to Modification Dashboard</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
 
 
 // ============================================================================

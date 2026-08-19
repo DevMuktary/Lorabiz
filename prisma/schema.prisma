@@ -127,6 +127,8 @@ model User {
   ninIpeRequests   NinIpeRequest[]
   ninValidationRequests NinValidationRequest[]
   ninPersonalizationRequests NinPersonalizationRequest[]
+  ninModificationConsent NinModificationConsent?
+  ninModificationRequests NinModificationRequest[]
   scumlRequests    ScumlRegistration[]
   taxIdRequests    TaxIdRequest[]
   notifications    InAppNotification[]
@@ -468,6 +470,79 @@ model NinValidationRequest {
   @@index([userId, status])
   @@index([nin])
   @@index([category])
+}
+
+// ==========================================
+// NIN MODIFICATION MODELS & CONSENT
+// ==========================================
+
+model NinModificationConsent {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  fullName    String
+  signature   String   @db.Text // Base64 signature canvas or typed signature data
+  ipAddress   String?
+  userAgent   String?
+  agreedAt    DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NinModificationType {
+  CHANGE_OF_NAME
+  CHANGE_OF_PHONE
+  CHANGE_OF_ADDRESS
+}
+
+enum NinModificationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+model NinModificationRequest {
+  id              String                @id @default(cuid())
+  trackingId      String                @unique // e.g. "MOD-849201"
+  userId          String
+  type            NinModificationType
+  status          NinModificationStatus @default(PENDING)
+  nin             String                // 11 digits
+
+  // Change of Name fields
+  currentPhone    String?
+  newFirstName    String?
+  newLastName     String?
+  newMiddleName   String?
+
+  // Change of Phone fields
+  currentFullName String?
+  newPhoneNumber  String?
+
+  // Change of Address fields
+  newAddress      String?               @db.Text
+  newState        String?
+  newLga          String?
+
+  // Admin Execution & Result Output
+  adminNotes      String?               @db.Text
+  rejectionReason String?               @db.Text
+  slipUrl         String?               // Final Modification Slip uploaded by Admin
+  amountPaid      Decimal               @db.Decimal(10, 2)
+  refundAmount    Decimal?              @db.Decimal(10, 2)
+  isRefunded      Boolean               @default(false)
+  transactionRef  String                @unique
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([trackingId])
+  @@index([type])
+  @@index([nin])
+  @@index([createdAt])
 }
 
 // ==========================================

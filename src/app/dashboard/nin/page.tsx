@@ -60,6 +60,16 @@ const NIN_SERVICES: NinServiceCard[] = [
     active: true,
     tag: "Active",
   },
+  {
+    title: "NIN Modification",
+    category: "Data & Biometric Updates",
+    description: "Modify and update your First Name, Surname, Phone Number, or Residential Address on the National Identity database.",
+    turnaround: "1–48 Hours",
+    logo: "/nimc.png",
+    href: "/dashboard/nin/modification",
+    active: true,
+    tag: "Active",
+  },
 ];
 
 export default function NinHubPage() {

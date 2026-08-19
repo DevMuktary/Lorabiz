@@ -47,6 +47,14 @@ export async function GET() {
       prisma.ninPersonalizationRequest.count({ where: { status: "FAILED" } }),
     ]);
 
+    // 2e. Fetch counts for NIN Modification Requests
+    const [modPending, modProcessing, modCompleted, modRejected] = await Promise.all([
+      prisma.ninModificationRequest.count({ where: { status: "PENDING" } }),
+      prisma.ninModificationRequest.count({ where: { status: "PROCESSING" } }),
+      prisma.ninModificationRequest.count({ where: { status: "COMPLETED" } }),
+      prisma.ninModificationRequest.count({ where: { status: "REJECTED" } }),
+    ]);
+
     // 3. Fetch counts for SCUML
     const [scumlPending, scumlProcessing, scumlCompleted] = await Promise.all([
       prisma.scumlRegistration.count({ where: { status: "PENDING" } }),
@@ -104,6 +112,13 @@ export async function GET() {
       failed: pznFailed,
     };
 
+    const modificationMetrics = {
+      pending: modPending + modProcessing,
+      completed: modCompleted,
+      queried: 0,
+      failed: modRejected,
+    };
+
     const scumlMetrics = {
       pending: scumlPending + scumlProcessing, 
       completed: scumlCompleted,
@@ -127,16 +142,25 @@ export async function GET() {
 
     // Calculate Global Totals
     const globalMetrics = {
-      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending,
-      completed: cacMetrics.completed + ninMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
+      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending + modificationMetrics.pending,
+      completed: cacMetrics.completed + ninMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + modificationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
       queried: cacMetrics.queried, 
-      failed: cacMetrics.failed + ninMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed,
+      failed: cacMetrics.failed + ninMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed + modificationMetrics.failed,
     };
 
     // Construct the structured response
     const payload = {
       global: globalMetrics,
       services: [
+        {
+          id: "nin-modification",
+          name: "NIN Modification Pipeline",
+          description: "Change of Name, Phone Number, and Address modification requests with document slip delivery.",
+          metrics: modificationMetrics,
+          subCategories: ["Change of Name", "Change of Phone", "Change of Address"],
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/nin-modification",
+          isAutomated: false
+        },
         {
           id: "cac",
           name: "CAC Services",
