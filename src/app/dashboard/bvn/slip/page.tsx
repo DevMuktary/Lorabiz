@@ -140,6 +140,17 @@ export default function BvnSlipVerificationPage() {
     fetchPageData();
   }, []);
 
+  // Lock body scroll when intro modal or lightbox is open
+  useEffect(() => {
+    if (showIntroModal || lightbox.isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow || "unset";
+      };
+    }
+  }, [showIntroModal, lightbox.isOpen]);
+
   const activePrice = slipType === "bvn_premium" ? prices.BVN_PREMIUM : prices.BVN_STANDARD;
   const activeOption = BVN_SLIP_OPTIONS.find((o) => o.id === slipType) || BVN_SLIP_OPTIONS[0];
   const activeLabel = activeOption.label;
@@ -231,7 +242,7 @@ export default function BvnSlipVerificationPage() {
       {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching SCUML/Tax ID) */}
       {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300 overflow-hidden touch-none"
           onClick={() => setShowIntroModal(false)}
         >
           <div 
@@ -498,7 +509,7 @@ export default function BvnSlipVerificationPage() {
       {/* Lightbox Specimen Preview Modal */}
       {lightbox.isOpen && (
         <div 
-          className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-hidden touch-none"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
           <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>

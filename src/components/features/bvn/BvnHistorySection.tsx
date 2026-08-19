@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   ClockCounterClockwise, FilePdf, DownloadSimple, SpinnerGap, CheckCircle, 
   Eye, User, Phone, MapPin, Calendar, IdentificationBadge, X, Trash
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { parseDemographics } from "@/lib/demographics-parser";
 
 export interface BvnHistoryItem {
   id: string;
@@ -41,6 +42,17 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
   const [successId, setSuccessId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<BvnHistoryItem | null>(null);
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
+
+  // Lock body scroll when applicant details modal is open
+  useEffect(() => {
+    if (selectedDetails) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow || "unset";
+      };
+    }
+  }, [selectedDetails]);
 
   // Silent Blob Downloader
   const handleDirectDownload = async (item: BvnHistoryItem) => {
@@ -172,186 +184,198 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {history.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col justify-between p-4 rounded-2xl bg-secondary/30 hover:bg-secondary/50 border border-border/60 transition-all space-y-3"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <FilePdf size={20} weight="bold" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-foreground">
-                      {item.fullName || item.slipType}
-                    </h4>
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <span className="text-[11px] font-mono font-bold text-foreground bg-background px-1.5 py-0.5 rounded border border-border">
-                        {item.bvnMasked}
-                      </span>
-                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        {item.slipType}
-                      </span>
+          {history.map((item) => {
+            const itemDemo = parseDemographics(item.userData, item.fullName);
+            const displayFullName = itemDemo.fullName || item.fullName || item.slipType;
+
+            return (
+              <div
+                key={item.id}
+                className="flex flex-col justify-between p-4 rounded-2xl bg-secondary/30 hover:bg-secondary/50 border border-border/60 transition-all space-y-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <FilePdf size={20} weight="bold" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-foreground">
+                        {displayFullName}
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-[11px] font-mono font-bold text-foreground bg-background px-1.5 py-0.5 rounded border border-border">
+                          {item.bvnMasked}
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          {item.slipType}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap bg-background px-2 py-0.5 rounded-full border border-border/60">
+                    {item.createdAt}
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap bg-background px-2 py-0.5 rounded-full border border-border/60">
-                  {item.createdAt}
-                </span>
-              </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-2 border-t border-border/40">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedDetails(item)}
-                  className="flex-1 h-9 font-bold bg-background text-xs text-foreground border-border hover:bg-secondary rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Eye size={14} weight="bold" />
-                  <span>View Details</span>
-                </Button>
+                {/* Actions */}
+                <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedDetails(item)}
+                    className="flex-1 h-9 font-bold bg-background text-xs text-foreground border-border hover:bg-secondary rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Eye size={14} weight="bold" />
+                    <span>View Details</span>
+                  </Button>
 
-                <Button
-                  size="sm"
-                  onClick={() => handleDirectDownload(item)}
-                  disabled={downloadingId === item.id}
-                  className="flex-1 h-9 font-black bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
-                >
-                  {downloadingId === item.id ? (
-                    <>
-                      <SpinnerGap size={14} className="animate-spin" weight="bold" />
-                      <span>Preparing...</span>
-                    </>
-                  ) : successId === item.id ? (
-                    <>
-                      <CheckCircle size={14} weight="bold" />
-                      <span>Downloaded!</span>
-                    </>
-                  ) : (
-                    <>
-                      <DownloadSimple size={14} weight="bold" />
-                      <span>Download PDF</span>
-                    </>
-                  )}
-                </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleDirectDownload(item)}
+                    disabled={downloadingId === item.id}
+                    className="flex-1 h-9 font-black bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    {downloadingId === item.id ? (
+                      <>
+                        <SpinnerGap size={14} className="animate-spin" weight="bold" />
+                        <span>Preparing...</span>
+                      </>
+                    ) : successId === item.id ? (
+                      <>
+                        <CheckCircle size={14} weight="bold" />
+                        <span>Downloaded!</span>
+                      </>
+                    ) : (
+                      <>
+                        <DownloadSimple size={14} weight="bold" />
+                        <span>Download PDF</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* DETAILS MODAL */}
-      {selectedDetails && (
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 text-left">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <IdentificationBadge size={18} weight="bold" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-black text-foreground">Verified BVN Record</h4>
-                  <p className="text-[10px] text-muted-foreground">Authenticated NIBSS Identity Data</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedDetails(null)}
-                className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X size={14} weight="bold" />
-              </button>
-            </div>
+      {selectedDetails && (() => {
+        const selectedDemo = parseDemographics(selectedDetails.userData, selectedDetails.fullName);
+        const detailsFullName = selectedDemo.fullName || selectedDetails.fullName || "Verified BVN Record";
+        const detailsPhoto = selectedDemo.photo;
+        const detailsDob = selectedDemo.dob || selectedDetails.dob;
+        const detailsGender = selectedDemo.gender || selectedDetails.gender;
+        const detailsPhone = selectedDemo.phone || selectedDetails.phone;
+        const detailsBvn = selectedDemo.bvn || selectedDetails.bvnMasked;
+        const detailsAddress = selectedDemo.address || selectedDetails.address;
 
-            <div className="space-y-3 bg-secondary/40 p-4 rounded-2xl border border-border text-xs">
-              <div className="flex items-center gap-3">
-                {selectedDetails.userData?.photo ? (
-                  <img
-                    src={
-                      selectedDetails.userData.photo.startsWith("data:")
-                        ? selectedDetails.userData.photo
-                        : `data:image/jpeg;base64,${selectedDetails.userData.photo}`
-                    }
-                    alt={selectedDetails.fullName || "Applicant"}
-                    className="w-12 h-14 object-cover rounded-xl border border-emerald-500/30 shadow bg-secondary shrink-0"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0">
-                    <User size={20} weight="bold" />
+        return (
+          <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-hidden touch-none">
+            <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 text-left relative max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <IdentificationBadge size={18} weight="bold" />
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">Full Name</span>
-                  <p className="font-black text-foreground text-sm break-words">{selectedDetails.fullName || "—"}</p>
+                  <div>
+                    <h4 className="text-sm font-black text-foreground">Verified BVN Record</h4>
+                    <p className="text-[10px] text-muted-foreground">Authenticated NIBSS Identity Data</p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setSelectedDetails(null)}
+                  className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X size={14} weight="bold" />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border/40">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                    <User size={11} /> BVN
-                  </span>
-                  <p className="font-mono font-bold text-foreground mt-0.5">{selectedDetails.bvnMasked}</p>
+              <div className="space-y-3 bg-secondary/40 p-4 rounded-2xl border border-border text-xs">
+                <div className="flex items-center gap-3">
+                  {detailsPhoto ? (
+                    <img
+                      src={detailsPhoto}
+                      alt={detailsFullName}
+                      className="w-12 h-14 object-cover rounded-xl border border-emerald-500/30 shadow bg-secondary shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0">
+                      <User size={20} weight="bold" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground block">Full Name</span>
+                    <p className="font-black text-foreground text-sm break-words">{detailsFullName}</p>
+                  </div>
                 </div>
 
-                {selectedDetails.dob && (
+                <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border/40">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                      <Calendar size={11} /> Date of Birth
+                      <User size={11} /> BVN
                     </span>
-                    <p className="font-bold text-foreground mt-0.5">{selectedDetails.dob}</p>
+                    <p className="font-mono font-bold text-foreground mt-0.5">{detailsBvn}</p>
                   </div>
-                )}
 
-                {selectedDetails.gender && (
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Gender</span>
-                    <p className="font-bold text-foreground mt-0.5 uppercase">{selectedDetails.gender}</p>
-                  </div>
-                )}
+                  {detailsDob && (
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                        <Calendar size={11} /> Date of Birth
+                      </span>
+                      <p className="font-bold text-foreground mt-0.5">{detailsDob}</p>
+                    </div>
+                  )}
 
-                {selectedDetails.phone && (
-                  <div>
+                  {detailsGender && (
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground">Gender</span>
+                      <p className="font-bold text-foreground mt-0.5 uppercase">{detailsGender}</p>
+                    </div>
+                  )}
+
+                  {detailsPhone && (
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                        <Phone size={11} /> Phone
+                      </span>
+                      <p className="font-mono font-bold text-foreground mt-0.5">{detailsPhone}</p>
+                    </div>
+                  )}
+                </div>
+
+                {detailsAddress && (
+                  <div className="pt-2 border-t border-border/40">
                     <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                      <Phone size={11} /> Phone
+                      <MapPin size={11} /> Address
                     </span>
-                    <p className="font-mono font-bold text-foreground mt-0.5">{selectedDetails.phone}</p>
+                    <p className="text-foreground mt-0.5 leading-relaxed">{detailsAddress}</p>
                   </div>
                 )}
               </div>
 
-              {selectedDetails.address && (
-                <div className="pt-2 border-t border-border/40">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                    <MapPin size={11} /> Address
-                  </span>
-                  <p className="text-foreground mt-0.5 leading-relaxed">{selectedDetails.address}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                onClick={() => {
-                  handleDirectDownload(selectedDetails);
-                  setSelectedDetails(null);
-                }}
-                className="flex-1 h-11 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs cursor-pointer shadow-md"
-              >
-                <DownloadSimple size={16} className="mr-1.5" weight="bold" /> Download PDF Slip
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setSelectedDetails(null)}
-                className="h-11 px-4 font-bold border-border rounded-xl text-xs cursor-pointer"
-              >
-                Close
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    handleDirectDownload(selectedDetails);
+                    setSelectedDetails(null);
+                  }}
+                  className="flex-1 h-11 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs cursor-pointer shadow-md"
+                >
+                  <DownloadSimple size={16} className="mr-1.5" weight="bold" /> Download PDF Slip
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedDetails(null)}
+                  className="h-11 px-4 font-bold border-border rounded-xl text-xs cursor-pointer"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

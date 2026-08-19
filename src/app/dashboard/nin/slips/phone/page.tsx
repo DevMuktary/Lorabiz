@@ -249,6 +249,17 @@ export default function NinByPhonePage() {
   const currentPrice = statusState.prices[slipType] || selectedOption.defaultPrice;
   const isSelectedSlipAvailable = statusState.activeMap[slipType] !== false && statusState.phoneSearchActive;
 
+  // Lock body scroll when lightbox is open
+  useEffect(() => {
+    if (lightbox.isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow || "unset";
+      };
+    }
+  }, [lightbox.isOpen]);
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
 
@@ -455,7 +466,7 @@ export default function NinByPhonePage() {
       {/* LIGHTBOX SPECIMEN PREVIEW OVERLAY */}
       {lightbox.isOpen && (
         <div
-          className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-hidden touch-none"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
           <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>

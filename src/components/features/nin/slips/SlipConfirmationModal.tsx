@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -33,6 +34,17 @@ export default function SlipConfirmationModal({
   price,
   walletBalance,
 }: SlipConfirmationModalProps) {
+  // Lock body scroll when modal is open so nothing underneath scrolls or bleeds
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow || "unset";
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const isInsufficient = walletBalance < price;
@@ -40,7 +52,7 @@ export default function SlipConfirmationModal({
   const shortfall = Math.max(0, price - walletBalance);
 
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-hidden touch-none">
       <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-left space-y-5 relative max-h-[90vh] overflow-y-auto">
         
         {/* Header */}

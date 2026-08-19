@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { parseDemographics } from "@/lib/demographics-parser";
 
 export const dynamic = "force-dynamic";
 
@@ -42,27 +43,32 @@ export async function GET(req: NextRequest) {
       "bvn_premium": "Premium BVN Card Slip",
     };
 
-    const formattedHistory = logs.map((log) => ({
-      id: log.id,
-      bvnMasked: log.bvnMasked,
-      rawSlipType: log.slipType,
-      slipType: slipTypeLabelMap[log.slipType] || log.slipType,
-      amountCharged: Number(log.amountCharged),
-      reference: log.reference,
-      fullName: log.fullName || undefined,
-      firstName: log.firstName || undefined,
-      lastName: log.lastName || undefined,
-      middleName: log.middleName || undefined,
-      gender: log.gender || undefined,
-      dob: log.dob || undefined,
-      phone: log.phone || undefined,
-      address: log.address || undefined,
-      userData: log.userData || undefined,
-      providerUsed: log.providerUsed || undefined,
-      createdAt: new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      createdAtFull: log.createdAt,
-      pdfUrl: log.pdfUrl || undefined
-    }));
+    const formattedHistory = logs.map((log) => {
+      const demo = parseDemographics(log.userData, log.fullName || undefined);
+
+      return {
+        id: log.id,
+        bvnMasked: log.bvnMasked,
+        rawSlipType: log.slipType,
+        slipType: slipTypeLabelMap[log.slipType] || log.slipType,
+        amountCharged: Number(log.amountCharged),
+        reference: log.reference,
+        fullName: demo.fullName || log.fullName || undefined,
+        firstName: demo.firstName || log.firstName || undefined,
+        lastName: demo.lastName || log.lastName || undefined,
+        middleName: demo.middleName || log.middleName || undefined,
+        gender: demo.gender || log.gender || undefined,
+        dob: demo.dob || log.dob || undefined,
+        phone: demo.phone || log.phone || undefined,
+        address: demo.address || log.address || undefined,
+        photo: demo.photo || undefined,
+        userData: log.userData || undefined,
+        providerUsed: log.providerUsed || undefined,
+        createdAt: new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAtFull: log.createdAt,
+        pdfUrl: log.pdfUrl || undefined
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -74,3 +80,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Failed to retrieve history" }, { status: 500 });
   }
 }
+

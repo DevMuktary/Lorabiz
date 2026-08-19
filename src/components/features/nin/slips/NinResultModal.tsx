@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { CircleNotch, Check, Trash, DownloadSimple, WarningCircle, User, Phone, MapPin, Calendar, IdentificationBadge, Sparkle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { parseDemographics } from "@/lib/demographics-parser";
 
 export interface DemographicData {
   nin?: string;
@@ -52,6 +53,17 @@ export default function NinResultModal({
 }: NinResultModalProps) {
   const [downloadStarted, setDownloadStarted] = useState(false);
 
+  // Lock body scroll when modal is open so nothing underneath scrolls or bleeds
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow || "unset";
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const triggerPdfDownload = (base64Data?: string, url?: string, idNum?: string) => {
@@ -81,36 +93,18 @@ export default function NinResultModal({
     }
   };
 
-  // Extract demographic fields nicely
-  const resolvedFullName =
-    propFullName ||
-    [
-      userData?.first_name || (userData as any)?.firstname || (userData as any)?.firstName || (userData as any)?.given_name,
-      userData?.middle_name || (userData as any)?.middlename || (userData as any)?.middleName,
-      userData?.last_name || (userData as any)?.surname || (userData as any)?.lastname || (userData as any)?.lastName || (userData as any)?.family_name,
-    ].filter(Boolean).join(" ") ||
-    (userData?.fullName as string) ||
-    (userData as any)?.fullname ||
-    (userData as any)?.name ||
-    (userData as any)?.applicant_name ||
-    "Verified Citizen (Enclosed in Official Slip)";
-
-  const resolvedDob = userData?.date_of_birth || userData?.dob || (userData as any)?.birthdate || (userData as any)?.birth_date;
-  const resolvedGender = userData?.gender || (userData as any)?.sex;
-  const resolvedPhone = userData?.phone_number || userData?.phone || (userData as any)?.telephoneno || (userData as any)?.mobile;
-  const resolvedNin = userData?.nin || (userData as any)?.vnin || (searchType === "NIN" ? identifier : undefined);
-  const rawAddress = userData?.address || (userData as any)?.residence_address || (userData as any)?.residential_address || (userData as any)?.residence_AdressLine1;
-  const resolvedAddress = typeof rawAddress === "string" && rawAddress.trim().length > 0 ? rawAddress.trim() : undefined;
-
-  const rawPhoto = propPhoto || userData?.photo || (userData as any)?.image;
-  const resolvedPhoto = rawPhoto
-    ? rawPhoto.startsWith("data:")
-      ? rawPhoto
-      : `data:image/jpeg;base64,${rawPhoto}`
-    : undefined;
+  // Deeply unwrap and normalize all demographic fields (EaseID response[0], DataVerify, etc.)
+  const demo = parseDemographics(userData, propFullName);
+  const resolvedFullName = demo.fullName || (searchType === "NIN" ? `NIN Holder (${identifier})` : `Phone Holder (${identifier})`);
+  const resolvedDob = demo.dob;
+  const resolvedGender = demo.gender;
+  const resolvedPhone = demo.phone || (searchType === "PHONE" ? identifier : undefined);
+  const resolvedNin = demo.nin || (searchType === "NIN" ? identifier : undefined);
+  const resolvedAddress = demo.address;
+  const resolvedPhoto = propPhoto ? (propPhoto.startsWith("data:") ? propPhoto : `data:image/jpeg;base64,${propPhoto}`) : demo.photo;
 
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-y-auto">
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-hidden touch-none">
       <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center relative space-y-6 max-h-[90vh] overflow-y-auto">
         
         {/* DOWNLOAD STARTED BANNER */}
