@@ -12,6 +12,9 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      include: {
+        wallet: true,
+      },
     });
 
     if (!user) {
@@ -56,9 +59,23 @@ export async function GET() {
       ninMasked: req.nin ? `${req.nin.slice(0, 3)}****${req.nin.slice(-4)}` : "N/A",
     }));
 
+    const total = formatted.length;
+    const pending = formatted.filter((r) => r.status === "PENDING").length;
+    const processing = formatted.filter((r) => r.status === "PROCESSING").length;
+    const completed = formatted.filter((r) => r.status === "COMPLETED").length;
+    const rejected = formatted.filter((r) => r.status === "REJECTED").length;
+
     return NextResponse.json({
       success: true,
       requests: formatted,
+      stats: {
+        total,
+        pending,
+        processing,
+        completed,
+        rejected,
+      },
+      walletBalance: user.wallet?.balance ? Number(user.wallet.balance) : 0,
     });
   } catch (error) {
     console.error("Error fetching NIN Modification history:", error);

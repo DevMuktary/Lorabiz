@@ -11,16 +11,12 @@ import {
   PlusCircle, 
   CheckCircle, 
   ListDashes, 
-  FileText,
-  Sparkle,
   WarningCircle
 } from "@phosphor-icons/react";
 import { NinTermsModal } from "@/components/features/nin/modification/NinTermsModal";
 import { ModificationForm, PricingConfig } from "@/components/features/nin/modification/ModificationForm";
-import { ModificationHistory } from "@/components/features/nin/modification/ModificationHistory";
 
 export default function NinModificationPage() {
-  const [activeTab, setActiveTab] = useState<"form" | "history">("form");
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [hasConsented, setHasConsented] = useState<boolean>(true); // default true while loading
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
@@ -93,8 +89,8 @@ export default function NinModificationPage() {
         onAgreed={handleConsentAgreed}
       />
 
-      {/* Back Link & Navigation */}
-      <div className="flex items-center justify-between">
+      {/* Top Header Bar: Back Link, History Button & Wallet */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <Link 
           href="/dashboard/nin" 
           className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl"
@@ -102,17 +98,28 @@ export default function NinModificationPage() {
           <ArrowLeft weight="bold" className="h-4 w-4" /> Back to NIN Services
         </Link>
 
-        {/* Live Wallet Balance Pill */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border text-xs font-bold shadow-sm">
-          <Wallet weight="duotone" className="h-4 w-4 text-emerald-500" />
-          <span className="text-muted-foreground">Wallet:</span>
-          <span className="text-foreground font-mono">₦{walletBalance.toLocaleString()}</span>
+        <div className="flex items-center gap-2.5">
+          {/* Dedicated Request History Link */}
           <Link
-            href="/dashboard/wallet"
-            className="text-primary hover:underline text-[11px] font-black ml-1 flex items-center gap-0.5"
+            href="/dashboard/nin/modification/history"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-secondary/60 hover:bg-secondary text-foreground text-xs font-bold border border-border transition-all shadow-sm"
           >
-            <PlusCircle weight="bold" className="h-3 w-3" /> Fund
+            <ListDashes weight="bold" className="h-4 w-4 text-primary" />
+            <span>Request History</span>
           </Link>
+
+          {/* Live Wallet Balance Pill */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border text-xs font-bold shadow-sm">
+            <Wallet weight="duotone" className="h-4 w-4 text-emerald-500" />
+            <span className="text-muted-foreground">Wallet:</span>
+            <span className="text-foreground font-mono">₦{walletBalance.toLocaleString()}</span>
+            <Link
+              href="/dashboard/wallet"
+              className="text-primary hover:underline text-[11px] font-black ml-1 flex items-center gap-0.5"
+            >
+              <PlusCircle weight="bold" className="h-3 w-3" /> Fund
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -176,60 +183,24 @@ export default function NinModificationPage() {
           </div>
 
           <div className="flex items-center gap-3 pt-2 border-t border-emerald-500/20">
-            <button
-              type="button"
-              onClick={() => {
-                setSuccessSubmission(null);
-                setActiveTab("history");
-              }}
+            <Link
+              href="/dashboard/nin/modification/history"
               className="text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1"
             >
               <ListDashes weight="bold" className="h-4 w-4" />
               Track Status in History &rarr;
-            </button>
+            </Link>
           </div>
         </div>
       )}
 
-      {/* Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-border pb-1">
-        <button
-          type="button"
-          onClick={() => setActiveTab("form")}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-            activeTab === "form"
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
-          }`}
-        >
-          New Modification Request
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("history")}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 ${
-            activeTab === "history"
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
-          }`}
-        >
-          <ListDashes weight="bold" className="h-4 w-4" />
-          My Modification History
-        </button>
-      </div>
-
-      {/* Main Content Body */}
-      {activeTab === "form" ? (
-        <ModificationForm
-          walletBalance={walletBalance}
-          pricing={pricing}
-          onSuccess={handleSubmissionSuccess}
-          onRequireConsent={() => setShowTermsModal(true)}
-        />
-      ) : (
-        <ModificationHistory />
-      )}
+      {/* Main Modification Form */}
+      <ModificationForm
+        walletBalance={walletBalance}
+        pricing={pricing}
+        onSuccess={handleSubmissionSuccess}
+        onRequireConsent={() => setShowTermsModal(true)}
+      />
 
     </div>
   );
