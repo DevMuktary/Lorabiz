@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { 
   CircleNotch, Check, DownloadSimple, WarningCircle, User, Phone, MapPin, 
-  Calendar, IdentificationBadge, Sparkle, ClockCounterClockwise 
+  Calendar, IdentificationBadge, Sparkle, ClockCounterClockwise, X 
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { parseDemographics } from "@/lib/demographics-parser";
@@ -101,13 +101,14 @@ export default function BvnResultModal({
   const resolvedPhoto = propPhoto ? (propPhoto.startsWith("data:") ? propPhoto : `data:image/jpeg;base64,${propPhoto}`) : demo.photo;
 
   return createPortal(
-    <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      onClick={status !== "loading" ? onClose : undefined}
+    >
       <div 
-        className="fixed inset-0 min-h-screen w-screen" 
-        onClick={status !== "loading" ? onClose : undefined} 
-      />
-
-      <div className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-center p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+        className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-center p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* DOWNLOAD STARTED BANNER */}
         {downloadStarted && (
@@ -144,16 +145,27 @@ export default function BvnResultModal({
         {/* SUCCESS STATE */}
         {status === "success" && (
           <div className="space-y-5 animate-in zoom-in-95 duration-300 text-left">
-            <div className="flex items-center gap-3 border-b border-border pb-4">
-              <div className="h-12 w-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center border border-emerald-500/20 shrink-0">
-                <Check size={26} weight="bold" />
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center border border-emerald-500/20 shrink-0">
+                  <Check size={26} weight="bold" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-foreground">Verification Successful!</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Official <span className="font-bold text-foreground">{slipLabel}</span> generated.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-black text-foreground">Verification Successful!</h3>
-                <p className="text-xs text-muted-foreground">
-                  Official <span className="font-bold text-foreground">{slipLabel}</span> generated.
-                </p>
-              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X size={18} weight="bold" />
+              </button>
             </div>
 
             {/* APPLICANT DEMOGRAPHIC SUMMARY CARD */}
@@ -248,18 +260,19 @@ export default function BvnResultModal({
               </p>
             </div>
 
-            {/* ACTIONS */}
-            <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+            {/* ENLARGED PROMINENT ACTIONS */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Button
                 onClick={() => triggerPdfDownload(pdfBase64, pdfUrl, bvn)}
-                className="flex-1 h-12 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl cursor-pointer shadow-lg shadow-emerald-600/20"
+                className="flex-1 h-13 sm:h-14 font-black text-sm sm:text-base bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl cursor-pointer shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
               >
-                <DownloadSimple size={18} className="mr-2" weight="bold" /> Download Official PDF
+                <DownloadSimple size={22} weight="bold" />
+                <span>Download Official PDF Slip</span>
               </Button>
               <Button
                 variant="outline"
                 onClick={onClose}
-                className="h-12 px-5 font-bold bg-secondary/60 border-border text-foreground hover:bg-secondary rounded-xl cursor-pointer"
+                className="h-13 sm:h-14 px-6 font-bold text-sm bg-secondary/70 border-border text-foreground hover:bg-secondary rounded-2xl cursor-pointer"
               >
                 Close
               </Button>

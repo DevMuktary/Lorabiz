@@ -48,13 +48,14 @@ export default function SlipConfirmationModal({
   const shortfall = Math.max(0, price - walletBalance);
 
   return createPortal(
-    <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      onClick={onClose}
+    >
       <div 
-        className="fixed inset-0 min-h-screen w-screen" 
-        onClick={onClose} 
-      />
-
-      <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+        className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 space-y-5 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-3">

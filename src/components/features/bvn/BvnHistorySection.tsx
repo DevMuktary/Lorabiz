@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { 
   ClockCounterClockwise, FilePdf, DownloadSimple, SpinnerGap, CheckCircle, 
-  Eye, User, Phone, MapPin, Calendar, IdentificationBadge, X, Trash
+  Eye, User, Phone, MapPin, Calendar, IdentificationBadge, X, Trash,
+  CaretLeft, CaretRight
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { parseDemographics } from "@/lib/demographics-parser";
@@ -38,16 +39,27 @@ interface BvnHistorySectionProps {
   isLoading?: boolean;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export default function BvnHistorySection({ history, title = "24-Hour BVN Print History", isLoading = false }: BvnHistorySectionProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<BvnHistoryItem | null>(null);
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Reset or clamp current page when history length changes
+  const totalPages = Math.max(1, Math.ceil((history?.length || 0) / ITEMS_PER_PAGE));
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [history?.length, totalPages, currentPage]);
 
   // Silent Blob Downloader
   const handleDirectDownload = async (item: BvnHistoryItem) => {
@@ -112,6 +124,9 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
     }
   };
 
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentData = (history || []).slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
   if (!isLoading && (!history || history.length === 0)) {
     return null;
   }
@@ -125,12 +140,13 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
             <CheckCircle size={18} weight="bold" />
             <span>{downloadToast}</span>
           </div>
-          <button onClick={() => setDownloadToast(null)} className="text-white/80 hover:text-white">
+          <button onClick={() => setDownloadToast(null)} className="text-white/80 hover:text-white cursor-pointer">
             <X size={16} weight="bold" />
           </button>
         </div>
       )}
 
+      {/* SECTION HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-500/20">
@@ -139,7 +155,7 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
           <div>
             <h3 className="text-base font-black text-foreground flex items-center gap-2">
               {title}
-              {!isLoading && (
+              {!isLoading && (history?.length || 0) > 0 && (
                 <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/20">
                   {history.length} {history.length === 1 ? "Slip" : "Slips"}
                 </span>
@@ -154,7 +170,6 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
 
       {isLoading ? (
         <div className="py-8 text-center space-y-4">
-          {/* Animated Zigzag/Wave graphic */}
           <div className="flex items-center justify-center gap-1.5 py-2">
             <span className="w-1.5 h-4 bg-emerald-600 rounded-full animate-bounce [animation-delay:-0.4s]" />
             <span className="w-1.5 h-7 bg-emerald-500/90 rounded-full animate-bounce [animation-delay:-0.2s]" />
@@ -166,91 +181,247 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
             <p className="text-sm font-black text-foreground tracking-tight">Loading your verification history...</p>
             <p className="text-xs text-muted-foreground">Retrieving recent 24-hour BVN records from secure storage</p>
           </div>
-          {/* Shimmer placeholders */}
           <div className="space-y-2.5 max-w-md mx-auto pt-2">
             <div className="h-12 bg-secondary/70 rounded-xl animate-pulse" />
             <div className="h-12 bg-secondary/40 rounded-xl animate-pulse" />
           </div>
         </div>
-      ) : history.length === 0 ? (
+      ) : !history || history.length === 0 ? (
         <div className="border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
           <p className="text-sm font-bold text-muted-foreground">No slips generated within the last 24 hours.</p>
           <p className="text-xs text-muted-foreground/70">Generated slips appear here for 24 hours.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {history.map((item) => {
-            const itemDemo = parseDemographics(item.userData, item.fullName);
-            const displayFullName = itemDemo.fullName || item.fullName || item.slipType;
+        <div className="border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          
+          {/* 📱 MOBILE VIEW (Card Layout) */}
+          <div className="block md:hidden divide-y divide-border/60">
+            {currentData.map((item) => {
+              const itemDemo = parseDemographics(item.userData, item.fullName);
+              const displayFullName = itemDemo.fullName || item.fullName || item.slipType;
 
-            return (
-              <div
-                key={item.id}
-                className="flex flex-col justify-between p-4 rounded-2xl bg-secondary/30 hover:bg-secondary/50 border border-border/60 transition-all space-y-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                      <FilePdf size={20} weight="bold" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-foreground">
-                        {displayFullName}
-                      </h4>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className="text-[11px] font-mono font-bold text-foreground bg-background px-1.5 py-0.5 rounded border border-border">
-                          {item.bvnMasked}
-                        </span>
-                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                          {item.slipType}
-                        </span>
+              return (
+                <div
+                  key={item.id}
+                  className="p-4 space-y-3 hover:bg-secondary/20 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-3 min-w-0">
+                      {itemDemo.photo ? (
+                        <img 
+                          src={itemDemo.photo} 
+                          alt={displayFullName} 
+                          className="w-10 h-11 object-cover rounded-xl border border-emerald-500/30 shrink-0 shadow-sm"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                          <FilePdf size={22} weight="bold" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black text-foreground truncate">
+                          {displayFullName}
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                          <span className="text-[11px] font-mono font-bold text-foreground bg-secondary/80 px-1.5 py-0.5 rounded border border-border">
+                            {item.bvnMasked}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            {item.slipType}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap bg-secondary/50 px-2 py-0.5 rounded-full border border-border/60 shrink-0">
+                      {item.createdAt}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap bg-background px-2 py-0.5 rounded-full border border-border/60">
-                    {item.createdAt}
-                  </span>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedDetails(item)}
+                      className="flex-1 h-9 text-xs font-bold bg-background text-foreground border-border hover:bg-secondary rounded-xl cursor-pointer"
+                    >
+                      <Eye size={14} className="mr-1.5" weight="bold" />
+                      <span>Details</span>
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      onClick={() => handleDirectDownload(item)}
+                      disabled={downloadingId === item.id}
+                      className="flex-1 h-9 text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl cursor-pointer shadow-sm"
+                    >
+                      {downloadingId === item.id ? (
+                        <>
+                          <SpinnerGap size={14} className="mr-1.5 animate-spin" weight="bold" />
+                          <span>Preparing...</span>
+                        </>
+                      ) : successId === item.id ? (
+                        <>
+                          <CheckCircle size={14} className="mr-1.5" weight="bold" />
+                          <span>Downloaded</span>
+                        </>
+                      ) : (
+                        <>
+                          <DownloadSimple size={14} className="mr-1.5" weight="bold" />
+                          <span>Download PDF</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 💻 DESKTOP VIEW (Table Layout) */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead>
+                <tr className="bg-secondary/50 text-muted-foreground border-b border-border text-[11px] font-black uppercase tracking-wider">
+                  <th className="px-5 py-3.5">Account Holder</th>
+                  <th className="px-5 py-3.5">BVN Identifier</th>
+                  <th className="px-5 py-3.5">Slip Format</th>
+                  <th className="px-5 py-3.5">Generated Time</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {currentData.map((item) => {
+                  const isDownloading = downloadingId === item.id;
+                  const isSuccess = successId === item.id;
+                  const itemDemo = parseDemographics(item.userData, item.fullName);
+                  const displayFullName = itemDemo.fullName || item.fullName || "Verified Account Holder";
+
+                  return (
+                    <tr key={item.id} className="hover:bg-secondary/30 transition-colors group">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          {itemDemo.photo ? (
+                            <img 
+                              src={itemDemo.photo} 
+                              alt={displayFullName} 
+                              className="w-9 h-10 object-cover rounded-xl border border-emerald-500/30 shrink-0 shadow-sm"
+                            />
+                          ) : (
+                            <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                              <User size={18} weight="bold" />
+                            </div>
+                          )}
+                          <div className="min-w-0 max-w-[220px]">
+                            <p className="font-black text-foreground truncate text-sm">
+                              {displayFullName}
+                            </p>
+                            <span className="text-[11px] text-muted-foreground block truncate">
+                              Ref: {item.reference || item.id.slice(0, 12)}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        <span className="font-mono font-bold text-foreground bg-secondary/80 px-2 py-0.5 rounded border border-border text-xs">
+                          {item.bvnMasked}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        <span className="inline-flex px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          {item.slipType}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        <span className="text-xs font-bold text-muted-foreground">
+                          {item.createdAt}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedDetails(item)}
+                            className="h-8 px-3 text-xs font-bold border-border bg-background hover:bg-secondary text-foreground rounded-xl cursor-pointer"
+                          >
+                            <Eye size={13} className="mr-1.5" weight="bold" />
+                            <span>Details</span>
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            onClick={() => handleDirectDownload(item)}
+                            disabled={isDownloading}
+                            className={`h-8 px-3.5 text-xs font-black rounded-xl transition-all cursor-pointer shadow-sm ${
+                              isSuccess
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                            }`}
+                          >
+                            {isDownloading ? (
+                              <>
+                                <SpinnerGap size={13} className="mr-1.5 animate-spin" weight="bold" />
+                                <span>Preparing...</span>
+                              </>
+                            ) : isSuccess ? (
+                              <>
+                                <CheckCircle size={13} className="mr-1.5" weight="bold" />
+                                <span>Downloaded</span>
+                              </>
+                            ) : (
+                              <>
+                                <DownloadSimple size={13} className="mr-1.5" weight="bold" />
+                                <span>Download PDF</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 📄 PAGINATION FOOTER */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-5 border-t border-border bg-secondary/15 gap-3 text-xs">
+              <span className="text-muted-foreground font-medium">
+                Showing <span className="font-bold text-foreground">{startIndex + 1}</span> to <span className="font-bold text-foreground">{Math.min(startIndex + ITEMS_PER_PAGE, history.length)}</span> of <span className="font-bold text-foreground">{history.length}</span> entries
+              </span>
+              
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-background border border-border rounded-xl font-bold text-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  <CaretLeft weight="bold" className="h-3.5 w-3.5" />
+                  <span>Prev</span>
+                </button>
+                
+                <div className="px-3 py-1 bg-secondary/60 rounded-xl border border-border font-black text-foreground min-w-[60px] text-center">
+                  {currentPage} / {totalPages}
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 pt-2 border-t border-border/40">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedDetails(item)}
-                    className="flex-1 h-9 font-bold bg-background text-xs text-foreground border-border hover:bg-secondary rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Eye size={14} weight="bold" />
-                    <span>View Details</span>
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    onClick={() => handleDirectDownload(item)}
-                    disabled={downloadingId === item.id}
-                    className="flex-1 h-9 font-black bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
-                  >
-                    {downloadingId === item.id ? (
-                      <>
-                        <SpinnerGap size={14} className="animate-spin" weight="bold" />
-                        <span>Preparing...</span>
-                      </>
-                    ) : successId === item.id ? (
-                      <>
-                        <CheckCircle size={14} weight="bold" />
-                        <span>Downloaded!</span>
-                      </>
-                    ) : (
-                      <>
-                        <DownloadSimple size={14} weight="bold" />
-                        <span>Download PDF</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-background border border-border rounded-xl font-bold text-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  <span>Next</span>
+                  <CaretRight weight="bold" className="h-3.5 w-3.5" />
+                </button>
               </div>
-            );
-          })}
+            </div>
+          )}
+
         </div>
       )}
 
@@ -267,13 +438,14 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
           const detailsAddress = selectedDemo.address || selectedDetails.address;
 
           return (
-            <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+            <div 
+              className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+              onClick={() => setSelectedDetails(null)}
+            >
               <div 
-                className="fixed inset-0 min-h-screen w-screen" 
-                onClick={() => setSelectedDetails(null)} 
-              />
-
-              <div className="relative w-full max-w-md bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+                className="relative w-full max-w-md bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 space-y-5 max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">

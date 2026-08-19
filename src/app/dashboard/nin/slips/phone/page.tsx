@@ -255,10 +255,8 @@ export default function NinByPhonePage() {
   const currentPrice = statusState.prices[slipType] || selectedOption.defaultPrice;
   const isSelectedSlipAvailable = statusState.activeMap[slipType] !== false && statusState.phoneSearchActive;
 
-  const isAnyModalOpen = isConfirmOpen || resultModal.isOpen || lightbox.isOpen;
-
   return (
-    <div className={`space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300 transition-opacity ${mounted && isAnyModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
+    <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
 
       {/* Top Navigation - Cleanly Separated */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -463,14 +461,9 @@ export default function NinByPhonePage() {
       {/* LIGHTBOX SPECIMEN PREVIEW OVERLAY */}
       {mounted && lightbox.isOpen && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
-          <div 
-            className="fixed inset-0 min-h-screen w-screen" 
-            onClick={() => setLightbox({ isOpen: false, src: "", label: "" })} 
-          />
-
           <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-card border-b border-border px-5 py-3.5 flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
