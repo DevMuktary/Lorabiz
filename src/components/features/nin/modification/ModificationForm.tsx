@@ -14,10 +14,7 @@ import {
   Spinner,
   IdentificationCard,
   CursorClick,
-  X,
-  Wallet,
-  Eye,
-  EyeSlash
+  X
 } from "@phosphor-icons/react";
 import { NIGERIA_DATA } from "@/components/features/cac/register/biz-name/schema";
 
@@ -31,21 +28,18 @@ export interface PricingConfig {
 }
 
 interface ModificationFormProps {
-  walletBalance: number;
   pricing: Record<string, PricingConfig>;
-  onSuccess: (result: { trackingId: string; type: string; amountPaid: number; newBalance: number }) => void;
+  onSuccess: (result: { trackingId: string; type: string; amountPaid: number }) => void;
   onRequireConsent?: () => void;
 }
 
 export function ModificationForm({
-  walletBalance,
   pricing,
   onSuccess,
   onRequireConsent,
 }: ModificationFormProps) {
   // Start with no category selected so no fields are open automatically
   const [selectedType, setSelectedType] = useState<ModificationType | null>(null);
-  const [isBalanceHidden, setIsBalanceHidden] = useState<boolean>(false);
 
   // Form Fields
   const [nin, setNin] = useState("");
@@ -64,6 +58,7 @@ export function ModificationForm({
   const [statutoryConsent, setStatutoryConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isInsufficientBalance, setIsInsufficientBalance] = useState(false);
 
   // Nigerian States and LGAs
   const stateOptions = useMemo(() => {
@@ -85,13 +80,11 @@ export function ModificationForm({
       }
     : null;
 
-  const hasSufficientBalance = activePricing ? walletBalance >= activePricing.price : true;
-  const shortfall = activePricing ? Math.max(0, activePricing.price - walletBalance) : 0;
-
   // Validate fields before showing review modal
   const handleProceedToReview = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsInsufficientBalance(false);
 
     if (!selectedType) {
       setErrorMessage("Please select a modification service first.");
@@ -152,6 +145,7 @@ export function ModificationForm({
   const handleFinalSubmit = async () => {
     if (!selectedType || !activePricing) return;
     setErrorMessage(null);
+    setIsInsufficientBalance(false);
 
     if (!statutoryConsent) {
       setErrorMessage("Please check the statutory consent affirmation.");
@@ -187,14 +181,17 @@ export function ModificationForm({
           trackingId: data.trackingId,
           type: selectedType,
           amountPaid: data.amountPaid,
-          newBalance: data.newWalletBalance,
         });
       } else {
         if (data.requiresConsent && onRequireConsent) {
           setShowReviewModal(false);
           onRequireConsent();
         } else {
-          setErrorMessage(data.message || "Failed to submit modification request.");
+          const msg = data.message || "Failed to submit modification request.";
+          setErrorMessage(msg);
+          if (msg.toLowerCase().includes("insufficient") || msg.toLowerCase().includes("balance")) {
+            setIsInsufficientBalance(true);
+          }
         }
       }
     } catch (err) {
@@ -221,7 +218,7 @@ export function ModificationForm({
                 setSelectedType(null);
                 setErrorMessage(null);
               }}
-              className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               <X weight="bold" className="h-3.5 w-3.5" />
               <span>Clear Selection</span>
@@ -355,7 +352,7 @@ export function ModificationForm({
         <form onSubmit={handleProceedToReview} className="p-5 sm:p-8 rounded-3xl bg-card border border-border shadow-sm space-y-5 sm:space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-200">
           
           {/* Header with Service & Fee */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 gap-2">
             <div>
               <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
                 {activePricing.label} Application Form
@@ -365,57 +362,13 @@ export function ModificationForm({
               </p>
             </div>
             
-            {/* Wallet & Pricing Indicator Strip */}
-            <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-secondary/50 border border-border">
-              <div className="flex items-center gap-2">
-                <Wallet weight="duotone" className="h-4 w-4 text-emerald-500 shrink-0" />
-                <div className="text-xs">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <span>Balance:</span>
-                    <button
-                      type="button"
-                      onClick={() => setIsBalanceHidden(!isBalanceHidden)}
-                      className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                      title={isBalanceHidden ? "Show Balance" : "Hide Balance"}
-                    >
-                      {isBalanceHidden ? <EyeSlash className="h-3.5 w-3.5" weight="bold" /> : <Eye className="h-3.5 w-3.5" weight="bold" />}
-                    </button>
-                  </div>
-                  <div className="font-mono font-bold text-foreground">
-                    {isBalanceHidden ? "••••••••" : `₦${walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                  </div>
-                </div>
-              </div>
-
-              <div className="h-7 w-px bg-border shrink-0" />
-
-              <div className="text-xs text-right">
-                <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">Fee</span>
-                <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                  ₦{activePricing.price.toLocaleString()}
-                </span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-muted-foreground">Fee:</span>
+              <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                ₦{activePricing.price.toLocaleString()}
+              </span>
             </div>
           </div>
-
-          {/* Insufficient balance notification if balance is lower than fee */}
-          {!hasSufficientBalance && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <WarningCircle weight="bold" className="h-4 w-4 shrink-0 text-rose-500" />
-                <span>
-                  Insufficient wallet balance. You need an additional <strong>₦{shortfall.toLocaleString()}</strong>.
-                </span>
-              </div>
-              <Link
-                href="/dashboard/wallet"
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors"
-              >
-                <PlusCircle weight="bold" className="h-3.5 w-3.5" />
-                Fund Wallet
-              </Link>
-            </div>
-          )}
 
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
@@ -670,8 +623,8 @@ export function ModificationForm({
 
       {/* 5. Review & Confirmation Modal */}
       {showReviewModal && activePricing && (
-        <div className="fixed inset-0 z-50 p-3 sm:p-6 py-6 sm:py-10 bg-black/90 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200">
-          <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-lg w-full overflow-hidden text-foreground max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 p-3 sm:p-6 py-6 sm:py-10 bg-black/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
+          <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-lg w-full overflow-hidden text-foreground max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
             
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-border bg-card flex items-center justify-between shrink-0">
@@ -697,9 +650,22 @@ export function ModificationForm({
             <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
               
               {errorMessage && (
-                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
-                  <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
-                  <span>{errorMessage}</span>
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold space-y-2">
+                  <div className="flex items-center gap-2">
+                    <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
+                    <span>{errorMessage}</span>
+                  </div>
+                  {isInsufficientBalance && (
+                    <div className="pt-1">
+                      <Link
+                        href="/dashboard/wallet"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-all"
+                      >
+                        <PlusCircle weight="bold" className="h-3.5 w-3.5" />
+                        Fund Wallet Now
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -758,47 +724,14 @@ export function ModificationForm({
                     </div>
                   </>
                 )}
-              </div>
 
-              {/* Wallet Breakdown Card */}
-              <div className="p-4 rounded-2xl bg-card border border-border space-y-2 text-xs sm:text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Service Fee:</span>
-                  <span className="font-bold text-foreground">₦{activePricing.price.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current Wallet Balance:</span>
-                  <span className={`font-bold ${hasSufficientBalance ? "text-foreground" : "text-rose-500"}`}>
-                    ₦{walletBalance.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between border-t border-border pt-1.5">
-                  <span className="text-muted-foreground">Balance After Payment:</span>
+                <div className="flex justify-between pt-1 border-t border-border font-bold">
+                  <span className="text-foreground">Total Service Fee:</span>
                   <span className="font-black text-emerald-600 dark:text-emerald-400">
-                    ₦{Math.max(0, walletBalance - activePricing.price).toLocaleString()}
+                    ₦{activePricing.price.toLocaleString()}
                   </span>
                 </div>
               </div>
-
-              {/* Insufficient Funds Warning */}
-              {!hasSufficientBalance && (
-                <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs space-y-2">
-                  <div className="flex items-center gap-2 font-bold">
-                    <WarningCircle weight="bold" className="h-4 w-4 shrink-0" />
-                    <span>Insufficient Wallet Balance</span>
-                  </div>
-                  <p>
-                    You need an additional <strong>₦{shortfall.toLocaleString()}</strong> to complete this request.
-                  </p>
-                  <Link
-                    href="/dashboard/wallet"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-all"
-                  >
-                    <PlusCircle weight="bold" className="h-3.5 w-3.5" />
-                    Fund Wallet Now
-                  </Link>
-                </div>
-              )}
 
               {/* Statutory Consent Checkbox */}
               <div className="pt-2 border-t border-border">
@@ -830,7 +763,7 @@ export function ModificationForm({
               <button
                 type="button"
                 onClick={handleFinalSubmit}
-                disabled={isSubmitting || !hasSufficientBalance || !statutoryConsent}
+                disabled={isSubmitting || !statutoryConsent}
                 className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md transition-all cursor-pointer"
               >
                 {isSubmitting ? (

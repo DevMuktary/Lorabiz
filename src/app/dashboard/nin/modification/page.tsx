@@ -15,8 +15,7 @@ import { NinTermsModal } from "@/components/features/nin/modification/NinTermsMo
 import { ModificationForm, PricingConfig } from "@/components/features/nin/modification/ModificationForm";
 
 export default function NinModificationPage() {
-  const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [hasConsented, setHasConsented] = useState<boolean>(true); // default true while loading
+  const [hasConsented, setHasConsented] = useState<boolean>(true); // default true while checking
   const [userFullName, setUserFullName] = useState<string>("");
   const [pricing, setPricing] = useState<Record<string, PricingConfig>>({
     CHANGE_OF_NAME: { price: 2500, isActive: true, label: "Change of Name" },
@@ -36,10 +35,9 @@ export default function NinModificationPage() {
       const res = await fetch("/api/nin/modification");
       const data = await res.json();
       if (data.success) {
-        setWalletBalance(data.walletBalance || 0);
         if (data.pricing) setPricing(data.pricing);
         if (data.userFullName) setUserFullName(data.userFullName);
-        setHasConsented(data.hasConsented);
+        setHasConsented(Boolean(data.hasConsented));
       }
     } catch (err) {
       console.error("Failed to load initial NIN Modification data:", err);
@@ -54,16 +52,13 @@ export default function NinModificationPage() {
 
   const handleConsentAgreed = () => {
     setHasConsented(true);
-    fetchInitialData();
   };
 
   const handleSubmissionSuccess = (result: {
     trackingId: string;
     type: string;
     amountPaid: number;
-    newBalance: number;
   }) => {
-    setWalletBalance(result.newBalance);
     setSuccessSubmission({
       trackingId: result.trackingId,
       type: result.type,
@@ -75,6 +70,13 @@ export default function NinModificationPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto relative pb-16 animate-in fade-in duration-200 font-sans">
       
+      {/* Statutory Terms & Authorization Modal (Popup Overlay) */}
+      <NinTermsModal
+        isOpen={!isLoading && !hasConsented}
+        userFullName={userFullName}
+        onAgreed={handleConsentAgreed}
+      />
+
       {/* Back Breadcrumb */}
       <Link 
         href="/dashboard/nin" 
@@ -155,23 +157,14 @@ export default function NinModificationPage() {
         </div>
       )}
 
-      {/* Main Content Area */}
+      {/* Main Form Content */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Spinner className="h-8 w-8 animate-spin text-primary" weight="bold" />
-          <p className="text-sm font-bold text-muted-foreground">Loading service status...</p>
+          <p className="text-sm font-bold text-muted-foreground">Loading modification service...</p>
         </div>
-      ) : !hasConsented ? (
-        /* Render ONLY Terms & Authorization Gate when consent is not yet given */
-        <NinTermsModal
-          isOpen={true}
-          userFullName={userFullName}
-          onAgreed={handleConsentAgreed}
-        />
       ) : (
-        /* Render Modification Form ONLY after consent is active */
         <ModificationForm
-          walletBalance={walletBalance}
           pricing={pricing}
           onSuccess={handleSubmissionSuccess}
           onRequireConsent={() => setHasConsented(false)}
