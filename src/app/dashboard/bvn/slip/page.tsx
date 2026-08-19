@@ -79,6 +79,7 @@ export default function BvnSlipVerificationPage() {
     pdfUrl?: string;
     userData?: BvnDemographicData;
     fullName?: string;
+    photo?: string;
     errorMsg?: string;
   }>({
     isOpen: false,
@@ -204,6 +205,7 @@ export default function BvnSlipVerificationPage() {
         pdfUrl: data.pdfUrl,
         userData: data.userData,
         fullName: data.fullName,
+        photo: data.photo,
       });
 
       // Clear input and refresh balance + history
@@ -462,7 +464,7 @@ export default function BvnSlipVerificationPage() {
       </form>
 
       {/* 24-Hour Print History at the Bottom (Matching NIN layout) */}
-      <BvnHistorySection history={history} title="24-Hour BVN Print History" />
+      <BvnHistorySection history={history} title="24-Hour BVN Print History" isLoading={isHistoryLoading} />
 
       {/* Confirmation & Insufficient Balance Modal (with Specimen Preview) */}
       <BvnConfirmationModal
@@ -488,6 +490,7 @@ export default function BvnSlipVerificationPage() {
         pdfUrl={resultModalState.pdfUrl}
         userData={resultModalState.userData}
         fullName={resultModalState.fullName}
+        photo={resultModalState.photo}
         errorMsg={resultModalState.errorMsg}
         onClose={() => setResultModalState((prev) => ({ ...prev, isOpen: false }))}
       />

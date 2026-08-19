@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { CircleNotch, Check, Trash, DownloadSimple, WarningCircle, User, Phone, MapPin, Calendar, IdentificationBadge, Sparkle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
@@ -16,6 +16,8 @@ export interface DemographicData {
   phone?: string;
   address?: string;
   fullName?: string;
+  photo?: string;
+  signature?: string;
   [key: string]: unknown;
 }
 
@@ -29,6 +31,7 @@ interface NinResultModalProps {
   pdfUrl?: string;
   userData?: DemographicData;
   fullName?: string;
+  photo?: string;
   errorMsg?: string;
   onClose: () => void;
 }
@@ -43,14 +46,21 @@ export default function NinResultModal({
   pdfUrl,
   userData,
   fullName: propFullName,
+  photo: propPhoto,
   errorMsg,
   onClose,
 }: NinResultModalProps) {
+  const [downloadStarted, setDownloadStarted] = useState(false);
+
   if (!isOpen) return null;
 
   const triggerPdfDownload = (base64Data?: string, url?: string, idNum?: string) => {
+    setDownloadStarted(true);
+    setTimeout(() => setDownloadStarted(false), 5000);
+
     if (base64Data) {
-      const linkSource = `data:application/pdf;base64,${base64Data}`;
+      const cleanBase64 = base64Data.replace(/^data:application\/pdf;base64,/, "");
+      const linkSource = `data:application/pdf;base64,${cleanBase64}`;
       const downloadLink = document.createElement("a");
       downloadLink.href = linkSource;
       downloadLink.download = `NIMC_${slipLabel?.replace(/\s+/g, "_") || "Slip"}_${idNum || "Download"}.pdf`;
@@ -58,7 +68,16 @@ export default function NinResultModal({
       downloadLink.click();
       document.body.removeChild(downloadLink);
     } else if (url) {
-      window.open(url, "_blank");
+      if (url.startsWith("data:application/pdf;base64,")) {
+        const downloadLink = document.createElement("a");
+        downloadLink.href = url;
+        downloadLink.download = `NIMC_${slipLabel?.replace(/\s+/g, "_") || "Slip"}_${idNum || "Download"}.pdf`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+      } else {
+        window.open(url, "_blank");
+      }
     }
   };
 
@@ -80,12 +99,28 @@ export default function NinResultModal({
   const resolvedGender = userData?.gender || (userData as any)?.sex;
   const resolvedPhone = userData?.phone_number || userData?.phone || (userData as any)?.telephoneno || (userData as any)?.mobile;
   const resolvedNin = userData?.nin || (userData as any)?.vnin || (searchType === "NIN" ? identifier : undefined);
-  const resolvedAddress = userData?.address || (userData as any)?.residence_address || (userData as any)?.residential_address;
+  const rawAddress = userData?.address || (userData as any)?.residence_address || (userData as any)?.residential_address || (userData as any)?.residence_AdressLine1;
+  const resolvedAddress = typeof rawAddress === "string" && rawAddress.trim().length > 0 ? rawAddress.trim() : undefined;
+
+  const rawPhoto = propPhoto || userData?.photo || (userData as any)?.image;
+  const resolvedPhoto = rawPhoto
+    ? rawPhoto.startsWith("data:")
+      ? rawPhoto
+      : `data:image/jpeg;base64,${rawPhoto}`
+    : undefined;
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-y-auto">
       <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center relative space-y-6 max-h-[90vh] overflow-y-auto">
         
+        {/* DOWNLOAD STARTED BANNER */}
+        {downloadStarted && (
+          <div className="bg-emerald-500 text-white text-xs font-black py-2.5 px-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 animate-in slide-in-from-top-2 duration-300">
+            <Check size={18} weight="bold" />
+            <span>Download started! Check your device downloads.</span>
+          </div>
+        )}
+
         {/* LOADING STATE */}
         {status === "loading" && (
           <div className="py-8 space-y-5">
@@ -124,7 +159,7 @@ export default function NinResultModal({
             </div>
 
             {/* APPLICANT DEMOGRAPHIC SUMMARY CARD */}
-            <div className="bg-secondary/40 border border-border/80 rounded-2xl p-4 sm:p-5 space-y-3.5">
+            <div className="bg-secondary/40 border border-border/80 rounded-2xl p-4 sm:p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   <IdentificationBadge size={16} className="text-[#ff3f7a]" weight="bold" />
@@ -135,23 +170,42 @@ export default function NinResultModal({
                 </span>
               </div>
 
-              {/* Full Name */}
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Applicant Full Name</span>
-                <p className="text-base font-black text-foreground tracking-tight">{resolvedFullName}</p>
-              </div>
-
-              {/* Grid with Details */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                {resolvedNin && (
-                  <div className="bg-background/80 p-2.5 rounded-xl border border-border/60">
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                      <User size={12} className="text-[#ff3f7a]" /> National ID (NIN)
+              {/* Citizen Photo & Name Row */}
+              <div className="flex items-center gap-4">
+                {resolvedPhoto ? (
+                  <div className="relative shrink-0">
+                    <img
+                      src={resolvedPhoto}
+                      alt={resolvedFullName}
+                      className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-2xl border-2 border-[#ff3f7a]/30 shadow-md bg-secondary"
+                    />
+                    <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 shadow">
+                      <Check size={12} weight="bold" />
                     </span>
-                    <p className="text-xs font-mono font-bold text-foreground mt-0.5">{resolvedNin}</p>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-[#ff3f7a]/10 border border-[#ff3f7a]/20 flex items-center justify-center text-[#ff3f7a] shrink-0">
+                    <User size={32} weight="bold" />
                   </div>
                 )}
 
+                <div className="space-y-1 min-w-0 flex-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    Applicant Full Name
+                  </span>
+                  <p className="text-base sm:text-lg font-black text-foreground tracking-tight leading-snug break-words">
+                    {resolvedFullName}
+                  </p>
+                  {resolvedNin && (
+                    <p className="text-xs font-mono font-bold text-[#ff3f7a] bg-[#ff3f7a]/10 px-2.5 py-0.5 rounded-lg inline-block">
+                      NIN: {resolvedNin}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Grid with Details */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-border/40">
                 {resolvedDob && (
                   <div className="bg-background/80 p-2.5 rounded-xl border border-border/60">
                     <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
@@ -169,23 +223,23 @@ export default function NinResultModal({
                 )}
 
                 {resolvedPhone && (
-                  <div className="bg-background/80 p-2.5 rounded-xl border border-border/60">
+                  <div className="bg-background/80 p-2.5 rounded-xl border border-border/60 col-span-2 sm:col-span-1">
                     <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
                       <Phone size={12} className="text-[#ff3f7a]" /> Phone Number
                     </span>
                     <p className="text-xs font-mono font-bold text-foreground mt-0.5">{resolvedPhone}</p>
                   </div>
                 )}
-              </div>
 
-              {resolvedAddress && (
-                <div className="bg-background/80 p-2.5 rounded-xl border border-border/60">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                    <MapPin size={12} className="text-[#ff3f7a]" /> Residential Address
-                  </span>
-                  <p className="text-xs font-medium text-foreground mt-0.5 leading-relaxed">{resolvedAddress}</p>
-                </div>
-              )}
+                {resolvedAddress && (
+                  <div className="bg-background/80 p-2.5 rounded-xl border border-border/60 col-span-2">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                      <MapPin size={12} className="text-[#ff3f7a]" /> Residential Address
+                    </span>
+                    <p className="text-xs font-medium text-foreground mt-0.5 leading-relaxed">{resolvedAddress}</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 24-HOUR DATA RETENTION NOTICE */}

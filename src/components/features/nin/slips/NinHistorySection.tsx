@@ -34,23 +34,29 @@ export interface SlipHistoryItem {
 interface NinHistorySectionProps {
   history: SlipHistoryItem[];
   title?: string;
+  isLoading?: boolean;
 }
 
-export default function NinHistorySection({ history, title = "24-Hour Print History" }: NinHistorySectionProps) {
+export default function NinHistorySection({ history, title = "24-Hour Print History", isLoading = false }: NinHistorySectionProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<SlipHistoryItem | null>(null);
+  const [downloadToast, setDownloadToast] = useState<string | null>(null);
 
   // Silent Blob Downloader
   const handleDirectDownload = async (item: SlipHistoryItem) => {
     try {
       setDownloadingId(item.id);
+      setDownloadToast(`Download started for ${item.fullName || item.ninMasked}! Check your downloads.`);
+      setTimeout(() => setDownloadToast(null), 5000);
+
       const fileName = `NIMC_${item.slipType.replace(/\s+/g, "_")}_${item.ninMasked.replace(/\*/g, "X")}.pdf`;
 
       let blob: Blob;
 
       if (item.pdfBase64) {
-        const byteCharacters = atob(item.pdfBase64);
+        const cleanBase64 = item.pdfBase64.replace(/^data:application\/pdf;base64,/, "");
+        const byteCharacters = atob(cleanBase64);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -60,7 +66,8 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
       } else if (item.pdfUrl) {
         if (item.pdfUrl.startsWith("data:")) {
           const parts = item.pdfUrl.split(",");
-          const byteCharacters = atob(parts[1]);
+          const cleanBase64 = parts[1] || parts[0];
+          const byteCharacters = atob(cleanBase64);
           const byteNumbers = new Array(byteCharacters.length);
           for (let i = 0; i < byteCharacters.length; i++) {
             byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -101,6 +108,19 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
 
   return (
     <div className="pt-8 border-t border-border space-y-4">
+      {/* DOWNLOAD STARTED BANNER */}
+      {downloadToast && (
+        <div className="bg-emerald-500 text-white text-xs font-black py-2.5 px-4 rounded-2xl shadow-lg flex items-center justify-between gap-2 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-2">
+            <CheckCircle size={18} weight="bold" />
+            <span>{downloadToast}</span>
+          </div>
+          <button onClick={() => setDownloadToast(null)} className="text-white/80 hover:text-white">
+            <X size={16} weight="bold" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ClockCounterClockwise size={20} className="text-[#ff3f7a]" weight="bold" />
@@ -111,7 +131,27 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
         </span>
       </div>
 
-      {history.length === 0 ? (
+      {isLoading ? (
+        <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4">
+          {/* Animated Zigzag/Wave graphic */}
+          <div className="flex items-center justify-center gap-1.5 py-2">
+            <span className="w-1.5 h-4 bg-[#ff3f7a] rounded-full animate-bounce [animation-delay:-0.4s]" />
+            <span className="w-1.5 h-7 bg-[#ff3f7a]/90 rounded-full animate-bounce [animation-delay:-0.2s]" />
+            <span className="w-1.5 h-10 bg-[#ff3f7a] rounded-full animate-bounce" />
+            <span className="w-1.5 h-7 bg-[#ff3f7a]/90 rounded-full animate-bounce [animation-delay:-0.2s]" />
+            <span className="w-1.5 h-4 bg-[#ff3f7a] rounded-full animate-bounce [animation-delay:-0.4s]" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-black text-foreground tracking-tight">Loading your verification history...</p>
+            <p className="text-xs text-muted-foreground">Retrieving recent 24-hour verification records from secure storage</p>
+          </div>
+          {/* Shimmer placeholders */}
+          <div className="space-y-2.5 max-w-md mx-auto pt-2">
+            <div className="h-12 bg-secondary/70 rounded-xl animate-pulse" />
+            <div className="h-12 bg-secondary/40 rounded-xl animate-pulse" />
+          </div>
+        </div>
+      ) : history.length === 0 ? (
         <div className="bg-card border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
           <p className="text-sm font-bold text-muted-foreground">No slips generated within the last 24 hours.</p>
           <p className="text-xs text-muted-foreground/70">Generated slips and applicant demographic data appear here for 24 hours.</p>
@@ -223,10 +263,27 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
               </button>
             </div>
 
-            {/* Applicant Name */}
-            <div className="bg-secondary/40 p-4 rounded-2xl border border-border space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Full Name</span>
-              <p className="text-base font-black text-foreground">{selectedDetails.fullName || "Name Not Available"}</p>
+            {/* Applicant Name & Photo */}
+            <div className="bg-secondary/40 p-4 rounded-2xl border border-border flex items-center gap-3.5">
+              {selectedDetails.userData?.photo ? (
+                <img
+                  src={
+                    selectedDetails.userData.photo.startsWith("data:")
+                      ? selectedDetails.userData.photo
+                      : `data:image/jpeg;base64,${selectedDetails.userData.photo}`
+                  }
+                  alt={selectedDetails.fullName || "Applicant"}
+                  className="w-14 h-16 object-cover rounded-xl border border-[#ff3f7a]/30 shadow bg-secondary shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-[#ff3f7a]/10 border border-[#ff3f7a]/20 flex items-center justify-center text-[#ff3f7a] shrink-0">
+                  <User size={24} weight="bold" />
+                </div>
+              )}
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">Full Name</span>
+                <p className="text-base font-black text-foreground break-words">{selectedDetails.fullName || "Name Not Available"}</p>
+              </div>
             </div>
 
             {/* Grid Information */}

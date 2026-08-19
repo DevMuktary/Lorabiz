@@ -91,8 +91,12 @@ export default function NinByPhonePage() {
     slipLabel?: string;
     userData?: DemographicData;
     fullName?: string;
+    photo?: string;
     errorMsg?: string;
-  }>({ isOpen: false, status: "loading" });
+  }>({
+    isOpen: false,
+    status: "loading"
+  });
 
   const [history, setHistory] = useState<SlipHistoryItem[]>([]);
 
@@ -225,7 +229,8 @@ export default function NinByPhonePage() {
         searchType: "PHONE",
         slipLabel: selectedOption?.label,
         userData: data.userData,
-        fullName: data.fullName
+        fullName: data.fullName,
+        photo: data.photo
       });
 
       loadData();
@@ -483,12 +488,13 @@ export default function NinByPhonePage() {
         pdfUrl={resultModal.pdfUrl}
         userData={resultModal.userData}
         fullName={resultModal.fullName}
+        photo={resultModal.photo}
         errorMsg={resultModal.errorMsg}
         onClose={() => setResultModal(prev => ({ ...prev, isOpen: false }))}
       />
 
       {/* PHONE SPECIFIC HISTORY (LAST 24 HOURS) */}
-      <NinHistorySection history={history} title="Phone Verification History (Last 24 Hours)" />
+      <NinHistorySection history={history} title="Phone Verification History (Last 24 Hours)" isLoading={statusState.loading} />
 
     </div>
   );

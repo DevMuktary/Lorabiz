@@ -232,6 +232,8 @@ export async function POST(req: NextRequest) {
       phone: result.phone,
       address: result.address,
       bvn: result.bvn || cleanBvn,
+      photo: result.photo,
+      signature: result.signature,
       reference: reference,
       providerUsed: result.provider,
       message: result.message || "BVN verification slip generated successfully.",

@@ -30,7 +30,7 @@ const NIN_SLIP_OPTIONS: SlipOption[] = [
   { 
     id: "nin_basic", 
     label: "Basic Slip", 
-    img: "/examples/nin_regular_example.png",
+    img: "/examples/nin_basic.png",
     defaultPrice: 400 
   },
   { 
@@ -54,7 +54,7 @@ const NIN_SLIP_OPTIONS: SlipOption[] = [
   { 
     id: "nin_vnin", 
     label: "VNIN Slip", 
-    img: "/examples/nin_regular_example.png",
+    img: "/examples/nin_vnin.png",
     defaultPrice: 500 
   },
 ];
@@ -109,6 +109,7 @@ export default function NinByNinPage() {
     slipLabel?: string;
     userData?: DemographicData;
     fullName?: string;
+    photo?: string;
     errorMsg?: string;
   }>({ isOpen: false, status: "loading" });
 
@@ -243,7 +244,8 @@ export default function NinByNinPage() {
         searchType: "NIN",
         slipLabel: selectedOption?.label,
         userData: data.userData,
-        fullName: data.fullName
+        fullName: data.fullName,
+        photo: data.photo
       });
 
       loadData();
@@ -494,12 +496,13 @@ export default function NinByNinPage() {
         pdfUrl={resultModal.pdfUrl}
         userData={resultModal.userData}
         fullName={resultModal.fullName}
+        photo={resultModal.photo}
         errorMsg={resultModal.errorMsg}
         onClose={() => setResultModal(prev => ({ ...prev, isOpen: false }))}
       />
 
       {/* NIN SPECIFIC HISTORY (LAST 24 HOURS) */}
-      <NinHistorySection history={history} title="NIN Verification History (Last 24 Hours)" />
+      <NinHistorySection history={history} title="NIN Verification History (Last 24 Hours)" isLoading={statusState.loading} />
 
     </div>
   );

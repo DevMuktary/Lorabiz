@@ -33,6 +33,8 @@ export interface BvnSlipResult {
   phone?: string;
   address?: string;
   bvn?: string;
+  photo?: string;
+  signature?: string;
   message?: string;
   error?: string;
   provider: "DATAVERIFY";
@@ -98,7 +100,7 @@ export async function executeBvnSlipGeneration(
       message: data.message || data.error,
       has_pdf: Boolean(data.pdf_base64 || data.pdf_data || data.pdf || data.slip),
       root_keys_received: debugKeys,
-      user_data: data.user_data || data.data || data.details || null,
+      user_data: data.user_data || data.data || data.details || (Array.isArray(data.response) ? data.response[0] : data.response) || null,
       raw_sample: Object.fromEntries(
         debugKeys.map((k) => [k, typeof data[k] === "object" ? data[k] : String(data[k]).slice(0, 100)])
       ),
@@ -110,11 +112,12 @@ export async function executeBvnSlipGeneration(
       data.response_code === "00" ||
       data.code === 200 ||
       data.code === "00" ||
-      (data.status_code === 200 && !!(data.pdf_base64 || data.pdf_data || data.pdf || data.slip));
+      (data.status_code === 200 && !!(data.pdf_base64 || data.pdf_data || data.pdf || data.slip || (Array.isArray(data.response) && data.response[0])));
 
     if (isSuccess) {
       const pdfBase64 = data.pdf_base64 || data.pdf_data || data.pdf || data.slip || data.data?.pdf_base64 || data.data?.pdf;
-      const userData: any = data.user_data || data.data || data.details || data.demographics || data.result || data || {};
+      const respItem = Array.isArray(data.response) ? data.response[0] : data.response;
+      const userData: any = data.user_data || data.data || data.details || respItem || data.demographics || data.result || data || {};
 
       const firstName = (userData.first_name || userData.firstname || userData.firstName || data.first_name || data.firstname || "") as string;
       const middleName = (userData.middle_name || userData.middlename || userData.middleName || data.middle_name || data.middlename || "") as string;
@@ -127,8 +130,11 @@ export async function executeBvnSlipGeneration(
       const gender = (userData.gender || userData.sex || data.gender || data.sex || undefined) as string | undefined;
       const dob = (userData.date_of_birth || userData.dob || userData.birthdate || data.date_of_birth || data.dob || undefined) as string | undefined;
       const phone = (userData.phone_number || userData.phone || userData.telephoneno || userData.mobile || data.phone_number || data.phone || undefined) as string | undefined;
-      const address = (userData.address || userData.residence_address || data.address || undefined) as string | undefined;
+      const rawAddress = (userData.address || userData.residence_address || userData.residence_AdressLine1 || data.address || undefined) as string | undefined;
+      const address = rawAddress?.trim() ? rawAddress.trim() : undefined;
       const bvn = (userData.bvn || data.bvn || cleanBvn) as string;
+      const photo = (userData.photo || data.photo || undefined) as string | undefined;
+      const signature = (userData.signature || data.signature || undefined) as string | undefined;
 
       console.log(`✅ [DataVerify BVN Extracted Demographics]`, {
         fullName,
@@ -137,6 +143,7 @@ export async function executeBvnSlipGeneration(
         gender,
         dob,
         phone,
+        hasPhoto: Boolean(photo),
         hasAddress: Boolean(address),
       });
 
@@ -154,6 +161,8 @@ export async function executeBvnSlipGeneration(
         phone,
         address,
         bvn,
+        photo,
+        signature,
         message: data.message || "BVN slip generated successfully.",
         provider: "DATAVERIFY",
       };

@@ -43,6 +43,8 @@ export interface NormalizedSlipResult {
   phone?: string;
   address?: string;
   nin?: string;
+  photo?: string;
+  signature?: string;
   message?: string;
   error?: string;
   provider: "SLIPAPI" | "DATAVERIFY";
@@ -168,7 +170,7 @@ export async function generateSlipApiSlip(
       has_pdf_base64: Boolean(data.pdf_base64),
       pdf_base64_length: typeof data.pdf_base64 === "string" ? data.pdf_base64.length : 0,
       root_keys_received: debugKeys,
-      user_data: data.user_data || data.data || data.details || null,
+      user_data: data.user_data || data.data || data.details || (Array.isArray(data.response) ? data.response[0] : data.response) || null,
       raw_sample: Object.fromEntries(
         debugKeys.map((k) => [k, typeof data[k] === "object" ? data[k] : String(data[k]).slice(0, 100)])
       ),
@@ -177,7 +179,7 @@ export async function generateSlipApiSlip(
     const isSuccess =
       response.ok &&
       (data.status === "success" || data.status === true || data.response_code === "00") &&
-      Boolean(data.pdf_base64);
+      Boolean(data.pdf_base64 || (Array.isArray(data.response) && data.response[0]));
 
     if (!isSuccess) {
       let rawMsg = data.error || data.message || data.detail || "Could not generate verification slip with the provided details.";
@@ -193,7 +195,8 @@ export async function generateSlipApiSlip(
       };
     }
 
-    const u = (data.user_data || data.data || data.details || data.demographics || data.result || data) as Record<string, any>;
+    const respItem = Array.isArray(data.response) ? data.response[0] : data.response;
+    const u = (data.user_data || data.data || data.details || respItem || data.demographics || data.result || data) as Record<string, any>;
 
     const firstName = (u.first_name || u.firstname || u.firstName || u.given_name || data.first_name || data.firstname || "") as string;
     const middleName = (u.middle_name || u.middlename || u.middleName || data.middle_name || data.middlename || "") as string;
@@ -206,8 +209,11 @@ export async function generateSlipApiSlip(
     const gender = (u.gender || u.sex || data.gender || data.sex || undefined) as string | undefined;
     const dob = (u.date_of_birth || u.dob || u.birthdate || u.birth_date || data.date_of_birth || data.dob || data.birthdate || undefined) as string | undefined;
     const phone = (u.phone_number || u.phone || u.telephoneno || u.mobile || data.phone_number || data.phone || data.telephoneno || (searchType === "PHONE" ? identifier : undefined)) as string | undefined;
-    const address = (u.address || u.residence_address || u.residential_address || data.address || data.residence_address || undefined) as string | undefined;
+    const rawAddress = (u.address || u.residence_address || u.residential_address || u.residence_AdressLine1 || data.address || data.residence_address || undefined) as string | undefined;
+    const address = rawAddress?.trim() ? rawAddress.trim() : undefined;
     const nin = (u.nin || u.vnin || data.nin || (searchType === "NIN" ? identifier : undefined)) as string | undefined;
+    const photo = (u.photo || data.photo || undefined) as string | undefined;
+    const signature = (u.signature || data.signature || undefined) as string | undefined;
 
     console.log(`✅ [SlipAPI Extracted Demographics]`, {
       fullName,
@@ -216,12 +222,13 @@ export async function generateSlipApiSlip(
       gender,
       dob,
       phone,
+      hasPhoto: Boolean(photo),
       hasAddress: Boolean(address),
     });
 
     return {
       success: true,
-      pdfBase64: data.pdf_base64,
+      pdfBase64: data.pdf_base64 || (u.pdf_base64 as string) || undefined,
       userData: u,
       fullName: fullName || undefined,
       firstName: firstName || undefined,
@@ -232,6 +239,8 @@ export async function generateSlipApiSlip(
       phone,
       address,
       nin,
+      photo,
+      signature,
       message: data.message || "Slip generated successfully.",
       provider: "SLIPAPI",
     };

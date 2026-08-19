@@ -262,6 +262,8 @@ export async function POST(req: NextRequest) {
       phone: result.phone,
       address: result.address,
       nin: result.nin,
+      photo: result.photo,
+      signature: result.signature,
       reference: reference,
       providerUsed: result.provider,
       message: result.message || "NIN slip generated successfully.",

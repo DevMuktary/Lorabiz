@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { 
   CircleNotch, Check, DownloadSimple, WarningCircle, User, Phone, MapPin, 
@@ -19,6 +20,8 @@ export interface BvnDemographicData {
   phone?: string;
   address?: string;
   fullName?: string;
+  photo?: string;
+  signature?: string;
   [key: string]: unknown;
 }
 
@@ -31,6 +34,7 @@ interface BvnResultModalProps {
   pdfUrl?: string;
   userData?: BvnDemographicData;
   fullName?: string;
+  photo?: string;
   errorMsg?: string;
   onClose: () => void;
 }
@@ -44,14 +48,21 @@ export default function BvnResultModal({
   pdfUrl,
   userData,
   fullName: propFullName,
+  photo: propPhoto,
   errorMsg,
   onClose,
 }: BvnResultModalProps) {
+  const [downloadStarted, setDownloadStarted] = useState(false);
+
   if (!isOpen) return null;
 
   const triggerPdfDownload = (base64Data?: string, url?: string, bvnNum?: string) => {
+    setDownloadStarted(true);
+    setTimeout(() => setDownloadStarted(false), 5000);
+
     if (base64Data) {
-      const linkSource = `data:application/pdf;base64,${base64Data}`;
+      const cleanBase64 = base64Data.replace(/^data:application\/pdf;base64,/, "");
+      const linkSource = `data:application/pdf;base64,${cleanBase64}`;
       const downloadLink = document.createElement("a");
       downloadLink.href = linkSource;
       downloadLink.download = `NIBSS_${slipLabel.replace(/\s+/g, "_")}_${bvnNum || "Slip"}.pdf`;
@@ -89,12 +100,28 @@ export default function BvnResultModal({
   const resolvedGender = userData?.gender || (userData as any)?.sex;
   const resolvedPhone = userData?.phone_number || userData?.phone || (userData as any)?.telephoneno;
   const resolvedBvn = userData?.bvn || (userData as any)?.bvn || bvn;
-  const resolvedAddress = userData?.address || (userData as any)?.residence_address;
+  const rawAddress = userData?.address || (userData as any)?.residence_address || (userData as any)?.residence_AdressLine1;
+  const resolvedAddress = typeof rawAddress === "string" && rawAddress.trim().length > 0 ? rawAddress.trim() : undefined;
+
+  const rawPhoto = propPhoto || userData?.photo || (userData as any)?.image;
+  const resolvedPhoto = rawPhoto
+    ? rawPhoto.startsWith("data:")
+      ? rawPhoto
+      : `data:image/jpeg;base64,${rawPhoto}`
+    : undefined;
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-y-auto">
       <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center relative space-y-6 max-h-[90vh] overflow-y-auto">
         
+        {/* DOWNLOAD STARTED BANNER */}
+        {downloadStarted && (
+          <div className="bg-emerald-500 text-white text-xs font-black py-2.5 px-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 animate-in slide-in-from-top-2 duration-300">
+            <Check size={18} weight="bold" />
+            <span>Download started! Check your device downloads.</span>
+          </div>
+        )}
+
         {/* LOADING STATE */}
         {status === "loading" && (
           <div className="py-8 space-y-5">
@@ -135,7 +162,7 @@ export default function BvnResultModal({
             </div>
 
             {/* APPLICANT DEMOGRAPHIC SUMMARY CARD */}
-            <div className="bg-secondary/40 border border-border/80 rounded-2xl p-4 sm:p-5 space-y-3.5">
+            <div className="bg-secondary/40 border border-border/80 rounded-2xl p-4 sm:p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   <IdentificationBadge size={16} className="text-emerald-600 dark:text-emerald-400" weight="bold" />
@@ -146,23 +173,42 @@ export default function BvnResultModal({
                 </span>
               </div>
 
-              {/* Full Name */}
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Account Holder Full Name</span>
-                <p className="text-base font-black text-foreground tracking-tight">{resolvedFullName}</p>
-              </div>
-
-              {/* Grid with Details */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                {resolvedBvn && (
-                  <div className="bg-background/80 p-2.5 rounded-xl border border-border/60">
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                      <User size={12} className="text-emerald-600 dark:text-emerald-400" /> BVN Number
+              {/* Citizen Photo & Name Row */}
+              <div className="flex items-center gap-4">
+                {resolvedPhoto ? (
+                  <div className="relative shrink-0">
+                    <img
+                      src={resolvedPhoto}
+                      alt={resolvedFullName}
+                      className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-2xl border-2 border-emerald-500/30 shadow-md bg-secondary"
+                    />
+                    <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 shadow">
+                      <Check size={12} weight="bold" />
                     </span>
-                    <p className="text-xs font-mono font-bold text-foreground mt-0.5">{resolvedBvn}</p>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0">
+                    <User size={32} weight="bold" />
                   </div>
                 )}
 
+                <div className="space-y-1 min-w-0 flex-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    Account Holder Full Name
+                  </span>
+                  <p className="text-base sm:text-lg font-black text-foreground tracking-tight leading-snug break-words">
+                    {resolvedFullName}
+                  </p>
+                  {resolvedBvn && (
+                    <p className="text-xs font-mono font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg inline-block">
+                      BVN: {resolvedBvn}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Grid with Details */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-border/40">
                 {resolvedDob && (
                   <div className="bg-background/80 p-2.5 rounded-xl border border-border/60">
                     <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
@@ -180,30 +226,30 @@ export default function BvnResultModal({
                 )}
 
                 {resolvedPhone && (
-                  <div className="bg-background/80 p-2.5 rounded-xl border border-border/60">
+                  <div className="bg-background/80 p-2.5 rounded-xl border border-border/60 col-span-2 sm:col-span-1">
                     <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
                       <Phone size={12} className="text-emerald-600 dark:text-emerald-400" /> Phone Number
                     </span>
                     <p className="text-xs font-mono font-bold text-foreground mt-0.5">{resolvedPhone}</p>
                   </div>
                 )}
-              </div>
 
-              {resolvedAddress && (
-                <div className="bg-background/80 p-2.5 rounded-xl border border-border/60">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                    <MapPin size={12} className="text-emerald-600 dark:text-emerald-400" /> Residential Address
-                  </span>
-                  <p className="text-xs font-medium text-foreground mt-0.5 leading-relaxed">{resolvedAddress}</p>
-                </div>
-              )}
+                {resolvedAddress && (
+                  <div className="bg-background/80 p-2.5 rounded-xl border border-border/60 col-span-2">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                      <MapPin size={12} className="text-emerald-600 dark:text-emerald-400" /> Residential Address
+                    </span>
+                    <p className="text-xs font-medium text-foreground mt-0.5 leading-relaxed">{resolvedAddress}</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 24-HOUR DATA RETENTION NOTICE */}
             <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl flex items-start gap-2.5">
               <ClockCounterClockwise size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" weight="bold" />
               <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 leading-tight">
-                24-Hour Print Window: You can view these verified details and re-download this slip anytime from your history for the next 24 hours.
+                24-Hour Print Window: You can view these details and re-download this slip anytime from your history for the next 24 hours.
               </p>
             </div>
 
@@ -235,7 +281,7 @@ export default function BvnResultModal({
 
             <div className="space-y-1.5">
               <h3 className="text-xl font-black text-foreground">Generation Unsuccessful</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed px-2">{errorMsg || "Unable to retrieve BVN record from the identity provider."}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed px-2">{errorMsg || "Unable to retrieve slip from the identity provider."}</p>
             </div>
 
             <Button
