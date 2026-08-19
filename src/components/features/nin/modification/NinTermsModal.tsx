@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { 
   ArrowDown,
   PenNib, 
@@ -9,16 +10,20 @@ import {
   CheckCircle, 
   WarningCircle, 
   Spinner,
-  ShieldCheck 
+  ShieldCheck,
+  X,
+  ArrowLeft
 } from "@phosphor-icons/react";
 
 interface NinTermsModalProps {
   isOpen: boolean;
   userFullName?: string;
   onAgreed: () => void;
+  onClose?: () => void;
 }
 
-export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsModalProps) {
+export function NinTermsModal({ isOpen, userFullName = "", onAgreed, onClose }: NinTermsModalProps) {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [fullName, setFullName] = useState(userFullName);
   const [signatureMode, setSignatureMode] = useState<"draw" | "type">("draw");
@@ -72,6 +77,14 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
   }, [isOpen, signatureMode, initCanvas]);
 
   if (!isOpen || !mounted) return null;
+
+  const handleCancel = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      router.push("/dashboard/nin");
+    }
+  };
 
   // Exact point calculation mapping client coordinates to internal canvas resolution
   const getCanvasPoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -231,11 +244,11 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-background/98 sm:bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-card border border-border shadow-2xl rounded-3xl max-w-2xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden text-foreground animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-background/98 sm:bg-black/90 backdrop-blur-md p-3 sm:p-6 py-6 sm:py-10 flex items-start sm:items-center justify-center animate-in fade-in duration-200">
+      <div className="bg-card border border-border shadow-2xl rounded-3xl max-w-2xl w-full my-auto overflow-hidden text-foreground animate-in zoom-in-95 duration-200">
         
-        {/* Modal Header with NIMC Logo */}
-        <div className="p-5 sm:p-6 border-b border-border bg-card flex items-center justify-between shrink-0">
+        {/* Modal Header with NIMC Logo & Close Button */}
+        <div className="p-5 sm:p-6 border-b border-border bg-card flex items-start justify-between gap-3">
           <div className="flex items-center gap-3.5">
             <div className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
               <Image 
@@ -260,10 +273,19 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
               </p>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer shrink-0"
+            title="Close and return to NIN services"
+          >
+            <X weight="bold" className="h-5 w-5" />
+          </button>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="p-5 sm:p-6 space-y-5 overflow-y-auto">
+        {/* Modal Body */}
+        <div className="p-5 sm:p-6 space-y-5">
           
           {/* Scroll Down Indicator Pill */}
           <div className="p-3 rounded-2xl bg-secondary/60 border border-border flex items-center justify-between gap-3 text-xs">
@@ -450,8 +472,17 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
               </label>
             </div>
 
-            {/* Submit Action */}
-            <div className="flex items-center justify-end pt-2">
+            {/* Actions: Cancel / Back & Agree */}
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border">
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl border border-border text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer"
+              >
+                <ArrowLeft weight="bold" className="h-4 w-4" />
+                <span>Cancel & Return to NIN Services</span>
+              </button>
+
               <button
                 type="submit"
                 disabled={isSubmitting || !agreedToTerms || !fullName.trim()}
