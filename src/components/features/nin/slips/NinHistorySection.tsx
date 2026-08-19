@@ -44,17 +44,6 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
   const [selectedDetails, setSelectedDetails] = useState<SlipHistoryItem | null>(null);
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
 
-  // Lock body scroll when applicant details modal is open
-  useEffect(() => {
-    if (selectedDetails) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = originalOverflow || "unset";
-      };
-    }
-  }, [selectedDetails]);
-
   // Silent Blob Downloader
   const handleDirectDownload = async (item: SlipHistoryItem) => {
     try {
@@ -266,8 +255,8 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
         const detailsAddress = selectedDemo.address || selectedDetails.address;
 
         return (
-          <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-hidden touch-none">
-            <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-7 shadow-2xl animate-in zoom-in-95 duration-200 space-y-5 text-left relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none">
+            <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-7 shadow-2xl animate-in zoom-in-95 duration-200 space-y-5 text-left relative max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
               {/* Modal Header */}
               <div className="flex items-center justify-between border-b border-border pb-4">
                 <div className="flex items-center gap-2.5">

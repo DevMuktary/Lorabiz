@@ -264,17 +264,6 @@ export default function NinByNinPage() {
   const currentPrice = statusState.prices[slipType] || selectedOption.defaultPrice;
   const isSelectedSlipAvailable = statusState.activeMap[slipType] !== false;
 
-  // Lock body scroll when lightbox is open
-  useEffect(() => {
-    if (lightbox.isOpen) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = originalOverflow || "unset";
-      };
-    }
-  }, [lightbox.isOpen]);
-
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
       
@@ -474,10 +463,10 @@ export default function NinByNinPage() {
       {/* LIGHTBOX SPECIMEN PREVIEW OVERLAY */}
       {lightbox.isOpen && (
         <div 
-          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-hidden touch-none"
+          className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
-          <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200 overscroll-contain touch-pan-y" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-card border border-border px-4 py-2.5 rounded-t-2xl flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
               <button 

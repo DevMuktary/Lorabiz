@@ -53,17 +53,6 @@ export default function NinResultModal({
 }: NinResultModalProps) {
   const [downloadStarted, setDownloadStarted] = useState(false);
 
-  // Lock body scroll when modal is open so nothing underneath scrolls or bleeds
-  useEffect(() => {
-    if (isOpen) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = originalOverflow || "unset";
-      };
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   const triggerPdfDownload = (base64Data?: string, url?: string, idNum?: string) => {
@@ -104,8 +93,8 @@ export default function NinResultModal({
   const resolvedPhoto = propPhoto ? (propPhoto.startsWith("data:") ? propPhoto : `data:image/jpeg;base64,${propPhoto}`) : demo.photo;
 
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-hidden touch-none">
-      <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center relative space-y-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none">
+      <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center relative space-y-6 max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
         
         {/* DOWNLOAD STARTED BANNER */}
         {downloadStarted && (

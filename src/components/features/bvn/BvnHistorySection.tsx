@@ -43,17 +43,6 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
   const [selectedDetails, setSelectedDetails] = useState<BvnHistoryItem | null>(null);
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
 
-  // Lock body scroll when applicant details modal is open
-  useEffect(() => {
-    if (selectedDetails) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = originalOverflow || "unset";
-      };
-    }
-  }, [selectedDetails]);
-
   // Silent Blob Downloader
   const handleDirectDownload = async (item: BvnHistoryItem) => {
     try {
@@ -271,8 +260,8 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
         const detailsAddress = selectedDemo.address || selectedDetails.address;
 
         return (
-          <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-hidden touch-none">
-            <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 text-left relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-[999999] h-[100dvh] w-screen flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain touch-none">
+            <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 text-left relative max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
