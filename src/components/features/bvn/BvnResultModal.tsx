@@ -75,15 +75,21 @@ export default function BvnResultModal({
   // Extract demographic fields nicely
   const resolvedFullName =
     propFullName ||
-    [userData?.first_name, userData?.middle_name, userData?.last_name].filter(Boolean).join(" ") ||
+    [
+      userData?.first_name || (userData as any)?.firstname || (userData as any)?.firstName,
+      userData?.middle_name || (userData as any)?.middlename || (userData as any)?.middleName,
+      userData?.last_name || (userData as any)?.surname || (userData as any)?.lastname || (userData as any)?.lastName,
+    ].filter(Boolean).join(" ") ||
     (userData?.fullName as string) ||
-    "Verified BVN Account Holder";
+    (userData as any)?.fullname ||
+    (userData as any)?.name ||
+    "Verified BVN Account Holder (Enclosed in Official Slip)";
 
-  const resolvedDob = userData?.date_of_birth || userData?.dob;
-  const resolvedGender = userData?.gender;
-  const resolvedPhone = userData?.phone_number || userData?.phone;
-  const resolvedBvn = userData?.bvn || bvn;
-  const resolvedAddress = userData?.address;
+  const resolvedDob = userData?.date_of_birth || userData?.dob || (userData as any)?.birthdate;
+  const resolvedGender = userData?.gender || (userData as any)?.sex;
+  const resolvedPhone = userData?.phone_number || userData?.phone || (userData as any)?.telephoneno;
+  const resolvedBvn = userData?.bvn || (userData as any)?.bvn || bvn;
+  const resolvedAddress = userData?.address || (userData as any)?.residence_address;
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-y-auto">

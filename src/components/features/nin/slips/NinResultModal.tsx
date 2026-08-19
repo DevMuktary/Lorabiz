@@ -65,14 +65,22 @@ export default function NinResultModal({
   // Extract demographic fields nicely
   const resolvedFullName =
     propFullName ||
-    [userData?.first_name, userData?.middle_name, userData?.last_name].filter(Boolean).join(" ") ||
-    "Verified Citizen";
+    [
+      userData?.first_name || (userData as any)?.firstname || (userData as any)?.firstName || (userData as any)?.given_name,
+      userData?.middle_name || (userData as any)?.middlename || (userData as any)?.middleName,
+      userData?.last_name || (userData as any)?.surname || (userData as any)?.lastname || (userData as any)?.lastName || (userData as any)?.family_name,
+    ].filter(Boolean).join(" ") ||
+    (userData?.fullName as string) ||
+    (userData as any)?.fullname ||
+    (userData as any)?.name ||
+    (userData as any)?.applicant_name ||
+    "Verified Citizen (Enclosed in Official Slip)";
 
-  const resolvedDob = userData?.date_of_birth || userData?.dob;
-  const resolvedGender = userData?.gender;
-  const resolvedPhone = userData?.phone_number || userData?.phone;
-  const resolvedNin = userData?.nin || (searchType === "NIN" ? identifier : undefined);
-  const resolvedAddress = userData?.address;
+  const resolvedDob = userData?.date_of_birth || userData?.dob || (userData as any)?.birthdate || (userData as any)?.birth_date;
+  const resolvedGender = userData?.gender || (userData as any)?.sex;
+  const resolvedPhone = userData?.phone_number || userData?.phone || (userData as any)?.telephoneno || (userData as any)?.mobile;
+  const resolvedNin = userData?.nin || (userData as any)?.vnin || (searchType === "NIN" ? identifier : undefined);
+  const resolvedAddress = userData?.address || (userData as any)?.residence_address || (userData as any)?.residential_address;
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-y-auto">

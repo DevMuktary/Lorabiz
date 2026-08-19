@@ -91,6 +91,19 @@ export async function executeBvnSlipGeneration(
       };
     }
 
+    const debugKeys = Object.keys(data).filter((k) => !["pdf_base64", "pdf_data", "pdf", "slip"].includes(k));
+    console.log(`📡 [DataVerify BVN Response: ${url}] [HTTP ${response.status}]`, {
+      status: data.status,
+      response_code: data.response_code,
+      message: data.message || data.error,
+      has_pdf: Boolean(data.pdf_base64 || data.pdf_data || data.pdf || data.slip),
+      root_keys_received: debugKeys,
+      user_data: data.user_data || data.data || data.details || null,
+      raw_sample: Object.fromEntries(
+        debugKeys.map((k) => [k, typeof data[k] === "object" ? data[k] : String(data[k]).slice(0, 100)])
+      ),
+    });
+
     const isSuccess =
       data.status === "success" ||
       data.status === true ||
@@ -101,17 +114,31 @@ export async function executeBvnSlipGeneration(
 
     if (isSuccess) {
       const pdfBase64 = data.pdf_base64 || data.pdf_data || data.pdf || data.slip || data.data?.pdf_base64 || data.data?.pdf;
-      const userData: BvnUserData = data.user_data || data.data || data.details || {};
+      const userData: any = data.user_data || data.data || data.details || data.demographics || data.result || data || {};
 
-      const firstName = userData.first_name || (userData as any).firstName || "";
-      const middleName = userData.middle_name || (userData as any).middleName || "";
-      const lastName = userData.last_name || (userData as any).lastName || "";
+      const firstName = (userData.first_name || userData.firstname || userData.firstName || data.first_name || data.firstname || "") as string;
+      const middleName = (userData.middle_name || userData.middlename || userData.middleName || data.middle_name || data.middlename || "") as string;
+      const lastName = (userData.last_name || userData.surname || userData.lastname || userData.lastName || data.last_name || data.surname || "") as string;
 
-      const fullName =
-        [firstName, middleName, lastName].filter(Boolean).join(" ") ||
-        (userData as any).fullName ||
-        (userData as any).name ||
-        "Verified Account Holder";
+      const rawFullName = (userData.fullname || userData.fullName || userData.name || data.fullname || data.fullName || data.name || "") as string;
+      const constructedFullName = [firstName, middleName, lastName].filter(Boolean).join(" ");
+      const fullName = constructedFullName || rawFullName || undefined;
+
+      const gender = (userData.gender || userData.sex || data.gender || data.sex || undefined) as string | undefined;
+      const dob = (userData.date_of_birth || userData.dob || userData.birthdate || data.date_of_birth || data.dob || undefined) as string | undefined;
+      const phone = (userData.phone_number || userData.phone || userData.telephoneno || userData.mobile || data.phone_number || data.phone || undefined) as string | undefined;
+      const address = (userData.address || userData.residence_address || data.address || undefined) as string | undefined;
+      const bvn = (userData.bvn || data.bvn || cleanBvn) as string;
+
+      console.log(`✅ [DataVerify BVN Extracted Demographics]`, {
+        fullName,
+        firstName,
+        lastName,
+        gender,
+        dob,
+        phone,
+        hasAddress: Boolean(address),
+      });
 
       return {
         success: true,
@@ -122,11 +149,11 @@ export async function executeBvnSlipGeneration(
         firstName,
         lastName,
         middleName,
-        gender: userData.gender || (userData as any).sex || undefined,
-        dob: userData.date_of_birth || userData.dob || undefined,
-        phone: userData.phone_number || userData.phone || undefined,
-        address: userData.address || undefined,
-        bvn: userData.bvn || cleanBvn,
+        gender,
+        dob,
+        phone,
+        address,
+        bvn,
         message: data.message || "BVN slip generated successfully.",
         provider: "DATAVERIFY",
       };
