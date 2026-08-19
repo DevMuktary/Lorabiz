@@ -163,13 +163,13 @@ export default function NinModificationPage() {
           <Spinner className="h-8 w-8 animate-spin text-primary" weight="bold" />
           <p className="text-sm font-bold text-muted-foreground">Loading modification service...</p>
         </div>
-      ) : (
+      ) : hasConsented ? (
         <ModificationForm
           pricing={pricing}
           onSuccess={handleSubmissionSuccess}
           onRequireConsent={() => setHasConsented(false)}
         />
-      )}
+      ) : null}
 
     </div>
   );

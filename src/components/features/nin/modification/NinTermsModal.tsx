@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { 
   ArrowDown,
   PenNib, 
   Eraser, 
-  CheckCircle,
-  WarningCircle,
+  CheckCircle, 
+  WarningCircle, 
   Spinner,
-  ShieldCheck
+  ShieldCheck 
 } from "@phosphor-icons/react";
 
 interface NinTermsModalProps {
@@ -230,16 +231,27 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed }: NinTermsM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-card border border-border shadow-2xl rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden text-foreground animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-background/98 sm:bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-card border border-border shadow-2xl rounded-3xl max-w-2xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden text-foreground animate-in zoom-in-95 duration-200">
         
-        {/* Modal Header */}
+        {/* Modal Header with NIMC Logo */}
         <div className="p-5 sm:p-6 border-b border-border bg-card flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
-              <ShieldCheck weight="bold" className="h-6 w-6" />
+          <div className="flex items-center gap-3.5">
+            <div className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
+              <Image 
+                src="/nimc.png" 
+                alt="NIMC Logo" 
+                width={40} 
+                height={40} 
+                className="object-contain" 
+                priority 
+              />
             </div>
             <div>
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
+                <ShieldCheck weight="bold" className="h-3 w-3" />
+                National Identity Management Commission
+              </div>
               <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
                 NIN Modification Terms & Authorization
               </h2>
