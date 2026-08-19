@@ -71,13 +71,13 @@ const LIVE_SERVICES: ServiceItem[] = [
     active: true,
   },
   {
-    title: "BVN Verification Slips",
+    title: "BVN Services",
     category: "Bank Verification (NIBSS)",
-    description: "Generate official Standard and Premium BVN verification slips with authenticated NIBSS record.",
+    description: "BVN slips, BVN retrieval, and BVN modification.",
     logo: "/nibss.png",
     href: "/dashboard/bvn",
     turnaround: "Instant Delivery",
-    actionText: "Verify BVN",
+    actionText: "Explore BVN Services",
     active: true,
   },
   {

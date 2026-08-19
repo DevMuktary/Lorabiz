@@ -85,6 +85,8 @@ Protected by NextAuth middleware (requires `role === "USER"`):
 - `/dashboard/nin/slips`: NIN verification & slip downloads (Regular, Standard, Premium).
 - `/dashboard/nin/ipe`: IPE Clearance submission form (Tracking ID input, statutory attestation, wallet debit).
 - `/dashboard/nin/ipe/history`: Dedicated IPE Clearance history and real-time status tracker.
+- `/dashboard/bvn`: BVN Services Hub (BVN Verification, BVN Retrieval).
+- `/dashboard/bvn/slip`: BVN verification & slip downloads (Standard, Premium).
 - `/dashboard/scuml`: SCUML certificate application.
 - `/dashboard/tax-id`: Individual and Corporate TIN processing.
 - `/dashboard/airtime`: Airtime & data top-up gateway.
@@ -170,4 +172,19 @@ When a new service (e.g., IPE Clearance, NIN Personalization, NIN Validation) is
 
 ---
 
-*Last Updated: 2026-08-17 | Maintained continuously as project memory.*
+## 8. BVN Services Architecture & Implementation
+
+### Architecture & Service Hub:
+- **Central BVN Hub (`/dashboard/bvn`)**:
+  - The central gateway for Bank Verification Number (NIBSS) operations.
+  - Houses active services (BVN Verification Slips) and upcoming services (BVN Retrieval).
+- **BVN Slip Verification (`/dashboard/bvn/slip`)**:
+  - Frontend: `src/app/dashboard/bvn/slip/page.tsx`
+  - Components: `src/components/features/bvn/` (`BvnConfirmationModal.tsx`, `BvnResultModal.tsx`, `BvnHistorySection.tsx`)
+  - Backend API: `src/app/api/bvn/verify/route.ts` (Generates official PDF slips via DataVerify API, uploads to Cloudinary, executes wallet deductions)
+  - Status API: `src/app/api/bvn/status/route.ts` (Fetches dynamic pricing and active slip flags)
+  - History API: `src/app/api/bvn/history/route.ts` (Fetches user-scoped 24-hour slip print logs)
+
+---
+
+*Last Updated: 2026-08-19 | Maintained continuously as project memory.*

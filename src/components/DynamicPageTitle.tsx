@@ -26,8 +26,8 @@ export default function DynamicPageTitle() {
     else if (pathname.includes('/dashboard/cac')) title = "CAC Services | Lorabiz";
     else if (pathname.includes('/dashboard/scuml/history')) title = "SCUML History | Lorabiz";
     else if (pathname.includes('/dashboard/scuml')) title = "SCUML Registration | Lorabiz";
-    else if (pathname.includes('/dashboard/tax-id/history')) title = "Tax ID History | Lorabiz";
-    else if (pathname.includes('/dashboard/bvn')) title = "BVN Verification Slips | Lorabiz";
+    else if (pathname.includes('/dashboard/bvn/slip')) title = "BVN Slip Verification | Lorabiz";
+    else if (pathname.includes('/dashboard/bvn')) title = "BVN Services | Lorabiz";
     else if (pathname.includes('/dashboard/nin/slips')) title = "NIN Slip Verification | Lorabiz";
     else if (pathname.includes('/dashboard/nin')) title = "NIN Identity Services | Lorabiz";
     else if (pathname.includes('/dashboard/transactions')) title = "Transaction History | Lorabiz";
