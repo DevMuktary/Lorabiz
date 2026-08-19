@@ -16,6 +16,7 @@ interface BvnConfirmationModalProps {
   bvn: string;
   slipType: "bvn_standard" | "bvn_premium";
   slipLabel: string;
+  slipImage?: string;
   price: number;
   walletBalance: number;
 }
@@ -28,6 +29,7 @@ export default function BvnConfirmationModal({
   bvn,
   slipType,
   slipLabel,
+  slipImage,
   price,
   walletBalance,
 }: BvnConfirmationModalProps) {
@@ -121,30 +123,51 @@ export default function BvnConfirmationModal({
             </div>
           </div>
         ) : (
-          /* SUFFICIENT BALANCE - CONFIRMATION WITH NIBSS CARD BADGE */
+          /* SUFFICIENT BALANCE - CONFIRMATION WITH SPECIMEN PREVIEW */
           <div className="space-y-4">
             
-            {/* NIBSS Specimen Header */}
-            <div className="p-3.5 rounded-2xl bg-secondary/60 border border-border flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white p-1 border border-border/80 flex items-center justify-center shrink-0 shadow-sm">
-                <Image 
-                  src="/nibss.png" 
-                  alt="NIBSS" 
-                  width={36} 
-                  height={36} 
-                  className="object-contain"
-                />
+            {/* Specimen Slip Preview Container */}
+            {slipImage ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground px-1">
+                  <span>Slip Format Specimen</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{slipLabel}</span>
+                </div>
+                <div className="relative w-full h-36 bg-secondary/30 rounded-2xl border border-border overflow-hidden p-2 flex items-center justify-center">
+                  <div className="relative w-full h-full">
+                    <Image 
+                      src={slipImage} 
+                      alt={slipLabel} 
+                      fill 
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  {slipType === "bvn_premium" ? "Premium Card Layout" : "Standard Biometric Layout"}
-                </span>
-                <h4 className="text-sm font-bold text-foreground truncate">{slipLabel}</h4>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  Official NIBSS Verification Slip with QR Verification
-                </p>
+            ) : (
+              /* Fallback NIBSS Specimen Header */
+              <div className="p-3.5 rounded-2xl bg-secondary/60 border border-border flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white p-1 border border-border/80 flex items-center justify-center shrink-0 shadow-sm">
+                  <Image 
+                    src="/nibss.png" 
+                    alt="NIBSS" 
+                    width={36} 
+                    height={36} 
+                    className="object-contain"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                    {slipType === "bvn_premium" ? "Premium Card Layout" : "Standard Biometric Layout"}
+                  </span>
+                  <h4 className="text-sm font-bold text-foreground truncate">{slipLabel}</h4>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Official NIBSS Verification Slip with QR Verification
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Transaction Breakdown */}
             <div className="bg-secondary/40 p-4 rounded-2xl border border-border space-y-2.5 text-xs">

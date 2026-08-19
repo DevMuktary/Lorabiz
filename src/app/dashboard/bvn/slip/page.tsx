@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { 
   ShieldCheck, Check, Sparkle, 
-  IdentificationCard, IdentificationBadge, 
-  ArrowLeft, CheckCircle, WarningCircle, X
+  Eye, ArrowLeft, CheckCircle, WarningCircle, X,
+  FileText
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import BvnConfirmationModal from "@/components/features/bvn/BvnConfirmationModal";
@@ -19,7 +20,7 @@ interface SlipOption {
   id: SlipTier;
   label: string;
   badge: string;
-  description: string;
+  img: string;
   defaultPrice: number;
 }
 
@@ -28,25 +29,33 @@ const BVN_SLIP_OPTIONS: SlipOption[] = [
     id: "bvn_standard",
     label: "Standard BVN Slip",
     badge: "Official Layout",
-    description: "Full A4 slip layout with complete demographic profile and verification barcodes.",
+    img: "/examples/nin_standard_example.png",
     defaultPrice: 700,
   },
   {
     id: "bvn_premium",
     label: "Premium BVN Card Slip",
     badge: "Card / Lamination Ready",
-    description: "Compact wallet-size ID card format designed specifically for plastic lamination.",
+    img: "/examples/nin_premium_example.png",
     defaultPrice: 1000,
   },
 ];
 
 export default function BvnSlipVerificationPage() {
+  const [mounted, setMounted] = useState(false);
+  const [showIntroModal, setShowIntroModal] = useState(true);
   const [slipType, setSlipType] = useState<SlipTier>("bvn_standard");
   const [bvn, setBvn] = useState("");
   const [consent1, setConsent1] = useState(false);
   const [consent2, setConsent2] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showNotice, setShowNotice] = useState(true);
+
+  // Lightbox State for "View Example"
+  const [lightbox, setLightbox] = useState<{ isOpen: boolean; src: string; label: string }>({
+    isOpen: false,
+    src: "",
+    label: "",
+  });
 
   const [prices, setPrices] = useState<Record<string, number>>({
     BVN_STANDARD: 700,
@@ -75,6 +84,10 @@ export default function BvnSlipVerificationPage() {
     isOpen: false,
     status: "loading",
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch Pricing, Status, Wallet Balance, and 24-Hour History
   const fetchPageData = async () => {
@@ -140,7 +153,7 @@ export default function BvnSlipVerificationPage() {
       return;
     }
     if (!consent1 || !consent2) {
-      setError("You must check all statutory declarations to proceed.");
+      setError("You must accept all statutory declarations to proceed.");
       return;
     }
     if (!isSelectedSlipAvailable) {
@@ -213,24 +226,63 @@ export default function BvnSlipVerificationPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
       
-      {/* Top Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching SCUML/Tax ID) */}
+      {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
+          onClick={() => setShowIntroModal(false)}
+        >
+          <div 
+            className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500 relative text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              type="button"
+              onClick={() => setShowIntroModal(false)}
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <X weight="bold" className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-12 w-12 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <ShieldCheck weight="fill" className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h2 className="text-xl font-black text-foreground">Statutory Compliance Notice</h2>
+            </div>
+            
+            <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+              <p>
+                This service is designed for users who need to confirm their BVN details or obtain a slip-like card of their BVN for official use.
+              </p>
+              <p>
+                Please do not search BVN details of others without express permission or authorization. Unauthorized lookup violates data protection regulation.
+              </p>
+            </div>
+
+            <button 
+              type="button"
+              onClick={() => setShowIntroModal(false)}
+              className="mt-7 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 rounded-xl transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
+            >
+              I Understand
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Top Navigation (Only Back to BVN Services) */}
+      <div>
         <Link 
           href="/dashboard/bvn" 
-          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/60 hover:bg-secondary px-3.5 py-2 rounded-xl cursor-pointer w-fit"
+          className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit"
         >
-          <ArrowLeft weight="bold" className="h-3.5 w-3.5" />
+          <ArrowLeft weight="bold" className="h-4 w-4" />
           Back to BVN Services
-        </Link>
-        <Link 
-          href="/dashboard" 
-          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-xl cursor-pointer w-fit"
-        >
-          Dashboard &rarr;
         </Link>
       </div>
 
-      {/* Header (No Balance Display) */}
+      {/* Header (Clean, No Balance Display) */}
       <div className="flex items-center gap-4 border-b border-border pb-5">
         <div className="h-14 w-14 rounded-2xl bg-white flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
           <Image 
@@ -256,35 +308,7 @@ export default function BvnSlipVerificationPage() {
         </div>
       </div>
 
-      {/* Statutory Compliance Notice Banner */}
-      {showNotice && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200 relative animate-in fade-in duration-200">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5">
-                <ShieldCheck size={20} weight="bold" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-black text-foreground">
-                  Statutory Compliance Notice
-                </h3>
-                <p className="text-xs leading-relaxed text-muted-foreground font-medium">
-                  This service is designed for users who need to confirm their BVN details or obtain a slip-like card of their BVN for official use. Please do not search BVN details of others without express permission or authorization. Unauthorized lookup violates data protection regulation.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowNotice(false)}
-              className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 rounded-lg transition-colors cursor-pointer shrink-0 border border-emerald-500/30"
-            >
-              I Understand
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Form */}
+      {/* Verification Form */}
       <form onSubmit={handleProceedToConfirm} className="space-y-6">
         
         {error && (
@@ -294,7 +318,7 @@ export default function BvnSlipVerificationPage() {
           </div>
         )}
 
-        {/* Input */}
+        {/* BVN Input */}
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex justify-between">
             <span>11-Digit Bank Verification Number (BVN)</span>
@@ -322,13 +346,13 @@ export default function BvnSlipVerificationPage() {
           </div>
         </div>
 
-        {/* Compact Slip Format Cards */}
-        <div className="space-y-3">
+        {/* Sleek Slip Format Selection (Matching NIN slips layout) */}
+        <div className="space-y-2.5">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
             Select Slip Format
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="space-y-2">
             {BVN_SLIP_OPTIONS.map((option) => {
               const isSelected = slipType === option.id;
               const isAvailable = activeMap[option.id] !== false;
@@ -340,7 +364,7 @@ export default function BvnSlipVerificationPage() {
                   onClick={() => {
                     if (isAvailable) setSlipType(option.id);
                   }}
-                  className={`p-4 rounded-2xl border-2 flex flex-col justify-between space-y-3 transition-all ${
+                  className={`p-3.5 sm:p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
                     !isAvailable
                       ? "opacity-50 bg-secondary/20 border-border/60 cursor-not-allowed"
                       : isSelected
@@ -348,44 +372,47 @@ export default function BvnSlipVerificationPage() {
                       : "bg-card border-border hover:bg-secondary/40 cursor-pointer"
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
-                        isSelected
-                          ? "bg-emerald-600 text-white border-emerald-600"
-                          : "bg-secondary text-muted-foreground border-border"
-                      }`}>
-                        {option.id === "bvn_premium" ? (
-                          <IdentificationBadge size={20} weight="bold" />
-                        ) : (
-                          <IdentificationCard size={20} weight="bold" />
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                          {option.badge}
-                        </span>
-                        <h3 className="text-sm font-bold text-foreground">{option.label}</h3>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-3.5">
+                    <input 
+                      type="radio" 
+                      name="slipType" 
+                      disabled={!isAvailable}
+                      checked={isSelected} 
+                      onChange={() => {
+                        if (isAvailable) setSlipType(option.id);
+                      }} 
+                      className="text-emerald-600 focus:ring-emerald-600 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    
+                    <div className="flex items-center flex-wrap gap-2.5">
+                      <span className={`font-bold text-sm ${!isAvailable ? "text-muted-foreground" : "text-foreground"}`}>
+                        {option.label}
+                      </span>
+                      
+                      {/* Clickable Eye Icon + "View Example" Button */}
+                      <button 
+                        type="button" 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setLightbox({ isOpen: true, src: option.img, label: option.label }); 
+                        }} 
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-emerald-600 bg-secondary hover:bg-secondary/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                        title={`View ${option.label} Example`}
+                      >
+                        <Eye size={14} weight="bold" />
+                        <span>View Example</span>
+                      </button>
 
-                    <div className="text-right">
-                      <span className="text-base font-black text-foreground">₦{price.toLocaleString()}</span>
-                      <p className="text-[10px] text-muted-foreground">Instant</p>
+                      {!isAvailable && (
+                        <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                          Unavailable
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <p className="text-xs text-muted-foreground leading-snug">
-                    {option.description}
-                  </p>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
-                    <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-                      <Check size={13} className="text-emerald-600" weight="bold" /> High-Resolution PDF
-                    </span>
-                    <span className={`text-[11px] font-bold ${isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                      {isSelected ? "Selected" : "Select Format"}
-                    </span>
+                  <div className={`font-black text-sm shrink-0 pl-2 ${!isAvailable ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                    ₦{price.toLocaleString()}
                   </div>
                 </div>
               );
@@ -393,13 +420,9 @@ export default function BvnSlipVerificationPage() {
           </div>
         </div>
 
-        {/* Statutory Consent Checkboxes */}
-        <div className="p-4 rounded-2xl bg-secondary/30 border border-border/60 space-y-3">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
-            Statutory Declaration &amp; Consent
-          </label>
-
-          <label className="flex items-start gap-3 cursor-pointer select-none">
+        {/* Statutory Disclaimers */}
+        <div className="bg-secondary/30 border border-border rounded-xl p-3.5 sm:p-4 space-y-2.5">
+          <label className="flex items-start gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">
             <input
               type="checkbox"
               checked={consent1}
@@ -407,14 +430,12 @@ export default function BvnSlipVerificationPage() {
                 setConsent1(e.target.checked);
                 if (error) setError(null);
               }}
-              className="mt-1 h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+              className="mt-0.5 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 border-border cursor-pointer"
             />
-            <span className="text-xs text-muted-foreground leading-relaxed">
-              I certify and declare that I am the authorized owner of this BVN or have obtained explicit legal authorization from the BVN holder.
-            </span>
+            <span>I declare that I am the owner of this BVN or have lawful consent to query this record.</span>
           </label>
 
-          <label className="flex items-start gap-3 cursor-pointer select-none">
+          <label className="flex items-start gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">
             <input
               type="checkbox"
               checked={consent2}
@@ -422,32 +443,28 @@ export default function BvnSlipVerificationPage() {
                 setConsent2(e.target.checked);
                 if (error) setError(null);
               }}
-              className="mt-1 h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+              className="mt-0.5 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 border-border cursor-pointer"
             />
-            <span className="text-xs text-muted-foreground leading-relaxed">
-              I consent to the statutory retrieval of this record for slip generation.
-            </span>
+            <span>I consent to the statutory retrieval of this record for slip generation.</span>
           </label>
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end pt-1">
-          <Button
-            type="submit"
-            disabled={!isFormValid || isGenerating}
-            className="w-full sm:w-auto h-12 px-8 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm shadow-md shadow-emerald-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-          >
-            <Sparkle size={18} weight="fill" />
-            <span>Verify &amp; Generate ({activeLabel} - ₦{activePrice.toLocaleString()})</span>
-          </Button>
-        </div>
+        {/* Clean Submit Button */}
+        <Button
+          type="submit"
+          disabled={!isFormValid || isGenerating}
+          className="w-full h-12 font-black text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+        >
+          <Sparkle size={18} weight="fill" />
+          <span>Verify &amp; Generate</span>
+        </Button>
 
       </form>
 
       {/* 24-Hour Print History at the Bottom (Matching NIN layout) */}
       <BvnHistorySection history={history} title="24-Hour BVN Print History" />
 
-      {/* Confirmation Modal */}
+      {/* Confirmation & Insufficient Balance Modal (with Specimen Preview) */}
       <BvnConfirmationModal
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
@@ -456,6 +473,7 @@ export default function BvnSlipVerificationPage() {
         bvn={bvn}
         slipType={slipType}
         slipLabel={activeLabel}
+        slipImage={activeOption.img}
         price={activePrice}
         walletBalance={walletBalance}
       />
@@ -473,6 +491,38 @@ export default function BvnSlipVerificationPage() {
         errorMsg={resultModalState.errorMsg}
         onClose={() => setResultModalState((prev) => ({ ...prev, isOpen: false }))}
       />
+
+      {/* Lightbox Specimen Preview Modal */}
+      {lightbox.isOpen && (
+        <div 
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
+        >
+          <div className="relative w-full max-w-lg flex flex-col items-center animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full bg-card border border-border px-4 py-2.5 rounded-t-2xl flex items-center justify-between">
+              <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
+              <button 
+                type="button" 
+                onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
+                className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <X size={18} weight="bold" />
+              </button>
+            </div>
+            <div className="relative w-full h-80 sm:h-96 bg-card border-x border-b border-border rounded-b-2xl overflow-hidden p-3 flex items-center justify-center">
+              <div className="relative w-full h-full">
+                <Image 
+                  src={lightbox.src} 
+                  alt={lightbox.label} 
+                  fill 
+                  className="object-contain" 
+                  priority 
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
