@@ -10,11 +10,12 @@ import {
   WarningCircle, 
   ArrowRight, 
   ShieldCheck, 
-  PlusCircle, 
   Spinner,
   IdentificationCard,
   CursorClick,
-  X
+  X,
+  Wallet,
+  ArrowsClockwise
 } from "@phosphor-icons/react";
 import { NIGERIA_DATA } from "@/components/features/cac/register/biz-name/schema";
 
@@ -29,12 +30,14 @@ export interface PricingConfig {
 
 interface ModificationFormProps {
   pricing: Record<string, PricingConfig>;
+  walletBalance: number;
   onSuccess: (result: { trackingId: string; type: string; amountPaid: number }) => void;
   onRequireConsent?: () => void;
 }
 
 export function ModificationForm({
   pricing,
+  walletBalance,
   onSuccess,
   onRequireConsent,
 }: ModificationFormProps) {
@@ -58,7 +61,6 @@ export function ModificationForm({
   const [statutoryConsent, setStatutoryConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isInsufficientBalance, setIsInsufficientBalance] = useState(false);
 
   // Nigerian States and LGAs
   const stateOptions = useMemo(() => {
@@ -80,11 +82,15 @@ export function ModificationForm({
       }
     : null;
 
+  const currentPrice = activePricing?.price || 0;
+  const isInsufficient = walletBalance < currentPrice;
+  const shortfall = Math.max(0, currentPrice - walletBalance);
+  const remainingBalance = Math.max(0, walletBalance - currentPrice);
+
   // Validate fields before showing review modal
   const handleProceedToReview = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-    setIsInsufficientBalance(false);
 
     if (!selectedType) {
       setErrorMessage("Please select a modification service first.");
@@ -145,7 +151,6 @@ export function ModificationForm({
   const handleFinalSubmit = async () => {
     if (!selectedType || !activePricing) return;
     setErrorMessage(null);
-    setIsInsufficientBalance(false);
 
     if (!statutoryConsent) {
       setErrorMessage("Please check the statutory consent affirmation.");
@@ -189,9 +194,6 @@ export function ModificationForm({
         } else {
           const msg = data.message || "Failed to submit modification request.";
           setErrorMessage(msg);
-          if (msg.toLowerCase().includes("insufficient") || msg.toLowerCase().includes("balance")) {
-            setIsInsufficientBalance(true);
-          }
         }
       }
     } catch (err) {
@@ -205,141 +207,154 @@ export function ModificationForm({
   return (
     <div className="space-y-6 sm:space-y-8 font-sans">
       
-      {/* 1. Modification Type Selector Cards (Always visible as 3 buttons) */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <label className="block text-xs font-black uppercase tracking-wider text-muted-foreground">
-            Select Modification Service
-          </label>
-          {selectedType && (
+      {/* 1. Service Selection State */}
+      {!selectedType ? (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-muted-foreground">
+              Select Modification Service
+            </label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Choose the record type you want to modify on your National Identity profile.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            
+            {/* Change of Name */}
             <button
               type="button"
               onClick={() => {
-                setSelectedType(null);
+                setSelectedType("CHANGE_OF_NAME");
                 setErrorMessage(null);
               }}
-              className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
             >
-              <X weight="bold" className="h-3.5 w-3.5" />
-              <span>Clear Selection</span>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                  <User weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  ₦{(pricing["CHANGE_OF_NAME"]?.price || 2500).toLocaleString()}
+                </span>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">Change of Name</h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Update First Name, Surname, or Middle Name on your NIN record.
+                </p>
+              </div>
             </button>
-          )}
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          
-          {/* Change of Name */}
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedType("CHANGE_OF_NAME");
-              setErrorMessage(null);
-            }}
-            className={`p-4 sm:p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
-              selectedType === "CHANGE_OF_NAME"
-                ? "bg-primary/10 border-primary shadow-lg ring-2 ring-primary"
-                : "bg-card hover:bg-secondary/40 border-border hover:border-border/80"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center font-bold ${
-                selectedType === "CHANGE_OF_NAME" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
-              }`}>
-                <User weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+            {/* Change of Phone */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedType("CHANGE_OF_PHONE");
+                setErrorMessage(null);
+              }}
+              className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                  <Phone weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  ₦{(pricing["CHANGE_OF_PHONE"]?.price || 2000).toLocaleString()}
+                </span>
               </div>
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                ₦{(pricing["CHANGE_OF_NAME"]?.price || 2500).toLocaleString()}
-              </span>
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">Change of Name</h3>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Update First Name, Surname, or Middle Name on your NIN record.
-              </p>
-            </div>
-          </button>
-
-          {/* Change of Phone */}
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedType("CHANGE_OF_PHONE");
-              setErrorMessage(null);
-            }}
-            className={`p-4 sm:p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
-              selectedType === "CHANGE_OF_PHONE"
-                ? "bg-primary/10 border-primary shadow-lg ring-2 ring-primary"
-                : "bg-card hover:bg-secondary/40 border-border hover:border-border/80"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center font-bold ${
-                selectedType === "CHANGE_OF_PHONE" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
-              }`}>
-                <Phone weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+              <div>
+                <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">Change of Phone</h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Link a new active phone number to your National Identity record.
+                </p>
               </div>
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                ₦{(pricing["CHANGE_OF_PHONE"]?.price || 2000).toLocaleString()}
-              </span>
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">Change of Phone</h3>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Link a new active phone number to your National Identity record.
-              </p>
-            </div>
-          </button>
+            </button>
 
-          {/* Change of Address */}
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedType("CHANGE_OF_ADDRESS");
-              setErrorMessage(null);
-            }}
-            className={`p-4 sm:p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
-              selectedType === "CHANGE_OF_ADDRESS"
-                ? "bg-primary/10 border-primary shadow-lg ring-2 ring-primary"
-                : "bg-card hover:bg-secondary/40 border-border hover:border-border/80"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center font-bold ${
-                selectedType === "CHANGE_OF_ADDRESS" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
-              }`}>
-                <MapPin weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+            {/* Change of Address */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedType("CHANGE_OF_ADDRESS");
+                setErrorMessage(null);
+              }}
+              className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                  <MapPin weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  ₦{(pricing["CHANGE_OF_ADDRESS"]?.price || 2000).toLocaleString()}
+                </span>
               </div>
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                ₦{(pricing["CHANGE_OF_ADDRESS"]?.price || 2000).toLocaleString()}
-              </span>
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">Change of Address</h3>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Update your registered residential address, State, and LGA.
-              </p>
-            </div>
-          </button>
+              <div>
+                <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">Change of Address</h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Update your registered residential address, State, and LGA.
+                </p>
+              </div>
+            </button>
 
-        </div>
-      </div>
-
-      {/* 2. Empty State when No Category is Selected */}
-      {!selectedType && (
-        <div className="p-8 sm:p-12 rounded-3xl bg-card border border-dashed border-border text-center space-y-3">
-          <div className="h-14 w-14 rounded-2xl bg-secondary/80 text-muted-foreground flex items-center justify-center mx-auto">
-            <CursorClick weight="duotone" className="h-7 w-7 text-primary" />
           </div>
-          <h3 className="text-base sm:text-lg font-bold text-foreground">
-            Please Select a Service Above
-          </h3>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-            Click on <strong>Change of Name</strong>, <strong>Change of Phone</strong>, or <strong>Change of Address</strong> above to reveal and fill out the required application fields.
-          </p>
+
+          {/* Prompt Placeholder when no service is active */}
+          <div className="p-8 sm:p-12 rounded-3xl bg-card border border-dashed border-border text-center space-y-3">
+            <div className="h-14 w-14 rounded-2xl bg-secondary/80 text-muted-foreground flex items-center justify-center mx-auto">
+              <CursorClick weight="duotone" className="h-7 w-7 text-primary" />
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-foreground">
+              Please Select a Service Above
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Click on <strong>Change of Name</strong>, <strong>Change of Phone</strong>, or <strong>Change of Address</strong> above to open the application form.
+            </p>
+          </div>
+        </div>
+      ) : (
+        /* Selected Service Active Banner (Other options hidden) */
+        <div className="p-4 sm:p-5 rounded-3xl bg-card border border-primary/30 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-200">
+          <div className="flex items-center gap-3.5">
+            <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0 shadow-sm">
+              {selectedType === "CHANGE_OF_NAME" && <User weight="duotone" className="h-6 w-6" />}
+              {selectedType === "CHANGE_OF_PHONE" && <Phone weight="duotone" className="h-6 w-6" />}
+              {selectedType === "CHANGE_OF_ADDRESS" && <MapPin weight="duotone" className="h-6 w-6" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
+                  Active Service
+                </span>
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                  ₦{currentPrice.toLocaleString()}
+                </span>
+              </div>
+              <h2 className="text-base sm:text-lg font-black text-foreground mt-0.5">
+                {activePricing?.label}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {selectedType === "CHANGE_OF_NAME" && "Update First Name, Surname, or Middle Name on your NIN record."}
+                {selectedType === "CHANGE_OF_PHONE" && "Link a new active phone number to your National Identity record."}
+                {selectedType === "CHANGE_OF_ADDRESS" && "Update your registered residential address, State, and LGA."}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedType(null);
+              setErrorMessage(null);
+            }}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs transition-all shrink-0 cursor-pointer shadow-sm"
+          >
+            <ArrowsClockwise weight="bold" className="h-4 w-4 text-primary" />
+            <span>Change Service</span>
+          </button>
         </div>
       )}
 
-      {/* 3. Service Maintenance Banner if Inactive */}
+      {/* Service Maintenance Banner if Inactive */}
       {selectedType && activePricing && !activePricing.isActive && (
         <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-sm flex items-center gap-3">
           <WarningCircle weight="bold" className="h-5 w-5 shrink-0" />
@@ -347,11 +362,11 @@ export function ModificationForm({
         </div>
       )}
 
-      {/* 4. Dynamic Form: Only rendered when a category is selected */}
+      {/* Dynamic Form: Rendered when a category is selected */}
       {selectedType && activePricing && (
         <form onSubmit={handleProceedToReview} className="p-5 sm:p-8 rounded-3xl bg-card border border-border shadow-sm space-y-5 sm:space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-200">
           
-          {/* Header with Service & Fee */}
+          {/* Form Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 gap-2">
             <div>
               <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
@@ -601,13 +616,8 @@ export function ModificationForm({
             </div>
           )}
 
-          {/* Submit Review Button */}
-          <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck weight="bold" className="h-4 w-4 text-emerald-500 shrink-0" />
-              <span>End-to-End Encrypted Identity Modification Request</span>
-            </div>
-
+          {/* Form Actions Footer */}
+          <div className="pt-4 border-t border-border flex items-center justify-end">
             <button
               type="submit"
               disabled={!activePricing.isActive}
@@ -621,7 +631,7 @@ export function ModificationForm({
         </form>
       )}
 
-      {/* 5. Review & Confirmation Modal */}
+      {/* Review & Confirmation Modal */}
       {showReviewModal && activePricing && (
         <div className="fixed inset-0 z-50 p-3 sm:p-6 py-6 sm:py-10 bg-black/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
           <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-lg w-full overflow-hidden text-foreground max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
@@ -629,155 +639,246 @@ export function ModificationForm({
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-border bg-card flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
                   <ShieldCheck weight="bold" className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-foreground">Confirm Modification Request</h3>
-                  <p className="text-xs text-muted-foreground">Review your details before payment.</p>
+                  <h3 className="text-base font-black text-foreground">
+                    {isInsufficient ? "Insufficient Balance" : "Confirm Modification Request"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {isInsufficient ? "Wallet top up required" : "Review your details before payment."}
+                  </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowReviewModal(false)}
-                className="text-xs font-bold text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg bg-secondary/50 cursor-pointer"
+                className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
-                Edit
+                <X weight="bold" className="h-4 w-4" />
               </button>
             </div>
 
             {/* Modal Body */}
             <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
               
-              {errorMessage && (
-                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold space-y-2">
-                  <div className="flex items-center gap-2">
-                    <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
-                    <span>{errorMessage}</span>
+              {/* If Insufficient Balance: Display Crying Emoji Banner and Shortfall */}
+              {isInsufficient ? (
+                <div className="space-y-4">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl select-none">😭</span>
+                      <div>
+                        <h4 className="font-black text-sm text-foreground">You don&apos;t have enough balance</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Please top up your wallet to submit this modification request.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-background/80 dark:bg-background/50 rounded-xl p-3.5 border border-border space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Service:</span>
+                        <span className="font-bold text-foreground">{activePricing.label}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Required Fee:</span>
+                        <span className="font-bold text-rose-500">₦{currentPrice.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Current Balance:</span>
+                        <span className="font-bold text-foreground">₦{walletBalance.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-border pt-1.5 font-bold">
+                        <span className="text-amber-600 dark:text-amber-400">Shortfall:</span>
+                        <span className="text-amber-600 dark:text-amber-400 font-mono">₦{shortfall.toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
-                  {isInsufficientBalance && (
-                    <div className="pt-1">
-                      <Link
-                        href="/dashboard/wallet"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-all"
-                      >
-                        <PlusCircle weight="bold" className="h-3.5 w-3.5" />
-                        Fund Wallet Now
-                      </Link>
+
+                  {/* Summary of Data entered so the user can verify */}
+                  <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-2 text-xs">
+                    <div className="flex justify-between border-b border-border/60 pb-1.5">
+                      <span className="text-muted-foreground">Target NIN:</span>
+                      <span className="font-mono font-bold text-foreground">{nin}</span>
+                    </div>
+                    {selectedType === "CHANGE_OF_NAME" && (
+                      <div className="flex justify-between border-b border-border/60 pb-1.5">
+                        <span className="text-muted-foreground">New Full Name:</span>
+                        <span className="font-bold text-foreground">
+                          {[newFirstName, newMiddleName, newLastName].filter(Boolean).join(" ")}
+                        </span>
+                      </div>
+                    )}
+                    {selectedType === "CHANGE_OF_PHONE" && (
+                      <div className="flex justify-between border-b border-border/60 pb-1.5">
+                        <span className="text-muted-foreground">New Phone:</span>
+                        <span className="font-mono font-bold text-foreground">{newPhoneNumber}</span>
+                      </div>
+                    )}
+                    {selectedType === "CHANGE_OF_ADDRESS" && (
+                      <div className="flex justify-between border-b border-border/60 pb-1.5">
+                        <span className="text-muted-foreground">New Address:</span>
+                        <span className="font-medium text-foreground text-right">{newAddress} ({selectedState})</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Sufficient Balance - Data Summary & Confirmation */
+                <div className="space-y-4">
+                  {errorMessage && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
+                      <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
+                      <span>{errorMessage}</span>
                     </div>
                   )}
+
+                  {/* Data Summary Card */}
+                  <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-2.5 text-xs sm:text-sm">
+                    <div className="flex justify-between border-b border-border/60 pb-1.5">
+                      <span className="text-muted-foreground">Service Type:</span>
+                      <span className="font-bold text-foreground">{activePricing.label}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-border/60 pb-1.5">
+                      <span className="text-muted-foreground">Target NIN:</span>
+                      <span className="font-mono font-bold text-foreground">{nin}</span>
+                    </div>
+
+                    {selectedType === "CHANGE_OF_NAME" && (
+                      <>
+                        <div className="flex justify-between border-b border-border/60 pb-1.5">
+                          <span className="text-muted-foreground">Current Linked Phone:</span>
+                          <span className="font-medium text-foreground">{currentPhone}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-border/60 pb-1.5">
+                          <span className="text-muted-foreground">New Full Name:</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            {[newFirstName, newMiddleName, newLastName].filter(Boolean).join(" ")}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    {selectedType === "CHANGE_OF_PHONE" && (
+                      <>
+                        <div className="flex justify-between border-b border-border/60 pb-1.5">
+                          <span className="text-muted-foreground">NIN Full Name:</span>
+                          <span className="font-medium text-foreground">{currentFullName}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-border/60 pb-1.5">
+                          <span className="text-muted-foreground">New Phone to Link:</span>
+                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{newPhoneNumber}</span>
+                        </div>
+                      </>
+                    )}
+
+                    {selectedType === "CHANGE_OF_ADDRESS" && (
+                      <>
+                        <div className="flex justify-between border-b border-border/60 pb-1.5">
+                          <span className="text-muted-foreground">Applicant Name:</span>
+                          <span className="font-medium text-foreground">{currentFullName}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-border/60 pb-1.5">
+                          <span className="text-muted-foreground">New Address:</span>
+                          <span className="font-medium text-foreground text-right max-w-[200px]">{newAddress}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-border/60 pb-1.5">
+                          <span className="text-muted-foreground">State / LGA:</span>
+                          <span className="font-medium text-foreground">{selectedState}, {selectedLga}</span>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex justify-between border-t border-border pt-2 text-xs">
+                      <span className="text-muted-foreground">Wallet Balance:</span>
+                      <span className="font-bold text-foreground">₦{walletBalance.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Balance After Debit:</span>
+                      <span className="font-bold text-foreground">₦{remainingBalance.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex justify-between pt-1 border-t border-border font-bold">
+                      <span className="text-foreground">Total Service Fee:</span>
+                      <span className="font-black text-emerald-600 dark:text-emerald-400 text-base">
+                        ₦{currentPrice.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Statutory Consent Checkbox */}
+                  <div className="pt-2 border-t border-border">
+                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={statutoryConsent}
+                        onChange={(e) => setStatutoryConsent(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs text-muted-foreground leading-relaxed">
+                        I confirm that the modification details entered above are true and accurate. I voluntarily authorize LoraBiz to perform this modification and understand all service fees are non-refundable once processed.
+                      </span>
+                    </label>
+                  </div>
                 </div>
               )}
 
-              {/* Data Summary Card */}
-              <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-2.5 text-xs sm:text-sm">
-                <div className="flex justify-between border-b border-border/60 pb-1.5">
-                  <span className="text-muted-foreground">Service Type:</span>
-                  <span className="font-bold text-foreground">{activePricing.label}</span>
-                </div>
-                <div className="flex justify-between border-b border-border/60 pb-1.5">
-                  <span className="text-muted-foreground">Target NIN:</span>
-                  <span className="font-mono font-bold text-foreground">{nin}</span>
-                </div>
-
-                {selectedType === "CHANGE_OF_NAME" && (
-                  <>
-                    <div className="flex justify-between border-b border-border/60 pb-1.5">
-                      <span className="text-muted-foreground">Current Linked Phone:</span>
-                      <span className="font-medium text-foreground">{currentPhone}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-border/60 pb-1.5">
-                      <span className="text-muted-foreground">New Full Name:</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        {[newFirstName, newMiddleName, newLastName].filter(Boolean).join(" ")}
-                      </span>
-                    </div>
-                  </>
-                )}
-
-                {selectedType === "CHANGE_OF_PHONE" && (
-                  <>
-                    <div className="flex justify-between border-b border-border/60 pb-1.5">
-                      <span className="text-muted-foreground">NIN Full Name:</span>
-                      <span className="font-medium text-foreground">{currentFullName}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-border/60 pb-1.5">
-                      <span className="text-muted-foreground">New Phone to Link:</span>
-                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{newPhoneNumber}</span>
-                    </div>
-                  </>
-                )}
-
-                {selectedType === "CHANGE_OF_ADDRESS" && (
-                  <>
-                    <div className="flex justify-between border-b border-border/60 pb-1.5">
-                      <span className="text-muted-foreground">Applicant Name:</span>
-                      <span className="font-medium text-foreground">{currentFullName}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-border/60 pb-1.5">
-                      <span className="text-muted-foreground">New Address:</span>
-                      <span className="font-medium text-foreground text-right max-w-[200px]">{newAddress}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-border/60 pb-1.5">
-                      <span className="text-muted-foreground">State / LGA:</span>
-                      <span className="font-medium text-foreground">{selectedState}, {selectedLga}</span>
-                    </div>
-                  </>
-                )}
-
-                <div className="flex justify-between pt-1 border-t border-border font-bold">
-                  <span className="text-foreground">Total Service Fee:</span>
-                  <span className="font-black text-emerald-600 dark:text-emerald-400">
-                    ₦{activePricing.price.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Statutory Consent Checkbox */}
-              <div className="pt-2 border-t border-border">
-                <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={statutoryConsent}
-                    onChange={(e) => setStatutoryConsent(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
-                  />
-                  <span className="text-xs text-muted-foreground leading-relaxed">
-                    I confirm that the modification details entered above are true and accurate. I voluntarily authorize LoraBiz to perform this modification and understand all service fees are non-refundable once processed.
-                  </span>
-                </label>
-              </div>
-
             </div>
 
-            {/* Modal Actions */}
+            {/* Modal Actions Footer */}
             <div className="p-4 sm:p-5 border-t border-border bg-card flex items-center justify-end gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowReviewModal(false)}
-                className="px-4 py-2.5 rounded-xl border border-border text-foreground font-bold text-xs hover:bg-secondary/50 transition-all cursor-pointer"
-              >
-                Back to Form
-              </button>
+              {isInsufficient ? (
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setShowReviewModal(false)}
+                    className="py-2.5 px-4 rounded-xl border border-border text-foreground font-bold text-xs hover:bg-secondary/50 transition-all cursor-pointer text-center"
+                  >
+                    Cancel
+                  </button>
 
-              <button
-                type="button"
-                onClick={handleFinalSubmit}
-                disabled={isSubmitting || !statutoryConsent}
-                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md transition-all cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Spinner className="h-4 w-4 animate-spin" />
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle weight="bold" className="h-4 w-4" />
-                    <span>Confirm & Pay ₦{activePricing.price.toLocaleString()}</span>
-                  </>
-                )}
-              </button>
+                  <Link
+                    href="/dashboard/wallet"
+                    className="py-2.5 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:opacity-90 flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer text-center"
+                  >
+                    <Wallet weight="bold" className="h-4 w-4" />
+                    <span>Fund Wallet</span>
+                    <ArrowRight weight="bold" className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowReviewModal(false)}
+                    className="px-4 py-2.5 rounded-xl border border-border text-foreground font-bold text-xs hover:bg-secondary/50 transition-all cursor-pointer"
+                  >
+                    Back to Form
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleFinalSubmit}
+                    disabled={isSubmitting || !statutoryConsent}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md transition-all cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Spinner className="h-4 w-4 animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle weight="bold" className="h-4 w-4" />
+                        <span>Confirm & Pay ₦{currentPrice.toLocaleString()}</span>
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
             </div>
 
           </div>

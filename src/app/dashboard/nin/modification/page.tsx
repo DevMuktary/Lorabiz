@@ -22,6 +22,7 @@ export default function NinModificationPage() {
     CHANGE_OF_PHONE: { price: 2000, isActive: true, label: "Change of Phone Number" },
     CHANGE_OF_ADDRESS: { price: 2000, isActive: true, label: "Change of Address" },
   });
+  const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [successSubmission, setSuccessSubmission] = useState<{
     trackingId: string;
@@ -37,6 +38,7 @@ export default function NinModificationPage() {
       if (data.success) {
         if (data.pricing) setPricing(data.pricing);
         if (data.userFullName) setUserFullName(data.userFullName);
+        if (data.walletBalance !== undefined) setWalletBalance(Number(data.walletBalance) || 0);
         setHasConsented(Boolean(data.hasConsented));
       }
     } catch (err) {
@@ -64,6 +66,7 @@ export default function NinModificationPage() {
       type: result.type,
       amountPaid: result.amountPaid,
     });
+    fetchInitialData();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -166,6 +169,7 @@ export default function NinModificationPage() {
       ) : hasConsented ? (
         <ModificationForm
           pricing={pricing}
+          walletBalance={walletBalance}
           onSuccess={handleSubmissionSuccess}
           onRequireConsent={() => setHasConsented(false)}
         />
