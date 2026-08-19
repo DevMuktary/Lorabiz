@@ -24,6 +24,9 @@ export async function GET() {
       NIN_REGULAR: pricingMap.NIN_REGULAR || 500,
       NIN_STANDARD: pricingMap.NIN_STANDARD || 700,
       NIN_PREMIUM: pricingMap.NIN_PREMIUM || 1000,
+      // 🚨 NEW: BVN Verification Slip Pricing
+      BVN_STANDARD: pricingMap.BVN_STANDARD || 700,
+      BVN_PREMIUM: pricingMap.BVN_PREMIUM || 1000,
     };
 
     return NextResponse.json({ success: true, data: defaultPricing });
@@ -72,6 +75,14 @@ export async function POST(req: Request) {
     }
     if (service === 'nin_premium') {
       return NextResponse.json({ baseFee: pricingMap.NIN_PREMIUM || 1000, total: pricingMap.NIN_PREMIUM || 1000 });
+    }
+
+    // 🚨 NEW: Handlers for BVN Slip POST calculations
+    if (service === 'bvn_standard' || service === 'BVN_STANDARD') {
+      return NextResponse.json({ baseFee: pricingMap.BVN_STANDARD || 700, total: pricingMap.BVN_STANDARD || 700 });
+    }
+    if (service === 'bvn_premium' || service === 'BVN_PREMIUM') {
+      return NextResponse.json({ baseFee: pricingMap.BVN_PREMIUM || 1000, total: pricingMap.BVN_PREMIUM || 1000 });
     }
 
     return NextResponse.json({ message: "Invalid service type." }, { status: 400 });

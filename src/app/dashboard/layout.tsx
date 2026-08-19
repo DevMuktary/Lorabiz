@@ -11,7 +11,7 @@ import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrappe
 import { WelcomeBanner } from "@/components/WelcomeBanner"; 
 import { 
   SquaresFour, Buildings, ShieldCheck, Copyright, 
-  Handshake, IdentificationCard, DeviceMobile, Wallet, 
+  Handshake,  IdentificationCard, IdentificationBadge, DeviceMobile, Wallet, 
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
   FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
   ClockCounterClockwise, Code
@@ -47,6 +47,7 @@ const NAVIGATION: NavCategory[] = [
       { name: "CAC Services", href: "/dashboard/cac", icon: Buildings },
       { name: "SCUML", href: "/dashboard/scuml", icon: ShieldCheck },
       { name: "NIN Services", href: "/dashboard/nin", icon: IdentificationCard },
+      { name: "BVN Services", href: "/dashboard/bvn", icon: IdentificationBadge },
       { name: "Airtime", href: "/dashboard/airtime", icon: DeviceMobile },
       { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },
     ]

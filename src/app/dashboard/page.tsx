@@ -71,6 +71,16 @@ const LIVE_SERVICES: ServiceItem[] = [
     active: true,
   },
   {
+    title: "BVN Verification Slips",
+    category: "Bank Verification (NIBSS)",
+    description: "Generate official Standard and Premium BVN verification slips with authenticated NIBSS record.",
+    logo: "/nibss.png",
+    href: "/dashboard/bvn",
+    turnaround: "Instant Delivery",
+    actionText: "Verify BVN",
+    active: true,
+  },
+  {
     title: "Tax ID (TIN)",
     category: "Joint Tax Board / FIRS",
     description: "Official corporate and personal Tax Identification Number processing and verification.",
@@ -584,6 +594,23 @@ export default function DashboardPage() {
                 />
               </div>
               <span className="text-[11px] font-bold">NIN</span>
+            </Link>
+
+            <Link
+              href="/dashboard/bvn"
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+              title="BVN Verification Slips"
+            >
+              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <Image 
+                  src="/nibss.png" 
+                  alt="BVN" 
+                  width={28} 
+                  height={28} 
+                  className="object-contain" 
+                />
+              </div>
+              <span className="text-[11px] font-bold">BVN</span>
             </Link>
 
             <Link

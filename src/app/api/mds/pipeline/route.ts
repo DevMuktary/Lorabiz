@@ -26,6 +26,12 @@ export async function GET() {
       prisma.ninRequestLog.count({ where: { status: "FAILED" } }),
     ]);
 
+    // 2a. Fetch counts for BVN Requests
+    const [bvnSuccess, bvnFailed] = await Promise.all([
+      prisma.bvnRequestLog.count({ where: { status: "SUCCESS" } }),
+      prisma.bvnRequestLog.count({ where: { status: "FAILED" } }),
+    ]);
+
     // 2b. Fetch counts for IPE Clearance Requests
     const [ipeProcessing, ipeCompleted, ipeFailed] = await Promise.all([
       prisma.ninIpeRequest.count({ where: { status: "PROCESSING" } }),
@@ -89,6 +95,13 @@ export async function GET() {
       completed: ninSuccess,
       queried: 0,
       failed: ninFailed,
+    };
+
+    const bvnMetrics = {
+      pending: 0,
+      completed: bvnSuccess,
+      queried: 0,
+      failed: bvnFailed,
     };
 
     const ipeMetrics = {
@@ -222,6 +235,15 @@ export async function GET() {
           metrics: ninMetrics,
           subCategories: ["NIN Slips"],
           href: "/quadrox-lorabiz-team/mds/dashboard/orders/nin",
+          isAutomated: true
+        },
+        {
+          id: "bvn",
+          name: "Identity Services (BVN)",
+          description: "Automated Standard and Premium BVN Verification Slip generation API.",
+          metrics: bvnMetrics,
+          subCategories: ["Standard Slip", "Premium Card Slip"],
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/bvn",
           isAutomated: true
         },
         {

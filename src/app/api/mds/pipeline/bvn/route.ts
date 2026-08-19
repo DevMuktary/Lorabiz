@@ -1,29 +1,38 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    const ninLogs = await prisma.ninRequestLog.findMany({
-      orderBy: { createdAt: 'desc' },
+    // Admin pipeline is PERMANENT (no 24h retention filter)
+    const bvnLogs = await prisma.bvnRequestLog.findMany({
+      orderBy: { createdAt: "desc" },
       include: {
-        user: { select: { firstName: true, lastName: true, email: true } }
+        user: { select: { firstName: true, lastName: true, email: true, phone: true } }
       }
     });
 
-    const formattedLogs = ninLogs.map(log => ({
+    const slipTypeLabelMap: Record<string, string> = {
+      "bvn_standard": "Standard BVN Slip",
+      "bvn_premium": "Premium BVN Card Slip",
+    };
+
+    const formattedLogs = bvnLogs.map((log) => ({
       id: log.id,
       reference: log.reference,
-      ninMasked: log.ninMasked,
+      bvnMasked: log.bvnMasked,
       slipType: log.slipType,
+      slipTypeLabel: slipTypeLabelMap[log.slipType] || log.slipType,
       amountCharged: Number(log.amountCharged),
       status: log.status,
       createdAt: log.createdAt,
       clientName: `${log.user.firstName} ${log.user.lastName}`,
       clientEmail: log.user.email,
+      clientPhone: log.user.phone,
       pdfUrl: log.pdfUrl || undefined,
-      searchType: log.searchType || "NIN",
       fullName: log.fullName || undefined,
       firstName: log.firstName || undefined,
       lastName: log.lastName || undefined,
@@ -38,7 +47,7 @@ export async function GET() {
 
     return NextResponse.json({ pipeline: formattedLogs });
   } catch (error) {
-    console.error("NIN Pipeline API Error:", error);
-    return NextResponse.json({ error: "Failed to fetch NIN pipeline" }, { status: 500 });
+    console.error("❌ BVN Admin Pipeline API Error:", error);
+    return NextResponse.json({ error: "Failed to fetch BVN pipeline" }, { status: 500 });
   }
 }
