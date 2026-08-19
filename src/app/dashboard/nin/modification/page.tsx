@@ -5,13 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   ArrowLeft, 
+  ArrowRight,
   ShieldCheck, 
-  Clock, 
-  Wallet, 
-  PlusCircle, 
   CheckCircle, 
   ListDashes, 
-  WarningCircle
+  Spinner
 } from "@phosphor-icons/react";
 import { NinTermsModal } from "@/components/features/nin/modification/NinTermsModal";
 import { ModificationForm, PricingConfig } from "@/components/features/nin/modification/ModificationForm";
@@ -19,7 +17,6 @@ import { ModificationForm, PricingConfig } from "@/components/features/nin/modif
 export default function NinModificationPage() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [hasConsented, setHasConsented] = useState<boolean>(true); // default true while loading
-  const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [userFullName, setUserFullName] = useState<string>("");
   const [pricing, setPricing] = useState<Record<string, PricingConfig>>({
     CHANGE_OF_NAME: { price: 2500, isActive: true, label: "Change of Name" },
@@ -43,9 +40,6 @@ export default function NinModificationPage() {
         if (data.pricing) setPricing(data.pricing);
         if (data.userFullName) setUserFullName(data.userFullName);
         setHasConsented(data.hasConsented);
-        if (!data.hasConsented) {
-          setShowTermsModal(true);
-        }
       }
     } catch (err) {
       console.error("Failed to load initial NIN Modification data:", err);
@@ -60,7 +54,6 @@ export default function NinModificationPage() {
 
   const handleConsentAgreed = () => {
     setHasConsented(true);
-    setShowTermsModal(false);
     fetchInitialData();
   };
 
@@ -82,56 +75,23 @@ export default function NinModificationPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto relative pb-16 animate-in fade-in duration-200 font-sans">
       
-      {/* Terms of Agreement & Digital Signature Gate */}
-      <NinTermsModal
-        isOpen={showTermsModal}
-        userFullName={userFullName}
-        onAgreed={handleConsentAgreed}
-      />
+      {/* Back Breadcrumb */}
+      <Link 
+        href="/dashboard/nin" 
+        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl"
+      >
+        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to NIN Services
+      </Link>
 
-      {/* Top Header Bar: Back Link, History Button & Wallet */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <Link 
-          href="/dashboard/nin" 
-          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl"
-        >
-          <ArrowLeft weight="bold" className="h-4 w-4" /> Back to NIN Services
-        </Link>
-
-        <div className="flex items-center gap-2.5">
-          {/* Dedicated Request History Link */}
-          <Link
-            href="/dashboard/nin/modification/history"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-secondary/60 hover:bg-secondary text-foreground text-xs font-bold border border-border transition-all shadow-sm"
-          >
-            <ListDashes weight="bold" className="h-4 w-4 text-primary" />
-            <span>Request History</span>
-          </Link>
-
-          {/* Live Wallet Balance Pill */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border text-xs font-bold shadow-sm">
-            <Wallet weight="duotone" className="h-4 w-4 text-emerald-500" />
-            <span className="text-muted-foreground">Wallet:</span>
-            <span className="text-foreground font-mono">₦{walletBalance.toLocaleString()}</span>
-            <Link
-              href="/dashboard/wallet"
-              className="text-primary hover:underline text-[11px] font-black ml-1 flex items-center gap-0.5"
-            >
-              <PlusCircle weight="bold" className="h-3 w-3" /> Fund
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Page Header */}
+      {/* Page Header (Matching Standard IPE Layout) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="flex items-center gap-3.5">
           <div className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
             <Image 
               src="/nimc.png" 
               alt="NIMC Logo" 
-              width={42} 
-              height={42} 
+              width={40} 
+              height={40} 
               className="object-contain" 
               priority 
             />
@@ -139,7 +99,7 @@ export default function NinModificationPage() {
           <div>
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
               <ShieldCheck weight="bold" className="h-3 w-3" />
-              National Identity Management Commission (NIMC)
+              National Identity Management Commission
             </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">NIN Modification</h1>
             <p className="text-muted-foreground text-xs sm:text-sm">
@@ -148,14 +108,15 @@ export default function NinModificationPage() {
           </div>
         </div>
 
-        {/* Turnaround Badge */}
-        <div className="flex sm:flex-col items-center sm:items-end justify-between gap-1 p-3 rounded-2xl bg-card border border-border shrink-0">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-            <Clock weight="bold" className="h-4 w-4 text-emerald-500" />
-            <span>Turnaround Time</span>
-          </div>
-          <span className="text-xs text-muted-foreground font-medium">1–48 Business Hours</span>
-        </div>
+        {/* Action Button: Modification History */}
+        <Link 
+          href="/dashboard/nin/modification/history" 
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground text-sm font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all group shrink-0 shadow-sm"
+        >
+          <ListDashes weight="bold" className="h-4 w-4" />
+          <span>Modification History</span>
+          <ArrowRight weight="bold" className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+        </Link>
       </div>
 
       {/* Success Banner upon Submission */}
@@ -176,7 +137,7 @@ export default function NinModificationPage() {
             <button
               type="button"
               onClick={() => setSuccessSubmission(null)}
-              className="text-xs font-bold opacity-75 hover:opacity-100 px-2 py-1 rounded-lg bg-emerald-500/20"
+              className="text-xs font-bold opacity-75 hover:opacity-100 px-2 py-1 rounded-lg bg-emerald-500/20 cursor-pointer"
             >
               Dismiss
             </button>
@@ -188,19 +149,34 @@ export default function NinModificationPage() {
               className="text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1"
             >
               <ListDashes weight="bold" className="h-4 w-4" />
-              Track Status in History &rarr;
+              Track Status in Modification History &rarr;
             </Link>
           </div>
         </div>
       )}
 
-      {/* Main Modification Form */}
-      <ModificationForm
-        walletBalance={walletBalance}
-        pricing={pricing}
-        onSuccess={handleSubmissionSuccess}
-        onRequireConsent={() => setShowTermsModal(true)}
-      />
+      {/* Main Content Area */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Spinner className="h-8 w-8 animate-spin text-primary" weight="bold" />
+          <p className="text-sm font-bold text-muted-foreground">Loading service status...</p>
+        </div>
+      ) : !hasConsented ? (
+        /* Render ONLY Terms & Authorization Gate when consent is not yet given */
+        <NinTermsModal
+          isOpen={true}
+          userFullName={userFullName}
+          onAgreed={handleConsentAgreed}
+        />
+      ) : (
+        /* Render Modification Form ONLY after consent is active */
+        <ModificationForm
+          walletBalance={walletBalance}
+          pricing={pricing}
+          onSuccess={handleSubmissionSuccess}
+          onRequireConsent={() => setHasConsented(false)}
+        />
+      )}
 
     </div>
   );

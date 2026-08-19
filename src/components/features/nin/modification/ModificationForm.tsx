@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { 
   User, 
@@ -14,7 +14,10 @@ import {
   Spinner,
   IdentificationCard,
   CursorClick,
-  X
+  X,
+  Wallet,
+  Eye,
+  EyeSlash
 } from "@phosphor-icons/react";
 import { NIGERIA_DATA } from "@/components/features/cac/register/biz-name/schema";
 
@@ -42,6 +45,7 @@ export function ModificationForm({
 }: ModificationFormProps) {
   // Start with no category selected so no fields are open automatically
   const [selectedType, setSelectedType] = useState<ModificationType | null>(null);
+  const [isBalanceHidden, setIsBalanceHidden] = useState<boolean>(false);
 
   // Form Fields
   const [nin, setNin] = useState("");
@@ -60,18 +64,6 @@ export function ModificationForm({
   const [statutoryConsent, setStatutoryConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Prevent background scroll when review modal is open
-  useEffect(() => {
-    if (showReviewModal) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [showReviewModal]);
 
   // Nigerian States and LGAs
   const stateOptions = useMemo(() => {
@@ -362,7 +354,8 @@ export function ModificationForm({
       {selectedType && activePricing && (
         <form onSubmit={handleProceedToReview} className="p-5 sm:p-8 rounded-3xl bg-card border border-border shadow-sm space-y-5 sm:space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-200">
           
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 gap-2">
+          {/* Header with Service & Fee */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 gap-3">
             <div>
               <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
                 {activePricing.label} Application Form
@@ -371,13 +364,58 @@ export function ModificationForm({
                 Provide exact details as registered or desired in the National Identity registry.
               </p>
             </div>
-            <div className="flex items-center sm:flex-col sm:items-end justify-between">
-              <span className="text-xs font-bold text-muted-foreground">Service Fee</span>
-              <span className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400">
-                ₦{activePricing.price.toLocaleString()}
-              </span>
+            
+            {/* Wallet & Pricing Indicator Strip */}
+            <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-secondary/50 border border-border">
+              <div className="flex items-center gap-2">
+                <Wallet weight="duotone" className="h-4 w-4 text-emerald-500 shrink-0" />
+                <div className="text-xs">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <span>Balance:</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsBalanceHidden(!isBalanceHidden)}
+                      className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      title={isBalanceHidden ? "Show Balance" : "Hide Balance"}
+                    >
+                      {isBalanceHidden ? <EyeSlash className="h-3.5 w-3.5" weight="bold" /> : <Eye className="h-3.5 w-3.5" weight="bold" />}
+                    </button>
+                  </div>
+                  <div className="font-mono font-bold text-foreground">
+                    {isBalanceHidden ? "••••••••" : `₦${walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-7 w-px bg-border shrink-0" />
+
+              <div className="text-xs text-right">
+                <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">Fee</span>
+                <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                  ₦{activePricing.price.toLocaleString()}
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* Insufficient balance notification if balance is lower than fee */}
+          {!hasSufficientBalance && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <WarningCircle weight="bold" className="h-4 w-4 shrink-0 text-rose-500" />
+                <span>
+                  Insufficient wallet balance. You need an additional <strong>₦{shortfall.toLocaleString()}</strong>.
+                </span>
+              </div>
+              <Link
+                href="/dashboard/wallet"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors"
+              >
+                <PlusCircle weight="bold" className="h-3.5 w-3.5" />
+                Fund Wallet
+              </Link>
+            </div>
+          )}
 
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
@@ -620,7 +658,7 @@ export function ModificationForm({
             <button
               type="submit"
               disabled={!activePricing.isActive}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-primary text-primary-foreground font-black text-sm shadow-lg shadow-primary/20 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-primary text-primary-foreground font-black text-sm shadow-lg shadow-primary/20 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <span>Review & Submit Modification</span>
               <ArrowRight weight="bold" className="h-4 w-4" />
@@ -632,11 +670,11 @@ export function ModificationForm({
 
       {/* 5. Review & Confirmation Modal */}
       {showReviewModal && activePricing && (
-        <div className="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-6 py-6 sm:py-10 bg-black/95 backdrop-blur-xl animate-in fade-in duration-200">
-          <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-lg w-full mx-auto overflow-hidden text-foreground my-auto">
+        <div className="fixed inset-0 z-50 p-3 sm:p-6 py-6 sm:py-10 bg-black/90 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200">
+          <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-lg w-full overflow-hidden text-foreground max-h-[90vh] flex flex-col">
             
             {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-border bg-card flex items-center justify-between">
+            <div className="p-4 sm:p-5 border-b border-border bg-card flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
                   <ShieldCheck weight="bold" className="h-5 w-5" />
@@ -649,14 +687,14 @@ export function ModificationForm({
               <button
                 type="button"
                 onClick={() => setShowReviewModal(false)}
-                className="text-xs font-bold text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg bg-secondary/50"
+                className="text-xs font-bold text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg bg-secondary/50 cursor-pointer"
               >
                 Edit
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-4 sm:p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
               
               {errorMessage && (
                 <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
@@ -780,11 +818,11 @@ export function ModificationForm({
             </div>
 
             {/* Modal Actions */}
-            <div className="p-4 sm:p-5 border-t border-border bg-card flex items-center justify-end gap-3">
+            <div className="p-4 sm:p-5 border-t border-border bg-card flex items-center justify-end gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowReviewModal(false)}
-                className="px-4 py-2.5 rounded-xl border border-border text-foreground font-bold text-xs hover:bg-secondary/50 transition-all"
+                className="px-4 py-2.5 rounded-xl border border-border text-foreground font-bold text-xs hover:bg-secondary/50 transition-all cursor-pointer"
               >
                 Back to Form
               </button>
@@ -793,17 +831,17 @@ export function ModificationForm({
                 type="button"
                 onClick={handleFinalSubmit}
                 disabled={isSubmitting || !hasSufficientBalance || !statutoryConsent}
-                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md transition-all"
+                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md transition-all cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
                     <Spinner className="h-4 w-4 animate-spin" />
-                    Processing Payment...
+                    <span>Processing...</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle weight="bold" className="h-4 w-4" />
-                    Pay ₦{activePricing.price.toLocaleString()} & Submit
+                    <span>Confirm & Pay ₦{activePricing.price.toLocaleString()}</span>
                   </>
                 )}
               </button>
