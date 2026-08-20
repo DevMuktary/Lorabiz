@@ -4,21 +4,30 @@ import { useEffect } from "react";
 import { useTheme } from "next-themes";
 
 export function ThemeColorUpdater() {
-  const { resolvedTheme, theme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     if (!resolvedTheme) return;
 
-    // Synchronize native color-scheme
-    document.documentElement.style.colorScheme = resolvedTheme === "dark" ? "dark" : "light";
+    // LoraBiz strict theme colors
+    const targetColor = resolvedTheme === "dark" ? "#020617" : "#f8fafc";
 
-    // If the user explicitly selected light/dark (not system), update meta tags
-    if (theme === "light" || theme === "dark") {
-      const targetColor = resolvedTheme === "dark" ? "#020617" : "#f8fafc";
-      const metas = document.querySelectorAll('meta[name="theme-color"]');
-      metas.forEach(meta => meta.setAttribute("content", targetColor));
-    }
-  }, [resolvedTheme, theme]);
+    // 1. Destroy ALL existing theme-color tags (Fixes Next.js multi-tag confusion)
+    const existingTags = document.querySelectorAll('meta[name="theme-color"]');
+    existingTags.forEach(tag => tag.remove());
+
+    // 2. Inject ONE absolute source of truth for Safari
+    const meta = document.createElement("meta");
+    meta.setAttribute("name", "theme-color");
+    meta.setAttribute("content", targetColor);
+    document.head.appendChild(meta);
+
+    // 3. NUCLEAR SAFARI FIX: Safari ignores the meta tag if the body background 
+    // doesn't match perfectly. We force the HTML to match instantly.
+    document.documentElement.style.backgroundColor = targetColor;
+    document.body.style.backgroundColor = targetColor;
+
+  }, [resolvedTheme]);
 
   return null;
 }
