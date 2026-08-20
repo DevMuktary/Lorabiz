@@ -1327,4 +1327,172 @@ export async function sendAbandonedCacReminderEmail({
   });
 }
 
+// ============================================================================
+// BVN RETRIEVAL NOTIFICATIONS
+// ============================================================================
+
+export async function sendBvnRetrievalSubmittedEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  fullName,
+  phone,
+  amountPaid,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  fullName: string;
+  phone: string;
+  amountPaid: string | number;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `BVN Retrieval Request Received – [${trackingId}]`;
+  const previewText = `Your BVN Retrieval request (${trackingId}) has been queued. Expected turnaround: 1 to 24 hours.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Retrieval Request Submitted</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We have received your Bank Verification Number (BVN) Retrieval request on LoraBiz and it has been queued for official processing.</p>
+    
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px; color: #334155;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Tracking ID:</td>
+          <td style="padding: 6px 0; font-weight: 700; color: #0f172a; text-align: right;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Full Name on BVN:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">${fullName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Linked Phone Number:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">${phone}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Amount Paid:</td>
+          <td style="padding: 6px 0; font-weight: 700; color: #059669; text-align: right;">&#8358;${Number(amountPaid).toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Processing Timeline:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">1 – 24 Working Hours</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">Once your retrieval record is matched and verified, you will receive an instant notification email containing your 11-digit BVN and your dashboard history will be updated immediately.</p>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="https://lorabiz.com/dashboard/bvn/retrieval/history" style="background-color: #059669; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block;">Track Request Status</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you have any questions or need further clarification, our support team is always available to help.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendBvnRetrievalCompletedEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  fullName,
+  retrievedBvn,
+  slipUrl,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  fullName: string;
+  retrievedBvn: string;
+  slipUrl?: string | null;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `BVN Retrieval Completed – [${trackingId}]`;
+  const previewText = `Your BVN has been successfully retrieved: ${retrievedBvn}`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Successfully Retrieved</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Good news! Your Bank Verification Number (BVN) retrieval request <strong>${trackingId}</strong> has been successfully processed.</p>
+    
+    <div style="background-color: #ecfdf5; border: 2px solid #a7f3d0; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+      <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #065f46; text-transform: uppercase; letter-spacing: 1px;">Your 11-Digit BVN</p>
+      <p style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 4px; color: #047857; font-family: monospace;">${retrievedBvn}</p>
+      <p style="margin: 10px 0 0; font-size: 13px; color: #065f46;">Account Name: <strong>${fullName}</strong></p>
+    </div>
+
+    ${slipUrl ? `
+      <div style="text-align: center; margin: 28px 0 16px;">
+        <a href="${slipUrl}" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; margin-right: 8px;">Download Official Slip</a>
+        <a href="https://lorabiz.com/dashboard/bvn/retrieval/history" style="background-color: #f1f5f9; color: #334155; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; border: 1px solid #cbd5e1;">View in Dashboard</a>
+      </div>
+    ` : `
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="https://lorabiz.com/dashboard/bvn/retrieval/history" style="background-color: #059669; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block;">View in Dashboard</a>
+      </div>
+    `}
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Please keep this BVN safe and confidential. Do not share your BVN or sensitive banking details with unauthorized parties.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendBvnRetrievalFailedEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  fullName,
+  reason,
+  refundAmount,
+  isRefunded = false,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  fullName: string;
+  reason: string;
+  refundAmount?: string | number | null;
+  isRefunded?: boolean;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Update on BVN Retrieval Request – [${trackingId}]`;
+  const previewText = `Your BVN Retrieval request could not be completed. Reason: ${reason}`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Retrieval Unsuccessful</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We regret to inform you that your BVN Retrieval request <strong>${trackingId}</strong> for <strong>${fullName}</strong> could not be completed.</p>
+    
+    <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #991b1b; text-transform: uppercase;">Reason for Failure</p>
+      <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.6;">${reason}</p>
+    </div>
+
+    ${isRefunded && refundAmount ? `
+      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+        <p style="margin: 0; font-size: 13px; color: #166534; font-weight: 600;">
+          &#10004; A refund of <strong>&#8358;${Number(refundAmount).toLocaleString()}</strong> has been credited back to your LoraBiz wallet.
+        </p>
+      </div>
+    ` : ''}
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="https://lorabiz.com/dashboard/bvn/retrieval" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Try Again</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you believe this was in error or need assistance reviewing your submitted details, please reach out to our support team.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+
 

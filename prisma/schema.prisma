@@ -130,6 +130,7 @@ model User {
   ninModificationConsent NinModificationConsent?
   ninModificationRequests NinModificationRequest[]
   bvnRequests      BvnRequestLog[]
+  bvnRetrievalRequests BvnRetrievalRequest[]
   scumlRequests    ScumlRegistration[]
   taxIdRequests    TaxIdRequest[]
   notifications    InAppNotification[]
@@ -390,6 +391,49 @@ model BvnRequestLog {
 
   @@index([userId, createdAt])
   @@index([reference])
+}
+
+// ==========================================
+// BVN RETRIEVAL SERVICE
+// ==========================================
+
+enum BvnRetrievalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model BvnRetrievalRequest {
+  id             String              @id @default(cuid())
+  trackingId     String              @unique // e.g. "RET-849201"
+  userId         String
+  fullName       String              // Full Name on BVN
+  phone          String              // Linked Phone Number
+  status         BvnRetrievalStatus  @default(PENDING)
+  
+  // Output from admin upon completion
+  retrievedBvn   String?             // 11 digits BVN
+  slipUrl        String?             @db.Text // Optional slip file uploaded by admin
+  failureReason  String?             @db.Text // Admin reason for failure
+  adminNotes     String?             @db.Text
+  
+  // Payment & Transaction Tracking
+  amountPaid     Decimal             @db.Decimal(10, 2)
+  refundAmount   Decimal?            @db.Decimal(10, 2)
+  isRefunded     Boolean             @default(false)
+  transactionRef String              @unique
+  
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  completedAt    DateTime?
+  
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, status])
+  @@index([trackingId])
+  @@index([phone])
+  @@index([createdAt])
 }
 
 enum NinIpeStatus {

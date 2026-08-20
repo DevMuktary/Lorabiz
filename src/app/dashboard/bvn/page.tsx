@@ -34,10 +34,11 @@ const BVN_SERVICES: BvnServiceCard[] = [
     title: "BVN Retrieval",
     category: "Record Search & Recovery",
     description: "Retrieve your BVN Number in case you forgot it.",
-    turnaround: "Instant / ~1 Hour",
+    turnaround: "1 – 24 Hours",
     logo: "/nibss.png",
-    active: false,
-    tag: "Waitlist",
+    href: "/dashboard/bvn/retrieval",
+    active: true,
+    tag: "Active",
   },
 ];
 

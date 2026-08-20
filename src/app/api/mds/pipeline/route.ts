@@ -32,6 +32,14 @@ export async function GET() {
       prisma.bvnRequestLog.count({ where: { status: "FAILED" } }),
     ]);
 
+    // 2a-2. Fetch counts for BVN Retrieval Requests
+    const [bvnRetPending, bvnRetProcessing, bvnRetCompleted, bvnRetFailed] = await Promise.all([
+      prisma.bvnRetrievalRequest.count({ where: { status: "PENDING" } }),
+      prisma.bvnRetrievalRequest.count({ where: { status: "PROCESSING" } }),
+      prisma.bvnRetrievalRequest.count({ where: { status: "COMPLETED" } }),
+      prisma.bvnRetrievalRequest.count({ where: { status: "FAILED" } }),
+    ]);
+
     // 2b. Fetch counts for IPE Clearance Requests
     const [ipeProcessing, ipeCompleted, ipeFailed] = await Promise.all([
       prisma.ninIpeRequest.count({ where: { status: "PROCESSING" } }),
@@ -104,6 +112,13 @@ export async function GET() {
       failed: bvnFailed,
     };
 
+    const bvnRetrievalMetrics = {
+      pending: bvnRetPending + bvnRetProcessing,
+      completed: bvnRetCompleted,
+      queried: 0,
+      failed: bvnRetFailed,
+    };
+
     const ipeMetrics = {
       pending: ipeProcessing,
       completed: ipeCompleted,
@@ -155,16 +170,25 @@ export async function GET() {
 
     // Calculate Global Totals
     const globalMetrics = {
-      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending + modificationMetrics.pending,
-      completed: cacMetrics.completed + ninMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + modificationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
+      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending + modificationMetrics.pending + bvnRetrievalMetrics.pending,
+      completed: cacMetrics.completed + ninMetrics.completed + bvnMetrics.completed + bvnRetrievalMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + modificationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
       queried: cacMetrics.queried, 
-      failed: cacMetrics.failed + ninMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed + modificationMetrics.failed,
+      failed: cacMetrics.failed + ninMetrics.failed + bvnMetrics.failed + bvnRetrievalMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed + modificationMetrics.failed,
     };
 
     // Construct the structured response
     const payload = {
       global: globalMetrics,
       services: [
+        {
+          id: "bvn-retrieval",
+          name: "BVN Number Retrieval",
+          description: "Manual retrieval & lookup of forgotten 11-digit Bank Verification Numbers from NIBSS records.",
+          metrics: bvnRetrievalMetrics,
+          subCategories: ["BVN Retrieval", "Record Search", "Slip Upload"],
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/bvn-retrieval",
+          isAutomated: false
+        },
         {
           id: "nin-modification",
           name: "NIN Modification Pipeline",
