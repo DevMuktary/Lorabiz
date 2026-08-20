@@ -29,14 +29,14 @@ const BVN_SLIP_OPTIONS: SlipOption[] = [
     id: "bvn_standard",
     label: "Standard BVN Slip",
     badge: "Official Layout",
-    img: "/examples/nin_standard_example.png",
+    img: "/examples/bvn_regular.png",
     defaultPrice: 700,
   },
   {
     id: "bvn_premium",
     label: "Premium BVN Card Slip",
     badge: "Card / Lamination Ready",
-    img: "/examples/nin_premium_example.png",
+    img: "/examples/bvn_premium.png",
     defaultPrice: 1000,
   },
 ];
@@ -235,18 +235,24 @@ export default function BvnSlipVerificationPage() {
     }
   };
 
+  const isAnyModalOpen = showIntroModal || isConfirmOpen || resultModalState.isOpen || lightbox.isOpen;
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
+    <div className={`space-y-6 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300 transition-opacity ${mounted && isAnyModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
       
-      {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching SCUML/Tax ID) */}
+      {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching Main Dashboard) */}
       {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-[99999] w-full h-[100dvh] bg-background/95 dark:bg-background/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setShowIntroModal(false)}
         >
+          <div 
+            className="fixed inset-0 min-h-screen w-screen" 
+            onClick={() => setShowIntroModal(false)} 
+          />
 
           <div 
-            className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 md:p-8 my-auto max-h-[90dvh] overflow-y-auto"
+            className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 md:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <button 
@@ -257,10 +263,15 @@ export default function BvnSlipVerificationPage() {
               <X weight="bold" className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-4 mb-4">
-              <div className="h-12 w-12 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 flex items-center justify-center shrink-0">
-                <ShieldCheck weight="fill" className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              <div className="h-12 w-12 rounded-2xl bg-secondary border border-border flex items-center justify-center p-2 shrink-0">
+                <Image src="/nibss.png" alt="NIBSS Logo" width={40} height={40} className="object-contain" />
               </div>
-              <h2 className="text-xl font-black text-foreground">Statutory Compliance Notice</h2>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                  Statutory Notice
+                </span>
+                <h2 className="text-xl font-black text-foreground">Compliance Verification</h2>
+              </div>
             </div>
             
             <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
@@ -509,10 +520,15 @@ export default function BvnSlipVerificationPage() {
       {/* Lightbox Specimen Preview Modal */}
       {mounted && lightbox.isOpen && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-[99999] w-full h-[100dvh] bg-background/95 dark:bg-background/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
-          <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 my-auto max-h-[90dvh]" onClick={(e) => e.stopPropagation()}>
+          <div 
+            className="fixed inset-0 min-h-screen w-screen" 
+            onClick={() => setLightbox({ isOpen: false, src: "", label: "" })} 
+          />
+
+          <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-card border-b border-border px-5 py-3.5 flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
               <button 
