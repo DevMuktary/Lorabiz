@@ -40,6 +40,15 @@ const BVN_SERVICES: BvnServiceCard[] = [
     active: true,
     tag: "Active",
   },
+  {
+    title: "BVN Modification",
+    category: "Record Updates & Correction",
+    description: "Change or correct name, date of birth, or phone number on your BVN record.",
+    turnaround: "Coming Soon",
+    logo: "/nibss.png",
+    active: false,
+    tag: "Waitlist",
+  },
 ];
 
 export default function BvnHubPage() {
