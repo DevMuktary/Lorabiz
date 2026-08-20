@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { 
-  Check, Sparkle, 
+  ShieldCheck, Check, Sparkle, 
   Eye, ArrowLeft, CheckCircle, WarningCircle, X,
   FileText
 } from "@phosphor-icons/react";
