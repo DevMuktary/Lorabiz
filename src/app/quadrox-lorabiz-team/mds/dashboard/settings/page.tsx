@@ -86,8 +86,10 @@ export default function SettingsDashboard() {
     (s) =>
       !s.serviceKey.includes("SCUML") &&
       !s.serviceKey.includes("TAX_ID") &&
-      !s.serviceKey.startsWith("NIN")
+      !s.serviceKey.startsWith("NIN") &&
+      !s.serviceKey.startsWith("BVN")
   );
+  const bvnGroup = allServices.filter((s) => s.serviceKey.startsWith("BVN"));
   const complianceGroup = allServices.filter(
     (s) => s.serviceKey.includes("SCUML") || s.serviceKey.includes("TAX_ID")
   );
@@ -559,6 +561,24 @@ export default function SettingsDashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {cacGroup.map((service) => (
+                  <ServiceConfigCard key={service.id} service={service} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* NIBSS BVN SECTION */}
+          {bvnGroup.length > 0 && (
+            <section>
+              <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+                <ShieldCheck size={20} className="text-emerald-500 mr-2" />
+                <div>
+                  <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">NIBSS BVN Services</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Pricing and status configuration for Standard Verification, Premium Slip, and BVN Number Retrieval.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                {bvnGroup.map((service) => (
                   <ServiceConfigCard key={service.id} service={service} />
                 ))}
               </div>

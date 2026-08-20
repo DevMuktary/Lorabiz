@@ -27,9 +27,10 @@ export async function GET() {
       { serviceKey: "NIN_MOD_NAME", title: "NIN Modification - Change of Name", price: 2500.0 },
       { serviceKey: "NIN_MOD_PHONE", title: "NIN Modification - Change of Phone Number", price: 2000.0 },
       { serviceKey: "NIN_MOD_ADDRESS", title: "NIN Modification - Change of Address", price: 2000.0 },
-      // BVN Verification Slips
+      // BVN Services
       { serviceKey: "BVN_STANDARD", title: "BVN Verification - Standard Slip", price: 700.0 },
       { serviceKey: "BVN_PREMIUM", title: "BVN Verification - Premium Card Slip", price: 1000.0 },
+      { serviceKey: "BVN_RETRIEVAL", title: "BVN Number Retrieval", price: 2500.0 },
     ];
 
     for (const svc of defaultServices) {

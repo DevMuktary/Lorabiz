@@ -528,7 +528,7 @@ export default function BvnRetrievalHistoryPage() {
                 ) : (
                   <>
                     <DownloadSimple size={16} weight="bold" />
-                    <span>Download Official BVN Slip</span>
+                    <span>Download BVN Slip</span>
                   </>
                 )}
               </Button>

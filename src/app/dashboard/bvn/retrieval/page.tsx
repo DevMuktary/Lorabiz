@@ -5,14 +5,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  ArrowLeft, ShieldCheck, CheckCircle, WarningCircle, 
-  Sparkle, Clock, ListDashes, Wallet, Check, SpinnerGap, Info, Phone, User
+  ArrowLeft, ShieldCheck, WarningCircle, 
+  Sparkle, ListDashes, SpinnerGap, Phone, User
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import BvnRetrievalIntroModal from "@/components/features/bvn/BvnRetrievalIntroModal";
+import BvnRetrievalConfirmationModal from "@/components/features/bvn/BvnRetrievalConfirmationModal";
 
 export default function BvnRetrievalPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [showIntroModal, setShowIntroModal] = useState(true);
   
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -32,7 +35,7 @@ export default function BvnRetrievalPage() {
     setMounted(true);
   }, []);
 
-  // Fetch Pricing, Status, and Wallet Balance
+  // Fetch Pricing, Status, and Wallet Balance dynamically
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -63,10 +66,6 @@ export default function BvnRetrievalPage() {
 
     loadData();
   }, []);
-
-  const isInsufficient = walletBalance < price;
-  const remainingBalance = Math.max(0, walletBalance - price);
-  const shortfall = Math.max(0, price - walletBalance);
 
   const cleanPhone = phone.replace(/\s+/g, "").replace(/^\+234/, "0");
   const isPhoneValid = /^\d{11}$/.test(cleanPhone);
@@ -125,57 +124,57 @@ export default function BvnRetrievalPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
       
-      {/* Top Breadcrumb Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <Link 
-          href="/dashboard/bvn" 
-          className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit"
-        >
-          <ArrowLeft weight="bold" className="h-4 w-4" />
-          Back to BVN Services
-        </Link>
+      {/* Statutory Notice Modal on Page Load */}
+      <BvnRetrievalIntroModal 
+        isOpen={mounted && showIntroModal} 
+        onClose={() => setShowIntroModal(false)} 
+      />
 
-        <Link
-          href="/dashboard/bvn/retrieval/history"
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-secondary border border-border text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary text-xs font-bold transition-all w-fit cursor-pointer shadow-sm"
-        >
-          <ListDashes size={16} weight="bold" />
-          <span>View Retrieval History</span>
-        </Link>
-      </div>
+      {/* Top Breadcrumb Navigation */}
+      <Link 
+        href="/dashboard/bvn" 
+        className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit"
+      >
+        <ArrowLeft weight="bold" className="h-4 w-4" />
+        Back to BVN Services
+      </Link>
 
       {/* Header Banner */}
-      <div className="flex items-center gap-4 border-b border-border pb-5">
-        <div className="h-14 w-14 rounded-2xl bg-white flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
-          <Image 
-            src="/nibss.png" 
-            width={44} 
-            height={44} 
-            alt="NIBSS Logo" 
-            className="object-contain" 
-            priority 
-          />
-        </div>
-        <div>
-          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-1">
-            <ShieldCheck weight="bold" className="h-3 w-3" />
-            NIBSS Verified Recovery
+      <div className="border-b border-border pb-6 space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-2xl bg-white flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
+            <Image 
+              src="/nibss.png" 
+              width={44} 
+              height={44} 
+              alt="NIBSS Logo" 
+              className="object-contain" 
+              priority 
+            />
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-foreground">
-            BVN Number Retrieval
-          </h1>
-          <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-0.5">
-            Recover your forgotten 11-digit Bank Verification Number via official NIBSS record lookup.
-          </p>
+          <div>
+            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-1">
+              <ShieldCheck weight="bold" className="h-3 w-3" />
+              NIBSS Bank Verification Number Portal
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-foreground">
+              BVN Number Retrieval
+            </h1>
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-0.5">
+              Recover your forgotten 11-digit BVN using your full registered name and linked phone number.
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Turnaround Badge */}
-      <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl flex items-start sm:items-center gap-3">
-        <Clock size={22} weight="fill" className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
-        <div className="text-xs sm:text-sm text-foreground">
-          <span className="font-bold">Turnaround Time:</span> Official search and recovery is typically fulfilled within{" "}
-          <strong className="text-emerald-600 dark:text-emerald-400 font-black">1 to 24 hours</strong>. You will receive an automated email notification once completed.
+        {/* Action Button: Retrieval History (Underneath Description) */}
+        <div>
+          <Link
+            href="/dashboard/bvn/retrieval/history"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary text-xs font-bold transition-all w-fit cursor-pointer shadow-sm"
+          >
+            <ListDashes size={16} weight="bold" />
+            <span>View Retrieval History</span>
+          </Link>
         </div>
       </div>
 
@@ -248,20 +247,6 @@ export default function BvnRetrievalPage() {
             </p>
           </div>
 
-          {/* Fee & Wallet Breakdown */}
-          <div className="bg-secondary/40 border border-border p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div>
-              <span className="text-muted-foreground font-medium">Service Fee:</span>
-              <p className="text-lg font-black text-foreground">₦{price.toLocaleString()}</p>
-            </div>
-            <div className="text-right">
-              <span className="text-muted-foreground font-medium">Your Wallet Balance:</span>
-              <p className={`text-base font-black ${isInsufficient ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}>
-                ₦{walletBalance.toLocaleString()}
-              </p>
-            </div>
-          </div>
-
         </div>
 
         {/* Declarations / Checkboxes */}
@@ -315,122 +300,17 @@ export default function BvnRetrievalPage() {
 
       </form>
 
-      {/* Confirmation & Insufficient Balance Modal */}
-      {mounted && isConfirmModalOpen && (
-        <div 
-          className="fixed inset-0 h-full w-full min-h-[100dvh] z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
-          onClick={() => !isSubmitting && setIsConfirmModalOpen(false)}
-        >
-          <div 
-            className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-6 fade-in duration-300 text-left my-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                  <ShieldCheck size={20} weight="bold" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-foreground">
-                    {isInsufficient ? "Insufficient Balance" : "Confirm BVN Retrieval"}
-                  </h3>
-                  <p className="text-[11px] text-muted-foreground">Official NIBSS Recovery Request</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Content Body */}
-            {isInsufficient ? (
-              <div className="space-y-4 text-center py-2">
-                <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
-                  <Wallet size={24} weight="bold" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-black text-foreground text-sm">Wallet Top-up Required</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    This retrieval service costs <strong>₦{price.toLocaleString()}</strong>. Your current balance is{" "}
-                    <span className="text-destructive font-bold">₦{walletBalance.toLocaleString()}</span> (Shortfall: ₦{shortfall.toLocaleString()}).
-                  </p>
-                </div>
-
-                <div className="pt-2 flex flex-col gap-2">
-                  <Link
-                    href="/dashboard/wallet"
-                    className="w-full h-11 bg-primary text-primary-foreground font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-primary/20"
-                  >
-                    <Wallet size={16} weight="bold" />
-                    <span>Fund Wallet Now</span>
-                  </Link>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsConfirmModalOpen(false)}
-                    className="w-full h-10 text-xs font-bold text-muted-foreground"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-secondary/40 border border-border p-4 rounded-2xl space-y-2.5 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Full Name:</span>
-                    <span className="font-bold text-foreground text-right">{fullName.trim()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Linked Phone:</span>
-                    <span className="font-mono font-bold text-foreground">{cleanPhone}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Service Fee:</span>
-                    <span className="font-black text-emerald-600 dark:text-emerald-400">₦{price.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-border/60 pt-2">
-                    <span className="text-muted-foreground">Remaining Balance:</span>
-                    <span className="font-bold text-foreground">₦{remainingBalance.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Upon confirmation, <strong>₦{price.toLocaleString()}</strong> will be debited from your wallet and queued for recovery within 1 to 24 hours.
-                </p>
-
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsConfirmModalOpen(false)}
-                    disabled={isSubmitting}
-                    className="flex-1 h-11 text-xs font-bold"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleExecuteSubmit}
-                    disabled={isSubmitting}
-                    className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <SpinnerGap size={14} className="animate-spin" weight="bold" />
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check size={14} weight="bold" />
-                        <span>Yes, Submit</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
+      {/* Confirmation Modal with Dynamic Insufficient Balance Check */}
+      <BvnRetrievalConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => !isSubmitting && setIsConfirmModalOpen(false)}
+        onConfirm={handleExecuteSubmit}
+        isLoading={isSubmitting}
+        fullName={fullName.trim()}
+        phone={cleanPhone}
+        price={price}
+        walletBalance={walletBalance}
+      />
 
     </div>
   );

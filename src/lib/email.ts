@@ -1353,7 +1353,7 @@ export async function sendBvnRetrievalSubmittedEmail({
   const content = `
     <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Retrieval Request Submitted</h2>
     <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
-    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We have received your Bank Verification Number (BVN) Retrieval request on LoraBiz and it has been queued for official processing.</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We have received your Bank Verification Number (BVN) Retrieval request on LoraBiz and it has been queued for processing.</p>
     
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
       <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px; color: #334155;">
@@ -1426,7 +1426,7 @@ export async function sendBvnRetrievalCompletedEmail({
 
     ${slipUrl ? `
       <div style="text-align: center; margin: 28px 0 16px;">
-        <a href="${slipUrl}" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; margin-right: 8px;">Download Official Slip</a>
+        <a href="${slipUrl}" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; margin-right: 8px;">Download Slip</a>
         <a href="https://lorabiz.com/dashboard/bvn/retrieval/history" style="background-color: #f1f5f9; color: #334155; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; border: 1px solid #cbd5e1;">View in Dashboard</a>
       </div>
     ` : `
