@@ -7,47 +7,26 @@ export function ThemeColorUpdater() {
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
-    const updateThemeColor = (theme: string) => {
-      const isDark = theme === "dark";
-      const targetColor = isDark ? "#020617" : "#f8fafc";
+    if (!resolvedTheme) return;
 
-      // 1. Update all meta[name="theme-color"] tags
-      const metas = document.querySelectorAll('meta[name="theme-color"]');
-      if (metas.length > 0) {
-        metas.forEach((meta) => meta.setAttribute("content", targetColor));
-      } else {
-        const meta = document.createElement("meta");
-        meta.setAttribute("name", "theme-color");
-        meta.setAttribute("content", targetColor);
-        document.head.appendChild(meta);
-      }
+    // LoraBiz strict theme colors
+    const targetColor = resolvedTheme === "dark" ? "#020617" : "#f8fafc";
 
-      // 2. Set color-scheme for native OS status bar rendering
-      document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+    // 1. Destroy ALL existing theme-color tags (Fixes Next.js multi-tag confusion)
+    const existingTags = document.querySelectorAll('meta[name="theme-color"]');
+    existingTags.forEach(tag => tag.remove());
 
-      // 3. Apple status bar style for iOS Safari
-      let appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-      if (!appleMeta) {
-        appleMeta = document.createElement("meta");
-        appleMeta.setAttribute("name", "apple-mobile-web-app-status-bar-style");
-        document.head.appendChild(appleMeta);
-      }
-      appleMeta.setAttribute("content", isDark ? "black-translucent" : "default");
-    };
+    // 2. Inject ONE absolute source of truth for Safari
+    const meta = document.createElement("meta");
+    meta.setAttribute("name", "theme-color");
+    meta.setAttribute("content", targetColor);
+    document.head.appendChild(meta);
 
-    if (resolvedTheme) {
-      updateThemeColor(resolvedTheme);
-    }
+    // 3. NUCLEAR SAFARI FIX: Safari ignores the meta tag if the body background 
+    // doesn't match perfectly. We force the HTML to match instantly.
+    document.documentElement.style.backgroundColor = targetColor;
+    document.body.style.backgroundColor = targetColor;
 
-    // Direct listener for OS system theme changes
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleMediaChange = (e: MediaQueryListEvent) => {
-      const newTheme = e.matches ? "dark" : "light";
-      updateThemeColor(newTheme);
-    };
-
-    mediaQuery.addEventListener("change", handleMediaChange);
-    return () => mediaQuery.removeEventListener("change", handleMediaChange);
   }, [resolvedTheme]);
 
   return null;

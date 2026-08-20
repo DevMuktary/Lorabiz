@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
@@ -91,15 +91,26 @@ export default function BvnSlipVerificationPage() {
     setMounted(true);
   }, []);
 
-  // Lock body scroll when any modal is open
+  const isAnyModalOpen = showIntroModal || lightbox.isOpen || isConfirmOpen || resultModalState.isOpen || isDetailsModalOpen;
+  const savedScrollYRef = useRef<number>(0);
+
+  // Unscrolled top alignment for mobile status bar sync + zero bottom cut-off
   useEffect(() => {
-    if (showIntroModal || lightbox.isOpen || isConfirmOpen || resultModalState.isOpen || isDetailsModalOpen) {
+    if (isAnyModalOpen) {
+      if (window.scrollY > 0) {
+        savedScrollYRef.current = window.scrollY;
+      }
       document.body.style.overflow = "hidden";
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+
       return () => {
         document.body.style.overflow = "";
+        if (savedScrollYRef.current > 0) {
+          window.scrollTo({ top: savedScrollYRef.current, left: 0, behavior: "instant" });
+        }
       };
     }
-  }, [showIntroModal, lightbox.isOpen, isConfirmOpen, resultModalState.isOpen, isDetailsModalOpen]);
+  }, [isAnyModalOpen]);
 
   // Fetch Pricing, Status, Wallet Balance, and 24-Hour History
   const fetchPageData = async () => {
@@ -239,11 +250,11 @@ export default function BvnSlipVerificationPage() {
       {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching Tax ID) */}
       {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 h-full w-full min-h-[100dvh] z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setShowIntroModal(false)}
         >
           <div 
-            className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-6 fade-in duration-300 text-left"
+            className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-6 fade-in duration-300 text-left my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <button 
@@ -511,10 +522,10 @@ export default function BvnSlipVerificationPage() {
       {/* Lightbox Specimen Preview Modal */}
       {mounted && lightbox.isOpen && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 h-full w-full min-h-[100dvh] z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
-          <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 my-auto" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-card border-b border-border px-5 py-3.5 flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
               <button 
