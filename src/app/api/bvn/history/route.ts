@@ -22,15 +22,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
     }
 
-    // 24 hours retention window for regular users
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // 72 hours retention window for regular users
+    const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000);
 
     const logs = await prisma.bvnRequestLog.findMany({
       where: {
         userId: user.id,
         status: "SUCCESS",
         createdAt: {
-          gte: twentyFourHoursAgo
+          gte: seventyTwoHoursAgo
         }
       },
       orderBy: {

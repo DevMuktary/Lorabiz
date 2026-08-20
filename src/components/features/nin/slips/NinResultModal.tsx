@@ -248,11 +248,11 @@ export default function NinResultModal({
               </div>
             </div>
 
-            {/* 24-HOUR DATA RETENTION NOTICE */}
+            {/* 72-HOUR DATA RETENTION NOTICE */}
             <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-start gap-2.5">
               <Trash size={16} className="text-amber-500 shrink-0 mt-0.5" weight="fill" />
               <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 leading-tight">
-                24-Hour Print Window: You can view these details and re-download this slip anytime from your history for the next 24 hours.
+                72-Hour Print Window: You can view these details and re-download this slip anytime from your history for the next 72 hours.
               </p>
             </div>
 

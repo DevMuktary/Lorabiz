@@ -464,8 +464,8 @@ export default function BvnSlipVerificationPage() {
 
       </form>
 
-      {/* 24-Hour Print History at the Bottom (Matching NIN layout) */}
-      <BvnHistorySection history={history} title="24-Hour BVN Print History" isLoading={isHistoryLoading} />
+      {/* 72-Hour Print History at the Bottom (Matching NIN layout) */}
+      <BvnHistorySection history={history} title="72-Hour BVN Print History" isLoading={isHistoryLoading} />
 
       {/* Confirmation & Insufficient Balance Modal (with Specimen Preview) */}
       <BvnConfirmationModal

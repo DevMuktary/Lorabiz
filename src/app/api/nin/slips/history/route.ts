@@ -25,14 +25,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const searchTypeFilter = searchParams.get("searchType"); // "NIN" | "PHONE" | null
 
-    // Calculate timestamp for 24 hours ago
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Calculate timestamp for 72 hours ago
+    const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000);
 
     const whereClause: any = {
       userId: user.id,
       status: "SUCCESS",
       createdAt: {
-        gte: twentyFourHoursAgo
+        gte: seventyTwoHoursAgo
       }
     };
 

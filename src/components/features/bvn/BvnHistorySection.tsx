@@ -41,7 +41,7 @@ interface BvnHistorySectionProps {
 
 const ITEMS_PER_PAGE = 10;
 
-export default function BvnHistorySection({ history, title = "24-Hour BVN Print History", isLoading = false }: BvnHistorySectionProps) {
+export default function BvnHistorySection({ history, title = "72-Hour BVN Print History", isLoading = false }: BvnHistorySectionProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<BvnHistoryItem | null>(null);
@@ -132,7 +132,7 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
   }
 
   return (
-    <div className="bg-card border border-border/80 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+    <div className="pt-8 border-t border-border space-y-4">
       {/* DOWNLOAD STARTED BANNER */}
       {downloadToast && (
         <div className="bg-emerald-500 text-white text-xs font-black py-2.5 px-4 rounded-2xl shadow-lg flex items-center justify-between gap-2 animate-in slide-in-from-top-2 duration-300">
@@ -146,30 +146,26 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
         </div>
       )}
 
-      {/* SECTION HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-500/20">
-            <ClockCounterClockwise size={20} weight="bold" />
-          </div>
-          <div>
-            <h3 className="text-base font-black text-foreground flex items-center gap-2">
-              {title}
-              {!isLoading && (history?.length || 0) > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/20">
-                  {history.length} {history.length === 1 ? "Slip" : "Slips"}
-                </span>
-              )}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Slips generated in the last 24 hours are retained here for instant re-download.
-            </p>
-          </div>
+      {/* SECTION HEADER - CLEAN NATURAL FLOW */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <ClockCounterClockwise size={20} className="text-emerald-600 dark:text-emerald-400" weight="bold" />
+          <h2 className="text-base font-black text-foreground flex items-center gap-2">
+            {title}
+            {!isLoading && (history?.length || 0) > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/20">
+                {history.length} {history.length === 1 ? "Record" : "Records"}
+              </span>
+            )}
+          </h2>
         </div>
+        <span className="text-[11px] font-bold text-muted-foreground bg-secondary px-2.5 py-1 rounded-full border border-border w-fit">
+          72-Hour Purge Window
+        </span>
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center space-y-4">
+        <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4 shadow-sm">
           <div className="flex items-center justify-center gap-1.5 py-2">
             <span className="w-1.5 h-4 bg-emerald-600 rounded-full animate-bounce [animation-delay:-0.4s]" />
             <span className="w-1.5 h-7 bg-emerald-500/90 rounded-full animate-bounce [animation-delay:-0.2s]" />
@@ -179,7 +175,7 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
           </div>
           <div className="space-y-1">
             <p className="text-sm font-black text-foreground tracking-tight">Loading your verification history...</p>
-            <p className="text-xs text-muted-foreground">Retrieving recent 24-hour BVN records from secure storage</p>
+            <p className="text-xs text-muted-foreground">Retrieving recent 72-hour BVN records from secure storage</p>
           </div>
           <div className="space-y-2.5 max-w-md mx-auto pt-2">
             <div className="h-12 bg-secondary/70 rounded-xl animate-pulse" />
@@ -187,13 +183,13 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
           </div>
         </div>
       ) : !history || history.length === 0 ? (
-        <div className="border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
-          <p className="text-sm font-bold text-muted-foreground">No slips generated within the last 24 hours.</p>
-          <p className="text-xs text-muted-foreground/70">Generated slips appear here for 24 hours.</p>
+        <div className="bg-card border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
+          <p className="text-sm font-bold text-muted-foreground">No slips generated within the last 72 hours.</p>
+          <p className="text-xs text-muted-foreground/70">Generated slips appear here for 72 hours.</p>
         </div>
       ) : (
         /* UNIFIED RESPONSIVE TABLE FOR BOTH MOBILE AND DESKTOP */
-        <div className="border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
+        <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm font-medium whitespace-nowrap">
               <thead className="bg-secondary/40 border-b border-border text-muted-foreground uppercase text-[11px] font-bold tracking-wider">
@@ -440,6 +436,14 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
                       <p className="text-foreground mt-0.5 leading-relaxed">{detailsAddress}</p>
                     </div>
                   )}
+                </div>
+
+                {/* Retention Alert */}
+                <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-start gap-2.5">
+                  <Trash size={16} className="text-amber-500 shrink-0 mt-0.5" weight="fill" />
+                  <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                    This verification record will be automatically deleted from our servers 72 hours after generation.
+                  </p>
                 </div>
 
                 <div className="flex gap-2">

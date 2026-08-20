@@ -500,8 +500,8 @@ export default function NinByPhonePage() {
         onClose={() => setResultModal(prev => ({ ...prev, isOpen: false }))}
       />
 
-      {/* PHONE SPECIFIC HISTORY (LAST 24 HOURS) */}
-      <NinHistorySection history={history} title="Phone Verification History (Last 24 Hours)" isLoading={statusState.loading} />
+      {/* PHONE SPECIFIC HISTORY (LAST 72 HOURS) */}
+      <NinHistorySection history={history} title="Phone Verification History (Last 72 Hours)" isLoading={statusState.loading} />
 
     </div>
   );

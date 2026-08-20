@@ -252,11 +252,11 @@ export default function BvnResultModal({
               </div>
             </div>
 
-            {/* 24-HOUR DATA RETENTION NOTICE */}
+            {/* 72-HOUR DATA RETENTION NOTICE */}
             <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl flex items-start gap-2.5">
               <ClockCounterClockwise size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" weight="bold" />
               <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 leading-tight">
-                24-Hour Print Window: You can view these details and re-download this slip anytime from your history for the next 24 hours.
+                72-Hour Print Window: You can view these details and re-download this slip anytime from your history for the next 72 hours.
               </p>
             </div>
 

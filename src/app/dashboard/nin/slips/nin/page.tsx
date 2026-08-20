@@ -508,8 +508,8 @@ export default function NinByNinPage() {
         onClose={() => setResultModal(prev => ({ ...prev, isOpen: false }))}
       />
 
-      {/* NIN SPECIFIC HISTORY (LAST 24 HOURS) */}
-      <NinHistorySection history={history} title="NIN Verification History (Last 24 Hours)" isLoading={statusState.loading} />
+      {/* NIN SPECIFIC HISTORY (LAST 72 HOURS) */}
+      <NinHistorySection history={history} title="NIN Verification History (Last 72 Hours)" isLoading={statusState.loading} />
 
     </div>
   );

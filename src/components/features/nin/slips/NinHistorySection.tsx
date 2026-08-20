@@ -42,7 +42,7 @@ interface NinHistorySectionProps {
 
 const ITEMS_PER_PAGE = 10;
 
-export default function NinHistorySection({ history, title = "24-Hour Print History", isLoading = false }: NinHistorySectionProps) {
+export default function NinHistorySection({ history, title = "72-Hour Print History", isLoading = false }: NinHistorySectionProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<SlipHistoryItem | null>(null);
@@ -157,7 +157,7 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
           </h2>
         </div>
         <span className="text-[11px] font-bold text-muted-foreground bg-secondary px-2.5 py-1 rounded-full border border-border w-fit">
-          24-Hour Purge Window
+          72-Hour Purge Window
         </span>
       </div>
 
@@ -172,7 +172,7 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
           </div>
           <div className="space-y-1">
             <p className="text-sm font-black text-foreground tracking-tight">Loading your verification history...</p>
-            <p className="text-xs text-muted-foreground">Retrieving recent 24-hour verification records from secure storage</p>
+            <p className="text-xs text-muted-foreground">Retrieving recent 72-hour verification records from secure storage</p>
           </div>
           <div className="space-y-2.5 max-w-md mx-auto pt-2">
             <div className="h-12 bg-secondary/70 rounded-xl animate-pulse" />
@@ -181,8 +181,8 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
         </div>
       ) : !history || history.length === 0 ? (
         <div className="bg-card border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
-          <p className="text-sm font-bold text-muted-foreground">No slips generated within the last 24 hours.</p>
-          <p className="text-xs text-muted-foreground/70">Generated slips and applicant demographic data appear here for 24 hours.</p>
+          <p className="text-sm font-bold text-muted-foreground">No slips generated within the last 72 hours.</p>
+          <p className="text-xs text-muted-foreground/70">Generated slips and applicant demographic data appear here for 72 hours.</p>
         </div>
       ) : (
         /* UNIFIED RESPONSIVE TABLE FOR BOTH MOBILE AND DESKTOP */
@@ -451,7 +451,7 @@ export default function NinHistorySection({ history, title = "24-Hour Print Hist
                 <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-start gap-2.5">
                   <Trash size={16} className="text-amber-500 shrink-0 mt-0.5" weight="fill" />
                   <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                    This verification record will be automatically deleted from our servers 24 hours after generation.
+                    This verification record will be automatically deleted from our servers 72 hours after generation.
                   </p>
                 </div>
 
