@@ -91,6 +91,16 @@ export default function BvnSlipVerificationPage() {
     setMounted(true);
   }, []);
 
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (showIntroModal || lightbox.isOpen || isConfirmOpen || resultModalState.isOpen || isDetailsModalOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [showIntroModal, lightbox.isOpen, isConfirmOpen, resultModalState.isOpen, isDetailsModalOpen]);
+
   // Fetch Pricing, Status, Wallet Balance, and 24-Hour History
   const fetchPageData = async () => {
     try {
@@ -101,37 +111,26 @@ export default function BvnSlipVerificationPage() {
       ]);
 
       if (statusRes.ok) {
-        const statusJson = await statusRes.json();
-        if (statusJson.success && statusJson.pricing) {
-          setPrices({
-            BVN_STANDARD: statusJson.pricing.BVN_STANDARD?.price || 700,
-            BVN_PREMIUM: statusJson.pricing.BVN_PREMIUM?.price || 1000,
-          });
-          setActiveMap({
-            bvn_standard: statusJson.pricing.BVN_STANDARD?.isActive !== false,
-            bvn_premium: statusJson.pricing.BVN_PREMIUM?.isActive !== false,
-          });
+        const data = await statusRes.json();
+        if (data.prices) setPrices(data.prices);
+        if (data.activeMap) setActiveMap(data.activeMap);
+      }
+
+      if (walletRes && walletRes.ok) {
+        const wData = await walletRes.json();
+        if (wData.success && typeof wData.balance === "number") {
+          setWalletBalance(wData.balance);
         }
       }
 
-      if (walletRes.ok) {
-        const walletJson = await walletRes.json();
-        if (walletJson.success) {
-          const bal = typeof walletJson.balance === "number" 
-            ? walletJson.balance 
-            : (walletJson.wallet?.balance || walletJson.data?.balance || 0);
-          setWalletBalance(Number(bal));
-        }
-      }
-
-      if (histRes.ok) {
-        const histJson = await histRes.json();
-        if (histJson.success && histJson.history) {
-          setHistory(histJson.history);
+      if (histRes && histRes.ok) {
+        const hData = await histRes.json();
+        if (hData.success && Array.isArray(hData.history)) {
+          setHistory(hData.history);
         }
       }
     } catch (err) {
-      console.error("Failed to load BVN page data:", err);
+      console.error("Error loading BVN page data:", err);
     } finally {
       setIsHistoryLoading(false);
     }
@@ -141,23 +140,34 @@ export default function BvnSlipVerificationPage() {
     fetchPageData();
   }, []);
 
-  const activePrice = slipType === "bvn_premium" ? prices.BVN_PREMIUM : prices.BVN_STANDARD;
-  const activeOption = BVN_SLIP_OPTIONS.find((o) => o.id === slipType) || BVN_SLIP_OPTIONS[0];
+  // Auto-clear validation error as soon as BVN reaches 11 digits
+  useEffect(() => {
+    if (bvn.length === 11 && error) {
+      setError(null);
+    }
+  }, [bvn, error]);
+
+  const activeOption = BVN_SLIP_OPTIONS.find((opt) => opt.id === slipType) || BVN_SLIP_OPTIONS[0];
+  const activePrice = prices[slipType.toUpperCase()] ?? activeOption.defaultPrice;
+  const isSelectedSlipAvailable = activeMap[slipType] ?? true;
+
   const activeLabel = activeOption.label;
-  const isValidBvn = /^\d{11}$/.test(bvn.trim());
-  const isSelectedSlipAvailable = activeMap[slipType] !== false;
-  const isFormValid = isValidBvn && consent1 && consent2 && isSelectedSlipAvailable;
+
+  const isFormValid = bvn.trim().length === 11 && consent1 && consent2 && isSelectedSlipAvailable;
 
   const handleProceedToConfirm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValidBvn) {
-      setError("Please provide a valid 11-digit Bank Verification Number (BVN).");
+
+    if (bvn.trim().length !== 11) {
+      setError("Please enter a valid 11-digit BVN.");
       return;
     }
+
     if (!consent1 || !consent2) {
-      setError("You must accept all statutory declarations to proceed.");
+      setError("You must accept both statutory attestations to proceed.");
       return;
     }
+
     if (!isSelectedSlipAvailable) {
       setError("The selected slip format is currently unavailable. Please choose another format.");
       return;
@@ -209,10 +219,7 @@ export default function BvnSlipVerificationPage() {
         photo: data.photo,
       });
 
-      // Clear input and refresh balance + history
-      setBvn("");
-      setConsent1(false);
-      setConsent2(false);
+      // Refetch wallet and history
       fetchPageData();
 
     } catch (err: any) {
@@ -226,24 +233,17 @@ export default function BvnSlipVerificationPage() {
     }
   };
 
-  const isAnyModalOpen = showIntroModal || isConfirmOpen || resultModalState.isOpen || lightbox.isOpen || isDetailsModalOpen;
-
   return (
-    <div className={`space-y-6 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300 transition-opacity ${mounted && isAnyModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
+    <div className="space-y-6 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300">
       
-      {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching Main Dashboard) */}
+      {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching Tax ID) */}
       {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setShowIntroModal(false)}
         >
           <div 
-            className="fixed inset-0 min-h-screen w-screen" 
-            onClick={() => setShowIntroModal(false)} 
-          />
-
-          <div 
-            className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 md:p-8"
+            className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-6 fade-in duration-300 text-left"
             onClick={(e) => e.stopPropagation()}
           >
             <button 
@@ -511,14 +511,9 @@ export default function BvnSlipVerificationPage() {
       {/* Lightbox Specimen Preview Modal */}
       {mounted && lightbox.isOpen && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
-          <div 
-            className="fixed inset-0 min-h-screen w-screen" 
-            onClick={() => setLightbox({ isOpen: false, src: "", label: "" })} 
-          />
-
           <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-card border-b border-border px-5 py-3.5 flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>

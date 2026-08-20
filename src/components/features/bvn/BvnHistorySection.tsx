@@ -59,6 +59,16 @@ export default function BvnHistorySection({
     setMounted(true);
   }, []);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedDetails) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [selectedDetails]);
+
   useEffect(() => {
     onDetailsModalToggle?.(!!selectedDetails);
   }, [selectedDetails, onDetailsModalToggle]);
@@ -356,16 +366,11 @@ export default function BvnHistorySection({
 
           return (
             <div 
-              className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+              className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-300"
               onClick={() => setSelectedDetails(null)}
             >
               <div 
-                className="fixed inset-0 min-h-screen w-screen" 
-                onClick={() => setSelectedDetails(null)} 
-              />
-
-              <div 
-                className="relative w-full max-w-md bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 space-y-5 max-h-[90vh] overflow-y-auto"
+                className="relative w-full max-w-md bg-card text-card-foreground border border-border rounded-3xl shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-6 fade-in duration-300 text-left"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-border pb-3">

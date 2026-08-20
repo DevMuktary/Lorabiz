@@ -90,6 +90,16 @@ export default function BvnResultModal({
     }
   };
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [isOpen]);
+
   // Deeply unwrap and normalize all demographic fields
   const demo = parseDemographics(userData, propFullName);
   const resolvedFullName = demo.fullName || (bvn ? `BVN Account Holder (${bvn.slice(0, 3)}...${bvn.slice(-3)})` : "Verified BVN Account Holder");
@@ -102,16 +112,11 @@ export default function BvnResultModal({
 
   return createPortal(
     <div 
-      className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-300"
       onClick={status !== "loading" ? onClose : undefined}
     >
       <div 
-        className="fixed inset-0 min-h-screen w-screen" 
-        onClick={status !== "loading" ? onClose : undefined} 
-      />
-
-      <div 
-        className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-center p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto"
+        className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-6 fade-in duration-300 text-center"
         onClick={(e) => e.stopPropagation()}
       >
         
