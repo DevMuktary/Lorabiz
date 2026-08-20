@@ -231,7 +231,7 @@ export default function BvnSlipVerificationPage() {
       {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching SCUML/Tax ID) */}
       {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setShowIntroModal(false)}
         >
 
@@ -499,7 +499,7 @@ export default function BvnSlipVerificationPage() {
       {/* Lightbox Specimen Preview Modal */}
       {mounted && lightbox.isOpen && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
           <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>

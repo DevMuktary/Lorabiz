@@ -192,105 +192,20 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
           <p className="text-xs text-muted-foreground/70">Generated slips appear here for 24 hours.</p>
         </div>
       ) : (
+        /* UNIFIED RESPONSIVE TABLE FOR BOTH MOBILE AND DESKTOP */
         <div className="border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
-          
-          {/* 📱 MOBILE VIEW (Card Layout) */}
-          <div className="block md:hidden divide-y divide-border/60">
-            {currentData.map((item) => {
-              const itemDemo = parseDemographics(item.userData, item.fullName);
-              const displayFullName = itemDemo.fullName || item.fullName || item.slipType;
-
-              return (
-                <div
-                  key={item.id}
-                  className="p-4 space-y-3 hover:bg-secondary/20 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-3 min-w-0">
-                      {itemDemo.photo ? (
-                        <img 
-                          src={itemDemo.photo} 
-                          alt={displayFullName} 
-                          className="w-10 h-11 object-cover rounded-xl border border-emerald-500/30 shrink-0 shadow-sm"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                          <FilePdf size={22} weight="bold" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <h4 className="text-sm font-black text-foreground truncate">
-                          {displayFullName}
-                        </h4>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                          <span className="text-[11px] font-mono font-bold text-foreground bg-secondary/80 px-1.5 py-0.5 rounded border border-border">
-                            {item.bvnMasked}
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                            {item.slipType}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap bg-secondary/50 px-2 py-0.5 rounded-full border border-border/60 shrink-0">
-                      {item.createdAt}
-                    </span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedDetails(item)}
-                      className="flex-1 h-9 text-xs font-bold bg-background text-foreground border-border hover:bg-secondary rounded-xl cursor-pointer"
-                    >
-                      <Eye size={14} className="mr-1.5" weight="bold" />
-                      <span>Details</span>
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      onClick={() => handleDirectDownload(item)}
-                      disabled={downloadingId === item.id}
-                      className="flex-1 h-9 text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl cursor-pointer shadow-sm"
-                    >
-                      {downloadingId === item.id ? (
-                        <>
-                          <SpinnerGap size={14} className="mr-1.5 animate-spin" weight="bold" />
-                          <span>Preparing...</span>
-                        </>
-                      ) : successId === item.id ? (
-                        <>
-                          <CheckCircle size={14} className="mr-1.5" weight="bold" />
-                          <span>Downloaded</span>
-                        </>
-                      ) : (
-                        <>
-                          <DownloadSimple size={14} className="mr-1.5" weight="bold" />
-                          <span>Download PDF</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 💻 DESKTOP VIEW (Table Layout) */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead>
-                <tr className="bg-secondary/50 text-muted-foreground border-b border-border text-[11px] font-black uppercase tracking-wider">
-                  <th className="px-5 py-3.5">Account Holder</th>
-                  <th className="px-5 py-3.5">BVN Identifier</th>
-                  <th className="px-5 py-3.5">Slip Format</th>
-                  <th className="px-5 py-3.5">Generated Time</th>
-                  <th className="px-5 py-3.5 text-right">Actions</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm font-medium whitespace-nowrap">
+              <thead className="bg-secondary/40 border-b border-border text-muted-foreground uppercase text-[11px] font-bold tracking-wider">
+                <tr>
+                  <th className="py-3.5 px-4 sm:px-5">Account Holder</th>
+                  <th className="py-3.5 px-4 sm:px-5">BVN Identifier</th>
+                  <th className="py-3.5 px-4 sm:px-5">Slip Format</th>
+                  <th className="py-3.5 px-4 sm:px-5">Generated Time</th>
+                  <th className="py-3.5 px-4 sm:px-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-border">
                 {currentData.map((item) => {
                   const isDownloading = downloadingId === item.id;
                   const isSuccess = successId === item.id;
@@ -299,7 +214,7 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
 
                   return (
                     <tr key={item.id} className="hover:bg-secondary/30 transition-colors group">
-                      <td className="px-5 py-3.5">
+                      <td className="py-3.5 px-4 sm:px-5">
                         <div className="flex items-center gap-3">
                           {itemDemo.photo ? (
                             <img 
@@ -312,44 +227,44 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
                               <User size={18} weight="bold" />
                             </div>
                           )}
-                          <div className="min-w-0 max-w-[220px]">
-                            <p className="font-black text-foreground truncate text-sm">
+                          <div className="min-w-0 max-w-[200px] sm:max-w-[240px]">
+                            <p className="font-black text-foreground truncate text-xs sm:text-sm">
                               {displayFullName}
                             </p>
-                            <span className="text-[11px] text-muted-foreground block truncate">
+                            <span className="text-[10px] text-muted-foreground block truncate">
                               Ref: {item.reference || item.id.slice(0, 12)}
                             </span>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-5 py-3.5">
+                      <td className="py-3.5 px-4 sm:px-5">
                         <span className="font-mono font-bold text-foreground bg-secondary/80 px-2 py-0.5 rounded border border-border text-xs">
                           {item.bvnMasked}
                         </span>
                       </td>
 
-                      <td className="px-5 py-3.5">
+                      <td className="py-3.5 px-4 sm:px-5">
                         <span className="inline-flex px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                           {item.slipType}
                         </span>
                       </td>
 
-                      <td className="px-5 py-3.5">
+                      <td className="py-3.5 px-4 sm:px-5">
                         <span className="text-xs font-bold text-muted-foreground">
                           {item.createdAt}
                         </span>
                       </td>
 
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="py-3.5 px-4 sm:px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setSelectedDetails(item)}
-                            className="h-8 px-3 text-xs font-bold border-border bg-background hover:bg-secondary text-foreground rounded-xl cursor-pointer"
+                            className="h-8 px-2.5 sm:px-3 text-xs font-bold border-border bg-background hover:bg-secondary text-foreground rounded-xl cursor-pointer"
                           >
-                            <Eye size={13} className="mr-1.5" weight="bold" />
+                            <Eye size={13} className="mr-1" weight="bold" />
                             <span>Details</span>
                           </Button>
 
@@ -357,7 +272,7 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
                             size="sm"
                             onClick={() => handleDirectDownload(item)}
                             disabled={isDownloading}
-                            className={`h-8 px-3.5 text-xs font-black rounded-xl transition-all cursor-pointer shadow-sm ${
+                            className={`h-8 px-2.5 sm:px-3.5 text-xs font-black rounded-xl transition-all cursor-pointer shadow-sm ${
                               isSuccess
                                 ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                                 : "bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -365,17 +280,17 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
                           >
                             {isDownloading ? (
                               <>
-                                <SpinnerGap size={13} className="mr-1.5 animate-spin" weight="bold" />
+                                <SpinnerGap size={13} className="mr-1 animate-spin" weight="bold" />
                                 <span>Preparing...</span>
                               </>
                             ) : isSuccess ? (
                               <>
-                                <CheckCircle size={13} className="mr-1.5" weight="bold" />
+                                <CheckCircle size={13} className="mr-1" weight="fill" />
                                 <span>Downloaded</span>
                               </>
                             ) : (
                               <>
-                                <DownloadSimple size={13} className="mr-1.5" weight="bold" />
+                                <DownloadSimple size={13} className="mr-1" weight="bold" />
                                 <span>Download PDF</span>
                               </>
                             )}
@@ -439,7 +354,7 @@ export default function BvnHistorySection({ history, title = "24-Hour BVN Print 
 
           return (
             <div 
-              className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+              className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200"
               onClick={() => setSelectedDetails(null)}
             >
               <div 

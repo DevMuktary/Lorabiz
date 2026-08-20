@@ -100,7 +100,7 @@ export default function NinResultModal({
 
   return createPortal(
     <div 
-      className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200"
       onClick={status !== "loading" ? onClose : undefined}
     >
       <div 
