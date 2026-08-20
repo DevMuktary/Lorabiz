@@ -54,6 +54,16 @@ export default function NinHistorySection({ history, title = "72-Hour Print Hist
     setMounted(true);
   }, []);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedDetails) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [selectedDetails]);
+
   // Reset or clamp current page when history length changes
   const totalPages = Math.max(1, Math.ceil((history?.length || 0) / ITEMS_PER_PAGE));
   useEffect(() => {
@@ -162,7 +172,7 @@ export default function NinHistorySection({ history, title = "72-Hour Print Hist
       </div>
 
       {isLoading ? (
-        <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4 shadow-sm">
+        <div className="py-8 text-center space-y-4">
           <div className="flex items-center justify-center gap-1.5 py-2">
             <span className="w-1.5 h-4 bg-[#ff3f7a] rounded-full animate-bounce [animation-delay:-0.4s]" />
             <span className="w-1.5 h-7 bg-[#ff3f7a]/90 rounded-full animate-bounce [animation-delay:-0.2s]" />
@@ -174,31 +184,27 @@ export default function NinHistorySection({ history, title = "72-Hour Print Hist
             <p className="text-sm font-black text-foreground tracking-tight">Loading your verification history...</p>
             <p className="text-xs text-muted-foreground">Retrieving recent 72-hour verification records from secure storage</p>
           </div>
-          <div className="space-y-2.5 max-w-md mx-auto pt-2">
-            <div className="h-12 bg-secondary/70 rounded-xl animate-pulse" />
-            <div className="h-12 bg-secondary/40 rounded-xl animate-pulse" />
-          </div>
         </div>
       ) : !history || history.length === 0 ? (
-        <div className="bg-card border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
+        <div className="border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
           <p className="text-sm font-bold text-muted-foreground">No slips generated within the last 72 hours.</p>
           <p className="text-xs text-muted-foreground/70">Generated slips and applicant demographic data appear here for 72 hours.</p>
         </div>
       ) : (
-        /* UNIFIED RESPONSIVE TABLE FOR BOTH MOBILE AND DESKTOP */
-        <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
-          <div className="overflow-x-auto">
+        /* CLEAN TABLE STANDING DIRECTLY ON PAGE WITHOUT OUTER BOX/CARD WRAPPER */
+        <div className="w-full space-y-3">
+          <div className="w-full overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm font-medium whitespace-nowrap">
-              <thead className="bg-secondary/40 border-b border-border text-muted-foreground uppercase text-[11px] font-bold tracking-wider">
+              <thead className="border-b border-border text-muted-foreground uppercase text-[11px] font-bold tracking-wider">
                 <tr>
-                  <th className="py-3.5 px-4 sm:px-5">Applicant / Citizen</th>
-                  <th className="py-3.5 px-4 sm:px-5">NIN Identifier</th>
-                  <th className="py-3.5 px-4 sm:px-5">Slip Format</th>
-                  <th className="py-3.5 px-4 sm:px-5">Generated Time</th>
-                  <th className="py-3.5 px-4 sm:px-5 text-right">Actions</th>
+                  <th className="py-3 px-2 sm:px-4">Applicant / Citizen</th>
+                  <th className="py-3 px-2 sm:px-4">NIN Identifier</th>
+                  <th className="py-3 px-2 sm:px-4">Slip Format</th>
+                  <th className="py-3 px-2 sm:px-4">Generated Time</th>
+                  <th className="py-3 px-2 sm:px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/60">
                 {currentData.map((item) => {
                   const isDownloading = downloadingId === item.id;
                   const isSuccess = successId === item.id;
@@ -207,7 +213,7 @@ export default function NinHistorySection({ history, title = "72-Hour Print Hist
 
                   return (
                     <tr key={item.id} className="hover:bg-secondary/30 transition-colors group">
-                      <td className="py-3.5 px-4 sm:px-5">
+                      <td className="py-3.5 px-2 sm:px-4">
                         <div className="flex items-center gap-3">
                           {itemDemo.photo ? (
                             <img 
@@ -231,7 +237,7 @@ export default function NinHistorySection({ history, title = "72-Hour Print Hist
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 sm:px-5">
+                      <td className="py-3.5 px-2 sm:px-4">
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono font-bold text-foreground bg-secondary/80 px-2 py-0.5 rounded border border-border text-xs">
                             {item.ninMasked}
@@ -244,19 +250,19 @@ export default function NinHistorySection({ history, title = "72-Hour Print Hist
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 sm:px-5">
+                      <td className="py-3.5 px-2 sm:px-4">
                         <span className="inline-flex px-2.5 py-1 rounded-lg text-xs font-bold bg-secondary text-foreground border border-border">
                           {item.slipType}
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 sm:px-5">
+                      <td className="py-3.5 px-2 sm:px-4">
                         <span className="text-xs font-bold text-muted-foreground">
                           {item.createdAt}
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 sm:px-5 text-right">
+                      <td className="py-3.5 px-2 sm:px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="outline"
@@ -306,9 +312,9 @@ export default function NinHistorySection({ history, title = "72-Hour Print Hist
             </table>
           </div>
 
-          {/* 📄 PAGINATION FOOTER */}
+          {/* 📄 PAGINATION CONTROLS */}
           {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-5 border-t border-border bg-secondary/15 gap-3 text-xs">
+            <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-border gap-3 text-xs">
               <span className="text-muted-foreground font-medium">
                 Showing <span className="font-bold text-foreground">{startIndex + 1}</span> to <span className="font-bold text-foreground">{Math.min(startIndex + ITEMS_PER_PAGE, history.length)}</span> of <span className="font-bold text-foreground">{history.length}</span> entries
               </span>
@@ -342,7 +348,7 @@ export default function NinHistorySection({ history, title = "72-Hour Print Hist
         </div>
       )}
 
-      {/* APPLICANT DETAILS MODAL */}
+      {/* APPLICANT DETAILS MODAL - FULL OPAQUE TAKE OVER */}
       {mounted && selectedDetails && typeof document !== "undefined" && createPortal(
         (() => {
           const selectedDemo = parseDemographics(selectedDetails.userData, selectedDetails.fullName);
@@ -356,11 +362,11 @@ export default function NinHistorySection({ history, title = "72-Hour Print Hist
 
           return (
             <div 
-              className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200"
+              className="fixed inset-0 z-[99999] w-full h-[100dvh] bg-background/95 dark:bg-background/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
               onClick={() => setSelectedDetails(null)}
             >
               <div 
-                className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto"
+                className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 sm:p-7 space-y-5 my-auto max-h-[90dvh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Modal Header */}

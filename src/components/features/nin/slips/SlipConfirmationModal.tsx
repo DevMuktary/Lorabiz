@@ -41,6 +41,16 @@ export default function SlipConfirmationModal({
     setMounted(true);
   }, []);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   const isInsufficient = walletBalance < price;
@@ -49,11 +59,11 @@ export default function SlipConfirmationModal({
 
   return createPortal(
     <div 
-      className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] w-full h-[100dvh] bg-background/95 dark:bg-background/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 space-y-5 max-h-[90vh] overflow-y-auto"
+        className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 space-y-5 my-auto max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         

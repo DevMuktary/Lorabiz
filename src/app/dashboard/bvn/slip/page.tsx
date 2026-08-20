@@ -90,6 +90,16 @@ export default function BvnSlipVerificationPage() {
     setMounted(true);
   }, []);
 
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (showIntroModal || lightbox.isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [showIntroModal, lightbox.isOpen]);
+
   // Fetch Pricing, Status, Wallet Balance, and 24-Hour History
   const fetchPageData = async () => {
     try {
@@ -231,12 +241,12 @@ export default function BvnSlipVerificationPage() {
       {/* Intro Modal (Blocking Popup until "I Understand" is clicked, matching SCUML/Tax ID) */}
       {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] w-full h-[100dvh] bg-background/95 dark:bg-background/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setShowIntroModal(false)}
         >
 
           <div 
-            className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 md:p-8"
+            className="relative w-full max-w-lg bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left p-6 md:p-8 my-auto max-h-[90dvh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <button 
@@ -499,10 +509,10 @@ export default function BvnSlipVerificationPage() {
       {/* Lightbox Specimen Preview Modal */}
       {mounted && lightbox.isOpen && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] w-full h-[100dvh] bg-background/95 dark:bg-background/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
         >
-          <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 my-auto max-h-[90dvh]" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-card border-b border-border px-5 py-3.5 flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">{lightbox.label} Example Specimen</span>
               <button 
