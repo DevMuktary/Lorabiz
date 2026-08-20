@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { 
-  ShieldCheck, Check, Sparkle, 
+  Check, Sparkle, 
   Eye, ArrowLeft, CheckCircle, WarningCircle, X,
   FileText
 } from "@phosphor-icons/react";
@@ -72,6 +72,7 @@ export default function BvnSlipVerificationPage() {
   // Modal States
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [resultModalState, setResultModalState] = useState<{
     isOpen: boolean;
     status: "loading" | "success" | "error";
@@ -89,16 +90,6 @@ export default function BvnSlipVerificationPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Lock body scroll when any modal is open
-  useEffect(() => {
-    if (showIntroModal || lightbox.isOpen) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-  }, [showIntroModal, lightbox.isOpen]);
 
   // Fetch Pricing, Status, Wallet Balance, and 24-Hour History
   const fetchPageData = async () => {
@@ -235,7 +226,7 @@ export default function BvnSlipVerificationPage() {
     }
   };
 
-  const isAnyModalOpen = showIntroModal || isConfirmOpen || resultModalState.isOpen || lightbox.isOpen;
+  const isAnyModalOpen = showIntroModal || isConfirmOpen || resultModalState.isOpen || lightbox.isOpen || isDetailsModalOpen;
 
   return (
     <div className={`space-y-6 max-w-4xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-24 animate-in fade-in duration-300 transition-opacity ${mounted && isAnyModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
@@ -486,7 +477,7 @@ export default function BvnSlipVerificationPage() {
       </form>
 
       {/* 72-Hour Print History at the Bottom (Matching NIN layout) */}
-      <BvnHistorySection history={history} title="72-Hour BVN Print History" isLoading={isHistoryLoading} />
+      <BvnHistorySection history={history} title="72-Hour BVN Print History" isLoading={isHistoryLoading} onDetailsModalToggle={setIsDetailsModalOpen} />
 
       {/* Confirmation & Insufficient Balance Modal (with Specimen Preview) */}
       <BvnConfirmationModal

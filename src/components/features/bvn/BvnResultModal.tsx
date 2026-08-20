@@ -90,16 +90,6 @@ export default function BvnResultModal({
     }
   };
 
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-  }, [isOpen]);
-
   // Deeply unwrap and normalize all demographic fields
   const demo = parseDemographics(userData, propFullName);
   const resolvedFullName = demo.fullName || (bvn ? `BVN Account Holder (${bvn.slice(0, 3)}...${bvn.slice(-3)})` : "Verified BVN Account Holder");

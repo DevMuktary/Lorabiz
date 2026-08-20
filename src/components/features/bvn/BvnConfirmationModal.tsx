@@ -41,16 +41,6 @@ export default function BvnConfirmationModal({
     setMounted(true);
   }, []);
 
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-  }, [isOpen]);
-
   if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   const isInsufficient = walletBalance < price;

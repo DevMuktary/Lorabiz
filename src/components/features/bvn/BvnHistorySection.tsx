@@ -37,11 +37,17 @@ interface BvnHistorySectionProps {
   history: BvnHistoryItem[];
   title?: string;
   isLoading?: boolean;
+  onDetailsModalToggle?: (isOpen: boolean) => void;
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export default function BvnHistorySection({ history, title = "72-Hour BVN Print History", isLoading = false }: BvnHistorySectionProps) {
+export default function BvnHistorySection({ 
+  history, 
+  title = "72-Hour BVN Print History", 
+  isLoading = false,
+  onDetailsModalToggle
+}: BvnHistorySectionProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<BvnHistoryItem | null>(null);
@@ -53,15 +59,9 @@ export default function BvnHistorySection({ history, title = "72-Hour BVN Print 
     setMounted(true);
   }, []);
 
-  // Lock body scroll when modal is open
   useEffect(() => {
-    if (selectedDetails) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-  }, [selectedDetails]);
+    onDetailsModalToggle?.(!!selectedDetails);
+  }, [selectedDetails, onDetailsModalToggle]);
 
   // Reset or clamp current page when history length changes
   const totalPages = Math.max(1, Math.ceil((history?.length || 0) / ITEMS_PER_PAGE));
