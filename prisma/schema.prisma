@@ -137,6 +137,7 @@ model User {
   wallet           Wallet?
   waitlists        Waitlist[]
   twoFactorCodes   TwoFactorCode[]
+  passwordResetTokens PasswordResetToken[]
   staffActions     StaffActionLog[]
   promoUsages      PromoUsage[]
   
@@ -741,6 +742,20 @@ model TwoFactorCode {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique // SHA-256 hash of random 32-byte hex token
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
 }
 
 model StaffActionLog {
