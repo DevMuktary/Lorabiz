@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { sendUserLoginOTP } from "@/lib/email";
 
 // Pre-computed dummy hash for timing attacks
@@ -178,7 +179,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (!existingOtp?.nextResendAllowedAt || existingOtp.nextResendAllowedAt <= now) {
-            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const otpCode = crypto.randomInt(100000, 1000000).toString();
             const expiresAt = new Date(now.getTime() + 10 * 60 * 1000); 
             const nextResend = new Date(now.getTime() + 30 * 1000);     
             

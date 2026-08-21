@@ -128,23 +128,27 @@ export async function POST(req: NextRequest) {
       apiMessage = "Request queued for manual verification and personalization processing.";
     }
 
-    const newBalance = currentBalance - requiredAmount;
-
     // Execute atomic transaction for wallet debit, ledger record, and Personalization request creation
     const createdPersonalization = await prisma.$transaction(async (tx) => {
-      // 1. Debit Wallet
-      await tx.wallet.update({
+      const currentWallet = await tx.wallet.findUnique({ where: { id: user.wallet!.id } });
+      if (!currentWallet || Number(currentWallet.balance) < requiredAmount) {
+        throw new Error("INSUFFICIENT_BALANCE");
+      }
+
+      const balanceBefore = Number(currentWallet.balance);
+      const updatedWallet = await tx.wallet.update({
         where: { id: user.wallet!.id },
-        data: { balance: newBalance },
+        data: { balance: { decrement: requiredAmount } },
       });
+      const balanceAfter = Number(updatedWallet.balance);
 
       // 2. Ledger Transaction Record
       await tx.transaction.create({
         data: {
           walletId: user.wallet!.id,
           amount: requiredAmount,
-          balanceBefore: currentBalance,
-          balanceAfter: newBalance,
+          balanceBefore,
+          balanceAfter,
           type: "DEBIT",
           status: "SUCCESS",
           reference: reference,

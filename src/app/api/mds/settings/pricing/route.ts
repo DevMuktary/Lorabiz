@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const prisma = new PrismaClient();
-
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const admin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: "ADMIN" }
+    });
+    if (!admin) {
+      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    }
     // Ensure NIN services exist in ServicePricing
     const defaultServices = [
       { serviceKey: "NIN_BASIC", title: "Basic NIN Slip", price: 400.0 },

@@ -1,10 +1,22 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const mdsAdmin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: "ADMIN" }
+    });
+    if (!mdsAdmin) {
+      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { clientId, actionType, reason, amount } = body;
     // actionType: "SUSPEND", "UNSUSPEND", "CREDIT_WALLET", "DEBIT_WALLET"
@@ -12,9 +24,6 @@ export async function POST(req: Request) {
     if (!clientId || !actionType) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
-
-    const mdsAdmin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-    if (!mdsAdmin) return NextResponse.json({ error: "No Admin account found." }, { status: 500 });
 
     await prisma.$transaction(async (tx) => {
       // 1. Account Suspension Logic

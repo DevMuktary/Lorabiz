@@ -1,10 +1,24 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { sendBvnRetrievalCompletedEmail, sendBvnRetrievalFailedEmail } from "@/lib/email";
 import { generateNumericId } from "@/utils/generateId";
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ success: false, error: "Unauthorized." }, { status: 401 });
+    }
+
+    const admin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: { in: ["ADMIN", "STAFF"] } },
+    });
+    if (!admin) {
+      return NextResponse.json({ success: false, error: "Forbidden. Admin or Staff access required." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { 
       ticketId, 
@@ -49,8 +63,6 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
     }
-
-    const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
 
     await prisma.$transaction(async (tx) => {
       if (actionType === "PROCESS") {

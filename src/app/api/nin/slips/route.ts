@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const uploadResult = await cloudinary.uploader.upload(dataUri, {
-        folder: "lumebiz_nin_slips",
+        folder: "lorabiz_nin_slips",
         resource_type: "auto",
       });
       securePdfUrl = uploadResult.secure_url;
@@ -138,21 +138,27 @@ export async function POST(req: NextRequest) {
     const maskedIdentifier = `${identifier.slice(0, 3)}*****${identifier.slice(-3)}`;
     const referencePrefix = isPhoneSearch ? "TEL" : "NIN";
     const reference = `${referencePrefix}_${slipType.toUpperCase()}_${Date.now()}`;
-    const newBalance = currentBalance - requiredAmount;
 
-    // Database transaction: debit wallet, log transaction, save demographic details to NinRequestLog
+    // Database transaction: debit wallet atomically, log transaction, save demographic details to NinRequestLog
     const ninLog = await prisma.$transaction(async (tx) => {
-      await tx.wallet.update({
+      const currentWallet = await tx.wallet.findUnique({ where: { id: user.wallet!.id } });
+      if (!currentWallet || Number(currentWallet.balance) < requiredAmount) {
+        throw new Error("INSUFFICIENT_BALANCE");
+      }
+
+      const balanceBefore = Number(currentWallet.balance);
+      const updatedWallet = await tx.wallet.update({
         where: { id: user.wallet!.id },
-        data: { balance: newBalance }
+        data: { balance: { decrement: requiredAmount } }
       });
+      const balanceAfter = Number(updatedWallet.balance);
 
       await tx.transaction.create({
         data: {
           walletId: user.wallet!.id,
           amount: requiredAmount,
-          balanceBefore: currentBalance,
-          balanceAfter: newBalance,
+          balanceBefore,
+          balanceAfter,
           type: "DEBIT",
           status: "SUCCESS",
           reference: reference,

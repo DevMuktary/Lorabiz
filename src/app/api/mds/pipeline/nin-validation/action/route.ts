@@ -1,11 +1,9 @@
-// src/app/api/mds/pipeline/nin-validation/action/route.ts
-
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 import { notificationQueue } from "@/lib/queue";
 import { NotificationEvent, dispatchNotification } from "@/services/notifications";
-
-const prisma = new PrismaClient();
 
 const CATEGORY_LABELS: Record<string, string> = {
   NO_RECORD_FOUND: "No Record Found",
@@ -15,6 +13,18 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const admin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: { in: ["ADMIN", "STAFF"] } },
+    });
+    if (!admin) {
+      return NextResponse.json({ error: "Forbidden. Admin or Staff access required." }, { status: 403 });
+    }
+
     const body = await req.json();
     const {
       ticketId,
@@ -28,9 +38,6 @@ export async function POST(req: Request) {
     if (!ticketId || !actionType) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
-
-    const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-    if (!admin) return NextResponse.json({ error: "No Admin account found." }, { status: 500 });
 
     const ticket = await prisma.ninValidationRequest.findUnique({
       where: { id: ticketId },

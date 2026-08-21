@@ -11,7 +11,7 @@ import { dispatchNotification } from "@/services/notifications";
 export async function POST(req: Request) {
   try {
     const session: any = await getServerSession(authOptions);
-    if (!session || (session.user?.role !== "ADMIN" && session.user?.role !== "SUPER_ADMIN" && session.user?.role !== "STAFF")) {
+    if (!session?.user?.email || (session.user.role !== "ADMIN" && session.user.role !== "STAFF")) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 

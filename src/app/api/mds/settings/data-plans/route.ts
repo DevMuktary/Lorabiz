@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 import { ensureDataPlansSeeded } from "@/lib/data-plans-seed";
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+    }
+
+    const admin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: "ADMIN" }
+    });
+    if (!admin) {
+      return NextResponse.json({ success: false, message: "Forbidden. Admin access required." }, { status: 403 });
     }
 
     await ensureDataPlansSeeded(prisma);
@@ -43,9 +51,16 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+    }
+
+    const admin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: "ADMIN" }
+    });
+    if (!admin) {
+      return NextResponse.json({ success: false, message: "Forbidden. Admin access required." }, { status: 403 });
     }
 
     const body = await req.json();

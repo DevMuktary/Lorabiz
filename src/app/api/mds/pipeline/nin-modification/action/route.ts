@@ -12,7 +12,7 @@ import { logUserActivity } from "@/lib/activity-logger";
 export async function POST(req: Request) {
   try {
     const session: any = await getServerSession(authOptions);
-    if (!session || (session.user?.role !== "ADMIN" && session.user?.role !== "SUPERADMIN")) {
+    if (!session?.user?.email || (session.user.role !== "ADMIN" && session.user.role !== "STAFF")) {
       return NextResponse.json({ success: false, message: "Unauthorized access." }, { status: 401 });
     }
 

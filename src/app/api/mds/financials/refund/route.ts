@@ -1,26 +1,29 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const mdsAdmin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: "ADMIN" }
+    });
+
+    if (!mdsAdmin) {
+      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { transactionId, refundAmount, reason } = body;
 
     if (!transactionId || !refundAmount || !reason) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
-
-    // --- THE FIX: Find the actual Admin user to tie the log to ---
-    const mdsAdmin = await prisma.user.findFirst({
-      where: { role: "ADMIN" }
-    });
-
-    if (!mdsAdmin) {
-      return NextResponse.json({ error: "System Error: No Admin account found to authorize this action." }, { status: 500 });
-    }
-    // -----------------------------------------------------------
 
     // 1. Fetch the original transaction to validate
     const originalTx = await prisma.transaction.findUnique({

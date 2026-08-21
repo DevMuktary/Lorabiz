@@ -1,11 +1,22 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 import { subDays, startOfDay, format, formatDistanceToNow } from "date-fns";
-
-const prisma = new PrismaClient();
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const admin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: "ADMIN" }
+    });
+    if (!admin) {
+      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    }
     const today = startOfDay(new Date());
     const thirtyDaysAgo = subDays(today, 30);
     const sevenDaysAgo = subDays(today, 7);
