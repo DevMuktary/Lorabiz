@@ -87,7 +87,7 @@ export async function generateSlipApiSlip(
       } else if (slipType === "nin_standard") {
         endpointUrl = `${baseUrl}/nin_standard_phone.php`;
       } else {
-        endpointUrl = `${baseUrl}/nin_regular_phone.php`;
+        endpointUrl = `${baseUrl}/nin_by_phone.php`;
       }
     } else {
       // By NIN
