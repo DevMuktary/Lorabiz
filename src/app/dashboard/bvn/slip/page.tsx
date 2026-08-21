@@ -118,8 +118,16 @@ export default function BvnSlipVerificationPage() {
 
       if (statusRes.ok) {
         const data = await statusRes.json();
-        if (data.prices) setPrices(data.prices);
-        if (data.activeMap) setActiveMap(data.activeMap);
+        if (data.pricing) {
+          setPrices({
+            BVN_STANDARD: data.pricing.BVN_STANDARD?.price ?? 700,
+            BVN_PREMIUM: data.pricing.BVN_PREMIUM?.price ?? 1000,
+          });
+          setActiveMap({
+            bvn_standard: data.pricing.BVN_STANDARD?.isActive !== false,
+            bvn_premium: data.pricing.BVN_PREMIUM?.isActive !== false,
+          });
+        }
       }
 
       if (walletRes && walletRes.ok) {
@@ -378,7 +386,8 @@ export default function BvnSlipVerificationPage() {
             {BVN_SLIP_OPTIONS.map((option) => {
               const isSelected = slipType === option.id;
               const isAvailable = activeMap[option.id] !== false;
-              const price = option.id === "bvn_premium" ? prices.BVN_PREMIUM : prices.BVN_STANDARD;
+              const rawPrice = option.id === "bvn_premium" ? prices.BVN_PREMIUM : prices.BVN_STANDARD;
+              const price = rawPrice ?? option.defaultPrice ?? (option.id === "bvn_premium" ? 1000 : 700);
 
               return (
                 <div
@@ -415,8 +424,8 @@ export default function BvnSlipVerificationPage() {
                       <button 
                         type="button" 
                         onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setLightbox({ isOpen: true, src: option.img, label: option.label }); 
+                           e.stopPropagation(); 
+                           setLightbox({ isOpen: true, src: option.img, label: option.label }); 
                         }} 
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-emerald-600 bg-secondary hover:bg-secondary/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                         title={`View ${option.label} Example`}
@@ -437,7 +446,7 @@ export default function BvnSlipVerificationPage() {
                     {isPricingLoading ? (
                       <span className="inline-block h-4 w-12 bg-secondary/80 animate-pulse rounded-md"></span>
                     ) : (
-                      `₦${price.toLocaleString()}`
+                      `₦${Number(price || option.defaultPrice || 700).toLocaleString()}`
                     )}
                   </div>
                 </div>

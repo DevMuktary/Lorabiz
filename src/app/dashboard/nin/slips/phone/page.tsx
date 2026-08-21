@@ -406,7 +406,7 @@ export default function NinByPhonePage() {
                     {statusState.loading ? (
                       <span className="inline-block h-4 w-12 bg-secondary/80 animate-pulse rounded-md"></span>
                     ) : (
-                      `₦${price.toLocaleString()}`
+                      `₦${Number(price || option.defaultPrice || 500).toLocaleString()}`
                     )}
                   </div>
                 </div>
@@ -439,7 +439,7 @@ export default function NinByPhonePage() {
               {statusState.loading ? (
                 <span className="inline-block h-3.5 w-12 bg-secondary animate-pulse rounded align-middle mx-1"></span>
               ) : (
-                <strong>₦{currentPrice.toLocaleString()}</strong>
+                <strong>₦{Number(currentPrice || selectedOption.defaultPrice || 500).toLocaleString()}</strong>
               )}{" "}
               to be debited from my wallet.
             </span>
@@ -456,7 +456,7 @@ export default function NinByPhonePage() {
           {statusState.loading ? (
             <span>Loading pricing...</span>
           ) : (
-            <span>Verify & Generate Slip (₦{currentPrice.toLocaleString()})</span>
+            <span>Verify & Generate Slip (₦{Number(currentPrice || selectedOption.defaultPrice || 500).toLocaleString()})</span>
           )}
         </Button>
 
