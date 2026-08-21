@@ -91,13 +91,13 @@ const LIVE_SERVICES: ServiceItem[] = [
     active: true,
   },
   {
-    title: "Airtime & Utilities",
+    title: "Utilities & Data",
     category: "VTU Telecom Gateway",
-    description: "Instant airtime top-up, mobile data bundles, and bill payments from your wallet balance.",
+    description: "Instant airtime top-up, cheap mobile data bundles, and bill payments from your wallet balance.",
     logo: "/airtime.png",
-    href: "/dashboard/airtime",
+    href: "/dashboard/utilities",
     turnaround: "Instant Delivery",
-    actionText: "Recharge Airtime",
+    actionText: "Access Utilities",
     active: true,
   },
 ];
@@ -614,20 +614,20 @@ export default function DashboardPage() {
             </Link>
 
             <Link
-              href="/dashboard/airtime"
+              href="/dashboard/utilities"
               className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
-              title="Airtime Recharge"
+              title="Utilities & Telecom"
             >
               <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
                 <Image 
                   src="/airtime.png" 
-                  alt="Airtime" 
+                  alt="Utilities" 
                   width={28} 
                   height={28} 
                   className="object-contain" 
                 />
               </div>
-              <span className="text-[11px] font-bold">Airtime</span>
+              <span className="text-[11px] font-bold">Utilities</span>
             </Link>
           </div>
         </div>

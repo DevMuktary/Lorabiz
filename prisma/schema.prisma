@@ -675,6 +675,30 @@ model ServicePricing {
   updatedAt      DateTime @updatedAt
 }
 
+// ==========================================
+// UTILITY VENDING: MOBILE DATA PLANS
+// ==========================================
+
+model MobileDataPlan {
+  id          String   @id @default(cuid())
+  planId      Int      @unique // Provider plan ID (e.g. 7, 8, 802, 686...)
+  network     String   // "MTN" | "GLO" | "AIRTEL" | "9MOBILE"
+  category    String   // "SME" | "DATA_SHARE" | "GIFTING" | "CORPORATE" | "AWOOF" | "LITE" | "SPECIAL"
+  name        String   // e.g. "MTN SME 1GB"
+  productCode String   // Provider product code for vend action
+  price       Decimal  @db.Decimal(10, 2) // Selling price
+  costPrice   Decimal? @db.Decimal(10, 2) // Base provider cost
+  validity    String?  // e.g. "30 Days", "7 Days", "1 Day", "2 Days"
+  capacity    String?  // e.g. "1GB", "500MB", "2GB", "10GB"
+  isActive    Boolean  @default(true) // Hidden from user view if false
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([network, isActive])
+  @@index([category])
+  @@index([planId])
+}
+
 model Transaction {
   id            String            @id @default(cuid())
   walletId      String

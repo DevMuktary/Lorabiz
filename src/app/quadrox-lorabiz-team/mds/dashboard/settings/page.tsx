@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { 
   Settings, Save, RefreshCw, AlertTriangle, Fingerprint, Building2, ShieldCheck,
-  Server, Cpu, CheckCircle2, SlidersHorizontal, ArrowRight
+  Server, Cpu, CheckCircle2, SlidersHorizontal, ArrowRight, Wifi
 } from "lucide-react";
+import MobileDataPlansManager from "@/components/mds/settings/MobileDataPlansManager";
 
 export default function SettingsDashboard() {
   const [isLoading, setIsLoading] = useState(true);
@@ -701,6 +702,18 @@ export default function SettingsDashboard() {
               </div>
             </section>
           )}
+
+          {/* MOBILE DATA PLANS MANAGEMENT SECTION */}
+          <section>
+            <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+              <Wifi size={20} className="text-indigo-500 mr-2" />
+              <div>
+                <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Mobile Data Plans (Telecom Bundles)</h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">Configure retail prices, toggle visibility per network/category, or manage individual bundles for CheapDataSales.</p>
+              </div>
+            </div>
+            <MobileDataPlansManager />
+          </section>
         </div>
       )}
     </div>

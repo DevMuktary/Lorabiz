@@ -27,7 +27,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Invalid parameters. Minimum airtime amount is ₦50." }, { status: 400 });
     }
 
-    if (phone.length !== 11) {
+    const cleanPhone = phone.replace(/\s+/g, "").replace(/^\+234/, "0");
+    if (cleanPhone.length !== 11) {
       return NextResponse.json({ success: false, message: "Phone number must be exactly 11 digits." }, { status: 400 });
     }
 
@@ -49,20 +50,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Invalid network provider." }, { status: 400 });
     }
 
-    // 6. Generate Unique Idempotency Reference
-    const reference = `LUME_AIR_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    // 6. Generate Clean Generic Idempotency Reference (No branding prefix)
+    const reference = `ref_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
 
-    // 7. Securely Call the External Provider (Fixed HTTP Headers!)
+    // 7. Securely Call CheapDataSales API
     const externalRes = await fetch("https://cheapdatasales.com/autobiz_vending_index.php", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.CHEAPDATASALES_API_KEY || ""}` // ✅ FIXED HEADER
+        "Authorization": `Bearer ${process.env.CHEAPDATASALES_API_KEY || ""}`
       },
       body: JSON.stringify({
         amount: Number(amount),
         product_code: productCode,
-        phone_number: phone,
+        phone_number: cleanPhone,
         action: "vend",
         user_reference: reference
       })
@@ -70,14 +71,13 @@ export async function POST(req: Request) {
 
     const externalData = await externalRes.json();
 
-    // 8. Handle Success STRICTLY (Prevent stealing money on failed vends)
-    // Ensures status is explicitly true or "success"
+    // 8. Handle Success Strictly
     if (externalData.status === true || externalData.status === "success") {
       const amountCharged = Number(amount);
       const oldBalance = Number(user.wallet.balance);
       const newBalance = oldBalance - amountCharged;
 
-      // Use a Prisma Transaction so Wallet & Transaction Ledger stay perfectly in sync
+      // Atomic Prisma Transaction
       await prisma.$transaction([
         prisma.wallet.update({
           where: { id: user.wallet.id },
@@ -92,29 +92,35 @@ export async function POST(req: Request) {
             type: "DEBIT",
             status: "SUCCESS",
             reference: reference,
-            description: `Airtime Recharge - ${phone} (${network})`,
-            serviceCategory: "UTILITIES" // For MDS Financials tracking
+            description: `Airtime Recharge - ${cleanPhone} (${network.toUpperCase()})`,
+            serviceCategory: "UTILITIES"
           }
         })
       ]);
 
-      return NextResponse.json({ 
-        success: true, 
-        message: `Successfully recharged ₦${amount} to ${phone}`, 
-        newBalance: newBalance, // ✅ Send exact new balance back to UI
-        data: externalData.data 
+      return NextResponse.json({
+        success: true,
+        message: "Airtime vending successful.",
+        reference: reference,
+        amount: amountCharged,
+        phone: cleanPhone,
+        network: network.toUpperCase(),
+        newBalance: newBalance,
+        data: externalData.data || {}
       });
     } else {
-      // 9. Handle Provider Error - Do not deduct wallet!
-      console.error("Provider rejected vend:", externalData);
-      return NextResponse.json({ 
-        success: false, 
-        message: externalData.server_message || externalData.message || "Recharge failed at the network provider. Wallet not deducted." 
-      });
+      const serverMessage = externalData.server_message || externalData.message || "Provider failed to process recharge. Your wallet was not debited.";
+      return NextResponse.json({
+        success: false,
+        message: serverMessage
+      }, { status: 400 });
     }
 
-  } catch (error) {
-    console.error("Airtime Error:", error);
-    return NextResponse.json({ success: false, message: "An internal server error occurred." }, { status: 500 });
+  } catch (error: any) {
+    console.error("Airtime Vending Error:", error);
+    return NextResponse.json({
+      success: false,
+      message: error.message || "An unexpected error occurred. Please try again."
+    }, { status: 500 });
   }
 }

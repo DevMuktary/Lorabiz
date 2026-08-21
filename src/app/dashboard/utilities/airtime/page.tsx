@@ -1,4 +1,3 @@
-// src/app/dashboard/airtime/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -11,7 +10,6 @@ import AirtimeHistory from "@/components/features/airtime/AirtimeHistory";
 import DisputeModal from "@/components/features/airtime/DisputeModal";
 import { Wallet, ArrowLeft } from "@phosphor-icons/react";
 
-// Shared Type
 interface Transaction {
   reference: string;
   phone: string;
@@ -56,7 +54,6 @@ export default function AirtimeDashboardPage() {
         
         // Format the database rows to match the UI component's expected structure
         const formattedHistory = airtimeTxs.map((tx: any) => {
-          // Extract network and phone from our structured description: "Airtime Recharge - 08012345678 (MTN)"
           const match = tx.description.match(/Airtime Recharge - (\d+) \((.+)\)/);
           return {
             reference: tx.reference,
@@ -79,7 +76,7 @@ export default function AirtimeDashboardPage() {
   }, []);
 
   const initiatePurchase = (data: { network: string; phone: string; amount: number }) => {
-    // 1. Check for Duplicate within 10 minutes (Anti-mistake guard)
+    // 1. Check for Duplicate within 10 minutes
     const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
     const isDuplicate = history.some(tx => 
       tx.phone === data.phone && 
@@ -102,8 +99,7 @@ export default function AirtimeDashboardPage() {
     setIsProcessing(true);
 
     try {
-      // Actually hit the live API route
-      const res = await fetch('/api/services/airtime', { 
+      const res = await fetch('/api/utilities/airtime', { 
         method: "POST", 
         headers: {
           "Content-Type": "application/json"
@@ -115,15 +111,13 @@ export default function AirtimeDashboardPage() {
 
       if (result.success) {
         const newTransaction = {
-          // Fallback to local generated ref if the provider doesn't hand one back
-          reference: result.data?.reference || `ART-${Date.now()}`,
+          reference: result.reference || `ref_${Date.now()}`,
           phone: data.phone,
           amount: data.amount,
           network: data.network,
           date: new Date()
         };
 
-        // Update State using exact balance returned from server
         setWalletBalance(result.newBalance);
         setHistory(prev => [newTransaction, ...prev]);
         setCurrentReceipt(newTransaction);
@@ -144,49 +138,50 @@ export default function AirtimeDashboardPage() {
       
       {/* Back Button */}
       <Link 
-        href="/dashboard" 
+        href="/dashboard/utilities" 
         className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit"
       >
-        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Dashboard
+        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Utilities
       </Link>
 
-      {/* Page Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-border pb-6">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border p-6 rounded-3xl shadow-sm">
         <div>
-          <h1 className="text-3xl font-black text-foreground">Airtime Recharge</h1>
-          <p className="text-muted-foreground mt-2 font-medium">Instantly top-up your mobile line from your wallet.</p>
+          <h1 className="text-2xl font-black text-foreground">Airtime Top-Up</h1>
+          <p className="text-muted-foreground text-sm font-medium">
+            Instant, automated airtime vending across all Nigerian networks.
+          </p>
         </div>
-        
-        <div className="bg-card border border-border px-5 py-3 rounded-2xl flex items-center gap-4 shadow-sm shrink-0">
-          <div className="h-10 w-10 bg-primary/10 text-primary rounded-full flex items-center justify-center shrink-0">
-            <Wallet size={20} weight="fill" />
+
+        {/* Live Wallet Balance Pill */}
+        <div className="flex items-center gap-3 bg-secondary/60 border border-border px-4 py-2.5 rounded-2xl w-fit">
+          <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Wallet size={20} weight="bold" />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Available Balance</p>
-            <p className="text-xl font-black text-foreground">₦{walletBalance.toLocaleString()}</p>
+            <span className="text-[10px] uppercase tracking-wider font-extrabold text-muted-foreground block">
+              Available Balance
+            </span>
+            <span className="text-sm font-black text-foreground">
+              ₦{Number(walletBalance).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Main Grid: Form + History */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* Left Column: Form OR Receipt */}
-        <div className="lg:col-span-5 relative">
-          {currentReceipt ? (
-            <ReceiptCard 
-              transaction={currentReceipt} 
-              onNewTransaction={() => setCurrentReceipt(null)} 
-            />
-          ) : (
-            <AirtimeForm 
-              onSubmit={initiatePurchase} 
-              disabled={isProcessing} 
-            />
-          )}
+        {/* Airtime Purchase Form */}
+        <div className="lg:col-span-6">
+          <AirtimeForm 
+            onSubmit={initiatePurchase} 
+            disabled={isProcessing} 
+          />
         </div>
 
-        {/* Right Column: History */}
-        <div className="lg:col-span-7">
+        {/* Dynamic Airtime Purchase History */}
+        <div className="lg:col-span-6">
           <AirtimeHistory 
             history={history} 
             onDispute={(tx) => setDisputeTransaction(tx)} 
@@ -195,24 +190,36 @@ export default function AirtimeDashboardPage() {
 
       </div>
 
-      {/* Global Modals & Overlays */}
+      {/* MODAL 1: Processing Overlay */}
       <ProcessingOverlay isVisible={isProcessing} />
-      
-      <DuplicateWarningModal 
-        isOpen={showDuplicateModal}
-        phone={pendingPurchase?.phone || ""}
-        amount={pendingPurchase?.amount || 0}
-        onConfirm={() => pendingPurchase && executePurchase(pendingPurchase)}
-        onCancel={() => {
-          setShowDuplicateModal(false);
-          setPendingPurchase(null);
-        }}
-      />
 
+      {/* MODAL 2: Receipt Card Modal */}
+      {currentReceipt && (
+        <ReceiptCard 
+          transaction={currentReceipt} 
+          onNewTransaction={() => setCurrentReceipt(null)} 
+        />
+      )}
+
+      {/* MODAL 3: Duplicate Purchase Protection Guard */}
+      {showDuplicateModal && pendingPurchase && (
+        <DuplicateWarningModal 
+          isOpen={showDuplicateModal}
+          phone={pendingPurchase.phone}
+          amount={pendingPurchase.amount}
+          onCancel={() => {
+            setShowDuplicateModal(false);
+            setPendingPurchase(null);
+          }}
+          onConfirm={() => executePurchase(pendingPurchase)}
+        />
+      )}
+
+      {/* MODAL 4: Dispute Report Modal */}
       <DisputeModal 
-        isOpen={!!disputeTransaction} 
-        onClose={() => setDisputeTransaction(null)} 
-        transaction={disputeTransaction} 
+        isOpen={Boolean(disputeTransaction)}
+        transaction={disputeTransaction}
+        onClose={() => setDisputeTransaction(null)}
       />
 
     </div>
