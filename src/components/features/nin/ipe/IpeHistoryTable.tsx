@@ -1,0 +1,319 @@
+// src/components/features/nin/ipe/IpeHistoryTable.tsx
+"use client";
+
+import React, { useState, useMemo } from "react";
+import { 
+  MagnifyingGlass, 
+  Check, 
+  CheckCircle, 
+  Clock, 
+  Copy, 
+  Eye, 
+  ArrowsClockwise, 
+  XCircle,
+  Key,
+  Spinner
+} from "@phosphor-icons/react";
+import { IpeRequestRecord, IpeDetailsModal } from "./IpeDetailsModal";
+
+interface IpeHistoryTableProps {
+  requests: IpeRequestRecord[];
+  isLoading: boolean;
+  onRefresh: () => Promise<void>;
+  onSyncStatus: (reference: string) => Promise<void>;
+  activeStatus?: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED";
+  onStatusChange?: (status: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED") => void;
+}
+
+export function IpeHistoryTable({
+  requests,
+  isLoading,
+  onRefresh,
+  onSyncStatus,
+  activeStatus: parentActiveStatus,
+  onStatusChange,
+}: IpeHistoryTableProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [internalStatus, setInternalStatus] = useState<"ALL" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
+  const [selectedRecord, setSelectedRecord] = useState<IpeRequestRecord | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [syncingRef, setSyncingRef] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const statusFilter = parentActiveStatus !== undefined ? parentActiveStatus : internalStatus;
+  const setStatusFilter = (status: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED") => {
+    if (onStatusChange) {
+      onStatusChange(status);
+    } else {
+      setInternalStatus(status);
+    }
+  };
+
+  // Filter requests by search term and status
+  const filteredRequests = useMemo(() => {
+    return requests.filter((req) => {
+      const matchesSearch =
+        req.trackingId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        req.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (req.resolvedNin && req.resolvedNin.includes(searchTerm));
+
+      const matchesStatus =
+        statusFilter === "ALL" || req.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [requests, searchTerm, statusFilter]);
+
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleSingleSync = async (reference: string) => {
+    setSyncingRef(reference);
+    try {
+      await onSyncStatus(reference);
+    } finally {
+      setSyncingRef(null);
+    }
+  };
+
+  const openDetails = (record: IpeRequestRecord) => {
+    setSelectedRecord(record);
+    setIsDetailsOpen(true);
+  };
+
+  const formattedDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formattedTime = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-3xl p-5 sm:p-7 shadow-sm space-y-6">
+      
+      {/* Controls Bar: Search & Status Filters */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        {/* Search Input */}
+        <div className="relative flex-1 max-w-md">
+          <MagnifyingGlass weight="bold" className="h-4 w-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by Tracking ID, Reference, or NIN..."
+            className="w-full h-11 pl-10 pr-4 bg-background border border-border rounded-xl text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+          />
+        </div>
+
+        {/* Status Filter Tabs */}
+        <div className="flex items-center gap-1.5 p-1 bg-secondary rounded-xl overflow-x-auto">
+          {(["ALL", "PROCESSING", "COMPLETED", "FAILED"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setStatusFilter(tab)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                statusFilter === tab
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab === "ALL" ? "All Submissions" : tab === "PROCESSING" ? "In Processing" : tab === "COMPLETED" ? "Completed" : "Failed"}
+            </button>
+          ))}
+        </div>
+
+      </div>
+
+      {/* Table Container */}
+      <div className="border border-border rounded-2xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr className="bg-secondary/40 border-b border-border text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                <th className="py-3.5 px-4">Date & Time</th>
+                <th className="py-3.5 px-4">Tracking ID</th>
+                <th className="py-3.5 px-4">Reference</th>
+                <th className="py-3.5 px-4">Status</th>
+                <th className="py-3.5 px-4">Released NIN</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {isLoading && requests.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Spinner weight="bold" className="h-6 w-6 animate-spin text-primary" />
+                      <span className="text-xs font-medium">Loading IPE clearance history...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Key weight="duotone" className="h-8 w-8 text-muted-foreground opacity-50" />
+                      <span className="text-xs font-bold">No matching IPE clearance records found.</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredRequests.map((item) => {
+                  const isSyncingThis = syncingRef === item.reference;
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-secondary/30 transition-colors"
+                    >
+                      {/* Date & Time */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="font-bold text-foreground">
+                          {formattedDate(item.createdAt)}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {formattedTime(item.createdAt)}
+                        </div>
+                      </td>
+
+                      {/* Tracking ID */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-foreground">
+                            {item.trackingId}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(item.id + "_track", item.trackingId)}
+                            title="Copy Tracking ID"
+                            className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                          >
+                            {copiedId === item.id + "_track" ? (
+                              <Check weight="bold" className="h-3.5 w-3.5 text-emerald-500" />
+                            ) : (
+                              <Copy weight="bold" className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Reference */}
+                      <td className="py-3.5 px-4 whitespace-nowrap font-mono text-xs text-muted-foreground">
+                        {item.reference}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {item.status === "COMPLETED" && (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle weight="fill" className="h-3.5 w-3.5" />
+                            Completed
+                          </span>
+                        )}
+                        {item.status === "PROCESSING" && (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <Clock weight="fill" className="h-3.5 w-3.5 animate-spin" />
+                            Processing
+                          </span>
+                        )}
+                        {item.status === "FAILED" && (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+                            <XCircle weight="fill" className="h-3.5 w-3.5" />
+                            Failed
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Released NIN */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {item.resolvedNin ? (
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              {item.resolvedNin}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(item.id + "_nin", item.resolvedNin!)}
+                              title="Copy NIN"
+                              className="text-muted-foreground hover:text-emerald-500 transition-colors cursor-pointer"
+                            >
+                              {copiedId === item.id + "_nin" ? (
+                                <Check weight="bold" className="h-3.5 w-3.5 text-emerald-500" />
+                              ) : (
+                                <Copy weight="bold" className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs italic">
+                            {item.status === "PROCESSING" ? "In processing" : "Unavailable"}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {item.status === "PROCESSING" && (
+                            <button
+                              type="button"
+                              onClick={() => handleSingleSync(item.reference)}
+                              disabled={isSyncingThis}
+                              title="Check Live Status"
+                              className="h-8 px-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/80 text-xs font-bold text-foreground flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                            >
+                              <ArrowsClockwise weight="bold" className={`h-3.5 w-3.5 ${isSyncingThis ? "animate-spin text-primary" : ""}`} />
+                              <span className="hidden sm:inline">{isSyncingThis ? "Checking..." : "Sync"}</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => openDetails(item)}
+                            className="h-8 px-3 rounded-lg bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground text-xs font-bold flex items-center gap-1.5 transition-colors border border-border cursor-pointer"
+                          >
+                            <Eye weight="bold" className="h-3.5 w-3.5" />
+                            <span>Details</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Details Modal */}
+      <IpeDetailsModal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        request={selectedRecord}
+        onSyncStatus={onSyncStatus}
+      />
+    </div>
+  );
+}

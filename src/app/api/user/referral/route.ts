@@ -66,7 +66,22 @@ export async function GET(req: Request) {
     // 5. Fetch dynamic admin pricing for the Transparency Table
     const settings = await prisma.globalSetting.findMany({
       where: {
-        key: { in: ['REF_REWARD_CAC_BIZ', 'REF_REWARD_CAC_LLC', 'REF_REWARD_SCUML', 'REF_REWARD_TAX_ID', 'REF_REWARD_NIN', 'REFERRAL_MIN_WITHDRAWAL'] }
+        key: {
+          in: [
+            'REF_REWARD_CAC_BIZ',
+            'REF_REWARD_CAC_LLC',
+            'REF_REWARD_SCUML',
+            'REF_REWARD_TAX_ID',
+            'REF_REWARD_NIN',
+            'REF_REWARD_NIN_VAL',
+            'REF_REWARD_NIN_MOD',
+            'REF_REWARD_NIN_PERSONALIZATION',
+            'REF_REWARD_NIN_IPE',
+            'REF_REWARD_BVN_SLIP',
+            'REF_REWARD_BVN_RETRIEVAL',
+            'REFERRAL_MIN_WITHDRAWAL'
+          ]
+        }
       }
     });
     
@@ -94,7 +109,13 @@ export async function GET(req: Request) {
           cacLlc: getSetting('REF_REWARD_CAC_LLC', 1500),
           scuml: getSetting('REF_REWARD_SCUML', 500),
           taxId: getSetting('REF_REWARD_TAX_ID', 200),
-          nin: getSetting('REF_REWARD_NIN', 10),
+          nin: getSetting('REF_REWARD_NIN', 50),
+          ninVal: getSetting('REF_REWARD_NIN_VAL', 250),
+          ninMod: getSetting('REF_REWARD_NIN_MOD', 250),
+          ninPersonalization: getSetting('REF_REWARD_NIN_PERSONALIZATION', 250),
+          ninIpe: getSetting('REF_REWARD_NIN_IPE', 250),
+          bvnSlip: getSetting('REF_REWARD_BVN_SLIP', 50),
+          bvnRetrieval: getSetting('REF_REWARD_BVN_RETRIEVAL', 250),
         },
         minWithdrawal: getSetting('REFERRAL_MIN_WITHDRAWAL', 2000),
         bankDetails: user.payoutAccountNo ? {

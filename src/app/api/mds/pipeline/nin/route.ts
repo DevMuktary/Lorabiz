@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const admin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: { in: ["ADMIN", "STAFF"] } }
+    });
+    if (!admin) {
+      return NextResponse.json({ error: "Forbidden. Admin or Staff access required." }, { status: 403 });
+    }
     const ninLogs = await prisma.ninRequestLog.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -22,6 +33,18 @@ export async function GET() {
       createdAt: log.createdAt,
       clientName: `${log.user.firstName} ${log.user.lastName}`,
       clientEmail: log.user.email,
+      pdfUrl: log.pdfUrl || undefined,
+      searchType: log.searchType || "NIN",
+      fullName: log.fullName || undefined,
+      firstName: log.firstName || undefined,
+      lastName: log.lastName || undefined,
+      middleName: log.middleName || undefined,
+      gender: log.gender || undefined,
+      dob: log.dob || undefined,
+      phone: log.phone || undefined,
+      address: log.address || undefined,
+      userData: log.userData || undefined,
+      providerUsed: log.providerUsed || "DATAVERIFY",
     }));
 
     return NextResponse.json({ pipeline: formattedLogs });

@@ -20,9 +20,10 @@ export async function GET() {
     // Safely convert the Prisma Decimal to a standard Javascript Number
     const currentBalance = user?.wallet?.balance ? Number(user.wallet.balance) : 0;
 
-    // THE FIX: Return the balance wrapped in a 'wallet' object so the frontend can read data.wallet.balance
+    // Return both top-level and nested balance for 100% frontend compatibility
     return NextResponse.json({ 
       success: true, 
+      balance: currentBalance,
       wallet: {
         balance: currentBalance 
       }

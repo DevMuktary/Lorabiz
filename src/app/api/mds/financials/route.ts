@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 import { startOfDay, subDays, format } from "date-fns";
-
-const prisma = new PrismaClient();
 
 // =========================================================================
 // UNIFIED CATEGORIZATION ENGINE
@@ -28,13 +28,26 @@ const categorizeTransaction = (tx: { serviceCategory?: string | null, descriptio
   if (desc.includes('business') || desc.includes('llc') || desc.includes('incorporation') || desc.includes('cac') || desc.includes('name substitution')) {
     return 'CAC';
   }
-  if (desc.includes('wallet') || desc.includes('fund')) return 'WALLET_FUNDING';
+  if (desc.includes('wallet') || desc.includes('funding')) return 'Wallet Funding';
+  if (desc.includes('payout') || desc.includes('withdrawal')) return 'Partner Payout';
   
   return 'Other';
 };
 
 export async function GET(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const admin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: "ADMIN" }
+    });
+    if (!admin) {
+      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const days = searchParams.get("days") || "30";
     const page = parseInt(searchParams.get("page") || "1", 10);

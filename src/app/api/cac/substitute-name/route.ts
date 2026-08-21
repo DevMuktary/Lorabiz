@@ -24,18 +24,24 @@ export async function POST(req: Request) {
       }
 
       await prisma.$transaction(async (tx) => {
-        const newBalance = Number(wallet.balance) - fee;
-        await tx.wallet.update({
+        const currentWallet = await tx.wallet.findUnique({ where: { id: wallet.id } });
+        if (!currentWallet || Number(currentWallet.balance) < fee) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
+
+        const balanceBefore = Number(currentWallet.balance);
+        const updatedWallet = await tx.wallet.update({
           where: { id: wallet.id },
-          data: { balance: newBalance }
+          data: { balance: { decrement: fee } }
         });
+        const balanceAfter = Number(updatedWallet.balance);
 
         await tx.transaction.create({
           data: {
             walletId: wallet.id,
             amount: fee,
-            balanceBefore: wallet.balance,
-            balanceAfter: newBalance,
+            balanceBefore,
+            balanceAfter,
             type: "DEBIT",
             status: "SUCCESS",
             reference: `NSUB-WLT-${id}-${Date.now()}`,

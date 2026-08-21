@@ -13,7 +13,13 @@ const DEFAULT_SETTINGS = {
   REF_REWARD_CAC_LLC: '1500',
   REF_REWARD_SCUML: '500',
   REF_REWARD_TAX_ID: '200',
-  REF_REWARD_NIN: '10',
+  REF_REWARD_NIN: '50',
+  REF_REWARD_NIN_VAL: '250',
+  REF_REWARD_NIN_MOD: '250',
+  REF_REWARD_NIN_PERSONALIZATION: '250',
+  REF_REWARD_NIN_IPE: '250',
+  REF_REWARD_BVN_SLIP: '50',
+  REF_REWARD_BVN_RETRIEVAL: '250',
 };
 
 export async function GET() {
@@ -56,15 +62,16 @@ export async function GET() {
         code: user.referralCode, 
         balance: Number(user.referralBalance),
         totalReferred: user._count.referralsGiven,
-        totalEarned: totalEarned // Replaced 'earnedCount' with actual money earned
+        totalEarned: totalEarned
       };
     });
 
-    // 3. Fetch Enrolled Users
+    // 3. Enrolled Referral Pairs
     const enrolledUsers = await prisma.user.findMany({
-      where: { referralCode: { not: null } },
+      where: { referredBy: { not: null } },
       select: { id: true, firstName: true, lastName: true, email: true, phone: true, referralCode: true, createdAt: true, referralBalance: true },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: 50
     });
 
     // 4. Fetch Ledger Global Settings
@@ -97,12 +104,20 @@ export async function GET() {
         REF_REWARD_SCUML: Number(settings.REF_REWARD_SCUML),
         REF_REWARD_TAX_ID: Number(settings.REF_REWARD_TAX_ID),
         REF_REWARD_NIN: Number(settings.REF_REWARD_NIN),
+        REF_REWARD_NIN_VAL: Number(settings.REF_REWARD_NIN_VAL),
+        REF_REWARD_NIN_MOD: Number(settings.REF_REWARD_NIN_MOD),
+        REF_REWARD_NIN_PERSONALIZATION: Number(settings.REF_REWARD_NIN_PERSONALIZATION),
+        REF_REWARD_NIN_IPE: Number(settings.REF_REWARD_NIN_IPE),
+        REF_REWARD_BVN_SLIP: Number(settings.REF_REWARD_BVN_SLIP),
+        REF_REWARD_BVN_RETRIEVAL: Number(settings.REF_REWARD_BVN_RETRIEVAL),
       },
       stats: {
-        totalPaid: Number(totalPaidData._sum.amount || 0), totalPending: Number(totalPendingData._sum.amount || 0)
+        totalPaid: Number(totalPaidData._sum.amount || 0), 
+        totalPending: Number(totalPendingData._sum.amount || 0)
       }
     });
   } catch (error) {
+    console.error("Fetch MDS Referrals Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -12,6 +12,10 @@ export async function GET() {
     
     const bn = getCac("BUSINESS_NAME");
     const llc = getCac("LLC");
+    const scuml = getCac("SCUML");
+    const taxIdInd = getCac("TAX_ID_INDIVIDUAL");
+    const taxIdCorp = getCac("TAX_ID_CORPORATE");
+    const ninIpe = getCac("NIN_IPE_CLEARANCE");
     
     // Fetch individual NIN toggles and prices
     const ninRegular = ninServices.find(s => s.slipType === "nin_regular");
@@ -19,6 +23,7 @@ export async function GET() {
     const ninPremium = ninServices.find(s => s.slipType === "nin_premium");
 
     const isAnyNinActive = (ninRegular?.isActive || ninStandard?.isActive || ninPremium?.isActive);
+    const isAnyTaxIdActive = (taxIdInd?.isActive ?? true) || (taxIdCorp?.isActive ?? true);
 
     const settings = {
       bnEnabled: bn?.isActive ?? true,
@@ -26,6 +31,17 @@ export async function GET() {
       llcEnabled: llc?.isActive ?? true,
       llcReason: llc?.maintenanceMsg || "Company incorporation is currently down for maintenance.",
       
+      scumlEnabled: scuml?.isActive ?? true,
+      scumlReason: scuml?.maintenanceMsg || "SCUML registration is currently down for maintenance.",
+
+      taxIdEnabled: isAnyTaxIdActive,
+      taxIdReason: taxIdInd?.maintenanceMsg || taxIdCorp?.maintenanceMsg || "Tax ID processing is currently down for maintenance.",
+      taxIdIndividualEnabled: taxIdInd?.isActive ?? true,
+      taxIdCorporateEnabled: taxIdCorp?.isActive ?? true,
+
+      ninIpeEnabled: ninIpe?.isActive ?? true,
+      ninIpeReason: ninIpe?.maintenanceMsg || "NIMC IPE Clearance is currently down for maintenance.",
+
       ninEnabled: isAnyNinActive ?? true,
       ninReason: "NIN Slip generation is currently down for maintenance.",
       ninOptions: {

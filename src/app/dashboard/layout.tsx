@@ -7,15 +7,20 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
-import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper"; 
-import { WelcomeBanner } from "@/components/WelcomeBanner"; 
-import { 
-  SquaresFour, Buildings, ShieldCheck, Copyright, 
-  Handshake, IdentificationCard, DeviceMobile, Wallet, 
+import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper";
+import { WelcomeBanner } from "@/components/WelcomeBanner";
+import {
+  SquaresFour, Buildings, ShieldCheck, Copyright,
+  Handshake, IdentificationCard, IdentificationBadge, DeviceMobile, Wallet,
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
   FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
-  ClockCounterClockwise
+  ClockCounterClockwise, Code, CaretDown, CaretRight
 } from "@phosphor-icons/react";
+
+type SubLink = {
+  name: string;
+  href: string;
+};
 
 type NavLink = {
   name: string;
@@ -23,6 +28,7 @@ type NavLink = {
   icon: React.ElementType;
   isComingSoon?: boolean;
   showSoonBadge?: boolean;
+  subLinks?: SubLink[];
 };
 
 type NavCategory = {
@@ -46,9 +52,43 @@ const NAVIGATION: NavCategory[] = [
     links: [
       { name: "CAC Services", href: "/dashboard/cac", icon: Buildings },
       { name: "SCUML", href: "/dashboard/scuml", icon: ShieldCheck },
-      { name: "NIN Services", href: "/dashboard/tools/nin-slip", icon: IdentificationCard },
-      { name: "Airtime", href: "/dashboard/airtime", icon: DeviceMobile },
+      {
+        name: "NIN Services",
+        href: "/dashboard/nin",
+        icon: IdentificationCard,
+        subLinks: [
+          { name: "Slip Generation", href: "/dashboard/nin/slips" },
+          { name: "NIN Validation", href: "/dashboard/nin/validation" },
+          { name: "NIN Modification", href: "/dashboard/nin/modification" },
+          { name: "Personalization", href: "/dashboard/nin/personalization" },
+          { name: "IPE Clearance", href: "/dashboard/nin/ipe" },
+        ]
+      },
+      {
+        name: "BVN Services",
+        href: "/dashboard/bvn",
+        icon: IdentificationBadge,
+        subLinks: [
+          { name: "BVN Slip", href: "/dashboard/bvn/slip" },
+          { name: "BVN Retrieval", href: "/dashboard/bvn/retrieval" },
+        ]
+      },
+      {
+        name: "Utilities",
+        href: "/dashboard/utilities",
+        icon: DeviceMobile,
+        subLinks: [
+          { name: "Airtime Top-Up", href: "/dashboard/utilities/airtime" },
+          { name: "Mobile Data", href: "/dashboard/utilities/mobile-data" },
+        ]
+      },
       { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },
+    ]
+  },
+  {
+    category: "Developer",
+    links: [
+      { name: "Developer API", href: "#", icon: Code, isComingSoon: true, showSoonBadge: true },
     ]
   },
   {
@@ -79,14 +119,30 @@ const NAVIGATION: NavCategory[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  
+
   // Safe fallback to prevent Railway build crashes
   const { data: session } = useSession() || {};
-  
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); 
-  const [sidebarAlert, setSidebarAlert] = useState<{title: string, message: string} | null>(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [sidebarAlert, setSidebarAlert] = useState<{ title: string, message: string } | null>(null);
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
+    "/dashboard/nin": true,
+    "/dashboard/bvn": true,
+    "/dashboard/utilities": true,
+  });
+
+  // Auto-expand active category based on current pathname
+  useEffect(() => {
+    if (pathname.startsWith("/dashboard/nin")) {
+      setOpenSubmenus(prev => ({ ...prev, "/dashboard/nin": true }));
+    } else if (pathname.startsWith("/dashboard/bvn")) {
+      setOpenSubmenus(prev => ({ ...prev, "/dashboard/bvn": true }));
+    } else if (pathname.startsWith("/dashboard/utilities")) {
+      setOpenSubmenus(prev => ({ ...prev, "/dashboard/utilities": true }));
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (sidebarAlert) {
@@ -120,10 +176,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (found) return found.name;
     }
     if (pathname.includes("/dashboard/cac")) return "CAC Services";
-    if (pathname.includes("/dashboard/tools/nin-slip")) return "NIN Services";
+    if (pathname.includes("/dashboard/nin")) return "NIN Services";
     if (pathname.includes("/dashboard/transactions")) return "Transactions";
     if (pathname.includes("/dashboard/scuml")) return "SCUML";
-    if (pathname.includes("/dashboard/airtime")) return "Airtime";
+    if (pathname.includes("/dashboard/utilities")) return "Utilities";
     if (pathname.includes("/dashboard/referrals")) return "Partner Program";
     return "Dashboard";
   };
@@ -146,9 +202,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
-      
+
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-background/80 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
           onClick={() => setIsMobileMenuOpen(false)}
         />
@@ -162,15 +218,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:translate-x-0 lg:flex"}
       `}>
         <div className="h-[70px] flex items-center justify-between px-5 border-b border-border shrink-0">
-          <Image 
-            src="/logo.png" 
-            alt="Lorabiz" 
-            width={120} 
-            height={32} 
-            className="h-6 w-auto object-contain dark:brightness-200 dark:contrast-100" 
+          <Image
+            src="/logo.png"
+            alt="Lorabiz"
+            width={120}
+            height={32}
+            className="h-6 w-auto object-contain dark:brightness-200 dark:contrast-100"
             priority
           />
-          <button 
+          <button
             className="lg:hidden text-muted-foreground hover:text-primary transition-colors cursor-pointer"
             onClick={() => setIsMobileMenuOpen(false)}
           >
@@ -186,44 +242,97 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </h3>
               <div className="space-y-0.5">
                 {group.links.map((link) => {
-                  const isActive = link.href === "/dashboard" 
-                    ? pathname === "/dashboard" 
-                    : pathname.startsWith(link.href.split('?')[0]) && link.href !== "#"; 
-                  
+                  const isActive = link.href === "/dashboard"
+                    ? pathname === "/dashboard"
+                    : pathname.startsWith(link.href.split('?')[0]) && link.href !== "#";
+
                   const Icon = link.icon;
-                  
+                  const hasSubLinks = Boolean(link.subLinks && link.subLinks.length > 0);
+                  const isSubmenuOpen = Boolean(openSubmenus[link.href]);
+
                   return (
-                    <Link 
-                      key={link.name} 
-                      href={link.href}
-                      onClick={(e) => {
-                        if (link.isComingSoon) {
-                          e.preventDefault();
-                          handleSidebarWaitlist(link.name);
-                        } else {
-                          setIsMobileMenuOpen(false);
-                        }
-                      }}
-                      className={`
-                        flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
-                        ${isActive 
-                          ? "bg-primary/10 text-primary shadow-sm" 
-                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        }
-                      `}
-                    >
-                      <Icon 
-                        weight={isActive ? "fill" : "regular"} 
-                        className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} 
-                      />
-                      <span className="text-[13px] font-bold flex-1">{link.name}</span>
-                      
-                      {link.showSoonBadge && (
-                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-[#ff3f7a]/10 px-2 py-0.5 text-[9px] font-black text-[#ff3f7a] uppercase tracking-widest animate-pulse border border-[#ff3f7a]/20 shrink-0">
-                          Soon
-                        </span>
+                    <div key={link.name} className="space-y-0.5">
+                      <div className="flex items-center">
+                        <Link
+                          href={link.href}
+                          onClick={(e) => {
+                            if (link.isComingSoon) {
+                              e.preventDefault();
+                              handleSidebarWaitlist(link.name);
+                            } else {
+                              if (hasSubLinks && !isSubmenuOpen) {
+                                setOpenSubmenus(prev => ({ ...prev, [link.href]: true }));
+                              }
+                              setIsMobileMenuOpen(false);
+                            }
+                          }}
+                          className={`
+                            flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
+                            ${isActive
+                              ? "bg-primary/10 text-primary shadow-sm"
+                              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            }
+                          `}
+                        >
+                          <Icon
+                            weight={isActive ? "fill" : "regular"}
+                            className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
+                          />
+                          <span className="text-[13px] font-bold flex-1">{link.name}</span>
+
+                          {link.showSoonBadge && (
+                            <span className="ml-auto inline-flex items-center justify-center rounded-full bg-[#ff3f7a]/10 px-2 py-0.5 text-[9px] font-black text-[#ff3f7a] uppercase tracking-widest animate-pulse border border-[#ff3f7a]/20 shrink-0">
+                              Soon
+                            </span>
+                          )}
+                        </Link>
+
+                        {hasSubLinks && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setOpenSubmenus(prev => ({ ...prev, [link.href]: !isSubmenuOpen }));
+                            }}
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer ml-0.5"
+                            title={isSubmenuOpen ? "Collapse sub-menu" : "Expand sub-menu"}
+                          >
+                            {isSubmenuOpen ? (
+                              <CaretDown size={13} weight="bold" />
+                            ) : (
+                              <CaretRight size={13} weight="bold" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Collapsible Sub-menu */}
+                      {hasSubLinks && isSubmenuOpen && (
+                        <div className="pl-5 ml-4 border-l border-border/80 space-y-0.5 my-1 animate-in slide-in-from-top-1 duration-150">
+                          {link.subLinks!.map((sub) => {
+                            const isSubActive = pathname === sub.href || pathname.startsWith(sub.href + "/");
+                            return (
+                              <Link
+                                key={sub.name}
+                                href={sub.href}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`
+                                  flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all
+                                  ${isSubActive
+                                    ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                                  }
+                                `}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSubActive ? "bg-primary-foreground" : "bg-muted-foreground/40"}`} />
+                                <span className="truncate">{sub.name}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
                       )}
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -234,17 +343,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        
+
         <header className="relative z-40 h-[70px] bg-background border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <List className="h-6 w-6" weight="bold" />
             </button>
-            
-            <button 
+
+            <button
               className="hidden lg:block p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
             >
@@ -257,7 +366,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3">
-            <Link 
+            <Link
               href="/dashboard/pricing"
               className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[13px] font-bold"
             >
@@ -270,16 +379,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* NEW: PROFILE DROPDOWN WRAPPER */}
             <div className="relative ml-1">
-              <div 
+              <div
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                 className="h-9 w-9 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[12px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0"
               >
                 {session?.user?.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img 
-                    src={session.user.image} 
-                    alt="Profile" 
-                    className="h-full w-full object-cover" 
+                  <img
+                    src={session.user.image}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                       (e.target as HTMLImageElement).parentElement!.innerHTML = initials;
@@ -293,11 +402,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* PROFILE DROPDOWN MENU */}
               {isProfileDropdownOpen && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-[45]" 
-                    onClick={() => setIsProfileDropdownOpen(false)} 
+                  <div
+                    className="fixed inset-0 z-[45]"
+                    onClick={() => setIsProfileDropdownOpen(false)}
                   />
-                  
+
                   <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-[50] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="p-3 border-b border-border bg-secondary/30">
                       <p className="text-[13px] font-black text-foreground truncate">
@@ -307,9 +416,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         {session?.user?.email}
                       </p>
                     </div>
-                    
+
                     <div className="p-2 space-y-1">
-                      <Link 
+                      <Link
                         href="/dashboard/settings"
                         onClick={() => setIsProfileDropdownOpen(false)}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-foreground hover:bg-secondary transition-colors"
@@ -317,8 +426,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <UserCircle className="h-4 w-4 text-muted-foreground" weight="bold" />
                         Profile Settings
                       </Link>
-                      
-                      <button 
+
+                      <button
                         type="button"
                         onClick={() => signOut({ callbackUrl: "/auth/login", redirect: true })}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors group cursor-pointer"
@@ -337,7 +446,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
-            <WelcomeBanner /> 
+            <WelcomeBanner />
             {children}
           </div>
         </main>
@@ -352,8 +461,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <h4 className="font-bold text-[15px] leading-tight">{sidebarAlert.title}</h4>
             <p className="text-[13px] opacity-90 mt-0.5 leading-snug">{sidebarAlert.message}</p>
           </div>
-          <button 
-            onClick={() => setSidebarAlert(null)} 
+          <button
+            onClick={() => setSidebarAlert(null)}
             className="ml-auto p-1.5 hover:bg-background/20 rounded-full transition-colors cursor-pointer shrink-0"
           >
             <X weight="bold" className="h-4 w-4" />

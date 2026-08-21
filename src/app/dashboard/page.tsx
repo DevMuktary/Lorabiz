@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { 
   ArrowRight, 
@@ -60,13 +61,23 @@ const LIVE_SERVICES: ServiceItem[] = [
     active: true,
   },
   {
-    title: "NIMC Identity (NIN Slips)",
+    title: "NIN Identity Services",
     category: "National Identity Management",
-    description: "Instant NIN verification, high-resolution PDF download, and official plastic card slip.",
+    description: "Instant NIN verification, record modification, slip printing, IPE clearance, and validation.",
     logo: "/nimc.png",
-    href: "/dashboard/tools/nin-slip",
-    turnaround: "Instant Download",
-    actionText: "Generate NIN Slip",
+    href: "/dashboard/nin",
+    turnaround: "Instant – 24 Hours",
+    actionText: "Explore NIN Services",
+    active: true,
+  },
+  {
+    title: "BVN Services",
+    category: "Bank Verification (NIBSS)",
+    description: "BVN slips, BVN retrieval, and BVN modification.",
+    logo: "/nibss.png",
+    href: "/dashboard/bvn",
+    turnaround: "Instant Delivery",
+    actionText: "Explore BVN Services",
     active: true,
   },
   {
@@ -80,13 +91,13 @@ const LIVE_SERVICES: ServiceItem[] = [
     active: true,
   },
   {
-    title: "Airtime & Utilities",
+    title: "Utilities & Data",
     category: "VTU Telecom Gateway",
-    description: "Instant airtime top-up, mobile data bundles, and bill payments from your wallet balance.",
+    description: "Instant airtime top-up, cheap mobile data bundles, and bill payments from your wallet balance.",
     logo: "/airtime.png",
-    href: "/dashboard/airtime",
+    href: "/dashboard/utilities",
     turnaround: "Instant Delivery",
-    actionText: "Recharge Airtime",
+    actionText: "Access Utilities",
     active: true,
   },
 ];
@@ -185,6 +196,11 @@ export default function DashboardPage() {
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Partner Announcement Modal shows on refresh UNLESS user is returning from a payment
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState<boolean>(() => {
@@ -351,15 +367,15 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className={`space-y-6 pb-12 transition-opacity duration-300 ${mounted && isPartnerModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
 
       {/* ========================================================================= */}
-      {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP                       */}
+      {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP (FULL-VIEWPORT BACKDROP) */}
       {/* ========================================================================= */}
-      {isPartnerModalOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      {mounted && isPartnerModalOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
           <div 
-            className="fixed inset-0" 
+            className="fixed inset-0 min-h-screen w-screen" 
             onClick={() => setIsPartnerModalOpen(false)} 
           />
 
@@ -435,50 +451,51 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ========================================================================= */}
       {/* 2. MINIMAL EXECUTIVE HEADER                                               */}
       {/* ========================================================================= */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-          Welcome, {firstName}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Access the services below to get started.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+            Welcome back, {firstName} 👋
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 font-medium">
+            Manage your statutory registrations, corporate filings, and compliance.
+          </p>
+        </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. MINIMIZED & PERFECTED FINANCIAL & QUICK ACTIONS COMMAND HUB            */}
+      {/* 3. DUAL-CARD HERO: WALLET & STATUTORY QUICK ACCESS                        */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-        
-        {/* Left: Compact Wallet Card with Rounded Tail/Corners */}
-        <div className="lg:col-span-6 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between">
+      <div className="grid grid-cols-1 lg:grid-cols-11 gap-4">
+        {/* Left: Professional Compact Wallet Deck */}
+        <div className="lg:col-span-5 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                 <Wallet className="h-4 w-4" weight="bold" />
               </div>
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
                 Wallet Balance
               </span>
             </div>
-
-            <button 
+            
+            <button
               onClick={() => setIsBalanceHidden(!isBalanceHidden)}
-              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
-              title={isBalanceHidden ? "Show Balance" : "Hide Balance"}
-              aria-label="Toggle balance visibility"
+              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+              aria-label={isBalanceHidden ? "Show Balance" : "Hide Balance"}
             >
               {isBalanceHidden ? <EyeSlash className="h-4 w-4" weight="bold" /> : <Eye className="h-4 w-4" weight="bold" />}
             </button>
           </div>
 
-          <div className="my-2.5">
-            <div className="text-2xl sm:text-3xl font-black text-foreground tracking-tight flex items-center gap-1.5">
+          <div>
+            <div className="text-2xl sm:text-3xl font-black text-foreground tracking-tight flex items-baseline gap-1">
               {isLoadingBalance ? (
                 <Spinner className="animate-spin h-6 w-6 text-muted-foreground" weight="bold" />
               ) : isBalanceHidden ? (
@@ -506,7 +523,7 @@ export default function DashboardPage() {
               className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-secondary text-foreground rounded-xl font-bold text-xs hover:bg-secondary/80 border border-border transition-colors"
             >
               <Receipt className="h-3.5 w-3.5" />
-              <span>Ledger</span>
+              <span>History</span>
             </Link>
 
             <Link
@@ -514,7 +531,7 @@ export default function DashboardPage() {
               className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-secondary text-foreground rounded-xl font-bold text-xs hover:bg-secondary/80 border border-border transition-colors"
             >
               <Tag className="h-3.5 w-3.5" />
-              <span>Rates</span>
+              <span>Pricing</span>
             </Link>
           </div>
         </div>
@@ -563,7 +580,7 @@ export default function DashboardPage() {
             </Link>
 
             <Link
-              href="/dashboard/tools/nin-slip"
+              href="/dashboard/nin"
               className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
               title="NIN Services"
             >
@@ -580,20 +597,37 @@ export default function DashboardPage() {
             </Link>
 
             <Link
-              href="/dashboard/airtime"
+              href="/dashboard/bvn"
               className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
-              title="Airtime Recharge"
+              title="BVN Verification Slips"
             >
               <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
                 <Image 
-                  src="/airtime.png" 
-                  alt="Airtime" 
+                  src="/nibss.png" 
+                  alt="BVN" 
                   width={28} 
                   height={28} 
                   className="object-contain" 
                 />
               </div>
-              <span className="text-[11px] font-bold">Airtime</span>
+              <span className="text-[11px] font-bold">BVN</span>
+            </Link>
+
+            <Link
+              href="/dashboard/utilities"
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+              title="Utilities & Telecom"
+            >
+              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <Image 
+                  src="/airtime.png" 
+                  alt="Utilities" 
+                  width={28} 
+                  height={28} 
+                  className="object-contain" 
+                />
+              </div>
+              <span className="text-[11px] font-bold">Utilities</span>
             </Link>
           </div>
         </div>

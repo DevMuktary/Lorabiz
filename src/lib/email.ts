@@ -1,5 +1,5 @@
 // src/lib/email.ts
-import crypto from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { sanitizeEmailHtml } from "@/lib/sanitize-email";
 
 export async function sendEmail({ 
@@ -573,7 +573,7 @@ export async function sendTaxIdFailedEmail({
   const previewText = `Your ${requestType} Tax ID request was rejected.`;
 
   const content = `
-    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">Application Failed ⚠️</h2>
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">Application Failed</h2>
     <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
       Hello <strong>${name}</strong>,<br/>
       Unfortunately, your request for a ${requestType} Tax ID could not be completed.
@@ -591,14 +591,387 @@ export async function sendTaxIdFailedEmail({
 }
 
 // ============================================================================
+// NIMC IPE CLEARANCE NOTIFICATIONS
+// ============================================================================
+
+export async function sendNinIpeCompletedEmail({
+  to, name, trackingId, reference
+}: { to: string; name: string; trackingId: string; reference: string; }) {
+  const subject = `Your IPE Clearance Request is Complete`;
+  const previewText = `The In-Processing Error for Tracking ID ${trackingId} has been resolved.`;
+
+  const content = `
+    <h2 style="color: #047857; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">IPE Clearance Completed</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Great news! Your NIMC IPE (In-Processing Error) clearance request has been successfully processed and resolved.
+    </p>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Tracking ID:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Reference:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right; font-family: monospace;">${reference}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Status:</td>
+          <td style="font-weight: 700; color: #047857; text-align: right;">COMPLETED</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      For your security and privacy, your National Identification Number (NIN) is not transmitted in email text. You can securely view and retrieve your resolved NIN and records directly from your dashboard.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/ipe/history" style="display: inline-block; background-color: #047857; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">View IPE Clearance Result</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinIpeFailedEmail({
+  to, name, trackingId, reference, failureReason, refundAmount
+}: { to: string; name: string; trackingId: string; reference: string; failureReason: string; refundAmount: number; }) {
+  const subject = `Update on Your IPE Clearance Request`;
+  const previewText = `Your IPE clearance request for Tracking ID ${trackingId} could not be completed.`;
+
+  const content = `
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">IPE Clearance Request Failed</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Your IPE Clearance request for Tracking ID <strong>${trackingId}</strong> (Reference: <code style="font-family: monospace;">${reference}</code>) could not be resolved by the identity service provider.
+    </p>
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 24px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 12px; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Reason</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6; white-space: pre-wrap;">${failureReason}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      ${refundAmount > 0 ? `A refund of <strong>₦${refundAmount.toLocaleString()}</strong> has been credited back to your Lorabiz Wallet.` : 'Please check your dashboard for further details.'}
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/ipe/history" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to IPE Clearance History</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+// ============================================================================
+// NIMC NIN VALIDATION NOTIFICATIONS
+// ============================================================================
+
+export async function sendNinValidationCompletedEmail({
+  to, name, nin, category, transactionRef
+}: { to: string; name: string; nin: string; category: string; transactionRef: string; }) {
+  const maskedNin = nin.length >= 4 ? `*******${nin.slice(-4)}` : nin;
+  const subject = `Your NIN Validation is Complete 🎉`;
+  const previewText = `Your NIN (${maskedNin}) validation request for "${category}" has been successfully completed.`;
+
+  const content = `
+    <h2 style="color: #047857; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Validation Successful! 🎉</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Great news! Your National Identification Number (NIN) validation request has been successfully resolved and processed.
+    </p>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Validation Category:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right;">${category}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">NIN:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${maskedNin}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Reference:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right; font-family: monospace;">${transactionRef}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Status:</td>
+          <td style="font-weight: 700; color: #047857; text-align: right;">COMPLETED</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      Please note: While the validation is completed on our end, central database synchronization on official verification portals may take up to 72 hours to reflect nationwide.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/validation/history" style="display: inline-block; background-color: #047857; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to Validation History</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinValidationFailedEmail({
+  to, name, nin, category, transactionRef, failureReason, refundAmount
+}: { to: string; name: string; nin: string; category: string; transactionRef: string; failureReason: string; refundAmount: number; }) {
+  const maskedNin = nin.length >= 4 ? `*******${nin.slice(-4)}` : nin;
+  const subject = `Update on Your NIN Validation Request`;
+  const previewText = `Your NIN validation request for "${category}" could not be completed.`;
+
+  const content = `
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Validation Request Failed</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Unfortunately, your NIN validation request for <strong>${category}</strong> (NIN: <code style="font-family: monospace;">${maskedNin}</code>) could not be completed.
+    </p>
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 24px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 12px; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Reason</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6; white-space: pre-wrap;">${failureReason}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      ${refundAmount > 0 ? `A refund of <strong>₦${refundAmount.toLocaleString()}</strong> has been credited back to your Lorabiz Wallet.` : 'Please check your dashboard for full details.'}
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/validation/history" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to Validation History</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+// ============================================================================
+// NIMC NIN PERSONALIZATION NOTIFICATIONS
+// ============================================================================
+
+export async function sendNinPersonalizationCompletedEmail({
+  to, name, trackingId, reference
+}: { to: string; name: string; trackingId: string; reference: string; }) {
+  const subject = `Your NIN Personalization is Complete 🎉`;
+  const previewText = `Your enrollment Tracking ID ${trackingId} has been successfully personalized and your NIN is ready.`;
+
+  const content = `
+    <h2 style="color: #047857; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Personalization Complete! 🎉</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Great news! Your NIN Personalization request for Tracking ID <strong>${trackingId}</strong> has been successfully processed and completed.
+    </p>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Tracking ID:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Reference:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right; font-family: monospace;">${reference}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Status:</td>
+          <td style="font-weight: 700; color: #047857; text-align: right;">COMPLETED</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      Your full personal identity record and official printable NIN slip are now available on your dashboard.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/personalization/history" style="display: inline-block; background-color: #047857; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">View Slip & Record</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinPersonalizationFailedEmail({
+  to, name, trackingId, reference, failureReason, refundAmount
+}: { to: string; name: string; trackingId: string; reference: string; failureReason: string; refundAmount: number; }) {
+  const subject = `Update on Your NIN Personalization Request`;
+  const previewText = `Your NIN personalization request for Tracking ID ${trackingId} could not be completed.`;
+
+  const content = `
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Personalization Request Failed</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Unfortunately, your NIN personalization request for Tracking ID <strong>${trackingId}</strong> (Reference: <code style="font-family: monospace;">${reference}</code>) could not be completed.
+    </p>
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 24px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 12px; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Reason</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6; white-space: pre-wrap;">${failureReason}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      ${refundAmount > 0 ? `A full refund of <strong>₦${refundAmount.toLocaleString()}</strong> has been credited back to your Lorabiz Wallet.` : 'Please check your dashboard for full details.'}
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/personalization/history" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to Personalization History</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+// ============================================================================
+// NIN MODIFICATION EMAILS
+// ============================================================================
+
+const MODIFICATION_TYPE_TITLES: Record<string, string> = {
+  CHANGE_OF_NAME: "Change of Name",
+  CHANGE_OF_PHONE: "Change of Phone Number",
+  CHANGE_OF_ADDRESS: "Change of Address",
+};
+
+export async function sendNinModificationSubmittedEmail({
+  to, name, trackingId, type, amount
+}: { to: string; name: string; trackingId: string; type: string; amount: number; }) {
+  const typeLabel = MODIFICATION_TYPE_TITLES[type] || "NIN Modification";
+  const subject = `NIN Modification Request Received - ${trackingId}`;
+  const previewText = `We have received your NIN ${typeLabel} request (${trackingId}).`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Modification Request Received</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      We have received your request for <strong>NIN ${typeLabel}</strong>. Our processing team is reviewing your submission.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Tracking ID:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Service Type:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">${typeLabel}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Amount Paid:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">₦${amount.toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Initial Status:</td>
+          <td style="font-weight: 700; color: #d97706; text-align: right;">PENDING</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      You will receive real-time email notifications as your request moves to processing and completion.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/modification" style="display: inline-block; background-color: #047857; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Track Request on Dashboard</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinModificationProcessingEmail({
+  to, name, trackingId, type
+}: { to: string; name: string; trackingId: string; type: string; }) {
+  const typeLabel = MODIFICATION_TYPE_TITLES[type] || "NIN Modification";
+  const subject = `Your NIN Modification Request is in Processing - ${trackingId}`;
+  const previewText = `Your NIN ${typeLabel} request (${trackingId}) is now being processed.`;
+
+  const content = `
+    <h2 style="color: #0369a1; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Modification In Processing</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Great news! Your request for <strong>NIN ${typeLabel}</strong> (Tracking ID: <strong>${trackingId}</strong>) has been picked up and is actively being processed with the identity registry.
+    </p>
+    <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #0369a1; padding: 6px 0;">Tracking ID:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="color: #0369a1; padding: 6px 0;">Modification:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">${typeLabel}</td>
+        </tr>
+        <tr>
+          <td style="color: #0369a1; padding: 6px 0;">Status:</td>
+          <td style="font-weight: 700; color: #0284c7; text-align: right;">PROCESSING</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      You will receive another update once the modification is concluded and your official transaction slip is ready.
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/modification" style="display: inline-block; background-color: #0284c7; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">View Dashboard</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinModificationCompletedEmail({
+  to, name, trackingId, type, slipUrl
+}: { to: string; name: string; trackingId: string; type: string; slipUrl?: string; }) {
+  const typeLabel = MODIFICATION_TYPE_TITLES[type] || "NIN Modification";
+  const subject = `NIN Modification Completed - ${trackingId}`;
+  const previewText = `Your NIN ${typeLabel} is complete. Download your official modification slip.`;
+
+  const content = `
+    <h2 style="color: #047857; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Modification Successfully Completed 🎉</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Your request for <strong>NIN ${typeLabel}</strong> (Tracking ID: <strong>${trackingId}</strong>) has been successfully concluded and finalized!
+    </p>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Tracking ID:</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right; font-family: monospace;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Service Type:</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">${typeLabel}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Status:</td>
+          <td style="font-weight: 700; color: #047857; text-align: right;">COMPLETED</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      Your official modification slip has been generated. You can download and save it directly from your dashboard.
+    </p>
+    <div style="text-align: center; margin-bottom: 20px;">
+      ${slipUrl ? `<a href="${slipUrl}" target="_blank" style="display: inline-block; background-color: #047857; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif; margin-right: 10px;">Download Modification Slip</a>` : ''}
+      <a href="https://lorabiz.com/dashboard/nin/modification" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">View on Dashboard</a>
+    </div>
+    <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0;">
+      Please note: Third-party systems (such as commercial banks or telecom providers) may require additional synchronization cycles to reflect the new update across their network.
+    </p>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function sendNinModificationRejectedEmail({
+  to, name, trackingId, type, reason, refundAmount
+}: { to: string; name: string; trackingId: string; type: string; reason: string; refundAmount?: number; }) {
+  const typeLabel = MODIFICATION_TYPE_TITLES[type] || "NIN Modification";
+  const subject = `Update on Your NIN Modification Request - ${trackingId}`;
+  const previewText = `Your NIN ${typeLabel} request (${trackingId}) could not be completed.`;
+
+  const content = `
+    <h2 style="color: #b45309; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">NIN Modification Request Update</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello <strong>${name}</strong>,<br/>
+      Your request for <strong>NIN ${typeLabel}</strong> (Tracking ID: <strong>${trackingId}</strong>) could not be completed due to the following reason:
+    </p>
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 24px; font-family: sans-serif;">
+      <p style="margin: 0 0 8px; font-size: 12px; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Reason for Rejection</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6; white-space: pre-wrap;">${reason}</p>
+    </div>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 28px; font-size: 14px; font-family: sans-serif;">
+      ${(refundAmount && refundAmount > 0) ? `A refund of <strong>₦${refundAmount.toLocaleString()}</strong> has been credited back to your LoraBiz Wallet.` : 'Please review the reason above and reach out to support if you need further clarification.'}
+    </p>
+    <div style="text-align: center;">
+      <a href="https://lorabiz.com/dashboard/nin/modification" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; font-family: sans-serif;">Go to Modification Dashboard</a>
+    </div>
+  `;
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+
+
+// ============================================================================
 // EMAIL CAMPAIGN & BROADCAST UTILITIES
 // ============================================================================
 
 const UNSUBSCRIBE_SECRET = process.env.NEXTAUTH_SECRET || "lorabiz-campaign-unsubscribe-secret-salt";
 
 export function generateUnsubscribeToken(userId: string, email: string): string {
-  return crypto
-    .createHmac("sha256", UNSUBSCRIBE_SECRET)
+  return createHmac("sha256", UNSUBSCRIBE_SECRET)
     .update(`${userId}:${email.toLowerCase().trim()}`)
     .digest("hex");
 }
@@ -606,7 +979,7 @@ export function generateUnsubscribeToken(userId: string, email: string): string 
 export function verifyUnsubscribeToken(userId: string, email: string, token: string): boolean {
   try {
     const expected = generateUnsubscribeToken(userId, email);
-    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(token, "hex"));
+    return timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(token, "hex"));
   } catch {
     return false;
   }
@@ -953,5 +1326,173 @@ export async function sendAbandonedCacReminderEmail({
     htmlBody,
   });
 }
+
+// ============================================================================
+// BVN RETRIEVAL NOTIFICATIONS
+// ============================================================================
+
+export async function sendBvnRetrievalSubmittedEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  fullName,
+  phone,
+  amountPaid,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  fullName: string;
+  phone: string;
+  amountPaid: string | number;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `BVN Retrieval Request Received – [${trackingId}]`;
+  const previewText = `Your BVN Retrieval request (${trackingId}) has been queued. Expected turnaround: 1 to 24 hours.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Retrieval Request Submitted</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We have received your Bank Verification Number (BVN) Retrieval request on LoraBiz and it has been queued for processing.</p>
+    
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px; color: #334155;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Tracking ID:</td>
+          <td style="padding: 6px 0; font-weight: 700; color: #0f172a; text-align: right;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Full Name on BVN:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">${fullName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Linked Phone Number:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">${phone}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Amount Paid:</td>
+          <td style="padding: 6px 0; font-weight: 700; color: #059669; text-align: right;">&#8358;${Number(amountPaid).toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Processing Timeline:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">1 – 24 Working Hours</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">Once your retrieval record is matched and verified, you will receive an instant notification email containing your 11-digit BVN and your dashboard history will be updated immediately.</p>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="https://lorabiz.com/dashboard/bvn/retrieval/history" style="background-color: #059669; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block;">Track Request Status</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you have any questions or need further clarification, our support team is always available to help.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendBvnRetrievalCompletedEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  fullName,
+  retrievedBvn,
+  slipUrl,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  fullName: string;
+  retrievedBvn: string;
+  slipUrl?: string | null;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `BVN Retrieval Completed – [${trackingId}]`;
+  const previewText = `Your BVN has been successfully retrieved: ${retrievedBvn}`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Successfully Retrieved</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Good news! Your Bank Verification Number (BVN) retrieval request <strong>${trackingId}</strong> has been successfully processed.</p>
+    
+    <div style="background-color: #ecfdf5; border: 2px solid #a7f3d0; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+      <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #065f46; text-transform: uppercase; letter-spacing: 1px;">Your 11-Digit BVN</p>
+      <p style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 4px; color: #047857; font-family: monospace;">${retrievedBvn}</p>
+      <p style="margin: 10px 0 0; font-size: 13px; color: #065f46;">Account Name: <strong>${fullName}</strong></p>
+    </div>
+
+    ${slipUrl ? `
+      <div style="text-align: center; margin: 28px 0 16px;">
+        <a href="${slipUrl}" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; margin-right: 8px;">Download Slip</a>
+        <a href="https://lorabiz.com/dashboard/bvn/retrieval/history" style="background-color: #f1f5f9; color: #334155; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; border: 1px solid #cbd5e1;">View in Dashboard</a>
+      </div>
+    ` : `
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="https://lorabiz.com/dashboard/bvn/retrieval/history" style="background-color: #059669; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block;">View in Dashboard</a>
+      </div>
+    `}
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Please keep this BVN safe and confidential. Do not share your BVN or sensitive banking details with unauthorized parties.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendBvnRetrievalFailedEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  fullName,
+  reason,
+  refundAmount,
+  isRefunded = false,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  fullName: string;
+  reason: string;
+  refundAmount?: string | number | null;
+  isRefunded?: boolean;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Update on BVN Retrieval Request – [${trackingId}]`;
+  const previewText = `Your BVN Retrieval request could not be completed. Reason: ${reason}`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Retrieval Unsuccessful</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We regret to inform you that your BVN Retrieval request <strong>${trackingId}</strong> for <strong>${fullName}</strong> could not be completed.</p>
+    
+    <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #991b1b; text-transform: uppercase;">Reason for Failure</p>
+      <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.6;">${reason}</p>
+    </div>
+
+    ${isRefunded && refundAmount ? `
+      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+        <p style="margin: 0; font-size: 13px; color: #166534; font-weight: 600;">
+          &#10004; A refund of <strong>&#8358;${Number(refundAmount).toLocaleString()}</strong> has been credited back to your LoraBiz wallet.
+        </p>
+      </div>
+    ` : ''}
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="https://lorabiz.com/dashboard/bvn/retrieval" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Try Again</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you believe this was in error or need assistance reviewing your submitted details, please reach out to our support team.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
 
 

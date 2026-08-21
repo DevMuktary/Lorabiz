@@ -1,12 +1,24 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 import { notificationQueue } from "@/lib/queue";
 import { NotificationEvent } from "@/services/notifications";
 
-const prisma = new PrismaClient();
-
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const mdsAdmin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: { in: ["ADMIN", "STAFF"] } },
+    });
+    if (!mdsAdmin) {
+      return NextResponse.json({ error: "Forbidden. Admin or Staff access required." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { 
       ticketId, ticketType, actionType, reason, 
@@ -17,9 +29,6 @@ export async function POST(req: Request) {
     if (!ticketId || !ticketType || !actionType) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
-
-    const mdsAdmin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-    if (!mdsAdmin) return NextResponse.json({ error: "No Admin account found." }, { status: 500 });
 
     let notificationPayload: NotificationEvent | null = null;
 

@@ -124,6 +124,13 @@ model User {
   registrations    BusinessRegistration[]
   llcRegistrations LlcRegistration[]
   ninRequests      NinRequestLog[]
+  ninIpeRequests   NinIpeRequest[]
+  ninValidationRequests NinValidationRequest[]
+  ninPersonalizationRequests NinPersonalizationRequest[]
+  ninModificationConsent NinModificationConsent?
+  ninModificationRequests NinModificationRequest[]
+  bvnRequests      BvnRequestLog[]
+  bvnRetrievalRequests BvnRetrievalRequest[]
   scumlRequests    ScumlRegistration[]
   taxIdRequests    TaxIdRequest[]
   notifications    InAppNotification[]
@@ -325,15 +332,296 @@ model NinSlipPricing {
 model NinRequestLog {
   id            String   @id @default(cuid())
   userId        String
-  ninMasked     String   // Storing masked NIN (e.g., "********123") for privacy & audit
+  ninMasked     String   // Storing masked NIN or Phone (e.g., "********123") for privacy & audit
   slipType      String
   amountCharged Decimal  @db.Decimal(10, 2)
   status        String   // "SUCCESS" | "FAILED"
   reference     String   @unique // Links to Wallet Transaction reference
-  pdfUrl        String?
+  pdfUrl        String?  @db.Text
+  
+  // Extracted demographic details for 24-hour retention
+  searchType    String?  @default("NIN") // "NIN" | "PHONE"
+  fullName      String?
+  firstName     String?
+  lastName      String?
+  middleName    String?
+  gender        String?
+  dob           String?
+  phone         String?
+  address       String?  @db.Text
+  userData      Json?
+  providerUsed  String?  @default("DATAVERIFY")
+
   createdAt     DateTime @default(now())
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ==========================================
+// NIBSS / BVN SLIP SERVICES
+// ==========================================
+
+model BvnRequestLog {
+  id            String   @id @default(cuid())
+  userId        String
+  bvnMasked     String   // e.g. "123*****890" for privacy & audit
+  slipType      String   // "bvn_standard" | "bvn_premium"
+  amountCharged Decimal  @db.Decimal(10, 2)
+  status        String   // "SUCCESS" | "FAILED"
+  reference     String   @unique // Links to Wallet Transaction reference
+  pdfUrl        String?  @db.Text
+  
+  // Extracted demographic details
+  fullName      String?
+  firstName     String?
+  lastName      String?
+  middleName    String?
+  gender        String?
+  dob           String?
+  phone         String?
+  address       String?  @db.Text
+  userData      Json?
+  providerUsed  String?  @default("DATAVERIFY")
+
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([reference])
+}
+
+// ==========================================
+// BVN RETRIEVAL SERVICE
+// ==========================================
+
+enum BvnRetrievalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model BvnRetrievalRequest {
+  id             String              @id @default(cuid())
+  trackingId     String              @unique // e.g. "RET-849201"
+  userId         String
+  fullName       String              // Full Name on BVN
+  phone          String              // Linked Phone Number
+  status         BvnRetrievalStatus  @default(PENDING)
+  
+  // Output from admin upon completion
+  retrievedBvn   String?             // 11 digits BVN
+  slipUrl        String?             @db.Text // Optional slip file uploaded by admin
+  failureReason  String?             @db.Text // Admin reason for failure
+  adminNotes     String?             @db.Text
+  
+  // Payment & Transaction Tracking
+  amountPaid     Decimal             @db.Decimal(10, 2)
+  refundAmount   Decimal?            @db.Decimal(10, 2)
+  isRefunded     Boolean             @default(false)
+  transactionRef String              @unique
+  
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  completedAt    DateTime?
+  
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, status])
+  @@index([trackingId])
+  @@index([phone])
+  @@index([createdAt])
+}
+
+enum NinIpeStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model NinIpeRequest {
+  id            String       @id @default(cuid())
+  userId        String
+  trackingId    String
+  reference     String       @unique // Matches ledger transaction reference
+  provider      String       @default("DATAVERIFY") // "DATAVERIFY" | "AGENTHUB" | "MANUAL"
+  externalReqId String?      // requestId returned by AgentHub or transaction_id from DataVerify
+  status        NinIpeStatus @default(PROCESSING)
+  
+  // Resolved details when completed
+  resolvedNin   String?      // 11-digit NIN
+  newTrackingId String?      // New tracking ID if updated
+  fullName      String?
+  dob           String?
+  gender        String?
+  photoUrl      String?
+  
+  apiMessage    String?
+  failureReason String?
+  adminNotes    String?      @db.Text
+  amountCharged Decimal      @db.Decimal(10, 2)
+  apiResponse   Json?
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  completedAt   DateTime?
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([trackingId])
+}
+
+enum NinPersonalizationStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model NinPersonalizationRequest {
+  id            String                   @id @default(cuid())
+  userId        String
+  trackingId    String
+  reference     String                   @unique // Matches ledger transaction reference
+  provider      String                   @default("DATAVERIFY") // "DATAVERIFY" | "MANUAL"
+  externalTxId  String?                  // transaction_id returned by DataVerify
+  status        NinPersonalizationStatus @default(PROCESSING)
+  
+  // Resolved details when completed
+  resolvedNin   String?                  // 11-digit NIN
+  fullName      String?
+  dob           String?
+  gender        String?
+  phone         String?
+  residenceState String?
+  photoUrl      String?                  @db.Text
+  pdfUrl        String?                  @db.Text // PDF slip base64 or URL
+  userData      Json?                    // Complete personal details returned by DataVerify
+  
+  apiMessage    String?
+  failureReason String?                  @db.Text
+  adminNotes    String?                  @db.Text
+  amountCharged Decimal                  @db.Decimal(10, 2)
+  apiResponse   Json?
+  
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  completedAt   DateTime?
+
+  user          User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([trackingId])
+  @@index([reference])
+}
+
+enum NinValidationCategory {
+  NO_RECORD_FOUND
+  VNIN_VALIDATION
+  UPDATE_RECORD_MOD
+}
+
+enum NinValidationStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model NinValidationRequest {
+  id             String                @id @default(cuid())
+  userId         String
+  category       NinValidationCategory
+  nin            String
+  status         NinValidationStatus   @default(PROCESSING)
+  amountCharged  Decimal               @db.Decimal(10, 2)
+  transactionRef String                @unique
+  failureReason  String?               @db.Text
+  adminNotes     String?               @db.Text
+  completedAt    DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([nin])
+  @@index([category])
+}
+
+// ==========================================
+// NIN MODIFICATION MODELS & CONSENT
+// ==========================================
+
+model NinModificationConsent {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  fullName    String
+  signature   String   @db.Text // Base64 signature canvas or typed signature data
+  ipAddress   String?
+  userAgent   String?
+  agreedAt    DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NinModificationType {
+  CHANGE_OF_NAME
+  CHANGE_OF_PHONE
+  CHANGE_OF_ADDRESS
+}
+
+enum NinModificationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+model NinModificationRequest {
+  id              String                @id @default(cuid())
+  trackingId      String                @unique // e.g. "MOD-849201"
+  userId          String
+  type            NinModificationType
+  status          NinModificationStatus @default(PENDING)
+  nin             String                // 11 digits
+
+  // Change of Name fields
+  currentPhone    String?
+  newFirstName    String?
+  newLastName     String?
+  newMiddleName   String?
+
+  // Change of Phone fields
+  currentFullName String?
+  newPhoneNumber  String?
+
+  // Change of Address fields
+  newAddress      String?               @db.Text
+  newState        String?
+  newLga          String?
+
+  // Admin Execution & Result Output
+  adminNotes      String?               @db.Text
+  rejectionReason String?               @db.Text
+  slipUrl         String?               // Final Modification Slip uploaded by Admin
+  amountPaid      Decimal               @db.Decimal(10, 2)
+  refundAmount    Decimal?              @db.Decimal(10, 2)
+  isRefunded      Boolean               @default(false)
+  transactionRef  String                @unique
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([trackingId])
+  @@index([type])
+  @@index([nin])
+  @@index([createdAt])
 }
 
 // ==========================================
@@ -385,6 +673,30 @@ model ServicePricing {
   isActive       Boolean  @default(true) // MDS Kill Switch
   maintenanceMsg String?  // Custom banner text e.g., "CAC Portal is down"
   updatedAt      DateTime @updatedAt
+}
+
+// ==========================================
+// UTILITY VENDING: MOBILE DATA PLANS
+// ==========================================
+
+model MobileDataPlan {
+  id          String   @id @default(cuid())
+  planId      Int      @unique // Provider plan ID (e.g. 7, 8, 802, 686...)
+  network     String   // "MTN" | "GLO" | "AIRTEL" | "9MOBILE"
+  category    String   // "SME" | "DATA_SHARE" | "GIFTING" | "CORPORATE" | "AWOOF" | "LITE" | "SPECIAL"
+  name        String   // e.g. "MTN SME 1GB"
+  productCode String   // Provider product code for vend action
+  price       Decimal  @db.Decimal(10, 2) // Selling price
+  costPrice   Decimal? @db.Decimal(10, 2) // Base provider cost
+  validity    String?  // e.g. "30 Days", "7 Days", "1 Day", "2 Days"
+  capacity    String?  // e.g. "1GB", "500MB", "2GB", "10GB"
+  isActive    Boolean  @default(true) // Hidden from user view if false
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([network, isActive])
+  @@index([category])
+  @@index([planId])
 }
 
 model Transaction {
@@ -504,9 +816,10 @@ model BlockedIp {
 model GlobalSetting {
   id          String   @id @default(cuid())
   key         String   @unique // e.g., "SUPPORT_WHATSAPP"
-  value       String
+  value       String   @db.Text
   description String?
   updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 }
 
 // ==========================================
@@ -751,4 +1064,5 @@ model AutomatedEmailLog {
   @@index([emailType])
   @@index([sentAt])
 }
+
 

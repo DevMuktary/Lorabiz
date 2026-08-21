@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { 
-  ArrowLeft, Search, RefreshCw, Eye, CheckCircle2, XCircle, Zap, X, CornerUpLeft, AlertCircle
+  ArrowLeft, Search, RefreshCw, Eye, CheckCircle2, XCircle, Zap, X, CornerUpLeft, AlertCircle, Download
 } from 'lucide-react';
 
 export default function NinPipelinePage() {
@@ -51,6 +51,23 @@ export default function NinPipelinePage() {
     return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
   };
 
+  const handleDownloadPdf = (pdfUrl?: string, slipType?: string, ninMasked?: string) => {
+    if (!pdfUrl) {
+      alert("No PDF file link available for this record.");
+      return;
+    }
+    if (pdfUrl.startsWith("data:application/pdf;base64,")) {
+      const downloadLink = document.createElement("a");
+      downloadLink.href = pdfUrl;
+      downloadLink.download = `NIMC_${(slipType || "Slip").toUpperCase()}_${(ninMasked || "Record").replace(/\*/g, "X")}.pdf`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    } else {
+      window.open(pdfUrl, "_blank");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
@@ -62,12 +79,12 @@ export default function NinPipelinePage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center">
-              Identity Services Directory
+              Identity Services Directory (NIN)
               <span className="ml-3 text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400 rounded-full uppercase tracking-wider flex items-center">
-                <Zap size={10} className="mr-1" /> Automated
+                <Zap size={10} className="mr-1" /> Automated & Permanent
               </span>
             </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Live monitoring ledger for instant NIN slip generation.</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Permanent monitoring ledger and slip repository for instant NIN slip generation.</p>
           </div>
           <button 
             onClick={fetchPipeline}
@@ -79,7 +96,7 @@ export default function NinPipelinePage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
         
         {/* Navigation Tabs */}
         <div className="flex overflow-x-auto border-b border-zinc-200 dark:border-zinc-800 scrollbar-hide">
@@ -94,7 +111,7 @@ export default function NinPipelinePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
             <input 
               type="text" 
-              placeholder="Search by client, reference, or masked NIN..." 
+              placeholder="Search by client, citizen name, reference, or masked NIN..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
@@ -108,23 +125,24 @@ export default function NinPipelinePage() {
             <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 text-xs uppercase tracking-wider">
               <tr>
                 <th className="px-6 py-4 font-medium">Log Details</th>
+                <th className="px-6 py-4 font-medium">Verified Citizen</th>
                 <th className="px-6 py-4 font-medium">Client Info</th>
                 <th className="px-6 py-4 font-medium text-right">Amount Charged</th>
                 <th className="px-6 py-4 font-medium text-center">Status</th>
-                <th className="px-6 py-4 font-medium text-center">Action</th>
+                <th className="px-6 py-4 font-medium text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
                     <RefreshCw className="animate-spin mx-auto mb-3 text-indigo-500" size={24} />
-                    Loading feed...
+                    Loading permanent NIN feed...
                   </td>
                 </tr>
               ) : filteredPipeline.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
                     No requests found matching your filters.
                   </td>
                 </tr>
@@ -143,6 +161,11 @@ export default function NinPipelinePage() {
                     </td>
 
                     <td className="px-6 py-4">
+                      <p className="font-medium text-zinc-900 dark:text-zinc-100">{log.fullName || "—"}</p>
+                      <p className="text-xs text-zinc-500">{log.phone || log.dob || "NIMC Authenticated"}</p>
+                    </td>
+
+                    <td className="px-6 py-4">
                       <p className="font-medium text-zinc-900 dark:text-zinc-100">{log.clientName}</p>
                       <p className="text-xs text-zinc-500">{log.clientEmail}</p>
                     </td>
@@ -156,13 +179,24 @@ export default function NinPipelinePage() {
                     </td>
 
                     <td className="px-6 py-4 text-center">
-                      <button 
-                        onClick={() => setSelectedLog(log)}
-                        className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-zinc-800 rounded-md transition-colors"
-                        title="Inspect Log"
-                      >
-                        <Eye size={18} />
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button 
+                          onClick={() => setSelectedLog(log)}
+                          className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+                          title="Inspect Log & Demographics"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        {log.pdfUrl && (
+                          <button
+                            onClick={() => handleDownloadPdf(log.pdfUrl, log.slipType, log.ninMasked)}
+                            className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+                            title="Download Permanent Slip PDF"
+                          >
+                            <Download size={18} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -177,6 +211,7 @@ export default function NinPipelinePage() {
         log={selectedLog} 
         onClose={() => setSelectedLog(null)} 
         formatCurrency={formatCurrency}
+        onDownloadPdf={handleDownloadPdf}
       />
     </div>
   );
@@ -216,7 +251,17 @@ function StatusBadge({ status }: { status: string }) {
 // NIN INSPECTION & REFUND DRAWER
 // ----------------------------------------------------------------------
 
-function NinInspectionDrawer({ log, onClose, formatCurrency }: { log: any, onClose: () => void, formatCurrency: (v: number) => string }) {
+function NinInspectionDrawer({ 
+  log, 
+  onClose, 
+  formatCurrency,
+  onDownloadPdf 
+}: { 
+  log: any; 
+  onClose: () => void; 
+  formatCurrency: (v: number) => string;
+  onDownloadPdf: (url?: string, slipType?: string, ninMasked?: string) => void;
+}) {
   const [showRefundForm, setShowRefundForm] = useState(false);
   const [refundReason, setRefundReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -279,34 +324,93 @@ function NinInspectionDrawer({ log, onClose, formatCurrency }: { log: any, onClo
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-          <div className="space-y-6">
-            
-            <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 space-y-3 text-sm">
-              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                <span className="text-zinc-500 font-medium">Timestamp</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(new Date(log.createdAt), 'MMM do, yyyy • h:mm a')}</span>
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-hide space-y-6">
+          
+          {/* Authenticated Demographic Details */}
+          {log.fullName && (
+            <div className="bg-indigo-50/50 dark:bg-indigo-500/5 p-4 rounded-xl border border-indigo-200 dark:border-indigo-500/20 space-y-3 text-sm">
+              <div className="flex items-center justify-between border-b border-indigo-200/60 dark:border-indigo-500/20 pb-2">
+                <span className="text-xs font-bold uppercase text-indigo-700 dark:text-indigo-400">
+                  NIMC Verified Record
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 rounded-full">
+                  AUTHENTICATED
+                </span>
               </div>
-              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                <span className="text-zinc-500 font-medium">Client Name</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{log.clientName}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                <span className="text-zinc-500 font-medium">Client Email</span>
-                <span className="font-semibold text-indigo-600 dark:text-indigo-400">{log.clientEmail}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                <span className="text-zinc-500 font-medium">Wallet Transaction Ref</span>
-                <span className="font-mono text-xs bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 rounded">{log.reference}</span>
-              </div>
-              <div className="flex justify-between items-center pt-2">
-                <span className="text-zinc-500 font-medium">Amount Charged</span>
-                <span className="font-bold text-lg tabular-nums text-emerald-600 dark:text-emerald-400">{formatCurrency(log.amountCharged)}</span>
-              </div>
-            </div>
 
-            {/* Refund Action */}
-            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <div>
+                <span className="text-[10px] uppercase text-zinc-500 font-bold">Full Name</span>
+                <p className="font-bold text-zinc-900 dark:text-zinc-100 text-base">{log.fullName}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {log.dob && (
+                  <div>
+                    <span className="text-[10px] uppercase text-zinc-500 font-bold">Date of Birth</span>
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100 mt-0.5">{log.dob}</p>
+                  </div>
+                )}
+
+                {log.gender && (
+                  <div>
+                    <span className="text-[10px] uppercase text-zinc-500 font-bold">Gender</span>
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100 uppercase mt-0.5">{log.gender}</p>
+                  </div>
+                )}
+
+                {log.phone && (
+                  <div>
+                    <span className="text-[10px] uppercase text-zinc-500 font-bold">Phone</span>
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100 mt-0.5">{log.phone}</p>
+                  </div>
+                )}
+              </div>
+
+              {log.address && (
+                <div className="text-xs border-t border-indigo-200/60 dark:border-indigo-500/20 pt-2">
+                  <span className="text-[10px] uppercase text-zinc-500 font-bold">Residential Address</span>
+                  <p className="text-zinc-700 dark:text-zinc-300 mt-0.5">{log.address}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Transaction Metadata */}
+          <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 space-y-3 text-sm">
+            <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
+              <span className="text-zinc-500 font-medium">Timestamp</span>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(new Date(log.createdAt), 'MMM do, yyyy • h:mm a')}</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
+              <span className="text-zinc-500 font-medium">Client Name</span>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">{log.clientName}</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
+              <span className="text-zinc-500 font-medium">Client Email</span>
+              <span className="font-semibold text-indigo-600 dark:text-indigo-400">{log.clientEmail}</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2">
+              <span className="text-zinc-500 font-medium">Wallet Transaction Ref</span>
+              <span className="font-mono text-xs bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 rounded">{log.reference}</span>
+            </div>
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-zinc-500 font-medium">Amount Charged</span>
+              <span className="font-bold text-lg tabular-nums text-emerald-600 dark:text-emerald-400">{formatCurrency(log.amountCharged)}</span>
+            </div>
+          </div>
+
+          {/* Permanent Slip Download Action */}
+          {log.pdfUrl && (
+            <button
+              onClick={() => onDownloadPdf(log.pdfUrl, log.slipType, log.ninMasked)}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all cursor-pointer"
+            >
+              <span>Download Permanent Slip PDF</span>
+            </button>
+          )}
+
+          {/* Refund Action */}
+          <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
               {!showRefundForm ? (
                 <button 
                   onClick={() => setShowRefundForm(true)} 
@@ -343,7 +447,6 @@ function NinInspectionDrawer({ log, onClose, formatCurrency }: { log: any, onClo
               )}
             </div>
 
-          </div>
         </div>
       </div>
     </div>

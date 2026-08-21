@@ -1,17 +1,25 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs"; 
-
-const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const admin = await prisma.user.findFirst({
+      where: { email: session.user.email, role: "ADMIN" },
+    });
+    if (!admin) {
+      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { actionType, ...data } = body;
-
-    // Verify MD Admin
-    const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-    if (!admin) return NextResponse.json({ error: "Unauthorized. Admin required." }, { status: 401 });
 
     if (actionType === "CREATE") {
       const { firstName, lastName, email, phone, password } = data;

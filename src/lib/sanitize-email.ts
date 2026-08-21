@@ -17,7 +17,8 @@ const EMAIL_SANITY_CONFIG = {
     "ul", "ol", "li", "dl", "dt", "dd",
     "a", "img", "blockquote", "code", "pre",
     "section", "header", "footer", "article", "aside", "main", "nav",
-    "center", "font"
+    "center", "font",
+    "svg", "path", "g", "circle", "rect", "line", "polyline", "polygon"
   ],
   ALLOWED_ATTR: [
     "style", "class", "id", "dir", "lang",
@@ -26,7 +27,8 @@ const EMAIL_SANITY_CONFIG = {
     "align", "valign", "bgcolor", "color", "border",
     "cellpadding", "cellspacing", "role", "aria-hidden", "aria-label",
     "face", "size",
-    "xmlns", "charset", "http-equiv", "content", "name"
+    "xmlns", "charset", "http-equiv", "content", "name",
+    "viewBox", "fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "d", "r", "cx", "cy", "x", "y", "rx", "ry", "x1", "y1", "x2", "y2"
   ],
   FORBID_TAGS: [
     "script", "iframe", "object", "embed", "applet", "base",

@@ -1,16 +1,26 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const staffUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!staffUser || staffUser.role === "USER") {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { category, id, price, isActive, maintenanceMsg, title } = body;
     // category: "CAC" | "NIN"
-
-    const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-    if (!admin) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
     await prisma.$transaction(async (tx) => {
       if (category === "CAC") {
@@ -37,10 +47,10 @@ export async function POST(req: Request) {
       // Log the change
       await tx.staffActionLog.create({
         data: {
-          userId: admin.id,
+          userId: staffUser.id,
           action: "UPDATED_SYSTEM_PRICING",
           targetId: id,
-          details: `MD updated [${title}]. Active: ${isActive}, Price: ₦${price}`
+          details: `Staff updated [${title}]. Active: ${isActive}, Price: ₦${price}`
         }
       });
     });

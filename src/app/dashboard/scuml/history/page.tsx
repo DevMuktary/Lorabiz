@@ -1,7 +1,6 @@
-// src/app/dashboard/scuml/history/page.tsx
 "use client";
-
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { format } from "date-fns";
 import { 
@@ -24,6 +23,11 @@ type ScumlRecord = {
 };
 
 export default function ScumlHistoryPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [history, setHistory] = useState<ScumlRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -189,7 +193,7 @@ export default function ScumlHistoryPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-card border border-border rounded-2xl shadow-sm">
         {isLoading ? (
           <div className="p-20 flex flex-col items-center justify-center text-muted-foreground">
             <SpinnerGap className="h-8 w-8 animate-spin mb-4" />
@@ -248,7 +252,7 @@ export default function ScumlHistoryPage() {
                     <td className="px-6 py-4">
                       <button 
                         onClick={() => setViewDocsModal(item)}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground hover:text-primary transition-colors bg-secondary px-3 py-1.5 rounded-lg border border-border"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground hover:text-primary transition-colors bg-secondary px-3 py-1.5 rounded-lg border border-border cursor-pointer"
                       >
                         <Eye weight="bold" className="h-4 w-4" />
                         View Files
@@ -258,7 +262,7 @@ export default function ScumlHistoryPage() {
                       {item.status === "COMPLETED" && item.finalCertificateUrl ? (
                         <button 
                           onClick={() => handleDownload(item.finalCertificateUrl!, `${item.companyName.replace(/\s+/g, '_')}_SCUML.pdf`)}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-foreground bg-primary hover:opacity-90 transition-opacity px-4 py-2 rounded-lg shadow-sm"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-foreground bg-primary hover:opacity-90 px-3.5 py-1.5 rounded-lg shadow-sm transition-opacity cursor-pointer"
                         >
                           <DownloadSimple weight="bold" className="h-4 w-4" />
                           Download
@@ -266,7 +270,7 @@ export default function ScumlHistoryPage() {
                       ) : item.status === "FAILED" ? (
                         <button 
                           onClick={() => setViewFailedModal(item)}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors px-4 py-2 rounded-lg border border-red-200 dark:border-red-500/20"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-600 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-colors border border-red-500/20 cursor-pointer"
                         >
                           <Warning weight="bold" className="h-4 w-4" />
                           View Reason
@@ -286,15 +290,21 @@ export default function ScumlHistoryPage() {
       {/* ---------------- MODALS ---------------- */}
 
       {/* 1. View Uploaded Documents Modal */}
-      {viewDocsModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between p-5 md:p-6 border-b border-border bg-secondary/30 shrink-0">
+      {mounted && viewDocsModal && typeof document !== "undefined" && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setViewDocsModal(null)}
+        >
+          <div 
+            className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-5 md:p-6 border-b border-border bg-secondary/30 shrink-0 rounded-t-3xl">
               <div>
                 <h3 className="text-lg font-black">{viewDocsModal.companyName}</h3>
                 <p className="text-xs text-muted-foreground">Uploaded Documents</p>
               </div>
-              <button onClick={() => setViewDocsModal(null)} className="p-1.5 hover:bg-background rounded-full transition-colors border border-transparent hover:border-border">
+              <button onClick={() => setViewDocsModal(null)} className="p-1.5 hover:bg-background rounded-full transition-colors border border-transparent hover:border-border cursor-pointer">
                 <X weight="bold" className="h-5 w-5" />
               </button>
             </div>
@@ -322,17 +332,24 @@ export default function ScumlHistoryPage() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 2. View Failed Reason & Refund Modal */}
-      {viewFailedModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col scale-in-95 duration-200">
-            <div className="flex flex-col items-center text-center p-8 bg-red-50/50 dark:bg-red-500/5 relative">
+      {mounted && viewFailedModal && typeof document !== "undefined" && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setViewFailedModal(null)}
+        >
+          <div 
+            className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl flex flex-col scale-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center p-8 bg-red-50/50 dark:bg-red-500/5 relative rounded-t-3xl">
               <button 
                 onClick={() => setViewFailedModal(null)} 
-                className="absolute top-4 right-4 p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-500"
+                className="absolute top-4 right-4 p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-500 cursor-pointer"
               >
                 <X weight="bold" className="h-5 w-5" />
               </button>
@@ -371,7 +388,8 @@ export default function ScumlHistoryPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

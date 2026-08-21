@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -20,6 +21,11 @@ const REG_OPTIONS = [
 ] as const;
 
 export default function ScumlPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [isActive, setIsActive] = useState(true);
   const [price, setPrice] = useState<number>(0);
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
@@ -56,14 +62,26 @@ export default function ScumlPage() {
     }
   }, []);
 
-  // Fetch Live Pricing from DB
+  const [maintenanceMsg, setMaintenanceMsg] = useState("");
+
+  // Fetch Live Pricing and Service Status from DB
   useEffect(() => {
     const fetchPricing = async () => {
       try {
-        const res = await fetch("/api/pricing");
-        const data = await res.json();
-        if (data.success && data.data.SCUML) {
-          setPrice(data.data.SCUML);
+        const [priceRes, settingsRes] = await Promise.all([
+          fetch("/api/pricing"),
+          fetch("/api/settings/global")
+        ]);
+        const priceData = await priceRes.json();
+        if (priceData.success && priceData.data.SCUML) {
+          setPrice(priceData.data.SCUML);
+        }
+        const settingsData = await settingsRes.json();
+        if (settingsData.success && settingsData.settings) {
+          setIsActive(settingsData.settings.scumlEnabled ?? true);
+          if (settingsData.settings.scumlReason) {
+            setMaintenanceMsg(settingsData.settings.scumlReason);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch price:", err);
@@ -156,12 +174,18 @@ export default function ScumlPage() {
 
   if (!isActive) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <Image src="/scuml.png" alt="SCUML" width={80} height={80} className="mb-4 opacity-50 grayscale" />
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <Image src="/scuml.png" alt="SCUML" width={80} height={80} className="opacity-50 grayscale" />
         <h2 className="text-2xl font-black text-foreground">Service Temporarily Unavailable</h2>
-        <p className="text-muted-foreground mt-2 max-w-md">
-          SCUML registration is currently undergoing maintenance. Please check back later.
+        <p className="text-muted-foreground text-sm max-w-md">
+          {maintenanceMsg || "SCUML registration is currently undergoing maintenance. Please check back later."}
         </p>
+        <Link 
+          href="/dashboard" 
+          className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-foreground text-sm font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground transition-colors"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Dashboard
+        </Link>
       </div>
     );
   }
@@ -169,9 +193,22 @@ export default function ScumlPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto relative">
       
-      {showIntroModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500">
+      {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
+          onClick={() => setShowIntroModal(false)}
+        >
+          <div 
+            className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-10 fade-in duration-500 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              type="button"
+              onClick={() => setShowIntroModal(false)}
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <X weight="bold" className="h-5 w-5" />
+            </button>
             <div className="flex items-center gap-4 mb-4">
               <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
                 <Info weight="fill" className="h-6 w-6 text-blue-500" />
@@ -189,13 +226,15 @@ export default function ScumlPage() {
             </div>
 
             <button 
+              type="button"
               onClick={() => setShowIntroModal(false)}
-              className="mt-8 w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity"
+              className="mt-8 w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
             >
               I Understand
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <Link 
@@ -256,7 +295,7 @@ export default function ScumlPage() {
                 </button>
 
                 {isDropdownOpen && (
-                  <div className="absolute top-full left-0 w-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute top-full left-0 w-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
                     {REG_OPTIONS.map((option) => (
                       <button
                         key={option.id}
@@ -390,7 +429,7 @@ export default function ScumlPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
             <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground mb-5">How it works</h3>
             <ul className="space-y-5">
               <li className="flex gap-3">
@@ -415,9 +454,15 @@ export default function ScumlPage() {
 
       </div>
 
-      {isConfirmModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
+      {mounted && isConfirmModalOpen && typeof document !== "undefined" && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsConfirmModalOpen(false)}
+        >
+          <div 
+            className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 md:p-8 space-y-6">
               
               <div className="flex items-center justify-between">
@@ -457,21 +502,22 @@ export default function ScumlPage() {
                 <button 
                   onClick={() => setIsConfirmModalOpen(false)}
                   disabled={isSubmitting}
-                  className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
+                  className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={confirmAndPay}
                   disabled={isSubmitting}
-                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isSubmitting ? "Generating..." : <><ArrowRight weight="bold" className="h-4 w-4" /> Proceed to Pay</>}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {paymentDraftId && (
