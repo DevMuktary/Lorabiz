@@ -24,7 +24,13 @@ export default function AdminReferralsPage() {
     REF_REWARD_CAC_LLC: 1500,
     REF_REWARD_SCUML: 500,
     REF_REWARD_TAX_ID: 200,
-    REF_REWARD_NIN: 10,
+    REF_REWARD_NIN: 50,
+    REF_REWARD_NIN_VAL: 250,
+    REF_REWARD_NIN_MOD: 250,
+    REF_REWARD_NIN_PERSONALIZATION: 250,
+    REF_REWARD_NIN_IPE: 250,
+    REF_REWARD_BVN_SLIP: 50,
+    REF_REWARD_BVN_RETRIEVAL: 250,
   });
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -344,10 +350,10 @@ export default function AdminReferralsPage() {
                 </div>
               </div>
 
-              {/* Commission Rates */}
+              {/* Commission Rates: CAC & Compliance */}
               <div>
-                <h3 className="font-bold text-foreground mb-4 border-b border-border pb-2">Commission Rates per Service (₦)</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <h3 className="font-bold text-foreground mb-4 border-b border-border pb-2">CAC &amp; Compliance Commissions (₦)</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">CAC Business Name</Label>
                     <Input type="number" value={settingsForm.REF_REWARD_CAC_BIZ} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_CAC_BIZ: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
@@ -357,16 +363,54 @@ export default function AdminReferralsPage() {
                     <Input type="number" value={settingsForm.REF_REWARD_CAC_LLC} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_CAC_LLC: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
                   </div>
                   <div>
-                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">SCUML</Label>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">SCUML Certificate</Label>
                     <Input type="number" value={settingsForm.REF_REWARD_SCUML} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_SCUML: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
                   </div>
                   <div>
-                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">Tax ID</Label>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">Tax ID (TIN)</Label>
                     <Input type="number" value={settingsForm.REF_REWARD_TAX_ID} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_TAX_ID: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
                   </div>
+                </div>
+              </div>
+
+              {/* Commission Rates: NIMC Identity Services */}
+              <div>
+                <h3 className="font-bold text-foreground mb-4 border-b border-border pb-2">NIMC Identity Services Commissions (₦)</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">NIN Verification</Label>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">NIN Verification Slips</Label>
                     <Input type="number" value={settingsForm.REF_REWARD_NIN} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_NIN: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">NIN Validation (No Record / VNIN)</Label>
+                    <Input type="number" value={settingsForm.REF_REWARD_NIN_VAL} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_NIN_VAL: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">NIN Modification (Name / Phone / etc.)</Label>
+                    <Input type="number" value={settingsForm.REF_REWARD_NIN_MOD} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_NIN_MOD: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">NIN Personalization (Tracking ID)</Label>
+                    <Input type="number" value={settingsForm.REF_REWARD_NIN_PERSONALIZATION} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_NIN_PERSONALIZATION: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">NIN IPE Clearance</Label>
+                    <Input type="number" value={settingsForm.REF_REWARD_NIN_IPE} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_NIN_IPE: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Commission Rates: BVN Banking Services */}
+              <div>
+                <h3 className="font-bold text-foreground mb-4 border-b border-border pb-2">BVN Banking Services Commissions (₦)</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">BVN Verification Slips</Label>
+                    <Input type="number" value={settingsForm.REF_REWARD_BVN_SLIP} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_BVN_SLIP: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">BVN Number Retrieval</Label>
+                    <Input type="number" value={settingsForm.REF_REWARD_BVN_RETRIEVAL} onChange={e => setSettingsForm({...settingsForm, REF_REWARD_BVN_RETRIEVAL: Number(e.target.value)})} className="bg-background font-bold text-emerald-600" />
                   </div>
                 </div>
               </div>

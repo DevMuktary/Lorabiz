@@ -478,6 +478,30 @@ export default function ReferralsPage() {
                             <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div>NIN Slip Generation</td>
                             <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.nin || 0).toLocaleString()}</td>
                           </tr>
+                          <tr className="hover:bg-secondary/20 transition-colors">
+                            <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-600"></div>NIN Validation (No Record / VNIN)</td>
+                            <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.ninVal || 0).toLocaleString()}</td>
+                          </tr>
+                          <tr className="hover:bg-secondary/20 transition-colors">
+                            <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div>NIN Modification (Name / Phone / etc.)</td>
+                            <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.ninMod || 0).toLocaleString()}</td>
+                          </tr>
+                          <tr className="hover:bg-secondary/20 transition-colors">
+                            <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-cyan-500"></div>NIN Personalization (Tracking ID)</td>
+                            <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.ninPersonalization || 0).toLocaleString()}</td>
+                          </tr>
+                          <tr className="hover:bg-secondary/20 transition-colors">
+                            <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div>NIN IPE Clearance</td>
+                            <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.ninIpe || 0).toLocaleString()}</td>
+                          </tr>
+                          <tr className="hover:bg-secondary/20 transition-colors">
+                            <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div>BVN Verification Slip</td>
+                            <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.bvnSlip || 0).toLocaleString()}</td>
+                          </tr>
+                          <tr className="hover:bg-secondary/20 transition-colors">
+                            <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-600"></div>BVN Number Retrieval</td>
+                            <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.bvnRetrieval || 0).toLocaleString()}</td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>

@@ -141,20 +141,26 @@ export async function GET(req: NextRequest) {
           });
 
           if (!existingCommission) {
-            const commissionAmount = 250.00;
-            await prisma.referralCommission.create({
-              data: {
-                referralId: activeReferral.id,
-                serviceType: "NIN_PERSONALIZATION",
-                serviceId: personalizationRequest.id,
-                amount: commissionAmount,
-              },
+            const rewardSetting = await prisma.globalSetting.findUnique({
+              where: { key: 'REF_REWARD_NIN_PERSONALIZATION' }
             });
+            const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
 
-            await prisma.user.update({
-              where: { id: activeReferral.referrerId },
-              data: { referralBalance: { increment: commissionAmount } },
-            });
+            if (commissionAmount > 0) {
+              await prisma.referralCommission.create({
+                data: {
+                  referralId: activeReferral.id,
+                  serviceType: "NIN_PERSONALIZATION",
+                  serviceId: personalizationRequest.id,
+                  amount: commissionAmount,
+                },
+              });
+
+              await prisma.user.update({
+                where: { id: activeReferral.referrerId },
+                data: { referralBalance: { increment: commissionAmount } },
+              });
+            }
           }
         }
       }

@@ -86,20 +86,26 @@ export async function POST(req: Request) {
             });
 
             if (!existingCommission) {
-              const commissionAmount = 250.00;
-              await tx.referralCommission.create({
-                data: {
-                  referralId: activeReferral.id,
-                  serviceType: "BVN_RETRIEVAL",
-                  serviceId: ticketId,
-                  amount: commissionAmount,
-                },
+              const rewardSetting = await tx.globalSetting.findUnique({
+                where: { key: 'REF_REWARD_BVN_RETRIEVAL' }
               });
+              const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
 
-              await tx.user.update({
-                where: { id: activeReferral.referrerId },
-                data: { referralBalance: { increment: commissionAmount } },
-              });
+              if (commissionAmount > 0) {
+                await tx.referralCommission.create({
+                  data: {
+                    referralId: activeReferral.id,
+                    serviceType: "BVN_RETRIEVAL",
+                    serviceId: ticketId,
+                    amount: commissionAmount,
+                  },
+                });
+
+                await tx.user.update({
+                  where: { id: activeReferral.referrerId },
+                  data: { referralBalance: { increment: commissionAmount } },
+                });
+              }
             }
           }
         }
