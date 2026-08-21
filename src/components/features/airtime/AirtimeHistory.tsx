@@ -10,6 +10,7 @@ interface Transaction {
   phone: string;
   amount: number;
   network: string;
+  status?: string;
   date: Date;
 }
 
@@ -68,7 +69,14 @@ export default function AirtimeHistory({ history, onDispute }: AirtimeHistoryPro
                     <div className="h-10 w-10 bg-background rounded-full border border-border flex items-center justify-center p-1.5 shrink-0 shadow-sm">
                       <Image src={logoMap[tx.network] || "/mtn.png"} alt={tx.network} width={24} height={24} className="object-contain" />
                     </div>
-                    <span className="font-bold text-sm text-foreground">{tx.network}</span>
+                    <div>
+                      <span className="font-bold text-sm text-foreground block">{tx.network}</span>
+                      {tx.status && tx.status !== "SUCCESS" && (
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                          {tx.status}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td className="p-4 text-sm font-bold text-foreground">{tx.phone}</td>

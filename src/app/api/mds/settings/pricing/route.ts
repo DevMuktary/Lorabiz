@@ -42,6 +42,11 @@ export async function GET() {
       { serviceKey: "BVN_STANDARD", title: "BVN Verification - Standard Slip", price: 700.0 },
       { serviceKey: "BVN_PREMIUM", title: "BVN Verification - Premium Card Slip", price: 1000.0 },
       { serviceKey: "BVN_RETRIEVAL", title: "BVN Number Retrieval", price: 2500.0 },
+      // BVN Modification Services
+      { serviceKey: "BVN_MOD_NAME", title: "BVN Modification - Change of Name", price: 3000.0 },
+      { serviceKey: "BVN_MOD_PHONE", title: "BVN Modification - Change of Phone Number", price: 2500.0 },
+      { serviceKey: "BVN_MOD_DOB", title: "BVN Modification - Change of Date of Birth", price: 15000.0 },
+      { serviceKey: "BVN_MOD_DOB_SURCHARGE", title: "BVN Modification - 5-Year DOB Surcharge", price: 5000.0 },
     ];
 
     for (const svc of defaultServices) {

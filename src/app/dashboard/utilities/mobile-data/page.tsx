@@ -12,13 +12,15 @@ import {
   Phone, 
   Check, 
   X, 
-  Copy, 
   ArrowsClockwise,
   Spinner,
   ShieldCheck,
   ListDashes,
-  Plus,
-  Wallet
+  Wallet,
+  CaretLeft,
+  CaretRight,
+  ArrowCounterClockwise,
+  Receipt
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
@@ -41,24 +43,27 @@ interface DataTransaction {
   planName: string;
   amount: number;
   network: string;
+  status: string; // "SUCCESS" | "FAILED" | "REFUNDED"
   date: Date;
 }
 
 const NETWORKS = [
-  { id: "MTN", name: "MTN", logo: "/mtn.png", color: "border-yellow-400 bg-yellow-400/10 shadow-amber-500/20", available: true },
-  { id: "AIRTEL", name: "Airtel", logo: "/airtel.png", color: "border-red-500 bg-red-500/10 shadow-rose-500/20", available: true },
-  { id: "GLO", name: "Glo", logo: "/glo.png", color: "border-green-500 bg-green-500/10 shadow-emerald-500/20", available: true },
-  { id: "9MOBILE", name: "9mobile", logo: "/9mobile.png", color: "border-emerald-700 bg-emerald-700/10 shadow-emerald-700/20", available: false },
+  { id: "MTN", name: "MTN", logo: "/mtn.png", color: "border-yellow-400 bg-yellow-400/10 shadow-amber-500/20" },
+  { id: "AIRTEL", name: "Airtel", logo: "/airtel.png", color: "border-red-500 bg-red-500/10 shadow-rose-500/20" },
+  { id: "GLO", name: "Glo", logo: "/glo.png", color: "border-green-500 bg-green-500/10 shadow-emerald-500/20" },
+  { id: "9MOBILE", name: "9mobile", logo: "/9mobile.png", color: "border-emerald-700 bg-emerald-700/10 shadow-emerald-700/20" },
 ];
 
 const CATEGORY_NAMES: Record<string, string> = {
-  ALL: "All Plans",
+  ALL: "All Types",
   SME: "SME Data",
   DATA_SHARE: "Data Share",
   GIFTING: "Direct Gifting",
   CORPORATE: "Corporate CG",
   AWOOF: "Awoof / Specials",
   LITE: "SME Lite",
+  COUPON: "Data Coupon",
+  CLOUD: "Cloud Bundles",
 };
 
 export default function MobileDataPage() {
@@ -68,17 +73,32 @@ export default function MobileDataPage() {
   const [history, setHistory] = useState<DataTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Form State
+  // Form & Filter States
   const [selectedNetwork, setSelectedNetwork] = useState<string>("MTN");
+  const [selectedValidityFilter, setSelectedValidityFilter] = useState<string>("ALL"); // "ALL" | "DAILY" | "WEEKLY" | "MONTHLY"
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [selectedPlan, setSelectedPlan] = useState<DataPlan | null>(null);
   const [phone, setPhone] = useState("");
-  const [errorToast, setErrorToast] = useState<string | null>(null);
+  
+  // Slide-in side toast state
+  const [toastNotification, setToastNotification] = useState<{ type: "success" | "error"; title: string; message: string } | null>(null);
 
   // Process & Modal States
   const [isProcessing, setIsProcessing] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [currentReceipt, setCurrentReceipt] = useState<DataTransaction | null>(null);
+
+  // History Pagination State
+  const [historyPage, setHistoryPage] = useState(1);
+  const historyItemsPerPage = 5;
+
+  // Auto-dismiss toast after 6 seconds
+  useEffect(() => {
+    if (toastNotification) {
+      const timer = setTimeout(() => setToastNotification(null), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastNotification]);
 
   // Fetch Plans, Wallet, and History
   const fetchData = async () => {
@@ -86,7 +106,7 @@ export default function MobileDataPage() {
       const [plansRes, walletRes, txRes] = await Promise.all([
         fetch("/api/utilities/mobile-data", { cache: "no-store" }),
         fetch("/api/user/wallet", { cache: "no-store" }),
-        fetch("/api/user/transactions?status=SUCCESS", { cache: "no-store" }),
+        fetch("/api/user/transactions", { cache: "no-store" }),
       ]);
 
       if (plansRes.ok) {
@@ -107,16 +127,33 @@ export default function MobileDataPage() {
       if (txRes.ok) {
         const tData = await txRes.json();
         if (tData.success && tData.transactions) {
+          // Strictly filter and isolate MOBILE DATA transactions only (never mixing with airtime)
           const dataTxs = tData.transactions
-            .filter((tx: any) => tx.description && tx.description.includes("Mobile Data"))
+            .filter((tx: any) => {
+              const desc = (tx.description || "").toLowerCase();
+              const isAirtime = desc.includes("airtime recharge") || tx.serviceCategory === "AIRTIME";
+              const isData = tx.serviceCategory === "MOBILE_DATA" || desc.includes("mobile data") || desc.includes("data bundle");
+              return isData && !isAirtime;
+            })
             .map((tx: any) => {
-              const match = tx.description.match(/Mobile Data - (.+) \((\d+)\)/);
+              const desc = tx.description || "";
+              const match = desc.match(/Mobile Data (?:Reversal - |Reversal \(Network timeout\) - |- )?(.+) \((\d+)\)/i);
+              const phoneMatch = desc.match(/(\d{11})/);
+
+              let net = "MTN";
+              const upperDesc = desc.toUpperCase();
+              if (upperDesc.includes("AIRTEL")) net = "AIRTEL";
+              else if (upperDesc.includes("GLO")) net = "GLO";
+              else if (upperDesc.includes("9MOBILE") || upperDesc.includes("ETISALAT")) net = "9MOBILE";
+              else if (upperDesc.includes("MTN")) net = "MTN";
+
               return {
                 reference: tx.reference,
-                planName: match ? match[1] : "Data Bundle",
-                phone: match ? match[2] : "Unknown",
+                planName: match ? match[1].trim() : (desc.replace(/Mobile Data - /i, "") || "Data Bundle"),
+                phone: phoneMatch ? phoneMatch[1] : (match ? match[2] : "Unknown"),
                 amount: Number(tx.amount),
-                network: tx.description.includes("MTN") ? "MTN" : tx.description.includes("AIRTEL") ? "AIRTEL" : tx.description.includes("GLO") ? "GLO" : "Telecom",
+                network: net,
+                status: tx.type === "REFUND" ? "REFUNDED" : (tx.status || "SUCCESS"),
                 date: new Date(tx.createdAt),
               };
             });
@@ -134,11 +171,25 @@ export default function MobileDataPage() {
     fetchData();
   }, []);
 
-  // Filter plans based on selected network and category
+  // Filter plans based on selected network
   const availablePlansForNetwork = useMemo(() => {
     return (groupedPlans[selectedNetwork] || []).filter((p) => p.isActive);
   }, [groupedPlans, selectedNetwork]);
 
+  // Helper to categorize plan validity into DAILY, WEEKLY, MONTHLY
+  const getValidityBucket = (validity?: string | null): "DAILY" | "WEEKLY" | "MONTHLY" => {
+    if (!validity) return "MONTHLY";
+    const v = validity.toLowerCase();
+    if (v.includes("1 day") || v.includes("2 day") || v.includes("3 day") || v.includes("5 day") || v.includes("1day") || v.includes("2day") || v.includes("3day")) {
+      return "DAILY";
+    }
+    if (v.includes("7 day") || v.includes("14 day") || v.includes("7day") || v.includes("14day") || v.includes("week")) {
+      return "WEEKLY";
+    }
+    return "MONTHLY"; // 30 Days, 60 Days, 90 Days, 365 Days, 1 Year, etc.
+  };
+
+  // Available categories for current network
   const availableCategories = useMemo(() => {
     const cats = new Set<string>();
     availablePlansForNetwork.forEach((p) => {
@@ -147,10 +198,21 @@ export default function MobileDataPage() {
     return ["ALL", ...Array.from(cats)];
   }, [availablePlansForNetwork]);
 
+  // Filter plans by both Validity Tab ("All", "Daily", "Weekly", "Monthly") and Category Pill
   const displayedPlans = useMemo(() => {
-    if (selectedCategory === "ALL") return availablePlansForNetwork;
-    return availablePlansForNetwork.filter((p) => p.category === selectedCategory);
-  }, [availablePlansForNetwork, selectedCategory]);
+    return availablePlansForNetwork.filter((p) => {
+      // Validity Filter
+      if (selectedValidityFilter !== "ALL") {
+        const bucket = getValidityBucket(p.validity);
+        if (bucket !== selectedValidityFilter) return false;
+      }
+      // Category Filter
+      if (selectedCategory !== "ALL" && p.category !== selectedCategory) {
+        return false;
+      }
+      return true;
+    });
+  }, [availablePlansForNetwork, selectedValidityFilter, selectedCategory]);
 
   // Reset selected plan if not in current displayed plans
   useEffect(() => {
@@ -182,14 +244,22 @@ export default function MobileDataPage() {
 
   const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorToast(null);
+    setToastNotification(null);
 
     if (!selectedPlan) {
-      setErrorToast("Please choose a data plan bundle to proceed.");
+      setToastNotification({
+        type: "error",
+        title: "No Plan Selected",
+        message: "Please choose a data bundle before proceeding."
+      });
       return;
     }
     if (!isPhoneValid) {
-      setErrorToast("Please enter a valid 11-digit phone number (e.g. 08012345678).");
+      setToastNotification({
+        type: "error",
+        title: "Invalid Phone Number",
+        message: "Please enter a valid 11-digit phone number (e.g. 08012345678)."
+      });
       return;
     }
     
@@ -200,7 +270,7 @@ export default function MobileDataPage() {
     if (!selectedPlan) return;
     setShowConfirmModal(false);
     setIsProcessing(true);
-    setErrorToast(null);
+    setToastNotification(null);
 
     try {
       const res = await fetch("/api/utilities/mobile-data", {
@@ -222,21 +292,47 @@ export default function MobileDataPage() {
           planName: selectedPlan.name,
           amount: selectedPlanPrice,
           network: selectedPlan.network,
+          status: "SUCCESS",
           date: new Date(),
         };
 
         setWalletBalance(data.newBalance);
         setHistory((prev) => [newTx, ...prev]);
         setCurrentReceipt(newTx);
+        setToastNotification({
+          type: "success",
+          title: "Data Bundle Delivered!",
+          message: `${selectedPlan.name} successfully delivered to ${cleanPhone}.`
+        });
       } else {
-        setErrorToast(data.message || "Failed to complete data vending.");
+        if (data.newBalance !== undefined) {
+          setWalletBalance(data.newBalance);
+        }
+        setToastNotification({
+          type: "error",
+          title: "Data Vending Failed",
+          message: data.message || "Failed to complete data vending. Your wallet has been refunded."
+        });
+        fetchData();
       }
     } catch (err: any) {
-      setErrorToast(err.message || "A network error occurred. Please try again.");
+      setToastNotification({
+        type: "error",
+        title: "Connection Error",
+        message: err.message || "Network timeout. Your wallet was refunded. Please try again."
+      });
+      fetchData();
     } finally {
       setIsProcessing(false);
     }
   };
+
+  // Pagination for History
+  const totalHistoryPages = Math.ceil(history.length / historyItemsPerPage);
+  const paginatedHistory = useMemo(() => {
+    const start = (historyPage - 1) * historyItemsPerPage;
+    return history.slice(start, start + historyItemsPerPage);
+  }, [history, historyPage]);
 
   return (
     <div className="max-w-6xl mx-auto pb-20 pt-4 font-sans relative space-y-6 animate-in fade-in duration-200">
@@ -249,19 +345,27 @@ export default function MobileDataPage() {
         <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Utilities
       </Link>
 
-      {/* Slide-in Error Toast */}
-      {errorToast && (
-        <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs sm:text-sm font-bold flex items-center justify-between gap-3 animate-in slide-in-from-top-2">
-          <div className="flex items-center gap-2">
-            <WarningCircle size={18} weight="fill" className="shrink-0" />
-            <span>{errorToast}</span>
+      {/* Floating Side Slide-In Notification Toast */}
+      {toastNotification && (
+        <div className={`fixed top-6 right-6 z-[999999] max-w-sm w-full p-4 rounded-2xl shadow-2xl border backdrop-blur-xl animate-in slide-in-from-right-6 duration-300 flex items-start gap-3 text-left ${
+          toastNotification.type === "error"
+            ? "bg-rose-950/90 dark:bg-rose-950/95 border-rose-500/30 text-rose-100 shadow-rose-950/40"
+            : "bg-emerald-950/90 dark:bg-emerald-950/95 border-emerald-500/30 text-emerald-100 shadow-emerald-950/40"
+        }`}>
+          <div className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center ${
+            toastNotification.type === "error" ? "bg-rose-500/20 text-rose-400" : "bg-emerald-500/20 text-emerald-400"
+          }`}>
+            <WarningCircle size={20} weight="fill" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-xs font-black uppercase tracking-wider mb-0.5">{toastNotification.title}</h4>
+            <p className="text-xs leading-relaxed opacity-90">{toastNotification.message}</p>
           </div>
           <button 
-            type="button" 
-            onClick={() => setErrorToast(null)} 
-            className="text-xs text-destructive hover:underline cursor-pointer"
+            onClick={() => setToastNotification(null)}
+            className="text-xs opacity-60 hover:opacity-100 cursor-pointer p-1"
           >
-            Dismiss
+            ✕
           </button>
         </div>
       )}
@@ -298,7 +402,7 @@ export default function MobileDataPage() {
           
           <form onSubmit={handleOpenConfirm} className="bg-card border border-border rounded-3xl p-5 sm:p-7 shadow-sm space-y-6">
             
-            {/* 1. SELECT NETWORK */}
+            {/* 1. SELECT NETWORK (9mobile fully active & selectable) */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
                 <span>1. Select Network Provider <span className="text-destructive">*</span></span>
@@ -312,22 +416,6 @@ export default function MobileDataPage() {
               <div className="grid grid-cols-4 gap-2.5">
                 {NETWORKS.map((net) => {
                   const isSelected = selectedNetwork === net.id;
-
-                  if (!net.available) {
-                    return (
-                      <div
-                        key={net.id}
-                        className="relative h-16 rounded-2xl border-2 border-border/50 bg-secondary/20 opacity-50 cursor-not-allowed flex flex-col items-center justify-center p-2 text-center"
-                        title="Currently unavailable from provider"
-                      >
-                        <Image src={net.logo} alt={net.name} width={28} height={28} className="object-contain grayscale opacity-60 mb-0.5" />
-                        <span className="text-[8px] font-black uppercase text-destructive">
-                          Unavailable
-                        </span>
-                      </div>
-                    );
-                  }
-
                   return (
                     <button
                       key={net.id}
@@ -335,7 +423,8 @@ export default function MobileDataPage() {
                       onClick={() => {
                         setSelectedNetwork(net.id);
                         setSelectedCategory("ALL");
-                        if (errorToast) setErrorToast(null);
+                        setSelectedValidityFilter("ALL");
+                        if (toastNotification) setToastNotification(null);
                       }}
                       className={`relative h-16 rounded-2xl border-2 transition-all flex flex-col items-center justify-center p-2 cursor-pointer ${
                         isSelected 
@@ -350,11 +439,46 @@ export default function MobileDataPage() {
               </div>
             </div>
 
-            {/* 2. SELECT CATEGORY TABS */}
-            {availableCategories.length > 1 && (
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  2. Filter Plan Type
+            {/* 2. DURATION / VALIDITY TABS (All, Daily, Weekly, Monthly) */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                <span>2. Select Plan Duration</span>
+              </label>
+              
+              <div className="grid grid-cols-4 gap-1.5 p-1 bg-secondary/40 rounded-2xl border border-border">
+                {[
+                  { id: "ALL", label: "All Plans" },
+                  { id: "DAILY", label: "Daily" },
+                  { id: "WEEKLY", label: "Weekly" },
+                  { id: "MONTHLY", label: "Monthly" },
+                ].map((tab) => {
+                  const isActive = selectedValidityFilter === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedValidityFilter(tab.id);
+                        if (toastNotification) setToastNotification(null);
+                      }}
+                      className={`py-2 text-xs font-black rounded-xl transition-all cursor-pointer text-center ${
+                        isActive
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. OPTIONAL CATEGORY SUB-FILTERS (SME, Gifting, Corporate, Awoof...) */}
+            {availableCategories.length > 2 && (
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Filter by Bundle Type
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {availableCategories.map((cat) => {
@@ -365,9 +489,9 @@ export default function MobileDataPage() {
                         type="button"
                         onClick={() => {
                           setSelectedCategory(cat);
-                          if (errorToast) setErrorToast(null);
+                          if (toastNotification) setToastNotification(null);
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        className={`px-3 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
                           isCatActive
                             ? "bg-foreground text-background shadow-xs"
                             : "bg-secondary text-muted-foreground hover:text-foreground"
@@ -381,7 +505,7 @@ export default function MobileDataPage() {
               </div>
             )}
 
-            {/* 3. SELECT DATA PLAN BUNDLE (Natural Grid Layout without inner scroll trap) */}
+            {/* 4. SELECT DATA PLAN BUNDLE */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
                 <span>3. Choose Data Bundle <span className="text-destructive">*</span></span>
@@ -397,10 +521,10 @@ export default function MobileDataPage() {
                 </div>
               ) : displayedPlans.length === 0 ? (
                 <div className="p-6 text-center border border-border border-dashed rounded-2xl bg-secondary/20">
-                  <p className="text-xs text-muted-foreground">No active plans available for this category right now.</p>
+                  <p className="text-xs text-muted-foreground">No active plans found for this filter. Try selecting &quot;All Plans&quot;.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
                   {displayedPlans.map((plan) => {
                     const isPlanSelected = selectedPlan?.planId === plan.planId;
                     return (
@@ -409,7 +533,7 @@ export default function MobileDataPage() {
                         type="button"
                         onClick={() => {
                           setSelectedPlan(plan);
-                          if (errorToast) setErrorToast(null);
+                          if (toastNotification) setToastNotification(null);
                         }}
                         className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           isPlanSelected
@@ -439,7 +563,7 @@ export default function MobileDataPage() {
               )}
             </div>
 
-            {/* 4. RECIPIENT PHONE NUMBER */}
+            {/* 5. RECIPIENT PHONE NUMBER */}
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
@@ -456,7 +580,7 @@ export default function MobileDataPage() {
                 value={phone}
                 onChange={(e) => {
                   setPhone(e.target.value);
-                  if (errorToast) setErrorToast(null);
+                  if (toastNotification) setToastNotification(null);
                 }}
                 className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-foreground font-mono text-sm tracking-wide focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all placeholder:text-muted-foreground/60"
               />
@@ -489,7 +613,7 @@ export default function MobileDataPage() {
 
         </div>
 
-        {/* Right Column: History & Concise Helper Note */}
+        {/* Right Column: Paginated History & Clean Receipt Triggers */}
         <div className="lg:col-span-5 space-y-6">
           
           {/* History Card */}
@@ -501,7 +625,7 @@ export default function MobileDataPage() {
                 </div>
                 <h3 className="text-sm font-black text-foreground">Recent Data Purchases</h3>
               </div>
-              <span className="text-[11px] font-mono text-muted-foreground">{history.length} purchases</span>
+              <span className="text-[11px] font-mono text-muted-foreground">{history.length} total</span>
             </div>
 
             {history.length === 0 ? (
@@ -510,33 +634,78 @@ export default function MobileDataPage() {
                 <p className="text-xs text-muted-foreground">Your recent mobile data purchases will appear here.</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/60 max-h-[360px] overflow-y-auto pr-1">
-                {history.slice(0, 10).map((tx) => (
-                  <div 
-                    key={tx.reference} 
-                    onClick={() => setCurrentReceipt(tx)}
-                    className="py-3 flex items-center justify-between gap-3 hover:bg-secondary/30 rounded-xl px-2 cursor-pointer transition-colors"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-black text-foreground">{tx.planName}</span>
-                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-secondary text-muted-foreground">
-                          {tx.network}
+              <div className="divide-y divide-border/60">
+                {paginatedHistory.map((tx) => {
+                  const isRefunded = tx.status === "REFUNDED" || tx.reference.startsWith("REF_");
+                  const isFailed = tx.status === "FAILED";
+
+                  return (
+                    <div 
+                      key={tx.reference} 
+                      onClick={() => setCurrentReceipt(tx)}
+                      className="py-3 flex items-center justify-between gap-3 hover:bg-secondary/30 rounded-xl px-2 cursor-pointer transition-colors"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-foreground">{tx.planName}</span>
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-secondary text-muted-foreground">
+                            {tx.network}
+                          </span>
+                          {isRefunded ? (
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              Refunded
+                            </span>
+                          ) : isFailed ? (
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                              Failed
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-[11px] font-mono text-muted-foreground">{tx.phone}</p>
+                      </div>
+
+                      <div className="text-right">
+                        <span className={`text-xs font-black block ${
+                          isRefunded ? "text-amber-600 dark:text-amber-400" : isFailed ? "text-rose-600" : "text-emerald-600 dark:text-emerald-400"
+                        }`}>
+                          ₦{tx.amount.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(tx.date).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}
                         </span>
                       </div>
-                      <p className="text-[11px] font-mono text-muted-foreground">{tx.phone}</p>
                     </div>
+                  );
+                })}
+              </div>
+            )}
 
-                    <div className="text-right">
-                      <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 block">
-                        ₦{tx.amount.toLocaleString()}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(tx.date).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+            {/* Pagination Controls */}
+            {totalHistoryPages > 1 && (
+              <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Page {historyPage} of {totalHistoryPages}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                    disabled={historyPage === 1}
+                    className="h-8 w-8 p-0 rounded-lg cursor-pointer"
+                  >
+                    <CaretLeft size={14} weight="bold" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setHistoryPage((p) => Math.min(totalHistoryPages, p + 1))}
+                    disabled={historyPage === totalHistoryPages}
+                    className="h-8 w-8 p-0 rounded-lg cursor-pointer"
+                  >
+                    <CaretRight size={14} weight="bold" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -548,7 +717,7 @@ export default function MobileDataPage() {
               <span>Instant Data Delivery</span>
             </h4>
             <p className="leading-relaxed text-[11px]">
-              Data subscriptions are credited to the recipient SIM within seconds. Check data balance using standard operator USSD codes (*323# on MTN/Airtel, *310# on Glo).
+              Data subscriptions are credited to the recipient SIM within seconds. Check data balance using standard operator USSD codes (*323# on MTN/Airtel, *310# on Glo, *323# on 9mobile).
             </p>
           </div>
 
@@ -556,7 +725,7 @@ export default function MobileDataPage() {
 
       </div>
 
-      {/* MODAL 1: Confirmation Modal (With crying emoji on insufficient balance) */}
+      {/* MODAL 1: Confirmation Modal */}
       {showConfirmModal && selectedPlan && (
         <div 
           className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
@@ -678,7 +847,7 @@ export default function MobileDataPage() {
         </div>
       )}
 
-      {/* MODAL 2: Receipt Modal */}
+      {/* MODAL 2: Receipt / Status Modal (Differentiates Successful vs Refunded/Failed) */}
       {currentReceipt && (
         <>
           <style dangerouslySetInnerHTML={{__html: `
@@ -699,85 +868,140 @@ export default function MobileDataPage() {
               className="bg-card text-card-foreground border border-border p-1 rounded-3xl shadow-2xl max-w-sm w-full mx-auto animate-in zoom-in-95 duration-300 my-auto text-left relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-secondary/20 p-6 rounded-[22px] border border-dashed border-border flex flex-col items-center">
-                <div className="h-16 w-16 bg-emerald-500/15 rounded-full flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle size={44} weight="fill" className="drop-shadow-md" />
-                </div>
-
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
-                  Transaction Successful
-                </span>
-                <h3 className="font-black text-2xl text-foreground mb-1 text-center">Data Bundle Delivered</h3>
-                <p className="text-muted-foreground text-xs font-medium mb-5 text-center">Your data subscription is active on the SIM.</p>
-
-                <div className="w-full bg-background rounded-2xl p-5 shadow-sm space-y-3.5 relative border border-border">
-                  {/* Decorative receipt cuts */}
-                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-6 bg-secondary/20 rounded-full border-r border-border" />
-                  <div className="absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 bg-secondary/20 rounded-full border-l border-border" />
-
-                  <div className="flex justify-between items-center pb-3.5 border-b border-dashed border-border">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Amount Paid</span>
-                    <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">₦{currentReceipt.amount.toLocaleString()}</span>
+              {currentReceipt.status === "REFUNDED" || currentReceipt.status === "FAILED" || currentReceipt.reference.startsWith("REF_") ? (
+                /* FAILED / REFUNDED MODAL VIEW */
+                <div className="bg-secondary/20 p-6 rounded-[22px] border border-dashed border-border flex flex-col items-center">
+                  <div className="h-16 w-16 bg-amber-500/15 rounded-full flex items-center justify-center mb-4 text-amber-600 dark:text-amber-400">
+                    <ArrowCounterClockwise size={40} weight="bold" className="drop-shadow-md" />
                   </div>
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Plan Name</span>
-                    <span className="text-xs font-bold text-foreground text-right">{currentReceipt.planName}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">
+                    Wallet Refunded
+                  </span>
+                  <h3 className="font-black text-2xl text-foreground mb-1 text-center">Transaction Reversed</h3>
+                  <p className="text-muted-foreground text-xs font-medium mb-5 text-center">
+                    This data vending was not fulfilled by the provider and funds were refunded to your wallet.
+                  </p>
+
+                  <div className="w-full bg-background rounded-2xl p-5 shadow-sm space-y-3.5 relative border border-border">
+                    <div className="flex justify-between items-center pb-3.5 border-b border-dashed border-border">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Refunded Amount</span>
+                      <span className="text-xl font-black text-amber-600 dark:text-amber-400">₦{currentReceipt.amount.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Plan Name</span>
+                      <span className="text-xs font-bold text-foreground text-right">{currentReceipt.planName}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Recipient Phone</span>
+                      <span className="text-sm font-mono font-bold text-foreground">{currentReceipt.phone}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Date &amp; Time</span>
+                      <span className="text-xs font-bold text-foreground">
+                        {currentReceipt.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-1 border-t border-border/60">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Reference</span>
+                      <span className="text-[10px] font-mono font-bold text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded">{currentReceipt.reference}</span>
+                    </div>
                   </div>
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Recipient Phone</span>
-                    <span className="text-sm font-mono font-bold text-foreground">{currentReceipt.phone}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Date &amp; Time</span>
-                    <span className="text-xs font-bold text-foreground">
-                      {currentReceipt.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center pt-1 border-t border-border/60">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Reference</span>
-                    <span className="text-[10px] font-mono font-bold text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded">{currentReceipt.reference}</span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-3 w-full mt-5 no-print">
-                  <Button 
-                    onClick={() => window.print()} 
-                    variant="outline" 
-                    className="w-full font-bold border-border shadow-sm flex gap-2 cursor-pointer h-10 text-xs"
+                  <Button
+                    type="button"
+                    onClick={() => setCurrentReceipt(null)}
+                    className="w-full mt-5 font-black h-11 rounded-xl flex gap-2 bg-primary text-primary-foreground cursor-pointer no-print text-xs shadow-md"
                   >
-                    Save / Print
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: 'LoraBiz Data Receipt',
-                          text: `Data Purchase Successful ✅\nPlan: ${currentReceipt.planName}\nPhone: ${currentReceipt.phone}\nAmount: ₦${currentReceipt.amount.toLocaleString()}\nRef: ${currentReceipt.reference}`,
-                        }).catch(() => {});
-                      } else {
-                        alert("Sharing is not supported on this device/browser.");
-                      }
-                    }} 
-                    variant="outline" 
-                    className="w-full font-bold border-border shadow-sm flex gap-2 cursor-pointer h-10 text-xs"
-                  >
-                    Share
+                    Close
                   </Button>
                 </div>
+              ) : (
+                /* SUCCESSFUL RECEIPT VIEW */
+                <div className="bg-secondary/20 p-6 rounded-[22px] border border-dashed border-border flex flex-col items-center">
+                  <div className="h-16 w-16 bg-emerald-500/15 rounded-full flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle size={44} weight="fill" className="drop-shadow-md" />
+                  </div>
 
-                <Button
-                  type="button"
-                  onClick={() => setCurrentReceipt(null)}
-                  className="w-full mt-3 font-black h-11 rounded-xl flex gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer no-print text-xs shadow-md shadow-emerald-600/20"
-                >
-                  Buy Data Again
-                </Button>
-              </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
+                    Transaction Successful
+                  </span>
+                  <h3 className="font-black text-2xl text-foreground mb-1 text-center">Data Bundle Delivered</h3>
+                  <p className="text-muted-foreground text-xs font-medium mb-5 text-center">Your data subscription is active on the SIM.</p>
+
+                  <div className="w-full bg-background rounded-2xl p-5 shadow-sm space-y-3.5 relative border border-border">
+                    {/* Decorative receipt cuts */}
+                    <div className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-6 bg-secondary/20 rounded-full border-r border-border" />
+                    <div className="absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 bg-secondary/20 rounded-full border-l border-border" />
+
+                    <div className="flex justify-between items-center pb-3.5 border-b border-dashed border-border">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Amount Paid</span>
+                      <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">₦{currentReceipt.amount.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Plan Name</span>
+                      <span className="text-xs font-bold text-foreground text-right">{currentReceipt.planName}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Recipient Phone</span>
+                      <span className="text-sm font-mono font-bold text-foreground">{currentReceipt.phone}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Date &amp; Time</span>
+                      <span className="text-xs font-bold text-foreground">
+                        {currentReceipt.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-1 border-t border-border/60">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Reference</span>
+                      <span className="text-[10px] font-mono font-bold text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded">{currentReceipt.reference}</span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-3 w-full mt-5 no-print">
+                    <Button 
+                      onClick={() => window.print()} 
+                      variant="outline" 
+                      className="w-full font-bold border-border shadow-sm flex gap-2 cursor-pointer h-10 text-xs"
+                    >
+                      Save / Print
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        if (navigator.share) {
+                          navigator.share({
+                            title: 'LoraBiz Data Receipt',
+                            text: `Data Purchase Successful ✅\nPlan: ${currentReceipt.planName}\nPhone: ${currentReceipt.phone}\nAmount: ₦${currentReceipt.amount.toLocaleString()}\nRef: ${currentReceipt.reference}`,
+                          }).catch(() => {});
+                        } else {
+                          alert("Sharing is not supported on this device/browser.");
+                        }
+                      }} 
+                      variant="outline" 
+                      className="w-full font-bold border-border shadow-sm flex gap-2 cursor-pointer h-10 text-xs"
+                    >
+                      Share
+                    </Button>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={() => setCurrentReceipt(null)}
+                    className="w-full mt-3 font-black h-11 rounded-xl flex gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer no-print text-xs shadow-md shadow-emerald-600/20"
+                  >
+                    Buy Data Again
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </>

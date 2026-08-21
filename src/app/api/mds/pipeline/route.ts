@@ -80,6 +80,14 @@ export async function GET() {
       prisma.ninModificationRequest.count({ where: { status: "REJECTED" } }),
     ]);
 
+    // 2f. Fetch counts for BVN Modification Requests
+    const [bvnModPending, bvnModProcessing, bvnModCompleted, bvnModRejected] = await Promise.all([
+      prisma.bvnModificationRequest.count({ where: { status: "PENDING" } }),
+      prisma.bvnModificationRequest.count({ where: { status: "PROCESSING" } }),
+      prisma.bvnModificationRequest.count({ where: { status: "COMPLETED" } }),
+      prisma.bvnModificationRequest.count({ where: { status: "REJECTED" } }),
+    ]);
+
     // 3. Fetch counts for SCUML
     const [scumlPending, scumlProcessing, scumlCompleted] = await Promise.all([
       prisma.scumlRegistration.count({ where: { status: "PENDING" } }),
@@ -94,10 +102,11 @@ export async function GET() {
       prisma.taxIdRequest.count({ where: { status: "COMPLETED" } }),
     ]);
 
-    // 5. Fetch counts for Utilities (Airtime/Data) from the master Transaction Ledger
-    // Note: The Airtime API currently only logs SUCCESS to the DB. Failed attempts are rejected before logging.
     const airtimeCompleted = await prisma.transaction.count({
-      where: { serviceCategory: "UTILITIES", status: "SUCCESS" }
+      where: { 
+        serviceCategory: { in: ["UTILITIES", "AIRTIME", "MOBILE_DATA"] }, 
+        status: "SUCCESS" 
+      }
     });
 
     // --- AGGREGATE LOGIC ---
@@ -128,6 +137,13 @@ export async function GET() {
       completed: bvnRetCompleted,
       queried: 0,
       failed: bvnRetFailed,
+    };
+
+    const bvnModificationMetrics = {
+      pending: bvnModPending + bvnModProcessing,
+      completed: bvnModCompleted,
+      queried: 0,
+      failed: bvnModRejected,
     };
 
     const ipeMetrics = {
@@ -181,16 +197,25 @@ export async function GET() {
 
     // Calculate Global Totals
     const globalMetrics = {
-      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending + modificationMetrics.pending + bvnRetrievalMetrics.pending,
-      completed: cacMetrics.completed + ninMetrics.completed + bvnMetrics.completed + bvnRetrievalMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + modificationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
+      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending + modificationMetrics.pending + bvnRetrievalMetrics.pending + bvnModificationMetrics.pending,
+      completed: cacMetrics.completed + ninMetrics.completed + bvnMetrics.completed + bvnRetrievalMetrics.completed + bvnModificationMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + modificationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
       queried: cacMetrics.queried, 
-      failed: cacMetrics.failed + ninMetrics.failed + bvnMetrics.failed + bvnRetrievalMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed + modificationMetrics.failed,
+      failed: cacMetrics.failed + ninMetrics.failed + bvnMetrics.failed + bvnRetrievalMetrics.failed + bvnModificationMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed + modificationMetrics.failed,
     };
 
     // Construct the structured response
     const payload = {
       global: globalMetrics,
       services: [
+        {
+          id: "bvn-modification",
+          name: "BVN Modification Queue",
+          description: "Change of Name, Phone Number, and Date of Birth on NIBSS with statutory surcharge audit.",
+          metrics: bvnModificationMetrics,
+          subCategories: ["Change of Name", "Change of Phone", "Change of DOB (5-Yr Rule)"],
+          href: "/quadrox-lorabiz-team/mds/dashboard/bvn/modification",
+          isAutomated: false
+        },
         {
           id: "bvn-retrieval",
           name: "BVN Number Retrieval",
@@ -287,7 +312,7 @@ export async function GET() {
           description: "Automated Airtime & Data VTU via external API integration.",
           metrics: utilityMetrics,
           subCategories: ["Airtime Recharge", "Data Plans"],
-          href: "#", // Placeholder until you build the MDS view for Utilities
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/airtime",
           isAutomated: true
         }
       ]

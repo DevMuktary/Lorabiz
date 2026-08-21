@@ -17,6 +17,7 @@ interface Transaction {
   phone: string;
   amount: number;
   network: string;
+  status?: string;
   date: Date;
 }
 
@@ -33,14 +34,22 @@ export default function AirtimeDashboardPage() {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [pendingPurchase, setPendingPurchase] = useState<{ network: string; phone: string; amount: number } | null>(null);
   const [disputeTransaction, setDisputeTransaction] = useState<Transaction | null>(null);
-  const [errorToast, setErrorToast] = useState<string | null>(null);
+  const [toastNotification, setToastNotification] = useState<{ type: "success" | "error"; title: string; message: string } | null>(null);
+
+  // Auto-dismiss toast after 6 seconds
+  useEffect(() => {
+    if (toastNotification) {
+      const timer = setTimeout(() => setToastNotification(null), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastNotification]);
 
   // Live fetchers for real data
   const fetchData = async () => {
     try {
       const [walletRes, txRes] = await Promise.all([
         fetch("/api/user/wallet", { cache: "no-store" }),
-        fetch("/api/user/transactions?status=SUCCESS", { cache: "no-store" }),
+        fetch("/api/user/transactions", { cache: "no-store" }),
       ]);
 
       if (walletRes.ok) {
@@ -53,15 +62,30 @@ export default function AirtimeDashboardPage() {
       if (txRes.ok) {
         const txData = await txRes.json();
         if (txData.success && txData.transactions) {
+          // Strictly isolate AIRTIME transactions only (exclude any Mobile Data)
           const airtimeTxs = txData.transactions
-            .filter((tx: any) => tx.serviceCategory === "UTILITIES" || (tx.description && tx.description.includes("Airtime Recharge")))
+            .filter((tx: any) => {
+              const desc = (tx.description || "").toLowerCase();
+              const isData = desc.includes("mobile data") || desc.includes("data bundle") || tx.serviceCategory === "MOBILE_DATA";
+              const isAirtime = tx.serviceCategory === "AIRTIME" || desc.includes("airtime");
+              return isAirtime && !isData;
+            })
             .map((tx: any) => {
-              const match = tx.description.match(/Airtime Recharge - (\d+) \((.+)\)/);
+              const desc = tx.description || "";
+              const phoneMatch = desc.match(/(\d{11})/);
+              let detectedNet = "MTN";
+              const upperDesc = desc.toUpperCase();
+              if (upperDesc.includes("AIRTEL")) detectedNet = "AIRTEL";
+              else if (upperDesc.includes("GLO")) detectedNet = "GLO";
+              else if (upperDesc.includes("9MOBILE") || upperDesc.includes("ETISALAT")) detectedNet = "9MOBILE";
+              else if (upperDesc.includes("MTN")) detectedNet = "MTN";
+
               return {
                 reference: tx.reference,
-                phone: match ? match[1] : "Unknown",
+                phone: phoneMatch ? phoneMatch[1] : "Unknown",
                 amount: Number(tx.amount),
-                network: match ? match[2].trim() : "Unknown",
+                network: detectedNet,
+                status: tx.type === "REFUND" ? "REFUNDED" : tx.status,
                 date: new Date(tx.createdAt),
               };
             });
@@ -79,7 +103,7 @@ export default function AirtimeDashboardPage() {
   }, []);
 
   const initiatePurchase = (data: { network: string; phone: string; amount: number }) => {
-    setErrorToast(null);
+    setToastNotification(null);
 
     // 1. Check for Duplicate within 10 minutes (Anti-mistake guard)
     const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
@@ -110,7 +134,7 @@ export default function AirtimeDashboardPage() {
 
     setShowConfirmModal(false);
     setIsProcessing(true);
-    setErrorToast(null);
+    setToastNotification(null);
 
     try {
       const res = await fetch('/api/utilities/airtime', { 
@@ -124,23 +148,42 @@ export default function AirtimeDashboardPage() {
       const result = await res.json();
 
       if (result.success) {
-        const newTransaction = {
+        const newTransaction: Transaction = {
           reference: result.reference || `ref_${Date.now()}`,
           phone: pendingPurchase.phone,
           amount: pendingPurchase.amount,
           network: pendingPurchase.network,
+          status: "SUCCESS",
           date: new Date()
         };
 
         setWalletBalance(result.newBalance);
         setHistory(prev => [newTransaction, ...prev]);
         setCurrentReceipt(newTransaction);
+        setToastNotification({
+          type: "success",
+          title: "Airtime Recharged Successfully!",
+          message: `₦${pendingPurchase.amount.toLocaleString()} ${pendingPurchase.network} sent to ${pendingPurchase.phone}.`
+        });
       } else {
-        setErrorToast(result.message || "Transaction failed.");
+        if (result.newBalance !== undefined) {
+          setWalletBalance(result.newBalance);
+        }
+        setToastNotification({
+          type: "error",
+          title: "Airtime Top-Up Failed",
+          message: result.message || "Recharge could not be completed. Your wallet has been refunded."
+        });
+        fetchData();
       }
 
     } catch (error) {
-      setErrorToast("Transaction Failed. Please check your network connection and try again.");
+      setToastNotification({
+        type: "error",
+        title: "Connection Error",
+        message: "Transaction timed out or connection failed. Your wallet was refunded. Please try again."
+      });
+      fetchData();
     } finally {
       setIsProcessing(false);
       setPendingPurchase(null);
@@ -158,19 +201,27 @@ export default function AirtimeDashboardPage() {
         <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Utilities
       </Link>
 
-      {/* Slide-In Error Toast */}
-      {errorToast && (
-        <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs sm:text-sm font-bold flex items-center justify-between gap-3 animate-in slide-in-from-top-2">
-          <div className="flex items-center gap-2">
-            <WarningCircle size={18} weight="fill" className="shrink-0" />
-            <span>{errorToast}</span>
+      {/* Floating Side Slide-In Notification Toast */}
+      {toastNotification && (
+        <div className={`fixed top-6 right-6 z-[999999] max-w-sm w-full p-4 rounded-2xl shadow-2xl border backdrop-blur-xl animate-in slide-in-from-right-6 duration-300 flex items-start gap-3 text-left ${
+          toastNotification.type === "error"
+            ? "bg-rose-950/90 dark:bg-rose-950/95 border-rose-500/30 text-rose-100 shadow-rose-950/40"
+            : "bg-emerald-950/90 dark:bg-emerald-950/95 border-emerald-500/30 text-emerald-100 shadow-emerald-950/40"
+        }`}>
+          <div className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center ${
+            toastNotification.type === "error" ? "bg-rose-500/20 text-rose-400" : "bg-emerald-500/20 text-emerald-400"
+          }`}>
+            <WarningCircle size={20} weight="fill" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-xs font-black uppercase tracking-wider mb-0.5">{toastNotification.title}</h4>
+            <p className="text-xs leading-relaxed opacity-90">{toastNotification.message}</p>
           </div>
           <button 
-            type="button"
-            onClick={() => setErrorToast(null)}
-            className="text-xs text-destructive hover:underline cursor-pointer"
+            onClick={() => setToastNotification(null)}
+            className="text-xs opacity-60 hover:opacity-100 cursor-pointer p-1"
           >
-            Dismiss
+            ✕
           </button>
         </div>
       )}

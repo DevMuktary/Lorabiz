@@ -83,7 +83,7 @@ export async function POST(req: Request) {
           status: "SUCCESS",
           reference,
           description: `Airtime Recharge - ${cleanPhone} (${network.toUpperCase()})`,
-          serviceCategory: "UTILITIES"
+          serviceCategory: "AIRTIME"
         }
       });
 
@@ -107,9 +107,17 @@ export async function POST(req: Request) {
         })
       });
 
-      const externalData = await externalRes.json();
+      const externalData = await externalRes.json().catch(() => ({}));
+      const isSuccess = 
+        externalData.status === true || 
+        externalData.status === "success" || 
+        externalData.status === 1 || 
+        externalData.status === "1" || 
+        externalData.success === true ||
+        externalData.status_code === 200 ||
+        externalData.code === 200;
 
-      if (externalData.status === true || externalData.status === "success") {
+      if (isSuccess) {
         return NextResponse.json({
           success: true,
           message: "Airtime vending successful.",
@@ -137,15 +145,21 @@ export async function POST(req: Request) {
               status: "SUCCESS",
               reference: `REF_${reference}`,
               description: `Airtime Recharge Reversal - ${cleanPhone} (${network.toUpperCase()})`,
-              serviceCategory: "UTILITIES"
+              serviceCategory: "AIRTIME"
             }
           });
         });
 
-        const serverMessage = externalData.server_message || externalData.message || "Provider failed to process recharge. Your wallet has been refunded.";
+        const rawMsg = externalData.server_message || externalData.message || externalData.error || externalData.msg;
+        const serverMessage = rawMsg 
+          ? `Provider error: ${rawMsg}. Your wallet has been refunded.`
+          : "Provider failed to process airtime recharge. Your wallet has been refunded.";
+
         return NextResponse.json({
           success: false,
-          message: serverMessage
+          message: serverMessage,
+          refunded: true,
+          newBalance: Number(user.wallet.balance)
         }, { status: 400 });
       }
     } catch (providerErr) {
@@ -166,14 +180,16 @@ export async function POST(req: Request) {
             status: "SUCCESS",
             reference: `REF_${reference}`,
             description: `Airtime Recharge Reversal (Network timeout) - ${cleanPhone}`,
-            serviceCategory: "UTILITIES"
+            serviceCategory: "AIRTIME"
           }
         });
       });
 
       return NextResponse.json({
         success: false,
-        message: "Provider timeout. Your wallet was not charged. Please try again."
+        message: "Provider network timeout. Your wallet has been refunded. Please try again.",
+        refunded: true,
+        newBalance: Number(user.wallet.balance)
       }, { status: 502 });
     }
 

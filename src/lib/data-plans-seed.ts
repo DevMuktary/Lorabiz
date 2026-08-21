@@ -119,7 +119,7 @@ export const DATA_PLANS_SEED: DataPlanSeedItem[] = [
   { planId: 279, network: "MTN", category: "SME", name: "MTN SME 500MB", productCode: "mtn_sme_500mb", price: 430, costPrice: 365, validity: "30 Days", capacity: "500MB", isActive: true },
   { planId: 496, network: "MTN", category: "SME", name: "MTN SME 3GB", productCode: "data_share_3gb", price: 1850, costPrice: 1650, validity: "30 Days", capacity: "3GB", isActive: true },
   { planId: 509, network: "MTN", category: "SME", name: "MTN SME 10GB", productCode: "data_share_10gb", price: 6100, costPrice: 5500, validity: "30 Days", capacity: "10GB", isActive: true },
-  { planId: 1002, network: "MTN", category: "SME", name: "MTN SME 1GB Monthly", productCode: "mtn_sme_igb_monthly", price: 680, costPrice: 590, validity: "30 Days", capacity: "1GB", isActive: true },
+  { planId: 1002, network: "MTN", category: "SME", name: "MTN SME 1GB Monthly", productCode: "mtn_sme_1gb_monthly", price: 680, costPrice: 590, validity: "30 Days", capacity: "1GB", isActive: true },
 
   // ==========================================
   // 7. GLO CORPORATE / CG DATA
@@ -285,7 +285,7 @@ export const DATA_PLANS_SEED: DataPlanSeedItem[] = [
   { planId: 616, network: "GLO", category: "CLOUD", name: "Glo Cloud 125MB Telegram 30 Days", productCode: "glo_cloud_125mb_telegram30days", price: 150, costPrice: 100, validity: "30 Days", capacity: "125MB", isActive: true },
   { planId: 617, network: "GLO", category: "CLOUD", name: "Glo Cloud 20MB Instagram 1 Day", productCode: "glo_cloud_20mb_instagram1day", price: 40, costPrice: 25, validity: "1 Day", capacity: "20MB", isActive: true },
   { planId: 618, network: "GLO", category: "CLOUD", name: "Glo Cloud 50MB Instagram 7 Days", productCode: "glo_cloud_50mb_instagram7days", price: 70, costPrice: 50, validity: "7 Days", capacity: "50MB", isActive: true },
-  { planId: 619, network: "GLO", category: "CLOUD", name: "Glo Cloud 125MB Instagram 30 Days", productCode: "glo_cloud125mb_instagram30days", price: 150, costPrice: 100, validity: "30 Days", capacity: "125MB", isActive: true },
+  { planId: 619, network: "GLO", category: "CLOUD", name: "Glo Cloud 125MB Instagram 30 Days", productCode: "glo_cloud_125mb_instagram30days", price: 150, costPrice: 100, validity: "30 Days", capacity: "125MB", isActive: true },
   { planId: 620, network: "GLO", category: "CLOUD", name: "Glo Cloud 20MB TikTok 1 Day", productCode: "glo_cloud_20mb_tiktok1day", price: 40, costPrice: 25, validity: "1 Day", capacity: "20MB", isActive: true },
   { planId: 621, network: "GLO", category: "CLOUD", name: "Glo Cloud 50MB TikTok 7 Days", productCode: "glo_cloud_50mb_tiktok7days", price: 70, costPrice: 50, validity: "7 Days", capacity: "50MB", isActive: true },
   { planId: 622, network: "GLO", category: "CLOUD", name: "Glo Cloud 125MB TikTok 30 Days", productCode: "glo_cloud_125mb_tiktok30days", price: 150, costPrice: 100, validity: "30 Days", capacity: "125MB", isActive: true },
