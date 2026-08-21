@@ -57,14 +57,9 @@ export default function BvnSlipVerificationPage() {
     label: "",
   });
 
-  const [prices, setPrices] = useState<Record<string, number>>({
-    BVN_STANDARD: 700,
-    BVN_PREMIUM: 1000,
-  });
-  const [activeMap, setActiveMap] = useState<Record<string, boolean>>({
-    bvn_standard: true,
-    bvn_premium: true,
-  });
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [activeMap, setActiveMap] = useState<Record<string, boolean>>({});
+  const [isPricingLoading, setIsPricingLoading] = useState(true);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [history, setHistory] = useState<BvnHistoryItem[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
@@ -144,6 +139,7 @@ export default function BvnSlipVerificationPage() {
       console.error("Error loading BVN page data:", err);
     } finally {
       setIsHistoryLoading(false);
+      setIsPricingLoading(false);
     }
   };
 
@@ -438,7 +434,11 @@ export default function BvnSlipVerificationPage() {
                   </div>
 
                   <div className={`font-black text-sm shrink-0 pl-2 ${!isAvailable ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                    ₦{price.toLocaleString()}
+                    {isPricingLoading ? (
+                      <span className="inline-block h-4 w-12 bg-secondary/80 animate-pulse rounded-md"></span>
+                    ) : (
+                      `₦${price.toLocaleString()}`
+                    )}
                   </div>
                 </div>
               );
@@ -478,11 +478,15 @@ export default function BvnSlipVerificationPage() {
         {/* Clean Submit Button */}
         <Button
           type="submit"
-          disabled={!isFormValid || isGenerating}
+          disabled={isPricingLoading || !isFormValid || isGenerating}
           className="w-full h-12 font-black text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
           <Sparkle size={18} weight="fill" />
-          <span>Verify &amp; Generate</span>
+          {isPricingLoading ? (
+            <span>Loading pricing...</span>
+          ) : (
+            <span>Verify &amp; Generate</span>
+          )}
         </Button>
 
       </form>
