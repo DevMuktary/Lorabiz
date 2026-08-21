@@ -13,8 +13,10 @@ import {
   FileText, 
   Download, 
   WarningCircle,
-  Fingerprint
+  Fingerprint,
+  DownloadSimple
 } from "@phosphor-icons/react";
+import { downloadPdfSlip } from "@/lib/download-slip";
 
 export interface PersonalizationRequestRecord {
   id: string;
@@ -53,6 +55,8 @@ export function PersonalizationDetailsModal({
   const [mounted, setMounted] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "info" | "error"; message: string } | null>(null);
   const [currentRecord, setCurrentRecord] = useState<PersonalizationRequestRecord | null>(request);
 
@@ -60,12 +64,37 @@ export function PersonalizationDetailsModal({
     setMounted(true);
   }, []);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     setCurrentRecord(request);
     setSyncFeedback(null);
   }, [request]);
 
   if (!isOpen || !mounted || !currentRecord || typeof document === "undefined") return null;
+
+  const handleDownloadSlip = async () => {
+    if (!currentRecord?.pdfUrl) return;
+    setIsDownloadingPdf(true);
+    try {
+      await downloadPdfSlip(
+        currentRecord.pdfUrl,
+        `NIN_Slip_${currentRecord.resolvedNin || currentRecord.trackingId}.pdf`
+      );
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3500);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   const handleCopy = (key: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -156,8 +185,14 @@ export function PersonalizationDetailsModal({
         };
 
   return createPortal(
-    <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl animate-in slide-in-from-bottom-6 duration-300 max-h-[90vh] flex flex-col">
+    <div 
+      className="fixed inset-0 h-full w-full min-h-[100dvh] z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-card text-card-foreground border border-border w-full max-w-lg rounded-3xl shadow-2xl animate-in slide-in-from-bottom-6 duration-300 max-h-[90vh] flex flex-col my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Modal Header */}
         <div className="p-6 border-b border-border flex items-center justify-between">
@@ -170,86 +205,77 @@ export function PersonalizationDetailsModal({
               <p className="text-xs text-muted-foreground font-mono">Ref: {currentRecord.reference}</p>
             </div>
           </div>
-
           <button
-            type="button"
             onClick={onClose}
-            className="p-1 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
           >
-            <X weight="bold" className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm">
-          {/* Status Header */}
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-secondary/50 border border-border">
-            <div>
-              <span className="text-xs text-muted-foreground block">Current Status</span>
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusBadge.bg}`}>
-                  {statusBadge.icon}
-                  {statusBadge.label}
-                </span>
-              </div>
+        {/* Scrollable Body */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          
+          {/* Status Banner */}
+          <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 ${statusBadge.bg}`}>
+            <div className="flex items-center gap-2.5">
+              {statusBadge.icon}
+              <span className="text-sm font-bold">{statusBadge.label}</span>
             </div>
-
+            
+            {/* Sync Live Status Button */}
             {currentRecord.status === "PROCESSING" && (
               <button
                 type="button"
                 onClick={handleSyncClick}
                 disabled={isSyncing}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl shadow hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background border border-border text-foreground text-xs font-bold shadow-xs hover:bg-secondary transition-all disabled:opacity-50 cursor-pointer"
               >
-                <ArrowsClockwise weight="bold" className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                <span>{isSyncing ? "Syncing..." : "Sync Status"}</span>
+                <ArrowsClockwise className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin text-primary" : ""}`} />
+                <span>{isSyncing ? "Checking..." : "Sync Status"}</span>
               </button>
             )}
           </div>
 
-          {/* In-Modal Realtime Sync Feedback Banner */}
+          {/* Sync Feedback Toast */}
           {syncFeedback && (
-            <div className={`p-3.5 rounded-2xl text-xs font-semibold flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200 ${
+            <div className={`p-3.5 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in ${
               syncFeedback.type === "success" 
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20" 
-                : syncFeedback.type === "error"
-                ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20"
-                : "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20"
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" 
+                : syncFeedback.type === "info" 
+                ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
+                : "bg-destructive/10 text-destructive border border-destructive/20"
             }`}>
-              {syncFeedback.type === "success" && <CheckCircle weight="fill" className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />}
-              {syncFeedback.type === "error" && <XCircle weight="fill" className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />}
-              {syncFeedback.type === "info" && <Clock weight="fill" className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />}
-              <div className="flex-1 leading-relaxed">
-                {syncFeedback.message}
-              </div>
-              <button 
-                type="button" 
-                onClick={() => setSyncFeedback(null)} 
-                className="opacity-70 hover:opacity-100 cursor-pointer p-0.5 -mr-1"
-              >
-                <X weight="bold" className="h-3.5 w-3.5" />
-              </button>
+              {syncFeedback.type === "success" ? <CheckCircle weight="fill" className="h-4 w-4 shrink-0" /> : <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />}
+              <span>{syncFeedback.message}</span>
             </div>
           )}
 
-          {/* Resolved NIN Banner if completed */}
+          {/* Resolved NIN Highlight */}
           {currentRecord.resolvedNin && (
-            <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                National Identification Number (NIN)
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                Generated &amp; Resolved NIN
               </span>
-              <div className="text-3xl font-mono font-black text-emerald-700 dark:text-emerald-300 tracking-wider flex items-center justify-center gap-3">
-                <span>{currentRecord.resolvedNin}</span>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-2xl font-black text-emerald-700 dark:text-emerald-300 tracking-wider">
+                  {currentRecord.resolvedNin}
+                </span>
                 <button
                   type="button"
                   onClick={() => handleCopy("NIN", currentRecord.resolvedNin!)}
-                  className="p-1.5 rounded-lg bg-card border border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 transition-colors shadow-sm cursor-pointer"
-                  title="Copy NIN"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors cursor-pointer"
                 >
                   {copiedKey === "NIN" ? (
-                    <Check weight="bold" className="h-4 w-4" />
+                    <>
+                      <Check weight="bold" className="h-3.5 w-3.5" />
+                      <span>Copied</span>
+                    </>
                   ) : (
-                    <Copy weight="bold" className="h-4 w-4" />
+                    <>
+                      <Copy weight="bold" className="h-3.5 w-3.5" />
+                      <span>Copy NIN</span>
+                    </>
                   )}
                 </button>
               </div>
@@ -258,24 +284,39 @@ export function PersonalizationDetailsModal({
 
           {/* PDF Slip Download Preview */}
           {currentRecord.pdfUrl && (
-            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between">
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
+                <div className="h-10 w-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
                   <FileText weight="fill" className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-foreground">Official NIN Slip Ready</div>
-                  <div className="text-[11px] text-muted-foreground">Download verified identity slip</div>
+                  <div className="text-xs font-bold text-foreground">Verified NIN Slip Ready</div>
+                  <div className="text-[11px] text-muted-foreground">Download identity slip</div>
                 </div>
               </div>
-              <a
-                href={currentRecord.pdfUrl.startsWith("data:") ? currentRecord.pdfUrl : `data:application/pdf;base64,${currentRecord.pdfUrl}`}
-                download={`NIN_Slip_${currentRecord.resolvedNin || currentRecord.trackingId}.pdf`}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:opacity-90 text-primary-foreground text-xs font-bold rounded-xl shadow transition-opacity"
+              <button
+                type="button"
+                onClick={handleDownloadSlip}
+                disabled={isDownloadingPdf}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
-                <Download weight="bold" className="h-3.5 w-3.5" />
-                <span>Download PDF</span>
-              </a>
+                {isDownloadingPdf ? (
+                  <>
+                    <ArrowsClockwise weight="bold" className="h-3.5 w-3.5 animate-spin" />
+                    <span>Starting...</span>
+                  </>
+                ) : downloadSuccess ? (
+                  <>
+                    <Check weight="bold" className="h-3.5 w-3.5" />
+                    <span>Download Started!</span>
+                  </>
+                ) : (
+                  <>
+                    <DownloadSimple weight="bold" className="h-3.5 w-3.5" />
+                    <span>Download PDF</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
 

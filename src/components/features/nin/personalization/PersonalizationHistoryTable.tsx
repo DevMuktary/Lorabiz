@@ -10,9 +10,11 @@ import {
   Copy, 
   Check, 
   FileText, 
-  ArrowsClockwise 
+  ArrowsClockwise,
+  DownloadSimple
 } from "@phosphor-icons/react";
 import { PersonalizationRequestRecord, PersonalizationDetailsModal } from "./PersonalizationDetailsModal";
+import { downloadPdfSlip } from "@/lib/download-slip";
 
 interface PersonalizationHistoryTableProps {
   requests: PersonalizationRequestRecord[];
@@ -33,6 +35,8 @@ export function PersonalizationHistoryTable({
   const [internalStatus, setInternalStatus] = useState<"ALL" | "PROCESSING" | "COMPLETED" | "FAILED">("ALL");
   const [selectedRecord, setSelectedRecord] = useState<PersonalizationRequestRecord | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadedId, setDownloadedId] = useState<string | null>(null);
 
   const activeStatus = parentActiveStatus !== undefined ? parentActiveStatus : internalStatus;
   const setActiveStatus = (status: "ALL" | "PROCESSING" | "COMPLETED" | "FAILED") => {
@@ -48,6 +52,20 @@ export function PersonalizationHistoryTable({
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDownload = async (e: React.MouseEvent, item: PersonalizationRequestRecord) => {
+    e.stopPropagation();
+    if (!item.pdfUrl) return;
+
+    setDownloadingId(item.id);
+    try {
+      await downloadPdfSlip(item.pdfUrl, `NIN_Slip_${item.resolvedNin || item.trackingId}.pdf`);
+      setDownloadedId(item.id);
+      setTimeout(() => setDownloadedId(null), 3000);
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const filteredRequests = useMemo(() => {
@@ -211,17 +229,43 @@ export function PersonalizationHistoryTable({
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedRecord(item);
-                          }}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground text-xs font-bold transition-all shadow-sm"
-                        >
-                          <Eye weight="bold" className="h-3.5 w-3.5" />
-                          <span>View</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          {item.status === "COMPLETED" && item.pdfUrl && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleDownload(e, item)}
+                              disabled={downloadingId === item.id}
+                              title="Download NIN Slip"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                            >
+                              {downloadingId === item.id ? (
+                                <>
+                                  <ArrowsClockwise weight="bold" className="h-3.5 w-3.5 animate-spin" />
+                                  <span className="hidden sm:inline">Starting...</span>
+                                </>
+                              ) : downloadedId === item.id ? (
+                                <>
+                                  <Check weight="bold" className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">Downloaded</span>
+                                </>
+                              ) : (
+                                <>
+                                  <DownloadSimple weight="bold" className="h-3.5 w-3.5" />
+                                  <span>Slip</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedRecord(item)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground text-xs font-bold transition-all shadow-sm cursor-pointer"
+                          >
+                            <Eye weight="bold" className="h-3.5 w-3.5" />
+                            <span>View</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
