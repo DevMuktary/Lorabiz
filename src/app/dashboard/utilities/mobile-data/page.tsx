@@ -680,54 +680,107 @@ export default function MobileDataPage() {
 
       {/* MODAL 2: Receipt Modal */}
       {currentReceipt && (
-        <div 
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
-          onClick={() => setCurrentReceipt(null)}
-        >
+        <>
+          <style dangerouslySetInnerHTML={{__html: `
+            @media print {
+              body * { visibility: hidden; }
+              #printable-data-receipt, #printable-data-receipt * { visibility: visible; }
+              #printable-data-receipt { position: fixed; left: 0; top: 0; width: 100%; border: none; box-shadow: none; z-index: 999999; }
+              .no-print { display: none !important; }
+            }
+          `}} />
+
           <div 
-            className="w-full max-w-sm bg-card border border-border rounded-3xl shadow-2xl p-6 space-y-5 animate-in slide-in-from-bottom-6 duration-300 text-center my-auto"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
+            onClick={() => setCurrentReceipt(null)}
           >
-            <div className="w-14 h-14 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-              <CheckCircle size={32} weight="fill" />
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                Transaction Successful
-              </span>
-              <h3 className="text-xl font-black text-foreground">Data Bundle Delivered</h3>
-              <p className="text-xs text-muted-foreground">Your data subscription is active on the recipient SIM.</p>
-            </div>
-
-            <div className="bg-secondary/40 border border-border rounded-2xl p-4 text-xs space-y-2 text-left">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Plan:</span>
-                <span className="font-bold text-foreground">{currentReceipt.planName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Phone:</span>
-                <span className="font-mono font-bold text-foreground">{currentReceipt.phone}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Amount:</span>
-                <span className="font-black text-foreground">₦{currentReceipt.amount.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Reference:</span>
-                <span className="font-mono text-[10px] text-muted-foreground">{currentReceipt.reference}</span>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              onClick={() => setCurrentReceipt(null)}
-              className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+            <div 
+              id="printable-data-receipt"
+              className="bg-card text-card-foreground border border-border p-1 rounded-3xl shadow-2xl max-w-sm w-full mx-auto animate-in zoom-in-95 duration-300 my-auto text-left relative"
+              onClick={(e) => e.stopPropagation()}
             >
-              Done
-            </Button>
+              <div className="bg-secondary/20 p-6 rounded-[22px] border border-dashed border-border flex flex-col items-center">
+                <div className="h-16 w-16 bg-emerald-500/15 rounded-full flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle size={44} weight="fill" className="drop-shadow-md" />
+                </div>
+
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
+                  Transaction Successful
+                </span>
+                <h3 className="font-black text-2xl text-foreground mb-1 text-center">Data Bundle Delivered</h3>
+                <p className="text-muted-foreground text-xs font-medium mb-5 text-center">Your data subscription is active on the SIM.</p>
+
+                <div className="w-full bg-background rounded-2xl p-5 shadow-sm space-y-3.5 relative border border-border">
+                  {/* Decorative receipt cuts */}
+                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-6 bg-secondary/20 rounded-full border-r border-border" />
+                  <div className="absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 bg-secondary/20 rounded-full border-l border-border" />
+
+                  <div className="flex justify-between items-center pb-3.5 border-b border-dashed border-border">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Amount Paid</span>
+                    <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">₦{currentReceipt.amount.toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Plan Name</span>
+                    <span className="text-xs font-bold text-foreground text-right">{currentReceipt.planName}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Recipient Phone</span>
+                    <span className="text-sm font-mono font-bold text-foreground">{currentReceipt.phone}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Date &amp; Time</span>
+                    <span className="text-xs font-bold text-foreground">
+                      {currentReceipt.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-1 border-t border-border/60">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Reference</span>
+                    <span className="text-[10px] font-mono font-bold text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded">{currentReceipt.reference}</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-3 w-full mt-5 no-print">
+                  <Button 
+                    onClick={() => window.print()} 
+                    variant="outline" 
+                    className="w-full font-bold border-border shadow-sm flex gap-2 cursor-pointer h-10 text-xs"
+                  >
+                    Save / Print
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator.share({
+                          title: 'LoraBiz Data Receipt',
+                          text: `Data Purchase Successful ✅\nPlan: ${currentReceipt.planName}\nPhone: ${currentReceipt.phone}\nAmount: ₦${currentReceipt.amount.toLocaleString()}\nRef: ${currentReceipt.reference}`,
+                        }).catch(() => {});
+                      } else {
+                        alert("Sharing is not supported on this device/browser.");
+                      }
+                    }} 
+                    variant="outline" 
+                    className="w-full font-bold border-border shadow-sm flex gap-2 cursor-pointer h-10 text-xs"
+                  >
+                    Share
+                  </Button>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={() => setCurrentReceipt(null)}
+                  className="w-full mt-3 font-black h-11 rounded-xl flex gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer no-print text-xs shadow-md shadow-emerald-600/20"
+                >
+                  Buy Data Again
+                </Button>
+              </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
     </div>

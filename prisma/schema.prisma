@@ -131,6 +131,7 @@ model User {
   ninModificationRequests NinModificationRequest[]
   bvnRequests      BvnRequestLog[]
   bvnRetrievalRequests BvnRetrievalRequest[]
+  bvnModificationRequests BvnModificationRequest[]
   scumlRequests    ScumlRegistration[]
   taxIdRequests    TaxIdRequest[]
   notifications    InAppNotification[]
@@ -622,6 +623,74 @@ model NinModificationRequest {
   @@index([trackingId])
   @@index([type])
   @@index([nin])
+  @@index([createdAt])
+}
+
+enum BvnModificationType {
+  CHANGE_OF_NAME
+  CHANGE_OF_PHONE
+  CHANGE_OF_DOB
+  COMBINED
+}
+
+enum BvnModificationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+model BvnModificationRequest {
+  id                 String                @id @default(cuid())
+  trackingId         String                @unique // e.g. "BVN-MOD-849201"
+  userId             String
+  type               BvnModificationType
+  status             BvnModificationStatus @default(PENDING)
+  bvn                String                // 11 digits
+  currentFullName    String
+
+  // Modification toggles (for multi-field combination)
+  modifyName         Boolean               @default(false)
+  modifyPhone        Boolean               @default(false)
+  modifyDob          Boolean               @default(false)
+
+  // Change of Name fields
+  newFirstName       String?
+  newLastName        String?
+  newMiddleName      String?
+
+  // Change of Phone fields
+  currentPhone       String?
+  newPhone           String?
+
+  // Change of DOB fields & Surcharge
+  currentDob         String?
+  newDob             String?
+  yearsDifference    Float?
+  surchargeApplied   Boolean               @default(false)
+  surchargeAmount    Decimal?              @default(0.00) @db.Decimal(10, 2)
+
+  // Supporting Document URLs (Affidavit, Birth Cert, ID, etc.)
+  documentUrls       String[]
+
+  // Admin Execution & Result Output
+  adminNotes         String?               @db.Text
+  rejectionReason    String?               @db.Text
+  slipUrl            String?               // Final BVN slip uploaded by Admin
+  amountPaid         Decimal               @db.Decimal(10, 2)
+  refundAmount       Decimal?              @db.Decimal(10, 2)
+  isRefunded         Boolean               @default(false)
+  transactionRef     String                @unique
+
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([trackingId])
+  @@index([type])
+  @@index([bvn])
   @@index([createdAt])
 }
 
