@@ -84,6 +84,20 @@ const PRICING_METADATA: Record<string, PricingItemMeta> = {
   },
 
   // NIMC SLIPS BY NIN
+  NIN_BASIC: {
+    label: "NIN Slip - Basic Slip",
+    desc: "Clean, essential NIN verification slip layout for quick verification.",
+    category: "NIN Identity",
+    imageSrc: "/nimc.png",
+    colorClass: "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400"
+  },
+  NIN_VNIN: {
+    label: "NIN Slip - Virtual NIN (VNIN) Slip",
+    desc: "Official verification slip generated using 16-digit Virtual NIN.",
+    category: "NIN Identity",
+    imageSrc: "/nimc.png",
+    colorClass: "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400"
+  },
   NIN_REGULAR: {
     label: "NIN Slip - Regular (by NIN)",
     desc: "Standard layout accepted for corporate filings and business verification.",
@@ -130,21 +144,21 @@ const PRICING_METADATA: Record<string, PricingItemMeta> = {
   },
 
   // NIMC VALIDATION & SYNC
-  NIN_VAL_NO_RECORD: {
+  NIN_VALIDATION_NO_RECORD: {
     label: "NIN Validation - No Record Found",
     desc: "Resolves missing NIN data from the national database for banking/passport.",
     category: "NIN Identity",
     imageSrc: "/nimc.png",
     colorClass: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
   },
-  NIN_VAL_VNIN: {
+  NIN_VALIDATION_VNIN: {
     label: "NIN Validation - Virtual NIN (VNIN)",
     desc: "Enterprise validation and synchronization of 16-digit Virtual NINs.",
     category: "NIN Identity",
     imageSrc: "/nimc.png",
     colorClass: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
   },
-  NIN_VAL_MOD_RECORD: {
+  NIN_VALIDATION_MOD: {
     label: "NIN Validation - Modification Sync",
     desc: "Expedited database synchronization after an offline NIMC record change.",
     category: "NIN Identity",
@@ -163,13 +177,6 @@ const PRICING_METADATA: Record<string, PricingItemMeta> = {
   NIN_MOD_PHONE: {
     label: "NIN Modification - Change of Phone Number",
     desc: "Update the registered phone number linked to your NIMC record.",
-    category: "NIN Identity",
-    imageSrc: "/nimc.png",
-    colorClass: "bg-teal-500/10 border-teal-500/20 text-teal-600 dark:text-teal-400"
-  },
-  NIN_MOD_DOB: {
-    label: "NIN Modification - Date of Birth",
-    desc: "Official NIMC verification and correction of birth date records.",
     category: "NIN Identity",
     imageSrc: "/nimc.png",
     colorClass: "bg-teal-500/10 border-teal-500/20 text-teal-600 dark:text-teal-400"
