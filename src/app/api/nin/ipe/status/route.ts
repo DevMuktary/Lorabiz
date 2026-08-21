@@ -126,6 +126,37 @@ export async function GET(req: NextRequest) {
           console.error("❌ Failed to create in-app notification:", notifErr);
         }
 
+        // Referral commission check
+        const activeReferral = await prisma.referral.findUnique({
+          where: { referredUserId: ipeRequest.userId },
+        });
+
+        if (activeReferral) {
+          const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
+          if (isNotExpired) {
+            const existingCommission = await prisma.referralCommission.findUnique({
+              where: { serviceId: ipeRequest.id },
+            });
+
+            if (!existingCommission) {
+              const commissionAmount = 250.00;
+              await prisma.referralCommission.create({
+                data: {
+                  referralId: activeReferral.id,
+                  serviceType: "NIN_IPE_CLEARANCE",
+                  serviceId: ipeRequest.id,
+                  amount: commissionAmount,
+                },
+              });
+
+              await prisma.user.update({
+                where: { id: activeReferral.referrerId },
+                data: { referralBalance: { increment: commissionAmount } },
+              });
+            }
+          }
+        }
+
         await logUserActivity({
           userId: user.id,
           action: "NIN_IPE_CLEARANCE_COMPLETED",

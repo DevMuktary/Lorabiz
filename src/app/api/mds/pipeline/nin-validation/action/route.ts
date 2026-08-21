@@ -61,6 +61,37 @@ export async function POST(req: Request) {
             adminNotes: adminNotes || undefined,
           },
         });
+
+        // Referral commission check
+        const activeReferral = await tx.referral.findUnique({
+          where: { referredUserId: ticket.userId },
+        });
+
+        if (activeReferral) {
+          const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
+          if (isNotExpired) {
+            const existingCommission = await tx.referralCommission.findUnique({
+              where: { serviceId: ticketId },
+            });
+
+            if (!existingCommission) {
+              const commissionAmount = 250.00;
+              await tx.referralCommission.create({
+                data: {
+                  referralId: activeReferral.id,
+                  serviceType: "NIN_VALIDATION",
+                  serviceId: ticketId,
+                  amount: commissionAmount,
+                },
+              });
+
+              await tx.user.update({
+                where: { id: activeReferral.referrerId },
+                data: { referralBalance: { increment: commissionAmount } },
+              });
+            }
+          }
+        }
       }
 
       if (actionType === "FAIL") {

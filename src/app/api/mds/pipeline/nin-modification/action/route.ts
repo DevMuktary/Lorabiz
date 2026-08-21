@@ -101,6 +101,37 @@ export async function POST(req: Request) {
         },
       });
 
+      // Referral commission check
+      const activeReferral = await prisma.referral.findUnique({
+        where: { referredUserId: requestItem.userId },
+      });
+
+      if (activeReferral) {
+        const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
+        if (isNotExpired) {
+          const existingCommission = await prisma.referralCommission.findUnique({
+            where: { serviceId: requestId },
+          });
+
+          if (!existingCommission) {
+            const commissionAmount = 250.00;
+            await prisma.referralCommission.create({
+              data: {
+                referralId: activeReferral.id,
+                serviceType: "NIN_MODIFICATION",
+                serviceId: requestId,
+                amount: commissionAmount,
+              },
+            });
+
+            await prisma.user.update({
+              where: { id: activeReferral.referrerId },
+              data: { referralBalance: { increment: commissionAmount } },
+            });
+          }
+        }
+      }
+
       // In-app notification
       await prisma.inAppNotification.create({
         data: {

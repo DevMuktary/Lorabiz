@@ -14,8 +14,13 @@ import {
   Handshake,  IdentificationCard, IdentificationBadge, DeviceMobile, Wallet, 
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
   FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
-  ClockCounterClockwise, Code
+  ClockCounterClockwise, Code, CaretDown, CaretRight
 } from "@phosphor-icons/react";
+
+type SubLink = {
+  name: string;
+  href: string;
+};
 
 type NavLink = {
   name: string;
@@ -23,6 +28,7 @@ type NavLink = {
   icon: React.ElementType;
   isComingSoon?: boolean;
   showSoonBadge?: boolean;
+  subLinks?: SubLink[];
 };
 
 type NavCategory = {
@@ -46,9 +52,36 @@ const NAVIGATION: NavCategory[] = [
     links: [
       { name: "CAC Services", href: "/dashboard/cac", icon: Buildings },
       { name: "SCUML", href: "/dashboard/scuml", icon: ShieldCheck },
-      { name: "NIN Services", href: "/dashboard/nin", icon: IdentificationCard },
-      { name: "BVN Services", href: "/dashboard/bvn", icon: IdentificationBadge },
-      { name: "Utilities", href: "/dashboard/utilities", icon: DeviceMobile },
+      { 
+        name: "NIN Services", 
+        href: "/dashboard/nin", 
+        icon: IdentificationCard,
+        subLinks: [
+          { name: "Slip Generation", href: "/dashboard/nin/slip" },
+          { name: "NIN Validation", href: "/dashboard/nin/validation" },
+          { name: "NIN Modification", href: "/dashboard/nin/modification" },
+          { name: "Personalization", href: "/dashboard/nin/personalization" },
+          { name: "IPE Clearance", href: "/dashboard/nin/ipe" },
+        ]
+      },
+      { 
+        name: "BVN Services", 
+        href: "/dashboard/bvn", 
+        icon: IdentificationBadge,
+        subLinks: [
+          { name: "BVN Slip", href: "/dashboard/bvn/slip" },
+          { name: "BVN Retrieval", href: "/dashboard/bvn/retrieval" },
+        ]
+      },
+      { 
+        name: "Utilities", 
+        href: "/dashboard/utilities", 
+        icon: DeviceMobile,
+        subLinks: [
+          { name: "Airtime Top-Up", href: "/dashboard/utilities/airtime" },
+          { name: "Mobile Data", href: "/dashboard/utilities/mobile-data" },
+        ]
+      },
       { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },
     ]
   },
@@ -94,6 +127,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); 
   const [sidebarAlert, setSidebarAlert] = useState<{title: string, message: string} | null>(null);
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
+    "/dashboard/nin": true,
+    "/dashboard/bvn": true,
+    "/dashboard/utilities": true,
+  });
+
+  // Auto-expand active category based on current pathname
+  useEffect(() => {
+    if (pathname.startsWith("/dashboard/nin")) {
+      setOpenSubmenus(prev => ({ ...prev, "/dashboard/nin": true }));
+    } else if (pathname.startsWith("/dashboard/bvn")) {
+      setOpenSubmenus(prev => ({ ...prev, "/dashboard/bvn": true }));
+    } else if (pathname.startsWith("/dashboard/utilities")) {
+      setOpenSubmenus(prev => ({ ...prev, "/dashboard/utilities": true }));
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (sidebarAlert) {
@@ -198,39 +247,92 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     : pathname.startsWith(link.href.split('?')[0]) && link.href !== "#"; 
                   
                   const Icon = link.icon;
+                  const hasSubLinks = Boolean(link.subLinks && link.subLinks.length > 0);
+                  const isSubmenuOpen = Boolean(openSubmenus[link.href]);
                   
                   return (
-                    <Link 
-                      key={link.name} 
-                      href={link.href}
-                      onClick={(e) => {
-                        if (link.isComingSoon) {
-                          e.preventDefault();
-                          handleSidebarWaitlist(link.name);
-                        } else {
-                          setIsMobileMenuOpen(false);
-                        }
-                      }}
-                      className={`
-                        flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
-                        ${isActive 
-                          ? "bg-primary/10 text-primary shadow-sm" 
-                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        }
-                      `}
-                    >
-                      <Icon 
-                        weight={isActive ? "fill" : "regular"} 
-                        className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} 
-                      />
-                      <span className="text-[13px] font-bold flex-1">{link.name}</span>
-                      
-                      {link.showSoonBadge && (
-                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-[#ff3f7a]/10 px-2 py-0.5 text-[9px] font-black text-[#ff3f7a] uppercase tracking-widest animate-pulse border border-[#ff3f7a]/20 shrink-0">
-                          Soon
-                        </span>
+                    <div key={link.name} className="space-y-0.5">
+                      <div className="flex items-center">
+                        <Link 
+                          href={link.href}
+                          onClick={(e) => {
+                            if (link.isComingSoon) {
+                              e.preventDefault();
+                              handleSidebarWaitlist(link.name);
+                            } else {
+                              if (hasSubLinks && !isSubmenuOpen) {
+                                setOpenSubmenus(prev => ({ ...prev, [link.href]: true }));
+                              }
+                              setIsMobileMenuOpen(false);
+                            }
+                          }}
+                          className={`
+                            flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
+                            ${isActive 
+                              ? "bg-primary/10 text-primary shadow-sm" 
+                              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            }
+                          `}
+                        >
+                          <Icon 
+                            weight={isActive ? "fill" : "regular"} 
+                            className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} 
+                          />
+                          <span className="text-[13px] font-bold flex-1">{link.name}</span>
+                          
+                          {link.showSoonBadge && (
+                            <span className="ml-auto inline-flex items-center justify-center rounded-full bg-[#ff3f7a]/10 px-2 py-0.5 text-[9px] font-black text-[#ff3f7a] uppercase tracking-widest animate-pulse border border-[#ff3f7a]/20 shrink-0">
+                              Soon
+                            </span>
+                          )}
+                        </Link>
+
+                        {hasSubLinks && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setOpenSubmenus(prev => ({ ...prev, [link.href]: !isSubmenuOpen }));
+                            }}
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer ml-0.5"
+                            title={isSubmenuOpen ? "Collapse sub-menu" : "Expand sub-menu"}
+                          >
+                            {isSubmenuOpen ? (
+                              <CaretDown size={13} weight="bold" />
+                            ) : (
+                              <CaretRight size={13} weight="bold" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Collapsible Sub-menu */}
+                      {hasSubLinks && isSubmenuOpen && (
+                        <div className="pl-5 ml-4 border-l border-border/80 space-y-0.5 my-1 animate-in slide-in-from-top-1 duration-150">
+                          {link.subLinks!.map((sub) => {
+                            const isSubActive = pathname === sub.href || pathname.startsWith(sub.href + "/");
+                            return (
+                              <Link
+                                key={sub.name}
+                                href={sub.href}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`
+                                  flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all
+                                  ${isSubActive 
+                                    ? "bg-primary text-primary-foreground font-bold shadow-xs" 
+                                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                                  }
+                                `}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSubActive ? "bg-primary-foreground" : "bg-muted-foreground/40"}`} />
+                                <span className="truncate">{sub.name}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
                       )}
-                    </Link>
+                    </div>
                   );
                 })}
               </div>

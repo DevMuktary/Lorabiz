@@ -128,6 +128,37 @@ export async function GET(req: NextRequest) {
         console.error("❌ Failed to send personalization completion notification:", notifErr);
       }
 
+      // Referral commission check
+      const activeReferral = await prisma.referral.findUnique({
+        where: { referredUserId: personalizationRequest.userId },
+      });
+
+      if (activeReferral) {
+        const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
+        if (isNotExpired) {
+          const existingCommission = await prisma.referralCommission.findUnique({
+            where: { serviceId: personalizationRequest.id },
+          });
+
+          if (!existingCommission) {
+            const commissionAmount = 250.00;
+            await prisma.referralCommission.create({
+              data: {
+                referralId: activeReferral.id,
+                serviceType: "NIN_PERSONALIZATION",
+                serviceId: personalizationRequest.id,
+                amount: commissionAmount,
+              },
+            });
+
+            await prisma.user.update({
+              where: { id: activeReferral.referrerId },
+              data: { referralBalance: { increment: commissionAmount } },
+            });
+          }
+        }
+      }
+
       await logUserActivity({
         userId: user.id,
         action: "NIN_PERSONALIZATION_COMPLETED",
