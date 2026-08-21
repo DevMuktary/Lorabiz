@@ -7,11 +7,11 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
-import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper"; 
-import { WelcomeBanner } from "@/components/WelcomeBanner"; 
-import { 
-  SquaresFour, Buildings, ShieldCheck, Copyright, 
-  Handshake,  IdentificationCard, IdentificationBadge, DeviceMobile, Wallet, 
+import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper";
+import { WelcomeBanner } from "@/components/WelcomeBanner";
+import {
+  SquaresFour, Buildings, ShieldCheck, Copyright,
+  Handshake, IdentificationCard, IdentificationBadge, DeviceMobile, Wallet,
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
   FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
   ClockCounterClockwise, Code, CaretDown, CaretRight
@@ -52,30 +52,30 @@ const NAVIGATION: NavCategory[] = [
     links: [
       { name: "CAC Services", href: "/dashboard/cac", icon: Buildings },
       { name: "SCUML", href: "/dashboard/scuml", icon: ShieldCheck },
-      { 
-        name: "NIN Services", 
-        href: "/dashboard/nin", 
+      {
+        name: "NIN Services",
+        href: "/dashboard/nin",
         icon: IdentificationCard,
         subLinks: [
-          { name: "Slip Generation", href: "/dashboard/nin/slip" },
+          { name: "Slip Generation", href: "/dashboard/nin/slips" },
           { name: "NIN Validation", href: "/dashboard/nin/validation" },
           { name: "NIN Modification", href: "/dashboard/nin/modification" },
           { name: "Personalization", href: "/dashboard/nin/personalization" },
           { name: "IPE Clearance", href: "/dashboard/nin/ipe" },
         ]
       },
-      { 
-        name: "BVN Services", 
-        href: "/dashboard/bvn", 
+      {
+        name: "BVN Services",
+        href: "/dashboard/bvn",
         icon: IdentificationBadge,
         subLinks: [
           { name: "BVN Slip", href: "/dashboard/bvn/slip" },
           { name: "BVN Retrieval", href: "/dashboard/bvn/retrieval" },
         ]
       },
-      { 
-        name: "Utilities", 
-        href: "/dashboard/utilities", 
+      {
+        name: "Utilities",
+        href: "/dashboard/utilities",
         icon: DeviceMobile,
         subLinks: [
           { name: "Airtime Top-Up", href: "/dashboard/utilities/airtime" },
@@ -119,14 +119,14 @@ const NAVIGATION: NavCategory[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  
+
   // Safe fallback to prevent Railway build crashes
   const { data: session } = useSession() || {};
-  
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); 
-  const [sidebarAlert, setSidebarAlert] = useState<{title: string, message: string} | null>(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [sidebarAlert, setSidebarAlert] = useState<{ title: string, message: string } | null>(null);
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     "/dashboard/nin": true,
     "/dashboard/bvn": true,
@@ -202,9 +202,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
-      
+
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-background/80 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
           onClick={() => setIsMobileMenuOpen(false)}
         />
@@ -218,15 +218,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:translate-x-0 lg:flex"}
       `}>
         <div className="h-[70px] flex items-center justify-between px-5 border-b border-border shrink-0">
-          <Image 
-            src="/logo.png" 
-            alt="Lorabiz" 
-            width={120} 
-            height={32} 
-            className="h-6 w-auto object-contain dark:brightness-200 dark:contrast-100" 
+          <Image
+            src="/logo.png"
+            alt="Lorabiz"
+            width={120}
+            height={32}
+            className="h-6 w-auto object-contain dark:brightness-200 dark:contrast-100"
             priority
           />
-          <button 
+          <button
             className="lg:hidden text-muted-foreground hover:text-primary transition-colors cursor-pointer"
             onClick={() => setIsMobileMenuOpen(false)}
           >
@@ -242,18 +242,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </h3>
               <div className="space-y-0.5">
                 {group.links.map((link) => {
-                  const isActive = link.href === "/dashboard" 
-                    ? pathname === "/dashboard" 
-                    : pathname.startsWith(link.href.split('?')[0]) && link.href !== "#"; 
-                  
+                  const isActive = link.href === "/dashboard"
+                    ? pathname === "/dashboard"
+                    : pathname.startsWith(link.href.split('?')[0]) && link.href !== "#";
+
                   const Icon = link.icon;
                   const hasSubLinks = Boolean(link.subLinks && link.subLinks.length > 0);
                   const isSubmenuOpen = Boolean(openSubmenus[link.href]);
-                  
+
                   return (
                     <div key={link.name} className="space-y-0.5">
                       <div className="flex items-center">
-                        <Link 
+                        <Link
                           href={link.href}
                           onClick={(e) => {
                             if (link.isComingSoon) {
@@ -268,18 +268,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           }}
                           className={`
                             flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
-                            ${isActive 
-                              ? "bg-primary/10 text-primary shadow-sm" 
+                            ${isActive
+                              ? "bg-primary/10 text-primary shadow-sm"
                               : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                             }
                           `}
                         >
-                          <Icon 
-                            weight={isActive ? "fill" : "regular"} 
-                            className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} 
+                          <Icon
+                            weight={isActive ? "fill" : "regular"}
+                            className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
                           />
                           <span className="text-[13px] font-bold flex-1">{link.name}</span>
-                          
+
                           {link.showSoonBadge && (
                             <span className="ml-auto inline-flex items-center justify-center rounded-full bg-[#ff3f7a]/10 px-2 py-0.5 text-[9px] font-black text-[#ff3f7a] uppercase tracking-widest animate-pulse border border-[#ff3f7a]/20 shrink-0">
                               Soon
@@ -319,8 +319,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={`
                                   flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all
-                                  ${isSubActive 
-                                    ? "bg-primary text-primary-foreground font-bold shadow-xs" 
+                                  ${isSubActive
+                                    ? "bg-primary text-primary-foreground font-bold shadow-xs"
                                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                                   }
                                 `}
@@ -343,17 +343,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        
+
         <header className="relative z-40 h-[70px] bg-background border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <List className="h-6 w-6" weight="bold" />
             </button>
-            
-            <button 
+
+            <button
               className="hidden lg:block p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
               onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
             >
@@ -366,7 +366,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3">
-            <Link 
+            <Link
               href="/dashboard/pricing"
               className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[13px] font-bold"
             >
@@ -379,16 +379,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* NEW: PROFILE DROPDOWN WRAPPER */}
             <div className="relative ml-1">
-              <div 
+              <div
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                 className="h-9 w-9 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[12px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0"
               >
                 {session?.user?.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img 
-                    src={session.user.image} 
-                    alt="Profile" 
-                    className="h-full w-full object-cover" 
+                  <img
+                    src={session.user.image}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                       (e.target as HTMLImageElement).parentElement!.innerHTML = initials;
@@ -402,11 +402,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* PROFILE DROPDOWN MENU */}
               {isProfileDropdownOpen && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-[45]" 
-                    onClick={() => setIsProfileDropdownOpen(false)} 
+                  <div
+                    className="fixed inset-0 z-[45]"
+                    onClick={() => setIsProfileDropdownOpen(false)}
                   />
-                  
+
                   <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-[50] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="p-3 border-b border-border bg-secondary/30">
                       <p className="text-[13px] font-black text-foreground truncate">
@@ -416,9 +416,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         {session?.user?.email}
                       </p>
                     </div>
-                    
+
                     <div className="p-2 space-y-1">
-                      <Link 
+                      <Link
                         href="/dashboard/settings"
                         onClick={() => setIsProfileDropdownOpen(false)}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-foreground hover:bg-secondary transition-colors"
@@ -426,8 +426,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <UserCircle className="h-4 w-4 text-muted-foreground" weight="bold" />
                         Profile Settings
                       </Link>
-                      
-                      <button 
+
+                      <button
                         type="button"
                         onClick={() => signOut({ callbackUrl: "/auth/login", redirect: true })}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors group cursor-pointer"
@@ -446,7 +446,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
-            <WelcomeBanner /> 
+            <WelcomeBanner />
             {children}
           </div>
         </main>
@@ -461,8 +461,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <h4 className="font-bold text-[15px] leading-tight">{sidebarAlert.title}</h4>
             <p className="text-[13px] opacity-90 mt-0.5 leading-snug">{sidebarAlert.message}</p>
           </div>
-          <button 
-            onClick={() => setSidebarAlert(null)} 
+          <button
+            onClick={() => setSidebarAlert(null)}
             className="ml-auto p-1.5 hover:bg-background/20 rounded-full transition-colors cursor-pointer shrink-0"
           >
             <X weight="bold" className="h-4 w-4" />
