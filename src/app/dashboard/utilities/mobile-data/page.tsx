@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { 
-  WifiHigh, 
-  Wallet, 
   ArrowLeft, 
   Sparkle, 
   CheckCircle, 
@@ -14,12 +13,12 @@ import {
   Check, 
   X, 
   Copy, 
-  ArrowClockwise,
+  ArrowsClockwise,
   Spinner,
-  DeviceMobile,
-  ShareNetwork,
+  ShieldCheck,
   ListDashes,
-  Plus
+  Plus,
+  Wallet
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
@@ -46,10 +45,10 @@ interface DataTransaction {
 }
 
 const NETWORKS = [
-  { id: "MTN", name: "MTN", color: "from-yellow-500 to-amber-500", bgActive: "bg-amber-500 text-zinc-950", borderActive: "border-amber-500", available: true },
-  { id: "AIRTEL", name: "Airtel", color: "from-red-500 to-rose-600", bgActive: "bg-rose-600 text-white", borderActive: "border-rose-500", available: true },
-  { id: "GLO", name: "Glo", color: "from-emerald-500 to-green-600", bgActive: "bg-emerald-600 text-white", borderActive: "border-emerald-500", available: true },
-  { id: "9MOBILE", name: "9mobile", color: "from-lime-600 to-emerald-700", bgActive: "bg-lime-600 text-white", borderActive: "border-lime-500", available: false },
+  { id: "MTN", name: "MTN", logo: "/mtn.png", color: "border-yellow-400 bg-yellow-400/10 shadow-amber-500/20", available: true },
+  { id: "AIRTEL", name: "Airtel", logo: "/airtel.png", color: "border-red-500 bg-red-500/10 shadow-rose-500/20", available: true },
+  { id: "GLO", name: "Glo", logo: "/glo.png", color: "border-green-500 bg-green-500/10 shadow-emerald-500/20", available: true },
+  { id: "9MOBILE", name: "9mobile", logo: "/9mobile.png", color: "border-emerald-700 bg-emerald-700/10 shadow-emerald-700/20", available: false },
 ];
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -74,7 +73,7 @@ export default function MobileDataPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [selectedPlan, setSelectedPlan] = useState<DataPlan | null>(null);
   const [phone, setPhone] = useState("");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
 
   // Process & Modal States
   const [isProcessing, setIsProcessing] = useState(false);
@@ -183,19 +182,17 @@ export default function MobileDataPage() {
 
   const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorToast(null);
+
     if (!selectedPlan) {
-      setErrorMsg("Please choose a data plan bundle to proceed.");
+      setErrorToast("Please choose a data plan bundle to proceed.");
       return;
     }
     if (!isPhoneValid) {
-      setErrorMsg("Please enter a valid 11-digit phone number (e.g. 08012345678).");
+      setErrorToast("Please enter a valid 11-digit phone number (e.g. 08012345678).");
       return;
     }
-    if (isInsufficientBalance) {
-      setErrorMsg(`Insufficient balance. You need ₦${(selectedPlanPrice - walletBalance).toLocaleString()} more.`);
-      return;
-    }
-    setErrorMsg(null);
+    
     setShowConfirmModal(true);
   };
 
@@ -203,7 +200,7 @@ export default function MobileDataPage() {
     if (!selectedPlan) return;
     setShowConfirmModal(false);
     setIsProcessing(true);
-    setErrorMsg(null);
+    setErrorToast(null);
 
     try {
       const res = await fetch("/api/utilities/mobile-data", {
@@ -232,10 +229,10 @@ export default function MobileDataPage() {
         setHistory((prev) => [newTx, ...prev]);
         setCurrentReceipt(newTx);
       } else {
-        setErrorMsg(data.message || "Failed to complete data vending.");
+        setErrorToast(data.message || "Failed to complete data vending.");
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "A network error occurred. Please try again.");
+      setErrorToast(err.message || "A network error occurred. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -247,37 +244,49 @@ export default function MobileDataPage() {
       {/* Top Breadcrumb */}
       <Link 
         href="/dashboard/utilities" 
-        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl"
+        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl cursor-pointer"
       >
         <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Utilities
       </Link>
 
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border p-6 sm:p-7 rounded-3xl shadow-sm">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-1">
-            <WifiHigh weight="bold" size={13} />
-            <span>Automated Telecom Data Portal</span>
+      {/* Slide-in Error Toast */}
+      {errorToast && (
+        <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs sm:text-sm font-bold flex items-center justify-between gap-3 animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <WarningCircle size={18} weight="fill" className="shrink-0" />
+            <span>{errorToast}</span>
           </div>
-          <h1 className="text-2xl font-black text-foreground">Mobile Data Vending</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm font-medium mt-0.5">
-            Instant SME, Direct Gifting, Corporate &amp; Awoof bundles delivered in seconds.
-          </p>
+          <button 
+            type="button" 
+            onClick={() => setErrorToast(null)} 
+            className="text-xs text-destructive hover:underline cursor-pointer"
+          >
+            Dismiss
+          </button>
         </div>
+      )}
 
-        {/* Live Wallet Balance */}
-        <div className="flex items-center gap-3 bg-secondary/60 border border-border px-4 py-2.5 rounded-2xl w-fit">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-            <Wallet size={20} weight="bold" />
+      {/* Header Banner */}
+      <div className="flex items-center gap-3.5 border-b border-border pb-5">
+        <div className="h-12 w-12 rounded-xl bg-white flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
+          <Image 
+            src="/airtime.png" 
+            alt="Mobile Data Logo" 
+            width={38} 
+            height={38} 
+            className="object-contain" 
+            priority 
+          />
+        </div>
+        <div>
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
+            <ShieldCheck weight="bold" className="h-3 w-3" />
+            Automated Telecom Data Gateway
           </div>
-          <div>
-            <span className="text-[10px] uppercase tracking-wider font-extrabold text-muted-foreground block">
-              Available Balance
-            </span>
-            <span className="text-base font-black text-foreground">
-              ₦{Number(walletBalance).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-            </span>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Mobile Data Vending</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm font-medium">
+            Instant SME, Direct Gifting, Corporate &amp; Awoof bundles delivered to recipient SIMs.
+          </p>
         </div>
       </div>
 
@@ -289,13 +298,6 @@ export default function MobileDataPage() {
           
           <form onSubmit={handleOpenConfirm} className="bg-card border border-border rounded-3xl p-5 sm:p-7 shadow-sm space-y-6">
             
-            {errorMsg && (
-              <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2.5 animate-in shake">
-                <WarningCircle size={18} weight="fill" className="shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
             {/* 1. SELECT NETWORK */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
@@ -307,7 +309,7 @@ export default function MobileDataPage() {
                 )}
               </label>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-4 gap-2.5">
                 {NETWORKS.map((net) => {
                   const isSelected = selectedNetwork === net.id;
 
@@ -315,11 +317,11 @@ export default function MobileDataPage() {
                     return (
                       <div
                         key={net.id}
-                        className="relative p-3.5 rounded-2xl border border-border/60 bg-secondary/30 opacity-50 cursor-not-allowed flex flex-col items-center justify-center gap-1 text-center"
+                        className="relative h-16 rounded-2xl border-2 border-border/50 bg-secondary/20 opacity-50 cursor-not-allowed flex flex-col items-center justify-center p-2 text-center"
                         title="Currently unavailable from provider"
                       >
-                        <span className="text-xs font-black text-muted-foreground">{net.name}</span>
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                        <Image src={net.logo} alt={net.name} width={28} height={28} className="object-contain grayscale opacity-60 mb-0.5" />
+                        <span className="text-[8px] font-black uppercase text-destructive">
                           Unavailable
                         </span>
                       </div>
@@ -333,18 +335,15 @@ export default function MobileDataPage() {
                       onClick={() => {
                         setSelectedNetwork(net.id);
                         setSelectedCategory("ALL");
-                        if (errorMsg) setErrorMsg(null);
+                        if (errorToast) setErrorToast(null);
                       }}
-                      className={`p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-1 text-center ${
+                      className={`relative h-16 rounded-2xl border-2 transition-all flex flex-col items-center justify-center p-2 cursor-pointer ${
                         isSelected 
-                          ? `${net.bgActive} border-transparent shadow-md scale-[1.02]` 
-                          : "bg-background border-border hover:border-foreground/30 text-foreground"
+                          ? `${net.color} shadow-md scale-[1.02]` 
+                          : "border-border hover:border-primary/40 bg-secondary/30 grayscale opacity-75 hover:grayscale-0 hover:opacity-100"
                       }`}
                     >
-                      <span className="text-xs font-black">{net.name}</span>
-                      <span className={`text-[9px] font-extrabold uppercase tracking-wider ${isSelected ? "opacity-90" : "text-emerald-600 dark:text-emerald-400"}`}>
-                        Active
-                      </span>
+                      <Image src={net.logo} alt={net.name} width={34} height={34} className="object-contain" />
                     </button>
                   );
                 })}
@@ -366,7 +365,7 @@ export default function MobileDataPage() {
                         type="button"
                         onClick={() => {
                           setSelectedCategory(cat);
-                          if (errorMsg) setErrorMsg(null);
+                          if (errorToast) setErrorToast(null);
                         }}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           isCatActive
@@ -382,21 +381,26 @@ export default function MobileDataPage() {
               </div>
             )}
 
-            {/* 3. SELECT DATA PLAN BUNDLE */}
+            {/* 3. SELECT DATA PLAN BUNDLE (Natural Grid Layout without inner scroll trap) */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
                 <span>3. Choose Data Bundle <span className="text-destructive">*</span></span>
                 <span className="text-[11px] font-medium text-muted-foreground">
-                  {displayedPlans.length} plans available
+                  {isLoading ? "Loading plans..." : `${displayedPlans.length} plans available`}
                 </span>
               </label>
 
-              {displayedPlans.length === 0 ? (
+              {isLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2 border border-border border-dashed rounded-2xl bg-secondary/10">
+                  <ArrowsClockwise size={24} className="animate-spin text-emerald-600" weight="bold" />
+                  <span className="text-xs text-muted-foreground">Loading active bundles...</span>
+                </div>
+              ) : displayedPlans.length === 0 ? (
                 <div className="p-6 text-center border border-border border-dashed rounded-2xl bg-secondary/20">
                   <p className="text-xs text-muted-foreground">No active plans available for this category right now.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {displayedPlans.map((plan) => {
                     const isPlanSelected = selectedPlan?.planId === plan.planId;
                     return (
@@ -405,7 +409,7 @@ export default function MobileDataPage() {
                         type="button"
                         onClick={() => {
                           setSelectedPlan(plan);
-                          if (errorMsg) setErrorMsg(null);
+                          if (errorToast) setErrorToast(null);
                         }}
                         className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           isPlanSelected
@@ -452,7 +456,7 @@ export default function MobileDataPage() {
                 value={phone}
                 onChange={(e) => {
                   setPhone(e.target.value);
-                  if (errorMsg) setErrorMsg(null);
+                  if (errorToast) setErrorToast(null);
                 }}
                 className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-foreground font-mono text-sm tracking-wide focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all placeholder:text-muted-foreground/60"
               />
@@ -471,7 +475,7 @@ export default function MobileDataPage() {
                 </>
               ) : (
                 <>
-                  <WifiHigh size={18} weight="bold" />
+                  <Sparkle size={18} weight="fill" />
                   <span>
                     {selectedPlan 
                       ? `Buy ${selectedPlan.name} (₦${Number(selectedPlan.price).toLocaleString()})`
@@ -485,7 +489,7 @@ export default function MobileDataPage() {
 
         </div>
 
-        {/* Right Column: History & Quick Tips */}
+        {/* Right Column: History & Concise Helper Note */}
         <div className="lg:col-span-5 space-y-6">
           
           {/* History Card */}
@@ -497,7 +501,7 @@ export default function MobileDataPage() {
                 </div>
                 <h3 className="text-sm font-black text-foreground">Recent Data Purchases</h3>
               </div>
-              <span className="text-[11px] font-mono text-muted-foreground">{history.length} transactions</span>
+              <span className="text-[11px] font-mono text-muted-foreground">{history.length} purchases</span>
             </div>
 
             {history.length === 0 ? (
@@ -537,14 +541,14 @@ export default function MobileDataPage() {
             )}
           </div>
 
-          {/* Quick FAQ info */}
-          <div className="bg-secondary/30 border border-border/80 rounded-2xl p-4 text-xs text-muted-foreground space-y-2">
+          {/* Concise Delivery Notice */}
+          <div className="bg-secondary/30 border border-border/80 rounded-2xl p-4 text-xs text-muted-foreground space-y-1.5">
             <h4 className="font-bold text-foreground flex items-center gap-1.5">
-              <Sparkle size={14} weight="fill" className="text-amber-500" />
+              <Sparkle size={14} weight="fill" className="text-emerald-500" />
               <span>Instant Data Delivery</span>
             </h4>
             <p className="leading-relaxed text-[11px]">
-              Data subscriptions are credited directly to the recipient SIM within 5 to 60 seconds. In case of network delays, check SIM balance using standard network USSD codes (*323# for MTN, *310# for Glo, *323# for Airtel).
+              Data subscriptions are credited to the recipient SIM within seconds. Check data balance using standard operator USSD codes (*323# on MTN/Airtel, *310# on Glo).
             </p>
           </div>
 
@@ -552,23 +556,25 @@ export default function MobileDataPage() {
 
       </div>
 
-      {/* MODAL 1: Confirmation Modal */}
+      {/* MODAL 1: Confirmation Modal (With crying emoji on insufficient balance) */}
       {showConfirmModal && selectedPlan && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/95 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setShowConfirmModal(false)}
         >
           <div 
-            className="w-full max-w-md bg-card text-card-foreground border border-border rounded-3xl shadow-2xl p-6 space-y-5 animate-in slide-in-from-bottom-6 duration-300 text-left"
+            className="relative w-full max-w-md bg-card text-card-foreground border border-border rounded-3xl shadow-2xl p-6 space-y-5 animate-in slide-in-from-bottom-6 duration-300 text-left my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <WifiHigh size={20} weight="bold" />
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={20} weight="bold" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-foreground">Confirm Data Purchase</h3>
+                  <h3 className="text-base font-black text-foreground">
+                    {isInsufficientBalance ? "Insufficient Balance" : "Confirm Data Purchase"}
+                  </h3>
                   <p className="text-[11px] text-muted-foreground">{selectedPlan.network} Telecom Network</p>
                 </div>
               </div>
@@ -580,7 +586,7 @@ export default function MobileDataPage() {
               </button>
             </div>
 
-            {/* Insufficient balance warning in modal */}
+            {/* Insufficient balance state with crying emoji */}
             {isInsufficientBalance ? (
               <div className="space-y-4">
                 <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 space-y-3">
@@ -588,10 +594,10 @@ export default function MobileDataPage() {
                     <span className="text-3xl select-none">😭</span>
                     <div>
                       <h4 className="font-black text-sm text-foreground">You don&apos;t have enough balance</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">Please fund your wallet to buy this data bundle.</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Please top up your wallet to buy this data bundle.</p>
                     </div>
                   </div>
-                  <div className="bg-background/80 rounded-xl p-3 border border-border text-xs space-y-1">
+                  <div className="bg-background/80 dark:bg-background/50 rounded-xl p-3 border border-border text-xs space-y-1.5">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Required Price:</span>
                       <span className="font-bold text-destructive">₦{selectedPlanPrice.toLocaleString()}</span>
@@ -600,17 +606,21 @@ export default function MobileDataPage() {
                       <span className="text-muted-foreground">Current Balance:</span>
                       <span className="font-bold text-foreground">₦{walletBalance.toLocaleString()}</span>
                     </div>
+                    <div className="flex justify-between border-t border-border/60 pt-1.5">
+                      <span className="text-muted-foreground font-semibold">Shortfall:</span>
+                      <span className="font-black text-destructive">₦{(selectedPlanPrice - walletBalance).toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Link 
                     href="/dashboard/wallet"
-                    className="w-full h-11 bg-primary text-primary-foreground font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-md hover:opacity-90"
+                    className="w-full h-11 bg-primary text-primary-foreground font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-md hover:opacity-90 cursor-pointer"
                   >
                     <Wallet size={16} weight="bold" />
                     <span>Fund Wallet</span>
                   </Link>
-                  <Button variant="outline" onClick={() => setShowConfirmModal(false)} className="h-10 text-xs font-bold">
+                  <Button variant="outline" onClick={() => setShowConfirmModal(false)} className="h-10 text-xs font-bold cursor-pointer">
                     Cancel
                   </Button>
                 </div>
@@ -618,7 +628,7 @@ export default function MobileDataPage() {
             ) : (
               /* Sufficient balance confirmation */
               <div className="space-y-4">
-                <div className="bg-secondary/40 border border-border rounded-2xl p-4 space-y-2 text-xs">
+                <div className="bg-secondary/40 border border-border rounded-2xl p-4 space-y-2.5 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Network Provider:</span>
                     <span className="font-bold text-foreground">{selectedPlan.network}</span>
@@ -640,6 +650,10 @@ export default function MobileDataPage() {
                     <span className="font-bold text-foreground">₦{(walletBalance - selectedPlanPrice).toLocaleString()}</span>
                   </div>
                 </div>
+
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Upon confirmation, <strong>₦{selectedPlanPrice.toLocaleString()}</strong> will be debited from your wallet and credited to <strong>{cleanPhone}</strong>.
+                </p>
 
                 <div className="flex gap-3 pt-2">
                   <Button
@@ -667,11 +681,11 @@ export default function MobileDataPage() {
       {/* MODAL 2: Receipt Modal */}
       {currentReceipt && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/95 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setCurrentReceipt(null)}
         >
           <div 
-            className="w-full max-w-sm bg-card border border-border rounded-3xl shadow-2xl p-6 space-y-5 animate-in slide-in-from-bottom-6 duration-300 text-center"
+            className="w-full max-w-sm bg-card border border-border rounded-3xl shadow-2xl p-6 space-y-5 animate-in slide-in-from-bottom-6 duration-300 text-center my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-14 h-14 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
@@ -682,7 +696,7 @@ export default function MobileDataPage() {
               <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                 Transaction Successful
               </span>
-              <h3 className="text-xl font-black text-foreground">Data Bundled Delivered</h3>
+              <h3 className="text-xl font-black text-foreground">Data Bundle Delivered</h3>
               <p className="text-xs text-muted-foreground">Your data subscription is active on the recipient SIM.</p>
             </div>
 
@@ -705,15 +719,13 @@ export default function MobileDataPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={() => setCurrentReceipt(null)}
-                className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
-              >
-                Done
-              </Button>
-            </div>
+            <Button
+              type="button"
+              onClick={() => setCurrentReceipt(null)}
+              className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+            >
+              Done
+            </Button>
           </div>
         </div>
       )}

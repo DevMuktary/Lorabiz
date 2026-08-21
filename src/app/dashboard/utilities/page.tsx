@@ -1,18 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { 
-  DeviceMobile, 
-  WifiHigh, 
-  Lightning, 
-  Television, 
   ShieldCheck, 
+  ArrowLeft, 
   ArrowRight, 
-  Sparkle, 
   Clock, 
   CheckCircle,
-  Bell
+  Plus
 } from "@phosphor-icons/react";
 
 interface UtilityServiceCard {
@@ -22,78 +19,105 @@ interface UtilityServiceCard {
   turnaround: string;
   href?: string;
   active: boolean;
-  tag: "Active" | "Waitlist" | "Coming Soon";
-  icon: any;
-  color: string;
-  bgLight: string;
+  tag?: string;
+  logo: string;
 }
 
 const UTILITY_SERVICES: UtilityServiceCard[] = [
   {
     title: "Airtime Recharge",
-    category: "VTU Telecom Services",
-    description: "Instant airtime top-up across MTN, Airtel, Glo, and 9mobile with transaction security.",
-    turnaround: "Instant Credit",
+    category: "VTU Telecom Gateway",
+    description: "Instant airtime top-up across MTN, Airtel, Glo, and 9mobile networks.",
+    turnaround: "Instant Delivery",
     href: "/dashboard/utilities/airtime",
     active: true,
     tag: "Active",
-    icon: DeviceMobile,
-    color: "text-emerald-600 dark:text-emerald-400",
-    bgLight: "bg-emerald-500/10 border-emerald-500/20",
+    logo: "/airtime.png",
   },
   {
-    title: "Mobile Data",
-    category: "High-Speed Internet Bundles",
-    description: "Cheap SME, Direct Gifting, Corporate, and Awoof data plans for MTN, Airtel, and Glo.",
+    title: "Mobile Data Bundles",
+    category: "High-Speed Internet",
+    description: "Affordable SME, Direct Gifting, Corporate, and Awoof data plans for MTN, Airtel, and Glo.",
     turnaround: "Instant Delivery",
     href: "/dashboard/utilities/mobile-data",
     active: true,
     tag: "Active",
-    icon: WifiHigh,
-    color: "text-sky-600 dark:text-sky-400",
-    bgLight: "bg-sky-500/10 border-sky-500/20",
+    logo: "/airtime.png",
   },
   {
     title: "Electricity Bills",
     category: "Utility Power Tokens",
-    description: "Pay prepaid and postpaid electricity bills across IKEDC, EKEDC, AEDC, IBEDC, and more.",
+    description: "Pay prepaid and postpaid electricity tokens for IKEDC, EKEDC, AEDC, IBEDC, and more.",
     turnaround: "Coming Soon",
     active: false,
     tag: "Waitlist",
-    icon: Lightning,
-    color: "text-amber-600 dark:text-amber-400",
-    bgLight: "bg-amber-500/10 border-amber-500/20",
+    logo: "/airtime.png",
   },
   {
     title: "Cable TV Subscription",
     category: "Entertainment Subscriptions",
-    description: "Instant decoder renew and package upgrades for DSTV, GOTV, and StarTimes.",
+    description: "Instant decoder package renewals and upgrades for DSTV, GOTV, and StarTimes.",
     turnaround: "Coming Soon",
     active: false,
     tag: "Waitlist",
-    icon: Television,
-    color: "text-purple-600 dark:text-purple-400",
-    bgLight: "bg-purple-500/10 border-purple-500/20",
+    logo: "/airtime.png",
   },
 ];
 
 export default function UtilitiesHubPage() {
-  const [alertInfo, setAlertInfo] = useState<{ title: string; message: string } | null>(null);
+  const [alertInfo, setAlertInfo] = useState<{ title: string; message: string; type?: "success" | "info" | "warning" } | null>(null);
 
-  const handleJoinWaitlist = (serviceTitle: string) => {
-    setAlertInfo({
-      title: "Waitlist Confirmed!",
-      message: `You've joined the waitlist for ${serviceTitle}. We will notify you as soon as it goes live.`,
-    });
-    setTimeout(() => setAlertInfo(null), 4000);
+  useEffect(() => {
+    if (alertInfo) {
+      const timer = setTimeout(() => setAlertInfo(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [alertInfo]);
+
+  const handleWaitlist = async (serviceTitle: string) => {
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ service: serviceTitle }),
+      });
+      if (res.ok) {
+        setAlertInfo({ 
+          type: "success",
+          title: serviceTitle, 
+          message: "You've been added to the waitlist! We will notify you once this service launches." 
+        });
+      } else if (res.status === 409) {
+        setAlertInfo({ 
+          type: "info",
+          title: serviceTitle, 
+          message: "You are already registered on the waitlist for this service!" 
+        });
+      } else {
+        setAlertInfo({ 
+          type: "warning",
+          title: "Notice", 
+          message: "Unable to join waitlist at this time. Please try again." 
+        });
+      }
+    } catch {
+      setAlertInfo({ 
+        type: "warning",
+        title: "Network Error", 
+        message: "Please check your connection and try again." 
+      });
+    }
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto p-4 sm:p-6 font-sans select-none relative pb-20 animate-in fade-in duration-300">
+    <div className="space-y-6 relative pb-16 animate-in fade-in duration-200 font-sans">
       
-      {/* Success Notification Alert */}
+      {/* Alert Notification Popup */}
       {alertInfo && (
-        <div className="fixed top-6 right-6 z-50 max-w-md bg-emerald-600 text-white p-4 rounded-2xl shadow-2xl flex items-start gap-3 animate-in slide-in-from-top-4 duration-200">
+        <div className={`fixed top-6 right-6 z-50 max-w-md p-4 rounded-2xl shadow-2xl flex items-start gap-3 animate-in slide-in-from-top-4 duration-200 text-white ${
+          alertInfo.type === "success" ? "bg-emerald-600" :
+          alertInfo.type === "info" ? "bg-indigo-600" : "bg-amber-600"
+        }`}>
           <CheckCircle size={22} weight="fill" className="shrink-0 mt-0.5" />
           <div className="text-xs">
             <h4 className="font-bold text-sm mb-0.5">{alertInfo.title}</h4>
@@ -102,118 +126,154 @@ export default function UtilitiesHubPage() {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 text-white p-6 sm:p-10 border border-zinc-800 shadow-xl">
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            <ShieldCheck weight="bold" size={14} />
-            <span>Instant Telecom &amp; Utility Portal</span>
+      {/* Header Navigation */}
+      <div className="flex flex-col gap-3">
+        <Link 
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-xl cursor-pointer"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" />
+          Back to Service Hub
+        </Link>
+        
+        <div className="flex items-center gap-3.5 border-b border-border pb-4">
+          <div className="h-12 w-12 rounded-xl bg-white flex items-center justify-center p-1.5 border border-border shrink-0 shadow-sm">
+            <Image 
+              src="/airtime.png" 
+              width={40} 
+              height={40} 
+              alt="Utilities Logo" 
+              className="object-contain" 
+              priority 
+            />
           </div>
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-            Utilities &amp; Telecom Services
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-            Recharge airtime, buy affordable data bundles, and manage your everyday utility vending directly with real-time wallet debiting.
-          </p>
+          <div>
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
+              <ShieldCheck weight="bold" className="h-3 w-3" />
+              Automated Telecom &amp; Utilities Gateway
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+              Utilities &amp; Telecom Services
+            </h1>
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+              Recharge airtime, vend instant data bundles, and manage everyday utility payments.
+            </p>
+          </div>
         </div>
-
-        {/* Decorative background glow */}
-        <div className="absolute right-0 top-0 -mt-8 -mr-8 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
       </div>
 
       {/* Services Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl">
         {UTILITY_SERVICES.map((service) => {
-          const IconComponent = service.icon;
-
           if (service.active && service.href) {
             return (
-              <Link
+              <Link 
+                href={service.href} 
                 key={service.title}
-                href={service.href}
-                className="group relative bg-card border border-border hover:border-emerald-500/50 rounded-3xl p-6 sm:p-7 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 flex flex-col justify-between"
+                className="group relative flex flex-col justify-between p-5 rounded-2xl bg-card border border-border hover:border-emerald-600/50 hover:shadow-lg hover:shadow-emerald-600/5 transition-all duration-200 overflow-hidden cursor-pointer"
               >
                 <div>
-                  <div className="flex items-center justify-between gap-3 mb-4">
-                    <div className={`w-12 h-12 rounded-2xl ${service.bgLight} ${service.color} flex items-center justify-center shrink-0 border`}>
-                      <IconComponent size={26} weight="duotone" />
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="h-11 w-11 rounded-xl bg-white border border-border p-1.5 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                      <Image 
+                        src={service.logo} 
+                        alt={service.title} 
+                        width={36} 
+                        height={36} 
+                        className="object-contain w-full h-full" 
+                      />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      {service.tag}
+
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {service.tag || "Active"}
                     </span>
                   </div>
 
-                  <div className="space-y-1.5 mb-4">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                      {service.category}
-                    </span>
-                    <h3 className="text-lg font-black text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                      {service.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {service.description}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-border/60 text-xs font-bold">
-                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                    <Sparkle size={14} weight="fill" />
-                    {service.turnaround}
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground group-hover:text-foreground transition-colors">
-                    <span>Access Portal</span>
-                    <ArrowRight size={14} weight="bold" className="group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </div>
-              </Link>
-            );
-          }
-
-          return (
-            <div
-              key={service.title}
-              className="relative bg-card/60 border border-border/80 rounded-3xl p-6 sm:p-7 flex flex-col justify-between opacity-85 hover:opacity-100 transition-opacity"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <div className={`w-12 h-12 rounded-2xl ${service.bgLight} ${service.color} flex items-center justify-center shrink-0 border`}>
-                    <IconComponent size={26} weight="duotone" />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                    {service.tag}
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 mb-4">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
                     {service.category}
                   </span>
-                  <h3 className="text-lg font-black text-foreground">
+
+                  <h2 className="text-base sm:text-lg font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors mt-0.5 mb-1.5">
                     {service.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  </h2>
+                  
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                     {service.description}
                   </p>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-border/60 text-xs font-bold">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Clock size={14} weight="bold" />
-                  {service.turnaround}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleJoinWaitlist(service.title)}
-                  className="flex items-center gap-1 text-primary hover:underline cursor-pointer"
-                >
-                  <Bell size={14} weight="bold" />
-                  <span>Notify Me</span>
-                </button>
+                <div className="pt-3 border-t border-border/60 flex items-center justify-between gap-2 mt-auto">
+                  {service.turnaround && (
+                    <div className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground bg-secondary/50 border border-border/60 px-2.5 py-1 rounded-lg">
+                      <Clock weight="bold" className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                      <span>{service.turnaround}</span>
+                    </div>
+                  )}
+
+                  <div className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm group-hover:shadow transition-all ml-auto">
+                    <span>Open</span>
+                    <ArrowRight weight="bold" className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              </Link>
+            );
+          } else {
+            return (
+              <div 
+                key={service.title}
+                onClick={() => handleWaitlist(service.title)}
+                className="group relative flex flex-col justify-between p-5 rounded-2xl bg-card/60 border border-border/70 hover:border-border hover:bg-card transition-all duration-200 cursor-pointer"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="h-11 w-11 rounded-xl bg-white/80 border border-border/80 p-1.5 flex items-center justify-center grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+                      <Image 
+                        src={service.logo} 
+                        alt={service.title} 
+                        width={36} 
+                        height={36} 
+                        className="object-contain w-full h-full" 
+                      />
+                    </div>
+
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      {service.tag || "Waitlist"}
+                    </span>
+                  </div>
+
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                    {service.category}
+                  </span>
+
+                  <h2 className="text-base sm:text-lg font-bold text-foreground mt-0.5 mb-1.5">
+                    {service.title}
+                  </h2>
+                  
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                    {service.description}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-border/60 flex items-center justify-between gap-2 mt-auto">
+                  {service.turnaround && (
+                    <div className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-secondary/30 px-2.5 py-1 rounded-lg">
+                      <Clock weight="bold" className="h-3 w-3" />
+                      <span>{service.turnaround}</span>
+                    </div>
+                  )}
+
+                  <button 
+                    type="button"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-secondary hover:bg-secondary/80 text-foreground font-bold text-xs rounded-xl border border-border transition-colors ml-auto cursor-pointer"
+                  >
+                    <Plus weight="bold" className="h-3 w-3" />
+                    <span>Join Waitlist</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          );
+            );
+          }
         })}
       </div>
 
