@@ -13,12 +13,14 @@ export default function SettingsDashboard() {
   const [providers, setProviders] = useState<{
     ipeProvider: string;
     personalizationProvider: string;
-    ninSlipProvider: string;
+    ninSlipProviderNin: string;
+    ninSlipProviderPhone: string;
     ninPhoneSearchActive: boolean;
   }>({
     ipeProvider: "DATAVERIFY",
     personalizationProvider: "DATAVERIFY",
-    ninSlipProvider: "AUTO",
+    ninSlipProviderNin: "AUTO",
+    ninSlipProviderPhone: "AUTO",
     ninPhoneSearchActive: true,
   });
   const [isSavingProviders, setIsSavingProviders] = useState(false);
@@ -43,7 +45,8 @@ export default function SettingsDashboard() {
         setProviders({
           ipeProvider: pResult.ipeProvider || "DATAVERIFY",
           personalizationProvider: pResult.personalizationProvider || "DATAVERIFY",
-          ninSlipProvider: pResult.ninSlipProvider || "AUTO",
+          ninSlipProviderNin: pResult.ninSlipProviderNin || pResult.ninSlipProvider || "AUTO",
+          ninSlipProviderPhone: pResult.ninSlipProviderPhone || "AUTO",
           ninPhoneSearchActive: pResult.ninPhoneSearchActive !== undefined ? pResult.ninPhoneSearchActive : true,
         });
       }
@@ -376,24 +379,24 @@ export default function SettingsDashboard() {
                   </div>
                 </div>
 
-                {/* NIN Slips & Verification Provider Routing Card (NEW) */}
+                {/* NIN Slips Gateway (By 11-Digit NIN) */}
                 <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-5 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-mono font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
-                        NIN Verification Slips Gateway
+                        NIN Gateway (By 11-Digit NIN)
                       </span>
-                      <span className="text-xs text-zinc-400">Active: <strong className="text-white">{providers.ninSlipProvider}</strong></span>
+                      <span className="text-xs text-zinc-400">Active: <strong className="text-white">{providers.ninSlipProviderNin}</strong></span>
                     </div>
                     <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
-                      Control automatic failover between DataVerify and backup SlipAPI, or force a specific provider.
+                      Provider routing for standard searches performed with 11-digit NIN.
                     </p>
 
                     <div className="space-y-2.5">
                       {/* Option 1: Auto Failover */}
                       <label
                         className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                          providers.ninSlipProvider === "AUTO"
+                          providers.ninSlipProviderNin === "AUTO"
                             ? "bg-purple-600/15 border-purple-500 text-white"
                             : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                         }`}
@@ -401,10 +404,10 @@ export default function SettingsDashboard() {
                         <div className="flex items-center gap-3">
                           <input
                             type="radio"
-                            name="ninSlipProvider"
+                            name="ninSlipProviderNin"
                             value="AUTO"
-                            checked={providers.ninSlipProvider === "AUTO"}
-                            onChange={(e) => setProviders({ ...providers, ninSlipProvider: e.target.value })}
+                            checked={providers.ninSlipProviderNin === "AUTO"}
+                            onChange={(e) => setProviders({ ...providers, ninSlipProviderNin: e.target.value })}
                             className="text-purple-600 focus:ring-purple-500"
                           />
                           <div>
@@ -412,16 +415,16 @@ export default function SettingsDashboard() {
                               Auto-Failover (Smart Router)
                               <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-mono">RECOMMENDED</span>
                             </div>
-                            <div className="text-xs text-zinc-400">DataVerify Primary &rarr; Auto failover to SlipAPI on outage</div>
+                            <div className="text-xs text-zinc-400">DataVerify Primary &rarr; Auto failover to SlipAPI</div>
                           </div>
                         </div>
-                        <Cpu size={18} className={providers.ninSlipProvider === "AUTO" ? "text-purple-400" : "text-zinc-600"} />
+                        <Cpu size={18} className={providers.ninSlipProviderNin === "AUTO" ? "text-purple-400" : "text-zinc-600"} />
                       </label>
 
                       {/* Option 2: Force DataVerify */}
                       <label
                         className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                          providers.ninSlipProvider === "DATAVERIFY"
+                          providers.ninSlipProviderNin === "DATAVERIFY"
                             ? "bg-indigo-600/15 border-indigo-500 text-white"
                             : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                         }`}
@@ -429,10 +432,10 @@ export default function SettingsDashboard() {
                         <div className="flex items-center gap-3">
                           <input
                             type="radio"
-                            name="ninSlipProvider"
+                            name="ninSlipProviderNin"
                             value="DATAVERIFY"
-                            checked={providers.ninSlipProvider === "DATAVERIFY"}
-                            onChange={(e) => setProviders({ ...providers, ninSlipProvider: e.target.value })}
+                            checked={providers.ninSlipProviderNin === "DATAVERIFY"}
+                            onChange={(e) => setProviders({ ...providers, ninSlipProviderNin: e.target.value })}
                             className="text-indigo-600 focus:ring-indigo-500"
                           />
                           <div>
@@ -443,13 +446,13 @@ export default function SettingsDashboard() {
                             <div className="text-xs text-zinc-400">Direct DataVerify (Basic, VNIN, Regular, Standard, Premium)</div>
                           </div>
                         </div>
-                        <Server size={18} className={providers.ninSlipProvider === "DATAVERIFY" ? "text-indigo-400" : "text-zinc-600"} />
+                        <Server size={18} className={providers.ninSlipProviderNin === "DATAVERIFY" ? "text-indigo-400" : "text-zinc-600"} />
                       </label>
 
                       {/* Option 3: Force SlipAPI */}
                       <label
                         className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                          providers.ninSlipProvider === "SLIPAPI"
+                          providers.ninSlipProviderNin === "SLIPAPI"
                             ? "bg-teal-600/15 border-teal-500 text-white"
                             : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                         }`}
@@ -457,10 +460,10 @@ export default function SettingsDashboard() {
                         <div className="flex items-center gap-3">
                           <input
                             type="radio"
-                            name="ninSlipProvider"
+                            name="ninSlipProviderNin"
                             value="SLIPAPI"
-                            checked={providers.ninSlipProvider === "SLIPAPI"}
-                            onChange={(e) => setProviders({ ...providers, ninSlipProvider: e.target.value })}
+                            checked={providers.ninSlipProviderNin === "SLIPAPI"}
+                            onChange={(e) => setProviders({ ...providers, ninSlipProviderNin: e.target.value })}
                             className="text-teal-500 focus:ring-teal-500"
                           />
                           <div>
@@ -471,7 +474,108 @@ export default function SettingsDashboard() {
                             <div className="text-xs text-zinc-400">Direct SlipAPI.com (Standard & Premium slips)</div>
                           </div>
                         </div>
-                        <ShieldCheck size={18} className={providers.ninSlipProvider === "SLIPAPI" ? "text-teal-400" : "text-zinc-600"} />
+                        <ShieldCheck size={18} className={providers.ninSlipProviderNin === "SLIPAPI" ? "text-teal-400" : "text-zinc-600"} />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* NIN Slips Gateway (By Phone Number - DECOUPLED) */}
+                <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                        NIN Gateway (By Phone Number)
+                      </span>
+                      <span className="text-xs text-zinc-400">Active: <strong className="text-white">{providers.ninSlipProviderPhone}</strong></span>
+                    </div>
+                    <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+                      Provider routing for NIN verification queries using SIM phone numbers.
+                    </p>
+
+                    <div className="space-y-2.5">
+                      {/* Option 1: Auto Failover */}
+                      <label
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          providers.ninSlipProviderPhone === "AUTO"
+                            ? "bg-emerald-600/15 border-emerald-500 text-white"
+                            : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ninSlipProviderPhone"
+                            value="AUTO"
+                            checked={providers.ninSlipProviderPhone === "AUTO"}
+                            onChange={(e) => setProviders({ ...providers, ninSlipProviderPhone: e.target.value })}
+                            className="text-emerald-600 focus:ring-emerald-500"
+                          />
+                          <div>
+                            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                              Auto-Failover (Smart Router)
+                              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono">RECOMMENDED</span>
+                            </div>
+                            <div className="text-xs text-zinc-400">DataVerify Primary &rarr; Auto failover to SlipAPI</div>
+                          </div>
+                        </div>
+                        <Cpu size={18} className={providers.ninSlipProviderPhone === "AUTO" ? "text-emerald-400" : "text-zinc-600"} />
+                      </label>
+
+                      {/* Option 2: Force DataVerify */}
+                      <label
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          providers.ninSlipProviderPhone === "DATAVERIFY"
+                            ? "bg-indigo-600/15 border-indigo-500 text-white"
+                            : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ninSlipProviderPhone"
+                            value="DATAVERIFY"
+                            checked={providers.ninSlipProviderPhone === "DATAVERIFY"}
+                            onChange={(e) => setProviders({ ...providers, ninSlipProviderPhone: e.target.value })}
+                            className="text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <div>
+                            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                              Force DataVerify Only
+                              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-mono">PRIMARY</span>
+                            </div>
+                            <div className="text-xs text-zinc-400">Direct DataVerify (Regular, Standard, Premium)</div>
+                          </div>
+                        </div>
+                        <Server size={18} className={providers.ninSlipProviderPhone === "DATAVERIFY" ? "text-indigo-400" : "text-zinc-600"} />
+                      </label>
+
+                      {/* Option 3: Force SlipAPI */}
+                      <label
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          providers.ninSlipProviderPhone === "SLIPAPI"
+                            ? "bg-teal-600/15 border-teal-500 text-white"
+                            : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ninSlipProviderPhone"
+                            value="SLIPAPI"
+                            checked={providers.ninSlipProviderPhone === "SLIPAPI"}
+                            onChange={(e) => setProviders({ ...providers, ninSlipProviderPhone: e.target.value })}
+                            className="text-teal-500 focus:ring-teal-500"
+                          />
+                          <div>
+                            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                              Force SlipAPI Only
+                              <span className="text-[10px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-mono">TEST SLIPAPI</span>
+                            </div>
+                            <div className="text-xs text-zinc-400">Direct SlipAPI.com Phone verification endpoints</div>
+                          </div>
+                        </div>
+                        <ShieldCheck size={18} className={providers.ninSlipProviderPhone === "SLIPAPI" ? "text-teal-400" : "text-zinc-600"} />
                       </label>
                     </div>
                   </div>

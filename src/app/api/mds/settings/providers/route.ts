@@ -24,7 +24,7 @@ export async function GET() {
       );
     }
 
-    const [ipeSetting, pznSetting, slipSetting, phoneSetting] = await Promise.all([
+    const [ipeSetting, pznSetting, slipSettingNin, slipLegacySetting, slipSettingPhone, phoneSetting] = await Promise.all([
       prisma.globalSetting.findUnique({
         where: { key: "NIN_IPE_PROVIDER" },
       }),
@@ -32,18 +32,29 @@ export async function GET() {
         where: { key: "NIN_PERSONALIZATION_PROVIDER" },
       }),
       prisma.globalSetting.findUnique({
+        where: { key: "NIN_SLIP_PROVIDER_NIN" },
+      }),
+      prisma.globalSetting.findUnique({
         where: { key: "NIN_SLIP_PROVIDER" },
+      }),
+      prisma.globalSetting.findUnique({
+        where: { key: "NIN_SLIP_PROVIDER_PHONE" },
       }),
       prisma.globalSetting.findUnique({
         where: { key: "NIN_PHONE_SEARCH_ACTIVE" },
       }),
     ]);
 
+    const activeNin = slipSettingNin?.value || slipLegacySetting?.value || "AUTO";
+    const activePhone = slipSettingPhone?.value || "AUTO";
+
     return NextResponse.json({
       success: true,
       ipeProvider: ipeSetting?.value || "DATAVERIFY",
       personalizationProvider: pznSetting?.value || "DATAVERIFY",
-      ninSlipProvider: slipSetting?.value || "AUTO",
+      ninSlipProvider: activeNin, // legacy compatibility
+      ninSlipProviderNin: activeNin,
+      ninSlipProviderPhone: activePhone,
       ninPhoneSearchActive: phoneSetting ? phoneSetting.value.toLowerCase() !== "false" : true,
     });
   } catch (error: any) {
@@ -76,7 +87,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { ipeProvider, personalizationProvider, ninSlipProvider, ninPhoneSearchActive } = await req.json();
+    const { 
+      ipeProvider, 
+      personalizationProvider, 
+      ninSlipProvider, 
+      ninSlipProviderNin, 
+      ninSlipProviderPhone, 
+      ninPhoneSearchActive 
+    } = await req.json();
 
     const updates: Promise<any>[] = [];
 
@@ -108,15 +126,41 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (ninSlipProvider && ["AUTO", "DATAVERIFY", "SLIPAPI"].includes(ninSlipProvider.toUpperCase())) {
+    // NIN-by-NIN Routing
+    const targetNinProvider = (ninSlipProviderNin || ninSlipProvider)?.toUpperCase();
+    if (targetNinProvider && ["AUTO", "DATAVERIFY", "SLIPAPI"].includes(targetNinProvider)) {
       updates.push(
         prisma.globalSetting.upsert({
+          where: { key: "NIN_SLIP_PROVIDER_NIN" },
+          update: { value: targetNinProvider },
+          create: {
+            key: "NIN_SLIP_PROVIDER_NIN",
+            value: targetNinProvider,
+            description: "Active routing provider for NIN Slips by 11-digit NIN (AUTO | DATAVERIFY | SLIPAPI)",
+          },
+        }),
+        prisma.globalSetting.upsert({
           where: { key: "NIN_SLIP_PROVIDER" },
-          update: { value: ninSlipProvider.toUpperCase() },
+          update: { value: targetNinProvider },
           create: {
             key: "NIN_SLIP_PROVIDER",
-            value: ninSlipProvider.toUpperCase(),
-            description: "Active routing provider for NIN Slips (AUTO | DATAVERIFY | SLIPAPI)",
+            value: targetNinProvider,
+            description: "Legacy master setting for NIN Slips",
+          },
+        })
+      );
+    }
+
+    // NIN-by-Phone Routing (Decoupled!)
+    if (ninSlipProviderPhone && ["AUTO", "DATAVERIFY", "SLIPAPI"].includes(ninSlipProviderPhone.toUpperCase())) {
+      updates.push(
+        prisma.globalSetting.upsert({
+          where: { key: "NIN_SLIP_PROVIDER_PHONE" },
+          update: { value: ninSlipProviderPhone.toUpperCase() },
+          create: {
+            key: "NIN_SLIP_PROVIDER_PHONE",
+            value: ninSlipProviderPhone.toUpperCase(),
+            description: "Active routing provider for NIN Slips by Phone Number (AUTO | DATAVERIFY | SLIPAPI)",
           },
         })
       );

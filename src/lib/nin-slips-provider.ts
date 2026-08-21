@@ -7,8 +7,14 @@ export interface ProviderHealthState {
   isDataVerifyDegraded: boolean;
 }
 
-// In-memory circuit breaker (10 minute auto-recovery)
-const healthState: ProviderHealthState = {
+// In-memory circuit breakers (Decoupled: NIN failures do not affect Phone and vice versa)
+const ninHealthState: ProviderHealthState = {
+  dataVerifyFailures: 0,
+  lastFailureTime: null,
+  isDataVerifyDegraded: false,
+};
+
+const phoneHealthState: ProviderHealthState = {
   dataVerifyFailures: 0,
   lastFailureTime: null,
   isDataVerifyDegraded: false,
@@ -17,36 +23,39 @@ const healthState: ProviderHealthState = {
 const CIRCUIT_BREAKER_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
- * Checks if DataVerify should be probed or restored after cooldown
+ * Checks if DataVerify should be probed or restored after cooldown for a specific search type
  */
-function checkAndRefreshProviderHealth(): boolean {
-  if (healthState.isDataVerifyDegraded && healthState.lastFailureTime) {
-    const elapsed = Date.now() - healthState.lastFailureTime;
+function checkAndRefreshProviderHealth(searchType: "NIN" | "PHONE" = "NIN"): boolean {
+  const state = searchType === "PHONE" ? phoneHealthState : ninHealthState;
+  if (state.isDataVerifyDegraded && state.lastFailureTime) {
+    const elapsed = Date.now() - state.lastFailureTime;
     if (elapsed > CIRCUIT_BREAKER_WINDOW_MS) {
-      console.log("🔄 [NIN Provider Router] 10-minute cooldown elapsed. Restoring DataVerify to primary probe.");
-      healthState.isDataVerifyDegraded = false;
-      healthState.dataVerifyFailures = 0;
-      healthState.lastFailureTime = null;
+      console.log(`🔄 [NIN Provider Router (${searchType})] 10-minute cooldown elapsed. Restoring DataVerify.`);
+      state.isDataVerifyDegraded = false;
+      state.dataVerifyFailures = 0;
+      state.lastFailureTime = null;
     }
   }
-  return !healthState.isDataVerifyDegraded;
+  return !state.isDataVerifyDegraded;
 }
 
-function recordDataVerifyFailure(isInfrastructureError: boolean) {
+function recordDataVerifyFailure(searchType: "NIN" | "PHONE", isInfrastructureError: boolean) {
   if (isInfrastructureError) {
-    healthState.dataVerifyFailures += 1;
-    healthState.lastFailureTime = Date.now();
-    if (healthState.dataVerifyFailures >= 2) {
-      console.warn("⚠️ [NIN Provider Router] Multiple infrastructure failures on DataVerify. Tripping circuit breaker to SlipAPI.");
-      healthState.isDataVerifyDegraded = true;
+    const state = searchType === "PHONE" ? phoneHealthState : ninHealthState;
+    state.dataVerifyFailures += 1;
+    state.lastFailureTime = Date.now();
+    if (state.dataVerifyFailures >= 2) {
+      console.warn(`⚠️ [NIN Provider Router (${searchType})] Multiple infrastructure failures on DataVerify. Tripping circuit breaker to SlipAPI.`);
+      state.isDataVerifyDegraded = true;
     }
   }
 }
 
-function recordDataVerifySuccess() {
-  healthState.dataVerifyFailures = 0;
-  healthState.isDataVerifyDegraded = false;
-  healthState.lastFailureTime = null;
+function recordDataVerifySuccess(searchType: "NIN" | "PHONE" = "NIN") {
+  const state = searchType === "PHONE" ? phoneHealthState : ninHealthState;
+  state.dataVerifyFailures = 0;
+  state.isDataVerifyDegraded = false;
+  state.lastFailureTime = null;
 }
 
 /**
@@ -248,30 +257,39 @@ function endpointUrlDataVerify(file: string) {
 }
 
 /**
- * Main Router: Dispatches NIN slip generation based on GlobalSettings and automatic failover
+ * Main Router: Dispatches NIN slip generation based on decoupled GlobalSettings and independent failover
  */
 export async function executeNinSlipGeneration(
   slipType: string,
   identifier: string,
   searchType: "NIN" | "PHONE" = "NIN"
 ): Promise<NormalizedSlipResult> {
-  // 1. Fetch Global Provider Setting
+  const isPhone = searchType === "PHONE";
+  const settingKey = isPhone ? "NIN_SLIP_PROVIDER_PHONE" : "NIN_SLIP_PROVIDER_NIN";
+
+  // 1. Fetch Decoupled Provider Setting
   let providerSetting = "AUTO";
   try {
     const setting = await prisma.globalSetting.findUnique({
-      where: { key: "NIN_SLIP_PROVIDER" },
+      where: { key: settingKey },
     });
     if (setting?.value) {
       providerSetting = setting.value.toUpperCase();
+    } else if (!isPhone) {
+      // Backward compatibility fallback
+      const legacy = await prisma.globalSetting.findUnique({
+        where: { key: "NIN_SLIP_PROVIDER" },
+      });
+      if (legacy?.value) providerSetting = legacy.value.toUpperCase();
     }
   } catch (err) {
-    console.error("⚠️ Failed to load NIN_SLIP_PROVIDER setting from database, falling back to AUTO:", err);
+    console.error(`⚠️ Failed to load ${settingKey} from database, falling back to AUTO:`, err);
   }
 
   // Check if slip is supported by SlipAPI
   const isSlipApiSupportedForNIN = ["nin_standard", "nin_premium"].includes(slipType);
   const isSlipApiSupportedForPhone = ["nin_regular", "nin_standard", "nin_premium"].includes(slipType);
-  const isSlipApiSupported = searchType === "PHONE" ? isSlipApiSupportedForPhone : isSlipApiSupportedForNIN;
+  const isSlipApiSupported = isPhone ? isSlipApiSupportedForPhone : isSlipApiSupportedForNIN;
 
   // 2. Forced SLIPAPI routing
   if (providerSetting === "SLIPAPI") {
@@ -292,34 +310,33 @@ export async function executeNinSlipGeneration(
   }
 
   // 4. AUTO ROUTING (DataVerify Primary with SlipAPI Fallback)
-  const isDataVerifyHealthy = checkAndRefreshProviderHealth();
+  const isHealthy = checkAndRefreshProviderHealth(searchType);
 
-  if (isDataVerifyHealthy) {
+  if (isHealthy) {
     const primaryResult = await generateDataVerifySlip(slipType, identifier, searchType);
 
     if (primaryResult.success) {
+      recordDataVerifySuccess(searchType);
       return primaryResult;
     }
 
     // Check if this was an infrastructure/downtime error
     if (primaryResult.isInfraError) {
-      recordDataVerifyFailure(true);
+      recordDataVerifyFailure(searchType, true);
 
       // Attempt fallback if supported on SlipAPI
       if (isSlipApiSupported) {
-        console.warn(`⚠️ [NIN Provider Router] Primary provider returned infra error (${primaryResult.error}). Failing over to backup provider for ${slipType}...`);
+        console.warn(`⚠️ [NIN Provider Router (${searchType})] Primary returned infra error (${primaryResult.error}). Failing over to backup SlipAPI for ${slipType}...`);
         const fallbackResult = await generateSlipApiSlip(slipType, identifier, searchType);
         if (fallbackResult.success) {
           return fallbackResult;
         }
-        // If fallback also failed, return clean sanitized message
         return {
           success: false,
           error: fallbackResult.error || "Identity verification is temporarily unavailable. Please try again shortly.",
           provider: "SLIPAPI",
         };
       } else {
-        // Slip not supported on fallback
         return {
           success: false,
           error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip, or check back shortly.",
@@ -328,12 +345,11 @@ export async function executeNinSlipGeneration(
       }
     }
 
-    // Return primary error if not an infrastructure issue (e.g. invalid NIN or not found)
     return primaryResult;
   } else {
-    // DataVerify is currently in degraded state
+    // DataVerify is currently in degraded state for this searchType
     if (isSlipApiSupported) {
-      console.log(`ℹ️ [NIN Provider Router] Primary provider in degraded state. Routing directly to backup provider for ${slipType}...`);
+      console.log(`ℹ️ [NIN Provider Router (${searchType})] Primary in degraded state. Routing directly to backup SlipAPI for ${slipType}...`);
       const slipApiResult = await generateSlipApiSlip(slipType, identifier, searchType);
       if (slipApiResult.success) {
         return slipApiResult;
@@ -341,6 +357,7 @@ export async function executeNinSlipGeneration(
       // Probe primary as last resort
       const probeResult = await generateDataVerifySlip(slipType, identifier, searchType);
       if (probeResult.success) {
+        recordDataVerifySuccess(searchType);
         return probeResult;
       }
       return {
@@ -349,7 +366,6 @@ export async function executeNinSlipGeneration(
         provider: "DATAVERIFY",
       };
     } else {
-      // Slip not supported by SlipAPI (e.g. basic or vnin)
       return {
         success: false,
         error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip, or check back shortly.",
@@ -363,44 +379,52 @@ export async function executeNinSlipGeneration(
  * Returns current provider status and dynamic slip availability for the frontend
  */
 export async function getNinSlipProviderStatus(): Promise<{
-  activeRouting: string;
+  activeRoutingNin: string;
+  activeRoutingPhone: string;
   phoneSearchActive: boolean;
-  isDataVerifyDegraded: boolean;
+  isDataVerifyDegradedNin: boolean;
+  isDataVerifyDegradedPhone: boolean;
   availableNINSlips: string[];
   availablePhoneSlips: string[];
 }> {
-  checkAndRefreshProviderHealth();
+  checkAndRefreshProviderHealth("NIN");
+  checkAndRefreshProviderHealth("PHONE");
 
-  let activeRouting = "AUTO";
+  let activeRoutingNin = "AUTO";
+  let activeRoutingPhone = "AUTO";
   let phoneSearchActive = true;
 
   try {
-    const [providerSetting, phoneSetting] = await Promise.all([
+    const [settingNin, legacySetting, settingPhone, phoneSetting] = await Promise.all([
+      prisma.globalSetting.findUnique({ where: { key: "NIN_SLIP_PROVIDER_NIN" } }),
       prisma.globalSetting.findUnique({ where: { key: "NIN_SLIP_PROVIDER" } }),
+      prisma.globalSetting.findUnique({ where: { key: "NIN_SLIP_PROVIDER_PHONE" } }),
       prisma.globalSetting.findUnique({ where: { key: "NIN_PHONE_SEARCH_ACTIVE" } }),
     ]);
 
-    if (providerSetting?.value) activeRouting = providerSetting.value.toUpperCase();
+    if (settingNin?.value) activeRoutingNin = settingNin.value.toUpperCase();
+    else if (legacySetting?.value) activeRoutingNin = legacySetting.value.toUpperCase();
+
+    if (settingPhone?.value) activeRoutingPhone = settingPhone.value.toUpperCase();
     if (phoneSetting?.value) phoneSearchActive = phoneSetting.value.toLowerCase() !== "false";
   } catch (err) {
     console.error("⚠️ Failed to load provider status from database:", err);
   }
 
-  const isDegraded = activeRouting === "SLIPAPI" || (activeRouting === "AUTO" && healthState.isDataVerifyDegraded);
+  const isDegradedNin = activeRoutingNin === "SLIPAPI" || (activeRoutingNin === "AUTO" && ninHealthState.isDataVerifyDegraded);
 
-  // If degraded or forced to SlipAPI:
-  // NIN supports standard, premium
-  // Phone supports regular, standard, premium
-  const availableNINSlips = isDegraded
+  const availableNINSlips = isDegradedNin
     ? ["nin_standard", "nin_premium"]
     : ["nin_basic", "nin_vnin", "nin_regular", "nin_standard", "nin_premium"];
 
   const availablePhoneSlips = ["nin_regular", "nin_standard", "nin_premium"];
 
   return {
-    activeRouting,
+    activeRoutingNin,
+    activeRoutingPhone,
     phoneSearchActive,
-    isDataVerifyDegraded: healthState.isDataVerifyDegraded,
+    isDataVerifyDegradedNin: ninHealthState.isDataVerifyDegraded,
+    isDataVerifyDegradedPhone: phoneHealthState.isDataVerifyDegraded,
     availableNINSlips,
     availablePhoneSlips,
   };
