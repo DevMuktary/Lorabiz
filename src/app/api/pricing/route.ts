@@ -11,52 +11,69 @@ export async function GET() {
       return acc;
     }, {});
 
-    const defaultPricing = {
+    const validationNoRecord = pricingMap.NIN_VALIDATION_NO_RECORD ?? pricingMap.NIN_VAL_NO_RECORD ?? 2000;
+    const validationVnin = pricingMap.NIN_VALIDATION_VNIN ?? pricingMap.NIN_VAL_VNIN ?? 2500;
+    const validationMod = pricingMap.NIN_VALIDATION_MOD ?? pricingMap.NIN_VAL_MOD_RECORD ?? 3000;
+
+    const modName = pricingMap.NIN_MOD_NAME ?? 2500;
+    const modPhone = pricingMap.NIN_MOD_PHONE ?? 2000;
+    const modAddress = pricingMap.NIN_MOD_ADDRESS ?? 2000;
+    const modDob = pricingMap.NIN_MOD_DOB ?? 15000;
+
+    const defaultPricing: Record<string, number> = {
+      // Pass-through all raw database prices first
+      ...pricingMap,
+
       // CAC Services
-      LLC: pricingMap.LLC || 35000,
-      LLC_EXTRA_MILLION: pricingMap.LLC_EXTRA_MILLION || 15000,
-      BUSINESS_NAME: pricingMap.BUSINESS_NAME || 29000,
-      NGO: pricingMap.NGO || 120000,
-      NAME_SUBSTITUTION: pricingMap.NAME_SUBSTITUTION || 5000,
+      LLC: pricingMap.LLC ?? 35000,
+      LLC_EXTRA_MILLION: pricingMap.LLC_EXTRA_MILLION ?? 15000,
+      BUSINESS_NAME: pricingMap.BUSINESS_NAME ?? 29000,
+      NGO: pricingMap.NGO ?? 120000,
+      NAME_SUBSTITUTION: pricingMap.NAME_SUBSTITUTION ?? 5000,
 
       // Compliance & Tax
-      SCUML: pricingMap.SCUML || 15000,
-      TAX_ID_INDIVIDUAL: pricingMap.TAX_ID_INDIVIDUAL || 500,
-      TAX_ID_CORPORATE: pricingMap.TAX_ID_CORPORATE || 1000,
+      SCUML: pricingMap.SCUML ?? 320000,
+      TAX_ID_INDIVIDUAL: pricingMap.TAX_ID_INDIVIDUAL ?? 500,
+      TAX_ID_CORPORATE: pricingMap.TAX_ID_CORPORATE ?? 1000,
 
       // NIN Slips (by NIN)
-      NIN_REGULAR: pricingMap.NIN_REGULAR || 500,
-      NIN_STANDARD: pricingMap.NIN_STANDARD || 700,
-      NIN_PREMIUM: pricingMap.NIN_PREMIUM || 1000,
+      NIN_BASIC: pricingMap.NIN_BASIC ?? 400,
+      NIN_VNIN: pricingMap.NIN_VNIN ?? 500,
+      NIN_REGULAR: pricingMap.NIN_REGULAR ?? 500,
+      NIN_STANDARD: pricingMap.NIN_STANDARD ?? 700,
+      NIN_PREMIUM: pricingMap.NIN_PREMIUM ?? 1000,
 
       // NIN Slips (by Phone)
-      NIN_PHONE_REGULAR: pricingMap.NIN_PHONE_REGULAR || 800,
-      NIN_PHONE_STANDARD: pricingMap.NIN_PHONE_STANDARD || 1000,
-      NIN_PHONE_PREMIUM: pricingMap.NIN_PHONE_PREMIUM || 1300,
+      NIN_PHONE_REGULAR: pricingMap.NIN_PHONE_REGULAR ?? 500,
+      NIN_PHONE_STANDARD: pricingMap.NIN_PHONE_STANDARD ?? 700,
+      NIN_PHONE_PREMIUM: pricingMap.NIN_PHONE_PREMIUM ?? 1000,
 
-      // NIN Validation
-      NIN_VAL_NO_RECORD: pricingMap.NIN_VAL_NO_RECORD || 2500,
-      NIN_VAL_VNIN: pricingMap.NIN_VAL_VNIN || 2500,
-      NIN_VAL_MOD_RECORD: pricingMap.NIN_VAL_MOD_RECORD || 3000,
+      // NIN Validation (Canonical & Legacy Aliases)
+      NIN_VALIDATION_NO_RECORD: validationNoRecord,
+      NIN_VALIDATION_VNIN: validationVnin,
+      NIN_VALIDATION_MOD: validationMod,
+      NIN_VAL_NO_RECORD: validationNoRecord,
+      NIN_VAL_VNIN: validationVnin,
+      NIN_VAL_MOD_RECORD: validationMod,
 
       // NIN Modification
-      NIN_MOD_NAME: pricingMap.NIN_MOD_NAME || 2500,
-      NIN_MOD_PHONE: pricingMap.NIN_MOD_PHONE || 2500,
-      NIN_MOD_DOB: pricingMap.NIN_MOD_DOB || 15000,
-      NIN_MOD_ADDRESS: pricingMap.NIN_MOD_ADDRESS || 2500,
+      NIN_MOD_NAME: modName,
+      NIN_MOD_PHONE: modPhone,
+      NIN_MOD_ADDRESS: modAddress,
+      NIN_MOD_DOB: modDob,
 
       // Advanced NIMC
-      NIN_PERSONALIZATION: pricingMap.NIN_PERSONALIZATION || 2500,
-      NIN_IPE_CLEARANCE: pricingMap.NIN_IPE_CLEARANCE || 3000,
+      NIN_PERSONALIZATION: pricingMap.NIN_PERSONALIZATION ?? 1500,
+      NIN_IPE_CLEARANCE: pricingMap.NIN_IPE_CLEARANCE ?? 2500,
 
       // BVN Services
-      BVN_STANDARD: pricingMap.BVN_STANDARD || 700,
-      BVN_PREMIUM: pricingMap.BVN_PREMIUM || 1000,
-      BVN_RETRIEVAL: pricingMap.BVN_RETRIEVAL || 2500,
+      BVN_STANDARD: pricingMap.BVN_STANDARD ?? 700,
+      BVN_PREMIUM: pricingMap.BVN_PREMIUM ?? 1000,
+      BVN_RETRIEVAL: pricingMap.BVN_RETRIEVAL ?? 2500,
 
       // Utilities
-      AIRTIME: 0, // Face value
-      MOBILE_DATA: 0, // Dynamic catalog
+      AIRTIME: 0,
+      MOBILE_DATA: 0,
     };
 
     return NextResponse.json({ success: true, data: defaultPricing });
