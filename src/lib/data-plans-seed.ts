@@ -192,26 +192,34 @@ export const DATA_PLANS_SEED: DataPlanSeedItem[] = [
 ];
 
 export async function ensureDataPlansSeeded(prisma: PrismaClient) {
-  for (const plan of DATA_PLANS_SEED) {
-    const existing = await prisma.mobileDataPlan.findUnique({
-      where: { planId: plan.planId },
-    });
-
-    if (!existing) {
-      await prisma.mobileDataPlan.create({
-        data: {
-          planId: plan.planId,
-          network: plan.network,
-          category: plan.category,
-          name: plan.name,
-          productCode: plan.productCode,
-          price: plan.price,
-          costPrice: plan.costPrice,
-          validity: plan.validity,
-          capacity: plan.capacity,
-          isActive: plan.isActive,
-        },
-      });
+  try {
+    const existingCount = await prisma.mobileDataPlan.count();
+    
+    // If all plans are already seeded, return instantly
+    if (existingCount >= DATA_PLANS_SEED.length) {
+      return;
     }
+
+    // Fast batch insert for all seed items in a single query
+    const insertData = DATA_PLANS_SEED.map((plan) => ({
+      planId: plan.planId,
+      network: plan.network,
+      category: plan.category,
+      name: plan.name,
+      productCode: plan.productCode,
+      price: plan.price,
+      costPrice: plan.costPrice,
+      validity: plan.validity,
+      capacity: plan.capacity,
+      isActive: plan.isActive,
+    }));
+
+    await prisma.mobileDataPlan.createMany({
+      data: insertData,
+      skipDuplicates: true,
+    });
+  } catch (error) {
+    console.error("ensureDataPlansSeeded error:", error);
   }
 }
+

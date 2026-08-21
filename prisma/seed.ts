@@ -33,7 +33,11 @@ async function main() {
     // 🚨 NIN Modification Service Prices
     { serviceKey: "NIN_MOD_NAME", title: "NIN Modification - Change of Name", price: 2500.00 },
     { serviceKey: "NIN_MOD_PHONE", title: "NIN Modification - Change of Phone Number", price: 2000.00 },
-    { serviceKey: "NIN_MOD_ADDRESS", title: "NIN Modification - Change of Address", price: 2000.00 }
+    { serviceKey: "NIN_MOD_ADDRESS", title: "NIN Modification - Change of Address", price: 2000.00 },
+    // 🚨 BVN Verification & Retrieval Service Prices
+    { serviceKey: "BVN_STANDARD", title: "BVN Verification - Standard Slip", price: 700.00 },
+    { serviceKey: "BVN_PREMIUM", title: "BVN Verification - Premium Card Slip", price: 1000.00 },
+    { serviceKey: "BVN_RETRIEVAL", title: "BVN Number Retrieval", price: 2500.00 }
   ]
 
   for (const p of prices) {
@@ -46,7 +50,13 @@ async function main() {
     })
   }
 
-  // 2. Global Settings
+  // 2. Mobile Data Plans
+  console.log("Seeding Mobile Data Plans...")
+  const { ensureDataPlansSeeded } = await import("../src/lib/data-plans-seed")
+  await ensureDataPlansSeeded(prisma)
+  console.log("Mobile data plans seeded successfully.")
+
+  // 3. Global Settings
   console.log("Seeding Global Settings...")
   const settings = [
     { key: "SUPPORT_WHATSAPP", value: "2348000000000", description: "Global Customer Support WhatsApp Number" },

@@ -59,16 +59,8 @@ export default function NinByPhonePage() {
   }>({
     loading: true,
     phoneSearchActive: true,
-    prices: {
-      nin_regular: 500,
-      nin_standard: 700,
-      nin_premium: 1000,
-    },
-    activeMap: {
-      nin_regular: true,
-      nin_standard: true,
-      nin_premium: true,
-    },
+    prices: {},
+    activeMap: {},
   });
 
   const [attestation1, setAttestation1] = useState(false);
@@ -411,7 +403,11 @@ export default function NinByPhonePage() {
                   </div>
 
                   <div className={`font-black text-sm shrink-0 pl-2 ${!isAvailable ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                    ₦{price.toLocaleString()}
+                    {statusState.loading ? (
+                      <span className="inline-block h-4 w-12 bg-secondary/80 animate-pulse rounded-md"></span>
+                    ) : (
+                      `₦${price.toLocaleString()}`
+                    )}
                   </div>
                 </div>
               );
@@ -438,18 +434,30 @@ export default function NinByPhonePage() {
               onChange={(e) => setAttestation2(e.target.checked)}
               className="mt-0.5 h-4 w-4 rounded text-sky-500 focus:ring-sky-500 border-border cursor-pointer"
             />
-            <span>I authorize the fee of <strong>₦{currentPrice.toLocaleString()}</strong> to be debited from my wallet.</span>
+            <span>
+              I authorize the fee of{" "}
+              {statusState.loading ? (
+                <span className="inline-block h-3.5 w-12 bg-secondary animate-pulse rounded align-middle mx-1"></span>
+              ) : (
+                <strong>₦{currentPrice.toLocaleString()}</strong>
+              )}{" "}
+              to be debited from my wallet.
+            </span>
           </label>
         </div>
 
         {/* Submit */}
         <Button
           type="submit"
-          disabled={!attestation1 || !attestation2 || phoneNumber.length !== 11 || !statusState.phoneSearchActive || !isSelectedSlipAvailable}
+          disabled={statusState.loading || !attestation1 || !attestation2 || phoneNumber.length !== 11 || !statusState.phoneSearchActive || !isSelectedSlipAvailable}
           className="w-full h-12 font-black text-sm bg-sky-500 text-white hover:bg-sky-600 rounded-xl shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
           <Sparkle size={18} weight="fill" />
-          Verify & Generate Slip (₦{currentPrice.toLocaleString()})
+          {statusState.loading ? (
+            <span>Loading pricing...</span>
+          ) : (
+            <span>Verify & Generate Slip (₦{currentPrice.toLocaleString()})</span>
+          )}
         </Button>
 
       </form>
