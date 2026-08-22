@@ -213,13 +213,13 @@ export const DATA_PLANS_SEED: DataPlanSeedItem[] = [
 ];
 
 /**
- * Ensures all plans exist in database, deactivates retired plans, and updates pricing & metadata
+ * Ensures all plans exist in database, deactivates retired plans, and updates metadata WITHOUT overwriting admin's isActive toggle or custom prices!
  */
 export async function ensureDataPlansSeeded(prisma: PrismaClient) {
   try {
     const validPlanIds = DATA_PLANS_SEED.map((p) => p.planId);
 
-    // 1. Deactivate plans no longer offered upstream
+    // 1. Deactivate plans no longer in the seed
     await prisma.mobileDataPlan.updateMany({
       where: {
         planId: { notIn: validPlanIds },
@@ -229,34 +229,45 @@ export async function ensureDataPlansSeeded(prisma: PrismaClient) {
       },
     });
 
-    // 2. Upsert valid active plans
+    // 2. Fetch existing plans from DB to check which ones already exist
+    const existing = await prisma.mobileDataPlan.findMany({
+      select: { planId: true, price: true, isActive: true },
+    });
+    const existingMap = new Map(existing.map((p) => [p.planId, p]));
+
     for (const plan of DATA_PLANS_SEED) {
-      await prisma.mobileDataPlan.upsert({
-        where: { planId: plan.planId },
-        update: {
-          name: plan.name,
-          productCode: plan.productCode,
-          network: plan.network,
-          category: plan.category,
-          validity: plan.validity,
-          capacity: plan.capacity,
-          costPrice: plan.costPrice,
-          price: plan.price,
-          isActive: true,
-        },
-        create: {
-          planId: plan.planId,
-          network: plan.network,
-          category: plan.category,
-          name: plan.name,
-          productCode: plan.productCode,
-          price: plan.price,
-          costPrice: plan.costPrice,
-          validity: plan.validity,
-          capacity: plan.capacity,
-          isActive: plan.isActive,
-        },
-      });
+      if (existingMap.has(plan.planId)) {
+        // Plan already exists in database -> update technical fields (productCode, name, validity, costPrice)
+        // DO NOT overwrite isActive or price so admin toggles persist!
+        await prisma.mobileDataPlan.update({
+          where: { planId: plan.planId },
+          data: {
+            name: plan.name,
+            productCode: plan.productCode,
+            network: plan.network,
+            category: plan.category,
+            validity: plan.validity,
+            capacity: plan.capacity,
+            costPrice: plan.costPrice,
+          },
+        });
+      } else {
+        // Brand new plan -> create it with default seed price and active state
+        await prisma.mobileDataPlan.create({
+          data: {
+            planId: plan.planId,
+            network: plan.network,
+            category: plan.category,
+            name: plan.name,
+            productCode: plan.productCode,
+            price: plan.price,
+            costPrice: plan.costPrice,
+            validity: plan.validity,
+            capacity: plan.capacity,
+            isActive: plan.isActive,
+          },
+        });
+      }
     }
   } catch (error) {
     console.error("ensureDataPlansSeeded error:", error);
