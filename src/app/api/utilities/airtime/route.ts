@@ -43,13 +43,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Insufficient wallet balance. Please fund your wallet." }, { status: 400 });
     }
 
-    // 5. Map Network to CheapDataSales Product Codes (CheapData uses etisalat_custom for 9Mobile)
+    // 5. Map Network to CheapDataSales Product Codes based on their Plan ID documentation:
+    // 1: MTN Custom -> mtn_custom (Plan ID 6)
+    // 2: Glo Custom -> glo_custom (Plan ID 84)
+    // 3: Airtel Custom -> airtel_custom (Plan ID 85)
+    // 4: 9Mobile Custom -> 9mobile_custom (Plan ID 86)
     const productCodes: Record<string, string> = {
       "MTN": "mtn_custom",
       "GLO": "glo_custom",
       "AIRTEL": "airtel_custom",
-      "9MOBILE": "etisalat_custom",
-      "ETISALAT": "etisalat_custom"
+      "9MOBILE": "9mobile_custom",
+      "ETISALAT": "9mobile_custom"
     };
 
     const productCode = productCodes[network.toUpperCase()];
@@ -97,25 +101,31 @@ export async function POST(req: Request) {
       console.error("CRITICAL: CHEAPDATA_API_KEY / CHEAPDATASALES_API_KEY is missing in environment.");
     }
 
+    const payload = {
+      amount: numAmount,
+      product_code: productCode,
+      phone_number: cleanPhone,
+      action: "vend",
+      user_reference: reference,
+      bypass_network: "yes",
+    };
+
+    console.log("[CheapData Airtime Request Payload]:", JSON.stringify(payload));
+
     try {
       const externalRes = await fetch("https://cheapdatasales.com/autobiz_vending_index.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
           "Bearer": apiKey,
         },
-        body: JSON.stringify({
-          amount: numAmount,
-          product_code: productCode,
-          phone_number: cleanPhone,
-          action: "vend",
-          user_reference: reference,
-          bypass_network: "yes",
-        }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(45000),
       });
 
       const externalData = await externalRes.json().catch(() => ({}));
+      console.log("[CheapData Airtime Response Data]:", JSON.stringify(externalData));
       const isSuccess = 
         externalData.status === true || 
         externalData.text_status === "COMPLETED" ||
