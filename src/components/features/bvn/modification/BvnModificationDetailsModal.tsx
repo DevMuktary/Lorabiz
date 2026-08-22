@@ -1,225 +1,454 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { 
-  X, CheckCircle2, Clock, AlertTriangle, User, Phone, Calendar, 
-  Download, RotateCcw, Building2, ShieldCheck
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+  X, 
+  CheckCircle, 
+  Clock, 
+  ArrowsClockwise, 
+  XCircle, 
+  Copy, 
+  Check, 
+  DownloadSimple, 
+  WarningCircle, 
+  Info,
+  Bank
+} from "@phosphor-icons/react";
+
+export interface BvnModificationRecord {
+  id: string;
+  trackingId: string;
+  type: "CHANGE_OF_NAME" | "CHANGE_OF_PHONE" | "CHANGE_OF_DOB" | "COMBINED";
+  modificationCategory: string;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
+  enrollingBank: string;
+  nin: string;
+  bvn: string;
+  currentFullName?: string | null;
+  oldFirstName: string;
+  oldLastName: string;
+  oldMiddleName?: string | null;
+  modifyName: boolean;
+  modifyPhone: boolean;
+  modifyDob: boolean;
+  newFirstName?: string | null;
+  newLastName?: string | null;
+  newMiddleName?: string | null;
+  currentPhone?: string | null;
+  newPhone?: string | null;
+  currentDob?: string | null;
+  newDob?: string | null;
+  yearsDifference?: number | null;
+  surchargeApplied: boolean;
+  surchargeAmount?: number | null;
+  adminNotes?: string | null;
+  rejectionReason?: string | null;
+  slipUrl?: string | null;
+  amountPaid: number;
+  refundAmount?: number | null;
+  isRefunded: boolean;
+  transactionRef: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface BvnModificationDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  request: any | null;
+  request: BvnModificationRecord | null;
 }
 
-export default function BvnModificationDetailsModal({
+const MOD_LABELS: Record<string, string> = {
+  CHANGE_OF_NAME: "Change of Name Only",
+  CHANGE_OF_DOB: "Change of Date of Birth Only",
+  CHANGE_OF_PHONE: "Change of Phone Number Only",
+  CHANGE_OF_NAME_PHONE: "Change of Name & Phone Number",
+  CHANGE_OF_DOB_PHONE: "Change of Date of Birth & Phone Number",
+  CHANGE_OF_NAME_DOB: "Change of Name & Date of Birth",
+  CHANGE_OF_ALL: "Change of Name, DOB & Phone Number (All 3)",
+};
+
+export function BvnModificationDetailsModal({
   isOpen,
   onClose,
   request,
 }: BvnModificationDetailsModalProps) {
-  if (!isOpen || !request) return null;
+  const [mounted, setMounted] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const getStatusBadge = (status: string) => {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock background scroll
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !request || !mounted || typeof document === "undefined") return null;
+
+  const handleCopy = (key: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const getStatusBadge = (status: BvnModificationRecord["status"]) => {
     switch (status) {
-      case "COMPLETED":
+      case "PENDING":
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 size={13} /> Completed
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            <Clock weight="bold" className="h-3.5 w-3.5" />
+            Pending Review
           </span>
         );
       case "PROCESSING":
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
-            <Clock size={13} /> Processing on NIBSS
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+            <ArrowsClockwise weight="bold" className="h-3.5 w-3.5 animate-spin" />
+            In Processing
+          </span>
+        );
+      case "COMPLETED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <CheckCircle weight="bold" className="h-3.5 w-3.5" />
+            Completed
           </span>
         );
       case "REJECTED":
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-            <AlertTriangle size={13} /> Rejected &amp; Refunded
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+            <XCircle weight="bold" className="h-3.5 w-3.5" />
+            Rejected
           </span>
         );
       default:
-        return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            <Clock size={13} /> Queued / Pending
-          </span>
-        );
+        return null;
     }
   };
 
-  return (
-    <div 
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/98 dark:bg-background/98 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div 
-        className="relative w-full max-w-xl bg-card text-card-foreground border border-border rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 animate-in zoom-in-95 duration-300 my-auto text-left"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border pb-4">
+  const formattedDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const modLabel = MOD_LABELS[request.modificationCategory] || request.modificationCategory || request.type;
+
+  return createPortal(
+    <div className="fixed inset-0 min-h-screen w-screen z-[99999] overflow-y-auto bg-background/95 dark:bg-background/95 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+      <div className="max-w-2xl w-full mx-auto bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden text-foreground my-auto flex flex-col max-h-[92vh]">
+        
+        {/* Header with Close */}
+        <div className="p-4 sm:p-6 border-b border-border bg-card flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center p-1.5 shrink-0">
-              <Image 
-                src="/nibss.png" 
-                alt="NIBSS Logo" 
-                width={28} 
-                height={28} 
-                className="object-contain" 
-              />
+            <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center p-2 border border-emerald-500/20 shrink-0 shadow-sm">
+              <Bank weight="duotone" className="h-6 w-6" />
             </div>
             <div>
-              <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Tracking Reference</span>
-              <h3 className="text-base font-black text-foreground font-mono">{request.trackingId}</h3>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+                  BVN Modification Details
+                </h2>
+                {getStatusBadge(request.status)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                Tracking ID: {request.trackingId}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {getStatusBadge(request.status)}
-            <button 
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-            >
-              <X size={16} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+            title="Close"
+          >
+            <X weight="bold" className="h-5 w-5" />
+          </button>
         </div>
 
-        {/* Rejection / Refund Notice */}
-        {request.status === "REJECTED" && (
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-700 dark:text-rose-300 space-y-2 text-xs">
-            <div className="flex items-center gap-2 font-bold text-sm text-foreground">
-              <AlertTriangle size={16} className="text-rose-500 shrink-0" />
-              <span>Application Declined</span>
+        {/* Scrollable Modal Body */}
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-4 text-xs sm:text-sm leading-relaxed">
+          
+          {/* Tracking ID & Reference Box */}
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                Tracking ID
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono font-bold text-foreground text-sm">
+                  {request.trackingId}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy("trackingId", request.trackingId)}
+                  className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
+                  title="Copy Tracking ID"
+                >
+                  {copiedKey === "trackingId" ? (
+                    <Check weight="bold" className="h-4 w-4 text-emerald-500" />
+                  ) : (
+                    <Copy weight="bold" className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
-            <p className="leading-relaxed">
-              <strong>Reason:</strong> {request.rejectionReason || "Could not be verified on NIBSS."}
-            </p>
-            {request.isRefunded && (
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 pt-1">
-                <RotateCcw size={12} />
-                <span>₦{Number(request.amountPaid).toLocaleString()} has been refunded to your wallet balance.</span>
+
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                Transaction Reference
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-muted-foreground truncate">
+                  {request.transactionRef}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy("transRef", request.transactionRef)}
+                  className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-all shrink-0"
+                  title="Copy Reference"
+                >
+                  {copiedKey === "transRef" ? (
+                    <Check weight="bold" className="h-4 w-4 text-emerald-500" />
+                  ) : (
+                    <Copy weight="bold" className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Modification Category & Bank Banner */}
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                Service Requested
+              </span>
+              <span className="font-bold text-foreground text-sm block">
+                {modLabel}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                Enrolling Bank
+              </span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm block">
+                {request.enrollingBank}
+              </span>
+            </div>
+          </div>
+
+          {/* Identifiers (BVN & NIN) */}
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                BVN on Record
+              </span>
+              <span className="font-mono font-bold text-foreground text-sm">
+                {request.bvn}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                Linked NIN
+              </span>
+              <span className="font-mono font-bold text-foreground text-sm">
+                {request.nin}
+              </span>
+            </div>
+          </div>
+
+          {/* Detailed Request Information */}
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Info weight="bold" className="h-3.5 w-3.5" />
+              Submitted Modification Details
+            </h3>
+
+            {/* Old / Registered Info */}
+            <div className="p-3 rounded-xl bg-card border border-border">
+              <span className="text-[11px] text-muted-foreground block">Registered Name on BVN</span>
+              <span className="font-bold text-foreground">
+                {[request.oldFirstName, request.oldMiddleName, request.oldLastName].filter(Boolean).join(" ")}
+              </span>
+            </div>
+
+            {/* Name Change Details */}
+            {request.modifyName && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <div className="p-3 rounded-xl bg-card border border-border">
+                  <span className="text-[11px] text-muted-foreground block">New First Name</span>
+                  <span className="font-bold text-foreground">{request.newFirstName || "N/A"}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-card border border-border">
+                  <span className="text-[11px] text-muted-foreground block">New Surname</span>
+                  <span className="font-bold text-foreground">{request.newLastName || "N/A"}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-card border border-border">
+                  <span className="text-[11px] text-muted-foreground block">New Middle Name</span>
+                  <span className="font-bold text-foreground">{request.newMiddleName || "N/A"}</span>
+                </div>
+              </div>
+            )}
+
+            {/* DOB Change Details */}
+            {request.modifyDob && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="p-3 rounded-xl bg-card border border-border">
+                  <span className="text-[11px] text-muted-foreground block">Old Date of Birth</span>
+                  <span className="font-bold text-foreground">{request.currentDob || "N/A"}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-card border border-border">
+                  <span className="text-[11px] text-muted-foreground block">New Date of Birth</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{request.newDob || "N/A"}</span>
+                  {request.surchargeApplied && (
+                    <span className="text-[10px] text-amber-500 font-bold block mt-0.5">
+                      (DOB difference &gt; 5 yrs surcharge included)
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Phone Change Details */}
+            {request.modifyPhone && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {request.currentPhone && (
+                  <div className="p-3 rounded-xl bg-card border border-border">
+                    <span className="text-[11px] text-muted-foreground block">Current Phone Number</span>
+                    <span className="font-mono font-bold text-foreground">{request.currentPhone}</span>
+                  </div>
+                )}
+                <div className="p-3 rounded-xl bg-card border border-border">
+                  <span className="text-[11px] text-muted-foreground block">New Phone to Link</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{request.newPhone || "N/A"}</span>
+                </div>
               </div>
             )}
           </div>
-        )}
 
-        {/* Core Request Information */}
-        <div className="bg-secondary/30 rounded-2xl p-4 border border-border space-y-2.5 text-xs">
-          {request.enrollingBank && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Enrolling Bank:</span>
-              <span className="font-bold text-foreground">{request.enrollingBank}</span>
-            </div>
-          )}
-          {request.nin && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">NIN Number:</span>
-              <span className="font-mono font-bold text-foreground">{request.nin}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">BVN Number:</span>
-            <span className="font-mono font-bold text-foreground">{request.bvn}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Current / Old Name:</span>
-            <span className="font-bold text-foreground">{request.currentFullName}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Amount Paid:</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">₦{Number(request.amountPaid).toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Submission Date:</span>
-            <span className="font-bold text-foreground">
-              {new Date(request.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-        </div>
-
-        {/* Modified Fields Details */}
-        <div className="space-y-3 text-xs">
-          <h4 className="font-black uppercase text-[11px] text-muted-foreground tracking-wider">Modification Details</h4>
-
-          {/* Change of Name */}
-          {request.modifyName && (
-            <div className="p-3.5 rounded-xl border border-border bg-background space-y-1.5">
-              <div className="font-bold text-foreground flex items-center gap-1.5">
-                <User size={14} className="text-emerald-500" />
-                <span>New Legal Name</span>
+          {/* Rejection / Failure Notice */}
+          {request.status === "REJECTED" && (
+            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 space-y-1">
+              <div className="flex items-center gap-2 font-bold text-xs">
+                <WarningCircle weight="fill" className="h-4 w-4 shrink-0 text-rose-500" />
+                <span>Modification Request Declined</span>
               </div>
-              <p className="font-bold text-emerald-600 dark:text-emerald-400 pl-5">
-                {[request.newFirstName, request.newMiddleName, request.newLastName].filter(Boolean).join(" ")}
+              <p className="text-xs leading-relaxed pl-6 text-rose-900/90 dark:text-rose-200/90">
+                {request.rejectionReason || "The submitted details or verification parameters did not match NIBSS compliance requirements."}
+              </p>
+              {request.isRefunded && (
+                <div className="pl-6 pt-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                  ✓ Refund of ₦{Number(request.refundAmount || request.amountPaid).toLocaleString()} has been credited to your wallet.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Admin Notes */}
+          {request.adminNotes && (
+            <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-1">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Processing Notes
+              </span>
+              <p className="text-xs text-foreground font-medium">
+                {request.adminNotes}
               </p>
             </div>
           )}
 
-          {/* Change of Phone */}
-          {request.modifyPhone && (
-            <div className="p-3.5 rounded-xl border border-border bg-background space-y-1.5">
-              <div className="font-bold text-foreground flex items-center gap-1.5">
-                <Phone size={14} className="text-emerald-500" />
-                <span>New Phone Number</span>
+          {/* Payment & Timestamps Summary */}
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div>
+              <span className="text-[11px] text-muted-foreground block">Amount Paid</span>
+              <span className="font-bold text-foreground text-sm">
+                ₦{request.amountPaid.toLocaleString()}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] text-muted-foreground block">Submitted Date</span>
+              <span className="text-xs font-medium text-foreground">
+                {formattedDate(request.createdAt)}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] text-muted-foreground block">Last Updated</span>
+              <span className="text-xs font-medium text-foreground">
+                {formattedDate(request.updatedAt)}
+              </span>
+            </div>
+          </div>
+
+          {/* Completed Slip Download Banner */}
+          {request.status === "COMPLETED" && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <CheckCircle weight="duotone" className="h-6 w-6" />
+                </div>
+                <div>
+                  <span className="font-bold text-foreground text-sm block">
+                    Modification Completed Successfully
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Your official BVN modification record has been updated on NIBSS.
+                  </span>
+                </div>
               </div>
-              <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400 pl-5">
-                {request.newPhone} {request.currentPhone && <span className="text-muted-foreground text-[11px] font-normal font-sans">(Previous: {request.currentPhone})</span>}
-              </p>
+
+              {request.slipUrl ? (
+                <a
+                  href={request.slipUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all shrink-0"
+                >
+                  <DownloadSimple weight="bold" className="h-4 w-4" />
+                  Download BVN Slip
+                </a>
+              ) : (
+                <span className="text-xs text-muted-foreground italic">
+                  Slip document processing...
+                </span>
+              )}
             </div>
           )}
 
-          {/* Change of DOB */}
-          {request.modifyDob && (
-            <div className="p-3.5 rounded-xl border border-border bg-background space-y-1.5">
-              <div className="font-bold text-foreground flex items-center gap-1.5">
-                <Calendar size={14} className="text-emerald-500" />
-                <span>New Date of Birth</span>
-              </div>
-              <div className="pl-5 space-y-1">
-                <p className="font-bold text-emerald-600 dark:text-emerald-400">
-                  {request.newDob} {request.currentDob && <span className="text-muted-foreground text-[11px] font-normal">(Previous: {request.currentDob})</span>}
-                </p>
-                {request.surchargeApplied && (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                    ⚡ 5-Year Threshold Surcharge Applied (+₦{Number(request.surchargeAmount || 5000).toLocaleString()})
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Completed Resolution Slip Download */}
-        {request.status === "COMPLETED" && request.slipUrl && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-3">
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
-              <CheckCircle2 size={16} />
-              <span>Updated NIBSS BVN Slip is ready for download</span>
-            </div>
-            <a
-              href={request.slipUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
-            >
-              <Download size={15} />
-              <span>Download Updated BVN Slip (PDF)</span>
-            </a>
-          </div>
-        )}
+        {/* Footer Actions */}
+        <div className="p-4 sm:p-6 border-t border-border bg-card flex items-center justify-end shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground font-bold text-xs transition-all cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
 
-        {/* Modal Close Action */}
-        <Button
-          type="button"
-          onClick={onClose}
-          className="w-full h-11 bg-secondary text-foreground font-bold text-xs rounded-xl hover:bg-secondary/80 cursor-pointer"
-        >
-          Close Details
-        </Button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

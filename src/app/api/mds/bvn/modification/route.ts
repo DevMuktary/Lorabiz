@@ -3,6 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import {
+  sendBvnModificationProcessingEmail,
+  sendBvnModificationCompletedEmail,
+  sendBvnModificationRejectedEmail,
+} from "@/lib/email";
+import { MODIFICATION_OPTIONS } from "@/app/api/bvn/modification/route";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +106,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "BVN Modification request not found." }, { status: 404 });
     }
 
+    const modLabel = (modification.modificationCategory && MODIFICATION_OPTIONS[modification.modificationCategory]?.label) || modification.type;
+
     // 1. ACTION: MARK AS PROCESSING / IN REVIEW
     if (action === "PROCESSING") {
       const updated = await prisma.bvnModificationRequest.update({
@@ -119,6 +127,16 @@ export async function POST(req: NextRequest) {
           link: "/dashboard/bvn/modification/history",
         },
       });
+
+      // Send Processing Email
+      sendBvnModificationProcessingEmail({
+        to: modification.user.email,
+        firstName: modification.user.firstName || "Valued Client",
+        trackingId: modification.trackingId,
+        modificationType: modLabel,
+        bvn: modification.bvn,
+        adminNotes: adminNotes || modification.adminNotes,
+      }).catch((err) => console.error("❌ Failed to send BVN processing email:", err));
 
       return NextResponse.json({ success: true, message: "Marked as processing.", request: updated });
     }
@@ -143,6 +161,17 @@ export async function POST(req: NextRequest) {
           link: "/dashboard/bvn/modification/history",
         },
       });
+
+      // Send Completed Email
+      sendBvnModificationCompletedEmail({
+        to: modification.user.email,
+        firstName: modification.user.firstName || "Valued Client",
+        trackingId: modification.trackingId,
+        modificationType: modLabel,
+        bvn: modification.bvn,
+        slipUrl: slipUrl || modification.slipUrl,
+        adminNotes: adminNotes || modification.adminNotes,
+      }).catch((err) => console.error("❌ Failed to send BVN completed email:", err));
 
       return NextResponse.json({ success: true, message: "Request approved and completed.", request: updated });
     }
@@ -211,6 +240,18 @@ export async function POST(req: NextRequest) {
 
         return updatedReq;
       });
+
+      // Send Rejection Email
+      sendBvnModificationRejectedEmail({
+        to: modification.user.email,
+        firstName: modification.user.firstName || "Valued Client",
+        trackingId: modification.trackingId,
+        modificationType: modLabel,
+        bvn: modification.bvn,
+        reason: rejectionReason.trim(),
+        refundAmount: Number(refundAmount),
+        isRefunded: true,
+      }).catch((err) => console.error("❌ Failed to send BVN rejected email:", err));
 
       return NextResponse.json({
         success: true,

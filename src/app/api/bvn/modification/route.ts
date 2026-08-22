@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { sendBvnModificationSubmittedEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +101,7 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
     }
 
-    const [user, pricingRows] = await Promise.all([
+    const [user, pricingRows, dobSetting] = await Promise.all([
       prisma.user.findUnique({
         where: { email: session.user.email },
         include: { wallet: true },
@@ -120,6 +121,9 @@ export async function GET() {
             ],
           },
         },
+      }),
+      prisma.globalSetting.findUnique({
+        where: { key: "BVN_MOD_DOB_OVER_5_YEARS_ALLOWED" },
       }),
     ]);
 
@@ -142,10 +146,14 @@ export async function GET() {
       pricingMap[p.serviceKey] = Number(p.price);
     }
 
+    // Default to true if not explicitly set to "false"
+    const dobOver5YearsAllowed = dobSetting ? dobSetting.value !== "false" : true;
+
     return NextResponse.json({
       success: true,
       walletBalance: Number(user.wallet?.balance || 0),
       pricing: pricingMap,
+      dobOver5YearsAllowed,
       enrollingBanks: ENROLLING_BANKS,
       modificationOptions: MODIFICATION_OPTIONS,
     });
@@ -251,6 +259,22 @@ export async function POST(req: NextRequest) {
       const dobCalc = calculateYearsDifference(oldDob, newDob);
       yearsDifference = dobCalc.diffYears;
       surchargeApplied = dobCalc.isOverFiveYears;
+
+      // Check admin policy for DOB difference > 5 years
+      if (surchargeApplied) {
+        const dobSetting = await prisma.globalSetting.findUnique({
+          where: { key: "BVN_MOD_DOB_OVER_5_YEARS_ALLOWED" },
+        });
+        if (dobSetting && dobSetting.value === "false") {
+          return NextResponse.json(
+            {
+              success: false,
+              message: "Date of birth differences greater than 5 years are currently not accepted on the platform.",
+            },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     if (modConfig.hasPhone) {
@@ -414,6 +438,17 @@ export async function POST(req: NextRequest) {
 
       return { updatedWallet, transaction, modificationRequest };
     });
+
+    // Send transactional email in background
+    sendBvnModificationSubmittedEmail({
+      to: user.email,
+      firstName: user.firstName || "Valued Client",
+      trackingId,
+      modificationType: modConfig.label,
+      enrollingBank: validBank.name,
+      bvn: cleanBvn,
+      amountPaid: totalPrice,
+    }).catch(err => console.error("❌ Failed to send BVN modification submitted email:", err));
 
     return NextResponse.json({
       success: true,

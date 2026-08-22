@@ -14,6 +14,7 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      include: { wallet: true },
     });
 
     if (!user) {
@@ -25,9 +26,19 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
+    const stats = {
+      total: requests.length,
+      pending: requests.filter((r) => r.status === "PENDING").length,
+      processing: requests.filter((r) => r.status === "PROCESSING").length,
+      completed: requests.filter((r) => r.status === "COMPLETED").length,
+      rejected: requests.filter((r) => r.status === "REJECTED").length,
+    };
+
     return NextResponse.json({
       success: true,
       requests,
+      stats,
+      walletBalance: Number(user.wallet?.balance || 0),
     });
   } catch (error: any) {
     console.error("❌ BVN Modification History Error:", error);

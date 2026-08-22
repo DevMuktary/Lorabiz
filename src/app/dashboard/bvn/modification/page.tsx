@@ -8,8 +8,7 @@ import {
   ArrowRight,
   ShieldCheck, 
   ListDashes, 
-  Spinner,
-  Lock
+  Spinner
 } from "@phosphor-icons/react";
 import BvnModificationForm from "@/components/features/bvn/modification/BvnModificationForm";
 
@@ -25,6 +24,7 @@ export default function BvnModificationPage() {
     BVN_MOD_DOB_SURCHARGE: 5000,
   });
   const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [dobOver5YearsAllowed, setDobOver5YearsAllowed] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const fetchInitialData = async () => {
@@ -36,6 +36,7 @@ export default function BvnModificationPage() {
         if (data.success) {
           if (data.pricing) setPricing(data.pricing);
           if (data.walletBalance !== undefined) setWalletBalance(Number(data.walletBalance) || 0);
+          if (data.dobOver5YearsAllowed !== undefined) setDobOver5YearsAllowed(Boolean(data.dobOver5YearsAllowed));
         }
       }
     } catch (err) {
@@ -59,7 +60,7 @@ export default function BvnModificationPage() {
         <ArrowLeft weight="bold" className="h-4 w-4" /> Back to BVN Services
       </Link>
 
-      {/* Page Header (Matching Standard NIMC/NIBSS Service Hubs) */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="flex items-center gap-3.5">
           <div className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
@@ -105,6 +106,7 @@ export default function BvnModificationPage() {
         <BvnModificationForm 
           pricing={pricing} 
           walletBalance={walletBalance} 
+          dobOver5YearsAllowed={dobOver5YearsAllowed}
           onSuccess={() => fetchInitialData()} 
         />
       )}
