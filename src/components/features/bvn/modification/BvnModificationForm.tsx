@@ -137,7 +137,16 @@ export default function BvnModificationForm({
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [statutoryConsent, setStatutoryConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Side Slide-In Error Toast State
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((prev) => (prev === msg ? null : prev));
+    }, 4500);
+  };
 
   // Active bank and mod config
   const activeBank = useMemo(() => {
@@ -193,49 +202,48 @@ export default function BvnModificationForm({
   // Validate inputs before showing review modal
   const handleProceedToReview = (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(null);
 
     if (!selectedBank) {
-      setErrorMessage("Please select your enrolling bank.");
+      showToast("Please select your enrolling bank.");
       return;
     }
 
     if (!selectedModType || !activeModConfig) {
-      setErrorMessage("Please select a modification service.");
+      showToast("Please select a modification service.");
       return;
     }
 
     const cleanNin = nin.trim().replace(/\D/g, "");
     if (!cleanNin || cleanNin.length !== 11) {
-      setErrorMessage("Please enter a valid 11-digit NIN Number.");
+      showToast("NIN must be exactly 11 digits.");
       return;
     }
 
     const cleanBvn = bvn.trim().replace(/\D/g, "");
     if (!cleanBvn || cleanBvn.length !== 11) {
-      setErrorMessage("Please enter a valid 11-digit BVN Number.");
+      showToast("BVN must be exactly 11 digits.");
       return;
     }
 
     if (!oldFirstName.trim() || !oldLastName.trim()) {
-      setErrorMessage("Please enter your Old First Name and Surname as registered on your BVN.");
+      showToast("Old First Name and Surname on BVN are required.");
       return;
     }
 
     if (activeModConfig.hasName) {
       if (!newFirstName.trim() || !newLastName.trim()) {
-        setErrorMessage("Please enter your New First Name and New Surname.");
+        showToast("New First Name and New Surname are required.");
         return;
       }
     }
 
     if (activeModConfig.hasDob) {
       if (!oldDob || !newDob) {
-        setErrorMessage("Please select both Old Date of Birth and New Date of Birth.");
+        showToast("Both Old Date of Birth and New Date of Birth are required.");
         return;
       }
       if (dobCalculation.isOverFiveYears && !dobOver5YearsAllowed) {
-        setErrorMessage("Date of birth differences greater than 5 years are currently not accepted by administrative policy.");
+        showToast("DOB difference over 5 years is currently not accepted by policy.");
         return;
       }
     }
@@ -243,11 +251,11 @@ export default function BvnModificationForm({
     if (activeModConfig.hasPhone) {
       const cleanNewPhone = newPhone.trim().replace(/\s+/g, "");
       if (!cleanNewPhone || !/^0\d{10}$/.test(cleanNewPhone)) {
-        setErrorMessage("Please enter a valid 11-digit New Phone Number starting with 0.");
+        showToast("New Phone Number must be 11 digits starting with 0.");
         return;
       }
       if (!oldPhone.trim()) {
-        setErrorMessage("Please enter your Old Phone Number on BVN.");
+        showToast("Old Phone Number on BVN is required.");
         return;
       }
     }
@@ -258,10 +266,9 @@ export default function BvnModificationForm({
   // Final Submit
   const handleFinalSubmit = async () => {
     if (!selectedBank || !selectedModType || !activeModConfig) return;
-    setErrorMessage(null);
 
     if (!statutoryConsent) {
-      setErrorMessage("Please confirm your statutory authorization and consent.");
+      showToast("Please check the authorization and consent confirmation.");
       return;
     }
 
@@ -297,32 +304,32 @@ export default function BvnModificationForm({
         setShowReviewModal(false);
         onSuccess(data);
       } else {
-        setErrorMessage(data.message || "Failed to submit BVN modification request.");
+        showToast(data.message || "Failed to submit BVN modification request.");
       }
     } catch (err) {
       console.error("Submission error:", err);
-      setErrorMessage("A network error occurred. Please check your connection and try again.");
+      showToast("Network connection error. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-sans">
+    <div className="space-y-6 sm:space-y-8 font-sans relative">
       
-      {/* Global Error Banner */}
-      {errorMessage && !showReviewModal && (
-        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-between gap-2 animate-in slide-in-from-top-1">
-          <div className="flex items-center gap-2">
-            <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
-            <span>{errorMessage}</span>
+      {/* Floating Side Slide-In Error Notification Toast */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-[999999] max-w-sm w-full bg-rose-600 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-right-10 duration-300 border border-rose-500/50">
+          <div className="flex items-center gap-2.5">
+            <WarningCircle weight="fill" className="h-5 w-5 shrink-0 text-white" />
+            <p className="text-xs font-bold leading-tight">{toastMessage}</p>
           </div>
           <button
             type="button"
-            onClick={() => setErrorMessage(null)}
-            className="text-xs hover:underline cursor-pointer"
+            onClick={() => setToastMessage(null)}
+            className="p-1 hover:bg-rose-700 rounded-lg text-white transition-colors cursor-pointer shrink-0"
           >
-            Dismiss
+            <X weight="bold" className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -346,7 +353,7 @@ export default function BvnModificationForm({
                 type="button"
                 onClick={() => {
                   setSelectedBank(bank.id);
-                  setErrorMessage(null);
+                  setToastMessage(null);
                 }}
                 className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all flex items-center gap-3 cursor-pointer group shadow-sm hover:shadow-md"
               >
@@ -381,7 +388,7 @@ export default function BvnModificationForm({
             type="button"
             onClick={() => {
               setSelectedBank(null);
-              setErrorMessage(null);
+              setToastMessage(null);
             }}
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs shrink-0 cursor-pointer shadow-sm self-start sm:self-auto"
           >
@@ -413,7 +420,7 @@ export default function BvnModificationForm({
                     type="button"
                     onClick={() => {
                       setSelectedModType(opt.id);
-                      setErrorMessage(null);
+                      setToastMessage(null);
                     }}
                     className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md space-y-3"
                   >
@@ -466,7 +473,7 @@ export default function BvnModificationForm({
               type="button"
               onClick={() => {
                 setSelectedModType(null);
-                setErrorMessage(null);
+                setToastMessage(null);
               }}
               className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs shrink-0 cursor-pointer shadow-sm self-start sm:self-auto"
             >
@@ -853,13 +860,6 @@ export default function BvnModificationForm({
               ) : (
                 /* Branch 2: Sufficient Balance - Data Summary & Legal Certification */
                 <div className="space-y-4">
-                  {errorMessage && (
-                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
-                      <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
-                      <span>{errorMessage}</span>
-                    </div>
-                  )}
-
                   {/* Data Summary Card */}
                   <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-2.5 text-xs sm:text-sm">
                     <div className="flex justify-between border-b border-border/60 pb-1.5">

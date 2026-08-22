@@ -12,8 +12,9 @@ import {
   ArrowsClockwise, 
   CheckCircle, 
   XCircle, 
-  Bank,
-  Funnel
+  Funnel,
+  CaretLeft,
+  CaretRight
 } from "@phosphor-icons/react";
 import { BvnModificationRecord, BvnModificationDetailsModal } from "./BvnModificationDetailsModal";
 import { BvnModificationStatusFilter } from "./BvnModificationHistoryStats";
@@ -36,6 +37,8 @@ const MOD_LABELS: Record<string, string> = {
   CHANGE_OF_ALL: "All Details (3-in-1)",
 };
 
+const ITEMS_PER_PAGE = 10;
+
 export function BvnModificationHistoryTable({
   requests,
   isLoading,
@@ -49,9 +52,11 @@ export function BvnModificationHistoryTable({
   const [selectedRecord, setSelectedRecord] = useState<BvnModificationRecord | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const statusFilter = parentActiveStatus !== undefined ? parentActiveStatus : internalStatus;
   const setStatusFilter = (status: BvnModificationStatusFilter) => {
+    setCurrentPage(1);
     if (onStatusChange) {
       onStatusChange(status);
     } else {
@@ -83,6 +88,12 @@ export function BvnModificationHistoryTable({
       return matchesSearch && matchesStatus && matchesType;
     });
   }, [requests, searchTerm, statusFilter, typeFilter]);
+
+  const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE) || 1;
+  const paginatedRequests = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredRequests.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredRequests, currentPage]);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -171,12 +182,18 @@ export function BvnModificationHistoryTable({
             type="text"
             placeholder="Search by Tracking ID, BVN, NIN, Name, Bank..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-secondary/50 border border-border text-foreground text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background transition-all"
           />
           {searchTerm && (
             <button
-              onClick={() => setSearchTerm("")}
+              onClick={() => {
+                setSearchTerm("");
+                setCurrentPage(1);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground hover:text-foreground"
             >
               Clear
@@ -189,7 +206,10 @@ export function BvnModificationHistoryTable({
           <div className="relative">
             <select
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(e) => {
+                setTypeFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="px-3.5 py-2.5 rounded-xl bg-secondary/50 border border-border text-foreground text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition-all"
             >
               <option value="ALL">All Modification Types</option>
@@ -224,7 +244,10 @@ export function BvnModificationHistoryTable({
           )}
           {typeFilter !== "ALL" && (
             <button
-              onClick={() => setTypeFilter("ALL")}
+              onClick={() => {
+                setTypeFilter("ALL");
+                setCurrentPage(1);
+              }}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold"
             >
               Type: {MOD_LABELS[typeFilter] || typeFilter}
@@ -233,7 +256,10 @@ export function BvnModificationHistoryTable({
           )}
           {searchTerm && (
             <button
-              onClick={() => setSearchTerm("")}
+              onClick={() => {
+                setSearchTerm("");
+                setCurrentPage(1);
+              }}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-foreground border border-border font-medium"
             >
               Search: "{searchTerm}"
@@ -245,6 +271,7 @@ export function BvnModificationHistoryTable({
               setStatusFilter("ALL");
               setTypeFilter("ALL");
               setSearchTerm("");
+              setCurrentPage(1);
             }}
             className="text-xs text-muted-foreground hover:text-foreground underline font-medium ml-1"
           >
@@ -300,7 +327,7 @@ export function BvnModificationHistoryTable({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filteredRequests.map((req) => {
+                  {paginatedRequests.map((req) => {
                     const label = MOD_LABELS[req.modificationCategory] || req.modificationCategory || req.type;
 
                     return (
@@ -398,7 +425,7 @@ export function BvnModificationHistoryTable({
 
             {/* Mobile Card List View */}
             <div className="md:hidden divide-y divide-border">
-              {filteredRequests.map((req) => {
+              {paginatedRequests.map((req) => {
                 const label = MOD_LABELS[req.modificationCategory] || req.modificationCategory || req.type;
 
                 return (
@@ -482,6 +509,39 @@ export function BvnModificationHistoryTable({
                 );
               })}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="p-3 sm:p-4 border-t border-border flex items-center justify-between gap-2 text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Showing <strong className="text-foreground">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</strong> to <strong className="text-foreground">{Math.min(currentPage * ITEMS_PER_PAGE, filteredRequests.length)}</strong> of <strong className="text-foreground">{filteredRequests.length}</strong> requests
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1.5 rounded-lg border border-border bg-secondary hover:bg-secondary/80 disabled:opacity-40 disabled:cursor-not-allowed text-foreground transition-all"
+                  >
+                    <CaretLeft weight="bold" className="h-3.5 w-3.5" />
+                  </button>
+
+                  <span className="font-bold text-foreground px-2">
+                    {currentPage} / {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1.5 rounded-lg border border-border bg-secondary hover:bg-secondary/80 disabled:opacity-40 disabled:cursor-not-allowed text-foreground transition-all"
+                  >
+                    <CaretRight weight="bold" className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
 
