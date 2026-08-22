@@ -281,7 +281,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
     <>
       {/* Friendly Dancing Baby Doll Overlay */}
       {gatewayLoading && (
-        <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-300 select-none p-6 text-center">
+        <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-background/95 dark:bg-background/95 backdrop-blur-md text-foreground animate-in fade-in duration-300 select-none p-6 text-center">
           <div className="relative flex items-center justify-center mb-8 w-40 h-40">
             <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/20 animate-ping opacity-75" />
             <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/50 animate-[spin_8s_linear_infinite]" />
@@ -294,21 +294,21 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
               <Sparkle size={24} weight="fill" />
             </div>
 
-            <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-tr from-[#ff3f7a] via-[#e02b62] to-amber-400 flex items-center justify-center shadow-2xl shadow-[#ff3f7a]/40 border border-white/20 animate-bounce">
+            <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-tr from-[#ff3f7a] via-[#e02b62] to-amber-400 flex items-center justify-center shadow-2xl shadow-[#ff3f7a]/40 border border-border/40 animate-bounce">
               <span className="text-4xl drop-shadow-md select-none transform hover:scale-110 transition-transform animate-[pulse_1s_ease-in-out_infinite]">
                 🧸
               </span>
             </div>
           </div>
 
-          <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
+          <h3 className="text-xl sm:text-2xl font-black tracking-tight text-foreground mb-2">
             Connecting to KoraPay...
           </h3>
-          <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
+          <p className="text-xs sm:text-sm text-muted-foreground font-medium tracking-wide max-w-xs leading-relaxed animate-pulse">
             Please wait a moment while we prepare your checkout page.
           </p>
 
-          <div className="w-56 h-1.5 bg-slate-800 rounded-full mt-8 overflow-hidden p-0.5 border border-white/10 shadow-inner">
+          <div className="w-56 h-1.5 bg-secondary rounded-full mt-8 overflow-hidden p-0.5 border border-border shadow-inner">
             <div className="h-full bg-gradient-to-r from-[#ff3f7a] via-amber-400 to-[#ff3f7a] rounded-full w-2/3 animate-[pulse_1s_ease-in-out_infinite]" />
           </div>
 
@@ -318,7 +318,7 @@ export default function PaymentModal({ registrationId, proposedName, onClose }: 
               setGatewayLoading(false);
               setProcessingState("idle");
             }}
-            className="mt-8 text-xs text-slate-400 hover:text-white underline underline-offset-4 transition-colors cursor-pointer"
+            className="mt-8 text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors cursor-pointer"
           >
             Cancel / Go Back
           </button>
