@@ -545,8 +545,13 @@ export default function MobileDataPage() {
                   <span className="text-xs text-muted-foreground">Loading active bundles...</span>
                 </div>
               ) : displayedPlans.length === 0 ? (
-                <div className="p-6 text-center border border-border border-dashed rounded-2xl bg-secondary/20">
-                  <p className="text-xs text-muted-foreground">No active plans found for this filter. Try selecting &quot;All Plans&quot;.</p>
+                <div className="p-8 text-center border border-border border-dashed rounded-2xl bg-secondary/20 space-y-1">
+                  <p className="text-sm font-bold text-foreground">Service Currently Unavailable</p>
+                  <p className="text-xs text-muted-foreground">
+                    {availablePlansForNetwork.length === 0
+                      ? `${selectedNetwork} data bundles are currently undergoing scheduled maintenance or unavailable.`
+                      : "No active plans found for this filter. Try selecting 'All Plans'."}
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
