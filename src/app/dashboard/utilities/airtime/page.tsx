@@ -68,7 +68,7 @@ export default function AirtimeDashboardPage() {
               const desc = (tx.description || "").toLowerCase();
               const isData = desc.includes("mobile data") || desc.includes("data bundle") || tx.serviceCategory === "MOBILE_DATA";
               const isAirtime = tx.serviceCategory === "AIRTIME" || desc.includes("airtime");
-              return isAirtime && !isData;
+              return isAirtime && !isData && tx.type === "DEBIT" && tx.status === "SUCCESS";
             })
             .map((tx: any) => {
               const desc = tx.description || "";

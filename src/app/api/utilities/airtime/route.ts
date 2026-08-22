@@ -129,23 +129,17 @@ export async function POST(req: Request) {
           data: externalData.data || {}
         });
       } else {
-        // Upstream failed -> Reverse debit immediately
+        // Upstream failed -> Refund wallet and mark the original transaction as FAILED
         await prisma.$transaction(async (tx) => {
-          const w = await tx.wallet.update({
+          await tx.wallet.update({
             where: { id: user.wallet!.id },
             data: { balance: { increment: numAmount } }
           });
-          await tx.transaction.create({
+          await tx.transaction.update({
+            where: { id: debitResult.txRecord.id },
             data: {
-              walletId: user.wallet!.id,
-              amount: numAmount,
-              balanceBefore: Number(w.balance) - numAmount,
-              balanceAfter: Number(w.balance),
-              type: "REFUND",
-              status: "SUCCESS",
-              reference: `REF_${reference}`,
-              description: `Airtime Recharge Reversal - ${cleanPhone} (${network.toUpperCase()})`,
-              serviceCategory: "AIRTIME"
+              status: "FAILED",
+              description: `Airtime Recharge Failed (Refunded) - ${cleanPhone} (${network.toUpperCase()})`
             }
           });
         });
@@ -164,23 +158,17 @@ export async function POST(req: Request) {
       }
     } catch (providerErr) {
       console.error("Provider Network Failure, reversing debit:", providerErr);
-      // Reverse debit on network blip to protect user funds
+      // Reverse debit on network blip & mark transaction as FAILED
       await prisma.$transaction(async (tx) => {
-        const w = await tx.wallet.update({
+        await tx.wallet.update({
           where: { id: user.wallet!.id },
           data: { balance: { increment: numAmount } }
         });
-        await tx.transaction.create({
+        await tx.transaction.update({
+          where: { id: debitResult.txRecord.id },
           data: {
-            walletId: user.wallet!.id,
-            amount: numAmount,
-            balanceBefore: Number(w.balance) - numAmount,
-            balanceAfter: Number(w.balance),
-            type: "REFUND",
-            status: "SUCCESS",
-            reference: `REF_${reference}`,
-            description: `Airtime Recharge Reversal (Network timeout) - ${cleanPhone}`,
-            serviceCategory: "AIRTIME"
+            status: "FAILED",
+            description: `Airtime Recharge Failed (Timeout Refunded) - ${cleanPhone}`
           }
         });
       });

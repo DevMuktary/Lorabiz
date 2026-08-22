@@ -177,23 +177,17 @@ export async function POST(req: Request) {
           data: externalData.data || {},
         });
       } else {
-        // Upstream failed -> Reverse debit immediately
+        // Upstream failed -> Refund wallet and mark the original transaction as FAILED
         await prisma.$transaction(async (tx) => {
-          const w = await tx.wallet.update({
+          await tx.wallet.update({
             where: { id: user.wallet!.id },
             data: { balance: { increment: planPrice } }
           });
-          await tx.transaction.create({
+          await tx.transaction.update({
+            where: { id: debitResult.txRecord.id },
             data: {
-              walletId: user.wallet!.id,
-              amount: planPrice,
-              balanceBefore: Number(w.balance) - planPrice,
-              balanceAfter: Number(w.balance),
-              type: "REFUND",
-              status: "SUCCESS",
-              reference: `REF_${reference}`,
-              description: `Mobile Data Reversal - ${plan.name} (${cleanPhone})`,
-              serviceCategory: "MOBILE_DATA"
+              status: "FAILED",
+              description: `Mobile Data Failed (Refunded) - ${plan.name} (${cleanPhone})`
             }
           });
         });
@@ -212,23 +206,17 @@ export async function POST(req: Request) {
       }
     } catch (providerErr) {
       console.error("Provider Network Failure, reversing debit:", providerErr);
-      // Reverse debit on network blip
+      // Reverse debit on network blip & mark transaction as FAILED
       await prisma.$transaction(async (tx) => {
-        const w = await tx.wallet.update({
+        await tx.wallet.update({
           where: { id: user.wallet!.id },
           data: { balance: { increment: planPrice } }
         });
-        await tx.transaction.create({
+        await tx.transaction.update({
+          where: { id: debitResult.txRecord.id },
           data: {
-            walletId: user.wallet!.id,
-            amount: planPrice,
-            balanceBefore: Number(w.balance) - planPrice,
-            balanceAfter: Number(w.balance),
-            type: "REFUND",
-            status: "SUCCESS",
-            reference: `REF_${reference}`,
-            description: `Mobile Data Reversal (Network timeout) - ${plan.name} (${cleanPhone})`,
-            serviceCategory: "MOBILE_DATA"
+            status: "FAILED",
+            description: `Mobile Data Failed (Timeout Refunded) - ${plan.name} (${cleanPhone})`
           }
         });
       });
