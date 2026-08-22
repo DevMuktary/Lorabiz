@@ -142,24 +142,30 @@ export async function POST(req: Request) {
       console.error("CRITICAL: CHEAPDATA_API_KEY / CHEAPDATASALES_API_KEY is missing in environment.");
     }
 
+    const payload = {
+      product_code: plan.productCode,
+      phone_number: cleanPhone,
+      action: "vend",
+      user_reference: reference,
+      bypass_network: "yes", // Skipping strict network check for speed & ported numbers
+    };
+
+    console.log("[CheapData Data Request Payload]:", JSON.stringify(payload));
+
     try {
       const externalRes = await fetch("https://cheapdatasales.com/autobiz_vending_index.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
           "Bearer": apiKey,
         },
-        body: JSON.stringify({
-          product_code: plan.productCode,
-          phone_number: cleanPhone,
-          action: "vend",
-          user_reference: reference,
-          bypass_network: "yes", // Skipping strict network check for speed & ported numbers
-        }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(45000),
       });
 
       const externalData = await externalRes.json().catch(() => ({}));
+      console.log("[CheapData Data Response Data]:", JSON.stringify(externalData));
       
       // Check for success (Matches exact working provider logic)
       const isSuccess = 
@@ -208,7 +214,7 @@ export async function POST(req: Request) {
           });
         });
 
-        const rawMsg = externalData.server_message || externalData.message || externalData.error || externalData.msg;
+        const rawMsg = externalData.server_message || externalData.data?.true_response || externalData.message || externalData.error || externalData.msg;
         const serverMessage = rawMsg 
           ? `Provider error: ${rawMsg}. Your wallet has been refunded.`
           : "Transaction Failed at provider. Your wallet has been refunded.";
