@@ -176,44 +176,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: "Request approved and completed.", request: updated });
     }
 
-    // 3. ACTION: REJECT WITH AUTOMATIC WALLET REFUND
+    // 3. ACTION: REJECT WITH OPTIONAL ADMIN-CONTROLLED WALLET REFUND
     if (action === "REJECT") {
       if (!rejectionReason || rejectionReason.trim().length < 3) {
         return NextResponse.json({ success: false, message: "A clear rejection reason is required." }, { status: 400 });
       }
 
-      if (modification.isRefunded) {
+      const shouldRefund = body.issueRefund === true || body.issueRefund === "true";
+      const customRefundAmount = shouldRefund ? Math.max(0, Number(body.refundAmount) || Number(modification.amountPaid)) : 0;
+
+      if (shouldRefund && modification.isRefunded) {
         return NextResponse.json({ success: false, message: "This request has already been refunded." }, { status: 400 });
       }
 
-      const refundAmount = modification.amountPaid;
       const refundRef = `REFUND-BVN-${modification.trackingId}-${crypto.randomBytes(2).toString("hex")}`;
 
       const result = await prisma.$transaction(async (tx) => {
-        // Refund user wallet
-        const updatedWallet = await tx.wallet.update({
-          where: { userId: modification.userId },
-          data: {
-            balance: {
-              increment: refundAmount,
-            },
-          },
-        });
+        let updatedWallet = null;
 
-        // Record refund ledger
-        await tx.transaction.create({
-          data: {
-            walletId: modification.user.wallet!.id,
-            amount: refundAmount,
-            balanceBefore: Number(modification.user.wallet!.balance),
-            balanceAfter: Number(updatedWallet.balance),
-            type: "REFUND",
-            status: "SUCCESS",
-            reference: refundRef,
-            serviceCategory: "BVN",
-            description: `Refund: BVN Modification Rejected (${modification.trackingId}) - ${rejectionReason}`,
-          },
-        });
+        if (shouldRefund && customRefundAmount > 0) {
+          // Refund user wallet
+          updatedWallet = await tx.wallet.update({
+            where: { userId: modification.userId },
+            data: {
+              balance: {
+                increment: customRefundAmount,
+              },
+            },
+          });
+
+          // Record refund ledger
+          await tx.transaction.create({
+            data: {
+              walletId: modification.user.wallet!.id,
+              amount: customRefundAmount,
+              balanceBefore: Number(modification.user.wallet!.balance),
+              balanceAfter: Number(updatedWallet.balance),
+              type: "REFUND",
+              status: "SUCCESS",
+              reference: refundRef,
+              serviceCategory: "BVN",
+              description: `Refund: BVN Modification Rejected (${modification.trackingId}) - ${rejectionReason}`,
+            },
+          });
+        }
 
         // Update request status
         const updatedReq = await tx.bvnModificationRequest.update({
@@ -222,8 +228,8 @@ export async function POST(req: NextRequest) {
             status: "REJECTED",
             rejectionReason: rejectionReason.trim(),
             adminNotes: adminNotes || modification.adminNotes,
-            isRefunded: true,
-            refundAmount: refundAmount,
+            isRefunded: shouldRefund && customRefundAmount > 0,
+            refundAmount: shouldRefund ? customRefundAmount : 0,
           },
         });
 
@@ -231,8 +237,10 @@ export async function POST(req: NextRequest) {
         await tx.inAppNotification.create({
           data: {
             userId: modification.userId,
-            title: "BVN Modification Rejected & Refunded",
-            message: `Your BVN modification request (${modification.trackingId}) could not be completed: "${rejectionReason}". ₦${Number(refundAmount).toLocaleString()} has been refunded to your wallet.`,
+            title: shouldRefund ? "BVN Modification Rejected & Refunded" : "BVN Modification Rejected",
+            message: shouldRefund
+              ? `Your BVN modification request (${modification.trackingId}) could not be completed: "${rejectionReason}". ₦${Number(customRefundAmount).toLocaleString()} has been refunded to your wallet.`
+              : `Your BVN modification request (${modification.trackingId}) was rejected: "${rejectionReason}".`,
             type: "warning",
             link: "/dashboard/bvn/modification/history",
           },
@@ -249,13 +257,17 @@ export async function POST(req: NextRequest) {
         modificationType: modLabel,
         bvn: modification.bvn,
         reason: rejectionReason.trim(),
-        refundAmount: Number(refundAmount),
-        isRefunded: true,
+        refundAmount: shouldRefund ? Number(customRefundAmount) : 0,
+        isRefunded: shouldRefund && customRefundAmount > 0,
       }).catch((err) => console.error("❌ Failed to send BVN rejected email:", err));
+
+      const successMsg = shouldRefund && customRefundAmount > 0
+        ? `Request rejected and ₦${Number(customRefundAmount).toLocaleString()} refunded to user wallet.`
+        : "Request rejected successfully (No refund issued).";
 
       return NextResponse.json({
         success: true,
-        message: `Request rejected and ₦${Number(refundAmount).toLocaleString()} refunded to user wallet.`,
+        message: successMsg,
         request: result,
       });
     }

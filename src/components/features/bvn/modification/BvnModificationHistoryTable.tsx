@@ -311,9 +311,9 @@ export function BvnModificationHistoryTable({
           </div>
         ) : (
           <>
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs sm:text-sm">
+            {/* Universal Table View (Mobile & Desktop) */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
                 <thead>
                   <tr className="border-b border-border bg-secondary/30 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     <th className="py-3.5 px-4 sm:px-6">Tracking ID</th>
@@ -421,93 +421,6 @@ export function BvnModificationHistoryTable({
                   })}
                 </tbody>
               </table>
-            </div>
-
-            {/* Mobile Card List View */}
-            <div className="md:hidden divide-y divide-border">
-              {paginatedRequests.map((req) => {
-                const label = MOD_LABELS[req.modificationCategory] || req.modificationCategory || req.type;
-
-                return (
-                  <div key={req.id} className="p-4 space-y-3">
-                    
-                    {/* Top Row: Type & Status */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-bold text-foreground text-xs block">
-                          {label}
-                        </span>
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                          {req.enrollingBank}
-                        </span>
-                      </div>
-                      {getStatusBadge(req.status)}
-                    </div>
-
-                    {/* Middle Row: Tracking ID & BVN */}
-                    <div className="bg-secondary/30 p-3 rounded-xl border border-border space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Tracking ID:</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-foreground">{req.trackingId}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(req.id, req.trackingId)}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            {copiedId === req.id ? (
-                              <Check weight="bold" className="h-3.5 w-3.5 text-emerald-500" />
-                            ) : (
-                              <Copy weight="bold" className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">BVN:</span>
-                        <span className="font-mono font-semibold text-foreground">{req.bvn}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Date:</span>
-                        <span className="text-muted-foreground">{formattedDate(req.createdAt)}</span>
-                      </div>
-                    </div>
-
-                    {/* Bottom Row: Fee & Actions */}
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="font-black text-foreground text-sm">
-                        ₦{req.amountPaid.toLocaleString()}
-                      </span>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openDetails(req)}
-                          className="px-3 py-1.5 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground font-bold text-xs transition-all flex items-center gap-1"
-                        >
-                          <Eye weight="bold" className="h-3.5 w-3.5" />
-                          <span>Details</span>
-                        </button>
-
-                        {req.status === "COMPLETED" && req.slipUrl && (
-                          <a
-                            href={req.slipUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center gap-1"
-                          >
-                            <DownloadSimple weight="bold" className="h-3.5 w-3.5" />
-                            <span>Slip</span>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                  </div>
-                );
-              })}
             </div>
 
             {/* Pagination Controls */}

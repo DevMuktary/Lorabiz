@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   ShieldCheck, Search, RefreshCw, CheckCircle2, Clock, AlertTriangle, 
   Eye, FileText, Download, User, Phone, Calendar, ArrowRight, RotateCcw, 
-  UploadCloud, X, Check, Filter
+  UploadCloud, X, Check, Filter, Upload, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +22,10 @@ export default function AdminBvnModificationPage() {
   const [adminNotes, setAdminNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [slipUrl, setSlipUrl] = useState("");
+  const [isUploadingSlip, setIsUploadingSlip] = useState(false);
+  const [issueRefund, setIssueRefund] = useState(true);
+  const [refundAmount, setRefundAmount] = useState<number | string>("");
+
   const [isExecutingAction, setIsExecutingAction] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
   const [actionErrorMsg, setActionErrorMsg] = useState<string | null>(null);
@@ -51,6 +55,49 @@ export default function AdminBvnModificationPage() {
     fetchRequests();
   }, [statusFilter]);
 
+  // Handle direct file upload to Cloudinary/API
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingSlip(true);
+    setActionErrorMsg(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to upload file");
+      }
+
+      setSlipUrl(data.url);
+    } catch (err: any) {
+      console.error("Slip upload error:", err);
+      setActionErrorMsg(err.message || "Failed to upload modification slip.");
+    } finally {
+      setIsUploadingSlip(false);
+    }
+  };
+
+  const handleOpenActionModal = (r: any) => {
+    setSelectedRequest(r);
+    setActionType(null);
+    setAdminNotes(r.adminNotes || "");
+    setRejectionReason(r.rejectionReason || "");
+    setSlipUrl(r.slipUrl || "");
+    setIssueRefund(true);
+    setRefundAmount(r.amountPaid || 0);
+    setActionErrorMsg(null);
+    setActionSuccessMsg(null);
+  };
+
   const handleExecuteAdminAction = async () => {
     if (!selectedRequest || !actionType) return;
 
@@ -64,6 +111,8 @@ export default function AdminBvnModificationPage() {
         adminNotes: adminNotes.trim(),
         rejectionReason: rejectionReason.trim(),
         slipUrl: slipUrl.trim(),
+        issueRefund: actionType === "REJECT" ? issueRefund : false,
+        refundAmount: actionType === "REJECT" && issueRefund ? Number(refundAmount) : 0,
       };
 
       const res = await fetch("/api/mds/bvn/modification", {
@@ -111,7 +160,7 @@ export default function AdminBvnModificationPage() {
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">BVN Modifications Queue</h1>
           <p className="text-zinc-400 text-xs sm:text-sm">
-            Review user-submitted legal modifications, verify affidavits, approve with resolution slips, or decline with automatic refund.
+            Review user-submitted legal modifications, verify affidavits, approve with resolution slips, or decline with custom refund options.
           </p>
         </div>
 
@@ -140,7 +189,7 @@ export default function AdminBvnModificationPage() {
           <p className="text-2xl font-black text-emerald-400 mt-1">{completedCount}</p>
         </div>
         <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4">
-          <span className="text-[10px] font-mono uppercase text-rose-400 font-bold">Rejected &amp; Refunded</span>
+          <span className="text-[10px] font-mono uppercase text-rose-400 font-bold">Rejected Applications</span>
           <p className="text-2xl font-black text-rose-400 mt-1">{rejectedCount}</p>
         </div>
       </div>
@@ -193,9 +242,9 @@ export default function AdminBvnModificationPage() {
               <thead className="bg-zinc-950/80 border-b border-zinc-800 text-[11px] font-mono uppercase text-zinc-400">
                 <tr>
                   <th className="py-3.5 px-4 font-bold">Tracking ID</th>
+                  <th className="py-3.5 px-4 font-bold">Enrolling Bank</th>
                   <th className="py-3.5 px-4 font-bold">User</th>
                   <th className="py-3.5 px-4 font-bold">BVN &amp; Name</th>
-                  <th className="py-3.5 px-4 font-bold">Fields</th>
                   <th className="py-3.5 px-4 font-bold">Amount Paid</th>
                   <th className="py-3.5 px-4 font-bold">Status</th>
                   <th className="py-3.5 px-4 font-bold text-right">Actions</th>
@@ -203,16 +252,13 @@ export default function AdminBvnModificationPage() {
               </thead>
               <tbody className="divide-y divide-zinc-800/60 font-medium">
                 {requests.map((r) => {
-                  const fields = [
-                    r.modifyName ? "Name" : null,
-                    r.modifyPhone ? "Phone" : null,
-                    r.modifyDob ? "DOB" : null,
-                  ].filter(Boolean);
-
                   return (
                     <tr key={r.id} className="hover:bg-zinc-800/30 transition-colors">
                       <td className="py-4 px-4 font-mono font-bold text-emerald-400">
                         {r.trackingId}
+                      </td>
+                      <td className="py-4 px-4 font-bold text-white">
+                        {r.enrollingBank}
                       </td>
                       <td className="py-4 px-4">
                         <div className="text-white font-bold">{[r.user?.firstName, r.user?.lastName].filter(Boolean).join(" ") || "User"}</div>
@@ -221,15 +267,6 @@ export default function AdminBvnModificationPage() {
                       <td className="py-4 px-4">
                         <div className="font-mono font-bold text-white">{r.bvn}</div>
                         <div className="text-[11px] text-zinc-400 truncate max-w-[140px]">{r.currentFullName}</div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {fields.map((f, i) => (
-                            <span key={i} className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-200">
-                              {f}
-                            </span>
-                          ))}
-                        </div>
                       </td>
                       <td className="py-4 px-4 font-bold text-white">
                         ₦{Number(r.amountPaid).toLocaleString()}
@@ -248,13 +285,7 @@ export default function AdminBvnModificationPage() {
                       <td className="py-4 px-4 text-right">
                         <Button
                           size="sm"
-                          onClick={() => {
-                            setSelectedRequest(r);
-                            setActionType(null);
-                            setAdminNotes(r.adminNotes || "");
-                            setRejectionReason(r.rejectionReason || "");
-                            setSlipUrl(r.slipUrl || "");
-                          }}
+                          onClick={() => handleOpenActionModal(r)}
                           className="h-8 px-3 text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-white cursor-pointer"
                         >
                           Review &amp; Action
@@ -295,12 +326,12 @@ export default function AdminBvnModificationPage() {
             {/* Request Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-zinc-950/60 p-4 rounded-2xl border border-zinc-800">
               <div>
-                <span className="text-zinc-500 font-medium">BVN Number:</span>
-                <p className="font-mono font-bold text-white text-sm">{selectedRequest.bvn}</p>
+                <span className="text-zinc-500 font-medium">Enrolling Bank:</span>
+                <p className="font-bold text-white">{selectedRequest.enrollingBank}</p>
               </div>
               <div>
-                <span className="text-zinc-500 font-medium">Current Registered Name:</span>
-                <p className="font-bold text-white">{selectedRequest.currentFullName}</p>
+                <span className="text-zinc-500 font-medium">Target BVN:</span>
+                <p className="font-mono font-bold text-white text-sm">{selectedRequest.bvn}</p>
               </div>
               <div>
                 <span className="text-zinc-500 font-medium">Applicant:</span>
@@ -338,27 +369,6 @@ export default function AdminBvnModificationPage() {
                 </div>
               )}
             </div>
-
-            {/* Document Proofs */}
-            {selectedRequest.documentUrls && selectedRequest.documentUrls.length > 0 && (
-              <div className="space-y-2 text-xs">
-                <h4 className="font-bold uppercase text-zinc-400 text-[11px]">Attached Documents ({selectedRequest.documentUrls.length})</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedRequest.documentUrls.map((url: string, i: number) => (
-                    <a
-                      key={i}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-mono text-[11px] border border-zinc-700"
-                    >
-                      <FileText size={12} />
-                      <span>Document #{i + 1}</span>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Action Selector */}
             <div className="space-y-3 pt-2 border-t border-zinc-800">
@@ -398,38 +408,123 @@ export default function AdminBvnModificationPage() {
                       : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-white"
                   }`}
                 >
-                  Reject &amp; Auto-Refund
+                  Reject &amp; Action
                 </button>
               </div>
 
-              {/* Conditional Inputs based on action */}
+              {/* Conditional Inputs: COMPLETE (Direct Slip Upload + URL Fallback) */}
               {actionType === "COMPLETE" && (
-                <div className="space-y-2 pt-2">
-                  <label className="text-xs font-bold text-white">NIBSS BVN Resolution Slip URL <span className="text-rose-500">*</span></label>
-                  <input
-                    type="text"
-                    value={slipUrl}
-                    onChange={(e) => setSlipUrl(e.target.value)}
-                    placeholder="https://res.cloudinary.com/.../slip.pdf"
-                    className="w-full h-10 px-3.5 rounded-xl border border-zinc-800 bg-zinc-950 text-xs font-mono text-white"
-                  />
+                <div className="space-y-3 p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800">
+                  <div>
+                    <label className="text-xs font-bold text-white block mb-1.5">
+                      Upload NIBSS BVN Resolution Slip (PDF or Image) <span className="text-rose-500">*</span>
+                    </label>
+
+                    <div className="flex items-center gap-3">
+                      <label className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-sm transition-all shrink-0">
+                        {isUploadingSlip ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            <span>Uploading Slip...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload size={14} />
+                            <span>Choose File to Upload</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="application/pdf,image/*"
+                          onChange={handleFileUpload}
+                          disabled={isUploadingSlip}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {slipUrl && (
+                        <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono truncate">
+                          <CheckCircle2 size={14} className="shrink-0" />
+                          <span className="truncate max-w-[200px]">{slipUrl}</span>
+                          <a
+                            href={slipUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs underline text-zinc-300 hover:text-white shrink-0"
+                          >
+                            Preview
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block mb-1">Or direct URL:</span>
+                    <input
+                      type="text"
+                      value={slipUrl}
+                      onChange={(e) => setSlipUrl(e.target.value)}
+                      placeholder="https://res.cloudinary.com/.../slip.pdf"
+                      className="w-full h-9 px-3 rounded-xl border border-zinc-800 bg-zinc-900 text-xs font-mono text-white"
+                    />
+                  </div>
                 </div>
               )}
 
+              {/* Conditional Inputs: REJECT (Reason + Optional Refund Checkbox + Amount) */}
               {actionType === "REJECT" && (
-                <div className="space-y-2 pt-2">
-                  <label className="text-xs font-bold text-rose-400">Rejection Reason (Will be sent to user with refund) <span className="text-rose-500">*</span></label>
-                  <textarea
-                    rows={2}
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="e.g. Court affidavit date does not match applicant legal age record."
-                    className="w-full p-3 rounded-xl border border-zinc-800 bg-zinc-950 text-xs text-white"
-                  />
+                <div className="space-y-3 p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800">
+                  <div>
+                    <label className="text-xs font-bold text-rose-400 block mb-1.5">
+                      Rejection Reason (Sent to user via email and in-app alert) <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      placeholder="e.g. Enrolling bank mismatch or details not reflecting on VNIN."
+                      className="w-full p-3 rounded-xl border border-zinc-800 bg-zinc-900 text-xs text-white"
+                      required
+                    />
+                  </div>
+
+                  {/* Admin Controlled Refund Box */}
+                  <div className="pt-2 border-t border-zinc-800/80 space-y-3">
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={issueRefund}
+                        onChange={(e) => setIssueRefund(e.target.checked)}
+                        className="h-4 w-4 rounded border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-white">
+                        Issue Wallet Refund to User?
+                      </span>
+                    </label>
+
+                    {issueRefund && (
+                      <div className="pl-6.5 space-y-1">
+                        <label className="text-[11px] font-bold text-zinc-400 block">
+                          Refund Amount (₦)
+                        </label>
+                        <input
+                          type="number"
+                          value={refundAmount}
+                          onChange={(e) => setRefundAmount(e.target.value)}
+                          placeholder="Amount in ₦"
+                          className="w-full sm:w-48 h-9 px-3 rounded-xl border border-zinc-800 bg-zinc-900 text-xs font-mono font-bold text-emerald-400"
+                        />
+                        <span className="text-[10px] text-zinc-500 block">
+                          Default is full service fee (₦{Number(selectedRequest.amountPaid).toLocaleString()}). You can adjust or zero out.
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              <div className="space-y-2 pt-1">
+              <div className="space-y-1.5 pt-1">
                 <label className="text-xs font-bold text-zinc-400">Admin Internal Notes (Optional)</label>
                 <input
                   type="text"
@@ -460,7 +555,7 @@ export default function AdminBvnModificationPage() {
                 </Button>
                 <Button
                   type="button"
-                  disabled={!actionType || isExecutingAction || (actionType === "REJECT" && !rejectionReason.trim())}
+                  disabled={!actionType || isExecutingAction || isUploadingSlip || (actionType === "REJECT" && !rejectionReason.trim()) || (actionType === "COMPLETE" && !slipUrl.trim())}
                   onClick={handleExecuteAdminAction}
                   className={`flex-1 h-11 font-black text-xs rounded-xl cursor-pointer ${
                     actionType === "REJECT" 
