@@ -423,7 +423,7 @@ export default function BvnModificationForm({
                   <div className={`p-1.5 rounded-xl ${isSelected ? "bg-emerald-500 text-white" : "bg-secondary text-muted-foreground"}`}>
                     <Building2 size={16} />
                   </div>
-                  {isSelected && <Check size={14} weight="bold" className="text-emerald-600 dark:text-emerald-400" />}
+                  {isSelected && <Check size={14} strokeWidth={2.5} className="text-emerald-600 dark:text-emerald-400" />}
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-foreground">{bank.name}</h4>
