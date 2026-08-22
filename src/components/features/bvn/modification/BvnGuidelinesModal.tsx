@@ -75,6 +75,10 @@ export function BvnGuidelinesModal({ isOpen, onClose }: BvnGuidelinesModalProps)
           </div>
           <div className="flex items-start gap-2">
             <span className="font-bold text-emerald-600 dark:text-emerald-400">•</span>
+            <p><strong>Turnaround Time:</strong> Processing takes <strong>72 Hours to 7 Days</strong> to reflect on NIBSS.</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">•</span>
             <p><strong>VNIN Slip Reflection:</strong> If you did a NIN change first, ensure it is fully active on your VNIN slip.</p>
           </div>
           <div className="flex items-start gap-2">

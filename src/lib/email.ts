@@ -1635,7 +1635,7 @@ export async function sendBvnModificationSubmittedEmail({
         </tr>
         <tr>
           <td style="padding: 6px 0; color: #64748b;">Estimated Turnaround:</td>
-          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">24 – 48 Hours</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">72 Hours – 7 Days</td>
         </tr>
       </table>
     </div>
