@@ -5,17 +5,103 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   ShieldCheck, AlertCircle, CheckCircle2, User, Phone, Calendar, 
-  UploadCloud, Wallet, Sparkles, Copy, Check, ArrowRight, X, Lock,
-  FileText, Info, HelpCircle
+  Wallet, Copy, Check, ArrowRight, X, Lock, FileText, Info, 
+  Building2, Sparkles, AlertTriangle, XCircle, ChevronDown, ChevronUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BvnTermsModal from "./BvnTermsModal";
 
+export const ENROLLING_BANKS = [
+  { id: "AGENCY_BVN", name: "Agency BVN", description: "POS Agent & Field Enrollment", isAvailable: true },
+  { id: "ENTERPRISE", name: "Enterprise Bank", description: "Enterprise Commercial Banking", isAvailable: true },
+  { id: "AGRICULTURAL_BANK", name: "Agricultural Bank", description: "Bank of Agriculture / Agribank", isAvailable: true },
+  { id: "NIBSS_IMPORT", name: "NIBSS IMPORT", description: "Direct NIBSS Database Migration", isAvailable: true },
+  { id: "HERITAGE_BANK", name: "HERITAGE BANK", description: "Heritage Commercial Banking", isAvailable: true },
+  { id: "MICROFINANCE_BANK", name: "MICROFINANCE BANK", description: "Microfinance Banking Institutions", isAvailable: true },
+];
+
+export const MODIFICATION_OPTIONS = [
+  {
+    id: "CHANGE_OF_NAME",
+    name: "Change of Name Only",
+    description: "Update First, Middle, or Surname with official NIN record",
+    hasName: true,
+    hasDob: false,
+    hasPhone: false,
+    priceKey: "BVN_MOD_NAME",
+    defaultPrice: 3000,
+    isAvailable: true,
+  },
+  {
+    id: "CHANGE_OF_DOB",
+    name: "Change of Date of Birth (DOB) Only",
+    description: "Correct your birth date on BVN record (5-year rule applies)",
+    hasName: false,
+    hasDob: true,
+    hasPhone: false,
+    priceKey: "BVN_MOD_DOB",
+    defaultPrice: 15000,
+    isAvailable: true,
+  },
+  {
+    id: "CHANGE_OF_PHONE",
+    name: "Change of Phone Number Only",
+    description: "Link a new active SIM phone number to your BVN profile",
+    hasName: false,
+    hasDob: false,
+    hasPhone: true,
+    priceKey: "BVN_MOD_PHONE",
+    defaultPrice: 2500,
+    isAvailable: true,
+  },
+  {
+    id: "CHANGE_OF_NAME_PHONE",
+    name: "Change of Name & Phone Number",
+    description: "Simultaneously update legal name and primary phone number",
+    hasName: true,
+    hasDob: false,
+    hasPhone: true,
+    priceKey: "BVN_MOD_NAME_PHONE",
+    defaultPrice: 5000,
+    isAvailable: true,
+  },
+  {
+    id: "CHANGE_OF_DOB_PHONE",
+    name: "Change of Date of Birth & Phone Number",
+    description: "Update birth date alongside primary phone number",
+    hasName: false,
+    hasDob: true,
+    hasPhone: true,
+    priceKey: "BVN_MOD_DOB_PHONE",
+    defaultPrice: 17000,
+    isAvailable: true,
+  },
+  {
+    id: "CHANGE_OF_NAME_DOB",
+    name: "Change of Name & Date of Birth (DOB)",
+    description: "Update legal name together with date of birth",
+    hasName: true,
+    hasDob: true,
+    hasPhone: false,
+    priceKey: "BVN_MOD_NAME_DOB",
+    defaultPrice: 17500,
+    isAvailable: true,
+  },
+  {
+    id: "CHANGE_OF_ALL",
+    name: "Change of Name, DOB & Phone Number (All 3)",
+    description: "Comprehensive multi-field record update across all fields",
+    hasName: true,
+    hasDob: true,
+    hasPhone: true,
+    priceKey: "BVN_MOD_ALL",
+    defaultPrice: 19500,
+    isAvailable: true,
+  },
+];
+
 interface PricingMap {
-  BVN_MOD_NAME: number;
-  BVN_MOD_PHONE: number;
-  BVN_MOD_DOB: number;
-  BVN_MOD_DOB_SURCHARGE: number;
+  [key: string]: number;
 }
 
 interface BvnModificationFormProps {
@@ -29,43 +115,51 @@ export default function BvnModificationForm({
   walletBalance,
   onSuccess,
 }: BvnModificationFormProps) {
-  // Form Inputs
+  // Step 1: Enrolling Bank & Modification Type
+  const [selectedBank, setSelectedBank] = useState<string>("AGENCY_BVN");
+  const [selectedModType, setSelectedModType] = useState<string>("CHANGE_OF_NAME");
+
+  // Step 2: Primary Identifiers
+  const [nin, setNin] = useState("");
   const [bvn, setBvn] = useState("");
-  const [currentFullName, setCurrentFullName] = useState("");
+  const [oldFirstName, setOldFirstName] = useState("");
+  const [oldLastName, setOldLastName] = useState("");
+  const [oldMiddleName, setOldMiddleName] = useState("");
 
-  // Modification toggles
-  const [modifyName, setModifyName] = useState(false);
-  const [modifyPhone, setModifyPhone] = useState(false);
-  const [modifyDob, setModifyDob] = useState(false);
-
-  // Field Values
+  // Step 3: Dynamic Update Fields
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
   const [newMiddleName, setNewMiddleName] = useState("");
 
-  const [currentPhone, setCurrentPhone] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-
-  const [currentDob, setCurrentDob] = useState("");
+  const [oldDob, setOldDob] = useState("");
   const [newDob, setNewDob] = useState("");
 
-  // Document Uploads
-  const [documentUrls, setDocumentUrls] = useState<string[]>([]);
-  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [oldPhone, setOldPhone] = useState("");
+  const [newPhone, setNewPhone] = useState("");
 
-  // Processing States
+  // UI States
+  const [showGuidelines, setShowGuidelines] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [submissionReceipt, setSubmissionReceipt] = useState<any | null>(null);
   const [copiedTrackingId, setCopiedTrackingId] = useState(false);
 
+  // Active modification config
+  const currentModConfig = useMemo(() => {
+    return MODIFICATION_OPTIONS.find((m) => m.id === selectedModType) || MODIFICATION_OPTIONS[0];
+  }, [selectedModType]);
+
+  const activeBank = useMemo(() => {
+    return ENROLLING_BANKS.find((b) => b.id === selectedBank) || ENROLLING_BANKS[0];
+  }, [selectedBank]);
+
   // 1. Calculate Real-Time DOB Difference & Surcharge
   const dobCalculation = useMemo(() => {
-    if (!modifyDob || !currentDob || !newDob) {
+    if (!currentModConfig.hasDob || !oldDob || !newDob) {
       return { diffYears: 0, isOverFiveYears: false };
     }
-    const current = new Date(currentDob);
+    const current = new Date(oldDob);
     const updated = new Date(newDob);
 
     if (isNaN(current.getTime()) || isNaN(updated.getTime())) {
@@ -78,110 +172,84 @@ export default function BvnModificationForm({
     const isOverFiveYears = diffDays > 1826.25;
 
     return { diffYears, isOverFiveYears };
-  }, [modifyDob, currentDob, newDob]);
+  }, [currentModConfig.hasDob, oldDob, newDob]);
 
-  // 2. Calculate Total Dynamic Price
-  const { totalPrice, surchargeAmount, breakdown } = useMemo(() => {
-    let total = 0;
+  // 2. Dynamic Price Calculation
+  const { totalPrice, baseFee, surchargeAmount, breakdown } = useMemo(() => {
+    const base = pricing[currentModConfig.priceKey] || currentModConfig.defaultPrice;
     let surcharge = 0;
-    const items: { label: string; amount: number }[] = [];
+    const items: { label: string; amount: number }[] = [
+      { label: `${currentModConfig.name} (${activeBank.name})`, amount: base },
+    ];
 
-    if (modifyName) {
-      const price = pricing.BVN_MOD_NAME || 3000;
-      total += price;
-      items.push({ label: "Change of Legal Name", amount: price });
+    if (currentModConfig.hasDob && dobCalculation.isOverFiveYears) {
+      surcharge = pricing.BVN_MOD_DOB_SURCHARGE || 5000;
+      items.push({ label: `5-Year DOB Shift Surcharge (${dobCalculation.diffYears} yrs)`, amount: surcharge });
     }
 
-    if (modifyPhone) {
-      const price = pricing.BVN_MOD_PHONE || 2500;
-      total += price;
-      items.push({ label: "Change of Phone Number", amount: price });
-    }
-
-    if (modifyDob) {
-      const price = pricing.BVN_MOD_DOB || 15000;
-      total += price;
-      items.push({ label: "Change of Date of Birth (Base)", amount: price });
-
-      if (dobCalculation.isOverFiveYears) {
-        surcharge = pricing.BVN_MOD_DOB_SURCHARGE || 5000;
-        total += surcharge;
-        items.push({ label: `5-Year DOB Shift Surcharge (${dobCalculation.diffYears} yrs)`, amount: surcharge });
-      }
-    }
-
-    return { totalPrice: total, surchargeAmount: surcharge, breakdown: items };
-  }, [modifyName, modifyPhone, modifyDob, dobCalculation, pricing]);
+    return {
+      totalPrice: base + surcharge,
+      baseFee: base,
+      surchargeAmount: surcharge,
+      breakdown: items,
+    };
+  }, [currentModConfig, activeBank, dobCalculation, pricing]);
 
   const isInsufficientBalance = walletBalance < totalPrice && totalPrice > 0;
-  const isAnyFieldSelected = modifyName || modifyPhone || modifyDob;
 
-  // Handle Mock/Cloudinary Document Upload
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploadingDoc(true);
-    setErrorMsg(null);
-
-    try {
-      // Use standard upload API endpoint if available or convert to Base64/ObjectURL for demonstration
-      const uploaded: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.size > 5 * 1024 * 1024) {
-          throw new Error(`File ${file.name} exceeds 5MB limit.`);
-        }
-        // In this environment, simulate Cloudinary or secure storage
-        const objectUrl = URL.createObjectURL(file);
-        uploaded.push(objectUrl);
-      }
-      setDocumentUrls((prev) => [...prev, ...uploaded]);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to upload document.");
-    } finally {
-      setUploadingDoc(false);
-    }
-  };
-
-  // Validate inputs before opening statutory terms modal
+  // Validate form inputs
   const handleValidateAndOpenTerms = () => {
     setErrorMsg(null);
 
-    const cleanBvn = bvn.trim();
-    if (!cleanBvn || !/^\d{11}$/.test(cleanBvn)) {
-      setErrorMsg("Please enter a valid 11-digit BVN.");
+    // Bank Validation
+    if (!selectedBank) {
+      setErrorMsg("Please select your enrolling bank.");
       return;
     }
 
-    if (!currentFullName.trim() || currentFullName.trim().length < 3) {
-      setErrorMsg("Please enter the current full name registered on this BVN.");
+    // NIN Validation
+    const cleanNin = nin.trim().replace(/\D/g, "");
+    if (!cleanNin || cleanNin.length !== 11) {
+      setErrorMsg("Please enter a valid 11-digit NIN Number.");
       return;
     }
 
-    if (!isAnyFieldSelected) {
-      setErrorMsg("Please select at least one field to modify (Name, Phone Number, or Date of Birth).");
+    // BVN Validation
+    const cleanBvn = bvn.trim().replace(/\D/g, "");
+    if (!cleanBvn || cleanBvn.length !== 11) {
+      setErrorMsg("Please enter a valid 11-digit BVN Number.");
       return;
     }
 
-    if (modifyName) {
+    // Old Name Validation
+    if (!oldFirstName.trim() || !oldLastName.trim()) {
+      setErrorMsg("Please enter your Old First Name and Old Surname as registered on your BVN.");
+      return;
+    }
+
+    // Dynamic New Details Validation
+    if (currentModConfig.hasName) {
       if (!newFirstName.trim() || !newLastName.trim()) {
-        setErrorMsg("Please enter your New First Name and New Last Name.");
+        setErrorMsg("Please enter your New First Name and New Surname for Name Modification.");
         return;
       }
     }
 
-    if (modifyPhone) {
-      const cleanNewPhone = newPhone.trim();
+    if (currentModConfig.hasDob) {
+      if (!oldDob || !newDob) {
+        setErrorMsg("Please select both your Old Date of Birth and New Date of Birth.");
+        return;
+      }
+    }
+
+    if (currentModConfig.hasPhone) {
+      const cleanNewPhone = newPhone.trim().replace(/\s+/g, "");
       if (!cleanNewPhone || !/^0\d{10}$/.test(cleanNewPhone)) {
         setErrorMsg("Please enter a valid 11-digit New Phone Number starting with 0.");
         return;
       }
-    }
-
-    if (modifyDob) {
-      if (!currentDob || !newDob) {
-        setErrorMsg("Please select both your current Date of Birth and your new Date of Birth.");
+      if (!oldPhone.trim()) {
+        setErrorMsg("Please enter your Old Phone Number on BVN.");
         return;
       }
     }
@@ -202,19 +270,20 @@ export default function BvnModificationForm({
 
     try {
       const payload = {
+        enrollingBank: selectedBank,
+        modificationType: selectedModType,
+        nin: nin.trim(),
         bvn: bvn.trim(),
-        currentFullName: currentFullName.trim(),
-        modifyName,
-        modifyPhone,
-        modifyDob,
-        newFirstName: modifyName ? newFirstName.trim() : null,
-        newLastName: modifyName ? newLastName.trim() : null,
-        newMiddleName: modifyName && newMiddleName ? newMiddleName.trim() : null,
-        currentPhone: modifyPhone && currentPhone ? currentPhone.trim() : null,
-        newPhone: modifyPhone ? newPhone.trim() : null,
-        currentDob: modifyDob ? currentDob : null,
-        newDob: modifyDob ? newDob : null,
-        documentUrls,
+        oldFirstName: oldFirstName.trim(),
+        oldLastName: oldLastName.trim(),
+        oldMiddleName: oldMiddleName.trim() || null,
+        newFirstName: currentModConfig.hasName ? newFirstName.trim() : null,
+        newLastName: currentModConfig.hasName ? newLastName.trim() : null,
+        newMiddleName: currentModConfig.hasName && newMiddleName.trim() ? newMiddleName.trim() : null,
+        oldDob: currentModConfig.hasDob ? oldDob : null,
+        newDob: currentModConfig.hasDob ? newDob : null,
+        oldPhone: currentModConfig.hasPhone ? oldPhone.trim() : null,
+        newPhone: currentModConfig.hasPhone ? newPhone.trim() : null,
       };
 
       const res = await fetch("/api/bvn/modification", {
@@ -244,8 +313,11 @@ export default function BvnModificationForm({
     setTimeout(() => setCopiedTrackingId(false), 2000);
   };
 
+  const oldFullName = [oldFirstName.trim(), oldMiddleName.trim(), oldLastName.trim()].filter(Boolean).join(" ");
+
   return (
     <div className="space-y-8">
+      
       {/* Error Alert */}
       {errorMsg && (
         <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs sm:text-sm font-bold flex items-center justify-between gap-3 animate-in slide-in-from-top-2">
@@ -263,22 +335,190 @@ export default function BvnModificationForm({
         </div>
       )}
 
-      {/* STEP 1: BVN & Identity Identification */}
-      <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+      {/* MANDATORY STATUTORY GUIDELINES & NO-REFUND POLICY BANNER */}
+      <div className="bg-amber-500/10 border border-amber-500/25 rounded-3xl p-5 sm:p-6 text-foreground space-y-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5 text-amber-700 dark:text-amber-300 font-black text-sm uppercase tracking-wide">
+            <ShieldCheck size={20} className="shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>Mandatory Guidelines &amp; Compliance Rules</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowGuidelines(!showGuidelines)}
+            className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+          >
+            <span>{showGuidelines ? "Hide Rules" : "Show Rules"}</span>
+            {showGuidelines ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
+
+        {showGuidelines && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs leading-relaxed pt-1 animate-in fade-in duration-200">
+            <div className="space-y-2.5">
+              <div className="flex items-start gap-2">
+                <span className="font-black text-amber-700 dark:text-amber-400">1.</span>
+                <p><strong>Supported Enrolling Banks Only:</strong> Ensure your BVN originated from an <strong>Agency Enrollment</strong> or one of our <strong>6 listed supported banks</strong>.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-black text-amber-700 dark:text-amber-400">2.</span>
+                <p><strong>Must Reflect on VNIN Slip First:</strong> If you previously modified your NIN, verify that your new details are <strong>fully reflecting on your NIMC VNIN Slip</strong>. NIBSS rejects double / unreflected modifications.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-black text-amber-700 dark:text-amber-400">3.</span>
+                <p><strong>One-Time Modification Rule:</strong> Under NIBSS regulations, each BVN detail category can only be legally modified <strong>once</strong>.</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 bg-background/70 p-3.5 rounded-2xl border border-border/80">
+              <h5 className="font-black text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                <XCircle size={14} /> Strict No-Refund &amp; Rejection Conditions:
+              </h5>
+              <ul className="list-disc list-inside space-y-1 text-[11px] text-muted-foreground">
+                <li><strong>No Refund:</strong> If bank enrollment is not among our listed supported banks.</li>
+                <li><strong>No Refund:</strong> If you submit old/unreflected NIN details.</li>
+                <li><strong>No Refund:</strong> If you have previously completed similar modifications.</li>
+                <li><strong>No Refund:</strong> If the request is an attempt at a complete change of identity.</li>
+                <li><strong>Instant Rejection:</strong> If you submit invalid details or bundle duplicate requests.</li>
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* STEP 1: SELECT ENROLLING BANK */}
+      <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
         <div className="flex items-center gap-3 border-b border-border pb-4">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm">
             1
           </div>
           <div>
-            <h3 className="text-base sm:text-lg font-black text-foreground">BVN Record Details</h3>
-            <p className="text-xs text-muted-foreground">Enter the 11-digit BVN and current registered legal name.</p>
+            <h3 className="text-base sm:text-lg font-black text-foreground">Select Enrolling Bank</h3>
+            <p className="text-xs text-muted-foreground">Choose the bank or agency where this BVN was originally registered.</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              11-Digit BVN <span className="text-destructive">*</span>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {ENROLLING_BANKS.map((bank) => {
+            const isSelected = selectedBank === bank.id;
+            return (
+              <button
+                key={bank.id}
+                type="button"
+                disabled={!bank.isAvailable}
+                onClick={() => {
+                  setSelectedBank(bank.id);
+                  if (errorMsg) setErrorMsg(null);
+                }}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                  isSelected
+                    ? "border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-500/10 shadow-sm"
+                    : "bg-secondary/30 border-border hover:border-emerald-500/40"
+                } ${!bank.isAvailable ? "opacity-50 grayscale cursor-not-allowed" : ""}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`p-1.5 rounded-xl ${isSelected ? "bg-emerald-500 text-white" : "bg-secondary text-muted-foreground"}`}>
+                    <Building2 size={16} />
+                  </div>
+                  {isSelected && <Check size={14} weight="bold" className="text-emerald-600 dark:text-emerald-400" />}
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-foreground">{bank.name}</h4>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{bank.description}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* STEP 2: SELECT MODIFICATION TYPE (7 Distinct Options) */}
+      <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
+        <div className="flex items-center gap-3 border-b border-border pb-4">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm">
+            2
+          </div>
+          <div>
+            <h3 className="text-base sm:text-lg font-black text-foreground">Select Modification Type</h3>
+            <p className="text-xs text-muted-foreground">Select the specific record change you need to process.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {MODIFICATION_OPTIONS.map((opt) => {
+            const isSelected = selectedModType === opt.id;
+            const price = pricing[opt.priceKey] || opt.defaultPrice;
+
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                disabled={!opt.isAvailable}
+                onClick={() => {
+                  setSelectedModType(opt.id);
+                  if (errorMsg) setErrorMsg(null);
+                }}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                  isSelected
+                    ? "border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-500/10 shadow-sm"
+                    : "bg-secondary/30 border-border hover:border-emerald-500/40"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    {opt.hasName && <User size={14} className="text-emerald-600 dark:text-emerald-400" />}
+                    {opt.hasDob && <Calendar size={14} className="text-amber-500" />}
+                    {opt.hasPhone && <Phone size={14} className="text-sky-500" />}
+                  </div>
+                  {isSelected && <Check size={14} className="text-emerald-600 dark:text-emerald-400" />}
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-black text-foreground">{opt.name}</h4>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{opt.description}</p>
+                </div>
+
+                <div className="pt-2 border-t border-border/60 flex justify-between items-center text-xs">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold">Standard Fee:</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400">₦{price.toLocaleString()}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* STEP 3: PRIMARY IDENTIFIERS (Always required) */}
+      <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
+        <div className="flex items-center gap-3 border-b border-border pb-4">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm">
+            3
+          </div>
+          <div>
+            <h3 className="text-base sm:text-lg font-black text-foreground">Current BVN &amp; NIN Profile</h3>
+            <p className="text-xs text-muted-foreground">Enter primary identifiers and current legal names as registered on BVN.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground flex items-center justify-between">
+              <span>11-Digit NIN Number <span className="text-destructive">*</span></span>
+              <span className="text-[10px] font-mono text-muted-foreground">{nin.length}/11</span>
+            </label>
+            <input
+              type="text"
+              maxLength={11}
+              value={nin}
+              onChange={(e) => setNin(e.target.value.replace(/\D/g, ""))}
+              placeholder="e.g. 12345678901"
+              className="w-full h-11 px-4 rounded-xl border border-border bg-background font-mono text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground flex items-center justify-between">
+              <span>11-Digit BVN Number <span className="text-destructive">*</span></span>
+              <span className="text-[10px] font-mono text-muted-foreground">{bvn.length}/11</span>
             </label>
             <input
               type="text"
@@ -286,139 +526,64 @@ export default function BvnModificationForm({
               value={bvn}
               onChange={(e) => setBvn(e.target.value.replace(/\D/g, ""))}
               placeholder="e.g. 22233344455"
-              className="w-full h-12 px-4 rounded-xl border border-border bg-secondary/30 font-mono text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full h-11 px-4 rounded-xl border border-border bg-background font-mono text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground">Old First Name (on BVN) <span className="text-destructive">*</span></label>
+            <input
+              type="text"
+              value={oldFirstName}
+              onChange={(e) => setOldFirstName(e.target.value.toUpperCase())}
+              placeholder="e.g. ADEWALE"
+              className="w-full h-11 px-4 rounded-xl border border-border bg-background text-xs font-bold uppercase text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              Full Legal Name currently on BVN <span className="text-destructive">*</span>
-            </label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground">Old Middle Name (Optional)</label>
             <input
               type="text"
-              value={currentFullName}
-              onChange={(e) => setCurrentFullName(e.target.value.toUpperCase())}
-              placeholder="e.g. ADEWALE CHUKWUMA MUSA"
-              className="w-full h-12 px-4 rounded-xl border border-border bg-secondary/30 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 uppercase"
+              value={oldMiddleName}
+              onChange={(e) => setOldMiddleName(e.target.value.toUpperCase())}
+              placeholder="e.g. CHUKWUMA"
+              className="w-full h-11 px-4 rounded-xl border border-border bg-background text-xs font-bold uppercase text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground">Old Surname / Last Name <span className="text-destructive">*</span></label>
+            <input
+              type="text"
+              value={oldLastName}
+              onChange={(e) => setOldLastName(e.target.value.toUpperCase())}
+              placeholder="e.g. MUSA"
+              className="w-full h-11 px-4 rounded-xl border border-border bg-background text-xs font-bold uppercase text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
           </div>
         </div>
       </div>
 
-      {/* STEP 2: Select Fields to Modify */}
+      {/* STEP 4: DYNAMIC UPDATE DETAILS (Based on selected modification type) */}
       <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
         <div className="flex items-center gap-3 border-b border-border pb-4">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm">
-            2
+          <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm">
+            4
           </div>
           <div>
-            <h3 className="text-base sm:text-lg font-black text-foreground">Select Fields to Modify</h3>
-            <p className="text-xs text-muted-foreground">Choose one or any combination of fields you want to update.</p>
+            <h3 className="text-base sm:text-lg font-black text-foreground">New Modification Details</h3>
+            <p className="text-xs text-muted-foreground">Provide the exact new information to be updated on your BVN profile.</p>
           </div>
         </div>
 
-        {/* Selection Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Change of Name */}
-          <div 
-            onClick={() => setModifyName(!modifyName)}
-            className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
-              modifyName 
-                ? "bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/30 text-foreground" 
-                : "bg-secondary/20 border-border hover:border-zinc-500/40 text-muted-foreground"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className={`p-2 rounded-xl ${modifyName ? "bg-emerald-500 text-white" : "bg-secondary text-muted-foreground"}`}>
-                <User size={20} />
-              </div>
-              <input 
-                type="checkbox" 
-                checked={modifyName} 
-                onChange={() => {}} 
-                className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 pointer-events-none"
-              />
-            </div>
-            <div>
-              <h4 className="text-sm font-black text-foreground">Change of Name</h4>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Update First, Last, or Middle names with legal proof.</p>
-            </div>
-            <div className="pt-2 border-t border-border/60 flex justify-between items-center text-xs">
-              <span className="text-muted-foreground">Fee:</span>
-              <span className="font-bold text-foreground">₦{(pricing.BVN_MOD_NAME || 3000).toLocaleString()}</span>
-            </div>
-          </div>
-
-          {/* Change of Phone */}
-          <div 
-            onClick={() => setModifyPhone(!modifyPhone)}
-            className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
-              modifyPhone 
-                ? "bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/30 text-foreground" 
-                : "bg-secondary/20 border-border hover:border-zinc-500/40 text-muted-foreground"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className={`p-2 rounded-xl ${modifyPhone ? "bg-emerald-500 text-white" : "bg-secondary text-muted-foreground"}`}>
-                <Phone size={20} />
-              </div>
-              <input 
-                type="checkbox" 
-                checked={modifyPhone} 
-                onChange={() => {}} 
-                className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 pointer-events-none"
-              />
-            </div>
-            <div>
-              <h4 className="text-sm font-black text-foreground">Change of Phone Number</h4>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Link a new active SIM phone number to your BVN profile.</p>
-            </div>
-            <div className="pt-2 border-t border-border/60 flex justify-between items-center text-xs">
-              <span className="text-muted-foreground">Fee:</span>
-              <span className="font-bold text-foreground">₦{(pricing.BVN_MOD_PHONE || 2500).toLocaleString()}</span>
-            </div>
-          </div>
-
-          {/* Change of DOB */}
-          <div 
-            onClick={() => setModifyDob(!modifyDob)}
-            className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
-              modifyDob 
-                ? "bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/30 text-foreground" 
-                : "bg-secondary/20 border-border hover:border-zinc-500/40 text-muted-foreground"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className={`p-2 rounded-xl ${modifyDob ? "bg-emerald-500 text-white" : "bg-secondary text-muted-foreground"}`}>
-                <Calendar size={20} />
-              </div>
-              <input 
-                type="checkbox" 
-                checked={modifyDob} 
-                onChange={() => {}} 
-                className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 pointer-events-none"
-              />
-            </div>
-            <div>
-              <h4 className="text-sm font-black text-foreground">Change of Date of Birth</h4>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Correct birth date with NPC Attestation or Birth Certificate.</p>
-            </div>
-            <div className="pt-2 border-t border-border/60 flex justify-between items-center text-xs">
-              <span className="text-muted-foreground">Base Fee:</span>
-              <span className="font-bold text-foreground">₦{(pricing.BVN_MOD_DOB || 15000).toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ======================================================== */}
-        {/* CONDITIONAL INPUT FIELDS BASED ON SELECTION */}
-        {/* ======================================================== */}
-
-        {/* 1. Name Inputs */}
-        {modifyName && (
+        {/* 1. New Legal Name Inputs */}
+        {currentModConfig.hasName && (
           <div className="p-5 rounded-2xl bg-secondary/30 border border-border space-y-4 animate-in fade-in duration-200">
             <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-              <User size={14} /> New Legal Name Information
+              <User size={15} /> New Legal Name Information
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
@@ -428,83 +593,50 @@ export default function BvnModificationForm({
                   value={newFirstName}
                   onChange={(e) => setNewFirstName(e.target.value.toUpperCase())}
                   placeholder="e.g. EMMANUEL"
-                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-xs font-bold uppercase"
+                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-xs font-bold uppercase text-foreground"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">New Middle Name</label>
+                <label className="text-xs font-bold text-foreground">New Middle Name (Optional)</label>
                 <input
                   type="text"
                   value={newMiddleName}
                   onChange={(e) => setNewMiddleName(e.target.value.toUpperCase())}
                   placeholder="e.g. CHUKWUEMEKA"
-                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-xs font-bold uppercase"
+                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-xs font-bold uppercase text-foreground"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">New Last Name (Surname) <span className="text-destructive">*</span></label>
+                <label className="text-xs font-bold text-foreground">New Surname / Last Name <span className="text-destructive">*</span></label>
                 <input
                   type="text"
                   value={newLastName}
                   onChange={(e) => setNewLastName(e.target.value.toUpperCase())}
                   placeholder="e.g. OKONKWO"
-                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-xs font-bold uppercase"
+                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-xs font-bold uppercase text-foreground"
                 />
               </div>
             </div>
           </div>
         )}
 
-        {/* 2. Phone Inputs */}
-        {modifyPhone && (
-          <div className="p-5 rounded-2xl bg-secondary/30 border border-border space-y-4 animate-in fade-in duration-200">
-            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-              <Phone size={14} /> Phone Number Information
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Current Phone on BVN (Optional)</label>
-                <input
-                  type="text"
-                  maxLength={11}
-                  value={currentPhone}
-                  onChange={(e) => setCurrentPhone(e.target.value.replace(/\D/g, ""))}
-                  placeholder="e.g. 08012345678"
-                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background font-mono text-xs font-bold"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">New Registered Phone Number <span className="text-destructive">*</span></label>
-                <input
-                  type="text"
-                  maxLength={11}
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ""))}
-                  placeholder="e.g. 08198765432"
-                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background font-mono text-xs font-bold"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 3. DOB Inputs & Surcharge Visual Calculation */}
-        {modifyDob && (
+        {/* 2. Date of Birth Inputs & Real-Time Surcharge Calculator */}
+        {currentModConfig.hasDob && (
           <div className="p-5 rounded-2xl bg-secondary/30 border border-border space-y-4 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                <Calendar size={14} /> Date of Birth Adjustment
+                <Calendar size={15} /> Date of Birth Adjustment
               </h4>
               <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded font-mono">5-Year Rule Active</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Current Date of Birth on BVN <span className="text-destructive">*</span></label>
+                <label className="text-xs font-bold text-foreground">Old Date of Birth on BVN <span className="text-destructive">*</span></label>
                 <input
                   type="date"
-                  value={currentDob}
-                  onChange={(e) => setCurrentDob(e.target.value)}
+                  value={oldDob}
+                  onChange={(e) => setOldDob(e.target.value)}
                   className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-xs font-bold text-foreground"
                 />
               </div>
@@ -519,8 +651,8 @@ export default function BvnModificationForm({
               </div>
             </div>
 
-            {/* Surcharge Banner if > 5 Years */}
-            {currentDob && newDob && (
+            {/* Real-Time Surcharge Banner if > 5 Years */}
+            {oldDob && newDob && (
               <div className={`p-4 rounded-xl border text-xs space-y-1.5 ${
                 dobCalculation.isOverFiveYears 
                   ? "bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-300"
@@ -544,80 +676,74 @@ export default function BvnModificationForm({
           </div>
         )}
 
-        {/* 4. Supporting Document Uploads */}
-        <div className="space-y-2 pt-2">
-          <label className="text-xs font-bold text-foreground flex items-center justify-between">
-            <span>Supporting Documents (Affidavit, NPC Attestation, Birth Cert, ID)</span>
-            <span className="text-[10px] text-muted-foreground">PNG, JPG, PDF (Max 5MB each)</span>
-          </label>
-
-          <div className="border-2 border-dashed border-border hover:border-emerald-500/50 rounded-2xl p-6 text-center bg-secondary/10 cursor-pointer transition-colors relative">
-            <input
-              type="file"
-              multiple
-              accept="image/*,.pdf"
-              onChange={handleFileUpload}
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-            />
-            <div className="flex flex-col items-center justify-center space-y-2">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                <UploadCloud size={20} />
+        {/* 3. Phone Number Inputs */}
+        {currentModConfig.hasPhone && (
+          <div className="p-5 rounded-2xl bg-secondary/30 border border-border space-y-4 animate-in fade-in duration-200">
+            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+              <Phone size={15} /> Phone Number Information
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">Old Phone on BVN <span className="text-destructive">*</span></label>
+                <input
+                  type="text"
+                  maxLength={11}
+                  value={oldPhone}
+                  onChange={(e) => setOldPhone(e.target.value.replace(/\D/g, ""))}
+                  placeholder="e.g. 08012345678"
+                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background font-mono text-xs font-bold text-foreground"
+                />
               </div>
-              <p className="text-xs font-bold text-foreground">Click to upload or drag and drop supporting files</p>
-              <p className="text-[11px] text-muted-foreground">Court affidavits, newspaper publications, or birth certificates.</p>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">New Registered Phone Number <span className="text-destructive">*</span></label>
+                <input
+                  type="text"
+                  maxLength={11}
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ""))}
+                  placeholder="e.g. 08198765432"
+                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-background font-mono text-xs font-bold text-foreground"
+                />
+              </div>
             </div>
           </div>
-
-          {documentUrls.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {documentUrls.map((url, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 bg-secondary px-3 py-1.5 rounded-lg text-xs font-mono text-foreground">
-                  <FileText size={14} />
-                  <span>Document #{idx + 1}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setDocumentUrls(documentUrls.filter((_, i) => i !== idx))}
-                    className="ml-1 text-muted-foreground hover:text-destructive cursor-pointer"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* STEP 3: Dynamic Price Summary & Submission */}
+      {/* STEP 5: ORDER SUMMARY & SUBMISSION */}
       <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
         <div className="flex items-center gap-3 border-b border-border pb-4">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm">
-            3
+          <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm">
+            5
           </div>
           <div>
             <h3 className="text-base sm:text-lg font-black text-foreground">Order &amp; Pricing Summary</h3>
-            <p className="text-xs text-muted-foreground">Review transparent fee breakdown and confirm wallet debit.</p>
+            <p className="text-xs text-muted-foreground">Review fee breakdown and authorize wallet debit.</p>
           </div>
         </div>
 
         {/* Breakdown List */}
         <div className="bg-secondary/30 rounded-2xl p-5 border border-border space-y-3 text-xs">
-          {breakdown.length > 0 ? (
-            <>
-              {breakdown.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center text-foreground">
-                  <span className="font-medium text-muted-foreground">{item.label}:</span>
-                  <span className="font-bold">₦{item.amount.toLocaleString()}</span>
-                </div>
-              ))}
-              <div className="border-t border-border/80 pt-3 flex justify-between items-center text-sm">
-                <span className="font-black text-foreground">Total Fee:</span>
-                <span className="font-black text-lg text-emerald-600 dark:text-emerald-400">₦{totalPrice.toLocaleString()}</span>
-              </div>
-            </>
-          ) : (
-            <p className="text-center text-muted-foreground py-2">Select at least one modification field above to calculate fee.</p>
-          )}
+          <div className="flex justify-between items-center text-foreground">
+            <span className="font-medium text-muted-foreground">Enrolling Bank:</span>
+            <span className="font-bold">{activeBank.name}</span>
+          </div>
+          <div className="flex justify-between items-center text-foreground">
+            <span className="font-medium text-muted-foreground">Modification Type:</span>
+            <span className="font-bold">{currentModConfig.name}</span>
+          </div>
+
+          {breakdown.map((item, idx) => (
+            <div key={idx} className="flex justify-between items-center text-foreground">
+              <span className="font-medium text-muted-foreground">{item.label}:</span>
+              <span className="font-bold">₦{item.amount.toLocaleString()}</span>
+            </div>
+          ))}
+
+          <div className="border-t border-border/80 pt-3 flex justify-between items-center text-sm">
+            <span className="font-black text-foreground">Total Payable:</span>
+            <span className="font-black text-lg text-emerald-600 dark:text-emerald-400">₦{totalPrice.toLocaleString()}</span>
+          </div>
         </div>
 
         {/* Insufficient Balance Crying Emoji State */}
@@ -643,18 +769,18 @@ export default function BvnModificationForm({
         {/* Submit Button */}
         <Button
           type="button"
-          disabled={!isAnyFieldSelected || isInsufficientBalance || isSubmitting || !bvn || !currentFullName}
+          disabled={isInsufficientBalance || isSubmitting || !bvn || !nin || !oldFirstName || !oldLastName}
           onClick={handleValidateAndOpenTerms}
           className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-xl shadow-lg shadow-emerald-600/20 disabled:opacity-50 cursor-pointer transition-all"
         >
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Submitting Modification Request...
+              Submitting Request...
             </span>
           ) : (
             <span className="flex items-center gap-2">
-              Review &amp; Authorize Request (₦{totalPrice.toLocaleString()})
+              Review &amp; Authorize Modification (₦{totalPrice.toLocaleString()})
               <ArrowRight size={16} />
             </span>
           )}
@@ -667,7 +793,11 @@ export default function BvnModificationForm({
         onClose={() => setShowTermsModal(false)}
         onAccept={handleExecuteSubmission}
         bvn={bvn}
-        applicantName={currentFullName}
+        nin={nin}
+        applicantName={oldFullName}
+        enrollingBankName={activeBank.name}
+        modificationLabel={currentModConfig.name}
+        totalFee={totalPrice}
       />
 
       {/* Instant Success Receipt Modal */}
@@ -705,8 +835,16 @@ export default function BvnModificationForm({
 
             <div className="bg-secondary/30 rounded-2xl p-4 text-xs space-y-2 text-left border border-border">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">BVN Number:</span>
-                <span className="font-mono font-bold text-foreground">{bvn}</span>
+                <span className="text-muted-foreground">Enrolling Bank:</span>
+                <span className="font-bold text-foreground">{activeBank.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Modification:</span>
+                <span className="font-bold text-foreground">{currentModConfig.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">BVN / NIN:</span>
+                <span className="font-mono font-bold text-foreground">{bvn} / {nin}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Amount Debited:</span>
@@ -731,12 +869,18 @@ export default function BvnModificationForm({
                 variant="outline"
                 onClick={() => {
                   setSubmissionReceipt(null);
+                  setNin("");
                   setBvn("");
-                  setCurrentFullName("");
-                  setModifyName(false);
-                  setModifyPhone(false);
-                  setModifyDob(false);
-                  setDocumentUrls([]);
+                  setOldFirstName("");
+                  setOldLastName("");
+                  setOldMiddleName("");
+                  setNewFirstName("");
+                  setNewLastName("");
+                  setNewMiddleName("");
+                  setOldDob("");
+                  setNewDob("");
+                  setOldPhone("");
+                  setNewPhone("");
                 }}
                 className="w-full h-10 text-xs font-bold cursor-pointer"
               >
@@ -746,6 +890,7 @@ export default function BvnModificationForm({
           </div>
         </div>
       )}
+
     </div>
   );
 }

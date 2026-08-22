@@ -645,9 +645,17 @@ model BvnModificationRequest {
   trackingId         String                @unique // e.g. "BVN-MOD-849201"
   userId             String
   type               BvnModificationType
+  modificationCategory String?             // e.g. "CHANGE_OF_NAME", "CHANGE_OF_NAME_PHONE", "CHANGE_OF_ALL"
   status             BvnModificationStatus @default(PENDING)
+  enrollingBank      String?               // e.g. "AGENCY_BVN", "ENTERPRISE", "AGRICULTURAL_BANK", etc.
+  nin                String?               // 11 digits
   bvn                String                // 11 digits
   currentFullName    String
+
+  // Old name fields
+  oldFirstName       String?
+  oldLastName        String?
+  oldMiddleName      String?
 
   // Modification toggles (for multi-field combination)
   modifyName         Boolean               @default(false)

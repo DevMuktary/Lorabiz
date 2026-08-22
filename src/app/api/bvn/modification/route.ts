@@ -6,6 +6,74 @@ import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
+export const ENROLLING_BANKS = [
+  { id: "AGENCY_BVN", name: "Agency BVN", description: "POS Agent & Field Enrollment", isAvailable: true },
+  { id: "ENTERPRISE", name: "Enterprise Bank", description: "Enterprise Commercial Banking", isAvailable: true },
+  { id: "AGRICULTURAL_BANK", name: "Agricultural Bank", description: "Bank of Agriculture / Agribank", isAvailable: true },
+  { id: "NIBSS_IMPORT", name: "NIBSS IMPORT", description: "Direct NIBSS Database Migration", isAvailable: true },
+  { id: "HERITAGE_BANK", name: "HERITAGE BANK", description: "Heritage Commercial Banking", isAvailable: true },
+  { id: "MICROFINANCE_BANK", name: "MICROFINANCE BANK", description: "Microfinance Banking Institutions", isAvailable: true },
+];
+
+export const MODIFICATION_OPTIONS: Record<string, { label: string; priceKey: string; defaultPrice: number; hasName: boolean; hasDob: boolean; hasPhone: boolean }> = {
+  CHANGE_OF_NAME: {
+    label: "Change of Name Only",
+    priceKey: "BVN_MOD_NAME",
+    defaultPrice: 3000,
+    hasName: true,
+    hasDob: false,
+    hasPhone: false,
+  },
+  CHANGE_OF_DOB: {
+    label: "Change of Date of Birth (DOB) Only",
+    priceKey: "BVN_MOD_DOB",
+    defaultPrice: 15000,
+    hasName: false,
+    hasDob: true,
+    hasPhone: false,
+  },
+  CHANGE_OF_PHONE: {
+    label: "Change of Phone Number Only",
+    priceKey: "BVN_MOD_PHONE",
+    defaultPrice: 2500,
+    hasName: false,
+    hasDob: false,
+    hasPhone: true,
+  },
+  CHANGE_OF_NAME_PHONE: {
+    label: "Change of Name & Phone Number",
+    priceKey: "BVN_MOD_NAME_PHONE",
+    defaultPrice: 5000,
+    hasName: true,
+    hasDob: false,
+    hasPhone: true,
+  },
+  CHANGE_OF_DOB_PHONE: {
+    label: "Change of Date of Birth & Phone Number",
+    priceKey: "BVN_MOD_DOB_PHONE",
+    defaultPrice: 17000,
+    hasName: false,
+    hasDob: true,
+    hasPhone: true,
+  },
+  CHANGE_OF_NAME_DOB: {
+    label: "Change of Name & Date of Birth (DOB)",
+    priceKey: "BVN_MOD_NAME_DOB",
+    defaultPrice: 17500,
+    hasName: true,
+    hasDob: true,
+    hasPhone: false,
+  },
+  CHANGE_OF_ALL: {
+    label: "Change of Name, Date of Birth & Phone Number (All 3)",
+    priceKey: "BVN_MOD_ALL",
+    defaultPrice: 19500,
+    hasName: true,
+    hasDob: true,
+    hasPhone: true,
+  },
+};
+
 function calculateYearsDifference(currentDobStr: string, newDobStr: string): { diffYears: number; isOverFiveYears: boolean } {
   const current = new Date(currentDobStr);
   const updated = new Date(newDobStr);
@@ -14,12 +82,11 @@ function calculateYearsDifference(currentDobStr: string, newDobStr: string): { d
     return { diffYears: 0, isOverFiveYears: false };
   }
 
-  // Calculate precise day difference to avoid leap year drift
   const diffTime = Math.abs(updated.getTime() - current.getTime());
   const diffDays = diffTime / (1000 * 60 * 60 * 24);
   const diffYears = Number((diffDays / 365.2425).toFixed(2));
   
-  // 5 calendar years = 1826 days
+  // 5 calendar years = 1826.25 days
   const isOverFiveYears = diffDays > 1826.25;
 
   return { diffYears, isOverFiveYears };
@@ -41,7 +108,16 @@ export async function GET() {
       prisma.servicePricing.findMany({
         where: {
           serviceKey: {
-            in: ["BVN_MOD_NAME", "BVN_MOD_PHONE", "BVN_MOD_DOB", "BVN_MOD_DOB_SURCHARGE"],
+            in: [
+              "BVN_MOD_NAME", 
+              "BVN_MOD_PHONE", 
+              "BVN_MOD_DOB", 
+              "BVN_MOD_NAME_PHONE",
+              "BVN_MOD_DOB_PHONE",
+              "BVN_MOD_NAME_DOB",
+              "BVN_MOD_ALL",
+              "BVN_MOD_DOB_SURCHARGE"
+            ],
           },
         },
       }),
@@ -55,6 +131,10 @@ export async function GET() {
       BVN_MOD_NAME: 3000,
       BVN_MOD_PHONE: 2500,
       BVN_MOD_DOB: 15000,
+      BVN_MOD_NAME_PHONE: 5000,
+      BVN_MOD_DOB_PHONE: 17000,
+      BVN_MOD_NAME_DOB: 17500,
+      BVN_MOD_ALL: 19500,
       BVN_MOD_DOB_SURCHARGE: 5000,
     };
 
@@ -66,6 +146,8 @@ export async function GET() {
       success: true,
       walletBalance: Number(user.wallet?.balance || 0),
       pricing: pricingMap,
+      enrollingBanks: ENROLLING_BANKS,
+      modificationOptions: MODIFICATION_OPTIONS,
     });
   } catch (error: any) {
     console.error("❌ BVN Modification GET Error:", error);
@@ -86,59 +168,70 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const {
+      enrollingBank,
+      modificationType, // e.g. "CHANGE_OF_NAME", "CHANGE_OF_ALL"
+      nin,
       bvn,
-      currentFullName,
-      modifyName,
-      modifyPhone,
-      modifyDob,
+      oldFirstName,
+      oldLastName,
+      oldMiddleName,
       newFirstName,
       newLastName,
       newMiddleName,
-      currentPhone,
-      newPhone,
-      currentDob,
+      oldDob,
       newDob,
-      documentUrls,
+      oldPhone,
+      newPhone,
     } = body;
 
-    // 1. Validation
-    const cleanBvn = (bvn || "").trim();
-    if (!cleanBvn || !/^\d{11}$/.test(cleanBvn)) {
+    // 1. Validation of Bank and Modification Type
+    const validBank = ENROLLING_BANKS.find(b => b.id === enrollingBank);
+    if (!validBank) {
       return NextResponse.json(
-        { success: false, message: "A valid 11-digit BVN is required." },
+        { success: false, message: "Please select a valid enrolling bank from the list." },
         { status: 400 }
       );
     }
 
-    if (!currentFullName || currentFullName.trim().length < 3) {
+    const modConfig = MODIFICATION_OPTIONS[modificationType];
+    if (!modConfig) {
       return NextResponse.json(
-        { success: false, message: "Please provide the full legal name currently registered on your BVN." },
+        { success: false, message: "Please select a valid modification type." },
         { status: 400 }
       );
     }
 
-    if (!modifyName && !modifyPhone && !modifyDob) {
+    // 2. Primary Identifiers Validation
+    const cleanNin = (nin || "").trim().replace(/\D/g, "");
+    if (!cleanNin || cleanNin.length !== 11) {
       return NextResponse.json(
-        { success: false, message: "Please select at least one field to modify (Name, Phone Number, or Date of Birth)." },
+        { success: false, message: "A valid 11-digit NIN Number is required." },
         { status: 400 }
       );
     }
 
-    // Specific field validations
-    if (modifyName) {
+    const cleanBvn = (bvn || "").trim().replace(/\D/g, "");
+    if (!cleanBvn || cleanBvn.length !== 11) {
+      return NextResponse.json(
+        { success: false, message: "A valid 11-digit BVN Number is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!oldFirstName?.trim() || !oldLastName?.trim()) {
+      return NextResponse.json(
+        { success: false, message: "Please provide your Old First Name and Surname as registered on your BVN." },
+        { status: 400 }
+      );
+    }
+
+    const currentFullName = [oldFirstName.trim(), oldMiddleName?.trim(), oldLastName.trim()].filter(Boolean).join(" ");
+
+    // 3. Dynamic Field Validations based on selected modification type
+    if (modConfig.hasName) {
       if (!newFirstName?.trim() || !newLastName?.trim()) {
         return NextResponse.json(
-          { success: false, message: "New First Name and Last Name are required for Change of Name." },
-          { status: 400 }
-        );
-      }
-    }
-
-    if (modifyPhone) {
-      const cleanNewPhone = (newPhone || "").trim();
-      if (!cleanNewPhone || !/^0\d{10}$/.test(cleanNewPhone)) {
-        return NextResponse.json(
-          { success: false, message: "A valid 11-digit New Phone Number starting with 0 is required." },
+          { success: false, message: "New First Name and New Surname are required for Name Modification." },
           { status: 400 }
         );
       }
@@ -148,23 +241,42 @@ export async function POST(req: NextRequest) {
     let surchargeAmount = 0;
     let yearsDifference: number | null = null;
 
-    if (modifyDob) {
-      if (!currentDob || !newDob) {
+    if (modConfig.hasDob) {
+      if (!oldDob || !newDob) {
         return NextResponse.json(
-          { success: false, message: "Both current Date of Birth and new Date of Birth are required." },
+          { success: false, message: "Both Old Date of Birth and New Date of Birth are required for DOB Modification." },
           { status: 400 }
         );
       }
-      const dobCalc = calculateYearsDifference(currentDob, newDob);
+      const dobCalc = calculateYearsDifference(oldDob, newDob);
       yearsDifference = dobCalc.diffYears;
       surchargeApplied = dobCalc.isOverFiveYears;
     }
 
-    // 2. Fetch Prices from Database
+    if (modConfig.hasPhone) {
+      const cleanNewPhone = (newPhone || "").trim().replace(/\s+/g, "");
+      if (!cleanNewPhone || !/^0\d{10}$/.test(cleanNewPhone)) {
+        return NextResponse.json(
+          { success: false, message: "A valid 11-digit New Phone Number starting with 0 is required." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 4. Fetch Pricing from Database
     const pricingRows = await prisma.servicePricing.findMany({
       where: {
         serviceKey: {
-          in: ["BVN_MOD_NAME", "BVN_MOD_PHONE", "BVN_MOD_DOB", "BVN_MOD_DOB_SURCHARGE"],
+          in: [
+            "BVN_MOD_NAME", 
+            "BVN_MOD_PHONE", 
+            "BVN_MOD_DOB", 
+            "BVN_MOD_NAME_PHONE",
+            "BVN_MOD_DOB_PHONE",
+            "BVN_MOD_NAME_DOB",
+            "BVN_MOD_ALL",
+            "BVN_MOD_DOB_SURCHARGE"
+          ],
         },
       },
     });
@@ -173,6 +285,10 @@ export async function POST(req: NextRequest) {
       BVN_MOD_NAME: 3000,
       BVN_MOD_PHONE: 2500,
       BVN_MOD_DOB: 15000,
+      BVN_MOD_NAME_PHONE: 5000,
+      BVN_MOD_DOB_PHONE: 17000,
+      BVN_MOD_NAME_DOB: 17500,
+      BVN_MOD_ALL: 19500,
       BVN_MOD_DOB_SURCHARGE: 5000,
     };
 
@@ -180,21 +296,16 @@ export async function POST(req: NextRequest) {
       pricingMap[p.serviceKey] = Number(p.price);
     }
 
-    // 3. Compute Total Price
-    let totalPrice = 0;
-    const selectedFieldsCount = (modifyName ? 1 : 0) + (modifyPhone ? 1 : 0) + (modifyDob ? 1 : 0);
-    
-    if (modifyName) totalPrice += pricingMap.BVN_MOD_NAME;
-    if (modifyPhone) totalPrice += pricingMap.BVN_MOD_PHONE;
-    if (modifyDob) {
-      totalPrice += pricingMap.BVN_MOD_DOB;
-      if (surchargeApplied) {
-        surchargeAmount = pricingMap.BVN_MOD_DOB_SURCHARGE;
-        totalPrice += surchargeAmount;
-      }
+    // 5. Calculate Total Dynamic Price
+    const basePrice = pricingMap[modConfig.priceKey] || modConfig.defaultPrice;
+    let totalPrice = basePrice;
+
+    if (surchargeApplied) {
+      surchargeAmount = pricingMap.BVN_MOD_DOB_SURCHARGE || 5000;
+      totalPrice += surchargeAmount;
     }
 
-    // 4. Fetch User and Check Wallet Balance
+    // 6. Fetch User & Wallet Balance
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: { wallet: true },
@@ -218,20 +329,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Determine modification enum type
-    let modType: "CHANGE_OF_NAME" | "CHANGE_OF_PHONE" | "CHANGE_OF_DOB" | "COMBINED" = "COMBINED";
-    if (selectedFieldsCount === 1) {
-      if (modifyName) modType = "CHANGE_OF_NAME";
-      else if (modifyPhone) modType = "CHANGE_OF_PHONE";
-      else if (modifyDob) modType = "CHANGE_OF_DOB";
-    }
+    // Determine Prisma enum type for backward compatibility
+    let modTypeEnum: "CHANGE_OF_NAME" | "CHANGE_OF_PHONE" | "CHANGE_OF_DOB" | "COMBINED" = "COMBINED";
+    if (modificationType === "CHANGE_OF_NAME") modTypeEnum = "CHANGE_OF_NAME";
+    else if (modificationType === "CHANGE_OF_PHONE") modTypeEnum = "CHANGE_OF_PHONE";
+    else if (modificationType === "CHANGE_OF_DOB") modTypeEnum = "CHANGE_OF_DOB";
 
     // Generate unique tracking ID & reference
     const trackingSuffix = crypto.randomBytes(3).toString("hex").toUpperCase();
     const trackingId = `BVN-MOD-${trackingSuffix}`;
     const transactionRef = `TX-BVN-MOD-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`;
 
-    // 5. Atomic Transaction: Debit Wallet + Log Transaction + Create Request
+    // 7. Atomic Transaction: Debit Wallet + Log Transaction + Create Request
     const result = await prisma.$transaction(async (tx) => {
       // Debit wallet
       const updatedWallet = await tx.wallet.update({
@@ -254,7 +363,7 @@ export async function POST(req: NextRequest) {
           status: "SUCCESS",
           reference: transactionRef,
           serviceCategory: "BVN",
-          description: `BVN Modification Request - ${cleanBvn} (${trackingId})`,
+          description: `BVN Modification Request (${modConfig.label}) - ${cleanBvn} (${trackingId})`,
         },
       });
 
@@ -263,24 +372,30 @@ export async function POST(req: NextRequest) {
         data: {
           trackingId,
           userId: user.id,
-          type: modType,
+          type: modTypeEnum,
+          modificationCategory: modificationType,
           status: "PENDING",
+          enrollingBank: validBank.name,
+          nin: cleanNin,
           bvn: cleanBvn,
-          currentFullName: currentFullName.trim(),
-          modifyName: Boolean(modifyName),
-          modifyPhone: Boolean(modifyPhone),
-          modifyDob: Boolean(modifyDob),
-          newFirstName: modifyName ? newFirstName?.trim() : null,
-          newLastName: modifyName ? newLastName?.trim() : null,
-          newMiddleName: modifyName && newMiddleName ? newMiddleName.trim() : null,
-          currentPhone: modifyPhone && currentPhone ? currentPhone.trim() : null,
-          newPhone: modifyPhone ? newPhone?.trim() : null,
-          currentDob: modifyDob ? currentDob : null,
-          newDob: modifyDob ? newDob : null,
+          currentFullName,
+          oldFirstName: oldFirstName.trim().toUpperCase(),
+          oldLastName: oldLastName.trim().toUpperCase(),
+          oldMiddleName: oldMiddleName?.trim() ? oldMiddleName.trim().toUpperCase() : null,
+          modifyName: modConfig.hasName,
+          modifyPhone: modConfig.hasPhone,
+          modifyDob: modConfig.hasDob,
+          newFirstName: modConfig.hasName ? newFirstName?.trim().toUpperCase() : null,
+          newLastName: modConfig.hasName ? newLastName?.trim().toUpperCase() : null,
+          newMiddleName: modConfig.hasName && newMiddleName?.trim() ? newMiddleName.trim().toUpperCase() : null,
+          currentPhone: modConfig.hasPhone && oldPhone?.trim() ? oldPhone.trim() : null,
+          newPhone: modConfig.hasPhone ? newPhone?.trim() : null,
+          currentDob: modConfig.hasDob ? oldDob : null,
+          newDob: modConfig.hasDob ? newDob : null,
           yearsDifference: yearsDifference,
           surchargeApplied: surchargeApplied,
           surchargeAmount: surchargeAmount,
-          documentUrls: Array.isArray(documentUrls) ? documentUrls : [],
+          documentUrls: [],
           amountPaid: totalPrice,
           transactionRef,
         },
@@ -291,7 +406,7 @@ export async function POST(req: NextRequest) {
         data: {
           userId: user.id,
           title: "BVN Modification Submitted",
-          message: `Your BVN modification request (${trackingId}) for BVN ${cleanBvn} has been received and is being processed by our compliance team.`,
+          message: `Your BVN modification request (${trackingId}) for BVN ${cleanBvn} (${validBank.name}) has been received and is queued for processing.`,
           type: "info",
           link: `/dashboard/bvn/modification/history`,
         },

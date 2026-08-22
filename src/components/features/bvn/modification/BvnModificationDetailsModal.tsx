@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { 
   X, CheckCircle2, Clock, AlertTriangle, User, Phone, Calendar, 
-  FileText, Download, ShieldCheck, ArrowRight, CornerDownRight, RotateCcw
+  Download, RotateCcw, Building2, ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -109,17 +109,29 @@ export default function BvnModificationDetailsModal({
 
         {/* Core Request Information */}
         <div className="bg-secondary/30 rounded-2xl p-4 border border-border space-y-2.5 text-xs">
+          {request.enrollingBank && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Enrolling Bank:</span>
+              <span className="font-bold text-foreground">{request.enrollingBank}</span>
+            </div>
+          )}
+          {request.nin && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">NIN Number:</span>
+              <span className="font-mono font-bold text-foreground">{request.nin}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">BVN Number:</span>
             <span className="font-mono font-bold text-foreground">{request.bvn}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Registered Legal Name:</span>
+            <span className="text-muted-foreground">Current / Old Name:</span>
             <span className="font-bold text-foreground">{request.currentFullName}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Amount Paid:</span>
-            <span className="font-bold text-foreground">₦{Number(request.amountPaid).toLocaleString()}</span>
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">₦{Number(request.amountPaid).toLocaleString()}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Submission Date:</span>
@@ -131,7 +143,7 @@ export default function BvnModificationDetailsModal({
 
         {/* Modified Fields Details */}
         <div className="space-y-3 text-xs">
-          <h4 className="font-black uppercase text-[11px] text-muted-foreground tracking-wider">Modification Specifications</h4>
+          <h4 className="font-black uppercase text-[11px] text-muted-foreground tracking-wider">Modification Details</h4>
 
           {/* Change of Name */}
           {request.modifyName && (
@@ -154,7 +166,7 @@ export default function BvnModificationDetailsModal({
                 <span>New Phone Number</span>
               </div>
               <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400 pl-5">
-                {request.newPhone}
+                {request.newPhone} {request.currentPhone && <span className="text-muted-foreground text-[11px] font-normal font-sans">(Previous: {request.currentPhone})</span>}
               </p>
             </div>
           )}
@@ -179,27 +191,6 @@ export default function BvnModificationDetailsModal({
             </div>
           )}
         </div>
-
-        {/* Uploaded Documents */}
-        {request.documentUrls && request.documentUrls.length > 0 && (
-          <div className="space-y-2 text-xs">
-            <h4 className="font-black uppercase text-[11px] text-muted-foreground tracking-wider">Uploaded Proofs</h4>
-            <div className="flex flex-wrap gap-2">
-              {request.documentUrls.map((url: string, i: number) => (
-                <a
-                  key={i}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 font-mono text-[11px] border border-border"
-                >
-                  <FileText size={12} />
-                  <span>Document #{i + 1}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Completed Resolution Slip Download */}
         {request.status === "COMPLETED" && request.slipUrl && (
