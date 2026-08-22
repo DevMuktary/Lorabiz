@@ -8,11 +8,14 @@ import {
   ArrowRight,
   ShieldCheck, 
   ListDashes, 
-  Spinner
+  Spinner,
+  Info
 } from "@phosphor-icons/react";
 import BvnModificationForm from "@/components/features/bvn/modification/BvnModificationForm";
+import { BvnGuidelinesModal } from "@/components/features/bvn/modification/BvnGuidelinesModal";
 
 export default function BvnModificationPage() {
+  const [showGuidelines, setShowGuidelines] = useState<boolean>(true);
   const [pricing, setPricing] = useState<Record<string, number>>({
     BVN_MOD_NAME: 3000,
     BVN_MOD_PHONE: 2500,
@@ -52,13 +55,31 @@ export default function BvnModificationPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto relative pb-16 animate-in fade-in duration-200 font-sans">
-      {/* Back Breadcrumb */}
-      <Link 
-        href="/dashboard/bvn" 
-        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl cursor-pointer"
-      >
-        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to BVN Services
-      </Link>
+      
+      {/* Guidelines & Rules Modal */}
+      <BvnGuidelinesModal
+        isOpen={showGuidelines}
+        onClose={() => setShowGuidelines(false)}
+      />
+
+      {/* Top Breadcrumb & Guidelines Trigger */}
+      <div className="flex items-center justify-between">
+        <Link 
+          href="/dashboard/bvn" 
+          className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl cursor-pointer"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" /> Back to BVN Services
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setShowGuidelines(true)}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 cursor-pointer"
+        >
+          <Info weight="bold" className="h-3.5 w-3.5" />
+          <span>View Guidelines &amp; Rules</span>
+        </button>
+      </div>
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">

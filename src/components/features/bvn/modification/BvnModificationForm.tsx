@@ -18,24 +18,22 @@ import {
   Wallet, 
   Lock, 
   XCircle, 
-  Copy, 
   Check 
 } from "@phosphor-icons/react";
 
 export const ENROLLING_BANKS = [
-  { id: "AGENCY_BVN", name: "Agency BVN", description: "POS Agent & Field Enrollment" },
-  { id: "ENTERPRISE", name: "Enterprise Bank", description: "Enterprise Commercial Banking" },
-  { id: "AGRICULTURAL_BANK", name: "Agricultural Bank", description: "Bank of Agriculture / Agribank" },
-  { id: "NIBSS_IMPORT", name: "NIBSS IMPORT", description: "Direct NIBSS Database Migration" },
-  { id: "HERITAGE_BANK", name: "HERITAGE BANK", description: "Heritage Commercial Banking" },
-  { id: "MICROFINANCE_BANK", name: "MICROFINANCE BANK", description: "Microfinance Banking Institutions" },
+  { id: "AGENCY_BVN", name: "Agency BVN" },
+  { id: "ENTERPRISE", name: "Enterprise Bank" },
+  { id: "AGRICULTURAL_BANK", name: "Agricultural Bank" },
+  { id: "NIBSS_IMPORT", name: "NIBSS IMPORT" },
+  { id: "HERITAGE_BANK", name: "Heritage Bank" },
+  { id: "MICROFINANCE_BANK", name: "Microfinance Bank" },
 ];
 
 export const MODIFICATION_OPTIONS = [
   {
     id: "CHANGE_OF_NAME",
     label: "Change of Name Only",
-    description: "Update First, Middle, or Surname with official NIN record",
     hasName: true,
     hasDob: false,
     hasPhone: false,
@@ -45,7 +43,6 @@ export const MODIFICATION_OPTIONS = [
   {
     id: "CHANGE_OF_DOB",
     label: "Change of Date of Birth (DOB) Only",
-    description: "Correct your birth date on BVN record (5-year rule applies)",
     hasName: false,
     hasDob: true,
     hasPhone: false,
@@ -55,7 +52,6 @@ export const MODIFICATION_OPTIONS = [
   {
     id: "CHANGE_OF_PHONE",
     label: "Change of Phone Number Only",
-    description: "Link a new active phone number to your BVN profile",
     hasName: false,
     hasDob: false,
     hasPhone: true,
@@ -65,7 +61,6 @@ export const MODIFICATION_OPTIONS = [
   {
     id: "CHANGE_OF_NAME_PHONE",
     label: "Change of Name & Phone Number",
-    description: "Simultaneously update legal name and primary phone number",
     hasName: true,
     hasDob: false,
     hasPhone: true,
@@ -75,7 +70,6 @@ export const MODIFICATION_OPTIONS = [
   {
     id: "CHANGE_OF_DOB_PHONE",
     label: "Change of Date of Birth & Phone Number",
-    description: "Update birth date alongside primary phone number",
     hasName: false,
     hasDob: true,
     hasPhone: true,
@@ -84,8 +78,7 @@ export const MODIFICATION_OPTIONS = [
   },
   {
     id: "CHANGE_OF_NAME_DOB",
-    label: "Change of Name & Date of Birth",
-    description: "Update legal name together with date of birth",
+    label: "Change of Name & Date of Birth (DOB)",
     hasName: true,
     hasDob: true,
     hasPhone: false,
@@ -95,7 +88,6 @@ export const MODIFICATION_OPTIONS = [
   {
     id: "CHANGE_OF_ALL",
     label: "Change of Name, DOB & Phone (All 3)",
-    description: "Comprehensive multi-field update across Name, DOB and Phone",
     hasName: true,
     hasDob: true,
     hasPhone: true,
@@ -318,16 +310,6 @@ export default function BvnModificationForm({
   return (
     <div className="space-y-6 sm:space-y-8 font-sans">
       
-      {/* 1. COMPACT GUIDELINES & POLICY BANNER (1-2 lines with no-refund & authorization rule) */}
-      <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl px-4 py-3 text-xs text-foreground flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <ShieldCheck weight="bold" className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-          <p className="leading-snug">
-            <strong className="text-amber-700 dark:text-amber-300">Mandatory Rule:</strong> You must be the legitimate owner or explicitly authorized. Ensure updates reflect on your <strong>VNIN slip</strong> first. Supported banks only &bull; <strong>Strictly no refunds for ineligible or duplicate submissions</strong>.
-          </p>
-        </div>
-      </div>
-
       {/* Global Error Banner */}
       {errorMessage && !showReviewModal && (
         <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-between gap-2 animate-in slide-in-from-top-1">
@@ -350,7 +332,7 @@ export default function BvnModificationForm({
         <div className="space-y-4 animate-in fade-in duration-200">
           <div>
             <label className="block text-xs font-black uppercase tracking-wider text-muted-foreground">
-              Step 1: Select Enrolling Bank
+              Select Enrolling Bank
             </label>
             <p className="text-xs text-muted-foreground mt-0.5">
               Choose the bank or agency where this BVN was originally registered.
@@ -366,36 +348,32 @@ export default function BvnModificationForm({
                   setSelectedBank(bank.id);
                   setErrorMessage(null);
                 }}
-                className="p-4 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+                className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all flex items-center gap-3 cursor-pointer group shadow-sm hover:shadow-md"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="h-9 w-9 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
-                    <Bank weight="duotone" className="h-5 w-5" />
-                  </div>
+                <div className="h-10 w-10 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors shrink-0">
+                  <Bank weight="duotone" className="h-5 w-5" />
                 </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors">{bank.name}</h4>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{bank.description}</p>
-                </div>
+                <h4 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                  {bank.name}
+                </h4>
               </button>
             ))}
           </div>
         </div>
       ) : (
-        /* Active Bank Banner (All others collapsed) */
-        <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-primary/30 shadow-sm flex items-center justify-between gap-4 animate-in fade-in duration-200">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0 border border-primary/20">
-              <Bank weight="duotone" className="h-6 w-6" />
+        /* Active Bank Banner (All others collapsed, clean responsive flex) */
+        <div className="p-4 sm:p-5 rounded-2xl bg-card border border-primary/30 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
+              <Bank weight="duotone" className="h-5 w-5" />
             </div>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
-                Enrolling Bank
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Selected Enrolling Bank
               </span>
-              <h3 className="text-sm sm:text-base font-black text-foreground mt-0.5">
+              <h3 className="text-base font-black text-foreground truncate">
                 {activeBank?.name}
               </h3>
-              <p className="text-[11px] text-muted-foreground">{activeBank?.description}</p>
             </div>
           </div>
 
@@ -405,7 +383,7 @@ export default function BvnModificationForm({
               setSelectedBank(null);
               setErrorMessage(null);
             }}
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs transition-all shrink-0 cursor-pointer shadow-sm"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs shrink-0 cursor-pointer shadow-sm self-start sm:self-auto"
           >
             <ArrowsClockwise weight="bold" className="h-3.5 w-3.5 text-primary" />
             <span>Change Bank</span>
@@ -419,10 +397,10 @@ export default function BvnModificationForm({
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
             <div>
               <label className="block text-xs font-black uppercase tracking-wider text-muted-foreground">
-                Step 2: Select Modification Type
+                Select Modification Type
               </label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Choose the specific record change you need to synchronize on NIBSS.
+                Choose the specific record change you need to update on your BVN profile.
               </p>
             </div>
 
@@ -437,7 +415,7 @@ export default function BvnModificationForm({
                       setSelectedModType(opt.id);
                       setErrorMessage(null);
                     }}
-                    className="p-4 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md space-y-3"
+                    className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md space-y-3"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
@@ -454,9 +432,6 @@ export default function BvnModificationForm({
                       <h4 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                         {opt.label}
                       </h4>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-                        {opt.description}
-                      </p>
                     </div>
                   </button>
                 );
@@ -465,26 +440,25 @@ export default function BvnModificationForm({
           </div>
         ) : (
           /* Active Modification Banner (All other options collapsed) */
-          <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-emerald-500/30 shadow-sm flex items-center justify-between gap-4 animate-in fade-in duration-200">
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0 border border-emerald-500/20">
+          <div className="p-4 sm:p-5 rounded-2xl bg-card border border-emerald-500/30 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0 border border-emerald-500/20">
                 {activeModConfig?.hasName && <User weight="duotone" className="h-5 w-5" />}
                 {activeModConfig?.hasDob && !activeModConfig.hasName && <Calendar weight="duotone" className="h-5 w-5" />}
                 {activeModConfig?.hasPhone && !activeModConfig.hasName && !activeModConfig.hasDob && <Phone weight="duotone" className="h-5 w-5" />}
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                     Active Service
                   </span>
                   <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">
                     ₦{totalPrice.toLocaleString()}
                   </span>
                 </div>
-                <h3 className="text-sm sm:text-base font-black text-foreground mt-0.5">
+                <h3 className="text-base font-black text-foreground truncate">
                   {activeModConfig?.label}
                 </h3>
-                <p className="text-[11px] text-muted-foreground">{activeModConfig?.description}</p>
               </div>
             </div>
 
@@ -494,7 +468,7 @@ export default function BvnModificationForm({
                 setSelectedModType(null);
                 setErrorMessage(null);
               }}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs transition-all shrink-0 cursor-pointer shadow-sm"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs shrink-0 cursor-pointer shadow-sm self-start sm:self-auto"
             >
               <ArrowsClockwise weight="bold" className="h-3.5 w-3.5 text-primary" />
               <span>Change Service</span>
@@ -512,7 +486,7 @@ export default function BvnModificationForm({
               BVN Modification Application
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Enter your current identifiers and the exact new details to be updated on NIBSS.
+              Enter your current identifiers and the exact new details to be updated on your BVN profile.
             </p>
           </div>
 
@@ -520,7 +494,7 @@ export default function BvnModificationForm({
           <div className="space-y-4">
             <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <IdentificationCard weight="bold" className="h-4 w-4" />
-              Primary Identifiers (Universal)
+              Primary Identifiers
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -720,7 +694,7 @@ export default function BvnModificationForm({
                   {dobCalculation.isOverFiveYears ? (
                     !dobOver5YearsAllowed ? (
                       <p className="text-[11px] leading-relaxed font-semibold">
-                        ❌ Administrative Policy: Date of birth modifications exceeding 5 years are currently not accepted. Please select a difference within 5 years.
+                        ❌ Administrative Policy: Date of birth modifications exceeding 5 years are currently not accepted.
                       </p>
                     ) : (
                       <p className="text-[11px] leading-relaxed">
@@ -794,7 +768,7 @@ export default function BvnModificationForm({
         </form>
       )}
 
-      {/* REVIEW & CONFIRMATION MODAL (Handles insufficient crying emoji 😭 state or sufficient balance summary) */}
+      {/* REVIEW & CONFIRMATION MODAL */}
       {showReviewModal && activeModConfig && activeBank && (
         <div className="fixed inset-0 z-50 p-3 sm:p-6 py-6 sm:py-10 bg-black/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
           <div className="bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl max-w-lg w-full overflow-hidden text-foreground max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
@@ -968,7 +942,7 @@ export default function BvnModificationForm({
                         className="mt-0.5 h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
                       />
                       <span className="text-xs text-muted-foreground leading-relaxed">
-                        I hereby declare and affirm that I am the <strong>legitimate owner</strong> of this BVN or have been <strong>duly authorized</strong> by the owner to submit this request. I confirm all details are accurate, reflect on the NIMC VNIN slip, and agree that fees are non-refundable once processed on NIBSS.
+                        I hereby declare that I am the <strong>legitimate owner</strong> of this BVN or have been <strong>duly authorized</strong> by the owner to submit this request. I confirm all details are authentic and understand all fees are non-refundable once processed on NIBSS.
                       </span>
                     </label>
                   </div>
