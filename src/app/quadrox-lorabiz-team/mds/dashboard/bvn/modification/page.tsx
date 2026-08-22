@@ -10,6 +10,22 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const sanitizeHttpUrl = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    // Invalid URL
+  }
+
+  return null;
+};
+
 export default function AdminBvnModificationPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -446,16 +462,19 @@ export default function AdminBvnModificationPage() {
                         <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono truncate">
                           <CheckCircle2 size={14} className="shrink-0" />
                           <span className="truncate max-w-[200px]">{slipUrl}</span>
-                          {(slipUrl.startsWith("http://") || slipUrl.startsWith("https://")) && (
-                            <a
-                              href={slipUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs underline text-zinc-300 hover:text-white shrink-0"
-                            >
-                              Preview
-                            </a>
-                          )}
+                          {(() => {
+                            const safePreviewUrl = sanitizeHttpUrl(slipUrl);
+                            return safePreviewUrl ? (
+                              <a
+                                href={safePreviewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs underline text-zinc-300 hover:text-white shrink-0"
+                              >
+                                Preview
+                              </a>
+                            ) : null;
+                          })()}
                         </div>
                       )}
                     </div>
