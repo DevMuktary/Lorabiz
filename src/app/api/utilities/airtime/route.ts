@@ -43,12 +43,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Insufficient wallet balance. Please fund your wallet." }, { status: 400 });
     }
 
-    // 5. Map Network to CheapDataSales Product Codes
+    // 5. Map Network to CheapDataSales Product Codes (CheapData uses etisalat_custom for 9Mobile)
     const productCodes: Record<string, string> = {
       "MTN": "mtn_custom",
       "GLO": "glo_custom",
       "AIRTEL": "airtel_custom",
-      "9MOBILE": "9mobile_custom"
+      "9MOBILE": "etisalat_custom",
+      "ETISALAT": "etisalat_custom"
     };
 
     const productCode = productCodes[network.toUpperCase()];
@@ -90,7 +91,7 @@ export async function POST(req: Request) {
       return { balanceAfter, txRecord };
     });
 
-    // 8. Call Telecom Upstream Provider API
+    // 8. Call Telecom Upstream Provider API (Matches exact CheapData format)
     const apiKey = process.env.CHEAPDATA_API_KEY || process.env.CHEAPDATASALES_API_KEY || "";
     if (!apiKey) {
       console.error("CRITICAL: CHEAPDATA_API_KEY / CHEAPDATASALES_API_KEY is missing in environment.");
@@ -102,7 +103,6 @@ export async function POST(req: Request) {
         headers: {
           "Content-Type": "application/json",
           "Bearer": apiKey,
-          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           amount: numAmount,
@@ -111,7 +111,8 @@ export async function POST(req: Request) {
           action: "vend",
           user_reference: reference,
           bypass_network: "yes",
-        })
+        }),
+        signal: AbortSignal.timeout(45000),
       });
 
       const externalData = await externalRes.json().catch(() => ({}));
@@ -128,13 +129,19 @@ export async function POST(req: Request) {
       if (isSuccess) {
         return NextResponse.json({
           success: true,
-          message: externalData.server_message || externalData.data?.true_response || "Airtime vending successful.",
+          message: externalData.server_message || "Airtime Sent Successfully",
           reference,
           amount: numAmount,
           phone: cleanPhone,
           network: network.toUpperCase(),
           newBalance: debitResult.balanceAfter,
-          data: externalData.data || {}
+          data: {
+            network: network.toUpperCase(),
+            amount: externalData.data?.amount_charged || numAmount,
+            phone: cleanPhone,
+            provider_ref: externalData.data?.recharge_id,
+            balance_after: externalData.data?.after_balance,
+          }
         });
       } else {
         // Upstream failed -> Refund wallet and mark the original transaction as FAILED
@@ -152,7 +159,7 @@ export async function POST(req: Request) {
           });
         });
 
-        const rawMsg = externalData.server_message || externalData.message || externalData.error || externalData.msg;
+        const rawMsg = externalData.server_message || externalData.data?.true_response || externalData.message || externalData.error || externalData.msg;
         const serverMessage = rawMsg 
           ? `Provider error: ${rawMsg}. Your wallet has been refunded.`
           : "Provider failed to process airtime recharge. Your wallet has been refunded.";
