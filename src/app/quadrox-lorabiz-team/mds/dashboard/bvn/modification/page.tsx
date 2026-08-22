@@ -446,14 +446,16 @@ export default function AdminBvnModificationPage() {
                         <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono truncate">
                           <CheckCircle2 size={14} className="shrink-0" />
                           <span className="truncate max-w-[200px]">{slipUrl}</span>
-                          <a
-                            href={slipUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs underline text-zinc-300 hover:text-white shrink-0"
-                          >
-                            Preview
-                          </a>
+                          {(slipUrl.startsWith("http://") || slipUrl.startsWith("https://")) && (
+                            <a
+                              href={slipUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs underline text-zinc-300 hover:text-white shrink-0"
+                            >
+                              Preview
+                            </a>
+                          )}
                         </div>
                       )}
                     </div>
