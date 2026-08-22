@@ -357,14 +357,18 @@ export default function BvnModificationForm({
             <div className="space-y-2.5">
               <div className="flex items-start gap-2">
                 <span className="font-black text-amber-700 dark:text-amber-400">1.</span>
-                <p><strong>Supported Enrolling Banks Only:</strong> Ensure your BVN originated from an <strong>Agency Enrollment</strong> or one of our <strong>6 listed supported banks</strong>.</p>
+                <p><strong>Mandatory Ownership &amp; Authorization:</strong> You must be the <strong>legitimate owner</strong> of the BVN or <strong>duly authorized</strong> with explicit consent by the owner. Unauthorized modifications constitute identity fraud.</p>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-black text-amber-700 dark:text-amber-400">2.</span>
-                <p><strong>Must Reflect on VNIN Slip First:</strong> If you previously modified your NIN, verify that your new details are <strong>fully reflecting on your NIMC VNIN Slip</strong>. NIBSS rejects double / unreflected modifications.</p>
+                <p><strong>Supported Enrolling Banks Only:</strong> Ensure your BVN originated from an <strong>Agency Enrollment</strong> or one of our <strong>6 listed supported banks</strong>.</p>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-black text-amber-700 dark:text-amber-400">3.</span>
+                <p><strong>Must Reflect on VNIN Slip First:</strong> If you previously modified your NIN, verify that your new details are <strong>fully reflecting on your NIMC VNIN Slip</strong>. NIBSS rejects double / unreflected modifications.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-black text-amber-700 dark:text-amber-400">4.</span>
                 <p><strong>One-Time Modification Rule:</strong> Under NIBSS regulations, each BVN detail category can only be legally modified <strong>once</strong>.</p>
               </div>
             </div>

@@ -96,13 +96,16 @@ export default function BvnTermsModal({
         <div className="max-h-[260px] overflow-y-auto space-y-3 pr-2 text-xs leading-relaxed border border-border/80 rounded-2xl p-4 bg-secondary/20">
           <div className="space-y-2 text-muted-foreground">
             <p>
-              1. <strong>Valid Enrolling Banks Only:</strong> I confirm that this BVN enrollment is registered under <strong>{enrollingBankName}</strong> or an approved Agency Enrollment.
+              1. <strong>Mandatory Ownership &amp; Authorization:</strong> I solemnly affirm under penalty of identity fraud that I am either the <strong>legitimate registered owner</strong> of BVN <strong className="font-mono text-foreground">{bvn}</strong> or have been <strong>duly authorized with explicit consent</strong> by the BVN owner to submit this modification.
             </p>
             <p>
-              2. <strong>VNIN Slip Reflection:</strong> If a prior NIN modification was conducted, I certify that the update is <strong>already active and fully reflecting on my NIMC VNIN Slip</strong>. NIBSS rejects unreflected or double modification attempts.
+              2. <strong>Valid Enrolling Banks Only:</strong> I confirm that this BVN enrollment is registered under <strong>{enrollingBankName}</strong> or an approved Agency Enrollment.
             </p>
             <p>
-              3. <strong>One-Time Rule:</strong> I acknowledge that under NIBSS regulatory framework, BVN record details can only be legally modified once per category.
+              3. <strong>VNIN Slip Reflection:</strong> If a prior NIN modification was conducted, I certify that the update is <strong>already active and fully reflecting on my NIMC VNIN Slip</strong>. NIBSS rejects unreflected or double modification attempts.
+            </p>
+            <p>
+              4. <strong>One-Time Rule:</strong> I acknowledge that under NIBSS regulatory framework, BVN record details can only be legally modified once per category.
             </p>
           </div>
 
@@ -131,7 +134,7 @@ export default function BvnTermsModal({
               className="mt-0.5 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
             />
             <span className="text-foreground">
-              I certify that I am the genuine holder of BVN <strong>{bvn}</strong> and all information supplied is authentic.
+              I certify that I am the <strong>legitimate owner</strong> of BVN <strong>{bvn}</strong> or have been <strong>duly authorized</strong> by the owner, and all supplied details are authentic.
             </span>
           </label>
 
