@@ -28,6 +28,9 @@ export default function BvnModificationPage() {
     BVN_MOD_ALL: 19500,
     BVN_MOD_DOB_SURCHARGE: 5000,
   });
+  const [originalPricing, setOriginalPricing] = useState<Record<string, number>>({});
+  const [hasDiscount, setHasDiscount] = useState<boolean>(false);
+  const [discountBadge, setDiscountBadge] = useState<string | undefined>(undefined);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [dobOver5YearsAllowed, setDobOver5YearsAllowed] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -44,6 +47,9 @@ export default function BvnModificationPage() {
         const data = await res.json();
         if (data.success) {
           if (data.pricing) setPricing(data.pricing);
+          if (data.originalPricing) setOriginalPricing(data.originalPricing);
+          if (data.hasDiscount !== undefined) setHasDiscount(Boolean(data.hasDiscount));
+          if (data.discountBadge) setDiscountBadge(data.discountBadge);
           if (data.walletBalance !== undefined) setWalletBalance(Number(data.walletBalance) || 0);
           if (data.dobOver5YearsAllowed !== undefined) setDobOver5YearsAllowed(Boolean(data.dobOver5YearsAllowed));
         }
@@ -169,6 +175,9 @@ export default function BvnModificationPage() {
       ) : (
         <BvnModificationForm 
           pricing={pricing} 
+          originalPricing={originalPricing}
+          hasDiscount={hasDiscount}
+          discountBadge={discountBadge}
           walletBalance={walletBalance} 
           dobOver5YearsAllowed={dobOver5YearsAllowed}
           onSuccess={handleSubmissionSuccess} 

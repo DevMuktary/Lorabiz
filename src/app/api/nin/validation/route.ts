@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { logUserActivity } from "@/lib/activity-logger";
 import { NinValidationCategory } from "@prisma/client";
+import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
 
 // Category to ServicePricing key mapping
 export const CATEGORY_PRICE_KEYS: Record<NinValidationCategory, { key: string; defaultPrice: number; label: string }> = {
@@ -53,12 +54,19 @@ export async function GET() {
       },
     });
 
-    const categoryPricing: Record<string, { price: number; isActive: boolean; maintenanceMsg?: string | null }> = {};
+    const categoryPricing: Record<string, { price: number; originalPrice?: number; hasDiscount?: boolean; discountBadge?: string; savedAmount?: number; isActive: boolean; maintenanceMsg?: string | null }> = {};
 
     for (const [cat, config] of Object.entries(CATEGORY_PRICE_KEYS)) {
       const found = pricingRecords.find((r) => r.serviceKey === config.key);
+      const base = found ? Number(found.price) : config.defaultPrice;
+      const discountInfo = await getEffectiveServicePrice(prisma, config.key, base, user.id);
+
       categoryPricing[cat] = {
-        price: found ? Number(found.price) : config.defaultPrice,
+        price: discountInfo.finalPrice,
+        originalPrice: discountInfo.originalPrice,
+        hasDiscount: discountInfo.hasDiscount,
+        discountBadge: discountInfo.badge,
+        savedAmount: discountInfo.savedAmount,
         isActive: found ? found.isActive : true,
         maintenanceMsg: found?.maintenanceMsg || null,
       };
@@ -149,7 +157,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const requiredAmount = servicePricing ? Number(servicePricing.price) : categoryConfig.defaultPrice;
+    const nominalPrice = servicePricing ? Number(servicePricing.price) : categoryConfig.defaultPrice;
+    const discountInfo = await getEffectiveServicePrice(prisma, categoryConfig.key, nominalPrice, user.id);
+    const requiredAmount = discountInfo.finalPrice;
     const currentBalance = Number(user.wallet.balance);
 
     if (currentBalance < requiredAmount) {
@@ -233,6 +243,11 @@ export async function POST(req: NextRequest) {
           link: `/dashboard/nin/validation/history`,
         },
       });
+
+      // 5. Record promo usage if discount was applied
+      if (discountInfo.hasDiscount && discountInfo.promoId) {
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id);
+      }
 
       return newRequest;
     });

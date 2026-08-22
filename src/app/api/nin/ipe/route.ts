@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { submitIpeClearance } from "@/lib/agenthub";
 import { submitDataVerifyIpe } from "@/lib/dataverify";
 import { logUserActivity } from "@/lib/activity-logger";
+import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,7 +62,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const requiredAmount = servicePricing ? Number(servicePricing.price) : 2500.0;
+    const basePrice = servicePricing ? Number(servicePricing.price) : 2500.0;
+    const discountInfo = await getEffectiveServicePrice(prisma, "NIN_IPE_CLEARANCE", basePrice, user.id);
+    const requiredAmount = discountInfo.finalPrice;
     const currentBalance = Number(user.wallet.balance);
 
     if (currentBalance < requiredAmount) {
@@ -221,6 +224,11 @@ export async function POST(req: NextRequest) {
             });
           }
         }
+      }
+
+      // 5. Record promo usage if discount was applied
+      if (discountInfo.hasDiscount && discountInfo.promoId) {
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id);
       }
 
       return ipeRecord;

@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { sendBvnModificationSubmittedEmail } from "@/lib/email";
+import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
 
 export const dynamic = "force-dynamic";
 
@@ -146,13 +147,31 @@ export async function GET() {
       pricingMap[p.serviceKey] = Number(p.price);
     }
 
+    const effectivePricingMap: Record<string, number> = { ...pricingMap };
+    const originalPricingMap: Record<string, number> = { ...pricingMap };
+    let hasAnyDiscount = false;
+    let globalBadge: string | undefined = undefined;
+
+    for (const key of Object.keys(pricingMap)) {
+      const base = pricingMap[key];
+      const disc = await getEffectiveServicePrice(prisma, key, base, user.id);
+      effectivePricingMap[key] = disc.finalPrice;
+      if (disc.hasDiscount) {
+        hasAnyDiscount = true;
+        if (disc.badge) globalBadge = disc.badge;
+      }
+    }
+
     // Default to true if not explicitly set to "false"
     const dobOver5YearsAllowed = dobSetting ? dobSetting.value !== "false" : true;
 
     return NextResponse.json({
       success: true,
       walletBalance: Number(user.wallet?.balance || 0),
-      pricing: pricingMap,
+      pricing: effectivePricingMap,
+      originalPricing: originalPricingMap,
+      hasDiscount: hasAnyDiscount,
+      discountBadge: globalBadge,
       dobOver5YearsAllowed,
       enrollingBanks: ENROLLING_BANKS,
       modificationOptions: MODIFICATION_OPTIONS,
@@ -320,16 +339,7 @@ export async function POST(req: NextRequest) {
       pricingMap[p.serviceKey] = Number(p.price);
     }
 
-    // 5. Calculate Total Dynamic Price
-    const basePrice = pricingMap[modConfig.priceKey] || modConfig.defaultPrice;
-    let totalPrice = basePrice;
-
-    if (surchargeApplied) {
-      surchargeAmount = pricingMap.BVN_MOD_DOB_SURCHARGE || 5000;
-      totalPrice += surchargeAmount;
-    }
-
-    // 6. Fetch User & Wallet Balance
+    // 5. Fetch User & Wallet Balance
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: { wallet: true },
@@ -337,6 +347,17 @@ export async function POST(req: NextRequest) {
 
     if (!user || !user.wallet) {
       return NextResponse.json({ success: false, message: "User wallet not found." }, { status: 404 });
+    }
+
+    // 6. Calculate Total Dynamic Price
+    const nominalBasePrice = pricingMap[modConfig.priceKey] || modConfig.defaultPrice;
+    const discountInfo = await getEffectiveServicePrice(prisma, modConfig.priceKey, nominalBasePrice, user.id);
+    const basePrice = discountInfo.finalPrice;
+    let totalPrice = basePrice;
+
+    if (surchargeApplied) {
+      surchargeAmount = pricingMap.BVN_MOD_DOB_SURCHARGE || 5000;
+      totalPrice += surchargeAmount;
     }
 
     const currentBalance = Number(user.wallet.balance);
@@ -430,11 +451,16 @@ export async function POST(req: NextRequest) {
         data: {
           userId: user.id,
           title: "BVN Modification Submitted",
-          message: `Your BVN modification request (${trackingId}) for BVN ${cleanBvn} (${validBank.name}) has been received and is queued for processing.`,
-          type: "info",
+          message: `Your BVN modification request (${trackingId}) has been received and queued.`,
+          type: "INFO",
           link: `/dashboard/bvn/modification/history`,
         },
       });
+
+      // Record promo usage if discount was applied
+      if (discountInfo.hasDiscount && discountInfo.promoId) {
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id);
+      }
 
       return { updatedWallet, transaction, modificationRequest };
     });

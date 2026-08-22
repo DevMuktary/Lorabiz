@@ -23,6 +23,9 @@ export default function BvnRetrievalPage() {
   const [consent2, setConsent2] = useState(false);
   
   const [price, setPrice] = useState<number>(2500);
+  const [originalPrice, setOriginalPrice] = useState<number>(2500);
+  const [hasDiscount, setHasDiscount] = useState<boolean>(false);
+  const [discountBadge, setDiscountBadge] = useState<string | undefined>(undefined);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isActive, setIsActive] = useState(true);
   const [maintenanceMsg, setMaintenanceMsg] = useState<string | null>(null);
@@ -47,6 +50,9 @@ export default function BvnRetrievalPage() {
         if (statusRes.ok) {
           const sData = await statusRes.json();
           if (typeof sData.price === "number") setPrice(sData.price);
+          if (typeof sData.originalPrice === "number") setOriginalPrice(sData.originalPrice);
+          if (typeof sData.hasDiscount === "boolean") setHasDiscount(sData.hasDiscount);
+          if (sData.discountBadge) setDiscountBadge(sData.discountBadge);
           if (typeof sData.isActive === "boolean") setIsActive(sData.isActive);
           if (sData.maintenanceMsg) setMaintenanceMsg(sData.maintenanceMsg);
         }
@@ -195,6 +201,27 @@ export default function BvnRetrievalPage() {
             <span>{error}</span>
           </div>
         )}
+
+        {/* Fee & Discount Badge */}
+        <div className="animate-in fade-in flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl w-fit">
+          <Sparkle weight="fill" className="h-4 w-4" />
+          <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
+            <span>Retrieval Fee:</span>
+            {hasDiscount && originalPrice > price && (
+              <span className="line-through text-muted-foreground opacity-70 font-normal">
+                ₦{originalPrice.toLocaleString()}
+              </span>
+            )}
+            <span className="text-emerald-700 dark:text-emerald-300 font-extrabold">
+              ₦{price.toLocaleString()}
+            </span>
+            {discountBadge && (
+              <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md ml-1 shadow-xs">
+                {discountBadge} AUTO-APPLIED
+              </span>
+            )}
+          </span>
+        </div>
 
         {/* Input Fields Container */}
         <div className="space-y-5 bg-card border border-border p-5 sm:p-7 rounded-3xl shadow-sm">

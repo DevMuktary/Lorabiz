@@ -98,6 +98,9 @@ export const MODIFICATION_OPTIONS = [
 
 interface BvnModificationFormProps {
   pricing: Record<string, number>;
+  originalPricing?: Record<string, number>;
+  hasDiscount?: boolean;
+  discountBadge?: string;
   walletBalance: number;
   dobOver5YearsAllowed?: boolean;
   onSuccess: (result: any) => void;
@@ -105,6 +108,9 @@ interface BvnModificationFormProps {
 
 export default function BvnModificationForm({
   pricing,
+  originalPricing,
+  hasDiscount,
+  discountBadge,
   walletBalance,
   dobOver5YearsAllowed = true,
   onSuccess,
@@ -414,6 +420,8 @@ export default function BvnModificationForm({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {MODIFICATION_OPTIONS.map((opt) => {
                 const price = pricing[opt.priceKey] || opt.defaultPrice;
+                const origPrice = originalPricing?.[opt.priceKey] || price;
+                const hasItemDiscount = origPrice > price;
                 return (
                   <button
                     key={opt.id}
@@ -430,9 +438,16 @@ export default function BvnModificationForm({
                         {opt.hasDob && <Calendar weight="duotone" className="h-4 w-4 text-amber-500" />}
                         {opt.hasPhone && <Phone weight="duotone" className="h-4 w-4 text-emerald-500" />}
                       </div>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                        ₦{price.toLocaleString()}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {hasItemDiscount && (
+                          <span className="line-through text-muted-foreground opacity-70 text-[10px] font-normal">
+                            ₦{origPrice.toLocaleString()}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          ₦{price.toLocaleString()}
+                        </span>
+                      </div>
                     </div>
 
                     <div>

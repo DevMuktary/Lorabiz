@@ -16,6 +16,10 @@ import { ValidationConfirmationModal } from "./ValidationConfirmationModal";
 
 export interface CategoryPricing {
   price: number;
+  originalPrice?: number;
+  hasDiscount?: boolean;
+  discountBadge?: string;
+  savedAmount?: number;
   isActive: boolean;
   maintenanceMsg?: string | null;
 }
@@ -175,21 +179,26 @@ export function ValidationSubmissionForm({
                   </div>
 
                   <div className="flex items-center shrink-0 gap-3">
-                    <div className={`px-2.5 py-1 rounded-lg text-xs font-black tracking-tight border ${
-                      isSelected 
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
-                        : "bg-secondary text-muted-foreground border-border"
-                    }`}>
-                      ₦{catPrice.toLocaleString()}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {pricing[cat.id]?.hasDiscount && pricing[cat.id]?.originalPrice && pricing[cat.id]!.originalPrice! > catPrice && (
+                        <span className="line-through text-muted-foreground opacity-70 text-[11px] font-normal">
+                          ₦{pricing[cat.id]!.originalPrice!.toLocaleString()}
+                        </span>
+                      )}
+                      <div className={`px-2.5 py-1 rounded-lg text-xs font-black tracking-tight border ${
+                        isSelected 
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
+                          : "bg-secondary text-foreground border-border"
+                      }`}>
+                        ₦{catPrice.toLocaleString()}
+                      </div>
                     </div>
 
-                    <div>
-                      {isSelected ? (
-                        <CheckCircle weight="fill" className="h-5 w-5 text-primary" />
-                      ) : (
-                        <Circle weight="regular" className="h-5 w-5 text-muted-foreground/40" />
-                      )}
-                    </div>
+                    {isSelected ? (
+                      <CheckCircle weight="fill" className="h-5 w-5 text-primary shrink-0" />
+                    ) : (
+                      <Circle weight="regular" className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                    )}
                   </div>
                 </button>
               );

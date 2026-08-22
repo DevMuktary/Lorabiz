@@ -14,6 +14,9 @@ import { IpeConfirmationModal } from "./IpeConfirmationModal";
 interface IpeSubmissionFormProps {
   walletBalance: number;
   servicePrice: number;
+  originalPrice?: number;
+  hasDiscount?: boolean;
+  discountBadge?: string;
   isServiceActive: boolean;
   onSuccess: (result: { reference: string; trackingId: string }) => void;
 }
@@ -21,6 +24,9 @@ interface IpeSubmissionFormProps {
 export function IpeSubmissionForm({
   walletBalance,
   servicePrice,
+  originalPrice,
+  hasDiscount,
+  discountBadge,
   isServiceActive,
   onSuccess,
 }: IpeSubmissionFormProps) {
@@ -93,10 +99,23 @@ export function IpeSubmissionForm({
       <form onSubmit={handleFormSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
 
         {/* Processing Fee Tag Badge */}
-        <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit">
+        <div className="animate-in fade-in flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3 py-2 rounded-xl w-fit">
           <Tag weight="fill" className="h-4 w-4" />
-          <span className="text-xs font-bold uppercase tracking-wider">
-            Processing Fee: ₦{servicePrice.toLocaleString()}
+          <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
+            <span>Processing Fee:</span>
+            {hasDiscount && originalPrice && originalPrice > servicePrice && (
+              <span className="line-through text-muted-foreground opacity-70 font-normal">
+                ₦{originalPrice.toLocaleString()}
+              </span>
+            )}
+            <span className="text-emerald-700 dark:text-emerald-300 font-extrabold">
+              ₦{servicePrice.toLocaleString()}
+            </span>
+            {discountBadge && (
+              <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md ml-1 shadow-xs">
+                {discountBadge} AUTO-APPLIED
+              </span>
+            )}
           </span>
         </div>
 
