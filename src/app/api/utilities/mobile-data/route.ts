@@ -148,7 +148,6 @@ export async function POST(req: Request) {
         headers: {
           "Content-Type": "application/json",
           "Bearer": apiKey,
-          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           product_code: plan.productCode,
@@ -157,6 +156,7 @@ export async function POST(req: Request) {
           user_reference: reference,
           bypass_network: "yes", // Skipping strict network check for speed & ported numbers
         }),
+        signal: AbortSignal.timeout(45000),
       });
 
       const externalData = await externalRes.json().catch(() => ({}));
