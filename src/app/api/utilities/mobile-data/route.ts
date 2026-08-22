@@ -136,25 +136,35 @@ export async function POST(req: Request) {
       return { balanceAfter, txRecord };
     });
 
-    // 8. Call Telecom Upstream Provider API
+    // 8. Call Telecom Upstream Provider API (Matches exact CheapData format)
+    const apiKey = process.env.CHEAPDATA_API_KEY || process.env.CHEAPDATASALES_API_KEY || "";
+    if (!apiKey) {
+      console.error("CRITICAL: CHEAPDATA_API_KEY / CHEAPDATASALES_API_KEY is missing in environment.");
+    }
+
     try {
       const externalRes = await fetch("https://cheapdatasales.com/autobiz_vending_index.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.CHEAPDATASALES_API_KEY || ""}`,
+          "Bearer": apiKey,
+          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           product_code: plan.productCode,
           phone_number: cleanPhone,
           action: "vend",
           user_reference: reference,
+          bypass_network: "yes", // Skipping strict network check for speed & ported numbers
         }),
       });
 
       const externalData = await externalRes.json().catch(() => ({}));
+      
+      // Check for success (Matches exact working provider logic)
       const isSuccess = 
         externalData.status === true || 
+        externalData.text_status === "COMPLETED" ||
         externalData.status === "success" || 
         externalData.status === 1 || 
         externalData.status === "1" || 
@@ -165,7 +175,7 @@ export async function POST(req: Request) {
       if (isSuccess) {
         return NextResponse.json({
           success: true,
-          message: "Data subscription successful.",
+          message: externalData.server_message || externalData.data?.true_response || "Data Sent Successfully.",
           reference,
           planName: plan.name,
           amount: planPrice,
@@ -174,7 +184,13 @@ export async function POST(req: Request) {
           validity: plan.validity,
           capacity: plan.capacity,
           newBalance: debitResult.balanceAfter,
-          data: externalData.data || {},
+          data: {
+            product_code: plan.productCode,
+            phone: cleanPhone,
+            provider_ref: externalData.data?.recharge_id,
+            balance_after: externalData.data?.after_balance,
+            description: externalData.data?.true_response || externalData.server_message,
+          },
         });
       } else {
         // Upstream failed -> Refund wallet and mark the original transaction as FAILED
@@ -195,7 +211,7 @@ export async function POST(req: Request) {
         const rawMsg = externalData.server_message || externalData.message || externalData.error || externalData.msg;
         const serverMessage = rawMsg 
           ? `Provider error: ${rawMsg}. Your wallet has been refunded.`
-          : "Provider failed to vend data bundle. Your wallet has been refunded.";
+          : "Transaction Failed at provider. Your wallet has been refunded.";
 
         return NextResponse.json({
           success: false,

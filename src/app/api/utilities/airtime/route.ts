@@ -91,25 +91,33 @@ export async function POST(req: Request) {
     });
 
     // 8. Call Telecom Upstream Provider API
+    const apiKey = process.env.CHEAPDATA_API_KEY || process.env.CHEAPDATASALES_API_KEY || "";
+    if (!apiKey) {
+      console.error("CRITICAL: CHEAPDATA_API_KEY / CHEAPDATASALES_API_KEY is missing in environment.");
+    }
+
     try {
       const externalRes = await fetch("https://cheapdatasales.com/autobiz_vending_index.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.CHEAPDATASALES_API_KEY || ""}`
+          "Bearer": apiKey,
+          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           amount: numAmount,
           product_code: productCode,
           phone_number: cleanPhone,
           action: "vend",
-          user_reference: reference
+          user_reference: reference,
+          bypass_network: "yes",
         })
       });
 
       const externalData = await externalRes.json().catch(() => ({}));
       const isSuccess = 
         externalData.status === true || 
+        externalData.text_status === "COMPLETED" ||
         externalData.status === "success" || 
         externalData.status === 1 || 
         externalData.status === "1" || 
@@ -120,7 +128,7 @@ export async function POST(req: Request) {
       if (isSuccess) {
         return NextResponse.json({
           success: true,
-          message: "Airtime vending successful.",
+          message: externalData.server_message || externalData.data?.true_response || "Airtime vending successful.",
           reference,
           amount: numAmount,
           phone: cleanPhone,
