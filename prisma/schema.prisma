@@ -868,19 +868,21 @@ model SecurityAuditLog {
 }
 
 model PromoCode {
-  id            String       @id @default(cuid())
-  code          String       @unique
-  discountPct   Float?
-  fixedAmount   Decimal?     
-  usageLimit    Int?         // Total available for ALL users globally
-  restrictedServices String[] // e.g., ["LLC", "BUSINESS_NAME"] or ["ALL"]
-  perUserLimit  Int          @default(1) // Max times a SINGLE user can use it
-  timesUsed     Int          @default(0)
-  expiresAt     DateTime?
-  isActive      Boolean      @default(true)
-  createdAt     DateTime     @default(now()) // Added so chronological sorting works perfectly
+  id                 String       @id @default(cuid())
+  code               String       @unique
+  name               String?      // Optional descriptive campaign name, e.g. "Weekend Flash Sale"
+  isAutoApplied      Boolean      @default(false) // If true: automatically slashes prices on services without coupon input
+  discountPct        Float?
+  fixedAmount        Decimal?     
+  usageLimit         Int?         // Total available for ALL users globally
+  restrictedServices String[]     // e.g., ["LLC", "BUSINESS_NAME"] or ["ALL"]
+  perUserLimit       Int          @default(1) // Max times a SINGLE user can use it
+  timesUsed          Int          @default(0)
+  expiresAt          DateTime?
+  isActive           Boolean      @default(true)
+  createdAt          DateTime     @default(now()) // Added so chronological sorting works perfectly
 
-  usages        PromoUsage[] // Tracks who used it
+  usages             PromoUsage[] // Tracks who used it
 }
 
 // NEW TABLE: The Redemption Ledger

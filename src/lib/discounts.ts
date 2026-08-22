@@ -40,10 +40,11 @@ export async function getEffectiveServicePrice(
   try {
     const now = new Date();
 
-    // Query active promos
+    // Query active auto-applied promos
     const activePromos = await prismaClient.promoCode.findMany({
       where: {
         isActive: true,
+        isAutoApplied: true,
         OR: [
           { expiresAt: null },
           { expiresAt: { gt: now } },
@@ -52,12 +53,33 @@ export async function getEffectiveServicePrice(
       orderBy: { createdAt: "desc" },
     });
 
+    const normalizedKey = serviceKey.toUpperCase();
+
     for (const promo of activePromos) {
-      // Check service eligibility
-      const isEligible =
-        promo.restrictedServices.includes("ALL") ||
-        promo.restrictedServices.includes(serviceKey) ||
-        promo.restrictedServices.some((s: string) => s.toUpperCase() === serviceKey.toUpperCase());
+      // Check service eligibility with category aliases support
+      const isEligible = promo.restrictedServices.some((s: string) => {
+        const norm = s.toUpperCase();
+        if (norm === "ALL") return true;
+        if (norm === normalizedKey) return true;
+        
+        // Category alias matching
+        if (norm === "BVN_MOD" || norm === "BVN_MODIFICATION") {
+          return normalizedKey.startsWith("BVN_MOD_");
+        }
+        if (norm === "NIN_VALIDATION") {
+          return normalizedKey.startsWith("NIN_VALIDATION_");
+        }
+        if (norm === "NIN_MOD" || norm === "NIN_MODIFICATION") {
+          return normalizedKey.startsWith("NIN_MOD_");
+        }
+        if (norm === "NIN_IPE" || norm === "NIN_IPE_CLEARANCE") {
+          return normalizedKey === "NIN_IPE_CLEARANCE";
+        }
+        if (norm === "BVN_RETRIEVAL") {
+          return normalizedKey === "BVN_RETRIEVAL";
+        }
+        return false;
+      });
 
       if (!isEligible) continue;
 
