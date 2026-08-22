@@ -1579,5 +1579,234 @@ export async function sendBvnRetrievalFailedEmail({
   return sendEmail({ to, subject, htmlBody });
 }
 
+// ============================================================================
+// BVN MODIFICATION NOTIFICATIONS
+// ============================================================================
 
+export async function sendBvnModificationSubmittedEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  modificationType,
+  enrollingBank,
+  bvn,
+  amountPaid,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  modificationType: string;
+  enrollingBank: string;
+  bvn: string;
+  amountPaid: string | number;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `BVN Modification Request Queued – [${trackingId}]`;
+  const previewText = `Your BVN Modification request (${trackingId}) has been received and queued for compliance processing.`;
 
+  const maskedBvn = bvn ? `${bvn.slice(0, 3)}****${bvn.slice(-4)}` : "BVN";
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Modification Request Received</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Your Bank Verification Number (BVN) modification request has been successfully submitted and registered in our queue.</p>
+    
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px; color: #334155;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Tracking ID:</td>
+          <td style="padding: 6px 0; font-weight: 700; color: #0f172a; text-align: right;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Enrolling Bank:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">${enrollingBank}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Modification Type:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">${modificationType}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">BVN Number:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right; font-family: monospace;">${maskedBvn}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Amount Paid:</td>
+          <td style="padding: 6px 0; font-weight: 700; color: #059669; text-align: right;">&#8358;${Number(amountPaid).toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Estimated Turnaround:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0f172a; text-align: right;">24 – 48 Hours</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">Our verification desk will process your request on NIBSS. You will receive real-time email updates as your application progresses.</p>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="https://lorabiz.com/dashboard/bvn/modification/history" style="background-color: #059669; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block;">Track Modification Status</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendBvnModificationProcessingEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  modificationType,
+  bvn,
+  adminNotes,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  modificationType: string;
+  bvn: string;
+  adminNotes?: string | null;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `BVN Modification In Progress – [${trackingId}]`;
+  const previewText = `Your BVN modification (${trackingId}) is actively processing on the NIBSS portal.`;
+
+  const maskedBvn = bvn ? `${bvn.slice(0, 3)}****${bvn.slice(-4)}` : "BVN";
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Modification In Progress</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Your BVN Modification request <strong>${trackingId}</strong> for <strong>${maskedBvn}</strong> is now actively processing on the NIBSS portal.</p>
+    
+    <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #0369a1; text-transform: uppercase;">Current Status</p>
+      <p style="margin: 0; font-size: 14px; color: #0c4a6e; line-height: 1.6;">
+        Processing with NIBSS Gateway. Details are being synchronized with your primary banking profile.
+      </p>
+      ${adminNotes ? `
+        <p style="margin: 12px 0 0; font-size: 13px; color: #0284c7;">
+          <strong>Admin Note:</strong> ${adminNotes}
+        </p>
+      ` : ''}
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="https://lorabiz.com/dashboard/bvn/modification/history" style="background-color: #0284c7; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block;">View Progress in Dashboard</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">You will be notified immediately once the modification is concluded and your updated slip is ready.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendBvnModificationCompletedEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  modificationType,
+  bvn,
+  slipUrl,
+  adminNotes,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  modificationType: string;
+  bvn: string;
+  slipUrl?: string | null;
+  adminNotes?: string | null;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `BVN Modification Completed! 🎉 – [${trackingId}]`;
+  const previewText = `Your BVN modification request (${trackingId}) has been successfully updated on NIBSS.`;
+
+  const maskedBvn = bvn ? `${bvn.slice(0, 3)}****${bvn.slice(-4)}` : "BVN";
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Modification Concluded</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Great news! Your Bank Verification Number (BVN) modification request <strong>${trackingId}</strong> for <strong>${maskedBvn}</strong> has been successfully processed and updated on NIBSS.</p>
+    
+    <div style="background-color: #ecfdf5; border: 2px solid #a7f3d0; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+      <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #065f46; text-transform: uppercase; letter-spacing: 1px;">Service Completed</p>
+      <p style="margin: 0; font-size: 24px; font-weight: 900; color: #047857;">${modificationType}</p>
+      <p style="margin: 10px 0 0; font-size: 13px; color: #065f46;">Target BVN: <strong>${maskedBvn}</strong></p>
+    </div>
+
+    ${slipUrl ? `
+      <div style="text-align: center; margin: 28px 0 16px;">
+        <a href="${slipUrl}" style="background-color: #059669; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block; margin-right: 8px;">Download Updated BVN Slip</a>
+        <a href="https://lorabiz.com/dashboard/bvn/modification/history" style="background-color: #f1f5f9; color: #334155; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; border: 1px solid #cbd5e1;">View in Dashboard</a>
+      </div>
+    ` : `
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="https://lorabiz.com/dashboard/bvn/modification/history" style="background-color: #059669; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block;">View in Dashboard</a>
+      </div>
+    `}
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Your records are now active across financial institutions. If you need any further modifications or services, we are always here to assist.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendBvnModificationRejectedEmail({
+  to,
+  firstName = "Valued Client",
+  trackingId,
+  modificationType,
+  bvn,
+  reason,
+  refundAmount,
+  isRefunded = false,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  modificationType: string;
+  bvn: string;
+  reason: string;
+  refundAmount?: string | number | null;
+  isRefunded?: boolean;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Update on BVN Modification Request – [${trackingId}]`;
+  const previewText = `Your BVN modification request could not be completed. Reason: ${reason}`;
+
+  const maskedBvn = bvn ? `${bvn.slice(0, 3)}****${bvn.slice(-4)}` : "BVN";
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">BVN Modification Request Declined</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We regret to inform you that your BVN Modification request <strong>${trackingId}</strong> for <strong>${maskedBvn}</strong> could not be processed on NIBSS.</p>
+    
+    <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #991b1b; text-transform: uppercase;">Reason for Decline</p>
+      <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.6;">${reason}</p>
+    </div>
+
+    ${isRefunded && refundAmount ? `
+      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+        <p style="margin: 0; font-size: 13px; color: #166534; font-weight: 600;">
+          &#10004; A refund of <strong>&#8358;${Number(refundAmount).toLocaleString()}</strong> has been credited back to your LoraBiz wallet.
+        </p>
+      </div>
+    ` : ''}
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="https://lorabiz.com/dashboard/bvn/modification" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Start New Modification</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Please ensure that your details are strictly accurate and reflecting on your NIN/VNIN before submitting. If you have questions, our support team is available to assist.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}

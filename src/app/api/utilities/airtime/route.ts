@@ -83,7 +83,7 @@ export async function POST(req: Request) {
           status: "SUCCESS",
           reference,
           description: `Airtime Recharge - ${cleanPhone} (${network.toUpperCase()})`,
-          serviceCategory: "UTILITIES"
+          serviceCategory: "AIRTIME"
         }
       });
 
@@ -91,28 +91,44 @@ export async function POST(req: Request) {
     });
 
     // 8. Call Telecom Upstream Provider API
+    const apiKey = process.env.CHEAPDATA_API_KEY || process.env.CHEAPDATASALES_API_KEY || "";
+    if (!apiKey) {
+      console.error("CRITICAL: CHEAPDATA_API_KEY / CHEAPDATASALES_API_KEY is missing in environment.");
+    }
+
     try {
       const externalRes = await fetch("https://cheapdatasales.com/autobiz_vending_index.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.CHEAPDATASALES_API_KEY || ""}`
+          "Bearer": apiKey,
+          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           amount: numAmount,
           product_code: productCode,
           phone_number: cleanPhone,
           action: "vend",
-          user_reference: reference
+          user_reference: reference,
+          bypass_network: "yes",
         })
       });
 
-      const externalData = await externalRes.json();
+      const externalData = await externalRes.json().catch(() => ({}));
+      const isSuccess = 
+        externalData.status === true || 
+        externalData.text_status === "COMPLETED" ||
+        externalData.status === "success" || 
+        externalData.status === 1 || 
+        externalData.status === "1" || 
+        externalData.success === true ||
+        externalData.status_code === 200 ||
+        externalData.code === 200;
 
-      if (externalData.status === true || externalData.status === "success") {
+      if (isSuccess) {
         return NextResponse.json({
           success: true,
-          message: "Airtime vending successful.",
+          message: externalData.server_message || externalData.data?.true_response || "Airtime vending successful.",
           reference,
           amount: numAmount,
           phone: cleanPhone,
@@ -121,59 +137,55 @@ export async function POST(req: Request) {
           data: externalData.data || {}
         });
       } else {
-        // Upstream failed -> Reverse debit immediately
+        // Upstream failed -> Refund wallet and mark the original transaction as FAILED
         await prisma.$transaction(async (tx) => {
-          const w = await tx.wallet.update({
+          await tx.wallet.update({
             where: { id: user.wallet!.id },
             data: { balance: { increment: numAmount } }
           });
-          await tx.transaction.create({
+          await tx.transaction.update({
+            where: { id: debitResult.txRecord.id },
             data: {
-              walletId: user.wallet!.id,
-              amount: numAmount,
-              balanceBefore: Number(w.balance) - numAmount,
-              balanceAfter: Number(w.balance),
-              type: "REFUND",
-              status: "SUCCESS",
-              reference: `REF_${reference}`,
-              description: `Airtime Recharge Reversal - ${cleanPhone} (${network.toUpperCase()})`,
-              serviceCategory: "UTILITIES"
+              status: "FAILED",
+              description: `Airtime Recharge Failed (Refunded) - ${cleanPhone} (${network.toUpperCase()})`
             }
           });
         });
 
-        const serverMessage = externalData.server_message || externalData.message || "Provider failed to process recharge. Your wallet has been refunded.";
+        const rawMsg = externalData.server_message || externalData.message || externalData.error || externalData.msg;
+        const serverMessage = rawMsg 
+          ? `Provider error: ${rawMsg}. Your wallet has been refunded.`
+          : "Provider failed to process airtime recharge. Your wallet has been refunded.";
+
         return NextResponse.json({
           success: false,
-          message: serverMessage
+          message: serverMessage,
+          refunded: true,
+          newBalance: Number(user.wallet.balance)
         }, { status: 400 });
       }
     } catch (providerErr) {
       console.error("Provider Network Failure, reversing debit:", providerErr);
-      // Reverse debit on network blip to protect user funds
+      // Reverse debit on network blip & mark transaction as FAILED
       await prisma.$transaction(async (tx) => {
-        const w = await tx.wallet.update({
+        await tx.wallet.update({
           where: { id: user.wallet!.id },
           data: { balance: { increment: numAmount } }
         });
-        await tx.transaction.create({
+        await tx.transaction.update({
+          where: { id: debitResult.txRecord.id },
           data: {
-            walletId: user.wallet!.id,
-            amount: numAmount,
-            balanceBefore: Number(w.balance) - numAmount,
-            balanceAfter: Number(w.balance),
-            type: "REFUND",
-            status: "SUCCESS",
-            reference: `REF_${reference}`,
-            description: `Airtime Recharge Reversal (Network timeout) - ${cleanPhone}`,
-            serviceCategory: "UTILITIES"
+            status: "FAILED",
+            description: `Airtime Recharge Failed (Timeout Refunded) - ${cleanPhone}`
           }
         });
       });
 
       return NextResponse.json({
         success: false,
-        message: "Provider timeout. Your wallet was not charged. Please try again."
+        message: "Provider network timeout. Your wallet has been refunded. Please try again.",
+        refunded: true,
+        newBalance: Number(user.wallet.balance)
       }, { status: 502 });
     }
 

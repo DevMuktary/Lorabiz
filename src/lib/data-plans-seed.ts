@@ -119,7 +119,7 @@ export const DATA_PLANS_SEED: DataPlanSeedItem[] = [
   { planId: 279, network: "MTN", category: "SME", name: "MTN SME 500MB", productCode: "mtn_sme_500mb", price: 430, costPrice: 365, validity: "30 Days", capacity: "500MB", isActive: true },
   { planId: 496, network: "MTN", category: "SME", name: "MTN SME 3GB", productCode: "data_share_3gb", price: 1850, costPrice: 1650, validity: "30 Days", capacity: "3GB", isActive: true },
   { planId: 509, network: "MTN", category: "SME", name: "MTN SME 10GB", productCode: "data_share_10gb", price: 6100, costPrice: 5500, validity: "30 Days", capacity: "10GB", isActive: true },
-  { planId: 1002, network: "MTN", category: "SME", name: "MTN SME 1GB Monthly", productCode: "mtn_sme_igb_monthly", price: 680, costPrice: 590, validity: "30 Days", capacity: "1GB", isActive: true },
+  { planId: 1002, network: "MTN", category: "SME", name: "MTN SME 1GB Monthly", productCode: "mtn_sme_1gb_monthly", price: 680, costPrice: 590, validity: "30 Days", capacity: "1GB", isActive: true },
 
   // ==========================================
   // 7. GLO CORPORATE / CG DATA
@@ -269,6 +269,22 @@ export const DATA_PLANS_SEED: DataPlanSeedItem[] = [
   { planId: 972, network: "AIRTEL", category: "LITE", name: "Airtel 10GB 30 Days Lite", productCode: "airtel_10gb30_days_lite", price: 8500, costPrice: 7790, validity: "30 Days", capacity: "10GB", isActive: true },
 
   // ==========================================
+  // 17b. MTN SME 2 DATA
+  // ==========================================
+  { planId: 1011, network: "MTN", category: "SME", name: "MTN 500MB 30 Days SME 2", productCode: "mtn_500mb_30_days_sme_2", price: 320, costPrice: 280, validity: "30 Days", capacity: "500MB", isActive: true },
+  { planId: 1012, network: "MTN", category: "SME", name: "MTN 1GB 30 Days SME 2", productCode: "mtn_1gb_30_days_sme_2", price: 410, costPrice: 360, validity: "30 Days", capacity: "1GB", isActive: true },
+  { planId: 1013, network: "MTN", category: "SME", name: "MTN 2GB 30 Days SME 2", productCode: "mtn_2gb_30_days_sme_2", price: 820, costPrice: 720, validity: "30 Days", capacity: "2GB", isActive: true },
+  { planId: 1014, network: "MTN", category: "SME", name: "MTN 3GB 30 Days SME 2", productCode: "mtn_3gb_30_days_sme_2", price: 1230, costPrice: 1080, validity: "30 Days", capacity: "3GB", isActive: true },
+  { planId: 1015, network: "MTN", category: "SME", name: "MTN 5GB 30 Days SME 2", productCode: "mtn_5gb_30_days_sme_2", price: 2050, costPrice: 1800, validity: "30 Days", capacity: "5GB", isActive: true },
+  { planId: 1016, network: "MTN", category: "SME", name: "MTN 10GB 30 Days SME 2", productCode: "mtn_10gb_30_days_sme_2", price: 4100, costPrice: 3600, validity: "30 Days", capacity: "10GB", isActive: true },
+
+  // ==========================================
+  // 17c. AIRTEL EXTRA SHORT-TERM BUNDLES
+  // ==========================================
+  { planId: 1017, network: "AIRTEL", category: "SME", name: "Airtel 2GB 2 Days", productCode: "airtel_2gb2_days", price: 750, costPrice: 618.8, validity: "2 Days", capacity: "2GB", isActive: true },
+  { planId: 1018, network: "AIRTEL", category: "SME", name: "Airtel 3GB 2 Days", productCode: "airtel_3gb2_days", price: 980, costPrice: 809.9, validity: "2 Days", capacity: "3GB", isActive: true },
+
+  // ==========================================
   // 18. GLO CLOUD DATA
   // ==========================================
   { planId: 605, network: "GLO", category: "CLOUD", name: "Glo Cloud 50MB incl 5MB nite 1 Day", productCode: "glo_cloud_50mb_incl_5mb_nite1day", price: 70, costPrice: 50, validity: "1 Day", capacity: "50MB", isActive: true },
@@ -285,7 +301,7 @@ export const DATA_PLANS_SEED: DataPlanSeedItem[] = [
   { planId: 616, network: "GLO", category: "CLOUD", name: "Glo Cloud 125MB Telegram 30 Days", productCode: "glo_cloud_125mb_telegram30days", price: 150, costPrice: 100, validity: "30 Days", capacity: "125MB", isActive: true },
   { planId: 617, network: "GLO", category: "CLOUD", name: "Glo Cloud 20MB Instagram 1 Day", productCode: "glo_cloud_20mb_instagram1day", price: 40, costPrice: 25, validity: "1 Day", capacity: "20MB", isActive: true },
   { planId: 618, network: "GLO", category: "CLOUD", name: "Glo Cloud 50MB Instagram 7 Days", productCode: "glo_cloud_50mb_instagram7days", price: 70, costPrice: 50, validity: "7 Days", capacity: "50MB", isActive: true },
-  { planId: 619, network: "GLO", category: "CLOUD", name: "Glo Cloud 125MB Instagram 30 Days", productCode: "glo_cloud125mb_instagram30days", price: 150, costPrice: 100, validity: "30 Days", capacity: "125MB", isActive: true },
+  { planId: 619, network: "GLO", category: "CLOUD", name: "Glo Cloud 125MB Instagram 30 Days", productCode: "glo_cloud_125mb_instagram30days", price: 150, costPrice: 100, validity: "30 Days", capacity: "125MB", isActive: true },
   { planId: 620, network: "GLO", category: "CLOUD", name: "Glo Cloud 20MB TikTok 1 Day", productCode: "glo_cloud_20mb_tiktok1day", price: 40, costPrice: 25, validity: "1 Day", capacity: "20MB", isActive: true },
   { planId: 621, network: "GLO", category: "CLOUD", name: "Glo Cloud 50MB TikTok 7 Days", productCode: "glo_cloud_50mb_tiktok7days", price: 70, costPrice: 50, validity: "7 Days", capacity: "50MB", isActive: true },
   { planId: 622, network: "GLO", category: "CLOUD", name: "Glo Cloud 125MB TikTok 30 Days", productCode: "glo_cloud_125mb_tiktok30days", price: 150, costPrice: 100, validity: "30 Days", capacity: "125MB", isActive: true },

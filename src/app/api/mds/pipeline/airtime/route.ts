@@ -16,11 +16,15 @@ export async function GET() {
     if (!admin) {
       return NextResponse.json({ error: "Forbidden. Admin or Staff access required." }, { status: 403 });
     }
+
     const airtimeTransactions = await prisma.transaction.findMany({
       where: {
         OR: [
           { serviceCategory: "AIRTIME" },
-          { description: { contains: "Airtime", mode: "insensitive" } }
+          { serviceCategory: "MOBILE_DATA" },
+          { serviceCategory: "UTILITIES" },
+          { description: { contains: "Airtime", mode: "insensitive" } },
+          { description: { contains: "Mobile Data", mode: "insensitive" } }
         ],
         type: "DEBIT"
       },

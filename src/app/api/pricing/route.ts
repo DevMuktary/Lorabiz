@@ -71,6 +71,12 @@ export async function GET() {
       BVN_PREMIUM: pricingMap.BVN_PREMIUM ?? 1000,
       BVN_RETRIEVAL: pricingMap.BVN_RETRIEVAL ?? 2500,
 
+      // BVN Modification Services
+      BVN_MOD_NAME: pricingMap.BVN_MOD_NAME ?? 3000,
+      BVN_MOD_PHONE: pricingMap.BVN_MOD_PHONE ?? 2500,
+      BVN_MOD_DOB: pricingMap.BVN_MOD_DOB ?? 15000,
+      BVN_MOD_DOB_SURCHARGE: pricingMap.BVN_MOD_DOB_SURCHARGE ?? 5000,
+
       // Utilities
       AIRTIME: 0,
       MOBILE_DATA: 0,

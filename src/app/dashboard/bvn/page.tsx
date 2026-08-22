@@ -44,10 +44,11 @@ const BVN_SERVICES: BvnServiceCard[] = [
     title: "BVN Modification",
     category: "Record Updates & Correction",
     description: "Change or correct name, date of birth, or phone number on your BVN record.",
-    turnaround: "Coming Soon",
+    turnaround: "24 – 48 Hours",
     logo: "/nibss.png",
-    active: false,
-    tag: "Waitlist",
+    href: "/dashboard/bvn/modification",
+    active: true,
+    tag: "Active",
   },
 ];
 
