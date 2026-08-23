@@ -36,10 +36,9 @@ function AdminLoginContent() {
 
   useEffect(() => {
     (window as any).onTurnstileSuccess = (token: string) => {
-      (window as any).__lastMdsTurnstileToken = token;
       setCaptchaToken(token);
       setCaptchaVerified(true);
-      setError("");
+      setError(""); 
     };
   }, []);
 
@@ -50,17 +49,14 @@ function AdminLoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!captchaVerified) {
+      setError("Please complete the security check to continue.");
+      return;
+    }
+
     setLoading(true);
     setError("");
-
-    let activeToken = captchaToken || (window as any).__lastMdsTurnstileToken;
-    if (!activeToken) {
-      const startTime = Date.now();
-      while (!activeToken && Date.now() - startTime < 2000) {
-        await new Promise((r) => setTimeout(r, 100));
-        activeToken = captchaToken || (window as any).__lastMdsTurnstileToken;
-      }
-    }
 
     try {
       const res = await signIn("credentials", {
@@ -68,7 +64,7 @@ function AdminLoginContent() {
         email: formData.email,
         password: formData.password,
         portal: "mds",
-        captchaToken: activeToken || ""
+        captchaToken: captchaToken // Passes Turnstile!
       });
 
       if (res?.error) {
@@ -210,7 +206,7 @@ function AdminLoginContent() {
               </div>
             </div>
 
-            <div className="hidden">
+            <div className="pt-2 flex justify-center lg:justify-start">
                <div 
                  className="cf-turnstile" 
                  data-sitekey="0x4AAAAAAEA2i2RM9PiSsRCH" 
@@ -225,7 +221,7 @@ function AdminLoginContent() {
             <div className="pt-2">
               <Button 
                 type="submit" 
-                disabled={loading} 
+                disabled={loading || !captchaVerified} 
                 className="w-full h-14 text-lg font-semibold bg-teal-600 hover:bg-teal-500 text-white shadow-xl shadow-teal-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (

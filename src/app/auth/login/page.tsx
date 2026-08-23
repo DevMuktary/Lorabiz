@@ -67,7 +67,6 @@ function LoginContent() {
 
   // Wrapped in useCallback so React.memo works in the child component
   const handleTurnstileVerify = useCallback((token: string) => {
-    (window as any).__lastTurnstileToken = token;
     setCaptchaToken(token);
     setCaptchaVerified(true);
     setError("");
@@ -128,19 +127,14 @@ function LoginContent() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!captchaVerified) {
+      setError("Please complete the security check to continue.");
+      return;
+    }
+
     setLoading(true);
     setError("");
-
-    let activeToken = captchaToken || (window as any).__lastTurnstileToken;
-
-    // If user clicked immediately (e.g. autofill in <0.3s), wait up to 2 seconds for invisible token
-    if (!activeToken) {
-      const startTime = Date.now();
-      while (!activeToken && Date.now() - startTime < 2000) {
-        await new Promise((r) => setTimeout(r, 100));
-        activeToken = captchaToken || (window as any).__lastTurnstileToken;
-      }
-    }
 
     try {
       const res = await signIn("credentials", {
@@ -148,7 +142,7 @@ function LoginContent() {
         email: formData.email,
         password: formData.password,
         portal: "user",
-        captchaToken: activeToken || ""
+        captchaToken: captchaToken 
       });
 
       if (res?.error) {
@@ -156,10 +150,9 @@ function LoginContent() {
         setLoading(false);
         // Reset the turnstile globally on failure so they can verify again
         if ((window as any).turnstile) {
-          try { (window as any).turnstile.reset(); } catch (e) {}
+          (window as any).turnstile.reset();
           setCaptchaVerified(false);
           setCaptchaToken("");
-          (window as any).__lastTurnstileToken = "";
         }
       } else {
         setShowOtpModal(true);
@@ -350,13 +343,20 @@ function LoginContent() {
               </div>
             </div>
 
-            {/* Background Security Verification */}
-            <div className="hidden">
-              <TurnstileWidget onVerify={handleTurnstileVerify} />
+            {/* UX IMPROVEMENT: Security Verification Loading State */}
+            <div className="pt-2 flex flex-col items-center lg:items-start">
+               {!captchaVerified && (
+                 <div className="flex items-center gap-2 mb-3 text-sm font-medium text-muted-foreground animate-pulse">
+                   <Spinner className="animate-spin h-4 w-4" />
+                   <span>Verifying security...</span>
+                 </div>
+               )}
+               {/* --- THE ISOLATED WIDGET GOES HERE --- */}
+               <TurnstileWidget onVerify={handleTurnstileVerify} />
             </div>
 
             <div className="pt-2">
-              <Button type="submit" aria-label="Log In" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 cursor-pointer">
+              <Button type="submit" aria-label="Log In" disabled={loading || !captchaVerified} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25">
                 {loading ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : <>Log In <SignIn className="h-5 w-5 ml-2" weight="bold" /></>}
               </Button>
             </div>
