@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { ensureDataPlansSeeded } from "@/lib/data-plans-seed";
+import { logUserActivity } from "@/lib/activity-logger";
 
 // GET: Fetch all active data plans for public user UI
 export async function GET(req: Request) {
@@ -179,6 +180,21 @@ export async function POST(req: Request) {
         externalData.code === 200;
 
       if (isSuccess) {
+        logUserActivity({
+          userId: user.id,
+          action: "MOBILE_DATA_VENDED",
+          category: "SERVICES",
+          description: `Purchased ${plan.name} for ${cleanPhone}`,
+          status: "SUCCESS",
+          referenceId: reference,
+          metadata: {
+            amount: planPrice,
+            phone: cleanPhone,
+            network: plan.network,
+            type: plan.name,
+          },
+        });
+
         return NextResponse.json({
           success: true,
           message: externalData.server_message || externalData.data?.true_response || "Data Sent Successfully.",

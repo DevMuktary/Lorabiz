@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { logUserActivity } from "@/lib/activity-logger";
 
 export async function POST(req: Request) {
   try {
@@ -137,6 +138,20 @@ export async function POST(req: Request) {
         externalData.code === 200;
 
       if (isSuccess) {
+        logUserActivity({
+          userId: user.id,
+          action: "AIRTIME_VENDED",
+          category: "SERVICES",
+          description: `Purchased ₦${numAmount.toLocaleString()} ${network.toUpperCase()} airtime for ${cleanPhone}`,
+          status: "SUCCESS",
+          referenceId: reference,
+          metadata: {
+            amount: numAmount,
+            phone: cleanPhone,
+            network: network.toUpperCase(),
+          },
+        });
+
         return NextResponse.json({
           success: true,
           message: externalData.server_message || "Airtime Sent Successfully",
