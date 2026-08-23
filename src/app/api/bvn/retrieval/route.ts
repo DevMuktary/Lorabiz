@@ -155,7 +155,7 @@ export async function POST(req: Request) {
 
       // Record promo usage if discount was applied
       if (discountInfo.hasDiscount && discountInfo.promoId) {
-        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id);
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id, discountInfo.savedAmount, "BVN_RETRIEVAL");
       }
 
       return request;

@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
 
       // 5. Record promo usage if discount was applied
       if (discountInfo.hasDiscount && discountInfo.promoId) {
-        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id);
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id, discountInfo.savedAmount, "NIN_IPE_CLEARANCE");
       }
 
       return ipeRecord;

@@ -459,7 +459,7 @@ export async function POST(req: NextRequest) {
 
       // Record promo usage if discount was applied
       if (discountInfo.hasDiscount && discountInfo.promoId) {
-        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id);
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id, discountInfo.savedAmount, modConfig.priceKey);
       }
 
       return { updatedWallet, transaction, modificationRequest };
