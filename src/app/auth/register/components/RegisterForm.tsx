@@ -174,10 +174,14 @@ export default function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors({});
-    let newErrors: Record<string, string> = {};
+    const newErrors: Record<string, string> = {};
 
-    if (!captchaVerified) newErrors.captcha = "Please complete the security check.";
+    if (!formData.firstName) newErrors.firstName = "First name is required.";
+    if (!formData.lastName) newErrors.lastName = "Last name is required.";
+    if (!formData.email) newErrors.email = "Email is required.";
+    if (!formData.phone) newErrors.phone = "Phone number is required.";
+    if (!formData.whatsapp) newErrors.whatsapp = "WhatsApp number is required.";
+    if (!formData.password) newErrors.password = "Password is required.";
     if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
     if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
     
@@ -199,12 +203,21 @@ export default function RegisterForm() {
 
     setLoading(true);
 
+    let activeToken = captchaToken || (window as any).__lastRegisterTurnstileToken;
+    if (!activeToken) {
+      const startTime = Date.now();
+      while (!activeToken && Date.now() - startTime < 2000) {
+        await new Promise((r) => setTimeout(r, 100));
+        activeToken = captchaToken || (window as any).__lastRegisterTurnstileToken;
+      }
+    }
+
     try {
       const payload = {
         ...formData,
         state: formatStateName(formData.state), 
         otpCode,
-        captchaToken
+        captchaToken: activeToken || ""
       };
 
       const res = await fetch("/api/auth/register", {
@@ -489,16 +502,9 @@ export default function RegisterForm() {
           </div>
         </div>
 
-        {/* --- NEW: ISOLATED TURNSTILE WIDGET --- */}
-        <div className="pt-2 flex flex-col items-center lg:items-start">
-          {!captchaVerified && (
-            <div className="flex items-center gap-2 mb-3 text-sm font-medium text-muted-foreground animate-pulse">
-              <Spinner className="animate-spin h-4 w-4" />
-              <span>Verifying security...</span>
-            </div>
-          )}
+        {/* Background Security Verification */}
+        <div className="hidden">
           <TurnstileWidget onVerify={handleTurnstileVerify} />
-          {errors.captcha && <p className="text-sm text-destructive font-medium mt-1">{errors.captcha}</p>}
         </div>
 
         {/* CHECKBOX & SUBMIT CONTAINER */}
@@ -512,7 +518,7 @@ export default function RegisterForm() {
           
           {errors.terms && <p className="text-sm text-destructive font-medium pl-1">{errors.terms}</p>}
 
-          <Button type="submit" disabled={loading || !captchaVerified} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all cursor-pointer">
+          <Button type="submit" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all cursor-pointer">
             {loading ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : <>Create Account</>}
           </Button>
         </div>
