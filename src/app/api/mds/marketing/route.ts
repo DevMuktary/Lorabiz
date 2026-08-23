@@ -35,12 +35,25 @@ export async function GET() {
       p.isActive && 
       (!p.expiresAt || new Date(p.expiresAt) > now) && 
       (!p.usageLimit || p.timesUsed < p.usageLimit)
-    ).length;
+    );
 
-    const totalUses = promos.reduce((sum, p) => sum + p.timesUsed, 0);
+    const autoPromos = promos.filter(p => p.isAutoApplied);
+    const voucherPromos = promos.filter(p => !p.isAutoApplied);
+
+    const metrics = {
+      total: promos.length,
+      active: activePromos.length,
+      totalUses: promos.reduce((sum, p) => sum + p.timesUsed, 0),
+      autoAppliedTotal: autoPromos.length,
+      autoAppliedActive: autoPromos.filter(p => p.isActive && (!p.expiresAt || new Date(p.expiresAt) > now) && (!p.usageLimit || p.timesUsed < p.usageLimit)).length,
+      autoAppliedUses: autoPromos.reduce((sum, p) => sum + p.timesUsed, 0),
+      voucherTotal: voucherPromos.length,
+      voucherActive: voucherPromos.filter(p => p.isActive && (!p.expiresAt || new Date(p.expiresAt) > now) && (!p.usageLimit || p.timesUsed < p.usageLimit)).length,
+      voucherUses: voucherPromos.reduce((sum, p) => sum + p.timesUsed, 0),
+    };
 
     return NextResponse.json({ 
-      metrics: { total: promos.length, active: activePromos, totalUses },
+      metrics,
       promos 
     });
   } catch (error) {

@@ -20,6 +20,9 @@ import { IpeSubmissionForm } from "@/components/features/nin/ipe/IpeSubmissionFo
 export default function IpeClearancePage() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [servicePrice, setServicePrice] = useState<number>(2500);
+  const [originalPrice, setOriginalPrice] = useState<number>(2500);
+  const [hasDiscount, setHasDiscount] = useState<boolean>(false);
+  const [discountBadge, setDiscountBadge] = useState<string | undefined>(undefined);
   const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showIntroModal, setShowIntroModal] = useState<boolean>(true);
@@ -39,6 +42,9 @@ export default function IpeClearancePage() {
       if (data.success) {
         setWalletBalance(data.walletBalance || 0);
         setServicePrice(data.servicePrice || 2500);
+        setOriginalPrice(data.originalPrice || data.servicePrice || 2500);
+        setHasDiscount(Boolean(data.hasDiscount));
+        setDiscountBadge(data.discountBadge || undefined);
         setIsServiceActive(data.isServiceActive ?? true);
       }
     } catch (err) {
@@ -217,6 +223,9 @@ export default function IpeClearancePage() {
             <IpeSubmissionForm
               walletBalance={walletBalance}
               servicePrice={servicePrice}
+              originalPrice={originalPrice}
+              hasDiscount={hasDiscount}
+              discountBadge={discountBadge}
               isServiceActive={isServiceActive}
               onSuccess={handleSuccess}
             />

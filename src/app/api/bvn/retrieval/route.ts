@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { generateNumericId } from "@/utils/generateId";
 import { sendBvnRetrievalSubmittedEmail } from "@/lib/email";
+import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
 
 export async function GET() {
   try {
@@ -17,12 +18,29 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "User account not found." }, { status: 404 });
     }
 
-    const history = await prisma.bvnRetrievalRequest.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-    });
+    const [history, pricing] = await Promise.all([
+      prisma.bvnRetrievalRequest.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.servicePricing.findUnique({
+        where: { serviceKey: "BVN_RETRIEVAL" },
+      }),
+    ]);
 
-    return NextResponse.json({ success: true, history });
+    const basePrice = pricing ? Number(pricing.price) : 2500;
+    const discountInfo = await getEffectiveServicePrice(prisma, "BVN_RETRIEVAL", basePrice, user.id);
+
+    return NextResponse.json({
+      success: true,
+      history,
+      servicePrice: discountInfo.finalPrice,
+      originalPrice: discountInfo.originalPrice,
+      hasDiscount: discountInfo.hasDiscount,
+      discountBadge: discountInfo.badge,
+      savedAmount: discountInfo.savedAmount,
+      isServiceActive: pricing ? pricing.isActive : true,
+    });
   } catch (error) {
     console.error("BVN Retrieval History Error:", error);
     return NextResponse.json({ success: false, error: "Failed to fetch BVN retrieval history." }, { status: 500 });
@@ -85,7 +103,9 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const finalPrice = pricing ? Number(pricing.price) : 2500;
+    const basePrice = pricing ? Number(pricing.price) : 2500;
+    const discountInfo = await getEffectiveServicePrice(prisma, "BVN_RETRIEVAL", basePrice, user.id);
+    const finalPrice = discountInfo.finalPrice;
     const userBalance = Number(user.wallet.balance);
 
     if (userBalance < finalPrice) {
@@ -132,6 +152,11 @@ export async function POST(req: Request) {
           transactionRef,
         },
       });
+
+      // Record promo usage if discount was applied
+      if (discountInfo.hasDiscount && discountInfo.promoId) {
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id);
+      }
 
       return request;
     });

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { logUserActivity } from "@/lib/activity-logger";
 import { sendNinModificationSubmittedEmail } from "@/lib/email";
 import { NinModificationType } from "@prisma/client";
+import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
 
 export const MODIFICATION_PRICE_KEYS: Record<NinModificationType, { key: string; defaultPrice: number; label: string }> = {
   CHANGE_OF_NAME: {
@@ -48,12 +49,19 @@ export async function GET() {
       },
     });
 
-    const pricing: Record<string, { price: number; isActive: boolean; maintenanceMsg?: string | null; label: string }> = {};
+    const pricing: Record<string, { price: number; originalPrice?: number; hasDiscount?: boolean; discountBadge?: string; savedAmount?: number; isActive: boolean; maintenanceMsg?: string | null; label: string }> = {};
 
     for (const [type, config] of Object.entries(MODIFICATION_PRICE_KEYS)) {
       const found = pricingRecords.find((r) => r.serviceKey === config.key);
+      const base = found ? Number(found.price) : config.defaultPrice;
+      const discountInfo = await getEffectiveServicePrice(prisma, config.key, base, user.id);
+
       pricing[type] = {
-        price: found ? Number(found.price) : config.defaultPrice,
+        price: discountInfo.finalPrice,
+        originalPrice: discountInfo.originalPrice,
+        hasDiscount: discountInfo.hasDiscount,
+        discountBadge: discountInfo.badge,
+        savedAmount: discountInfo.savedAmount,
         isActive: found ? found.isActive : true,
         maintenanceMsg: found?.maintenanceMsg || null,
         label: config.label,
@@ -171,7 +179,9 @@ export async function POST(req: NextRequest) {
       }, { status: 503 });
     }
 
-    const amountToCharge = pricingRow ? Number(pricingRow.price) : priceConfig.defaultPrice;
+    const nominalPrice = pricingRow ? Number(pricingRow.price) : priceConfig.defaultPrice;
+    const discountInfo = await getEffectiveServicePrice(prisma, priceConfig.key, nominalPrice, user.id);
+    const amountToCharge = discountInfo.finalPrice;
     const currentBalance = user.wallet ? Number(user.wallet.balance) : 0;
 
     if (currentBalance < amountToCharge) {
@@ -248,6 +258,11 @@ export async function POST(req: NextRequest) {
           link: "/dashboard/nin/modification",
         },
       });
+
+      // 5. Record promo usage if discount was applied
+      if (discountInfo.hasDiscount && discountInfo.promoId) {
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id);
+      }
 
       return { modRequest, updatedWallet, transaction };
     });

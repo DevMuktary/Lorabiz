@@ -23,6 +23,10 @@ export type ModificationType = "CHANGE_OF_NAME" | "CHANGE_OF_PHONE" | "CHANGE_OF
 
 export interface PricingConfig {
   price: number;
+  originalPrice?: number;
+  hasDiscount?: boolean;
+  discountBadge?: string;
+  savedAmount?: number;
   isActive: boolean;
   maintenanceMsg?: string | null;
   label: string;
@@ -222,79 +226,121 @@ export function ModificationForm({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             
             {/* Change of Name */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedType("CHANGE_OF_NAME");
-                setErrorMessage(null);
-              }}
-              className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
-                  <User weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  ₦{(pricing["CHANGE_OF_NAME"]?.price || 2500).toLocaleString()}
-                </span>
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">Change of Name</h3>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Update First Name, Surname, or Middle Name on your NIN record.
-                </p>
-              </div>
-            </button>
+            {(() => {
+              const cfg = pricing["CHANGE_OF_NAME"];
+              const price = cfg?.price || 2500;
+              const hasDisc = cfg?.hasDiscount && cfg?.originalPrice && cfg.originalPrice > price;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedType("CHANGE_OF_NAME");
+                    setErrorMessage(null);
+                  }}
+                  className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                      <User weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {hasDisc && (
+                        <span className="line-through text-muted-foreground opacity-70 text-[10px] font-normal">
+                          ₦{cfg.originalPrice!.toLocaleString()}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        ₦{price.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">Change of Name</h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      Update First Name, Surname, or Middle Name on your NIN record.
+                    </p>
+                  </div>
+                </button>
+              );
+            })()}
 
             {/* Change of Phone */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedType("CHANGE_OF_PHONE");
-                setErrorMessage(null);
-              }}
-              className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
-                  <Phone weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  ₦{(pricing["CHANGE_OF_PHONE"]?.price || 2000).toLocaleString()}
-                </span>
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">Change of Phone</h3>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Link a new active phone number to your National Identity record.
-                </p>
-              </div>
-            </button>
+            {(() => {
+              const cfg = pricing["CHANGE_OF_PHONE"];
+              const price = cfg?.price || 2000;
+              const hasDisc = cfg?.hasDiscount && cfg?.originalPrice && cfg.originalPrice > price;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedType("CHANGE_OF_PHONE");
+                    setErrorMessage(null);
+                  }}
+                  className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                      <Phone weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {hasDisc && (
+                        <span className="line-through text-muted-foreground opacity-70 text-[10px] font-normal">
+                          ₦{cfg.originalPrice!.toLocaleString()}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        ₦{price.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">Change of Phone</h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      Link a new active phone number to your National Identity record.
+                    </p>
+                  </div>
+                </button>
+              );
+            })()}
 
             {/* Change of Address */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedType("CHANGE_OF_ADDRESS");
-                setErrorMessage(null);
-              }}
-              className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
-                  <MapPin weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  ₦{(pricing["CHANGE_OF_ADDRESS"]?.price || 2000).toLocaleString()}
-                </span>
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">Change of Address</h3>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Update your registered residential address, State, and LGA.
-                </p>
-              </div>
-            </button>
+            {(() => {
+              const cfg = pricing["CHANGE_OF_ADDRESS"];
+              const price = cfg?.price || 2000;
+              const hasDisc = cfg?.hasDiscount && cfg?.originalPrice && cfg.originalPrice > price;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedType("CHANGE_OF_ADDRESS");
+                    setErrorMessage(null);
+                  }}
+                  className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                      <MapPin weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {hasDisc && (
+                        <span className="line-through text-muted-foreground opacity-70 text-[10px] font-normal">
+                          ₦{cfg.originalPrice!.toLocaleString()}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        ₦{price.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">Change of Address</h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      Update your registered residential address, State, and LGA.
+                    </p>
+                  </div>
+                </button>
+              );
+            })()}
 
           </div>
 

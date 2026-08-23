@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveServicePrice } from "@/lib/discounts";
 
 export async function GET(req: NextRequest) {
   try {
@@ -43,12 +44,19 @@ export async function GET(req: NextRequest) {
       failed: requests.filter((r) => r.status === "FAILED").length,
     };
 
+    const basePrice = pricing ? Number(pricing.price) : 2500;
+    const discountInfo = await getEffectiveServicePrice(prisma, "NIN_IPE_CLEARANCE", basePrice, user.id);
+
     return NextResponse.json({
       success: true,
       requests,
       stats,
       walletBalance: Number(user.wallet?.balance || 0),
-      servicePrice: pricing ? Number(pricing.price) : 2500,
+      servicePrice: discountInfo.finalPrice,
+      originalPrice: discountInfo.originalPrice,
+      hasDiscount: discountInfo.hasDiscount,
+      discountBadge: discountInfo.badge,
+      savedAmount: discountInfo.savedAmount,
       isServiceActive: pricing ? pricing.isActive : true,
     });
   } catch (error: any) {

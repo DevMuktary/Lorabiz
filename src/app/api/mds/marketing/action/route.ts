@@ -20,26 +20,37 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { actionType, ...data } = body;
 
-    // 1. CREATE PROMO CODE
+    // 1. CREATE PROMO CODE / AUTO-APPLIED DISCOUNT
     if (actionType === "CREATE") {
-      const { code, type, value, usageLimit, perUserLimit, expiresAt, restrictedServices } = data;
+      const { name, code, type, value, usageLimit, perUserLimit, expiresAt, restrictedServices, isAutoApplied } = data;
       
-      if (!code || !type || !value) {
-        return NextResponse.json({ error: "Code, Type, and Value are required." }, { status: 400 });
+      if (!type || !value) {
+        return NextResponse.json({ error: "Type and Value are required." }, { status: 400 });
       }
 
-      const formattedCode = String(code).trim().toUpperCase().replace(/\s+/g, '');
+      let formattedCode = code ? String(code).trim().toUpperCase().replace(/\s+/g, '') : "";
+      if (!formattedCode) {
+        if (isAutoApplied) {
+          const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+          formattedCode = `AUTO_${type === "PERCENTAGE" ? `${value}PCT` : `${value}NGN`}_${randomSuffix}`;
+        } else {
+          return NextResponse.json({ error: "Promo Code name is required for manual voucher codes." }, { status: 400 });
+        }
+      }
+
       const existing = await prisma.promoCode.findUnique({ where: { code: formattedCode } });
-      if (existing) return NextResponse.json({ error: "This promo code already exists." }, { status: 400 });
+      if (existing) return NextResponse.json({ error: "A promo or discount with this code already exists." }, { status: 400 });
 
       await prisma.$transaction(async (tx) => {
         await tx.promoCode.create({
           data: {
             code: formattedCode,
+            name: name ? String(name).trim() : null,
+            isAutoApplied: Boolean(isAutoApplied),
             discountPct: type === "PERCENTAGE" ? Number(value) : null,
             fixedAmount: type === "FIXED" ? Number(value) : null,
             usageLimit: usageLimit ? Number(usageLimit) : null,
-            perUserLimit: perUserLimit ? Number(perUserLimit) : 1, // Default to 1 per user
+            perUserLimit: perUserLimit ? Number(perUserLimit) : 1,
             expiresAt: expiresAt ? new Date(expiresAt) : null,
             restrictedServices: restrictedServices && restrictedServices.length > 0 ? restrictedServices : ["ALL"],
           }
@@ -48,14 +59,14 @@ export async function POST(req: Request) {
         await tx.staffActionLog.create({
           data: {
             userId: admin.id,
-            action: "CREATED_PROMO_CODE",
+            action: isAutoApplied ? "CREATED_AUTO_DISCOUNT" : "CREATED_PROMO_CODE",
             targetId: formattedCode,
-            details: `Created ${type} promo code. Value: ${value}`
+            details: `Created ${isAutoApplied ? 'Auto-Applied Discount' : 'Voucher'} (${type}: ${value}) for [${(restrictedServices || ['ALL']).join(', ')}]`
           }
         });
       });
 
-      return NextResponse.json({ success: true, message: "Promo code generated." });
+      return NextResponse.json({ success: true, message: isAutoApplied ? "Auto-applied discount activated." : "Promo code generated." });
     }
 
     // 2. TOGGLE PROMO STATUS
