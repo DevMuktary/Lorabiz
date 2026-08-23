@@ -22,6 +22,7 @@ export default function ForgotPasswordPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const handleTurnstileVerify = useCallback((token: string) => {
+    (window as any).__lastForgotTurnstileToken = token;
     setCaptchaToken(token);
     setCaptchaVerified(true);
     setError("");
@@ -47,13 +48,22 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError("");
 
+    let activeToken = captchaToken || (window as any).__lastForgotTurnstileToken;
+    if (!activeToken) {
+      const startTime = Date.now();
+      while (!activeToken && Date.now() - startTime < 2000) {
+        await new Promise((r) => setTimeout(r, 100));
+        activeToken = captchaToken || (window as any).__lastForgotTurnstileToken;
+      }
+    }
+
     try {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim(),
-          captchaToken,
+          captchaToken: activeToken || "",
         }),
       });
 
@@ -217,20 +227,14 @@ export default function ForgotPasswordPage() {
                   </div>
                 </div>
 
-                {/* Cloudflare Turnstile */}
-                <div className="pt-1">
-                  {!captchaVerified && (
-                    <div className="flex items-center gap-2 mb-2 text-xs font-medium text-muted-foreground animate-pulse">
-                      <Spinner className="animate-spin h-3.5 w-3.5" />
-                      <span>Verifying security check...</span>
-                    </div>
-                  )}
+                {/* Background Security Verification */}
+                <div className="hidden">
                   <TurnstileWidget onVerify={handleTurnstileVerify} />
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={loading || !captchaVerified}
+                  disabled={loading}
                   className="w-full h-12 text-base font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 rounded-xl cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loading ? (
