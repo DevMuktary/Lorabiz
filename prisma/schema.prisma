@@ -887,13 +887,15 @@ model PromoCode {
 
 // NEW TABLE: The Redemption Ledger
 model PromoUsage {
-  id          String    @id @default(cuid())
-  promoId     String
-  userId      String
-  usedAt      DateTime  @default(now())
+  id             String    @id @default(cuid())
+  promoId        String
+  userId         String
+  discountAmount Decimal   @default(0) // Exact amount saved/subsidized on this transaction
+  serviceKey     String?   // The service where this discount was applied
+  usedAt         DateTime  @default(now())
 
-  promo       PromoCode @relation(fields: [promoId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promo          PromoCode @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([promoId])
   @@index([userId])

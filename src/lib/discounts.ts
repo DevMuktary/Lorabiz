@@ -144,7 +144,9 @@ export async function getEffectiveServicePrice(
 export async function recordPromoUsageInTx(
   tx: any,
   promoId: string | undefined,
-  userId: string
+  userId: string,
+  discountAmount?: number,
+  serviceKey?: string
 ) {
   if (!promoId) return;
 
@@ -155,11 +157,13 @@ export async function recordPromoUsageInTx(
       data: { timesUsed: { increment: 1 } },
     });
 
-    // 2. Insert ledger record
+    // 2. Insert ledger record with exact discount amount and service key
     await tx.promoUsage.create({
       data: {
         promoId,
         userId,
+        discountAmount: discountAmount ? Number(discountAmount) : 0,
+        serviceKey: serviceKey || null,
       },
     });
   } catch (error) {

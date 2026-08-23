@@ -1,30 +1,65 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format, isPast } from "date-fns";
 import { 
   Ticket, Tag, Activity, Plus, RefreshCw, X, Copy, Check, Percent, DollarSign, Eye, Users, Trash2, AlertTriangle,
-  Zap, Sparkles
+  Zap, Sparkles, ChevronDown, ChevronUp, CheckCircle2, Info
 } from "lucide-react";
 
-const SERVICE_CATALOG = [
+// Catalog definition with price lookup keys
+const SERVICE_GROUPS = [
   {
     category: "Identity & Verification Services (Direct)",
-    services: [
-      { id: "BVN_RETRIEVAL", name: "BVN Retrieval", priceExample: "₦2,500" },
-      { id: "BVN_MODIFICATION", name: "BVN Modification (All Options)", priceExample: "₦2,500 – ₦19,500" },
-      { id: "NIN_IPE_CLEARANCE", name: "NIN IPE Clearance", priceExample: "₦2,500" },
-      { id: "NIN_VALIDATION", name: "NIN Validation (No Record / VNIN / Mod)", priceExample: "₦2,000 – ₦3,000" },
-      { id: "NIN_MODIFICATION", name: "NIN Modification (Name / Phone / Address)", priceExample: "₦2,000 – ₦2,500" },
+    items: [
+      { id: "BVN_RETRIEVAL", name: "BVN Retrieval", priceKey: "BVN_RETRIEVAL" },
+      { 
+        id: "BVN_MODIFICATION", 
+        name: "BVN Modification (All 7 Options)", 
+        priceKey: "BVN_MOD_ALL",
+        isParent: true,
+        subOptions: [
+          { id: "BVN_MOD_NAME", name: "Change of Name Only", priceKey: "BVN_MOD_NAME" },
+          { id: "BVN_MOD_PHONE", name: "Change of Phone Number Only", priceKey: "BVN_MOD_PHONE" },
+          { id: "BVN_MOD_DOB", name: "Change of Date of Birth (DOB) Only", priceKey: "BVN_MOD_DOB" },
+          { id: "BVN_MOD_NAME_PHONE", name: "Change of Name & Phone", priceKey: "BVN_MOD_NAME_PHONE" },
+          { id: "BVN_MOD_DOB_PHONE", name: "Change of DOB & Phone", priceKey: "BVN_MOD_DOB_PHONE" },
+          { id: "BVN_MOD_NAME_DOB", name: "Change of Name & DOB", priceKey: "BVN_MOD_NAME_DOB" },
+          { id: "BVN_MOD_ALL", name: "Change of Name, DOB & Phone (All 3)", priceKey: "BVN_MOD_ALL" },
+        ]
+      },
+      { id: "NIN_IPE_CLEARANCE", name: "NIN IPE Clearance", priceKey: "NIN_IPE_CLEARANCE" },
+      { 
+        id: "NIN_VALIDATION", 
+        name: "NIN Validation (All 3 Categories)", 
+        priceKey: "NIN_VALIDATION_VNIN",
+        isParent: true,
+        subOptions: [
+          { id: "NIN_VALIDATION_NO_RECORD", name: "No Record Found Validation", priceKey: "NIN_VALIDATION_NO_RECORD" },
+          { id: "NIN_VALIDATION_VNIN", name: "VNIN Validation", priceKey: "NIN_VALIDATION_VNIN" },
+          { id: "NIN_VALIDATION_MOD", name: "Update Record / Mod Validation", priceKey: "NIN_VALIDATION_MOD" },
+        ]
+      },
+      { 
+        id: "NIN_MODIFICATION", 
+        name: "NIN Modification (All 3 Types)", 
+        priceKey: "NIN_MOD_NAME",
+        isParent: true,
+        subOptions: [
+          { id: "NIN_MOD_NAME", name: "NIN Change of Name", priceKey: "NIN_MOD_NAME" },
+          { id: "NIN_MOD_PHONE", name: "NIN Change of Phone", priceKey: "NIN_MOD_PHONE" },
+          { id: "NIN_MOD_ADDRESS", name: "NIN Change of Address", priceKey: "NIN_MOD_ADDRESS" },
+        ]
+      },
     ],
   },
   {
     category: "Registration & Compliance Services",
-    services: [
-      { id: "BUSINESS_NAME", name: "CAC Business Name Registration", priceExample: "₦22,500" },
-      { id: "LLC", name: "CAC Company (LLC) Registration", priceExample: "₦55,000" },
-      { id: "SCUML", name: "SCUML Certificate Processing", priceExample: "₦40,000" },
-      { id: "TAX_ID", name: "Tax Identification Number (TIN)", priceExample: "₦5,000" },
+    items: [
+      { id: "BUSINESS_NAME", name: "CAC Business Name Registration", priceKey: "BUSINESS_NAME" },
+      { id: "LLC", name: "CAC Company (LLC) Registration", priceKey: "LLC" },
+      { id: "SCUML", name: "SCUML Certificate Processing", priceKey: "SCUML" },
+      { id: "TAX_ID", name: "Tax Identification Number (TIN)", priceKey: "TAX_ID" },
     ],
   },
 ];
@@ -33,16 +68,20 @@ export default function MarketingDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"AUTO" | "VOUCHER">("AUTO");
   const [promos, setPromos] = useState<any[]>([]);
+  const [servicePricingMap, setServicePricingMap] = useState<Record<string, number>>({});
   const [metrics, setMetrics] = useState<any>({
     total: 0,
     active: 0,
     totalUses: 0,
+    totalDiscountGiven: 0,
     autoAppliedTotal: 0,
     autoAppliedActive: 0,
     autoAppliedUses: 0,
+    autoDiscountGiven: 0,
     voucherTotal: 0,
     voucherActive: 0,
     voucherUses: 0,
+    voucherDiscountGiven: 0,
   });
   
   // Modals & Drawers State
@@ -62,6 +101,9 @@ export default function MarketingDashboard() {
       const result = await res.json();
       setPromos(result.promos || []);
       setMetrics(result.metrics || {});
+      if (result.servicePricingMap) {
+        setServicePricingMap(result.servicePricingMap);
+      }
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
@@ -147,7 +189,7 @@ export default function MarketingDashboard() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <button 
             onClick={fetchPromos} 
-            className="flex items-center px-3.5 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-xl hover:bg-zinc-50 transition-colors shadow-xs"
+            className="flex items-center px-3.5 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-xl hover:bg-zinc-50 transition-colors shadow-xs cursor-pointer"
           >
             <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
           </button>
@@ -205,7 +247,7 @@ export default function MarketingDashboard() {
 
       {/* Metrics Cards */}
       {activeTab === "AUTO" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <MetricCard 
             title="Auto-Applied Campaigns" 
             value={metrics.autoAppliedTotal || 0} 
@@ -221,13 +263,19 @@ export default function MarketingDashboard() {
           <MetricCard 
             title="Automatic Redemptions" 
             value={metrics.autoAppliedUses || 0} 
-            icon={<Sparkles size={20} className="text-amber-500" />} 
+            icon={<Tag size={20} className="text-amber-500" />} 
+            isLoading={isLoading} 
+          />
+          <MetricCard 
+            title="Total Discount Subsidized" 
+            value={`₦${Number(metrics.autoDiscountGiven || 0).toLocaleString()}`} 
+            icon={<Sparkles size={20} className="text-indigo-500" />} 
             isLoading={isLoading} 
             highlight 
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <MetricCard 
             title="Total Voucher Codes" 
             value={metrics.voucherTotal || 0} 
@@ -244,6 +292,12 @@ export default function MarketingDashboard() {
             title="Customer Redemptions" 
             value={metrics.voucherUses || 0} 
             icon={<Tag size={20} className="text-amber-500" />} 
+            isLoading={isLoading} 
+          />
+          <MetricCard 
+            title="Total Discount Subsidized" 
+            value={`₦${Number(metrics.voucherDiscountGiven || 0).toLocaleString()}`} 
+            icon={<Sparkles size={20} className="text-indigo-500" />} 
             isLoading={isLoading} 
             highlight 
           />
@@ -279,6 +333,7 @@ export default function MarketingDashboard() {
                 <th className="px-6 py-4 font-medium">Discount Rate</th>
                 <th className="px-6 py-4 font-medium">Eligible Services</th>
                 <th className="px-6 py-4 font-medium text-center">Usage Count</th>
+                <th className="px-6 py-4 font-medium text-right">Discount Given</th>
                 <th className="px-6 py-4 font-medium text-center">Status</th>
                 <th className="px-6 py-4 font-medium text-center">Actions</th>
               </tr>
@@ -286,14 +341,14 @@ export default function MarketingDashboard() {
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
                     <RefreshCw className="animate-spin mx-auto mb-3 text-indigo-500" size={24} />
                     Loading campaigns...
                   </td>
                 </tr>
               ) : activeList.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
                     <div className="max-w-sm mx-auto space-y-2">
                       <p className="font-bold text-zinc-700 dark:text-zinc-300">
                         {activeTab === "AUTO" ? "No auto-applied discounts created yet." : "No promo voucher codes created yet."}
@@ -311,6 +366,11 @@ export default function MarketingDashboard() {
                   const isExpired = p.expiresAt && isPast(new Date(p.expiresAt));
                   const isMaxedOut = p.usageLimit && p.timesUsed >= p.usageLimit;
                   const isTrulyActive = p.isActive && !isExpired && !isMaxedOut;
+
+                  const campaignDiscountGiven = p.usages?.reduce(
+                    (sum: number, u: any) => sum + Number(u.discountAmount || 0),
+                    0
+                  ) || 0;
 
                   return (
                     <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
@@ -383,6 +443,16 @@ export default function MarketingDashboard() {
                             </span>
                           )}
                         </div>
+                      </td>
+
+                      <td className="px-6 py-4 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                        {campaignDiscountGiven > 0 ? (
+                          <span className="text-indigo-600 dark:text-indigo-400">
+                            ₦{campaignDiscountGiven.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-zinc-400">₦0</span>
+                        )}
                       </td>
 
                       <td className="px-6 py-4 text-center">
@@ -475,6 +545,7 @@ export default function MarketingDashboard() {
       {/* 2. Auto-Applied Flash Discount Drawer */}
       <CreateAutoDiscountDrawer 
         isOpen={isAutoDrawerOpen} 
+        servicePricingMap={servicePricingMap}
         onClose={() => setIsAutoDrawerOpen(false)} 
         onSuccess={() => { setIsAutoDrawerOpen(false); fetchPromos(); }}
       />
@@ -509,7 +580,7 @@ function MetricCard({ title, value, icon, isLoading, highlight }: any) {
       {isLoading ? (
         <div className="w-16 h-8 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse mt-2"></div>
       ) : (
-        <h3 className={`text-2xl font-black tabular-nums tracking-tight ${highlight ? "text-amber-600" : "text-zinc-900 dark:text-white"}`}>
+        <h3 className={`text-2xl font-black tabular-nums tracking-tight ${highlight ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-900 dark:text-white"}`}>
           {value}
         </h3>
       )}
@@ -518,14 +589,29 @@ function MetricCard({ title, value, icon, isLoading, highlight }: any) {
 }
 
 // ----------------------------------------------------------------------
-// 1. AUTO-APPLIED DISCOUNT DRAWER
+// 1. AUTO-APPLIED DISCOUNT DRAWER (WITH DYNAMIC LIVE PRICING & SIMULATOR)
 // ----------------------------------------------------------------------
 
-function CreateAutoDiscountDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClose: () => void; onSuccess: () => void }) {
+function CreateAutoDiscountDrawer({ 
+  isOpen, 
+  servicePricingMap, 
+  onClose, 
+  onSuccess 
+}: { 
+  isOpen: boolean; 
+  servicePricingMap: Record<string, number>; 
+  onClose: () => void; 
+  onSuccess: () => void; 
+}) {
   const [name, setName] = useState("");
   const [type, setType] = useState<"PERCENTAGE" | "FIXED">("PERCENTAGE");
   const [value, setValue] = useState("");
   const [selectedServices, setSelectedServices] = useState<string[]>(["ALL"]);
+  const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({
+    BVN_MODIFICATION: false,
+    NIN_VALIDATION: false,
+    NIN_MODIFICATION: false,
+  });
   const [perUserLimit, setPerUserLimit] = useState("5");
   const [usageLimit, setUsageLimit] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
@@ -533,6 +619,12 @@ function CreateAutoDiscountDrawer({ isOpen, onClose, onSuccess }: { isOpen: bool
   const [error, setError] = useState("");
 
   if (!isOpen) return null;
+
+  const numValue = Number(value) || 0;
+
+  const toggleParentExpand = (parentId: string) => {
+    setExpandedParents((prev) => ({ ...prev, [parentId]: !prev[parentId] }));
+  };
 
   const toggleService = (sId: string) => {
     if (sId === "ALL") {
@@ -549,6 +641,22 @@ function CreateAutoDiscountDrawer({ isOpen, onClose, onSuccess }: { isOpen: bool
   };
 
   const isAllSelected = selectedServices.includes("ALL");
+
+  // Helper to calculate simulated discount price
+  const calculateDiscount = (basePrice: number) => {
+    if (numValue <= 0) return { final: basePrice, saved: 0 };
+    let saved = 0;
+    if (type === "PERCENTAGE") {
+      saved = Math.round((basePrice * numValue) / 100);
+    } else {
+      saved = Math.round(numValue);
+    }
+    saved = Math.min(saved, basePrice);
+    return {
+      final: Math.max(0, basePrice - saved),
+      saved,
+    };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -589,7 +697,7 @@ function CreateAutoDiscountDrawer({ isOpen, onClose, onSuccess }: { isOpen: bool
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-zinc-900/60 transition-opacity animate-in fade-in duration-200" onClick={onClose}></div>
-      <div className="relative w-full max-w-lg h-full bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="relative w-full max-w-xl h-full bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         
         {/* Header */}
         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-emerald-500/5 flex items-center justify-between">
@@ -624,7 +732,7 @@ function CreateAutoDiscountDrawer({ isOpen, onClose, onSuccess }: { isOpen: bool
                 className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500" 
               />
               <p className="text-[11px] text-zinc-400 mt-1">
-                Internal reference name displayed on your admin dashboard.
+                Descriptive title for your reference in admin reports and ledgers.
               </p>
             </div>
 
@@ -659,15 +767,15 @@ function CreateAutoDiscountDrawer({ isOpen, onClose, onSuccess }: { isOpen: bool
               </div>
             </div>
 
-            {/* Service Scope Selection */}
+            {/* Service Scope Selection with Live Database Pricing */}
             <div className="space-y-3 border-t border-zinc-100 dark:border-zinc-800 pt-4">
               <div className="flex items-center justify-between">
                 <div>
                   <label className="text-xs font-bold uppercase text-zinc-700 dark:text-zinc-300 block">
-                    Target Services
+                    Target Services & Live Pricing
                   </label>
                   <p className="text-[11px] text-zinc-400">
-                    Select which services automatically receive slashed pricing.
+                    Live base prices fetched from database with dynamic slashed previews.
                   </p>
                 </div>
 
@@ -685,36 +793,102 @@ function CreateAutoDiscountDrawer({ isOpen, onClose, onSuccess }: { isOpen: bool
               </div>
 
               <div className="space-y-4">
-                {SERVICE_CATALOG.map((grp) => (
+                {SERVICE_GROUPS.map((grp) => (
                   <div key={grp.category} className="space-y-2">
                     <p className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
                       {grp.category}
                     </p>
-                    <div className="grid grid-cols-1 gap-1.5">
-                      {grp.services.map((s) => {
+                    <div className="grid grid-cols-1 gap-2">
+                      {grp.items.map((s: any) => {
                         const isChecked = isAllSelected || selectedServices.includes(s.id);
+                        const basePrice = servicePricingMap[s.priceKey] || 2500;
+                        const sim = calculateDiscount(basePrice);
+                        const hasSub = !!s.subOptions;
+                        const isExpanded = expandedParents[s.id];
+
                         return (
-                          <label
-                            key={s.id}
-                            className={`flex items-center justify-between p-3 rounded-xl border text-xs transition-all cursor-pointer select-none ${
-                              isChecked
-                                ? "bg-emerald-500/5 border-emerald-500/30 text-zinc-900 dark:text-zinc-100 font-bold"
-                                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleService(s.id)}
-                                className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 border-zinc-300"
-                              />
-                              <span>{s.name}</span>
+                          <div key={s.id} className="space-y-1">
+                            <div
+                              className={`flex items-center justify-between p-3.5 rounded-xl border text-xs transition-all ${
+                                isChecked
+                                  ? "bg-emerald-500/5 border-emerald-500/30 text-zinc-900 dark:text-zinc-100 font-bold"
+                                  : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+                              }`}
+                            >
+                              <label className="flex items-center gap-2.5 cursor-pointer select-none flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleService(s.id)}
+                                  className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 border-zinc-300 cursor-pointer"
+                                />
+                                <span>{s.name}</span>
+                              </label>
+
+                              <div className="flex items-center gap-3 shrink-0">
+                                {/* Price display with live simulation */}
+                                <div className="text-right font-mono">
+                                  {numValue > 0 && isChecked ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="line-through text-zinc-400 text-[10px]">
+                                        ₦{basePrice.toLocaleString()}
+                                      </span>
+                                      <span className="text-emerald-600 dark:text-emerald-400 font-black text-xs">
+                                        ₦{sim.final.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-zinc-500 text-xs">
+                                      ₦{basePrice.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {hasSub && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleParentExpand(s.id)}
+                                    className="p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 cursor-pointer"
+                                    title="View breakdown options"
+                                  >
+                                    {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            <span className="text-[11px] text-zinc-400 font-mono">
-                              {s.priceExample}
-                            </span>
-                          </label>
+
+                            {/* Collapsible Sub-Options Breakdown (e.g. for BVN Modification 7 Options) */}
+                            {hasSub && isExpanded && (
+                              <div className="pl-6 pr-2 py-2 space-y-1.5 bg-zinc-50 dark:bg-zinc-900/40 rounded-xl border border-zinc-100 dark:border-zinc-800/60">
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                                  Option Breakdown (All receive {numValue > 0 ? `${numValue}${type === 'PERCENTAGE' ? '%' : '₦'}` : 'configured'} discount):
+                                </p>
+                                {s.subOptions.map((sub: any) => {
+                                  const subBase = servicePricingMap[sub.priceKey] || 3000;
+                                  const subSim = calculateDiscount(subBase);
+                                  return (
+                                    <div key={sub.id} className="flex items-center justify-between text-[11px] py-1 border-b border-zinc-100 dark:border-zinc-800/40 last:border-0">
+                                      <span className="text-zinc-600 dark:text-zinc-300 font-medium">{sub.name}</span>
+                                      <div className="font-mono text-right">
+                                        {numValue > 0 && isChecked ? (
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="line-through text-zinc-400 text-[10px]">
+                                              ₦{subBase.toLocaleString()}
+                                            </span>
+                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                              ₦{subSim.final.toLocaleString()}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-zinc-500">₦{subBase.toLocaleString()}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -738,7 +912,7 @@ function CreateAutoDiscountDrawer({ isOpen, onClose, onSuccess }: { isOpen: bool
                   placeholder="e.g. 5" 
                   className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-emerald-500" 
                 />
-                <p className="text-[10px] text-zinc-400 mt-1">Times a single customer can benefit.</p>
+                <p className="text-[10px] text-zinc-400 mt-1">Max times 1 user account can benefit.</p>
               </div>
 
               <div>
@@ -1009,50 +1183,76 @@ function CreateVoucherDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean; 
 }
 
 // ----------------------------------------------------------------------
-// 3. INSPECTION DRAWER
+// 3. INSPECTION DRAWER (WITH EXACT DISCOUNT SUBSIDIZED BREAKDOWN)
 // ----------------------------------------------------------------------
 
 function PromoInspectionDrawer({ promo, onClose }: { promo: any; onClose: () => void }) {
   if (!promo) return null;
 
+  const totalGiven = promo.usages?.reduce((sum: number, u: any) => sum + Number(u.discountAmount || 0), 0) || 0;
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-zinc-900/60 transition-opacity animate-in fade-in duration-200" onClick={onClose}></div>
-      <div className="relative w-full max-w-md h-full bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="relative w-full max-w-lg h-full bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         
         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-bold flex items-center text-zinc-900 dark:text-zinc-100">
               <Users size={20} className="mr-2 text-indigo-500" /> Redemption Ledger
             </h3>
-            <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-900 bg-white dark:bg-zinc-800 rounded-full shadow-sm cursor-pointer">
+            <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-white dark:bg-zinc-800 rounded-full shadow-sm cursor-pointer">
               <X size={18} />
             </button>
           </div>
           <p className="font-mono text-xl font-bold text-zinc-800 dark:text-zinc-200 tracking-wider">
             {promo.name ? `${promo.name} (${promo.code})` : promo.code}
           </p>
+
+          {/* Subsidized Summary Banner */}
+          <div className="mt-3 p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
+              Total Discount Subsidized:
+            </span>
+            <span className="text-sm font-black font-mono text-indigo-700 dark:text-indigo-300">
+              ₦{totalGiven.toLocaleString()}
+            </span>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-          <h4 className="text-xs font-bold uppercase text-zinc-500 mb-4">Users who redeemed this discount</h4>
+          <h4 className="text-xs font-bold uppercase text-zinc-500 mb-4">
+            Customer Redemptions ({promo.usages?.length || 0})
+          </h4>
           
           <div className="space-y-3">
             {!promo.usages || promo.usages.length === 0 ? (
-              <p className="text-sm text-zinc-500 italic">No one has used this discount yet.</p>
+              <p className="text-sm text-zinc-500 italic">No redemptions recorded yet.</p>
             ) : (
               promo.usages.map((usage: any) => (
-                <div key={usage.id} className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                  <div>
+                <div key={usage.id} className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex justify-between items-start gap-3">
+                  <div className="space-y-1">
                     <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                       {usage.user?.firstName || "Customer"} {usage.user?.lastName || ""}
                     </p>
                     <p className="text-xs text-zinc-500">{usage.user?.email || "No email"}</p>
+                    {usage.serviceKey && (
+                      <span className="inline-block px-2 py-0.5 rounded bg-secondary text-foreground text-[10px] font-bold border border-border mt-1">
+                        {usage.serviceKey.replace(/_/g, " ")}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-[10px] font-bold text-zinc-400 text-right">
-                    {format(new Date(usage.usedAt), "MMM d, yyyy")}<br />
-                    {format(new Date(usage.usedAt), "h:mm a")}
-                  </span>
+                  
+                  <div className="text-right space-y-1">
+                    {Number(usage.discountAmount) > 0 && (
+                      <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold border border-emerald-500/20">
+                        Saved ₦{Number(usage.discountAmount).toLocaleString()}
+                      </span>
+                    )}
+                    <span className="block text-[10px] font-medium text-zinc-400 font-mono">
+                      {format(new Date(usage.usedAt), "MMM d, yyyy h:mm a")}
+                    </span>
+                  </div>
                 </div>
               ))
             )}
