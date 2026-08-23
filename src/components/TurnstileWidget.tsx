@@ -21,12 +21,30 @@ export const TurnstileWidget = memo(function TurnstileWidget({ onVerify }: Turns
           widgetIdRef.current = win.turnstile.render(containerRef.current, {
             sitekey: "0x4AAAAAAEA2i2RM9PiSsRCH",
             callback: (token: string) => {
-              if (token) onVerify(token);
+              if (token) {
+                (window as any).__lastTurnstileToken = token;
+                onVerify(token);
+              }
+            },
+            "error-callback": () => {
+              console.warn("[Turnstile] Retrying render...");
+              try {
+                if (widgetIdRef.current && win.turnstile) {
+                  win.turnstile.reset(widgetIdRef.current);
+                }
+              } catch (e) {}
+            },
+            "expired-callback": () => {
+              try {
+                if (widgetIdRef.current && win.turnstile) {
+                  win.turnstile.reset(widgetIdRef.current);
+                }
+              } catch (e) {}
             },
             action: "turnstile-spin-v2",
             theme: "auto",
             retry: "auto",
-            "retry-interval": 2000,
+            "retry-interval": 1500,
           });
           clearInterval(intervalId);
         } catch (e) {
@@ -56,7 +74,19 @@ export const TurnstileWidget = memo(function TurnstileWidget({ onVerify }: Turns
   return (
     <>
       <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" strategy="afterInteractive" />
-      <div ref={containerRef} className="hidden" />
+      <div 
+        ref={containerRef} 
+        style={{
+          position: "absolute",
+          width: "1px",
+          height: "1px",
+          opacity: 0,
+          overflow: "hidden",
+          pointerEvents: "none",
+          clip: "rect(0, 0, 0, 0)",
+          zIndex: -1,
+        }} 
+      />
     </>
   );
 });

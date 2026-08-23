@@ -210,7 +210,7 @@ function AdminLoginContent() {
               </div>
             </div>
 
-            <div className="hidden">
+            <div style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, overflow: "hidden", pointerEvents: "none", clip: "rect(0, 0, 0, 0)", zIndex: -1 }}>
                <div 
                  className="cf-turnstile" 
                  data-sitekey="0x4AAAAAAEA2i2RM9PiSsRCH" 
@@ -218,7 +218,7 @@ function AdminLoginContent() {
                  data-action="turnstile-spin-mds"
                  data-theme="auto"
                  data-retry="auto"
-                 data-retry-interval="2000"
+                 data-retry-interval="1500"
                ></div>
             </div>
 

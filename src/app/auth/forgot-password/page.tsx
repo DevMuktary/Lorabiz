@@ -228,9 +228,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 {/* Background Security Verification */}
-                <div className="hidden">
-                  <TurnstileWidget onVerify={handleTurnstileVerify} />
-                </div>
+                <TurnstileWidget onVerify={handleTurnstileVerify} />
 
                 <Button
                   type="submit"

@@ -503,9 +503,7 @@ export default function RegisterForm() {
         </div>
 
         {/* Background Security Verification */}
-        <div className="hidden">
-          <TurnstileWidget onVerify={handleTurnstileVerify} />
-        </div>
+        <TurnstileWidget onVerify={handleTurnstileVerify} />
 
         {/* CHECKBOX & SUBMIT CONTAINER */}
         <div className="pt-6 border-t border-border space-y-4">

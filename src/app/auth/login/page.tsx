@@ -351,9 +351,7 @@ function LoginContent() {
             </div>
 
             {/* Background Security Verification */}
-            <div className="hidden">
-              <TurnstileWidget onVerify={handleTurnstileVerify} />
-            </div>
+            <TurnstileWidget onVerify={handleTurnstileVerify} />
 
             <div className="pt-2">
               <Button type="submit" aria-label="Log In" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 cursor-pointer">
