@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Script from "next/script";
 import { preconnect } from "react-dom";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback, useRef } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 function AdminLoginContent() {
   preconnect('https://challenges.cloudflare.com');
@@ -27,34 +29,34 @@ function AdminLoginContent() {
     : "/quadrox-lorabiz-team/mds/dashboard";
 
   const [loading, setLoading] = useState(false);
+  const [isVerifyingSecurity, setIsVerifyingSecurity] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
   
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
+  const pendingSubmitRef = useRef(false);
 
-  useEffect(() => {
-    (window as any).onTurnstileSuccess = (token: string) => {
-      setCaptchaToken(token);
-      setCaptchaVerified(true);
-      setError(""); 
-    };
-  }, []);
+  const handleTurnstileVerify = useCallback((token: string) => {
+    (window as any).__lastMdsTurnstileToken = token;
+    setCaptchaToken(token);
+    setCaptchaVerified(true);
+    setError("");
+
+    if (pendingSubmitRef.current) {
+      pendingSubmitRef.current = false;
+      setIsVerifyingSecurity(false);
+      executeLogin(token);
+    }
+  }, [formData.email, formData.password]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
     if (error) setError("");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!captchaVerified) {
-      setError("Please complete the security check to continue.");
-      return;
-    }
-
+  const executeLogin = async (tokenToUse: string) => {
     setLoading(true);
     setError("");
 
@@ -64,14 +66,16 @@ function AdminLoginContent() {
         email: formData.email,
         password: formData.password,
         portal: "mds",
-        captchaToken: captchaToken // Passes Turnstile!
+        captchaToken: tokenToUse
       });
 
       if (res?.error) {
         setError(res.error === "CredentialsSignin" ? "Invalid administrative credentials." : res.error);
         setLoading(false);
+        setIsVerifyingSecurity(false);
+        pendingSubmitRef.current = false;
         if ((window as any).turnstile) {
-          (window as any).turnstile.reset();
+          try { (window as any).turnstile.reset(); } catch (e) {}
           setCaptchaVerified(false);
           setCaptchaToken("");
         }
@@ -94,17 +98,52 @@ function AdminLoginContent() {
     } catch (err) {
       setError("An unexpected security exception occurred. Please retry.");
       setLoading(false);
+      setIsVerifyingSecurity(false);
+      pendingSubmitRef.current = false;
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const activeToken = captchaToken || (window as any).__lastMdsTurnstileToken;
+    if (activeToken) {
+      executeLogin(activeToken);
+      return;
+    }
+
+    pendingSubmitRef.current = true;
+    setLoading(true);
+    setIsVerifyingSecurity(true);
+
+    const startTime = Date.now();
+    const checkInterval = setInterval(() => {
+      const token = captchaToken || (window as any).__lastMdsTurnstileToken;
+      if (token) {
+        clearInterval(checkInterval);
+        if (pendingSubmitRef.current) {
+          pendingSubmitRef.current = false;
+          setIsVerifyingSecurity(false);
+          executeLogin(token);
+        }
+      } else if (Date.now() - startTime > 4000) {
+        clearInterval(checkInterval);
+        if (pendingSubmitRef.current) {
+          pendingSubmitRef.current = false;
+          setLoading(false);
+          setIsVerifyingSecurity(false);
+          setError("Security check is taking longer than expected. Please verify the box below and try again.");
+          if ((window as any).turnstile) {
+            try { (window as any).turnstile.reset(); } catch (e) {}
+          }
+        }
+      }
+    }, 100);
   };
 
   return (
     <main className="min-h-screen w-full flex bg-background font-sans selection:bg-teal-500 selection:text-white">
-      
-      <Script 
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
-        strategy="afterInteractive" 
-      />
-
       {/* LEFT PANEL - Elegant & Clean */}
       <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-[45%] shrink-0 min-h-screen bg-slate-950 relative overflow-hidden flex-col justify-between border-r border-border">
         <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-teal-500/10 rounded-full blur-[120px] pointer-events-none"></div>
@@ -206,17 +245,8 @@ function AdminLoginContent() {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-center lg:justify-start">
-               <div 
-                 className="cf-turnstile" 
-                 data-sitekey="0x4AAAAAAEA2i2RM9PiSsRCH" 
-                 data-callback="onTurnstileSuccess"
-                 data-action="turnstile-spin-mds"
-                 data-theme="auto"
-                 data-retry="auto"
-                 data-retry-interval="2000"
-               ></div>
-            </div>
+            {/* Security Verification */}
+            <TurnstileWidget onVerify={handleTurnstileVerify} action="turnstile-spin-mds" />
 
             <div className="pt-2">
               <Button 
@@ -224,7 +254,12 @@ function AdminLoginContent() {
                 disabled={loading || !captchaVerified} 
                 className="w-full h-14 text-lg font-semibold bg-teal-600 hover:bg-teal-500 text-white shadow-xl shadow-teal-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                {loading ? (
+                {isVerifyingSecurity ? (
+                  <>
+                    <Spinner className="animate-spin h-6 w-6" weight="bold" />
+                    <span>Verifying Security...</span>
+                  </>
+                ) : loading ? (
                   <Spinner className="animate-spin h-6 w-6" weight="bold" />
                 ) : (
                   <>Authorize Access <SignIn className="h-5 w-5" weight="bold" /></>

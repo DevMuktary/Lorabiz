@@ -64,13 +64,27 @@ export async function POST(req: Request) {
     const cookieRef = cookieStore.get('lorabiz_ref')?.value;
     
     // Check if they manually typed a code, otherwise fallback to the silent cookie
-    const finalReferredBy = referralCode || cookieRef || null;
+    const rawRefCode = (referralCode || cookieRef || "")?.trim();
+    const finalReferredBy = rawRefCode.length > 0 ? rawRefCode : null;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 5. INTERACTIVE TRANSACTION
     const newUser = await prisma.$transaction(async (tx) => {
-      
+      // Find matching referrer (case-insensitive & trimmed)
+      let matchedReferrer: { id: string; referralCode: string | null } | null = null;
+      if (finalReferredBy) {
+        matchedReferrer = await tx.user.findFirst({
+          where: {
+            referralCode: {
+              equals: finalReferredBy,
+              mode: "insensitive"
+            }
+          },
+          select: { id: true, referralCode: true }
+        });
+      }
+
       // A. Create the base user
       const createdUser = await tx.user.create({
         data: {
@@ -87,7 +101,7 @@ export async function POST(req: Request) {
           street,
           buildingNo: buildingNo || null, 
           ipAddress,
-          referredBy: finalReferredBy,          
+          referredBy: matchedReferrer?.referralCode || finalReferredBy,          
           wallet: { create: { balance: 0.00 } }
         },
       });
@@ -98,53 +112,52 @@ export async function POST(req: Request) {
       });
 
       // C. Process Referral & Generate Welcome Promo Code
-      if (finalReferredBy) {
-        const referrer = await tx.user.findUnique({ 
-          where: { referralCode: finalReferredBy } 
+      if (matchedReferrer && matchedReferrer.id !== createdUser.id) {
+        // Check if the referral system is active globally (Master Kill Switch)
+        const isReferralActiveSetting = await tx.globalSetting.findUnique({ 
+          where: { key: 'REFERRAL_ACTIVE' } 
         });
+        
+        // Default to true if setting doesn't exist yet, or check explicit string value
+        const isReferralActive = !isReferralActiveSetting || isReferralActiveSetting.value === 'true';
 
-        if (referrer) {
-          // Check if the referral system is active globally (Master Kill Switch)
-          const isReferralActiveSetting = await tx.globalSetting.findUnique({ 
-            where: { key: 'REFERRAL_ACTIVE' } 
+        if (isReferralActive) {
+          // 1. Create / Upsert the Referral Link Record (Valid for 12 months)
+          const oneYearFromNow = new Date();
+          oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+          await tx.referral.upsert({
+            where: { referredUserId: createdUser.id },
+            create: {
+              referrerId: matchedReferrer.id,
+              referredUserId: createdUser.id,
+              expiresAt: oneYearFromNow
+            },
+            update: {
+              referrerId: matchedReferrer.id,
+              expiresAt: oneYearFromNow
+            }
           });
+
+          // 2. Generate the dynamic Welcome Promo Code for the new user
+          const shortId = createdUser.id.slice(-6).toUpperCase();
           
-          // Default to true if setting doesn't exist yet, or check explicit string value
-          const isReferralActive = !isReferralActiveSetting || isReferralActiveSetting.value === 'true';
+          // Checking if admin set a custom discount percentage, otherwise fallback to 5%
+          const discountSetting = await tx.globalSetting.findUnique({
+            where: { key: 'REFERRAL_DISCOUNT_PCT' }
+          });
+          const discountPct = discountSetting ? Number(discountSetting.value) : 5;
 
-          if (isReferralActive) {
-            // 1. Create the Referral Link Record (Valid for 12 months)
-            const oneYearFromNow = new Date();
-            oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-
-            await tx.referral.create({
-              data: {
-                referrerId: referrer.id,
-                referredUserId: createdUser.id,
-                expiresAt: oneYearFromNow
-              }
-            });
-
-            // 2. Generate the dynamic Welcome Promo Code for the new user
-            const shortId = createdUser.id.slice(-6).toUpperCase();
-            
-            // Checking if admin set a custom discount percentage, otherwise fallback to 5%
-            const discountSetting = await tx.globalSetting.findUnique({
-              where: { key: 'REFERRAL_DISCOUNT_PCT' }
-            });
-            const discountPct = discountSetting ? Number(discountSetting.value) : 5;
-
-            await tx.promoCode.create({
-              data: {
-                code: `WELCOME-${shortId}`,
-                discountPct: discountPct,
-                usageLimit: 1,              // Can only be used once globally
-                perUserLimit: 1,            // Max one time per user
-                restrictedServices: ["ALL"], // Available for all valid promo services
-                isActive: true
-              }
-            });
-          }
+          await tx.promoCode.create({
+            data: {
+              code: `WELCOME-${shortId}`,
+              discountPct: discountPct,
+              usageLimit: 1,              // Can only be used once globally
+              perUserLimit: 1,            // Max one time per user
+              restrictedServices: ["ALL"], // Available for all valid promo services
+              isActive: true
+            }
+          });
         }
       }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { preconnect } from "react-dom";
-import { useState, useEffect, Suspense, useCallback } from "react";
+import { useState, useEffect, Suspense, useCallback, useRef } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -65,74 +65,24 @@ function LoginContent() {
     return () => clearInterval(slideInterval);
   }, [testimonials.length]);
 
+  const [isVerifyingSecurity, setIsVerifyingSecurity] = useState(false);
+  const pendingSubmitRef = useRef(false);
+
   // Wrapped in useCallback so React.memo works in the child component
   const handleTurnstileVerify = useCallback((token: string) => {
     setCaptchaToken(token);
     setCaptchaVerified(true);
     setError("");
-  }, []);
 
-  useEffect(() => {
-    if (session?.user) {
-      const user = session.user as any;
-      if (!user.mfaVerified) {
-        setFormData(prev => ({ ...prev, email: user.email }));
-        setShowOtpModal(true);
-      } else {
-        router.push(callbackUrl);
-      }
+    // If the user already clicked "Log In" while verification was loading, auto-submit now
+    if (pendingSubmitRef.current) {
+      pendingSubmitRef.current = false;
+      setIsVerifyingSecurity(false);
+      executeLogin(token);
     }
-  }, [session, router, callbackUrl]);
+  }, [formData.email, formData.password]);
 
-  useEffect(() => {
-    let mounted = true;
-    async function syncTimerWithServer() {
-      if (!showOtpModal || !formData.email) return;
-      setIsSyncingTimer(true);
-      try {
-        const res = await fetch("/api/auth/otp-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: formData.email })
-        });
-        if (res.ok && mounted) {
-          const data = await res.json();
-          setIsLocked(data.isLocked);
-          setResendTimer(data.remainingSeconds);
-        }
-      } catch (err) {
-        console.error("Failed to sync timer with server");
-      } finally {
-        if (mounted) setIsSyncingTimer(false);
-      }
-    }
-    syncTimerWithServer();
-    return () => { mounted = false; };
-  }, [showOtpModal, formData.email]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (resendTimer > 0) {
-      interval = setInterval(() => {
-        setResendTimer((prev) => (prev <= 1 ? 0 : prev - 1));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [resendTimer]);
-
-  const showTooltip = (type: "google" | "facebook") => {
-    setActiveTooltip(type);
-    setTimeout(() => setActiveTooltip(null), 2500);
-  };
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!captchaVerified) {
-      setError("Please complete the security check to continue.");
-      return;
-    }
-
+  const executeLogin = async (tokenToUse: string) => {
     setLoading(true);
     setError("");
 
@@ -142,13 +92,15 @@ function LoginContent() {
         email: formData.email,
         password: formData.password,
         portal: "user",
-        captchaToken: captchaToken 
+        captchaToken: tokenToUse,
       });
 
       if (res?.error) {
         setError(res.error === "CredentialsSignin" ? "Invalid email or password." : res.error);
         setLoading(false);
-        // Reset the turnstile globally on failure so they can verify again
+        setIsVerifyingSecurity(false);
+        pendingSubmitRef.current = false;
+        // Reset turnstile cleanly on failure so user can try again
         if ((window as any).turnstile) {
           (window as any).turnstile.reset();
           setCaptchaVerified(false);
@@ -157,11 +109,62 @@ function LoginContent() {
       } else {
         setShowOtpModal(true);
         setLoading(false);
+        setIsVerifyingSecurity(false);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       setLoading(false);
+      setIsVerifyingSecurity(false);
+      pendingSubmitRef.current = false;
     }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const activeToken = captchaToken || (window as any).__lastTurnstileToken;
+
+    // If token is already available, execute immediately
+    if (activeToken) {
+      executeLogin(activeToken);
+      return;
+    }
+
+    // If token is still generating (e.g. instant mobile autofill), enter auto-queue state
+    pendingSubmitRef.current = true;
+    setLoading(true);
+    setIsVerifyingSecurity(true);
+
+    // Fallback: Wait up to 3.5s for token to arrive
+    const startTime = Date.now();
+    const checkInterval = setInterval(() => {
+      const token = captchaToken || (window as any).__lastTurnstileToken;
+      if (token) {
+        clearInterval(checkInterval);
+        if (pendingSubmitRef.current) {
+          pendingSubmitRef.current = false;
+          setIsVerifyingSecurity(false);
+          executeLogin(token);
+        }
+      } else if (Date.now() - startTime > 4000) {
+        clearInterval(checkInterval);
+        if (pendingSubmitRef.current) {
+          pendingSubmitRef.current = false;
+          setLoading(false);
+          setIsVerifyingSecurity(false);
+          setError("Security check is taking longer than usual. Please verify the box below and try again.");
+          if ((window as any).turnstile) {
+            try { (window as any).turnstile.reset(); } catch (e) {}
+          }
+        }
+      }
+    }, 100);
+  };
+
+  const showTooltip = (type: "google" | "facebook") => {
+    setActiveTooltip(type);
+    setTimeout(() => setActiveTooltip(null), 2500);
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -343,23 +346,21 @@ function LoginContent() {
               </div>
             </div>
 
-            {/* UX IMPROVEMENT: Security Verification Loading State */}
-            <div className="pt-2 flex flex-col items-center lg:items-start">
-               {!captchaVerified && (
-                 <div className="flex items-center gap-2 mb-3 text-sm font-medium text-muted-foreground animate-pulse">
-                   <Spinner className="animate-spin h-4 w-4" />
-                   <span>Verifying security...</span>
-                 </div>
-               )}
-               {/* --- THE ISOLATED WIDGET GOES HERE --- */}
-               <TurnstileWidget onVerify={handleTurnstileVerify} />
-            </div>
+            {/* Background Security Verification */}
+            <TurnstileWidget onVerify={handleTurnstileVerify} />
 
-            <div className="pt-2">
-              <Button type="submit" aria-label="Log In" disabled={loading || !captchaVerified} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25">
-                {loading ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : <>Log In <SignIn className="h-5 w-5 ml-2" weight="bold" /></>}
+              <Button type="submit" aria-label="Log In" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 cursor-pointer flex items-center justify-center gap-2">
+                {isVerifyingSecurity ? (
+                  <>
+                    <Spinner className="animate-spin h-6 w-6" weight="bold" />
+                    <span>Verifying Security...</span>
+                  </>
+                ) : loading ? (
+                  <Spinner className="animate-spin h-6 w-6" weight="bold" />
+                ) : (
+                  <>Log In <SignIn className="h-5 w-5 ml-2" weight="bold" /></>
+                )}
               </Button>
-            </div>
 
             <div className="pt-4 pb-2">
               <div className="relative flex items-center py-2 mb-6">

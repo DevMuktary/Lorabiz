@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { 
   User, EnvelopeSimple, LockKey, Spinner, CheckCircle, 
   GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash, Users
@@ -93,12 +93,127 @@ export default function RegisterForm() {
     }
   }, [termsAccepted, errors.terms]);
 
+  const [isVerifyingSecurity, setIsVerifyingSecurity] = useState(false);
+  const pendingSubmitRef = useRef(false);
+
   // NEW: Memoized Turnstile Callback to prevent re-renders on typing
   const handleTurnstileVerify = useCallback((token: string) => {
+    (window as any).__lastRegisterTurnstileToken = token;
     setCaptchaToken(token);
     setCaptchaVerified(true);
     setErrors(prev => ({ ...prev, captcha: "" }));
-  }, []);
+
+    if (pendingSubmitRef.current) {
+      pendingSubmitRef.current = false;
+      setIsVerifyingSecurity(false);
+      executeRegister(token);
+    }
+  }, [formData, otpCode]);
+
+  const executeRegister = async (tokenToUse: string) => {
+    setLoading(true);
+
+    try {
+      const payload = {
+        ...formData,
+        state: formatStateName(formData.state), 
+        otpCode,
+        captchaToken: tokenToUse
+      };
+
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        router.push("/auth/login?registered=true");
+      } else {
+        const data = await res.json();
+        if (data.message?.toLowerCase().includes("code") || data.message?.toLowerCase().includes("verification")) {
+          setOtpStep("sent");
+          setErrors({ otp: data.message });
+        } else {
+          setErrors({ form: data.message || "Registration failed." });
+        }
+      }
+    } catch (err) {
+      setErrors({ form: "An unexpected error occurred. Please try again." });
+    } finally {
+      setLoading(false);
+      setIsVerifyingSecurity(false);
+      pendingSubmitRef.current = false;
+      // Cleanly reset global turnstile on failure
+      if ((window as any).turnstile) {
+        try { (window as any).turnstile.reset(); } catch (e) {}
+        setCaptchaVerified(false);
+        setCaptchaToken("");
+      }
+    }
+  };
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    const newErrors: Record<string, string> = {};
+    if (!formData.firstName.trim()) newErrors.firstName = "First name is required.";
+    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required.";
+    if (!formData.email.trim() || !formData.email.includes("@")) newErrors.email = "Valid email is required.";
+    if (!formData.phone.trim()) newErrors.phone = "Phone number is required.";
+    
+    if (formData.phone.startsWith("0") && formData.phone.length !== 11) newErrors.phone = "Phone numbers starting with 0 must be 11 digits.";
+    else if (!formData.phone.startsWith("0") && formData.phone.length !== 10) newErrors.phone = "Phone numbers without a leading 0 must be 10 digits.";
+
+    if (formData.whatsapp.startsWith("0") && formData.whatsapp.length !== 11) newErrors.whatsapp = "WhatsApp numbers starting with 0 must be 11 digits.";
+    else if (!formData.whatsapp.startsWith("0") && formData.whatsapp.length !== 10) newErrors.whatsapp = "WhatsApp numbers without a leading 0 must be 10 digits.";
+
+    if (passScore < 3) newErrors.password = "Password is too weak. Add numbers or symbols.";
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match.";
+    if (!formData.state) newErrors.state = "Please select a state.";
+    if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
+    if (otpStep !== "verified") newErrors.email = "You must verify your email with the OTP code to continue.";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    const activeToken = captchaToken || (window as any).__lastRegisterTurnstileToken;
+    if (activeToken) {
+      executeRegister(activeToken);
+      return;
+    }
+
+    pendingSubmitRef.current = true;
+    setLoading(true);
+    setIsVerifyingSecurity(true);
+
+    const startTime = Date.now();
+    const checkInterval = setInterval(() => {
+      const token = captchaToken || (window as any).__lastRegisterTurnstileToken;
+      if (token) {
+        clearInterval(checkInterval);
+        if (pendingSubmitRef.current) {
+          pendingSubmitRef.current = false;
+          setIsVerifyingSecurity(false);
+          executeRegister(token);
+        }
+      } else if (Date.now() - startTime > 4000) {
+        clearInterval(checkInterval);
+        if (pendingSubmitRef.current) {
+          pendingSubmitRef.current = false;
+          setLoading(false);
+          setIsVerifyingSecurity(false);
+          setErrors({ form: "Security check is taking longer than expected. Please verify the box below." });
+          if ((window as any).turnstile) {
+            try { (window as any).turnstile.reset(); } catch (e) {}
+          }
+        }
+      }
+    }, 100);
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -172,71 +287,6 @@ export default function RegisterForm() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors({});
-    let newErrors: Record<string, string> = {};
-
-    if (!captchaVerified) newErrors.captcha = "Please complete the security check.";
-    if (!termsAccepted) newErrors.terms = "You must agree to the Terms and Conditions to create an account.";
-    if (otpStep !== "verified") newErrors.email = "You must verify your email to continue.";
-    
-    if (formData.phone.startsWith("0") && formData.phone.length !== 11) newErrors.phone = "Phone numbers starting with 0 must be 11 digits.";
-    else if (!formData.phone.startsWith("0") && formData.phone.length !== 10) newErrors.phone = "Phone numbers without a leading 0 must be 10 digits.";
-
-    if (formData.whatsapp.startsWith("0") && formData.whatsapp.length !== 11) newErrors.whatsapp = "WhatsApp numbers starting with 0 must be 11 digits.";
-    else if (!formData.whatsapp.startsWith("0") && formData.whatsapp.length !== 10) newErrors.whatsapp = "WhatsApp numbers without a leading 0 must be 10 digits.";
-
-    if (passScore < 3) newErrors.password = "Password is too weak. Add numbers or symbols.";
-    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match.";
-    if (!formData.state) newErrors.state = "Please select a state.";
-    if (!formData.lga) newErrors.lga = "Please select an LGA.";
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const payload = {
-        ...formData,
-        state: formatStateName(formData.state), 
-        otpCode,
-        captchaToken
-      };
-
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        router.push("/auth/login?registered=true");
-      } else {
-        const data = await res.json();
-        if (data.message?.toLowerCase().includes("code") || data.message?.toLowerCase().includes("verification")) {
-          setOtpStep("sent");
-          setErrors({ otp: data.message });
-        } else {
-          setErrors({ form: data.message || "Registration failed." });
-        }
-      }
-    } catch (err) {
-      setErrors({ form: "An unexpected error occurred. Please try again." });
-    } finally {
-      setLoading(false);
-      // Cleanly reset global turnstile on failure
-      if ((window as any).turnstile) {
-        (window as any).turnstile.reset();
-        setCaptchaVerified(false);
-        setCaptchaToken("");
-      }
-    }
-  };
-
   return (
     <div className="w-full max-w-xl mx-auto p-6 sm:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
@@ -249,7 +299,7 @@ export default function RegisterForm() {
         <p className="text-muted-foreground mt-2 text-[16px]">Create your account to manage business and compliance services.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleRegisterSubmit} className="space-y-8">
         
         {errors.form && (
           <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-lg border border-destructive/20 flex items-center gap-2">
@@ -489,17 +539,8 @@ export default function RegisterForm() {
           </div>
         </div>
 
-        {/* --- NEW: ISOLATED TURNSTILE WIDGET --- */}
-        <div className="pt-2 flex flex-col items-center lg:items-start">
-          {!captchaVerified && (
-            <div className="flex items-center gap-2 mb-3 text-sm font-medium text-muted-foreground animate-pulse">
-              <Spinner className="animate-spin h-4 w-4" />
-              <span>Verifying security...</span>
-            </div>
-          )}
-          <TurnstileWidget onVerify={handleTurnstileVerify} />
-          {errors.captcha && <p className="text-sm text-destructive font-medium mt-1">{errors.captcha}</p>}
-        </div>
+        {/* Background Security Verification */}
+        <TurnstileWidget onVerify={handleTurnstileVerify} />
 
         {/* CHECKBOX & SUBMIT CONTAINER */}
         <div className="pt-6 border-t border-border space-y-4">
@@ -512,8 +553,17 @@ export default function RegisterForm() {
           
           {errors.terms && <p className="text-sm text-destructive font-medium pl-1">{errors.terms}</p>}
 
-          <Button type="submit" disabled={loading || !captchaVerified} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all cursor-pointer">
-            {loading ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : <>Create Account</>}
+          <Button type="submit" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all cursor-pointer flex items-center justify-center gap-2">
+            {isVerifyingSecurity ? (
+              <>
+                <Spinner className="animate-spin h-6 w-6" weight="bold" />
+                <span>Verifying Security...</span>
+              </>
+            ) : loading ? (
+              <Spinner className="animate-spin h-6 w-6" weight="bold" />
+            ) : (
+              <>Create Account</>
+            )}
           </Button>
         </div>
 

@@ -213,7 +213,7 @@ export async function GET() {
           description: "Change of Name, Phone Number, and Date of Birth on NIBSS with statutory surcharge audit.",
           metrics: bvnModificationMetrics,
           subCategories: ["Change of Name", "Change of Phone", "Change of DOB (5-Yr Rule)"],
-          href: "/quadrox-lorabiz-team/mds/dashboard/bvn/modification",
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/bvn-modification",
           isAutomated: false
         },
         {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { 
@@ -21,11 +21,20 @@ export default function ForgotPasswordPage() {
   const [captchaToken, setCaptchaToken] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  const [isVerifyingSecurity, setIsVerifyingSecurity] = useState(false);
+  const pendingSubmitRef = useRef(false);
+
   const handleTurnstileVerify = useCallback((token: string) => {
     setCaptchaToken(token);
     setCaptchaVerified(true);
     setError("");
-  }, []);
+
+    if (pendingSubmitRef.current) {
+      pendingSubmitRef.current = false;
+      setIsVerifyingSecurity(false);
+      executeSubmit(token);
+    }
+  }, [email]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -37,13 +46,7 @@ export default function ForgotPasswordPage() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) {
-      setError("Please enter your email address.");
-      return;
-    }
-
+  const executeSubmit = async (tokenToUse: string) => {
     setLoading(true);
     setError("");
 
@@ -53,7 +56,7 @@ export default function ForgotPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim(),
-          captchaToken,
+          captchaToken: tokenToUse,
         }),
       });
 
@@ -62,6 +65,11 @@ export default function ForgotPasswordPage() {
       if (!res.ok || !data.success) {
         setError(data.message || "Failed to send reset link. Please try again.");
         setLoading(false);
+        setIsVerifyingSecurity(false);
+        pendingSubmitRef.current = false;
+        if ((window as any).turnstile) {
+          try { (window as any).turnstile.reset(); } catch (e) {}
+        }
         return;
       }
 
@@ -71,7 +79,51 @@ export default function ForgotPasswordPage() {
       setError("A network error occurred. Please check your connection and try again.");
     } finally {
       setLoading(false);
+      setIsVerifyingSecurity(false);
+      pendingSubmitRef.current = false;
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    const activeToken = captchaToken || (window as any).__lastForgotTurnstileToken;
+    if (activeToken) {
+      executeSubmit(activeToken);
+      return;
+    }
+
+    pendingSubmitRef.current = true;
+    setLoading(true);
+    setIsVerifyingSecurity(true);
+
+    const startTime = Date.now();
+    const checkInterval = setInterval(() => {
+      const token = captchaToken || (window as any).__lastForgotTurnstileToken;
+      if (token) {
+        clearInterval(checkInterval);
+        if (pendingSubmitRef.current) {
+          pendingSubmitRef.current = false;
+          setIsVerifyingSecurity(false);
+          executeSubmit(token);
+        }
+      } else if (Date.now() - startTime > 4000) {
+        clearInterval(checkInterval);
+        if (pendingSubmitRef.current) {
+          pendingSubmitRef.current = false;
+          setLoading(false);
+          setIsVerifyingSecurity(false);
+          setError("Security check is taking longer than expected. Please verify the box below and try again.");
+          if ((window as any).turnstile) {
+            try { (window as any).turnstile.reset(); } catch (e) {}
+          }
+        }
+      }
+    }, 100);
   };
 
   const handleResend = async () => {
@@ -217,23 +269,20 @@ export default function ForgotPasswordPage() {
                   </div>
                 </div>
 
-                {/* Cloudflare Turnstile */}
-                <div className="pt-1">
-                  {!captchaVerified && (
-                    <div className="flex items-center gap-2 mb-2 text-xs font-medium text-muted-foreground animate-pulse">
-                      <Spinner className="animate-spin h-3.5 w-3.5" />
-                      <span>Verifying security check...</span>
-                    </div>
-                  )}
-                  <TurnstileWidget onVerify={handleTurnstileVerify} />
-                </div>
+                {/* Background Security Verification */}
+                <TurnstileWidget onVerify={handleTurnstileVerify} />
 
                 <Button
                   type="submit"
                   disabled={loading || !captchaVerified}
                   className="w-full h-12 text-base font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 rounded-xl cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {loading ? (
+                  {isVerifyingSecurity ? (
+                    <>
+                      <Spinner className="animate-spin h-5 w-5" weight="bold" />
+                      <span>Verifying Security...</span>
+                    </>
+                  ) : loading ? (
                     <>
                       <Spinner className="animate-spin h-5 w-5" weight="bold" />
                       <span>Sending Link...</span>
