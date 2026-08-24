@@ -27,6 +27,7 @@ import {
   Bank
 } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
+import LoyaltyTierCard from "@/components/dashboard/LoyaltyTierCard";
 
 interface ServiceItem {
   title: string;
@@ -633,6 +634,11 @@ export default function DashboardPage() {
         </div>
 
       </div>
+      
+      {/* ========================================================================= */}
+      {/* 3.5 VIP AGENT LOYALTY & TIER STATUS                                       */}
+      {/* ========================================================================= */}
+      <LoyaltyTierCard />
 
       {/* ========================================================================= */}
       {/* 4. ACTIVE SERVICES (EXACT TURNAROUNDS SPECIFIED BY USER)                   */}

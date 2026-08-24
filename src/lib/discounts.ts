@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { getUserLoyaltyProfile, getTierDiscountForCategory } from "@/lib/loyalty";
 
 export interface ActiveDiscountInfo {
   hasDiscount: boolean;
@@ -9,16 +10,16 @@ export interface ActiveDiscountInfo {
   finalPrice: number;
   savedAmount: number;
   badge?: string;
+  tierName?: string;
+  tierBadge?: string;
+  isLoyaltyTierDiscount?: boolean;
 }
 
 /**
- * Calculates the effective price for a direct service after evaluating any active auto-applied promos.
- * Strictly verifies:
- * - Promo is active (isActive: true)
- * - Promo has not expired (expiresAt is null or > now)
- * - Service matches restrictedServices (e.g. "ALL", or matching serviceKey)
- * - Promo has not exceeded global usageLimit
- * - User has not exceeded perUserLimit (if userId is provided)
+ * Calculates the effective price for a service evaluating both:
+ * 1. Automatic continuous Loyalty Tier Discounts (Tier 1/2/3/4)
+ * 2. Active Promo Codes
+ * Always applies the most favorable discount rate for the user while strictly excluding AIRTIME from loyalty discounts.
  */
 export async function getEffectiveServicePrice(
   prismaClient: PrismaClient | any,
@@ -37,10 +38,39 @@ export async function getEffectiveServicePrice(
     };
   }
 
-  try {
-    const now = new Date();
+  let bestDiscount: ActiveDiscountInfo = {
+    hasDiscount: false,
+    originalPrice: numericBasePrice,
+    finalPrice: numericBasePrice,
+    savedAmount: 0,
+  };
 
-    // Query active auto-applied promos
+  try {
+    // 1. Evaluate User Loyalty Tier Discount (if user is authenticated)
+    if (userId) {
+      const loyaltyProfile = await getUserLoyaltyProfile(prismaClient, userId);
+      const tierDiscountPct = getTierDiscountForCategory(loyaltyProfile.currentTier, serviceKey);
+
+      if (tierDiscountPct > 0) {
+        const savedAmount = Math.round((numericBasePrice * tierDiscountPct) / 100);
+        const finalPrice = Math.max(0, numericBasePrice - savedAmount);
+
+        bestDiscount = {
+          hasDiscount: true,
+          discountPct: tierDiscountPct,
+          originalPrice: numericBasePrice,
+          finalPrice: finalPrice,
+          savedAmount: savedAmount,
+          badge: `${loyaltyProfile.currentTier.name} ${tierDiscountPct}% OFF`,
+          tierName: loyaltyProfile.currentTier.fullName,
+          tierBadge: loyaltyProfile.currentTier.badge,
+          isLoyaltyTierDiscount: true,
+        };
+      }
+    }
+
+    // 2. Evaluate Active Promo Codes (check if a promo provides a higher discount)
+    const now = new Date();
     const activePromos = await prismaClient.promoCode.findMany({
       where: {
         isActive: true,
@@ -56,13 +86,11 @@ export async function getEffectiveServicePrice(
     const normalizedKey = serviceKey.toUpperCase();
 
     for (const promo of activePromos) {
-      // Check service eligibility with category aliases support
       const isEligible = promo.restrictedServices.some((s: string) => {
         const norm = s.toUpperCase();
         if (norm === "ALL") return true;
         if (norm === normalizedKey) return true;
         
-        // Category alias matching
         if (norm === "BVN_MOD" || norm === "BVN_MODIFICATION") {
           return normalizedKey.startsWith("BVN_MOD_");
         }
@@ -83,12 +111,10 @@ export async function getEffectiveServicePrice(
 
       if (!isEligible) continue;
 
-      // Check global usage limit
       if (promo.usageLimit !== null && promo.timesUsed >= promo.usageLimit) {
         continue;
       }
 
-      // Check per user usage limit if userId is provided
       if (userId && promo.perUserLimit) {
         const userUsageCount = await prismaClient.promoUsage.count({
           where: {
@@ -101,27 +127,28 @@ export async function getEffectiveServicePrice(
         }
       }
 
-      // Compute discount
-      let discountAmount = 0;
+      let promoDiscountAmount = 0;
       if (promo.discountPct && promo.discountPct > 0) {
-        discountAmount = Math.round((numericBasePrice * promo.discountPct) / 100);
+        promoDiscountAmount = Math.round((numericBasePrice * promo.discountPct) / 100);
       } else if (promo.fixedAmount && Number(promo.fixedAmount) > 0) {
-        discountAmount = Math.round(Number(promo.fixedAmount));
+        promoDiscountAmount = Math.round(Number(promo.fixedAmount));
       }
 
-      discountAmount = Math.min(discountAmount, numericBasePrice);
-      const finalPrice = Math.max(0, numericBasePrice - discountAmount);
+      promoDiscountAmount = Math.min(promoDiscountAmount, numericBasePrice);
+      const promoFinalPrice = Math.max(0, numericBasePrice - promoDiscountAmount);
 
-      if (discountAmount > 0) {
-        return {
+      // If promo discount is greater than current tier discount, upgrade to promo
+      if (promoDiscountAmount > bestDiscount.savedAmount) {
+        bestDiscount = {
           hasDiscount: true,
           promoId: promo.id,
           promoCode: promo.code,
           discountPct: promo.discountPct || undefined,
           originalPrice: numericBasePrice,
-          finalPrice: finalPrice,
-          savedAmount: discountAmount,
-          badge: promo.discountPct ? `${promo.discountPct}% OFF` : `₦${discountAmount.toLocaleString()} OFF`,
+          finalPrice: promoFinalPrice,
+          savedAmount: promoDiscountAmount,
+          badge: promo.discountPct ? `${promo.discountPct}% OFF` : `₦${promoDiscountAmount.toLocaleString()} OFF`,
+          isLoyaltyTierDiscount: false,
         };
       }
     }
@@ -129,13 +156,7 @@ export async function getEffectiveServicePrice(
     console.error(`[Discounts Engine] Error evaluating discounts for ${serviceKey}:`, error);
   }
 
-  // Default fallback: regular base price
-  return {
-    hasDiscount: false,
-    originalPrice: numericBasePrice,
-    finalPrice: numericBasePrice,
-    savedAmount: 0,
-  };
+  return bestDiscount;
 }
 
 /**
@@ -148,25 +169,23 @@ export async function recordPromoUsageInTx(
   discountAmount?: number,
   serviceKey?: string
 ) {
-  if (!promoId) return;
+  if (!promoId || !userId) return;
 
   try {
-    // 1. Increment usage count
-    await tx.promoCode.update({
-      where: { id: promoId },
-      data: { timesUsed: { increment: 1 } },
-    });
-
-    // 2. Insert ledger record with exact discount amount and service key
     await tx.promoUsage.create({
       data: {
         promoId,
         userId,
-        discountAmount: discountAmount ? Number(discountAmount) : 0,
-        serviceKey: serviceKey || null,
+        discountAmount: discountAmount || 0,
+        serviceKey: serviceKey || "DIRECT_SERVICE",
       },
     });
-  } catch (error) {
-    console.error(`[Discounts Engine] Error recording promo usage for promo ${promoId}:`, error);
+
+    await tx.promoCode.update({
+      where: { id: promoId },
+      data: { timesUsed: { increment: 1 } },
+    });
+  } catch (err) {
+    console.error(`[Promo Usage Recording Error] Failed to log usage for promo ${promoId}:`, err);
   }
 }
