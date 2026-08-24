@@ -1280,10 +1280,9 @@ export async function sendWelcomeEmail({
       <li><strong>SCUML Certificate:</strong> Process your Special Control Unit Against Money Laundering compliance certificate.</li>
       <li><strong>Tax ID (TIN):</strong> Apply for and retrieve your official Tax Identification Number.</li>
       <li><strong>NIMC Services:</strong> Instantly generate and download standard and premium NIN slips.</li>
-      <li><strong>Airtime & Utilities:</strong> Quick airtime recharges directly from your wallet.</li>
+      <li><strong>Airtime &amp; Utilities:</strong> Quick airtime and data recharges directly from your wallet.</li>
     </ul>
 
-    <p style="color: #334155; line-height: 1.6; font-size: 14px;">We are actively adding more corporate compliance and business tools to the platform, including Trademark registration, NAFDAC certification, and legal document generation.</p>
     <p style="color: #334155; line-height: 1.6; font-size: 14px;">To get started with any service, simply fund your LoraBiz wallet and submit your application in minutes.</p>
 
     <div style="text-align: center; margin: 32px 0;">
@@ -1303,7 +1302,7 @@ export async function sendWelcomeEmail({
   });
 }
 
-export async function sendFirstWalletFundingEmail({
+export async function sendWalletFundedEmail({
   to,
   firstName = "Valued Client",
   amount,
@@ -1322,35 +1321,46 @@ export async function sendFirstWalletFundingEmail({
   const walletUrl = `${baseUrl.replace(/\/$/, "")}/dashboard/wallet`;
   const formattedAmount = Number(amount).toLocaleString("en-NG", { minimumFractionDigits: 2 });
   const formattedBalance = Number(balance).toLocaleString("en-NG", { minimumFractionDigits: 2 });
-  const subject = "Wallet Funded Successfully – Welcome to LoraBiz Wallet";
-  const previewText = `Your wallet has been credited with ₦${formattedAmount}. You are ready to access all LoraBiz services.`;
+  const subject = `Wallet Credit Alert – ₦${formattedAmount}`;
+  const previewText = `Your LoraBiz wallet has been credited with ₦${formattedAmount}. Current balance: ₦${formattedBalance}.`;
 
   const content = `
-    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Wallet Funded Successfully</h2>
-    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
-    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Your LoraBiz wallet has been successfully funded with <strong>₦${formattedAmount}</strong>.</p>
+    <div style="text-align: center; margin-bottom: 24px;">
+      <div style="display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 50%; background-color: #ecfdf5; color: #059669; font-size: 24px; margin-bottom: 8px;">✓</div>
+      <h2 style="color: #0f172a; margin: 0; font-size: 20px; font-weight: 800;">Wallet Credited Successfully</h2>
+      <p style="color: #059669; font-size: 28px; font-weight: 800; margin: 8px 0 0 0;">+₦${formattedAmount}</p>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">Hello <strong>${cleanName}</strong>,</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">We have received your payment. Your LoraBiz wallet has been credited and is available for instant use.</p>
     
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
-      <p style="margin: 0 0 6px; font-size: 13px; color: #64748b;">Transaction Details:</p>
-      <p style="margin: 0; font-size: 14px; color: #0f172a;">Reference: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${reference}</code></p>
-      <p style="margin: 6px 0 0; font-size: 15px; font-weight: 600; color: #059669;">Current Wallet Balance: ₦${formattedBalance}</p>
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Amount Credited:</td>
+          <td style="padding: 6px 0; color: #0f172a; font-weight: 700; text-align: right;">₦${formattedAmount}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Transaction Reference:</td>
+          <td style="padding: 6px 0; color: #0f172a; font-family: monospace; text-align: right;">${reference}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Channel:</td>
+          <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;">Online Gateway (KoraPay)</td>
+        </tr>
+        <tr style="border-top: 1px solid #e2e8f0;">
+          <td style="padding: 10px 0 0; color: #0f172a; font-weight: 700;">New Wallet Balance:</td>
+          <td style="padding: 10px 0 0; color: #059669; font-weight: 800; font-size: 15px; text-align: right;">₦${formattedBalance}</td>
+        </tr>
+      </table>
     </div>
 
-    <p style="color: #334155; line-height: 1.6; font-size: 14px;">Now that your wallet is active, you can use your balance to seamlessly pay for any service on the platform without entering card details each time, including:</p>
-    <ul style="padding-left: 20px; line-height: 1.8; color: #334155; font-size: 14px;">
-      <li>Business Name & LLC registrations</li>
-      <li>SCUML certification filings</li>
-      <li>Tax ID (TIN) processing</li>
-      <li>NIN slip generation & downloads</li>
-      <li>Instant airtime purchases</li>
-    </ul>
-
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${walletUrl}" style="background-color: #0f172a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">View Wallet & Services</a>
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="${walletUrl}" style="background-color: #0f172a; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block;">Go to Wallet &amp; Dashboard</a>
     </div>
 
-    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you encounter any difficulty with a transaction or have questions about our services, please click the support icon in your dashboard to reach us immediately.</p>
-    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
+    <p style="color: #64748b; font-size: 12px; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 16px;">This is an automated transaction receipt. If you did not authorize this transaction, please contact support immediately.</p>
+    <p style="color: #334155; font-size: 13px; margin-top: 16px;">Best regards,<br/><strong>The LoraBiz Team</strong></p>
   `;
 
   const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
@@ -1361,6 +1371,8 @@ export async function sendFirstWalletFundingEmail({
     htmlBody,
   });
 }
+
+export const sendFirstWalletFundingEmail = sendWalletFundedEmail;
 
 export async function sendAbandonedCacReminderEmail({
   to,

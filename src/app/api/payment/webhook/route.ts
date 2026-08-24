@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { NotificationEvent } from "@/services/notifications";
 import { notificationQueue } from "@/lib/queue";
 import { redis } from "@/lib/redis";
-import { sendScumlSubmittedEmail } from "@/lib/email";
+import { sendScumlSubmittedEmail, sendWalletFundedEmail } from "@/lib/email";
 import { logUserActivity } from "@/lib/activity-logger";
 
 export async function POST(req: Request) {
@@ -136,6 +136,7 @@ export async function POST(req: Request) {
                     serviceCategory: "WALLET_FUNDING"
                   }
                 });
+                isPaymentFullySuccessful = true;
                 return;
             }
 
@@ -223,27 +224,32 @@ export async function POST(req: Request) {
 
       if (isPaymentFullySuccessful) {
         if (serviceType === "wallet_funding") {
-          // Log wallet funding activity
-          logUserActivity({
+          // Log wallet funding activity & dispatch Telegram alert
+          await logUserActivity({
             userId: user.id,
             action: "WALLET_FUNDING_SUCCESS",
             category: "WALLET",
             description: `Wallet funded with ₦${amountPaid.toLocaleString()}`,
             referenceId: reference,
-            metadata: { amount: amountPaid },
+            metadata: { 
+              amount: amountPaid,
+              reference,
+              channel: "KoraPay Online Gateway"
+            },
             req,
           });
 
-          // Check if this is the user's first successful wallet funding
+          // Send wallet credit receipt email (atomically deduplicated)
           try {
-            const alreadySentFundingEmail = await prisma.automatedEmailLog.findFirst({
+            const existingEmail = await prisma.automatedEmailLog.findFirst({
               where: {
                 userId: user.id,
-                emailType: "FIRST_WALLET_FUNDING",
+                emailType: "WALLET_FUNDED",
+                entityId: reference,
               },
             });
 
-            if (!alreadySentFundingEmail) {
+            if (!existingEmail) {
               const currentWallet = await prisma.wallet.findUnique({
                 where: { userId: user.id },
               });
@@ -253,27 +259,27 @@ export async function POST(req: Request) {
               const protocol = host.includes("localhost") ? "http" : "https";
               const baseUrl = `${protocol}://${host}`;
 
-              await notificationQueue.add(
-                "send-first-wallet-funding-email",
-                {
-                  type: "FIRST_WALLET_FUNDING_EMAIL",
+              await sendWalletFundedEmail({
+                to: user.email!,
+                firstName: user.firstName || "Valued Client",
+                amount: amountPaid,
+                balance: currentBalance,
+                reference,
+                baseUrl,
+              });
+
+              await prisma.automatedEmailLog.create({
+                data: {
                   userId: user.id,
                   email: user.email!,
-                  firstName: user.firstName || "Valued Client",
-                  amount: amountPaid,
-                  balance: currentBalance,
-                  reference,
-                  baseUrl,
+                  emailType: "WALLET_FUNDED",
+                  entityId: reference,
+                  status: "SENT",
                 },
-                {
-                  attempts: 3,
-                  backoff: { type: "exponential", delay: 5000 },
-                  removeOnComplete: true,
-                }
-              );
+              }).catch(() => {});
             }
           } catch (fundingErr) {
-            console.error("Failed to check/enqueue first wallet funding email:", fundingErr);
+            console.error("Failed to send wallet funding email:", fundingErr);
           }
         } else if (serviceType === "scuml" && scumlDraft && registrationId) {
           logUserActivity({
