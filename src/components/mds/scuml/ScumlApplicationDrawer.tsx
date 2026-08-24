@@ -6,6 +6,21 @@ import { X, CheckCircle, FileText, Download, ShieldCheck, RefreshCw, AlertCircle
 import { DocumentPreview } from '../cac/CacShared';
 import { FileUpload } from '@/components/FileUpload';
 
+const sanitizeHttpUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    // Relative or invalid protocols
+  }
+  return null;
+};
+
 export default function ScumlApplicationDrawer({ 
   ticket, 
   onClose, 
@@ -175,8 +190,13 @@ export default function ScumlApplicationDrawer({
                   <ShieldCheck size={48} className="text-emerald-500 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Application Completed</h3>
                   <p className="text-zinc-500 text-sm mt-2 mb-6">The SCUML certificate was generated and sent to the client.</p>
-                  {ticket.finalCertificateUrl && (
-                    <a href={ticket.finalCertificateUrl} target="_blank" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold rounded-xl border border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
+                  {sanitizeHttpUrl(ticket.finalCertificateUrl) && (
+                    <a 
+                      href={sanitizeHttpUrl(ticket.finalCertificateUrl)!} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold rounded-xl border border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
+                    >
                       <Download size={18} /> View Final Certificate
                     </a>
                   )}

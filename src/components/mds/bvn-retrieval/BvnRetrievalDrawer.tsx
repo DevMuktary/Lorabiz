@@ -4,9 +4,25 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { 
   X, CheckCircle, FileText, ShieldCheck, RefreshCw, 
-  AlertCircle, AlertTriangle, User, Phone, Check, Download, Clock
+  AlertCircle, AlertTriangle, User, Phone, Check, Download, Clock,
+  UploadCloud, Loader2, Eye, Trash2, Copy, FileCheck
 } from "lucide-react";
-import { FileUpload } from "@/components/FileUpload";
+import { Button } from "@/components/ui/button";
+
+const sanitizeHttpUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    // Relative or invalid protocols
+  }
+  return null;
+};
 
 interface BvnRetrievalDrawerProps {
   ticket: any | null;
@@ -24,6 +40,8 @@ export default function BvnRetrievalDrawer({
 
   const [retrievedBvn, setRetrievedBvn] = useState("");
   const [slipUrl, setSlipUrl] = useState("");
+  const [isUploadingSlip, setIsUploadingSlip] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [failureReason, setFailureReason] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   
@@ -33,6 +51,7 @@ export default function BvnRetrievalDrawer({
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   if (!ticket) return null;
 
@@ -41,6 +60,81 @@ export default function BvnRetrievalDrawer({
     ticket.status === "FAILED" ? "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400" :
     ticket.status === "PROCESSING" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400" :
     "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400";
+
+  const handleCopy = (key: string, text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const copyAllApplicantDetails = () => {
+    const text = `--- BVN RETRIEVAL APPLICANT DATA ---\nTracking ID: ${ticket.trackingId}\nFull Legal Name: ${ticket.fullName}\nLinked Phone: ${ticket.phone}\nClient Email: ${ticket.clientEmail || ticket.user?.email || "N/A"}`;
+    handleCopy("applicant-all", text);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File size exceeds the 5MB limit. Please compress the file.");
+      return;
+    }
+
+    setIsUploadingSlip(true);
+    setUploadProgress(0);
+    setError("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const data = await new Promise<any>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/upload");
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch (err) {
+              reject(new Error("Invalid server response format."));
+            }
+          } else {
+            try {
+              const errJson = JSON.parse(xhr.responseText);
+              reject(new Error(errJson.error || `Upload failed with status ${xhr.status}`));
+            } catch {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Network error during file upload."));
+        xhr.send(formData);
+      });
+
+      if (data.success && data.url) {
+        setSlipUrl(data.url);
+      } else {
+        throw new Error(data.error || "Failed to upload file.");
+      }
+    } catch (err: any) {
+      console.error("Slip upload error:", err);
+      setError(err.message || "Failed to upload BVN retrieval resolution slip.");
+    } finally {
+      setIsUploadingSlip(false);
+      setUploadProgress(0);
+    }
+  };
 
   const handleActionSubmit = async () => {
     setIsProcessing(true);
@@ -83,6 +177,7 @@ export default function BvnRetrievalDrawer({
       }
 
       onUpdateSuccess();
+      onClose();
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
     } finally {
@@ -113,14 +208,16 @@ export default function BvnRetrievalDrawer({
             <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
               {ticket.fullName}
             </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Submitted: {format(new Date(ticket.createdAt), "PPP 'at' p")}
-            </p>
+            <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              <span>Submitted: {format(new Date(ticket.createdAt), "PPP 'at' p")}</span>
+              <span>•</span>
+              <span className="text-zinc-700 dark:text-zinc-300 font-medium">Client: {ticket.clientEmail || ticket.user?.email || "N/A"}</span>
+            </div>
           </div>
 
           <button 
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -130,28 +227,28 @@ export default function BvnRetrievalDrawer({
         <div className="flex border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 shrink-0">
           <button
             onClick={() => { setActiveTab("INFO"); setActionType(""); setError(""); }}
-            className={`py-3 text-xs font-bold border-b-2 mr-6 transition-all ${
+            className={`py-3 text-xs font-bold border-b-2 mr-6 transition-all cursor-pointer ${
               activeTab === "INFO" 
                 ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 font-black" 
                 : "border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
             }`}
           >
-            Application Overview
+            Applicant &amp; Recovery Info
           </button>
           <button
             onClick={() => { setActiveTab("ACTIONS"); setError(""); }}
-            className={`py-3 text-xs font-bold border-b-2 transition-all ${
+            className={`py-3 text-xs font-bold border-b-2 transition-all cursor-pointer ${
               activeTab === "ACTIONS" 
                 ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 font-black" 
                 : "border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
             }`}
           >
-            Take Action
+            Take Action &amp; Upload Result Slip
           </button>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 text-left">
           
           {error && (
             <div className="p-4 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl flex items-center gap-3 text-rose-700 dark:text-rose-400 text-xs font-bold">
@@ -165,35 +262,58 @@ export default function BvnRetrievalDrawer({
               
               {/* Applicant & Recovery Info Card */}
               <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-                  <User size={14} className="text-emerald-600" />
-                  Applicant Recovery Data
-                </h3>
+                <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+                    <User size={14} className="text-emerald-600" />
+                    Applicant Recovery Data
+                  </h3>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={copyAllApplicantDetails}
+                    className="h-8 px-3 text-xs font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer flex items-center gap-1.5"
+                  >
+                    {copiedKey === "applicant-all" ? (
+                      <>
+                        <Check size={13} className="text-emerald-500" />
+                        <span>Copied All Details!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>Copy Applicant Data</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <span className="text-zinc-500 block mb-0.5">Full Legal Name:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50">
+                    <span className="text-zinc-500 block mb-0.5 text-[10px] uppercase font-bold">Full Legal Name on BVN:</span>
                     <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">{ticket.fullName}</span>
                   </div>
-                  <div>
-                    <span className="text-zinc-500 block mb-0.5">Linked Phone:</span>
-                    <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">{ticket.phone}</span>
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50">
+                    <span className="text-zinc-500 block mb-0.5 text-[10px] uppercase font-bold">Linked Phone Number:</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">{ticket.phone}</span>
+                      <button 
+                        onClick={() => handleCopy("phone", ticket.phone)}
+                        className="text-zinc-400 hover:text-emerald-600 p-0.5 cursor-pointer"
+                        title="Copy Phone"
+                      >
+                        {copiedKey === "phone" ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-zinc-500 block mb-0.5">Client User Email:</span>
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">{ticket.clientEmail}</span>
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50">
+                    <span className="text-zinc-500 block mb-0.5 text-[10px] uppercase font-bold">Amount Paid:</span>
+                    <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">₦{Number(ticket.amountPaid).toLocaleString()}</span>
                   </div>
-                  <div>
-                    <span className="text-zinc-500 block mb-0.5">Amount Paid:</span>
-                    <span className="font-black text-emerald-600 dark:text-emerald-400">₦{Number(ticket.amountPaid).toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-500 block mb-0.5">Transaction Ref:</span>
-                    <span className="font-mono text-zinc-500">{ticket.transactionRef}</span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-500 block mb-0.5">Tracking ID:</span>
-                    <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{ticket.trackingId}</span>
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50">
+                    <span className="text-zinc-500 block mb-0.5 text-[10px] uppercase font-bold">Transaction Reference:</span>
+                    <span className="font-mono text-zinc-500 text-xs truncate block">{ticket.transactionRef}</span>
                   </div>
                 </div>
               </div>
@@ -209,14 +329,21 @@ export default function BvnRetrievalDrawer({
                     <span className="text-2xl font-black font-mono tracking-widest text-emerald-800 dark:text-emerald-300">
                       {ticket.retrievedBvn}
                     </span>
+                    <button
+                      onClick={() => handleCopy("retBvn", ticket.retrievedBvn)}
+                      className="p-1.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600 text-emerald-700 hover:text-white dark:text-emerald-300 transition-colors cursor-pointer"
+                      title="Copy BVN"
+                    >
+                      {copiedKey === "retBvn" ? <Check size={16} /> : <Copy size={16} />}
+                    </button>
                   </div>
-                  {ticket.slipUrl && (
+                  {sanitizeHttpUrl(ticket.slipUrl) && (
                     <div className="pt-2">
                       <a
-                        href={ticket.slipUrl}
+                        href={sanitizeHttpUrl(ticket.slipUrl)!}
                         target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors"
                       >
                         <Download size={14} />
                         <span>View / Download Attached Slip</span>
@@ -252,7 +379,7 @@ export default function BvnRetrievalDrawer({
                 <button
                   type="button"
                   onClick={() => { setActionType("PROCESS"); setError(""); }}
-                  className={`p-4 rounded-xl border text-left transition-all ${
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
                     actionType === "PROCESS" 
                       ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50 ring-2 ring-blue-500/20" 
                       : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300"
@@ -266,7 +393,7 @@ export default function BvnRetrievalDrawer({
                 <button
                   type="button"
                   onClick={() => { setActionType("COMPLETE"); setError(""); }}
-                  className={`p-4 rounded-xl border text-left transition-all ${
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
                     actionType === "COMPLETE" 
                       ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 ring-2 ring-emerald-500/20" 
                       : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300"
@@ -280,7 +407,7 @@ export default function BvnRetrievalDrawer({
                 <button
                   type="button"
                   onClick={() => { setActionType("FAIL"); setError(""); }}
-                  className={`p-4 rounded-xl border text-left transition-all ${
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
                     actionType === "FAIL" 
                       ? "border-rose-500 bg-rose-50 dark:bg-rose-950/50 ring-2 ring-rose-500/20" 
                       : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300"
@@ -334,20 +461,88 @@ export default function BvnRetrievalDrawer({
                     <span className="text-[10px] text-zinc-500 font-mono">{retrievedBvn.length}/11 digits</span>
                   </div>
 
-                  <div className="space-y-1.5">
+                  {/* DIRECT FILE UPLOADER FOR BVN SLIP */}
+                  <div className="space-y-2 pt-1">
                     <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                      Optional BVN Slip Document / Image URL
+                      Upload BVN Resolution Slip / Result File (PDF, PNG, JPG)
                     </label>
-                    <input
-                      type="url"
-                      value={slipUrl}
-                      onChange={(e) => setSlipUrl(e.target.value)}
-                      placeholder="https://... (or paste file URL)"
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-xs text-zinc-900 dark:text-zinc-100"
-                    />
+
+                    {!slipUrl ? (
+                      <div className="relative border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500/60 rounded-2xl p-5 text-center transition-colors bg-zinc-50 dark:bg-zinc-950/60">
+                        <input
+                          type="file"
+                          accept=".pdf,image/png,image/jpeg,image/jpg"
+                          onChange={handleFileUpload}
+                          disabled={isUploadingSlip}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
+                        />
+                        <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+                          <div className="p-2.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400">
+                            {isUploadingSlip ? <Loader2 size={22} className="animate-spin" /> : <UploadCloud size={22} />}
+                          </div>
+                          <div>
+                            <p className="font-bold text-zinc-800 dark:text-zinc-200 text-xs">
+                              {isUploadingSlip ? `Uploading slip (${uploadProgress}%)...` : "Drop slip here or click to browse"}
+                            </p>
+                            <p className="text-[10px] text-zinc-500 mt-0.5">Supports PDF, PNG, JPG (Max 5MB)</p>
+                          </div>
+                        </div>
+
+                        {isUploadingSlip && (
+                          <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-1.5 mt-3 overflow-hidden">
+                            <div 
+                              className="bg-emerald-500 h-full transition-all duration-300 rounded-full" 
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-950 border border-emerald-500/40 flex items-center justify-between">
+                        <div className="flex items-center gap-3 truncate">
+                          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                            <FileCheck size={18} />
+                          </div>
+                          <div className="truncate">
+                            <p className="font-bold text-zinc-900 dark:text-zinc-100 text-xs truncate">Slip Uploaded</p>
+                            {sanitizeHttpUrl(slipUrl) ? (
+                              <a 
+                                href={sanitizeHttpUrl(slipUrl)!} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 mt-0.5 truncate"
+                              >
+                                <Eye size={12} /> View Uploaded File
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-zinc-500 italic mt-0.5 block truncate">Custom/Relative URL</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSlipUrl("")}
+                          className="p-1.5 text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                          title="Remove File"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="pt-1">
+                      <span className="text-[10px] text-zinc-500 block mb-1">Or paste direct slip URL</span>
+                      <input
+                        type="url"
+                        value={slipUrl}
+                        onChange={(e) => setSlipUrl(e.target.value)}
+                        placeholder="https://... (or paste file URL)"
+                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-xs text-zinc-900 dark:text-zinc-100"
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 pt-1">
                     <label className="text-xs font-bold text-zinc-500 block">Internal Notes</label>
                     <textarea
                       rows={2}
@@ -383,7 +578,7 @@ export default function BvnRetrievalDrawer({
 
                   {/* Admin-Determined Refund Toggle */}
                   <div className="bg-zinc-50 dark:bg-zinc-800/60 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 space-y-3">
-                    <label className="flex items-center gap-2.5 cursor-pointer">
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={issueRefund}
@@ -402,64 +597,44 @@ export default function BvnRetrievalDrawer({
                           type="number"
                           value={refundAmount}
                           onChange={(e) => setRefundAmount(e.target.value)}
-                          className="w-full max-w-xs bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg px-3 py-1.5 text-xs font-bold text-zinc-900 dark:text-zinc-100"
+                          className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400"
                         />
                       </div>
                     )}
                   </div>
+                </div>
+              )}
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-zinc-500 block">Internal Notes</label>
-                    <textarea
-                      rows={2}
-                      value={adminNotes}
-                      onChange={(e) => setAdminNotes(e.target.value)}
-                      placeholder="Internal audit notes..."
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 text-xs text-zinc-900 dark:text-zinc-100"
-                    />
-                  </div>
+              {/* Action Submit Button */}
+              {actionType && (
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    disabled={isProcessing || isUploadingSlip}
+                    onClick={handleActionSubmit}
+                    className={`w-full h-12 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                      actionType === "COMPLETE"
+                        ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
+                        : actionType === "PROCESS"
+                        ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20"
+                        : "bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20"
+                    }`}
+                  >
+                    {isProcessing ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Processing Action...</span>
+                      </span>
+                    ) : (
+                      <span>Execute Action</span>
+                    )}
+                  </Button>
                 </div>
               )}
 
             </div>
           )}
 
-        </div>
-
-        {/* Footer Actions */}
-        <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
-          >
-            Cancel
-          </button>
-
-          {activeTab === "ACTIONS" && actionType && (
-            <button
-              type="button"
-              onClick={handleActionSubmit}
-              disabled={isProcessing}
-              className={`px-5 py-2.5 text-xs font-black rounded-xl text-white shadow-sm flex items-center gap-2 transition-all cursor-pointer ${
-                actionType === "COMPLETE" ? "bg-emerald-600 hover:bg-emerald-700" :
-                actionType === "FAIL" ? "bg-rose-600 hover:bg-rose-700" :
-                "bg-blue-600 hover:bg-blue-700"
-              }`}
-            >
-              {isProcessing ? (
-                <>
-                  <RefreshCw size={14} className="animate-spin" />
-                  <span>Processing Action...</span>
-                </>
-              ) : (
-                <>
-                  <Check size={14} />
-                  <span>Execute {actionType}</span>
-                </>
-              )}
-            </button>
-          )}
         </div>
 
       </div>

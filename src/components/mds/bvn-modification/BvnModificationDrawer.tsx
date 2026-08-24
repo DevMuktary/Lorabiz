@@ -26,7 +26,10 @@ import {
   AlertCircle,
   Eye,
   Trash2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  IdCard,
+  CreditCard,
+  Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -46,8 +49,9 @@ const MOD_TITLES: Record<string, string> = {
   CHANGE_OF_ALL: "Change of Name, DOB & Phone (All 3)",
 };
 
-const sanitizeHttpUrl = (value: string): string | null => {
-  const trimmed = (value || "").trim();
+const sanitizeHttpUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
   if (!trimmed) return null;
   try {
     const parsed = new URL(trimmed);
@@ -55,7 +59,7 @@ const sanitizeHttpUrl = (value: string): string | null => {
       return parsed.toString();
     }
   } catch {
-    // Invalid URL
+    // Relative or invalid protocols (e.g. javascript:, data:, etc.)
   }
   return null;
 };
@@ -81,11 +85,48 @@ export default function BvnModificationDrawer({
 
   if (!request) return null;
 
+  const registeredFullName = [request.oldFirstName, request.oldMiddleName, request.oldLastName].filter(Boolean).join(" ") || request.currentFullName || "N/A";
+  const requestedNewFullName = [request.newFirstName, request.newMiddleName, request.newLastName].filter(Boolean).join(" ") || "N/A";
+  const categoryLabel = MOD_TITLES[request.modificationCategory] || MOD_TITLES[request.type] || request.modificationCategory || request.type;
+  const previewSlipUrl = sanitizeHttpUrl(slipUrl || request.slipUrl);
+
   const handleCopy = (key: string, text: string) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  // Grouped Copy: Primary Identifiers (Old Details)
+  const copyPrimaryIdentifiers = () => {
+    const lines = [
+      `--- PRIMARY IDENTIFIERS (OLD DETAILS) ---`,
+      `BVN: ${request.bvn || "N/A"}`,
+      `NIN: ${request.nin || "N/A"}`,
+      `Enrolling Bank: ${request.enrollingBank || "N/A"}`,
+      `Full Name on BVN: ${registeredFullName}`,
+      `Phone Number: ${request.currentPhone || "N/A"}`,
+      `Date of Birth: ${request.currentDob || "N/A"}`
+    ];
+    handleCopy("primary-all", lines.join("\n"));
+  };
+
+  // Grouped Copy: Requested New Modification Details
+  const copyNewModificationDetails = () => {
+    const lines = [`--- REQUESTED MODIFICATIONS (NEW DETAILS) ---`];
+    if (request.modifyName || request.newFirstName || request.newLastName) {
+      lines.push(`New Full Name: ${requestedNewFullName}`);
+    }
+    if (request.modifyPhone || request.newPhone) {
+      lines.push(`New Phone Number: ${request.newPhone}`);
+    }
+    if (request.modifyDob || request.newDob) {
+      lines.push(`New Date of Birth: ${request.newDob}`);
+      if (request.yearsDifference) {
+        lines.push(`Age Difference: ${request.yearsDifference.toFixed(1)} years`);
+      }
+    }
+    handleCopy("new-all", lines.join("\n"));
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,11 +265,6 @@ export default function BvnModificationDrawer({
     }
   };
 
-  const categoryLabel = MOD_TITLES[request.modificationCategory] || MOD_TITLES[request.type] || request.modificationCategory || request.type;
-  const registeredFullName = [request.oldFirstName, request.oldMiddleName, request.oldLastName].filter(Boolean).join(" ") || request.currentFullName;
-  const requestedNewFullName = [request.newFirstName, request.newMiddleName, request.newLastName].filter(Boolean).join(" ");
-  const previewSlipUrl = sanitizeHttpUrl(slipUrl || request.slipUrl);
-
   return (
     <div className="fixed inset-0 z-[100] flex justify-end font-sans">
       {/* Backdrop */}
@@ -257,15 +293,17 @@ export default function BvnModificationDrawer({
             <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
               {categoryLabel}
             </h2>
-            <p className="text-xs text-zinc-400">
-              Submitted on {request.createdAt ? format(new Date(request.createdAt), "PPP 'at' p") : "N/A"}
-            </p>
+            <div className="flex items-center gap-3 text-xs text-zinc-400">
+              <span>Submitted: {request.createdAt ? format(new Date(request.createdAt), "PPP 'at' p") : "N/A"}</span>
+              <span>•</span>
+              <span className="text-zinc-300 font-medium">Client: {request.user?.email || "N/A"}</span>
+            </div>
           </div>
 
           <button 
             type="button"
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white rounded-xl bg-zinc-800/80 hover:bg-zinc-800 transition-colors"
+            className="p-2 text-zinc-400 hover:text-white rounded-xl bg-zinc-800/80 hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -282,7 +320,7 @@ export default function BvnModificationDrawer({
                 : "border-transparent text-zinc-400 hover:text-white"
             }`}
           >
-            Application &amp; Modification Details
+            Primary Identifiers &amp; Changes
           </button>
           <button
             type="button"
@@ -317,664 +355,604 @@ export default function BvnModificationDrawer({
           {activeTab === "DETAILS" ? (
             <div className="space-y-6">
 
-              {/* 1. Client & Account Overview */}
-              <div className="bg-zinc-900/90 p-4 sm:p-5 rounded-2xl border border-zinc-800 space-y-3">
-                <span className="text-[10px] font-mono uppercase font-bold text-zinc-400 flex items-center gap-1.5">
-                  <User size={13} className="text-emerald-400" />
-                  Client Account Information
-                </span>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <span className="text-zinc-500 block text-[11px]">User Account Name:</span>
-                    <span className="font-bold text-white text-xs">
-                      {[request.user?.firstName, request.user?.lastName].filter(Boolean).join(" ") || "User Client"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-500 block text-[11px]">Email Address:</span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="font-medium text-white truncate max-w-[170px]">{request.user?.email || "N/A"}</span>
-                      {request.user?.email && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopy("email", request.user.email)}
-                          className="text-zinc-400 hover:text-emerald-400 p-0.5 rounded cursor-pointer"
-                          title="Copy Email"
-                        >
-                          {copiedKey === "email" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                        </button>
-                      )}
+              {/* 1. PRIMARY IDENTIFIERS (OLD / CURRENT RECORD) */}
+              <div className="bg-zinc-900/90 p-5 rounded-2xl border border-zinc-800 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                      <IdCard size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                        Primary Identifiers (Old / Current Record)
+                      </h3>
+                      <p className="text-[11px] text-zinc-400">Official registered profile data on NIBSS database</p>
                     </div>
                   </div>
-                  <div>
-                    <span className="text-zinc-500 block text-[11px]">Phone Number:</span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono font-medium text-white">{request.user?.phone || "N/A"}</span>
-                      {request.user?.phone && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopy("userPhone", request.user.phone)}
-                          className="text-zinc-400 hover:text-emerald-400 p-0.5 rounded cursor-pointer"
-                          title="Copy Phone"
-                        >
-                          {copiedKey === "userPhone" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. Core Identifiers (BVN, NIN, Enrolling Bank) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                
-                {/* Target BVN Card */}
-                <div className="bg-zinc-900/90 p-4 rounded-2xl border border-zinc-800 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase font-bold text-zinc-400 block">Target BVN (11 Digits)</span>
-                    <span className="font-mono font-black text-white text-base tracking-wider block mt-1">
-                      {request.bvn}
-                    </span>
-                  </div>
-                  <button
+                  
+                  {/* Single 1-Click Copy All Primary Identifiers Button */}
+                  <Button
                     type="button"
-                    onClick={() => handleCopy("bvn", request.bvn)}
-                    className="p-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white cursor-pointer transition-colors border border-zinc-700"
-                    title="Copy 11-digit BVN"
+                    size="sm"
+                    variant="outline"
+                    onClick={copyPrimaryIdentifiers}
+                    className="h-8 px-3 text-xs font-bold border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer flex items-center gap-1.5"
                   >
-                    {copiedKey === "bvn" ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
-                  </button>
+                    {copiedKey === "primary-all" ? (
+                      <>
+                        <Check size={13} className="text-emerald-400" />
+                        <span>Copied All Old Details!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>Copy Primary Identifiers</span>
+                      </>
+                    )}
+                  </Button>
                 </div>
 
-                {/* Target NIN Card */}
-                <div className="bg-zinc-900/90 p-4 rounded-2xl border border-zinc-800 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase font-bold text-zinc-400 block">Target NIN (11 Digits)</span>
-                    <span className="font-mono font-black text-white text-base tracking-wider block mt-1">
-                      {request.nin || "Not Provided"}
-                    </span>
-                  </div>
-                  {request.nin && (
-                    <button
-                      type="button"
-                      onClick={() => handleCopy("nin", request.nin)}
-                      className="p-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white cursor-pointer transition-colors border border-zinc-700"
-                      title="Copy 11-digit NIN"
-                    >
-                      {copiedKey === "nin" ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
-                    </button>
-                  )}
-                </div>
-
-              </div>
-
-              {/* 3. Enrolling Bank & Service Details */}
-              <div className="bg-zinc-900/90 p-4 rounded-2xl border border-zinc-800">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-zinc-500 block text-[11px]">Enrolling Bank on Record:</span>
-                    <span className="font-bold text-emerald-400 text-sm">{request.enrollingBank || "N/A"}</span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-500 block text-[11px]">Service Classification:</span>
-                    <span className="font-bold text-white text-xs">{categoryLabel}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. BEFORE VS AFTER COMPARISON (The Core Submission Changes) */}
-              <div className="space-y-3">
-                <span className="text-[10px] font-mono uppercase font-bold text-zinc-400 flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-emerald-400" />
-                  Submitted Modification Data (Current vs New)
-                </span>
-
-                {/* Name Modification */}
-                {request.modifyName && (
-                  <div className="bg-zinc-900/90 rounded-2xl border border-zinc-800 p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
-                      <span className="font-bold text-zinc-300 flex items-center gap-1.5">
-                        <User size={13} className="text-sky-400" /> Legal Name Modification
+                {/* Primary Identifiers Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  
+                  {/* BVN Card */}
+                  <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+                    <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Target BVN (11 Digits)</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-black text-white text-sm tracking-wider">
+                        {request.bvn || "N/A"}
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-bold">
-                        Name Change Active
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800">
-                        <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Old Name (On BVN)</span>
-                        <div className="font-bold text-zinc-300 text-xs leading-relaxed">
-                          {registeredFullName || "N/A"}
-                        </div>
-                        {(request.oldFirstName || request.oldLastName) && (
-                          <div className="text-[10px] text-zinc-500 mt-1 space-y-0.5 font-mono">
-                            <div>First: <strong className="text-zinc-400">{request.oldFirstName || "–"}</strong></div>
-                            <div>Middle: <strong className="text-zinc-400">{request.oldMiddleName || "–"}</strong></div>
-                            <div>Surname: <strong className="text-zinc-400">{request.oldLastName || "–"}</strong></div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/30">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-emerald-400 uppercase font-bold">New Requested Legal Name</span>
-                          {requestedNewFullName && (
-                            <button
-                              type="button"
-                              onClick={() => handleCopy("newName", requestedNewFullName)}
-                              className="text-emerald-400 hover:text-white p-0.5 cursor-pointer"
-                              title="Copy New Name"
-                            >
-                              {copiedKey === "newName" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                            </button>
-                          )}
-                        </div>
-                        <div className="font-black text-emerald-300 text-xs leading-relaxed">
-                          {requestedNewFullName || "N/A"}
-                        </div>
-                        {(request.newFirstName || request.newLastName) && (
-                          <div className="text-[10px] text-emerald-400/80 mt-1 space-y-0.5 font-mono">
-                            <div>First: <strong className="text-emerald-300">{request.newFirstName || "–"}</strong></div>
-                            <div>Middle: <strong className="text-emerald-300">{request.newMiddleName || "–"}</strong></div>
-                            <div>Surname: <strong className="text-emerald-300">{request.newLastName || "–"}</strong></div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Date of Birth Modification */}
-                {request.modifyDob && (
-                  <div className="bg-zinc-900/90 rounded-2xl border border-zinc-800 p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
-                      <span className="font-bold text-zinc-300 flex items-center gap-1.5">
-                        <Calendar size={13} className="text-amber-400" /> Date of Birth (DOB) Modification
-                      </span>
-                      {request.surchargeApplied ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
-                          &gt; 5-Year Shift (₦5,000 Surcharge)
-                        </span>
-                      ) : (
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-                          Standard DOB Shift (&le; 5 Yrs)
-                        </span>
+                      {request.bvn && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy("bvn", request.bvn)}
+                          className="text-zinc-500 hover:text-emerald-400 p-1 cursor-pointer"
+                          title="Copy BVN only"
+                        >
+                          {copiedKey === "bvn" ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        </button>
                       )}
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800">
-                        <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Old DOB (On Record)</span>
-                        <div className="font-mono font-bold text-zinc-300 text-xs">
-                          {request.currentDob || "N/A"}
-                        </div>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-500/30">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-amber-400 uppercase font-bold">New Requested Date of Birth</span>
-                          {request.newDob && (
-                            <button
-                              type="button"
-                              onClick={() => handleCopy("newDob", request.newDob)}
-                              className="text-amber-400 hover:text-white p-0.5 cursor-pointer"
-                              title="Copy New DOB"
-                            >
-                              {copiedKey === "newDob" ? <Check size={12} className="text-amber-400" /> : <Copy size={12} />}
-                            </button>
-                          )}
-                        </div>
-                        <div className="font-mono font-black text-amber-300 text-xs">
-                          {request.newDob || "N/A"}
-                        </div>
-                        {request.yearsDifference !== null && request.yearsDifference !== undefined && (
-                          <div className="text-[10px] text-amber-400/90 mt-1 font-medium">
-                            Variance: <strong>{Number(request.yearsDifference).toFixed(1)} years</strong> gap between records.
-                          </div>
-                        )}
-                      </div>
+                  {/* NIN Card */}
+                  <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+                    <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Target NIN (11 Digits)</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-black text-white text-sm tracking-wider">
+                        {request.nin || "Not Provided"}
+                      </span>
+                      {request.nin && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy("nin", request.nin)}
+                          className="text-zinc-500 hover:text-emerald-400 p-1 cursor-pointer"
+                          title="Copy NIN only"
+                        >
+                          {copiedKey === "nin" ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        </button>
+                      )}
                     </div>
                   </div>
-                )}
 
-                {/* Phone Number Modification */}
-                {request.modifyPhone && (
-                  <div className="bg-zinc-900/90 rounded-2xl border border-zinc-800 p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
-                      <span className="font-bold text-zinc-300 flex items-center gap-1.5">
-                        <Phone size={13} className="text-violet-400" /> Phone Number Modification
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 font-bold">
-                        Phone Change Active
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800">
-                        <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Old Phone (On Record)</span>
-                        <div className="font-mono font-bold text-zinc-300 text-xs">
-                          {request.currentPhone || "Not Specified"}
-                        </div>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-violet-950/20 border border-violet-500/30">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-violet-400 uppercase font-bold">New Requested Phone</span>
-                          {request.newPhone && (
-                            <button
-                              type="button"
-                              onClick={() => handleCopy("newPhone", request.newPhone)}
-                              className="text-violet-400 hover:text-white p-0.5 cursor-pointer"
-                              title="Copy New Phone"
-                            >
-                              {copiedKey === "newPhone" ? <Check size={12} className="text-violet-400" /> : <Copy size={12} />}
-                            </button>
-                          )}
-                        </div>
-                        <div className="font-mono font-black text-violet-300 text-xs">
-                          {request.newPhone || "N/A"}
-                        </div>
-                      </div>
-                    </div>
+                  {/* Enrolling Bank */}
+                  <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+                    <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Enrolling Bank on File</span>
+                    <span className="font-bold text-emerald-400 text-xs">
+                      {request.enrollingBank || "N/A"}
+                    </span>
                   </div>
-                )}
+
+                  {/* Old Name */}
+                  <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+                    <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Registered Old Full Name</span>
+                    <span className="font-bold text-zinc-200 text-xs">
+                      {registeredFullName}
+                    </span>
+                  </div>
+
+                  {/* Old Phone */}
+                  <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+                    <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Old Phone Number</span>
+                    <span className="font-mono font-bold text-zinc-200 text-xs">
+                      {request.currentPhone || "N/A"}
+                    </span>
+                  </div>
+
+                  {/* Old DOB */}
+                  <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+                    <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Old Date of Birth</span>
+                    <span className="font-bold text-zinc-200 text-xs">
+                      {request.currentDob || "N/A"}
+                    </span>
+                  </div>
+
+                </div>
               </div>
 
-              {/* 5. Payment, Fee & Transaction Reference */}
-              <div className="bg-zinc-900/90 p-4 sm:p-5 rounded-2xl border border-zinc-800 space-y-3">
+              {/* 2. REQUESTED MODIFICATIONS (NEW DETAILS) */}
+              <div className="bg-zinc-900/90 p-5 rounded-2xl border border-zinc-800 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-sky-500/10 text-sky-400">
+                      <ShieldCheck size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                        Requested Modifications (New Details)
+                      </h3>
+                      <p className="text-[11px] text-zinc-400">Specific updates submitted for verification &amp; approval</p>
+                    </div>
+                  </div>
+
+                  {/* Single 1-Click Copy All New Details Button */}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={copyNewModificationDetails}
+                    className="h-8 px-3 text-xs font-bold border-sky-500/30 text-sky-400 hover:bg-sky-500/10 cursor-pointer flex items-center gap-1.5"
+                  >
+                    {copiedKey === "new-all" ? (
+                      <>
+                        <Check size={13} className="text-sky-400" />
+                        <span>Copied All New Details!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>Copy New Modification Data</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="space-y-3.5 pt-1">
+                  
+                  {/* Name Modification */}
+                  {(request.modifyName || request.newFirstName || request.newLastName) && (
+                    <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sky-400 flex items-center gap-1.5">
+                          <User size={13} /> New Legal Name Request
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-bold">
+                          Name Change
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block uppercase font-bold">Old Name</span>
+                          <p className="font-medium text-zinc-300">{registeredFullName}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-sky-400 block uppercase font-bold">New Requested Name</span>
+                          <p className="font-bold text-emerald-400 text-sm">{requestedNewFullName}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Phone Modification */}
+                  {(request.modifyPhone || request.newPhone) && (
+                    <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                          <Phone size={13} /> New Phone Number Request
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                          Phone Change
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block uppercase font-bold">Old Phone</span>
+                          <p className="font-mono text-zinc-300">{request.currentPhone || "N/A"}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-emerald-400 block uppercase font-bold">New Phone</span>
+                          <p className="font-mono font-bold text-emerald-400 text-sm">{request.newPhone}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DOB Modification */}
+                  {(request.modifyDob || request.newDob) && (
+                    <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                          <Calendar size={13} /> Date of Birth Modification
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
+                          DOB Change
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block uppercase font-bold">Old DOB</span>
+                          <p className="font-medium text-zinc-300">{request.currentDob || "N/A"}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-amber-400 block uppercase font-bold">New Requested DOB</span>
+                          <p className="font-bold text-amber-300 text-sm">{request.newDob}</p>
+                        </div>
+                      </div>
+                      {request.yearsDifference !== null && request.yearsDifference !== undefined && (
+                        <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px]">
+                          <span className="text-zinc-400">
+                            Age Difference: <strong className="text-zinc-200">{request.yearsDifference.toFixed(1)} years</strong>
+                          </span>
+                          {request.surchargeApplied && (
+                            <span className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-bold text-[10px]">
+                              5-Year Statutory Surcharge Applied (+₦{Number(request.surchargeAmount || 0).toLocaleString()})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              </div>
+
+              {/* 3. SUPPORTING DOCUMENTS */}
+              {request.documentUrls && request.documentUrls.length > 0 && (
+                <div className="bg-zinc-900/90 p-5 rounded-2xl border border-zinc-800 space-y-3 shadow-sm">
+                  <span className="text-[10px] font-mono uppercase font-bold text-zinc-400 flex items-center gap-1.5">
+                    <FileText size={14} className="text-emerald-400" />
+                    Client Supporting Documents ({request.documentUrls.length})
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {request.documentUrls.map((url: string, index: number) => {
+                      const safeUrl = sanitizeHttpUrl(url);
+                      const isPdf = (safeUrl || url).toLowerCase().includes(".pdf");
+                      return (
+                        <div 
+                          key={index}
+                          className="flex items-center justify-between p-3 rounded-xl bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <div className="p-2 rounded-lg bg-zinc-900 text-zinc-300 shrink-0">
+                              {isPdf ? <FileSpreadsheet size={16} className="text-rose-400" /> : <FileCheck size={16} className="text-emerald-400" />}
+                            </div>
+                            <div className="truncate">
+                              <span className="font-bold text-white block truncate text-[11px]">Document #{index + 1}</span>
+                              <span className="text-[10px] text-zinc-500">{isPdf ? "PDF File" : "Image File"}</span>
+                            </div>
+                          </div>
+                          {safeUrl ? (
+                            <a 
+                              href={safeUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-lg bg-zinc-900 hover:bg-emerald-600 hover:text-white text-zinc-400 transition-colors shrink-0"
+                              title="View Document"
+                            >
+                              <ExternalLink size={14} />
+                            </a>
+                          ) : (
+                            <span className="text-[10px] text-zinc-500 italic p-2">Invalid URL</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. BILLING & TRANSACTION DETAILS */}
+              <div className="bg-zinc-900/90 p-5 rounded-2xl border border-zinc-800 space-y-3 shadow-sm">
                 <span className="text-[10px] font-mono uppercase font-bold text-zinc-400 flex items-center gap-1.5">
-                  <DollarSign size={13} className="text-emerald-400" />
-                  Billing &amp; Transaction Details
+                  <CreditCard size={14} className="text-emerald-400" />
+                  Financial &amp; Transaction Details
                 </span>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
-                    <span className="text-zinc-500 block text-[11px]">Total Fee Paid:</span>
+                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Total Paid</span>
                     <span className="font-black text-emerald-400 text-base">
                       ₦{Number(request.amountPaid || 0).toLocaleString()}
                     </span>
-                    {request.surchargeApplied && (
-                      <span className="text-[10px] text-amber-400 block mt-0.5 font-medium">
-                        (Includes ₦{Number(request.surchargeAmount || 5000).toLocaleString()} DOB Surcharge)
-                      </span>
-                    )}
                   </div>
-
                   <div>
-                    <span className="text-zinc-500 block text-[11px]">Transaction Reference:</span>
+                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Transaction Reference</span>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono text-zinc-300 font-bold text-xs truncate max-w-[150px]">
-                        {request.transactionRef || "N/A"}
-                      </span>
+                      <span className="font-mono text-zinc-300 truncate max-w-[200px]">{request.transactionRef || "N/A"}</span>
                       {request.transactionRef && (
                         <button
                           type="button"
                           onClick={() => handleCopy("txRef", request.transactionRef)}
-                          className="text-zinc-400 hover:text-emerald-400 p-0.5 cursor-pointer"
-                          title="Copy Transaction Ref"
+                          className="text-zinc-500 hover:text-emerald-400 p-0.5 cursor-pointer"
                         >
                           {copiedKey === "txRef" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                         </button>
                       )}
                     </div>
                   </div>
-
-                  <div>
-                    <span className="text-zinc-500 block text-[11px]">Refund Status:</span>
-                    {request.isRefunded ? (
-                      <span className="font-bold text-amber-400 text-xs block mt-0.5">
-                        Refunded ₦{Number(request.refundAmount || request.amountPaid).toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-zinc-400 text-xs block mt-0.5">No Refund Issued</span>
-                    )}
-                  </div>
                 </div>
               </div>
 
-              {/* 6. Supporting Documents / Uploaded Attachments (if any) */}
-              {Array.isArray(request.documentUrls) && request.documentUrls.length > 0 && (
-                <div className="bg-zinc-900/90 p-4 sm:p-5 rounded-2xl border border-zinc-800 space-y-3">
-                  <span className="text-[10px] font-mono uppercase font-bold text-zinc-400 flex items-center gap-1.5">
-                    <FileText size={13} className="text-sky-400" />
-                    Applicant Supporting Documents ({request.documentUrls.length})
+              {/* Existing Resolution Slip (If completed) */}
+              {previewSlipUrl && (
+                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-2">
+                  <span className="font-bold text-emerald-400 flex items-center gap-1.5 text-xs">
+                    <FileCheck size={16} /> Resolution Slip Available
                   </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {request.documentUrls.map((docUrl: string, idx: number) => {
-                      const safeUrl = sanitizeHttpUrl(docUrl);
-                      return safeUrl ? (
-                        <a
-                          key={idx}
-                          href={safeUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-between p-3 rounded-xl bg-zinc-950/80 border border-zinc-800 hover:border-emerald-500/50 transition-colors text-zinc-300 hover:text-white"
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <FileText size={16} className="text-emerald-400 shrink-0" />
-                            <span className="truncate font-mono text-xs">Attachment #{idx + 1}</span>
-                          </div>
-                          <ExternalLink size={14} className="shrink-0 text-zinc-500" />
-                        </a>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 7. Existing Slip Resolution (If Completed) */}
-              {request.status === "COMPLETED" && request.slipUrl && (
-                <div className="bg-emerald-950/20 border border-emerald-500/30 p-4 sm:p-5 rounded-2xl space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono uppercase font-bold text-emerald-400 flex items-center gap-1.5">
-                      <FileCheck size={14} /> Completed BVN Resolution Slip Available
-                    </span>
-                    {previewSlipUrl && (
-                      <a
-                        href={previewSlipUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-xl transition-colors shadow-sm"
-                      >
-                        <Eye size={13} /> View Slip <ExternalLink size={12} className="ml-0.5" />
-                      </a>
-                    )}
-                  </div>
-                  <p className="text-xs text-zinc-400 font-mono truncate">{request.slipUrl}</p>
-                </div>
-              )}
-
-              {/* 8. Rejection Information (If Rejected) */}
-              {request.status === "REJECTED" && (
-                <div className="bg-rose-950/20 border border-rose-500/30 p-4 sm:p-5 rounded-2xl space-y-2">
-                  <span className="text-[10px] font-mono uppercase font-bold text-rose-400 flex items-center gap-1.5">
-                    <XCircle size={14} /> Rejection Notice
-                  </span>
-                  <p className="text-xs text-rose-300 font-medium leading-relaxed">
-                    {request.rejectionReason || "No rejection reason recorded."}
-                  </p>
-                  {request.isRefunded && (
-                    <span className="text-[11px] text-zinc-400 block font-mono">
-                      Refund Amount: ₦{Number(request.refundAmount || 0).toLocaleString()} credited back to user wallet.
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* 9. Internal Notes */}
-              {request.adminNotes && (
-                <div className="bg-zinc-900/90 p-4 rounded-2xl border border-zinc-800 space-y-1">
-                  <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 block">Internal Staff Notes</span>
-                  <p className="text-xs text-zinc-300 italic">{request.adminNotes}</p>
+                  <p className="text-zinc-300 text-xs">A resolution slip has been uploaded for this client.</p>
+                  <a 
+                    href={previewSlipUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors"
+                  >
+                    <Eye size={14} /> View Resolution Slip
+                  </a>
                 </div>
               )}
 
             </div>
           ) : (
-            
-            /* TAB 2: TAKE ACTION & SLIP UPLOAD */
+            /* ACTIONS TAB */
             <div className="space-y-6">
-
-              <div className="bg-zinc-900/90 p-4 sm:p-5 rounded-2xl border border-zinc-800 space-y-4">
-                <div>
-                  <h3 className="text-sm font-black text-white">Select Management Action</h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    Change ticket operational state, upload final resolution slips, or decline with automated refunds.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-400 block">
+                  Select Admin Workflow Action
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  
+                  {/* Complete Button */}
                   <button
                     type="button"
-                    onClick={() => setActionType("PROCESSING")}
-                    className={`p-3.5 rounded-xl border text-xs font-bold text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 ${
-                      actionType === "PROCESSING" 
-                        ? "bg-sky-500/20 border-sky-500 text-sky-300 shadow-md shadow-sky-500/10"
-                        : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+                    onClick={() => { setActionType("COMPLETE"); setActionErrorMsg(null); }}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                      actionType === "COMPLETE"
+                        ? "bg-emerald-500/15 border-emerald-500 text-emerald-400 ring-2 ring-emerald-500/30"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
                     }`}
                   >
-                    <Clock size={18} className={actionType === "PROCESSING" ? "text-sky-400" : "text-zinc-500"} />
-                    <span>Mark In Processing</span>
+                    <CheckCircle size={20} className="mb-1.5" />
+                    <span className="font-bold block text-sm">Approve &amp; Complete</span>
+                    <span className="text-[10px] text-zinc-500 block mt-0.5">Upload resolution slip</span>
                   </button>
 
+                  {/* Processing Button */}
                   <button
                     type="button"
-                    onClick={() => setActionType("COMPLETE")}
-                    className={`p-3.5 rounded-xl border text-xs font-bold text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 ${
-                      actionType === "COMPLETE" 
-                        ? "bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-500/10"
-                        : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+                    onClick={() => { setActionType("PROCESSING"); setActionErrorMsg(null); }}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                      actionType === "PROCESSING"
+                        ? "bg-sky-500/15 border-sky-500 text-sky-400 ring-2 ring-sky-500/30"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
                     }`}
                   >
-                    <CheckCircle size={18} className={actionType === "COMPLETE" ? "text-emerald-400" : "text-zinc-500"} />
-                    <span>Approve &amp; Upload Slip</span>
+                    <RefreshCw size={20} className="mb-1.5" />
+                    <span className="font-bold block text-sm">In Processing</span>
+                    <span className="text-[10px] text-zinc-500 block mt-0.5">Update status to client</span>
                   </button>
 
+                  {/* Reject Button */}
                   <button
                     type="button"
-                    onClick={() => setActionType("REJECT")}
-                    className={`p-3.5 rounded-xl border text-xs font-bold text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 ${
-                      actionType === "REJECT" 
-                        ? "bg-rose-500/20 border-rose-500 text-rose-300 shadow-md shadow-rose-500/10"
-                        : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+                    onClick={() => { setActionType("REJECT"); setActionErrorMsg(null); }}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                      actionType === "REJECT"
+                        ? "bg-rose-500/15 border-rose-500 text-rose-400 ring-2 ring-rose-500/30"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
                     }`}
                   >
-                    <XCircle size={18} className={actionType === "REJECT" ? "text-rose-400" : "text-zinc-500"} />
-                    <span>Reject Application</span>
+                    <XCircle size={20} className="mb-1.5" />
+                    <span className="font-bold block text-sm">Reject / Query</span>
+                    <span className="text-[10px] text-zinc-500 block mt-0.5">Refund wallet balance</span>
                   </button>
+
                 </div>
               </div>
 
-              {/* ACTION: COMPLETE / UPLOAD RESOLUTION SLIP */}
+              {/* ACTION: COMPLETE - Direct Slip Uploader */}
               {actionType === "COMPLETE" && (
-                <div className="bg-zinc-900/90 p-5 rounded-2xl border border-zinc-800 space-y-4 animate-in fade-in duration-200">
-                  <div>
-                    <label className="text-xs font-bold text-white block mb-1">
-                      NIBSS BVN Modification Resolution Slip (PDF or Image) <span className="text-rose-400">*</span>
-                    </label>
-                    <p className="text-xs text-zinc-400">
-                      Upload the official NIBSS modification confirmation slip. The applicant will instantly receive an email alert and download access.
-                    </p>
+                <div className="bg-zinc-900/90 p-5 rounded-2xl border border-zinc-800 space-y-4">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold border-b border-zinc-800 pb-3">
+                    <UploadCloud size={18} />
+                    <span>Upload Modification Resolution Slip</span>
                   </div>
 
-                  {/* Drag-and-Drop / Direct File Upload Card */}
-                  <div className="p-4 rounded-2xl bg-zinc-950/80 border border-dashed border-zinc-700 hover:border-emerald-500/60 transition-colors">
-                    <div className="flex flex-col items-center justify-center text-center space-y-3">
-                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                        {isUploadingSlip ? (
-                          <Loader2 size={22} className="animate-spin text-emerald-400" />
-                        ) : (
-                          <UploadCloud size={22} />
-                        )}
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-white">
-                          {isUploadingSlip ? `Uploading document... (${uploadProgress}%)` : "Select or drag resolution slip file here"}
-                        </p>
-                        <p className="text-[11px] text-zinc-500">Supports PDF, PNG, JPG files up to 5MB</p>
-                      </div>
-
-                      <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-sm transition-all">
-                        {isUploadingSlip ? (
-                          <>
-                            <Loader2 size={13} className="animate-spin" />
-                            <span>Uploading {uploadProgress}%</span>
-                          </>
-                        ) : (
-                          <>
-                            <UploadCloud size={14} />
-                            <span>Browse &amp; Upload Slip</span>
-                          </>
-                        )}
+                  <div className="space-y-3">
+                    {/* Drag & Drop Upload Zone */}
+                    {!slipUrl ? (
+                      <div className="relative border-2 border-dashed border-zinc-700 hover:border-emerald-500/60 rounded-2xl p-6 text-center transition-colors bg-zinc-950/60">
                         <input
                           type="file"
-                          accept="application/pdf,image/jpeg,image/png"
+                          accept=".pdf,image/png,image/jpeg,image/jpg"
                           onChange={handleFileUpload}
                           disabled={isUploadingSlip}
-                          className="hidden"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
                         />
-                      </label>
-                    </div>
+                        <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+                          <div className="p-3 rounded-full bg-zinc-800/80 text-emerald-400">
+                            {isUploadingSlip ? <Loader2 size={24} className="animate-spin" /> : <UploadCloud size={24} />}
+                          </div>
+                          <div>
+                            <p className="font-bold text-zinc-200 text-xs">
+                              {isUploadingSlip ? `Uploading resolution slip (${uploadProgress}%)...` : "Drop slip here or click to browse"}
+                            </p>
+                            <p className="text-[11px] text-zinc-500 mt-0.5">Supports PDF, PNG, JPG (Max 5MB)</p>
+                          </div>
+                        </div>
 
-                    {/* Progress Bar */}
-                    {isUploadingSlip && (
-                      <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-4 overflow-hidden">
-                        <div 
-                          className="bg-emerald-500 h-1.5 transition-all duration-200" 
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Slip Preview & Removal */}
-                  {slipUrl && (
-                    <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5 truncate max-w-[80%]">
-                        <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                        <span className="font-mono text-xs text-emerald-300 truncate">{slipUrl}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {previewSlipUrl && (
-                          <a
-                            href={previewSlipUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-zinc-300 hover:text-white underline"
-                          >
-                            Preview
-                          </a>
+                        {isUploadingSlip && (
+                          <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-4 overflow-hidden">
+                            <div 
+                              className="bg-emerald-500 h-full transition-all duration-300 rounded-full" 
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
                         )}
+                      </div>
+                    ) : (
+                      /* Uploaded Slip Preview */
+                      <div className="p-4 rounded-xl bg-zinc-950 border border-emerald-500/30 flex items-center justify-between">
+                        <div className="flex items-center gap-3 truncate">
+                          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+                            <FileCheck size={20} />
+                          </div>
+                          <div className="truncate">
+                            <p className="font-bold text-white text-xs truncate">Slip Uploaded Successfully</p>
+                            {sanitizeHttpUrl(slipUrl) ? (
+                              <a 
+                                href={sanitizeHttpUrl(slipUrl)!} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 mt-0.5 truncate"
+                              >
+                                <Eye size={12} /> View Uploaded Document
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-zinc-500 italic mt-0.5 block truncate">Custom/Relative URL</span>
+                            )}
+                          </div>
+                        </div>
                         <button
                           type="button"
                           onClick={() => setSlipUrl("")}
-                          className="p-1 text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer"
-                          title="Remove Slip URL"
+                          className="p-2 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                          title="Remove Slip"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Fallback Direct URL Input */}
-                  <div>
-                    <label className="text-[11px] text-zinc-400 block mb-1">Or direct file URL:</label>
-                    <input
-                      type="text"
-                      value={slipUrl}
-                      onChange={(e) => setSlipUrl(e.target.value)}
-                      placeholder="https://res.cloudinary.com/.../bvn-slip.pdf"
-                      className="w-full h-9 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-xs font-mono text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    {/* Fallback Direct URL Input */}
+                    <div className="space-y-1 pt-2">
+                      <label className="text-[11px] text-zinc-400 block font-medium">Or paste direct slip URL (Cloudinary / S3 / External)</label>
+                      <input 
+                        type="url"
+                        value={slipUrl}
+                        onChange={(e) => setSlipUrl(e.target.value)}
+                        placeholder="https://res.cloudinary.com/..."
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 pt-2">
+                    <label className="text-[11px] text-zinc-400 block font-medium">Optional Completion Notes</label>
+                    <textarea
+                      rows={2}
+                      value={adminNotes}
+                      onChange={(e) => setAdminNotes(e.target.value)}
+                      placeholder="Notes for client / audit trail..."
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
               )}
 
-              {/* ACTION: REJECT & REFUND */}
+              {/* ACTION: PROCESSING */}
+              {actionType === "PROCESSING" && (
+                <div className="bg-zinc-900/90 p-5 rounded-2xl border border-zinc-800 space-y-4">
+                  <div className="flex items-center gap-2 text-sky-400 font-bold border-b border-zinc-800 pb-3">
+                    <RefreshCw size={18} />
+                    <span>Set Status to Processing</span>
+                  </div>
+                  <p className="text-zinc-400 text-xs leading-relaxed">
+                    This notifies the client that their modification request is actively being processed with NIBSS and the enrolling bank.
+                  </p>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-zinc-400 block font-medium">Optional Operator Notes</label>
+                    <textarea
+                      rows={3}
+                      value={adminNotes}
+                      onChange={(e) => setAdminNotes(e.target.value)}
+                      placeholder="e.g. Sent for verification with enrolling bank..."
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ACTION: REJECT */}
               {actionType === "REJECT" && (
-                <div className="bg-zinc-900/90 p-5 rounded-2xl border border-zinc-800 space-y-4 animate-in fade-in duration-200">
-                  <div>
-                    <label className="text-xs font-bold text-rose-400 block mb-1">
-                      Decline Reason (Visible to user via email and dashboard) <span className="text-rose-500">*</span>
+                <div className="bg-zinc-900/90 p-5 rounded-2xl border border-zinc-800 space-y-4">
+                  <div className="flex items-center gap-2 text-rose-400 font-bold border-b border-zinc-800 pb-3">
+                    <AlertCircle size={18} />
+                    <span>Reject Application &amp; Issue Refund</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-zinc-300 font-bold block">
+                      Rejection Reason (Sent to Client) <span className="text-rose-500">*</span>
                     </label>
                     <textarea
                       rows={3}
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
-                      placeholder="e.g. Enrolling bank mismatch or details do not reflect on NIBSS server."
-                      className="w-full p-3 rounded-xl border border-zinc-800 bg-zinc-950 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                      required
+                      placeholder="e.g. Enrolling bank record does not match the provided affidavits..."
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-rose-500"
                     />
                   </div>
 
-                  {/* Optional Refund Section */}
-                  <div className="pt-2 border-t border-zinc-800 space-y-3">
+                  <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
                     <label className="flex items-center gap-2.5 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={issueRefund}
                         onChange={(e) => setIssueRefund(e.target.checked)}
-                        className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        className="rounded border-zinc-700 text-rose-500 focus:ring-rose-500 h-4 w-4 bg-zinc-900 cursor-pointer"
                       />
-                      <span className="text-xs font-bold text-white">
-                        Issue Instant Wallet Refund to User?
-                      </span>
+                      <span className="font-bold text-zinc-200 text-xs">Credit Refund to Client Wallet</span>
                     </label>
 
                     {issueRefund && (
-                      <div className="pl-6 space-y-1">
-                        <label className="text-[11px] font-bold text-zinc-400 block">
-                          Refund Amount (₦)
-                        </label>
+                      <div className="space-y-1 pt-1">
+                        <label className="text-[11px] text-zinc-400 block">Refund Amount (₦)</label>
                         <input
                           type="number"
                           value={refundAmount}
                           onChange={(e) => setRefundAmount(e.target.value)}
-                          placeholder="Amount in ₦"
-                          className="w-full sm:w-48 h-9 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3.5 py-2 text-xs font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
                         />
-                        <span className="text-[10px] text-zinc-500 block">
-                          Original fee paid: ₦{Number(request.amountPaid || 0).toLocaleString()}
-                        </span>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* Internal Notes Input */}
-              <div className="bg-zinc-900/90 p-4 rounded-2xl border border-zinc-800 space-y-1.5">
-                <label className="text-xs font-bold text-zinc-400 block">Internal Staff Notes (Optional)</label>
-                <input
-                  type="text"
-                  value={adminNotes}
-                  onChange={(e) => setAdminNotes(e.target.value)}
-                  placeholder="e.g. Verified against NIBSS portal batch #914"
-                  className="w-full h-10 px-3.5 rounded-xl border border-zinc-800 bg-zinc-950 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Action Submit Buttons */}
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => { setActiveTab("DETAILS"); setActionType(null); }}
-                  className="flex-1 h-11 text-xs font-bold border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white cursor-pointer"
-                >
-                  Back to Details
-                </Button>
-
-                <Button
-                  type="button"
-                  disabled={!actionType || isExecutingAction || isUploadingSlip || (actionType === "REJECT" && !rejectionReason.trim()) || (actionType === "COMPLETE" && !slipUrl.trim())}
-                  onClick={handleExecuteAdminAction}
-                  className={`flex-1 h-11 font-black text-xs rounded-xl cursor-pointer shadow-sm ${
-                    actionType === "REJECT"
-                      ? "bg-rose-600 hover:bg-rose-700 text-white"
-                      : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                  }`}
-                >
-                  {isExecutingAction ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 size={14} className="animate-spin" />
-                      <span>Saving Action...</span>
-                    </div>
-                  ) : (
-                    "Confirm & Execute Action"
-                  )}
-                </Button>
-              </div>
+              {/* Execution Button */}
+              {actionType && (
+                <div className="pt-4 border-t border-zinc-800">
+                  <Button
+                    type="button"
+                    disabled={isExecutingAction || isUploadingSlip}
+                    onClick={handleExecuteAdminAction}
+                    className={`w-full h-12 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                      actionType === "COMPLETE"
+                        ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
+                        : actionType === "PROCESSING"
+                        ? "bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20"
+                        : "bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20"
+                    }`}
+                  >
+                    {isExecutingAction ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Executing Action...</span>
+                      </span>
+                    ) : (
+                      <span>Confirm &amp; Execute Action</span>
+                    )}
+                  </Button>
+                </div>
+              )}
 
             </div>
           )}
 
         </div>
+
       </div>
     </div>
   );

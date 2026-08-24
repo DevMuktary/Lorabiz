@@ -4,6 +4,21 @@ import { useState, useEffect } from "react";
 import { CheckCircle, AlertCircle, UserPlus, ShieldAlert, RefreshCw, Edit3, ExternalLink } from "lucide-react";
 import { FileUpload } from "@/components/FileUpload";
 
+const sanitizeHttpUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    // Relative or invalid protocols
+  }
+  return null;
+};
+
 export default function CacActionTab({ 
   ticket, 
   staffList, 
@@ -198,9 +213,9 @@ export default function CacActionTab({
                   <hr className="border-zinc-200 dark:border-zinc-800 my-4" />
                   <div className="space-y-2">
                     <p className="text-xs text-zinc-500 uppercase font-bold mb-2">Uploaded Documents</p>
-                    {certificateUrl && <a href={certificateUrl} target="_blank" className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"><ExternalLink size={14} /> Final Certificate</a>}
-                    {statusReportUrl && <a href={statusReportUrl} target="_blank" className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"><ExternalLink size={14} /> Status Report</a>}
-                    {memorandumUrl && <a href={memorandumUrl} target="_blank" className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"><ExternalLink size={14} /> Memorandum</a>}
+                    {sanitizeHttpUrl(certificateUrl) && <a href={sanitizeHttpUrl(certificateUrl)!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"><ExternalLink size={14} /> Final Certificate</a>}
+                    {sanitizeHttpUrl(statusReportUrl) && <a href={sanitizeHttpUrl(statusReportUrl)!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"><ExternalLink size={14} /> Status Report</a>}
+                    {sanitizeHttpUrl(memorandumUrl) && <a href={sanitizeHttpUrl(memorandumUrl)!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"><ExternalLink size={14} /> Memorandum</a>}
                   </div>
                 </div>
               ) : (

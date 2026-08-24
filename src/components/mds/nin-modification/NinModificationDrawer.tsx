@@ -23,6 +23,21 @@ import {
   DollarSign
 } from "lucide-react";
 
+const sanitizeHttpUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    // Relative or invalid protocols
+  }
+  return null;
+};
+
 interface NinModificationDrawerProps {
   request: any | null;
   onClose: () => void;
@@ -416,15 +431,15 @@ export default function NinModificationDrawer({
                     />
                   </div>
 
-                  {slipUrl && (
+                  {sanitizeHttpUrl(slipUrl) && (
                     <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
                       <span className="text-emerald-600 dark:text-emerald-400 font-bold truncate max-w-[280px]">
                         ✓ Slip attached
                       </span>
                       <a
-                        href={slipUrl}
+                        href={sanitizeHttpUrl(slipUrl)!}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
                       >
                         Preview <ExternalLink size={12} />

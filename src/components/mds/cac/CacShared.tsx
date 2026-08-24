@@ -2,6 +2,21 @@
 
 import { File, FileText, Download, RefreshCw } from "lucide-react";
 
+const sanitizeHttpUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    // Relative or invalid protocols
+  }
+  return null;
+};
+
 export function TabButton({ label, icon, active, onClick, alert }: any) {
   return (
     <button 
@@ -96,7 +111,8 @@ export function DocumentPreview({
     );
   }
 
-  const extension = url.split('.').pop() || 'pdf';
+  const safeUrl = sanitizeHttpUrl(url);
+  const extension = url.split('.').pop()?.split('?')[0] || 'pdf';
   const finalDownloadName = `${downloadName}.${extension}`;
 
   return (
@@ -109,17 +125,21 @@ export function DocumentPreview({
       </div>
       
       <div className="flex items-center gap-2 shrink-0">
-        <a 
-          href={url} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-xs font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-4 py-2.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-center"
-        >
-          View
-        </a>
+        {safeUrl ? (
+          <a 
+            href={safeUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-xs font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-4 py-2.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-center"
+          >
+            View
+          </a>
+        ) : (
+          <span className="text-xs text-zinc-400 italic px-2">Invalid URL</span>
+        )}
         <button 
           onClick={() => onDownload(url, finalDownloadName)}
-          disabled={isDownloading}
+          disabled={isDownloading || !safeUrl}
           className="flex items-center text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 px-4 py-2.5 rounded-lg hover:opacity-90 transition-opacity text-center cursor-pointer disabled:opacity-50"
         >
           {isDownloading ? <RefreshCw size={14} className="mr-1.5 animate-spin" /> : <Download size={14} className="mr-1.5" />}
