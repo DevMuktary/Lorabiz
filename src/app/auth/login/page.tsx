@@ -70,7 +70,6 @@ function LoginContent() {
 
   // Wrapped in useCallback so React.memo works in the child component
   const handleTurnstileVerify = useCallback((token: string) => {
-    (window as any).__lastTurnstileToken = token;
     setCaptchaToken(token);
     setCaptchaVerified(true);
     setError("");
@@ -103,10 +102,9 @@ function LoginContent() {
         pendingSubmitRef.current = false;
         // Reset turnstile cleanly on failure so user can try again
         if ((window as any).turnstile) {
-          try { (window as any).turnstile.reset(); } catch (e) {}
+          (window as any).turnstile.reset();
           setCaptchaVerified(false);
           setCaptchaToken("");
-          (window as any).__lastTurnstileToken = "";
         }
       } else {
         setShowOtpModal(true);

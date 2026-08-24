@@ -251,7 +251,7 @@ function AdminLoginContent() {
             <div className="pt-2">
               <Button 
                 type="submit" 
-                disabled={loading} 
+                disabled={loading || !captchaVerified} 
                 className="w-full h-14 text-lg font-semibold bg-teal-600 hover:bg-teal-500 text-white shadow-xl shadow-teal-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isVerifyingSecurity ? (
