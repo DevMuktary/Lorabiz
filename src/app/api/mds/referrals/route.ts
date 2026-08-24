@@ -37,44 +37,97 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     });
 
-    // 2. Fetch Top Referrers (Updated for Ledger Architecture)
-    const topReferrers = await prisma.user.findMany({
-      where: { referralsGiven: { some: {} } },
+    // 2. Fetch ALL Enrolled Partners (Users who have generated a referral code / bank setup)
+    const enrolledPartnersRaw = await prisma.user.findMany({
+      where: { referralCode: { not: null } },
       select: {
-        id: true, firstName: true, lastName: true, email: true, referralCode: true, referralBalance: true,
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        referralCode: true,
+        referralBalance: true,
+        payoutBankName: true,
+        payoutAccountNo: true,
+        payoutAccountName: true,
+        createdAt: true,
+        updatedAt: true,
         _count: { select: { referralsGiven: true } },
         referralsGiven: { select: { commissions: true } }
       },
-      orderBy: { referralBalance: 'desc' },
-      take: 50
+      orderBy: { updatedAt: 'desc' }
     });
 
-    const formattedReferrers = topReferrers.map(user => {
-      // Calculate total earned from commissions
+    const enrolledUsers = enrolledPartnersRaw.map(user => {
       const totalEarned = user.referralsGiven.reduce((acc, ref) => {
         return acc + ref.commissions.reduce((sum, comm) => sum + Number(comm.amount), 0);
       }, 0);
 
       return {
-        id: user.id, 
-        name: `${user.firstName} ${user.lastName}`.trim(), 
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        name: `${user.firstName} ${user.lastName}`.trim(),
         email: user.email,
-        code: user.referralCode, 
+        phone: user.phone,
+        referralCode: user.referralCode,
+        code: user.referralCode,
+        referralBalance: Number(user.referralBalance),
         balance: Number(user.referralBalance),
         totalReferred: user._count.referralsGiven,
-        totalEarned: totalEarned
+        totalEarned,
+        bankDetails: user.payoutAccountNo ? {
+          bankName: user.payoutBankName,
+          accountNo: user.payoutAccountNo,
+          accountName: user.payoutAccountName
+        } : null,
+        createdAt: user.createdAt,
+        joinedAt: user.updatedAt || user.createdAt
       };
     });
 
-    // 3. Enrolled Referral Pairs
-    const enrolledUsers = await prisma.user.findMany({
-      where: { referredBy: { not: null } },
-      select: { id: true, firstName: true, lastName: true, email: true, phone: true, referralCode: true, createdAt: true, referralBalance: true },
-      orderBy: { createdAt: 'desc' },
-      take: 50
+    // 3. Top Referrers sorted by referrals given then total earned
+    const topReferrers = [...enrolledUsers].sort((a, b) => {
+      if (b.totalReferred !== a.totalReferred) {
+        return b.totalReferred - a.totalReferred;
+      }
+      return b.totalEarned - a.totalEarned;
     });
 
-    // 4. Fetch Ledger Global Settings
+    // 4. Fetch Referral Connections / Pairs (Who referred whom)
+    const referralPairsRaw = await prisma.referral.findMany({
+      include: {
+        referrer: { select: { id: true, firstName: true, lastName: true, email: true, referralCode: true } },
+        commissions: { select: { amount: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100
+    });
+
+    const refereeUserIds = referralPairsRaw.map(r => r.referredUserId);
+    const refereeUsers = await prisma.user.findMany({
+      where: { id: { in: refereeUserIds } },
+      select: { id: true, firstName: true, lastName: true, email: true, phone: true, createdAt: true }
+    });
+
+    const referralPairs = referralPairsRaw.map(r => {
+      const refUser = refereeUsers.find(u => u.id === r.referredUserId);
+      const commissionsEarned = r.commissions.reduce((sum, c) => sum + Number(c.amount), 0);
+      return {
+        id: r.id,
+        referrerName: r.referrer ? `${r.referrer.firstName} ${r.referrer.lastName}`.trim() : "Unknown",
+        referrerEmail: r.referrer?.email || "Unknown",
+        referrerCode: r.referrer?.referralCode || "N/A",
+        refereeName: refUser ? `${refUser.firstName} ${refUser.lastName}`.trim() : "Unknown User",
+        refereeEmail: refUser?.email || "Unknown",
+        refereePhone: refUser?.phone || "N/A",
+        commissionsEarned,
+        joinedAt: r.createdAt
+      };
+    });
+
+    // 5. Fetch Global Settings
     const dbSettings = await prisma.globalSetting.findMany({
       where: { key: { in: Object.keys(DEFAULT_SETTINGS) } }
     });
@@ -86,15 +139,16 @@ export async function GET() {
       }
     });
 
-    // 5. Global Stats
+    // 6. Global Stats Aggregation
     const totalPaidData = await prisma.referralWithdrawal.aggregate({ where: { status: "PAID" }, _sum: { amount: true } });
     const totalPendingData = await prisma.referralWithdrawal.aggregate({ where: { status: "PENDING" }, _sum: { amount: true } });
 
     return NextResponse.json({
       success: true, 
       pendingWithdrawals, 
-      topReferrers: formattedReferrers, 
+      topReferrers, 
       enrolledUsers,
+      referralPairs,
       settings: {
         REFERRAL_ACTIVE: settings.REFERRAL_ACTIVE === 'true',
         REFERRAL_DISCOUNT_PCT: Number(settings.REFERRAL_DISCOUNT_PCT),
@@ -112,6 +166,8 @@ export async function GET() {
         REF_REWARD_BVN_RETRIEVAL: Number(settings.REF_REWARD_BVN_RETRIEVAL),
       },
       stats: {
+        totalEnrolled: enrolledUsers.length,
+        totalInvited: referralPairs.length,
         totalPaid: Number(totalPaidData._sum.amount || 0), 
         totalPending: Number(totalPendingData._sum.amount || 0)
       }

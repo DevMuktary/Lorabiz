@@ -22,6 +22,51 @@ export async function GET(req: Request) {
 
     if (!user) return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
 
+    // 0. Auto-heal: Reconcile any users that registered with this user's referral code but lack a Referral record
+    if (user.referralCode) {
+      try {
+        const matchingReferees = await prisma.user.findMany({
+          where: {
+            referredBy: {
+              equals: user.referralCode.trim(),
+              mode: "insensitive"
+            },
+            id: { not: user.id }
+          },
+          select: { id: true, createdAt: true }
+        });
+
+        if (matchingReferees.length > 0) {
+          const existingLinks = await prisma.referral.findMany({
+            where: { referrerId: user.id },
+            select: { referredUserId: true }
+          });
+          const existingIds = new Set(existingLinks.map(l => l.referredUserId));
+
+          for (const referee of matchingReferees) {
+            if (!existingIds.has(referee.id)) {
+              const oneYearFromJoin = new Date(referee.createdAt);
+              oneYearFromJoin.setFullYear(oneYearFromJoin.getFullYear() + 1);
+
+              await prisma.referral.upsert({
+                where: { referredUserId: referee.id },
+                create: {
+                  referrerId: user.id,
+                  referredUserId: referee.id,
+                  expiresAt: oneYearFromJoin
+                },
+                update: {
+                  referrerId: user.id
+                }
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[Referral] Self-healing sync warning:", e);
+      }
+    }
+
     // 1. Fetch all their referrals and related ledger commissions
     const referrals = await prisma.referral.findMany({
       where: { referrerId: user.id },
@@ -190,8 +235,26 @@ export async function POST(req: Request) {
     // 3. Generate Code (Only if they don't already have one)
     let newReferralCode = user.referralCode;
     if (!newReferralCode) {
-      const cleanFirstName = userFirstName.replace(/[^a-z0-9]/g, '');
-      newReferralCode = `lora-${cleanFirstName}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const cleanFirstName = (userFirstName.replace(/[^a-z0-9]/g, '') || "partner").slice(0, 10);
+      let isUnique = false;
+      let generatedCode = "";
+      let attempts = 0;
+
+      while (!isUnique && attempts < 15) {
+        attempts++;
+        const rand = Math.floor(100000 + Math.random() * 900000);
+        generatedCode = `lora-${cleanFirstName}-${rand}`;
+        const existing = await prisma.user.findFirst({
+          where: {
+            referralCode: {
+              equals: generatedCode,
+              mode: "insensitive"
+            }
+          }
+        });
+        if (!existing) isUnique = true;
+      }
+      newReferralCode = isUnique ? generatedCode : `lora-${cleanFirstName}-${Date.now().toString().slice(-6)}`;
     }
 
     // 4. Update User Profile
@@ -205,6 +268,39 @@ export async function POST(req: Request) {
         payoutAccountName: paystackData.data.account_name
       }
     });
+
+    // 5. Reconcile any existing users that registered with this code earlier
+    try {
+      const matchingReferees = await prisma.user.findMany({
+        where: {
+          referredBy: {
+            equals: newReferralCode,
+            mode: "insensitive"
+          },
+          id: { not: user.id }
+        },
+        select: { id: true, createdAt: true }
+      });
+
+      for (const referee of matchingReferees) {
+        const oneYearFromJoin = new Date(referee.createdAt);
+        oneYearFromJoin.setFullYear(oneYearFromJoin.getFullYear() + 1);
+
+        await prisma.referral.upsert({
+          where: { referredUserId: referee.id },
+          create: {
+            referrerId: user.id,
+            referredUserId: referee.id,
+            expiresAt: oneYearFromJoin
+          },
+          update: {
+            referrerId: user.id
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("[Referral] Activation reconciliation warning:", e);
+    }
 
     return NextResponse.json({ 
       success: true, 
