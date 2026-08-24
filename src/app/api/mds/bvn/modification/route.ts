@@ -40,8 +40,19 @@ export async function GET(req: NextRequest) {
       where.OR = [
         { trackingId: { contains: search, mode: "insensitive" } },
         { bvn: { contains: search, mode: "insensitive" } },
+        { nin: { contains: search, mode: "insensitive" } },
+        { enrollingBank: { contains: search, mode: "insensitive" } },
         { currentFullName: { contains: search, mode: "insensitive" } },
+        { oldFirstName: { contains: search, mode: "insensitive" } },
+        { oldLastName: { contains: search, mode: "insensitive" } },
+        { newFirstName: { contains: search, mode: "insensitive" } },
+        { newLastName: { contains: search, mode: "insensitive" } },
+        { newPhone: { contains: search, mode: "insensitive" } },
+        { transactionRef: { contains: search, mode: "insensitive" } },
         { user: { email: { contains: search, mode: "insensitive" } } },
+        { user: { phone: { contains: search, mode: "insensitive" } } },
+        { user: { firstName: { contains: search, mode: "insensitive" } } },
+        { user: { lastName: { contains: search, mode: "insensitive" } } },
       ];
     }
 
