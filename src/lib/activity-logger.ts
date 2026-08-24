@@ -119,8 +119,10 @@ function dispatchTelegramAlertForActivity(
 
       let title = params.action.replace(/_/g, " ");
       if (params.action.includes("WALLET_FUNDING")) title = "Wallet Funded Successfully";
-      else if (params.action.includes("NIN_IPE")) title = "New NIN IPE Clearance Request";
+      else if (params.action.includes("BVN_RETRIEVAL")) title = "New BVN Retrieval Request";
       else if (params.action.includes("BVN_MODIFICATION")) title = "New BVN Modification Request";
+      else if (params.action.includes("TAX_ID")) title = "New Tax ID (TIN) Request";
+      else if (params.action.includes("NIN_IPE")) title = "New NIN IPE Clearance Request";
       else if (params.action.includes("NIN_VALIDATION")) title = "New NIN Validation Request";
       else if (params.action.includes("NIN_MODIFICATION")) title = "New NIN Modification Request";
       else if (params.action.includes("SLIP")) title = "New Verification Slip Generated";
@@ -135,6 +137,11 @@ function dispatchTelegramAlertForActivity(
         if (cleanMetadata.amount) details["Amount"] = `₦${Number(cleanMetadata.amount).toLocaleString()}`;
         if (cleanMetadata.trackingId) details["Tracking ID"] = cleanMetadata.trackingId;
         if (cleanMetadata.type) details["Type"] = cleanMetadata.type;
+        if (cleanMetadata.modificationType) details["Modification"] = cleanMetadata.modificationType;
+        if (cleanMetadata.enrollingBank) details["Bank"] = cleanMetadata.enrollingBank;
+        if (cleanMetadata.fullName) details["Applicant Name"] = cleanMetadata.fullName;
+        if (cleanMetadata.phone) details["Phone"] = cleanMetadata.phone;
+        if (cleanMetadata.bvn) details["BVN"] = cleanMetadata.bvn;
         if (cleanMetadata.status) details["Status"] = cleanMetadata.status;
       }
 
