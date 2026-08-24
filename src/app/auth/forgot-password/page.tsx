@@ -25,7 +25,6 @@ export default function ForgotPasswordPage() {
   const pendingSubmitRef = useRef(false);
 
   const handleTurnstileVerify = useCallback((token: string) => {
-    (window as any).__lastForgotTurnstileToken = token;
     setCaptchaToken(token);
     setCaptchaVerified(true);
     setError("");
@@ -275,7 +274,7 @@ export default function ForgotPasswordPage() {
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !captchaVerified}
                   className="w-full h-12 text-base font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 rounded-xl cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isVerifyingSecurity ? (

@@ -119,6 +119,7 @@ export const TurnstileWidget = memo(function TurnstileWidget({
       }
     };
 
+    // Polling handles the Safari caching/soft-navigation issue
     intervalId = setInterval(() => {
       if ((window as any).turnstile) {
         renderWidget();
@@ -130,9 +131,7 @@ export const TurnstileWidget = memo(function TurnstileWidget({
       clearTimeout(autoRetryTimeout);
       const win = window as any;
       if (widgetIdRef.current && win.turnstile) {
-        try {
-          win.turnstile.remove(widgetIdRef.current);
-        } catch (e) {}
+        win.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
     };
