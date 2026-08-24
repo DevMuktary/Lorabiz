@@ -49,8 +49,9 @@ const MOD_TITLES: Record<string, string> = {
   CHANGE_OF_ALL: "Change of Name, DOB & Phone (All 3)",
 };
 
-const sanitizeHttpUrl = (value: string): string | null => {
-  const trimmed = (value || "").trim();
+const sanitizeHttpUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
   if (!trimmed) return null;
   try {
     const parsed = new URL(trimmed);
@@ -58,7 +59,7 @@ const sanitizeHttpUrl = (value: string): string | null => {
       return parsed.toString();
     }
   } catch {
-    // Invalid URL
+    // Relative or invalid protocols (e.g. javascript:, data:, etc.)
   }
   return null;
 };
@@ -605,7 +606,8 @@ export default function BvnModificationDrawer({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                     {request.documentUrls.map((url: string, index: number) => {
-                      const isPdf = url.toLowerCase().includes(".pdf");
+                      const safeUrl = sanitizeHttpUrl(url);
+                      const isPdf = (safeUrl || url).toLowerCase().includes(".pdf");
                       return (
                         <div 
                           key={index}
@@ -620,15 +622,19 @@ export default function BvnModificationDrawer({
                               <span className="text-[10px] text-zinc-500">{isPdf ? "PDF File" : "Image File"}</span>
                             </div>
                           </div>
-                          <a 
-                            href={url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="p-2 rounded-lg bg-zinc-900 hover:bg-emerald-600 hover:text-white text-zinc-400 transition-colors shrink-0"
-                            title="View Document"
-                          >
-                            <ExternalLink size={14} />
-                          </a>
+                          {safeUrl ? (
+                            <a 
+                              href={safeUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-lg bg-zinc-900 hover:bg-emerald-600 hover:text-white text-zinc-400 transition-colors shrink-0"
+                              title="View Document"
+                            >
+                              <ExternalLink size={14} />
+                            </a>
+                          ) : (
+                            <span className="text-[10px] text-zinc-500 italic p-2">Invalid URL</span>
+                          )}
                         </div>
                       );
                     })}
@@ -794,9 +800,18 @@ export default function BvnModificationDrawer({
                           </div>
                           <div className="truncate">
                             <p className="font-bold text-white text-xs truncate">Slip Uploaded Successfully</p>
-                            <a href={slipUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 mt-0.5 truncate">
-                              <Eye size={12} /> View Uploaded Document
-                            </a>
+                            {sanitizeHttpUrl(slipUrl) ? (
+                              <a 
+                                href={sanitizeHttpUrl(slipUrl)!} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 mt-0.5 truncate"
+                              >
+                                <Eye size={12} /> View Uploaded Document
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-zinc-500 italic mt-0.5 block truncate">Custom/Relative URL</span>
+                            )}
                           </div>
                         </div>
                         <button

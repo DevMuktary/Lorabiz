@@ -9,6 +9,21 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const sanitizeHttpUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    // Relative or invalid protocols
+  }
+  return null;
+};
+
 interface BvnRetrievalDrawerProps {
   ticket: any | null;
   onClose: () => void;
@@ -322,12 +337,12 @@ export default function BvnRetrievalDrawer({
                       {copiedKey === "retBvn" ? <Check size={16} /> : <Copy size={16} />}
                     </button>
                   </div>
-                  {ticket.slipUrl && (
+                  {sanitizeHttpUrl(ticket.slipUrl) && (
                     <div className="pt-2">
                       <a
-                        href={ticket.slipUrl}
+                        href={sanitizeHttpUrl(ticket.slipUrl)!}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors"
                       >
                         <Download size={14} />
@@ -490,9 +505,18 @@ export default function BvnRetrievalDrawer({
                           </div>
                           <div className="truncate">
                             <p className="font-bold text-zinc-900 dark:text-zinc-100 text-xs truncate">Slip Uploaded</p>
-                            <a href={slipUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 mt-0.5 truncate">
-                              <Eye size={12} /> View Uploaded File
-                            </a>
+                            {sanitizeHttpUrl(slipUrl) ? (
+                              <a 
+                                href={sanitizeHttpUrl(slipUrl)!} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 mt-0.5 truncate"
+                              >
+                                <Eye size={12} /> View Uploaded File
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-zinc-500 italic mt-0.5 block truncate">Custom/Relative URL</span>
+                            )}
                           </div>
                         </div>
                         <button
