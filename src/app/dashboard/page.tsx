@@ -24,10 +24,13 @@ import {
   Handshake,
   Check,
   ShareNetwork,
-  Bank
+  Bank,
+  Crown,
+  CaretRight
 } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
-import LoyaltyTierCard from "@/components/dashboard/LoyaltyTierCard";
+import LoyaltyPerksModal from "@/components/dashboard/LoyaltyPerksModal";
+import { useLoyalty } from "@/lib/useLoyalty";
 
 interface ServiceItem {
   title: string;
@@ -194,10 +197,13 @@ export default function DashboardPage() {
   } | null>(null);
 
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isPerksModalOpen, setIsPerksModalOpen] = useState(false);
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [mounted, setMounted] = useState(false);
+
+  const { profile: loyaltyProfile } = useLoyalty();
 
   useEffect(() => {
     setMounted(true);
@@ -471,52 +477,113 @@ export default function DashboardPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. DUAL-CARD HERO: WALLET & STATUTORY QUICK ACCESS                        */}
+      {/* 3. DUAL-CARD HERO: UNIFIED WALLET & VIP LOYALTY + QUICK ACTIONS DOCK       */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-11 gap-4">
-        {/* Left: Professional Compact Wallet Deck */}
-        <div className="lg:col-span-5 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        
+        {/* Left: Unified Executive Wallet & Loyalty Tier Deck */}
+        <div className="lg:col-span-7 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4">
+          
+          {/* Top Row: Wallet Label + Tier Badge & Continuous Discount Tag */}
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <Wallet className="h-4 w-4" weight="bold" />
               </div>
               <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
                 Wallet Balance
               </span>
+              <button
+                onClick={() => setIsBalanceHidden(!isBalanceHidden)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                aria-label={isBalanceHidden ? "Show Balance" : "Hide Balance"}
+              >
+                {isBalanceHidden ? <EyeSlash className="h-3.5 w-3.5" weight="bold" /> : <Eye className="h-3.5 w-3.5" weight="bold" />}
+              </button>
             </div>
-            
-            <button
-              onClick={() => setIsBalanceHidden(!isBalanceHidden)}
-              className="text-muted-foreground hover:text-foreground transition-colors p-1"
-              aria-label={isBalanceHidden ? "Show Balance" : "Hide Balance"}
-            >
-              {isBalanceHidden ? <EyeSlash className="h-4 w-4" weight="bold" /> : <Eye className="h-4 w-4" weight="bold" />}
-            </button>
+
+            {/* Loyalty Tier Status Pill */}
+            {loyaltyProfile?.currentTier && (
+              <button
+                type="button"
+                onClick={() => setIsPerksModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-secondary hover:bg-secondary/80 border border-border transition-colors cursor-pointer text-foreground shrink-0 shadow-xs"
+                title="View Tier Perks and Benefits"
+              >
+                <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
+                <span className="truncate max-w-[85px] sm:max-w-none">{loyaltyProfile.currentTier.name}</span>
+                {loyaltyProfile.currentTier.discountPct > 0 ? (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    {loyaltyProfile.currentTier.discountPct}% OFF
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground font-semibold">Starter</span>
+                )}
+                <CaretRight size={10} weight="bold" className="text-muted-foreground" />
+              </button>
+            )}
           </div>
 
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-foreground tracking-tight flex items-baseline gap-1">
-              {isLoadingBalance ? (
-                <Spinner className="animate-spin h-6 w-6 text-muted-foreground" weight="bold" />
-              ) : isBalanceHidden ? (
-                <span className="tracking-widest text-xl font-mono text-muted-foreground">••••••••</span>
-              ) : (
-                <>
-                  <span className="text-lg font-bold text-muted-foreground">₦</span>
-                  {Number(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </>
-              )}
+          {/* Middle Row: Balance Display & Next Tier Progress Milestone */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+            {/* Balance */}
+            <div className="sm:col-span-6">
+              <div className="text-2xl sm:text-3xl font-black text-foreground tracking-tight flex items-baseline gap-1">
+                {isLoadingBalance ? (
+                  <Spinner className="animate-spin h-6 w-6 text-muted-foreground" weight="bold" />
+                ) : isBalanceHidden ? (
+                  <span className="tracking-widest text-xl font-mono text-muted-foreground">••••••••</span>
+                ) : (
+                  <>
+                    <span className="text-lg font-bold text-muted-foreground">₦</span>
+                    {Number(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Next Tier Progression Mini Block */}
+            <div className="sm:col-span-6">
+              {loyaltyProfile?.nextTier ? (
+                <div className="p-2.5 rounded-2xl bg-secondary/40 border border-border/70 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground font-medium truncate">
+                      Next: <strong className="text-foreground font-bold">{loyaltyProfile.nextTier.name}</strong>
+                    </span>
+                    <span className="font-mono font-black text-foreground text-[10px]">
+                      {loyaltyProfile.progressPct}%
+                    </span>
+                  </div>
+
+                  <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden border border-border/40">
+                    <div 
+                      className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-primary to-emerald-500"
+                      style={{ width: `${loyaltyProfile.progressPct}%` }}
+                    />
+                  </div>
+
+                  <div className="text-[10px] text-muted-foreground flex items-center justify-between font-medium">
+                    <span>₦{loyaltyProfile.remainingSpendToNextTier.toLocaleString()} more</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">➔ {loyaltyProfile.nextTier.discountPct}% OFF</span>
+                  </div>
+                </div>
+              ) : loyaltyProfile ? (
+                <div className="p-2 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center gap-2 text-[11px] text-sky-500 dark:text-sky-400 font-bold">
+                  <Sparkle size={14} weight="fill" className="shrink-0" />
+                  <span className="leading-tight">Max Tier 4 (Platinum VIP) active with 6% Continuous Discount!</span>
+                </div>
+              ) : null}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2 border-t border-border/70">
+          {/* Bottom Row: Quick Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/70">
             <button 
               onClick={() => setIsWalletModalOpen(true)}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-xl font-bold text-xs hover:shadow-md hover:shadow-primary/20 transition-all active:scale-[0.98] cursor-pointer"
+              className="flex-1 min-w-[110px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground rounded-xl font-bold text-xs hover:shadow-md hover:shadow-primary/20 transition-all active:scale-[0.98] cursor-pointer"
             >
               <Plus weight="bold" className="h-3.5 w-3.5" />
-              Fund Wallet
+              <span>Fund Wallet</span>
             </button>
 
             <Link
@@ -534,18 +601,28 @@ export default function DashboardPage() {
               <Tag className="h-3.5 w-3.5" />
               <span>Pricing</span>
             </Link>
+
+            <button
+              type="button"
+              onClick={() => setIsPerksModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-secondary text-foreground rounded-xl font-bold text-xs hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
+              title="View Tier Perks and Benefits"
+            >
+              <Crown className="h-3.5 w-3.5 text-[#ff3f7a]" weight="fill" />
+              <span>Perks</span>
+            </button>
           </div>
         </div>
 
         {/* Right: Quick Actions Dock with Official Agency Logos */}
-        <div className="lg:col-span-6 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-5 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
               Quick Actions
             </span>
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             <Link
               href="/dashboard/cac"
               className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
@@ -560,7 +637,7 @@ export default function DashboardPage() {
                   className="object-contain" 
                 />
               </div>
-              <span className="text-[11px] font-bold">CAC</span>
+              <span className="text-[10px] font-bold truncate w-full text-center">CAC</span>
             </Link>
 
             <Link
@@ -577,7 +654,7 @@ export default function DashboardPage() {
                   className="object-contain" 
                 />
               </div>
-              <span className="text-[11px] font-bold">SCUML</span>
+              <span className="text-[10px] font-bold truncate w-full text-center">SCUML</span>
             </Link>
 
             <Link
@@ -594,7 +671,7 @@ export default function DashboardPage() {
                   className="object-contain" 
                 />
               </div>
-              <span className="text-[11px] font-bold">NIN</span>
+              <span className="text-[10px] font-bold truncate w-full text-center">NIN</span>
             </Link>
 
             <Link
@@ -611,7 +688,7 @@ export default function DashboardPage() {
                   className="object-contain" 
                 />
               </div>
-              <span className="text-[11px] font-bold">BVN</span>
+              <span className="text-[10px] font-bold truncate w-full text-center">BVN</span>
             </Link>
 
             <Link
@@ -628,17 +705,12 @@ export default function DashboardPage() {
                   className="object-contain" 
                 />
               </div>
-              <span className="text-[11px] font-bold">Utilities</span>
+              <span className="text-[10px] font-bold truncate w-full text-center">Utilities</span>
             </Link>
           </div>
         </div>
 
       </div>
-      
-      {/* ========================================================================= */}
-      {/* 3.5 VIP AGENT LOYALTY & TIER STATUS                                       */}
-      {/* ========================================================================= */}
-      <LoyaltyTierCard />
 
       {/* ========================================================================= */}
       {/* 4. ACTIVE SERVICES (EXACT TURNAROUNDS SPECIFIED BY USER)                   */}
@@ -812,6 +884,14 @@ export default function DashboardPage() {
             message: message 
           });
         }}
+      />
+
+      {/* Loyalty Perks Modal */}
+      <LoyaltyPerksModal
+        isOpen={isPerksModalOpen}
+        onClose={() => setIsPerksModalOpen(false)}
+        currentTierLevel={loyaltyProfile?.currentTier?.level}
+        allTimeSpend={loyaltyProfile?.allTimeSpend}
       />
 
       {/* Live Support Script */}

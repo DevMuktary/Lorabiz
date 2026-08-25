@@ -9,12 +9,15 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
 import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
+import TierAvatar from "@/components/ui/TierAvatar";
+import { useLoyalty } from "@/lib/useLoyalty";
+import LoyaltyPerksModal from "@/components/dashboard/LoyaltyPerksModal";
 import {
   SquaresFour, Buildings, ShieldCheck, Copyright,
   Handshake, IdentificationCard, IdentificationBadge, DeviceMobile, Wallet,
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
   FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
-  ClockCounterClockwise, Code, CaretDown, CaretRight
+  ClockCounterClockwise, Code, CaretDown, CaretRight, Crown, Sparkle
 } from "@phosphor-icons/react";
 
 type SubLink = {
@@ -126,7 +129,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isPerksModalOpen, setIsPerksModalOpen] = useState(false);
   const [sidebarAlert, setSidebarAlert] = useState<{ title: string, message: string } | null>(null);
+  
+  const { profile: loyaltyProfile } = useLoyalty();
+
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     "/dashboard/nin": true,
     "/dashboard/bvn": true,
@@ -377,27 +384,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <ThemeToggle />
             <NotificationBell />
 
-            {/* NEW: PROFILE DROPDOWN WRAPPER */}
+            {/* PROFILE DROPDOWN WRAPPER WITH TIER RIBBON */}
             <div className="relative ml-1">
-              <div
+              <TierAvatar
+                image={session?.user?.image}
+                initials={initials}
+                tierLevel={loyaltyProfile?.currentTier?.level || "TIER_1"}
+                size="md"
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                className="h-9 w-9 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[12px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0"
-              >
-                {session?.user?.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={session.user.image}
-                    alt="Profile"
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).parentElement!.innerHTML = initials;
-                    }}
-                  />
-                ) : (
-                  initials
-                )}
-              </div>
+              />
 
               {/* PROFILE DROPDOWN MENU */}
               {isProfileDropdownOpen && (
@@ -407,33 +402,71 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     onClick={() => setIsProfileDropdownOpen(false)}
                   />
 
-                  <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-[50] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="p-3 border-b border-border bg-secondary/30">
-                      <p className="text-[13px] font-black text-foreground truncate">
-                        {session?.user?.name || "Lorabiz User"}
-                      </p>
-                      <p className="text-[11px] font-medium text-muted-foreground truncate mt-0.5">
+                  <div className="absolute right-0 mt-2 w-64 bg-card border border-border rounded-2xl shadow-xl z-[50] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-3.5 border-b border-border bg-secondary/30 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[13px] font-black text-foreground truncate">
+                          {session?.user?.name || "Lorabiz User"}
+                        </p>
+                        {loyaltyProfile?.currentTier && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
+                            {loyaltyProfile.currentTier.name}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] font-medium text-muted-foreground truncate">
                         {session?.user?.email}
                       </p>
+
+                      {/* Tier Ribbon / Discount Status Strip */}
+                      {loyaltyProfile?.currentTier && (
+                        <div 
+                          onClick={() => {
+                            setIsProfileDropdownOpen(false);
+                            setIsPerksModalOpen(true);
+                          }}
+                          className="mt-2 flex items-center justify-between p-2 rounded-xl bg-background/80 border border-border/80 text-[11px] cursor-pointer hover:border-primary/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5 font-bold text-foreground">
+                            <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
+                            <span>{loyaltyProfile.currentTier.name} Status</span>
+                          </div>
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-[10px]">
+                            {loyaltyProfile.currentTier.discountPct > 0 ? `${loyaltyProfile.currentTier.discountPct}% OFF` : "Starter"} ➔
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-2 space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          setIsPerksModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-bold text-foreground hover:bg-secondary transition-colors cursor-pointer text-left"
+                      >
+                        <Crown className="h-4 w-4 text-[#ff3f7a]" weight="fill" />
+                        <span>Loyalty Perks &amp; Rules</span>
+                      </button>
+
                       <Link
                         href="/dashboard/settings"
                         onClick={() => setIsProfileDropdownOpen(false)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-foreground hover:bg-secondary transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-bold text-foreground hover:bg-secondary transition-colors"
                       >
                         <UserCircle className="h-4 w-4 text-muted-foreground" weight="bold" />
-                        Profile Settings
+                        <span>Profile Settings</span>
                       </Link>
 
                       <button
                         type="button"
                         onClick={() => signOut({ callbackUrl: "/auth/login", redirect: true })}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors group cursor-pointer"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors group cursor-pointer text-left"
                       >
                         <SignOut className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-destructive transition-transform group-hover:-translate-x-1" weight="bold" />
-                        Log Out
+                        <span>Log Out</span>
                       </button>
                     </div>
                   </div>
@@ -469,6 +502,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
       )}
+
+      {/* Global Perks Modal */}
+      <LoyaltyPerksModal
+        isOpen={isPerksModalOpen}
+        onClose={() => setIsPerksModalOpen(false)}
+        currentTierLevel={loyaltyProfile?.currentTier?.level}
+        allTimeSpend={loyaltyProfile?.allTimeSpend}
+      />
 
       <SupportWidgetBootstrapper />
     </div>
