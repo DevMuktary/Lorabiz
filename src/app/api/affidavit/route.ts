@@ -112,10 +112,14 @@ export async function POST(req: NextRequest) {
     const isAdult = age >= 18;
 
     // Price and Loyalty Tier Discount Calculation
+    const isAttested = details?.sealTier === "HIGH_COURT_ATTESTED" || subCategory === "HIGH_COURT_ATTESTED";
+    const settingKey = isAttested ? "PRICE_COURT_AFFIDAVIT_ATTESTED" : "PRICE_COURT_AFFIDAVIT";
+    const defaultPrice = isAttested ? 4000 : 2500;
+
     const priceSetting = await prisma.globalSetting.findUnique({
-      where: { key: "PRICE_COURT_AFFIDAVIT" }
+      where: { key: settingKey }
     });
-    const basePrice = priceSetting ? Number(priceSetting.value) : 3500;
+    const basePrice = priceSetting ? Number(priceSetting.value) : defaultPrice;
 
     const discountInfo = await getEffectiveServicePrice(
       prisma,

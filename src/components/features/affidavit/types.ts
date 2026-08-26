@@ -11,10 +11,15 @@ export type CacSubType =
   | "CAC_SIGNATURE_CHANGE"
   | "CAC_DIRECTOR_CORRECTION";
 
+export type AffidavitSealTier = "STANDARD" | "HIGH_COURT_ATTESTED";
+
 export interface DeponentInfo {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
   fullName: string;
   passportUrl: string | null;
-  gender: "MALE" | "FEMALE";
+  gender: "MALE" | "FEMALE" | "OTHER";
   dob: string;
   calculatedAge: number | null;
   religion: string;
@@ -22,8 +27,9 @@ export interface DeponentInfo {
   stateOfResidence: string;
   lgaOfResidence: string;
   streetAddress: string;
-  occupation: string;
+  occupation?: string;
   signatureUrl: string | null;
+  sealTier: AffidavitSealTier;
 }
 
 export interface CacFacts {
@@ -43,6 +49,12 @@ export interface CacFacts {
 }
 
 export interface ChangeOfNameFacts {
+  formerFirstName: string;
+  formerMiddleName?: string;
+  formerLastName: string;
+  newFirstName: string;
+  newMiddleName?: string;
+  newLastName: string;
   oldName: string;
   newName: string;
   reason: string;

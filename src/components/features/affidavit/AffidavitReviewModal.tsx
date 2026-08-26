@@ -82,12 +82,15 @@ export function AffidavitReviewModal({
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
       setStatutoryConsent(false);
     }
     return () => {
       document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
     };
   }, [isOpen]);
 
@@ -132,92 +135,81 @@ export function AffidavitReviewModal({
         <div className="p-5 space-y-4 overflow-y-auto text-xs leading-relaxed">
           
           {/* Deponent Summary Card */}
-          <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-2">
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-1.5">
             <span className="text-[10px] font-black uppercase text-muted-foreground block tracking-wider">
-              Deponent Details (Oath Swearer)
+              Deponent Details
             </span>
-            <div className="space-y-1">
-              <p className="text-sm font-bold text-foreground">{deponent.fullName}</p>
-              <p className="text-muted-foreground">
-                {deponent.gender} • {deponent.calculatedAge !== null ? `${deponent.calculatedAge} Years Old` : "Age Declared"} ({deponent.religion})
-              </p>
-              <p className="text-muted-foreground truncate">
-                {deponent.streetAddress}, {deponent.lgaOfResidence}, {deponent.stateOfResidence} State
-              </p>
-              {deponent.occupation && (
-                <p className="text-muted-foreground">Occupation: {deponent.occupation}</p>
-              )}
-            </div>
+            <p className="text-sm font-bold text-foreground">{deponent.fullName}</p>
+            <p className="text-muted-foreground">
+              {deponent.gender} • {deponent.calculatedAge !== null ? `${deponent.calculatedAge} Yrs` : "Age Stated"} ({deponent.religion})
+            </p>
+            <p className="text-muted-foreground truncate">
+              {deponent.streetAddress}, {deponent.lgaOfResidence}, {deponent.stateOfResidence} State
+            </p>
           </div>
 
           {/* Affidavit Specifics Card */}
-          <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-2">
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">
-                Affidavit Matter &amp; Particulars
+                Affidavit Matter &amp; Format
               </span>
-              <span className="px-2 py-0.2 rounded-full bg-primary/10 text-primary text-[9px] font-black border border-primary/20">
-                {CATEGORY_NAMES[category]}
+              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-black border border-primary/20">
+                {deponent.sealTier === "HIGH_COURT_ATTESTED" ? "High Court Attested" : "Standard Stamped"}
               </span>
             </div>
 
+            <p className="font-bold text-foreground">{CATEGORY_NAMES[category]}</p>
+
             {/* Category Facts Rendering */}
             {category === "CAC_CORPORATE" && (
-              <div className="space-y-1">
-                <p className="font-bold text-foreground">{cacFacts.companyName} ({cacFacts.rcBnNumber})</p>
-                <p className="text-muted-foreground">Capacity: {cacFacts.positionInCompany}</p>
-                <p className="text-muted-foreground">Matter: {cacFacts.subType.replace(/_/g, " ")}</p>
+              <div className="text-muted-foreground space-y-0.5">
+                <p>Company: <strong className="text-foreground">{cacFacts.companyName}</strong> ({cacFacts.rcBnNumber})</p>
+                <p>Position: {cacFacts.positionInCompany}</p>
               </div>
             )}
 
             {category === "CHANGE_OF_NAME" && (
-              <div className="space-y-1">
-                <p className="text-muted-foreground">Former Name: <strong className="text-foreground">{nameChangeFacts.oldName}</strong></p>
-                <p className="text-muted-foreground">New Legal Name: <strong className="text-foreground">{nameChangeFacts.newName}</strong></p>
-                <p className="text-muted-foreground">Reason: {nameChangeFacts.reason}</p>
+              <div className="text-muted-foreground space-y-0.5">
+                <p>Former: <strong className="text-foreground">{nameChangeFacts.oldName}</strong></p>
+                <p>New: <strong className="text-foreground">{nameChangeFacts.newName}</strong></p>
+                <p>Reason: {nameChangeFacts.reason}</p>
               </div>
             )}
 
             {category === "AGE_DECLARATION" && (
-              <div className="space-y-1">
-                <p className="text-muted-foreground">Declared DOB: <strong className="text-foreground">{ageFacts.declaredDob}</strong></p>
-                <p className="text-muted-foreground">Birthplace: {ageFacts.placeOfBirth}, {ageFacts.stateOfBirth} State</p>
+              <div className="text-muted-foreground space-y-0.5">
+                <p>Declared DOB: <strong className="text-foreground">{ageFacts.declaredDob}</strong></p>
+                <p>Birthplace: {ageFacts.placeOfBirth}, {ageFacts.stateOfBirth} State</p>
               </div>
             )}
 
             {category === "LOSS_OF_ITEM" && (
-              <div className="space-y-1">
-                <p className="text-muted-foreground">Item / SIM Lost: <strong className="text-foreground">{lossFacts.itemLost}</strong></p>
-                {lossFacts.identifyingNumber && (
-                  <p className="text-muted-foreground font-mono">Ref No: {lossFacts.identifyingNumber}</p>
-                )}
-                {lossFacts.lossLocation && (
-                  <p className="text-muted-foreground">Location: {lossFacts.lossLocation}</p>
-                )}
+              <div className="text-muted-foreground space-y-0.5">
+                <p>Item Lost: <strong className="text-foreground">{lossFacts.itemLost}</strong></p>
+                {lossFacts.identifyingNumber && <p>Ref: {lossFacts.identifyingNumber}</p>}
               </div>
             )}
 
             {category === "PROOF_OF_OWNERSHIP" && (
-              <div className="space-y-1">
-                <p className="text-muted-foreground">Subject: <strong className="text-foreground">{ownershipFacts.subject}</strong></p>
-                {ownershipFacts.identifyingNumber && (
-                  <p className="text-muted-foreground font-mono">ID / Chassis / Serial: {ownershipFacts.identifyingNumber}</p>
-                )}
+              <div className="text-muted-foreground space-y-0.5">
+                <p>Subject: <strong className="text-foreground">{ownershipFacts.subject}</strong></p>
+                {ownershipFacts.identifyingNumber && <p>ID / Ref: {ownershipFacts.identifyingNumber}</p>}
               </div>
             )}
 
             {category === "GENERAL_PURPOSE" && (
-              <div className="space-y-1">
-                <p className="font-bold text-foreground">{generalFacts.title}</p>
-                <p className="text-muted-foreground">{generalFacts.statements.length} Sworn Clauses Declared</p>
+              <div className="text-muted-foreground space-y-0.5">
+                <p>Title: <strong className="text-foreground">{generalFacts.title}</strong></p>
+                <p>{generalFacts.statements.filter(Boolean).length} Sworn Declarations</p>
               </div>
             )}
           </div>
 
           {/* Pricing & Wallet Balance */}
-          <div className="p-4 rounded-2xl bg-secondary/40 border border-border space-y-2.5">
+          <div className="p-4 rounded-2xl bg-secondary/40 border border-border space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Standard Sworn Affidavit Fee</span>
+              <span className="text-muted-foreground">Sworn Affidavit Processing Fee</span>
               <span className="font-mono font-bold text-foreground">₦{basePrice.toLocaleString()}</span>
             </div>
 
@@ -229,7 +221,7 @@ export function AffidavitReviewModal({
             )}
 
             <div className="pt-2 border-t border-border flex items-center justify-between">
-              <span className="font-extrabold text-foreground text-sm">Total Amount Due</span>
+              <span className="font-extrabold text-foreground text-sm">Total Due</span>
               <span className="text-base font-black text-primary font-mono">
                 ₦{finalPrice.toLocaleString()}
               </span>
@@ -238,16 +230,16 @@ export function AffidavitReviewModal({
             <div className="pt-2 border-t border-border flex items-center justify-between text-[11px]">
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Wallet size={14} weight="bold" />
-                <span>Wallet Balance: <strong className="text-foreground font-mono">₦{walletBalance.toLocaleString()}</strong></span>
+                <span>Balance: <strong className="text-foreground font-mono">₦{walletBalance.toLocaleString()}</strong></span>
               </div>
 
               {!hasEnoughFunds ? (
                 <span className="text-rose-600 font-bold flex items-center gap-1">
-                  <WarningCircle size={12} weight="fill" /> Insufficient Funds
+                  <WarningCircle size={12} weight="fill" /> Insufficient Balance
                 </span>
               ) : (
                 <span className="text-emerald-600 font-bold flex items-center gap-1">
-                  <CheckCircle size={12} weight="fill" /> Sufficient Balance
+                  <CheckCircle size={12} weight="fill" /> Sufficient Funds
                 </span>
               )}
             </div>
@@ -262,7 +254,7 @@ export function AffidavitReviewModal({
               className="mt-0.5 h-4 w-4 rounded text-primary focus:ring-primary cursor-pointer shrink-0"
             />
             <span className="text-muted-foreground">
-              I solemnly affirm that the facts stated herein are true, correct, and sworn under the <strong>Oaths Act</strong>. I authorize the registry processing of this affidavit.
+              I solemnly affirm that the facts stated herein are true and sworn under the <strong>Oaths Act</strong>.
             </span>
           </label>
         </div>
@@ -296,12 +288,12 @@ export function AffidavitReviewModal({
               {isSubmitting ? (
                 <>
                   <Spinner size={14} className="animate-spin" />
-                  <span>Debiting Wallet &amp; Submitting...</span>
+                  <span>Processing...</span>
                 </>
               ) : (
                 <>
                   <CheckCircle size={14} weight="bold" />
-                  <span>Pay ₦{finalPrice.toLocaleString()} &amp; Submit Oath</span>
+                  <span>Pay ₦{finalPrice.toLocaleString()} &amp; Submit</span>
                 </>
               )}
             </button>

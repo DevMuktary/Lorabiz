@@ -21,11 +21,14 @@ export function AffidavitGuidelinesModal({ isOpen, onClose }: AffidavitGuideline
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
     }
     return () => {
       document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
     };
   }, [isOpen]);
 
@@ -72,22 +75,22 @@ export function AffidavitGuidelinesModal({ isOpen, onClose }: AffidavitGuideline
         <div className="p-4 sm:p-5 space-y-2.5 text-xs leading-relaxed text-muted-foreground">
           <div className="flex items-start gap-2">
             <span className="font-bold text-primary">•</span>
-            <p><strong>Official Court Stamping:</strong> All affidavits are legally sworn, stamped, and sealed by the Commissioner for Oaths under the Oaths Act.</p>
+            <p><strong>Official Court Stamping:</strong> Legally sworn, stamped, and sealed by the Commissioner for Oaths under the Oaths Act.</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="font-bold text-primary">•</span>
-            <p><strong>Turnaround Time:</strong> Official high-resolution digital delivery in <strong>2 to 5 Hours</strong>.</p>
+            <p><strong>Turnaround Time:</strong> Fast digital processing and delivery in <strong>2 to 5 Hours</strong>.</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="font-bold text-primary">•</span>
-            <p><strong>Accuracy of Facts:</strong> Ensure names, dates, and registration numbers are correct. False oaths carry legal penalties.</p>
+            <p><strong>Accuracy of Facts:</strong> Ensure all names, dates, and particulars are truthful. False declarations carry statutory penalties.</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="font-bold text-primary">•</span>
-            <p><strong>Valid Deponent Signature:</strong> Draw cleanly on the signature canvas or upload a signed white paper.</p>
+            <p><strong>Universal Acceptance:</strong> Valid for Commercial Banks, CAC, NIMC/NIN, Fintechs, Embassies, Employers, NYSC, Universities, and Legal Proceedings nationwide &amp; abroad.</p>
           </div>
           <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px] font-semibold">
-            Accepted by CAC, NIMC/NIN, Banks, Embassies, Courts, NYSC, and Government Agencies nationwide.
+            Officially recognized nationwide for all corporate, financial, and personal legal filings.
           </div>
         </div>
 
