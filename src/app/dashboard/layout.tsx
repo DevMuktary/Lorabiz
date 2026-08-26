@@ -217,7 +217,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = getUserInitials();
 
   return (
-    <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
+    <div className="min-h-[100dvh] w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
 
       {isMobileMenuOpen && (
         <div
@@ -228,7 +228,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* SIDEBAR */}
       <aside className={`
-        fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[260px] h-screen bg-card border-r border-border 
+        fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[260px] h-[100dvh] bg-card border-r border-border 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
         ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:translate-x-0 lg:flex"}
