@@ -528,6 +528,10 @@ export default function ReferralsPage() {
                             <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.taxId || 0).toLocaleString()}</td>
                           </tr>
                           <tr className="hover:bg-secondary/20 transition-colors">
+                            <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-yellow-500"></div>Court Affidavit</td>
+                            <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.affidavit || 0).toLocaleString()}</td>
+                          </tr>
+                          <tr className="hover:bg-secondary/20 transition-colors">
                             <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div>NIN Slip Generation</td>
                             <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.nin || 0).toLocaleString()}</td>
                           </tr>

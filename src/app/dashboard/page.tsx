@@ -26,7 +26,8 @@ import {
   ShareNetwork,
   Bank,
   Crown,
-  CaretRight
+  CaretRight,
+  Gavel
 } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 import LoyaltyPerksModal from "@/components/dashboard/LoyaltyPerksModal";
@@ -102,6 +103,16 @@ const LIVE_SERVICES: ServiceItem[] = [
     href: "/dashboard/utilities",
     turnaround: "Instant Delivery",
     actionText: "Access Utilities",
+    active: true,
+  },
+  {
+    title: "Court Affidavit",
+    category: "High Court Registry",
+    description: "Official sworn and sealed court affidavits for CAC, change of name, age declaration, and loss of items.",
+    logo: "/court.png",
+    href: "/dashboard/affidavit",
+    turnaround: "2–5 Hours",
+    actionText: "Request Affidavit",
     active: true,
   },
 ];
@@ -593,7 +604,7 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-6 gap-2">
             <Link
               href="/dashboard/cac"
               className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
@@ -663,6 +674,17 @@ export default function DashboardPage() {
             </Link>
 
             <Link
+              href="/dashboard/affidavit"
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+              title="Court Affidavit"
+            >
+              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm text-primary">
+                <Gavel size={20} weight="fill" />
+              </div>
+              <span className="text-[10px] font-bold truncate w-full text-center">Affidavit</span>
+            </Link>
+
+            <Link
               href="/dashboard/utilities"
               className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
               title="Utilities & Telecom"
@@ -694,7 +716,7 @@ export default function DashboardPage() {
             </h2>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              5 Live
+              {LIVE_SERVICES.length} Live
             </span>
           </div>
         </div>

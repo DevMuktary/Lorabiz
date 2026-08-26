@@ -125,6 +125,7 @@ export async function GET(req: Request) {
             'REF_REWARD_NIN_IPE',
             'REF_REWARD_BVN_SLIP',
             'REF_REWARD_BVN_RETRIEVAL',
+            'REF_REWARD_AFFIDAVIT',
             'REFERRAL_MIN_WITHDRAWAL'
           ]
         }
@@ -149,6 +150,7 @@ export async function GET(req: Request) {
       cacLlc: getSetting('REF_REWARD_CAC_LLC', 1500),
       scuml: getSetting('REF_REWARD_SCUML', 500),
       taxId: getSetting('REF_REWARD_TAX_ID', 200),
+      affidavit: getSetting('REF_REWARD_AFFIDAVIT', 300),
       nin: getSetting('REF_REWARD_NIN', 50),
       ninVal: getSetting('REF_REWARD_NIN_VAL', 250),
       ninMod: getSetting('REF_REWARD_NIN_MOD', 250),

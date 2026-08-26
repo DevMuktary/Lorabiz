@@ -17,7 +17,7 @@ import {
   Handshake, IdentificationCard, IdentificationBadge, DeviceMobile, Wallet,
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
   FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
-  ClockCounterClockwise, Code, CaretDown, CaretRight, Crown, Sparkle
+  ClockCounterClockwise, Code, CaretDown, CaretRight, Crown, Sparkle, Gavel
 } from "@phosphor-icons/react";
 
 type SubLink = {
@@ -83,6 +83,15 @@ const NAVIGATION: NavCategory[] = [
         subLinks: [
           { name: "Airtime Top-Up", href: "/dashboard/utilities/airtime" },
           { name: "Mobile Data", href: "/dashboard/utilities/mobile-data" },
+        ]
+      },
+      {
+        name: "Court Affidavit",
+        href: "/dashboard/affidavit",
+        icon: Gavel,
+        subLinks: [
+          { name: "New Affidavit", href: "/dashboard/affidavit" },
+          { name: "My Affidavits", href: "/dashboard/affidavit/history" },
         ]
       },
       { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },

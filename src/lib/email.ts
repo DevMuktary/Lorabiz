@@ -1822,3 +1822,208 @@ export async function sendBvnModificationRejectedEmail({
   const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
   return sendEmail({ to, subject, htmlBody });
 }
+
+// ==========================================
+// COURT AFFIDAVIT EMAIL NOTIFICATIONS
+// ==========================================
+
+export async function sendCourtAffidavitSubmittedEmail({
+  to,
+  firstName,
+  trackingId,
+  categoryLabel,
+  deponentName,
+  turnaroundTime = "2 – 5 Hours",
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  categoryLabel: string;
+  deponentName: string;
+  turnaroundTime?: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Court Affidavit Application Received – [${trackingId}]`;
+  const previewText = `Your application for ${categoryLabel} (Ref: ${trackingId}) has been received and queued for court swearing.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Court Affidavit Received</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We have received your sworn court affidavit application for <strong>${categoryLabel}</strong>. Our legal compliance team is currently reviewing your deponent particulars for court registry stamping.</p>
+    
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding-bottom: 8px; font-weight: 600;">Tracking ID:</td>
+          <td style="color: #0f172a; padding-bottom: 8px; font-weight: 700; text-align: right; font-family: monospace;">${trackingId}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding-bottom: 8px; font-weight: 600;">Affidavit Category:</td>
+          <td style="color: #0f172a; padding-bottom: 8px; font-weight: 600; text-align: right;">${categoryLabel}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding-bottom: 8px; font-weight: 600;">Deponent Name:</td>
+          <td style="color: #0f172a; padding-bottom: 8px; font-weight: 600; text-align: right;">${deponentName}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; font-weight: 600;">Estimated Delivery:</td>
+          <td style="color: #4f46e5; font-weight: 700; text-align: right;">${turnaroundTime}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="https://lorabiz.com/dashboard/affidavit/history" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Track Affidavit Status</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">You will receive an automated notification as soon as your affidavit is sealed and ready for download.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Legal Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendCourtAffidavitProcessingEmail({
+  to,
+  firstName,
+  trackingId,
+  categoryLabel,
+  deponentName,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  categoryLabel: string;
+  deponentName: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Court Affidavit Now In Processing – [${trackingId}]`;
+  const previewText = `Your affidavit (${trackingId}) is now undergoing official swearing & commissioner stamping.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Affidavit Under Court Processing</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Your sworn court affidavit application for <strong>${deponentName}</strong> (${categoryLabel}) has been approved for registration and is now being processed and sealed with the Commissioner for Oaths.</p>
+    
+    <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 16px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 13px; color: #1e40af; font-weight: 600;">
+        &#9878; Current Stage: Court Registry Seal &amp; Commissioner for Oaths Signature
+      </p>
+    </div>
+
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="https://lorabiz.com/dashboard/affidavit/history" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">View Application Status</a>
+    </div>
+
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Legal Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendCourtAffidavitQueriedEmail({
+  to,
+  firstName,
+  trackingId,
+  categoryLabel,
+  queryReason,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  categoryLabel: string;
+  queryReason: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Action Required: Court Affidavit Queried – [${trackingId}]`;
+  const previewText = `Your affidavit application requires attention: ${queryReason}`;
+
+  const content = `
+    <h2 style="color: #991b1b; margin-top: 0; font-size: 20px; font-weight: 700;">Affidavit Application Query</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">During the court swearing review for your <strong>${categoryLabel}</strong> application (Ref: <strong>${trackingId}</strong>), our legal compliance officer raised a query that requires your immediate attention.</p>
+    
+    <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #991b1b; text-transform: uppercase;">Query Details</p>
+      <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.6;">${queryReason}</p>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="https://lorabiz.com/dashboard/affidavit/history" style="background-color: #dc2626; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Resolve Query in Dashboard</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Please update your information or re-upload the requested clear document so processing can resume immediately.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Best regards,<br/><strong>The LoraBiz Legal Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendCourtAffidavitCompletedEmail({
+  to,
+  firstName,
+  trackingId,
+  categoryLabel,
+  deponentName,
+  certificateUrl,
+  courtName,
+}: {
+  to: string;
+  firstName?: string;
+  trackingId: string;
+  categoryLabel: string;
+  deponentName: string;
+  certificateUrl: string;
+  courtName?: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Your Court Affidavit is Ready! – [${trackingId}]`;
+  const previewText = `Your official sealed Court Affidavit for ${deponentName} is ready and attached to this email.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Court Affidavit Completed &#127881;</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Great news! Your official sworn and sealed <strong>${categoryLabel}</strong> for <strong>${deponentName}</strong> has been fully completed and stamped by the Commissioner for Oaths${courtName ? ` at ${courtName}` : ""}.</p>
+    
+    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #166534; font-weight: 700;">
+        &#10004; Official Sealed Document Attached to this Email
+      </p>
+      <p style="margin: 0; font-size: 13px; color: #15803d; line-height: 1.5;">
+        You can find your high-resolution signed court affidavit PDF attached directly below. You can also download or access it anytime from your dashboard.
+      </p>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${certificateUrl}" style="background-color: #059669; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Download Court Affidavit (PDF)</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">This sworn court affidavit is legally recognized and valid for submission across Nigerian banks, NIMC/NIN, CAC, Immigration, NYSC, and corporate institutions.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Thank you for choosing LoraBiz.<br/><strong>The LoraBiz Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+
+  // Fetch the PDF and attach directly to the email
+  const attachments: { name: string; mime_type: string; content: string }[] = [];
+  if (certificateUrl) {
+    try {
+      const base64Pdf = await fetchPdfAsBase64(certificateUrl);
+      if (base64Pdf) {
+        attachments.push({
+          name: `${trackingId}_Court_Affidavit.pdf`,
+          mime_type: "application/pdf",
+          content: base64Pdf,
+        });
+      }
+    } catch (attErr) {
+      console.warn("Could not attach PDF directly to affidavit email:", attErr);
+    }
+  }
+
+  return sendEmail({ to, subject, htmlBody, attachments });
+}
+

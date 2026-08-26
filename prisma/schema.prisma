@@ -134,6 +134,7 @@ model User {
   bvnModificationRequests BvnModificationRequest[]
   scumlRequests    ScumlRegistration[]
   taxIdRequests    TaxIdRequest[]
+  affidavits       CourtAffidavitRequest[]
   notifications    InAppNotification[]
   wallet           Wallet?
   waitlists        Waitlist[]
@@ -1160,5 +1161,77 @@ model AutomatedEmailLog {
   @@index([emailType])
   @@index([sentAt])
 }
+
+// ==========================================
+// COURT AFFIDAVIT SERVICE
+// ==========================================
+
+enum AffidavitCategory {
+  CAC_CORPORATE
+  CHANGE_OF_NAME
+  AGE_DECLARATION
+  LOSS_OF_ITEM
+  PROOF_OF_OWNERSHIP
+  GENERAL_PURPOSE
+}
+
+enum AffidavitStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  QUERIED
+  REJECTED
+}
+
+model CourtAffidavitRequest {
+  id                 String            @id @default(cuid())
+  trackingId         String            @unique // e.g. "AFF-849201"
+  userId             String
+  category           AffidavitCategory
+  subCategory        String?           // e.g. "CAC_LOSS_OF_CERTIFICATE", "CAC_SIGNATURE_CHANGE", "SIM_CARD_LOSS"
+  status             AffidavitStatus   @default(PENDING)
+
+  // --- DEPONENT DETAILS ---
+  deponentFullName   String
+  passportUrl        String?           @db.Text // Cloudinary URL
+  gender             Gender
+  dob                String            // YYYY-MM-DD
+  age                Int               // Auto-calculated age in years
+  isAdult            Boolean           @default(true) // >= 18
+  religion           String            // e.g. "Christianity", "Islam", "Others"
+  nationality        String            @default("Nigerian")
+  residentialAddress String            @db.Text
+  occupation         String?
+  signatureUrl       String?           @db.Text // Canvas drawing or uploaded image
+
+  // --- CATEGORY-SPECIFIC SWORN FACTS (JSON PAYLOAD) ---
+  details            Json              // Structured facts based on category (CAC info, old/new names, items lost, etc.)
+
+  // --- FULFILLMENT & COURT DETAILS ---
+  certificateUrl     String?           @db.Text // Official signed & sealed PDF
+  courtName          String?           // e.g. "High Court of Lagos State" or "Federal High Court"
+  commissionerName   String?           // Commissioner for Oaths
+  affidavitDate      DateTime?
+  adminNotes         String?           @db.Text
+  queryReason        String?           @db.Text
+
+  // --- FINANCIALS & AUDIT ---
+  amountCharged      Decimal           @db.Decimal(10, 2)
+  transactionRef     String            @unique
+  isRefunded         Boolean           @default(false)
+  refundAmount       Decimal?          @db.Decimal(10, 2)
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  completedAt        DateTime?
+
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([trackingId])
+  @@index([category])
+  @@index([createdAt])
+}
+
 
 
