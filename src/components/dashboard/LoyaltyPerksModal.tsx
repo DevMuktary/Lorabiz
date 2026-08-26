@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
   X, 
   Crown, 
@@ -65,10 +66,26 @@ export default function LoyaltyPerksModal({
   currentTierLevel = "TIER_1",
   allTimeSpend = 0,
 }: LoyaltyPerksModalProps) {
+  const [mounted, setMounted] = useState(false);
   // All closed initially by default
   const [expandedTier, setExpandedTier] = useState<string>("");
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   const tiers = Object.values(LOYALTY_TIERS);
 
@@ -77,21 +94,21 @@ export default function LoyaltyPerksModal({
     setExpandedTier((prev) => (prev === level ? "" : level));
   };
 
-  return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4 font-sans">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 font-sans overflow-y-auto">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-background/80 dark:bg-background/80 backdrop-blur-md animate-in fade-in duration-150" 
+        className="fixed inset-0 min-h-screen w-screen bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-150" 
         onClick={onClose}
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-lg max-h-[90vh] bg-card border border-border rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150 z-10">
+      <div className="relative w-full max-w-lg max-h-[90dvh] bg-card border border-border rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150 z-10 my-auto text-left">
         
         {/* Header */}
         <div className="px-5 py-3.5 border-b border-border bg-secondary/30 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-[#ff3f7a]/10 border border-[#ff3f7a]/20 flex items-center justify-center text-[#ff3f7a] shrink-0">
+            <div className="h-8 w-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
               <Crown size={16} weight="fill" />
             </div>
             <div>
@@ -127,7 +144,7 @@ export default function LoyaltyPerksModal({
                 key={tier.level}
                 className={`rounded-2xl border transition-all overflow-hidden ${
                   isCurrent 
-                    ? "border-[#ff3f7a]/60 bg-secondary/40 shadow-xs" 
+                    ? "border-primary/60 bg-secondary/40 shadow-xs" 
                     : "border-border/80 bg-secondary/20 hover:border-border"
                 }`}
               >
@@ -145,7 +162,7 @@ export default function LoyaltyPerksModal({
                           {tier.fullName}
                         </span>
                         {isCurrent && (
-                          <span className="px-2 py-0.2 rounded-full bg-[#ff3f7a] text-white text-[9px] font-black uppercase tracking-wider shrink-0">
+                          <span className="px-2 py-0.2 rounded-full bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-wider shrink-0">
                             Your Level
                           </span>
                         )}
@@ -253,6 +270,7 @@ export default function LoyaltyPerksModal({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

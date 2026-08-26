@@ -319,6 +319,7 @@ export async function POST(req: Request) {
         currency: "NGN",
         reference: reference, 
         redirect_url: `${appUrl}${callbackPath}`,
+        channels: ["card", "bank_transfer"],
         customer: {
           email: user.email,
           name: (user.firstName ? `${user.firstName} ${user.lastName || ''}` : "Customer").trim().substring(0, 50)

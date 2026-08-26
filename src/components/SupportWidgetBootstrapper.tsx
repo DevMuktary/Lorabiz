@@ -1,11 +1,13 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { useTheme } from "next-themes";
 import Script from "next/script";
 import { useEffect, useState } from "react";
 
 export function SupportWidgetBootstrapper() {
   const { data: session, status } = useSession();
+  const { resolvedTheme } = useTheme();
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
   useEffect(() => {
@@ -27,7 +29,20 @@ export function SupportWidgetBootstrapper() {
         (window as any).lorabizUserAuthData = authData;
       }
     }
-  }, [session, status, scriptLoaded]); 
+  }, [session, status, scriptLoaded]);
+
+  // Sync theme changes to support widget iframe directly
+  useEffect(() => {
+    if (typeof window === "undefined" || !resolvedTheme) return;
+
+    const iframe = document.getElementById("lorabiz-support-iframe") as HTMLIFrameElement | null;
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage(
+        { type: "LORA_THEME_CHANGE", theme: resolvedTheme },
+        "*"
+      );
+    }
+  }, [resolvedTheme]);
 
   return (
     <Script 

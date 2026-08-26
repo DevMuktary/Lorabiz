@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import Script from "next/script";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
@@ -220,15 +219,25 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  // Partner Announcement Modal shows on refresh UNLESS user is returning from a payment
+  // Partner Announcement Modal shows once per session UNLESS user is returning from a payment
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
+      const seen = sessionStorage.getItem("lorabiz_partner_modal_seen");
+      if (seen) return false;
       const params = new URLSearchParams(window.location.search);
       const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
       if (hasPaymentParam) return false;
+      return true;
     }
-    return true;
+    return false;
   });
+
+  const closePartnerModal = () => {
+    setIsPartnerModalOpen(false);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("lorabiz_partner_modal_seen", "true");
+    }
+  };
 
   // Lock body scroll when modal is active
   useEffect(() => {
@@ -385,16 +394,16 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`space-y-6 pb-12 transition-opacity duration-300 ${mounted && isPartnerModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
+    <div className="space-y-6 pb-12">
 
       {/* ========================================================================= */}
-      {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP (FULL-VIEWPORT BACKDROP) */}
+      {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP (CLEAN BACKDROP)      */}
       {/* ========================================================================= */}
       {mounted && isPartnerModalOpen && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 min-h-screen w-screen bg-black/60 dark:bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
           <div 
             className="fixed inset-0 min-h-screen w-screen" 
-            onClick={() => setIsPartnerModalOpen(false)} 
+            onClick={closePartnerModal} 
           />
 
           <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200">
@@ -420,7 +429,7 @@ export default function DashboardPage() {
 
                 {/* Highly Prominent Close Button */}
                 <button
-                  onClick={() => setIsPartnerModalOpen(false)}
+                  onClick={closePartnerModal}
                   className="h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
                   aria-label="Close announcement"
                   title="Close and go to dashboard"
@@ -453,7 +462,7 @@ export default function DashboardPage() {
               <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
                 <Link
                   href="/dashboard/referrals"
-                  onClick={() => setIsPartnerModalOpen(false)}
+                  onClick={closePartnerModal}
                   className="w-full sm:flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all"
                 >
                   <span>Go to Partner Hub</span>
@@ -461,7 +470,7 @@ export default function DashboardPage() {
                 </Link>
                 
                 <button
-                  onClick={() => setIsPartnerModalOpen(false)}
+                  onClick={closePartnerModal}
                   className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Skip & Open Dashboard
@@ -920,12 +929,6 @@ export default function DashboardPage() {
         onClose={() => setIsPerksModalOpen(false)}
         currentTierLevel={loyaltyProfile?.currentTier?.level}
         allTimeSpend={loyaltyProfile?.allTimeSpend}
-      />
-
-      {/* Live Support Script */}
-      <Script 
-        src="https://support.lorabiz.com/lorabiz-chat.js" 
-        strategy="afterInteractive" 
       />
     </div>
   );

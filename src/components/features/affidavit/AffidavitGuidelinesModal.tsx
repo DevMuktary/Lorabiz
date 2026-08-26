@@ -21,22 +21,23 @@ export function AffidavitGuidelinesModal({ isOpen, onClose }: AffidavitGuideline
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
     }
     return () => {
       document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
     };
   }, [isOpen]);
 
   if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden text-foreground animate-in zoom-in-95 duration-200 flex flex-col my-auto text-left">
+    <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+      <div 
+        className="fixed inset-0 min-h-screen w-screen" 
+        onClick={onClose} 
+      />
+      <div className="relative bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden text-foreground animate-in zoom-in-95 duration-200 flex flex-col my-auto text-left max-h-[90dvh]">
         
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-border bg-card flex items-center justify-between gap-3 shrink-0">
@@ -72,7 +73,7 @@ export function AffidavitGuidelinesModal({ isOpen, onClose }: AffidavitGuideline
         </div>
 
         {/* Concise Guidelines */}
-        <div className="p-4 sm:p-5 space-y-2.5 text-xs leading-relaxed text-muted-foreground">
+        <div className="p-4 sm:p-5 space-y-2.5 text-xs leading-relaxed text-muted-foreground overflow-y-auto custom-scrollbar flex-1">
           <div className="flex items-start gap-2">
             <span className="font-bold text-primary">•</span>
             <p><strong>Official Court Stamping:</strong> Legally sworn, stamped, and sealed by the Commissioner for Oaths under the Oaths Act.</p>
