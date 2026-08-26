@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) {
       return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
@@ -26,7 +27,7 @@ export async function GET(
     }
 
     const affidavit = await prisma.courtAffidavitRequest.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: {
           select: {
@@ -61,9 +62,10 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) {
       return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
@@ -79,7 +81,7 @@ export async function PATCH(
     }
 
     const affidavit = await prisma.courtAffidavitRequest.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!affidavit || affidavit.userId !== user.id) {
@@ -90,7 +92,7 @@ export async function PATCH(
     const { passportUrl, signatureUrl, details, deponentFullName, residentialAddress } = body;
 
     const updated = await prisma.courtAffidavitRequest.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(passportUrl ? { passportUrl } : {}),
         ...(signatureUrl ? { signatureUrl } : {}),
