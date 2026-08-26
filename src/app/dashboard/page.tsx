@@ -502,25 +502,30 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Level Pill */}
+            {/* Level Pill with 'Account Level' label */}
             {loyaltyProfile?.currentTier && (
-              <button
-                type="button"
-                onClick={() => setIsPerksModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-secondary hover:bg-secondary/80 border border-border transition-colors cursor-pointer text-foreground shadow-xs shrink-0"
-                title="View Level Perks and Discounts"
-              >
-                <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
-                <span>{loyaltyProfile.currentTier.name}</span>
-                {loyaltyProfile.currentTier.discountPct > 0 ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-black">
-                    • {loyaltyProfile.currentTier.discountPct}% OFF
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground text-[10px]">Starter</span>
-                )}
-                <CaretRight size={10} weight="bold" className="text-muted-foreground" />
-              </button>
+              <div className="flex flex-col items-end shrink-0">
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">
+                  Account Level
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsPerksModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-secondary hover:bg-secondary/80 border border-border transition-colors cursor-pointer text-foreground shadow-xs"
+                  title="Click to view Level Perks and Discounts"
+                >
+                  <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
+                  <span>{loyaltyProfile.currentTier.name}</span>
+                  {loyaltyProfile.currentTier.discountPct > 0 ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                      • {loyaltyProfile.currentTier.discountPct}% OFF
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-[10px]">• Starter</span>
+                  )}
+                  <CaretRight size={10} weight="bold" className="text-muted-foreground" />
+                </button>
+              </div>
             )}
           </div>
 
