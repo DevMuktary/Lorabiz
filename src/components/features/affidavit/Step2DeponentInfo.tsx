@@ -20,33 +20,27 @@ export function Step2DeponentInfo({
   onBack,
   onNext,
 }: Step2DeponentInfoProps) {
-  // Real-time Age Calculation
-  useEffect(() => {
-    if (!deponent.dob) {
-      onChange({ calculatedAge: null });
-      return;
-    }
+  // Synchronously derive age from dob without effect-driven re-renders
+  const calculatedAge = (() => {
+    if (!deponent.dob) return null;
     const birthDate = new Date(deponent.dob);
-    if (isNaN(birthDate.getTime())) {
-      onChange({ calculatedAge: null });
-      return;
-    }
+    if (isNaN(birthDate.getTime())) return null;
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    onChange({ calculatedAge: age });
-  }, [deponent.dob]);
+    return age;
+  })();
 
-  // Set default LGA when state changes
-  useEffect(() => {
-    const lgas = NIGERIA_STATES_LGA[deponent.stateOfResidence] || [];
-    if (lgas.length > 0 && (!deponent.lgaOfResidence || !lgas.includes(deponent.lgaOfResidence))) {
-      onChange({ lgaOfResidence: lgas[0] });
-    }
-  }, [deponent.stateOfResidence, deponent.lgaOfResidence]);
+  const handleStateChange = (newState: string) => {
+    const lgas = NIGERIA_STATES_LGA[newState] || [];
+    onChange({
+      stateOfResidence: newState,
+      lgaOfResidence: lgas[0] || "",
+    });
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in bg-card border border-border p-5 sm:p-7 rounded-3xl shadow-xs">
@@ -165,7 +159,7 @@ export function Step2DeponentInfo({
           </label>
           <select
             value={deponent.stateOfResidence}
-            onChange={(e) => onChange({ stateOfResidence: e.target.value })}
+            onChange={(e) => handleStateChange(e.target.value)}
             className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
           >
             {Object.keys(NIGERIA_STATES_LGA).map((s) => (

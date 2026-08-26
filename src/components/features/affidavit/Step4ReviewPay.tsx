@@ -91,7 +91,7 @@ export function Step4ReviewPay({
             </span>
             <p className="font-bold text-foreground text-sm">{deponent.fullName}</p>
             <p className="text-muted-foreground">
-              {deponent.gender} • {deponent.calculatedAge} Years Old ({deponent.religion})
+              {deponent.gender} • {deponent.calculatedAge !== null ? `${deponent.calculatedAge} Years Old` : "Age Declared"} ({deponent.religion})
             </p>
             <p className="text-muted-foreground truncate">
               {deponent.streetAddress}, {deponent.lgaOfResidence}, {deponent.stateOfResidence}
