@@ -604,102 +604,137 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-6 gap-2">
-            <Link
-              href="/dashboard/cac"
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
-              title="CAC Registration"
-            >
-              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
-                <Image 
-                  src="/cac.png" 
-                  alt="CAC" 
-                  width={28} 
-                  height={28} 
-                  className="object-contain" 
-                />
-              </div>
-              <span className="text-[10px] font-bold truncate w-full text-center">CAC</span>
-            </Link>
+          <div className="space-y-2">
+            {/* Top Row: 5 Core Government Registrations */}
+            <div className="grid grid-cols-5 gap-2">
+              <Link
+                href="/dashboard/cac"
+                className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+                title="CAC Registration"
+              >
+                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                  <Image 
+                    src="/cac.png" 
+                    alt="CAC" 
+                    width={28} 
+                    height={28} 
+                    className="object-contain" 
+                  />
+                </div>
+                <span className="text-[10px] font-bold truncate w-full text-center">CAC</span>
+              </Link>
 
-            <Link
-              href="/dashboard/scuml"
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
-              title="SCUML Certificate"
-            >
-              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
-                <Image 
-                  src="/scuml.png" 
-                  alt="SCUML" 
-                  width={28} 
-                  height={28} 
-                  className="object-contain" 
-                />
-              </div>
-              <span className="text-[10px] font-bold truncate w-full text-center">SCUML</span>
-            </Link>
+              <Link
+                href="/dashboard/scuml"
+                className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+                title="SCUML Certificate"
+              >
+                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                  <Image 
+                    src="/scuml.png" 
+                    alt="SCUML" 
+                    width={28} 
+                    height={28} 
+                    className="object-contain" 
+                  />
+                </div>
+                <span className="text-[10px] font-bold truncate w-full text-center">SCUML</span>
+              </Link>
 
-            <Link
-              href="/dashboard/nin"
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
-              title="NIN Services"
-            >
-              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
-                <Image 
-                  src="/nimc.png" 
-                  alt="NIMC" 
-                  width={28} 
-                  height={28} 
-                  className="object-contain" 
-                />
-              </div>
-              <span className="text-[10px] font-bold truncate w-full text-center">NIN</span>
-            </Link>
+              <Link
+                href="/dashboard/tax-id"
+                className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+                title="Tax ID (TIN)"
+              >
+                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                  <Image 
+                    src="/nrs.png" 
+                    alt="Tax ID" 
+                    width={28} 
+                    height={28} 
+                    className="object-contain" 
+                  />
+                </div>
+                <span className="text-[10px] font-bold truncate w-full text-center">Tax ID</span>
+              </Link>
 
-            <Link
-              href="/dashboard/bvn"
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
-              title="BVN Verification Slips"
-            >
-              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
-                <Image 
-                  src="/nibss.png" 
-                  alt="BVN" 
-                  width={28} 
-                  height={28} 
-                  className="object-contain" 
-                />
-              </div>
-              <span className="text-[10px] font-bold truncate w-full text-center">BVN</span>
-            </Link>
+              <Link
+                href="/dashboard/nin"
+                className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+                title="NIN Services"
+              >
+                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                  <Image 
+                    src="/nimc.png" 
+                    alt="NIMC" 
+                    width={28} 
+                    height={28} 
+                    className="object-contain" 
+                  />
+                </div>
+                <span className="text-[10px] font-bold truncate w-full text-center">NIN</span>
+              </Link>
 
-            <Link
-              href="/dashboard/affidavit"
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
-              title="Court Affidavit"
-            >
-              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm text-primary">
-                <Gavel size={20} weight="fill" />
-              </div>
-              <span className="text-[10px] font-bold truncate w-full text-center">Affidavit</span>
-            </Link>
+              <Link
+                href="/dashboard/bvn"
+                className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+                title="BVN Services"
+              >
+                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                  <Image 
+                    src="/nibss.png" 
+                    alt="BVN" 
+                    width={28} 
+                    height={28} 
+                    className="object-contain" 
+                  />
+                </div>
+                <span className="text-[10px] font-bold truncate w-full text-center">BVN</span>
+              </Link>
+            </div>
 
-            <Link
-              href="/dashboard/utilities"
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
-              title="Utilities & Telecom"
-            >
-              <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
-                <Image 
-                  src="/airtime.png" 
-                  alt="Utilities" 
-                  width={28} 
-                  height={28} 
-                  className="object-contain" 
-                />
-              </div>
-              <span className="text-[10px] font-bold truncate w-full text-center">Utilities</span>
-            </Link>
+            {/* Bottom Row: 2 Services (Affidavit & Utilities) */}
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/dashboard/affidavit"
+                className="flex items-center gap-2.5 p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+                title="Court Affidavit"
+              >
+                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-sm">
+                  <Image 
+                    src="/court.png" 
+                    alt="Court Affidavit" 
+                    width={28} 
+                    height={28} 
+                    className="object-contain" 
+                  />
+                </div>
+                <div className="text-left min-w-0">
+                  <span className="text-[11px] font-black block truncate">Court Affidavit</span>
+                  <span className="text-[9px] font-bold text-muted-foreground block truncate">Sworn &amp; Sealed Legal</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/utilities"
+                className="flex items-center gap-2.5 p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
+                title="Utilities & Telecom"
+              >
+                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-sm">
+                  <Image 
+                    src="/airtime.png" 
+                    alt="Utilities" 
+                    width={28} 
+                    height={28} 
+                    className="object-contain" 
+                  />
+                </div>
+                <div className="text-left min-w-0">
+                  <span className="text-[11px] font-black block truncate">Utilities &amp; Data</span>
+                  <span className="text-[9px] font-bold text-muted-foreground block truncate">Airtime &amp; Bills</span>
+                </div>
+              </Link>
+            </div>
           </div>
         </div>
 
