@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { notificationQueue } from "@/lib/queue";
 import { NotificationEvent, dispatchNotification } from "@/services/notifications";
+import { getReferrerRewardAmount } from "@/lib/loyalty";
 
 const CATEGORY_LABELS: Record<string, string> = {
   NO_RECORD_FOUND: "No Record Found",
@@ -85,7 +86,8 @@ export async function POST(req: Request) {
               const rewardSetting = await tx.globalSetting.findUnique({
                 where: { key: 'REF_REWARD_NIN_VAL' }
               });
-              const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
+              const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
+              const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
 
               if (commissionAmount > 0) {
                 await tx.referralCommission.create({

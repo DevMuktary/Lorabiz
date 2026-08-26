@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { notificationQueue } from "@/lib/queue";
 import { NotificationEvent } from "@/services/notifications";
+import { getReferrerRewardAmount } from "@/lib/loyalty";
 
 export async function POST(req: Request) {
   try {
@@ -103,8 +104,8 @@ export async function POST(req: Request) {
                         where: { key: serviceSettingKey }
                     });
                     
-                    // Default to 1000 if admin hasn't configured it yet
-                    const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 1000.00;
+                    const baseAmount = rewardSetting ? Number(rewardSetting.value) : (ticketType === "LLC" ? 1500.00 : 1000.00);
+                    const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
 
                     // 5. Only pay if the admin hasn't set the reward to 0 to disable it
                     if (commissionAmount > 0) {

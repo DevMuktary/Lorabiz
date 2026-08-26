@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { getUserLoyaltyProfile } from "@/lib/loyalty";
 
 // =========================================================================
 // GET: Fetch Referral Dashboard Stats, Ledger & Rates
@@ -139,6 +140,29 @@ export async function GET(req: Request) {
       .filter(w => w.status === "PAID")
       .reduce((sum, w) => sum + Number(w.amount), 0);
 
+    const loyaltyProfile = await getUserLoyaltyProfile(prisma, user.id);
+    const multiplier = loyaltyProfile.referralMultiplier || 1.0;
+    const effectiveMinWithdrawal = loyaltyProfile.minWithdrawal || 2000;
+
+    const baseRates = {
+      cacBiz: getSetting('REF_REWARD_CAC_BIZ', 1000),
+      cacLlc: getSetting('REF_REWARD_CAC_LLC', 1500),
+      scuml: getSetting('REF_REWARD_SCUML', 500),
+      taxId: getSetting('REF_REWARD_TAX_ID', 200),
+      nin: getSetting('REF_REWARD_NIN', 50),
+      ninVal: getSetting('REF_REWARD_NIN_VAL', 250),
+      ninMod: getSetting('REF_REWARD_NIN_MOD', 250),
+      ninPersonalization: getSetting('REF_REWARD_NIN_PERSONALIZATION', 250),
+      ninIpe: getSetting('REF_REWARD_NIN_IPE', 250),
+      bvnSlip: getSetting('REF_REWARD_BVN_SLIP', 50),
+      bvnRetrieval: getSetting('REF_REWARD_BVN_RETRIEVAL', 250),
+    };
+
+    const boostedRates: Record<string, number> = {};
+    for (const [k, v] of Object.entries(baseRates)) {
+      boostedRates[k] = Math.round(v * multiplier);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -149,20 +173,16 @@ export async function GET(req: Request) {
         totalWithdrawn,
         refereesList,
         earningsHistory,
-        rewardRates: {
-          cacBiz: getSetting('REF_REWARD_CAC_BIZ', 1000),
-          cacLlc: getSetting('REF_REWARD_CAC_LLC', 1500),
-          scuml: getSetting('REF_REWARD_SCUML', 500),
-          taxId: getSetting('REF_REWARD_TAX_ID', 200),
-          nin: getSetting('REF_REWARD_NIN', 50),
-          ninVal: getSetting('REF_REWARD_NIN_VAL', 250),
-          ninMod: getSetting('REF_REWARD_NIN_MOD', 250),
-          ninPersonalization: getSetting('REF_REWARD_NIN_PERSONALIZATION', 250),
-          ninIpe: getSetting('REF_REWARD_NIN_IPE', 250),
-          bvnSlip: getSetting('REF_REWARD_BVN_SLIP', 50),
-          bvnRetrieval: getSetting('REF_REWARD_BVN_RETRIEVAL', 250),
+        rewardRates: boostedRates,
+        baseRewardRates: baseRates,
+        tier: {
+          name: loyaltyProfile.currentTier.name,
+          fullName: loyaltyProfile.currentTier.fullName,
+          badge: loyaltyProfile.currentTier.badge,
+          multiplier: loyaltyProfile.referralMultiplier,
+          minWithdrawal: effectiveMinWithdrawal,
         },
-        minWithdrawal: getSetting('REFERRAL_MIN_WITHDRAWAL', 2000),
+        minWithdrawal: effectiveMinWithdrawal,
         bankDetails: user.payoutAccountNo ? {
           bankName: user.payoutBankName,
           accountNo: user.payoutAccountNo,

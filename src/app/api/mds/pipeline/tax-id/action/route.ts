@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { notificationQueue } from "@/lib/queue";
 import { NotificationEvent } from "@/services/notifications";
+import { getReferrerRewardAmount } from "@/lib/loyalty";
 
 export async function POST(req: Request) {
   try {
@@ -88,7 +89,8 @@ export async function POST(req: Request) {
                         where: { key: 'REF_REWARD_TAX_ID' }
                     });
                     
-                    const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 200.00;
+                    const baseAmount = rewardSetting ? Number(rewardSetting.value) : 200.00;
+                    const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
 
                     if (commissionAmount > 0) {
                         await tx.referralCommission.create({

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { v2 as cloudinary } from "cloudinary";
 import { logUserActivity } from "@/lib/activity-logger";
 import { executeBvnSlipGeneration } from "@/lib/bvn-slips-provider";
+import { getReferrerRewardAmount } from "@/lib/loyalty";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -183,7 +184,8 @@ export async function POST(req: NextRequest) {
               where: { key: 'REF_REWARD_BVN' }
             });
             
-            const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 15.00;
+            const baseAmount = rewardSetting ? Number(rewardSetting.value) : 15.00;
+            const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
 
             if (commissionAmount > 0) {
               await tx.referralCommission.create({

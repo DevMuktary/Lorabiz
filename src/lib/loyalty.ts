@@ -206,3 +206,23 @@ export function getTierDiscountForCategory(
 
   return tier.discountPct;
 }
+
+/**
+ * Calculates the tier-boosted referral commission amount for a referrer.
+ * Multiplies base setting reward by referrer's active loyalty multiplier (e.g. 1.1x, 1.2x, 1.25x).
+ */
+export async function getReferrerRewardAmount(
+  prismaClient: PrismaClient | any,
+  referrerId: string,
+  baseAmount: number
+): Promise<number> {
+  if (!referrerId || baseAmount <= 0) return baseAmount;
+  try {
+    const profile = await getUserLoyaltyProfile(prismaClient, referrerId);
+    const multiplier = profile.referralMultiplier || 1.0;
+    return Math.round(baseAmount * multiplier * 100) / 100;
+  } catch (error) {
+    console.error("Error calculating referrer reward amount with multiplier:", error);
+    return baseAmount;
+  }
+}
