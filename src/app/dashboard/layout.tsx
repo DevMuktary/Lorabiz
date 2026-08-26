@@ -448,7 +448,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-bold text-foreground hover:bg-secondary transition-colors cursor-pointer text-left"
                       >
                         <Crown className="h-4 w-4 text-[#ff3f7a]" weight="fill" />
-                        <span>Loyalty Perks &amp; Rules</span>
+                        <span>Account Levels &amp; Discounts</span>
                       </button>
 
                       <Link
