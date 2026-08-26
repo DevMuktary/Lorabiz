@@ -142,7 +142,7 @@ export default function CourtAffidavitPage() {
   // Pre-fill Deponent Name from active session
   useEffect(() => {
     if (session?.user?.name && !deponent.fullName) {
-      setDeponent((prev) => ({ ...prev, fullName: session.user.name || "" }));
+      setDeponent((prev) => ({ ...prev, fullName: session?.user?.name || "" }));
     }
   }, [session, deponent.fullName]);
 
