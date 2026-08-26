@@ -27,7 +27,7 @@ export async function GET(req: Request) {
             firstName: true,
             lastName: true,
             email: true,
-            phoneNumber: true,
+            phone: true,
           }
         }
       }
@@ -66,7 +66,7 @@ export async function GET(req: Request) {
       completedAt: req.completedAt ? req.completedAt.toISOString() : null,
       clientName: `${req.user?.firstName || ""} ${req.user?.lastName || ""}`.trim() || "Unknown User",
       clientEmail: req.user?.email || "N/A",
-      clientPhone: req.user?.phoneNumber || "N/A",
+      clientPhone: req.user?.phone || "N/A",
     }));
 
     return NextResponse.json({ success: true, pipeline });
