@@ -382,26 +382,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <header className="relative z-40 h-[70px] bg-card border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0">
           <div className="flex items-center gap-3">
-            {/* Modern Sleek Hamburger Button for Mobile */}
+            {/* Ultra-Modern Designer Hamburger Button for Mobile */}
             <button
-              className="lg:hidden h-10 w-10 -ml-2 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-secondary/60 hover:bg-primary/10 border border-border hover:border-primary/30 text-foreground transition-all duration-200 cursor-pointer shadow-xs group"
+              className="lg:hidden h-10 w-10 -ml-2 flex items-center justify-center rounded-xl bg-secondary/70 hover:bg-primary/10 border border-border/80 hover:border-primary/40 text-foreground transition-all duration-200 cursor-pointer shadow-xs group"
               onClick={() => setIsMobileMenuOpen(true)}
               aria-label="Open Navigation Menu"
+              title="Open Navigation"
             >
-              <span className="w-5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 -translate-x-0.5" />
-              <span className="w-3.5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 translate-x-0.5" />
-              <span className="w-5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 -translate-x-0.5" />
+              <div className="flex flex-col items-start justify-center gap-1.5 w-5">
+                <span className="w-5 h-[2px] rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 group-hover:translate-x-0.5" />
+                <div className="flex items-center gap-1 w-full">
+                  <span className="w-3.5 h-[2px] rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 group-hover:w-4" />
+                  <span className="h-[2.5px] w-[2.5px] rounded-full bg-primary shrink-0 group-hover:scale-125 transition-transform" />
+                </div>
+              </div>
             </button>
 
-            {/* Modern Sleek Sidebar Toggle for Desktop */}
+            {/* Ultra-Modern Designer Toggle for Desktop Sidebar */}
             <button
-              className="hidden lg:flex h-10 w-10 -ml-2 flex-col items-center justify-center gap-1.5 rounded-xl bg-secondary/60 hover:bg-primary/10 border border-border hover:border-primary/30 text-foreground transition-all duration-200 cursor-pointer shadow-xs group"
+              className="hidden lg:flex h-10 w-10 -ml-2 items-center justify-center rounded-xl bg-secondary/70 hover:bg-primary/10 border border-border/80 hover:border-primary/40 text-foreground transition-all duration-200 cursor-pointer shadow-xs group"
               onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
               aria-label="Toggle Sidebar"
+              title="Toggle Sidebar"
             >
-              <span className="w-5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 -translate-x-0.5" />
-              <span className="w-3.5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 translate-x-0.5" />
-              <span className="w-5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 -translate-x-0.5" />
+              <div className="flex flex-col items-start justify-center gap-1.5 w-5">
+                <span className="w-5 h-[2px] rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 group-hover:translate-x-0.5" />
+                <div className="flex items-center gap-1 w-full">
+                  <span className="w-3.5 h-[2px] rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 group-hover:w-4" />
+                  <span className="h-[2.5px] w-[2.5px] rounded-full bg-primary shrink-0 group-hover:scale-125 transition-transform" />
+                </div>
+              </div>
             </button>
 
             <h2 className="text-lg font-black text-foreground hidden sm:block">
