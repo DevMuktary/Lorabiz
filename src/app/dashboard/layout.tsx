@@ -214,24 +214,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return "U";
   };
 
-  const initials = getUserInitials();
+  // Prevent background scroll bleed when mobile sidebar drawer is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileMenuOpen]);
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
 
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-background/80 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
+          className="fixed inset-0 h-full w-full bg-background/80 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* SIDEBAR */}
       <aside className={`
-        fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[260px] h-[100dvh] bg-card border-r border-border 
-        transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
-        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-        ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:translate-x-0 lg:flex"}
+        fixed lg:sticky top-0 bottom-0 inset-y-0 left-0 z-[99995] w-[270px] h-full lg:h-screen bg-card border-r border-border 
+        transform transition-all duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
+        ${isMobileMenuOpen ? "translate-x-0 visible pointer-events-auto" : "-translate-x-full invisible pointer-events-none lg:visible lg:pointer-events-auto lg:translate-x-0"}
+        ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:flex"}
       `}>
         <div className="h-[70px] flex items-center justify-between px-5 border-b border-border shrink-0">
           <Image
