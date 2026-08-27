@@ -394,7 +394,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`space-y-4 sm:space-y-6 pb-12 -mt-2 sm:-mt-3 transition-opacity duration-300 ${mounted && isPartnerModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
+    <div className={`space-y-4 sm:space-y-6 pb-12 -mt-4 sm:-mt-6 transition-opacity duration-300 ${mounted && isPartnerModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
 
       {/* ========================================================================= */}
       {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP (FULL-VIEWPORT BACKDROP) */}
@@ -502,10 +502,10 @@ export default function DashboardPage() {
 
         {/* Right: Soft Pink Circle & 3D Wallet (at the side of greetings) */}
         <div className="relative shrink-0 flex items-center justify-center select-none pointer-events-none pr-1 sm:pr-4">
-          {/* Larger almost-transparent soft pink circle backdrop */}
-          <div className="w-52 h-52 sm:w-64 sm:h-64 lg:w-72 lg:h-72 rounded-full bg-pink-100/80 dark:bg-pink-900/25 flex items-center justify-center relative translate-y-1 sm:translate-y-2">
-            {/* 3D Wallet Illustration */}
-            <div className="relative w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 -translate-y-2 sm:-translate-y-3">
+          {/* Soft pink circle backdrop */}
+          <div className="w-56 h-56 sm:w-68 sm:h-68 lg:w-76 lg:h-76 rounded-full bg-pink-100/80 dark:bg-pink-900/25 flex items-center justify-center relative">
+            {/* 3D Wallet Illustration positioned higher up inside the circle */}
+            <div className="relative w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 -translate-y-8 sm:-translate-y-12 lg:-translate-y-14">
               <Image
                 src="/wallet.png"
                 alt="Wallet Illustration"
@@ -522,7 +522,7 @@ export default function DashboardPage() {
       {/* ========================================================================= */}
       {/* 3. DUAL-CARD HERO: COMPACT WALLET & VIP LEVEL + QUICK ACTIONS DOCK         */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch -mt-14 sm:-mt-20 lg:-mt-24 relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch -mt-20 sm:-mt-28 lg:-mt-32 relative z-10">
         
         {/* Left: Professional Compact Wallet Deck */}
         <div className="lg:col-span-6 p-4 sm:p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-3">
