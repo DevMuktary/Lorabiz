@@ -627,7 +627,6 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
-        </div>
 
         {/* Right: Quick Actions Dock with Official Agency Logos */}
         <div className="lg:col-span-6 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-3">
