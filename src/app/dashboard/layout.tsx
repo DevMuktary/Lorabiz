@@ -214,6 +214,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return "U";
   };
 
+  const initials = getUserInitials();
+
   // Prevent background scroll bleed when mobile sidebar drawer is open
   useEffect(() => {
     if (isMobileMenuOpen) {
