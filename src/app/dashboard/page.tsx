@@ -391,9 +391,9 @@ export default function DashboardPage() {
       {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP (FULL-VIEWPORT BACKDROP) */}
       {/* ========================================================================= */}
       {mounted && isPartnerModalOpen && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 min-h-screen w-screen bg-background/95 dark:bg-background/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 min-h-screen w-screen bg-background z-[999999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
           <div 
-            className="fixed inset-0 min-h-screen w-screen" 
+            className="fixed inset-0 min-h-screen w-screen bg-background" 
             onClick={() => setIsPartnerModalOpen(false)} 
           />
 
