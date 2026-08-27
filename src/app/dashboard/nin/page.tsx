@@ -131,7 +131,7 @@ export default function NinHubPage() {
         </Link>
         
         <div className="flex items-center gap-3.5 border-b border-border pb-4">
-          <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
+          <div className="h-12 w-12 rounded-xl bg-white dark:bg-white flex items-center justify-center p-1.5 border border-slate-200/80 dark:border-white/20 shrink-0 shadow-xs">
             <Image 
               src="/nimc.png" 
               width={40} 
@@ -168,7 +168,7 @@ export default function NinHubPage() {
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <div className="h-11 w-11 rounded-xl bg-secondary/80 border border-border p-2 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                    <div className="h-11 w-11 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1.5 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
                       <Image 
                         src={service.logo} 
                         alt={service.title} 

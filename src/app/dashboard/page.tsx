@@ -612,7 +612,7 @@ export default function DashboardPage() {
                 className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
                 title="CAC Registration"
               >
-                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
                   <Image 
                     src="/cac.png" 
                     alt="CAC" 
@@ -629,7 +629,7 @@ export default function DashboardPage() {
                 className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
                 title="SCUML Certificate"
               >
-                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
                   <Image 
                     src="/scuml.png" 
                     alt="SCUML" 
@@ -646,7 +646,7 @@ export default function DashboardPage() {
                 className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
                 title="Tax ID (TIN)"
               >
-                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
                   <Image 
                     src="/nrs.png" 
                     alt="Tax ID" 
@@ -663,7 +663,7 @@ export default function DashboardPage() {
                 className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
                 title="NIN Services"
               >
-                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
                   <Image 
                     src="/nimc.png" 
                     alt="NIMC" 
@@ -680,7 +680,7 @@ export default function DashboardPage() {
                 className="flex flex-col items-center justify-center p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
                 title="BVN Services"
               >
-                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-sm">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
                   <Image 
                     src="/nibss.png" 
                     alt="BVN" 
@@ -700,7 +700,7 @@ export default function DashboardPage() {
                 className="flex items-center gap-2.5 p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
                 title="Court Affidavit"
               >
-                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-sm">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-xs">
                   <Image 
                     src="/court.png" 
                     alt="Court Affidavit" 
@@ -720,7 +720,7 @@ export default function DashboardPage() {
                 className="flex items-center gap-2.5 p-2 rounded-2xl bg-secondary/40 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground transition-all group shadow-sm"
                 title="Utilities & Telecom"
               >
-                <div className="h-9 w-9 rounded-xl bg-background border border-border/60 p-1 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-sm">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-xs">
                   <Image 
                     src="/airtime.png" 
                     alt="Utilities" 
@@ -765,7 +765,7 @@ export default function DashboardPage() {
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="h-11 w-11 rounded-xl bg-secondary/80 border border-border/80 p-2 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                  <div className="h-11 w-11 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1.5 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
                     <Image 
                       src={service.logo} 
                       alt={service.title} 
@@ -827,7 +827,7 @@ export default function DashboardPage() {
             >
               <div>
                 <div className="flex items-center justify-between mb-2.5">
-                  <div className="h-9 w-9 rounded-lg bg-secondary border border-border p-1.5 flex items-center justify-center grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+                  <div className="h-9 w-9 rounded-lg bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center grayscale opacity-75 group-hover:grayscale-0 group-hover:opacity-100 transition-all shrink-0 shadow-xs">
                     <Image 
                       src={service.logo} 
                       alt={service.title} 
