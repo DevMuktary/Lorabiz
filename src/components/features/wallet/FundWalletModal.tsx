@@ -36,6 +36,12 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
     window.addEventListener("pageshow", handlePageRestore);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    return () => {
+      window.removeEventListener("pageshow", handlePageRestore);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [gatewayLoading]);
+
   // Prevent background scroll bleed while modal is open
   useEffect(() => {
     if (!isOpen) return;
