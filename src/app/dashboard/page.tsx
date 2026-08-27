@@ -213,11 +213,20 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [timeGreeting, setTimeGreeting] = useState<string>("Good day");
 
   const { profile: loyaltyProfile } = useLoyalty();
 
   useEffect(() => {
     setMounted(true);
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      setTimeGreeting("Good morning");
+    } else if (hour < 17) {
+      setTimeGreeting("Good afternoon");
+    } else {
+      setTimeGreeting("Good evening");
+    }
   }, []);
 
   // Partner Announcement Modal shows on refresh UNLESS user is returning from a payment
@@ -478,11 +487,15 @@ export default function DashboardPage() {
       {/* ========================================================================= */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-            Welcome back, {firstName} 👋
+          <span className="text-xs font-black uppercase tracking-wider text-primary">
+            {timeGreeting}
+          </span>
+          <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-1.5 mt-0.5">
+            <span>{firstName}</span>
+            <span className="inline-block">👋</span>
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 font-medium">
-            Manage your statutory registrations, corporate filings, and compliance.
+          <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+            Explore available services and manage your transactions below.
           </p>
         </div>
       </div>
@@ -493,10 +506,13 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         
         {/* Left: Professional Compact Wallet Deck */}
-        <div className="lg:col-span-6 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-3">
+        <div className="lg:col-span-6 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-3 relative overflow-hidden">
           
+          {/* Subtle Ambient Radial Glow */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
+
           {/* Top Row: Wallet Label + Active Level Pill */}
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 relative z-10">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <Wallet className="h-4 w-4" weight="bold" />
@@ -540,36 +556,57 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Center: Prominent Balance + Clean 1-Line Level Hint */}
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-foreground tracking-tight flex items-baseline gap-1">
-              {isLoadingBalance ? (
-                <Spinner className="animate-spin h-6 w-6 text-muted-foreground" weight="bold" />
-              ) : isBalanceHidden ? (
-                <span className="tracking-widest text-xl font-mono text-muted-foreground">••••••••</span>
-              ) : (
-                <>
-                  <span className="text-lg font-bold text-muted-foreground">₦</span>
-                  {Number(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </>
-              )}
+          {/* Center: Prominent Balance + 3D Wallet on Semi-circle Pink Stand + Level Hint */}
+          <div className="flex items-center justify-between gap-3 relative z-10">
+            <div className="flex-1 min-w-0">
+              <div className="text-2xl sm:text-3xl font-black text-foreground tracking-tight flex items-baseline gap-1">
+                {isLoadingBalance ? (
+                  <Spinner className="animate-spin h-6 w-6 text-muted-foreground" weight="bold" />
+                ) : isBalanceHidden ? (
+                  <span className="tracking-widest text-xl font-mono text-muted-foreground">••••••••</span>
+                ) : (
+                  <>
+                    <span className="text-lg font-bold text-muted-foreground">₦</span>
+                    {Number(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </>
+                )}
+              </div>
+
+              {/* 1-Line Next Level Progress Hint */}
+              {loyaltyProfile?.nextTier ? (
+                <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 flex-wrap">
+                  <span>Spend <strong className="text-foreground">₦{loyaltyProfile.remainingSpendToNextTier.toLocaleString()}</strong> more for <strong>{loyaltyProfile.nextTier.name}</strong></span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">({loyaltyProfile.nextTier.discountPct}% OFF)</span>
+                </p>
+              ) : loyaltyProfile ? (
+                <p className="text-[11px] text-sky-500 dark:text-sky-400 font-bold mt-1">
+                  💎 Max Platinum VIP Active (6% OFF on all services)
+                </p>
+              ) : null}
             </div>
 
-            {/* 1-Line Next Level Progress Hint */}
-            {loyaltyProfile?.nextTier ? (
-              <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 flex-wrap">
-                <span>Spend <strong className="text-foreground">₦{loyaltyProfile.remainingSpendToNextTier.toLocaleString()}</strong> more for <strong>{loyaltyProfile.nextTier.name}</strong></span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold">({loyaltyProfile.nextTier.discountPct}% OFF)</span>
-              </p>
-            ) : loyaltyProfile ? (
-              <p className="text-[11px] text-sky-500 dark:text-sky-400 font-bold mt-1">
-                💎 Max Platinum VIP Active (6% OFF on all services)
-              </p>
-            ) : null}
+            {/* 3D Mini Wallet Illustration with Cut-off Half-Circle Pink Pedestal */}
+            <div className="relative shrink-0 flex flex-col items-center justify-end select-none pr-1">
+              <div className="relative flex items-center justify-center pt-3">
+                {/* Semicircle / Half-Circle Pink Stand */}
+                <div className="w-16 h-8 bg-gradient-to-t from-primary/30 via-primary/15 to-transparent rounded-t-full border-t border-x border-primary/40 shadow-xs" />
+                
+                {/* Mini 3D Wallet Standing On Pedestal */}
+                <div className="absolute -top-4 w-12 h-12 rounded-xl bg-white dark:bg-slate-900 border border-border/80 dark:border-white/10 shadow-md p-1 flex items-center justify-center overflow-hidden transition-transform duration-200 hover:scale-110">
+                  <Image 
+                    src="/wallet.jpg" 
+                    alt="Wallet" 
+                    width={48} 
+                    height={48} 
+                    className="object-contain w-full h-full rounded-lg"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Bottom Row: Quick Action Buttons */}
-          <div className="flex items-center gap-2 pt-2 border-t border-border/70">
+          <div className="flex items-center gap-2 pt-2 border-t border-border/70 relative z-10">
             <button 
               onClick={() => setIsWalletModalOpen(true)}
               className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-xl font-bold text-xs hover:shadow-md hover:shadow-primary/20 transition-all active:scale-[0.98] cursor-pointer"
