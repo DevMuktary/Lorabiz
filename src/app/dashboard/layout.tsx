@@ -372,7 +372,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 relative">
 
-        <header className="relative z-40 h-[70px] bg-card border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0">
+        <header className="sticky top-0 z-40 h-[70px] bg-background/95 backdrop-blur-md border-b border-border/60 flex items-center justify-between px-5 lg:px-8 shrink-0">
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
@@ -498,7 +498,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative">
+        <main className="flex-1 bg-background p-4 sm:p-6 lg:p-8 relative">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
             <WelcomeBanner />
             {children}
