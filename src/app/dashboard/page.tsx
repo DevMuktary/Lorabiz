@@ -483,59 +483,56 @@ export default function DashboardPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. EXECUTIVE HEADER WITH 3D WALLET ARTWORK                                */}
+      {/* 2. EXECUTIVE HEADER                                                       */}
       {/* ========================================================================= */}
-      <div className="relative flex items-center justify-between pb-1 pt-1 overflow-visible">
-        {/* Left: Greeting & User Name */}
-        <div className="space-y-1 max-w-lg z-10">
-          <p className="text-sm sm:text-base font-semibold text-muted-foreground tracking-normal">
-            {timeGreeting},
-          </p>
-          <h1 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight flex items-center gap-2">
-            <span>{firstName.toUpperCase()}</span>
-            <span className="inline-block hover:rotate-12 transition-transform cursor-default">👋</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pt-0.5 font-medium">
-            Explore available services and manage your transactions below.
-          </p>
-        </div>
-
-        {/* Right: Soft Pink Circle Backdrop + 3D Wallet Artwork */}
-        <div className="relative shrink-0 flex items-center justify-center select-none pointer-events-none pr-1 sm:pr-6">
-          {/* Soft Pink Circle Backdrop */}
-          <div className="absolute -right-2 sm:right-0 w-28 h-28 sm:w-40 sm:h-40 rounded-full bg-pink-100/90 dark:bg-primary/20 -z-10" />
-          
-          {/* 3D Wallet Illustration */}
-          <div className="relative w-24 h-24 sm:w-36 sm:h-36 flex items-center justify-center">
-            <Image
-              src="/wallet.jpg"
-              alt="Lorabiz Wallet"
-              width={150}
-              height={150}
-              priority
-              className="object-contain w-full h-full mix-blend-multiply dark:mix-blend-normal dark:rounded-3xl dark:bg-card/90 dark:p-1 drop-shadow-sm"
-            />
-          </div>
-        </div>
+      <div className="flex flex-col justify-center space-y-1">
+        <p className="text-sm sm:text-base font-semibold text-muted-foreground tracking-normal">
+          {timeGreeting},
+        </p>
+        <h1 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight flex items-center gap-2">
+          <span>{firstName.toUpperCase()}</span>
+          <span className="inline-block hover:rotate-12 transition-transform cursor-default">👋</span>
+        </h1>
+        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pt-0.5 font-medium max-w-xl">
+          Explore available services and manage your transactions below.
+        </p>
       </div>
 
       {/* ========================================================================= */}
       {/* 3. DUAL-CARD HERO: COMPACT WALLET & VIP LEVEL + QUICK ACTIONS DOCK         */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch pt-2 sm:pt-4">
         
-        {/* Left: Professional Compact Wallet Deck */}
-        <div className="lg:col-span-6 p-5 sm:p-6 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4">
+        {/* Left: Professional Compact Wallet Deck with 3D Wallet & Pink Circle Backdrop */}
+        <div className="lg:col-span-6 relative">
           
-          {/* Top Row: Wallet Label + Active Level Pill */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-xl bg-pink-100 dark:bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-pink-200/50 dark:border-primary/20">
-                <Wallet className="h-4 w-4" weight="bold" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                Wallet Balance
-              </span>
+          {/* Soft Pink Circle Backdrop (dipping behind top of the card) */}
+          <div className="absolute -top-16 -right-2 sm:-top-20 sm:right-2 w-48 h-48 sm:w-60 sm:h-60 rounded-full bg-pink-100/70 dark:bg-primary/10 pointer-events-none -z-10" />
+
+          {/* 3D Wallet Artwork Standing Directly on Top Edge of the Card */}
+          <div className="absolute -top-14 right-2 sm:-top-20 sm:right-6 w-28 h-28 sm:w-36 sm:h-36 pointer-events-none z-20 select-none">
+            <Image
+              src="/wallet.png"
+              alt="Lorabiz 3D Wallet"
+              width={160}
+              height={160}
+              priority
+              className="object-contain w-full h-full drop-shadow-md"
+            />
+          </div>
+
+          {/* The Wallet Card */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 relative z-10 h-full">
+            
+            {/* Top Row: Wallet Label + Active Level Pill */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-pink-100 dark:bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-pink-200/50 dark:border-primary/20">
+                  <Wallet className="h-4 w-4" weight="bold" />
+                </div>
+                <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                  Wallet Balance
+                </span>
               <button
                 onClick={() => setIsBalanceHidden(!isBalanceHidden)}
                 className="text-muted-foreground hover:text-foreground transition-colors p-1"
