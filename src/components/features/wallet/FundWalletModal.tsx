@@ -98,7 +98,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
     <>
       {/* Friendly Dancing Baby Doll Overlay (Dual Light & Dark Theme Support) */}
       {gatewayLoading && (
-        <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-white/95 dark:bg-slate-950/95 backdrop-blur-md text-slate-900 dark:text-white animate-in fade-in duration-300 select-none p-6 text-center">
+        <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-background/95 backdrop-blur-md text-foreground animate-in fade-in duration-300 select-none p-6 text-center">
           <div className="relative flex items-center justify-center mb-8 w-40 h-40">
             <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/20 animate-ping opacity-75" />
             <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/50 animate-[spin_8s_linear_infinite]" />
@@ -143,9 +143,9 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
         </div>
       )}
 
-      {/* Main Modal Content (Dual Light & Dark Theme Support) */}
+      {/* Main Modal Content */}
       <div 
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in"
         onClick={(e) => {
           if (e.target === e.currentTarget && !isProcessing) {
             onClose();
@@ -153,7 +153,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
         }}
       >
         <div 
-          className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 relative border border-slate-200 dark:border-slate-800"
+          className="bg-card text-card-foreground rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 relative border border-border"
           onClick={(e) => e.stopPropagation()}
         >
           

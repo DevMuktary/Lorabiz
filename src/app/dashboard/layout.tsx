@@ -242,10 +242,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* SIDEBAR */}
       <aside className={`
-        fixed lg:sticky top-0 left-0 z-[99995] w-[270px] bg-card border-r border-border 
+        fixed lg:sticky top-0 bottom-0 left-0 z-[99995] w-[270px] h-full lg:h-screen bg-card border-r border-border 
         transform transition-all duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
-        lg:h-screen lg:inset-y-0
-        max-h-[calc(100vh-env(safe-area-inset-bottom))] lg:max-h-screen
         ${isMobileMenuOpen ? "translate-x-0 visible pointer-events-auto" : "-translate-x-full invisible pointer-events-none lg:visible lg:pointer-events-auto lg:translate-x-0"}
         ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:flex"}
       `}>
