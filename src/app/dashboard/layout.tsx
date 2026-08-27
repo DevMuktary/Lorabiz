@@ -231,12 +231,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
 
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 h-full w-full bg-background/80 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
 
       {/* SIDEBAR */}
       <aside className={`
