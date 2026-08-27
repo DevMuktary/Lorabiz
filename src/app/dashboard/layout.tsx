@@ -241,8 +241,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* SIDEBAR */}
-      <aside className={`
-        fixed lg:sticky inset-y-0 top-0 bottom-0 left-0 z-[99995] w-[270px] min-h-[100dvh] lg:h-screen bg-card border-r border-border 
+      <aside 
+        style={{
+          height: 'calc(100dvh + 150px)',
+          minHeight: 'calc(100vh + 150px)',
+          bottom: '-150px',
+        }}
+        className={`
+        fixed lg:sticky top-0 left-0 z-[99995] w-[270px] lg:!h-screen lg:!min-h-screen lg:!bottom-0 bg-card border-r border-border 
         transform transition-all duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
         ${isMobileMenuOpen ? "translate-x-0 visible pointer-events-auto" : "-translate-x-full invisible pointer-events-none lg:visible lg:pointer-events-auto lg:translate-x-0"}
         ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:flex"}
@@ -264,7 +270,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-5 custom-scrollbar pb-28">
+        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-5 custom-scrollbar pb-48 lg:pb-10">
           {NAVIGATION.map((group) => (
             <div key={group.category} className="space-y-1.5">
               <h3 className="px-3 text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
