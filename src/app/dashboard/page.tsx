@@ -483,20 +483,39 @@ export default function DashboardPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. MINIMAL EXECUTIVE HEADER                                               */}
+      {/* 2. EXECUTIVE HEADER WITH 3D WALLET ARTWORK                                */}
       {/* ========================================================================= */}
-      <div className="flex items-center justify-between">
-        <div>
-          <span className="text-xs font-black uppercase tracking-wider text-primary">
-            {timeGreeting}
-          </span>
-          <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-1.5 mt-0.5">
-            <span>{firstName}</span>
-            <span className="inline-block">👋</span>
+      <div className="relative flex items-center justify-between pb-1 pt-1 overflow-visible">
+        {/* Left: Greeting & User Name */}
+        <div className="space-y-1 max-w-lg z-10">
+          <p className="text-sm sm:text-base font-semibold text-muted-foreground tracking-normal">
+            {timeGreeting},
+          </p>
+          <h1 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight flex items-center gap-2">
+            <span>{firstName.toUpperCase()}</span>
+            <span className="inline-block hover:rotate-12 transition-transform cursor-default">👋</span>
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pt-0.5 font-medium">
             Explore available services and manage your transactions below.
           </p>
+        </div>
+
+        {/* Right: Soft Pink Circle Backdrop + 3D Wallet Artwork */}
+        <div className="relative shrink-0 flex items-center justify-center select-none pointer-events-none pr-1 sm:pr-6">
+          {/* Soft Pink Circle Backdrop */}
+          <div className="absolute -right-2 sm:right-0 w-28 h-28 sm:w-40 sm:h-40 rounded-full bg-pink-100/90 dark:bg-primary/20 -z-10" />
+          
+          {/* 3D Wallet Illustration */}
+          <div className="relative w-24 h-24 sm:w-36 sm:h-36 flex items-center justify-center">
+            <Image
+              src="/wallet.jpg"
+              alt="Lorabiz Wallet"
+              width={150}
+              height={150}
+              priority
+              className="object-contain w-full h-full mix-blend-multiply dark:mix-blend-normal dark:rounded-3xl dark:bg-card/90 dark:p-1 drop-shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -506,18 +525,15 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         
         {/* Left: Professional Compact Wallet Deck */}
-        <div className="lg:col-span-6 p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-3 relative overflow-hidden">
+        <div className="lg:col-span-6 p-5 sm:p-6 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4">
           
-          {/* Subtle Ambient Radial Glow */}
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
-
           {/* Top Row: Wallet Label + Active Level Pill */}
-          <div className="flex items-center justify-between gap-2 relative z-10">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-pink-100 dark:bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-pink-200/50 dark:border-primary/20">
                 <Wallet className="h-4 w-4" weight="bold" />
               </div>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">
                 Wallet Balance
               </span>
               <button
@@ -525,7 +541,7 @@ export default function DashboardPage() {
                 className="text-muted-foreground hover:text-foreground transition-colors p-1"
                 aria-label={isBalanceHidden ? "Show Balance" : "Hide Balance"}
               >
-                {isBalanceHidden ? <EyeSlash className="h-3.5 w-3.5" weight="bold" /> : <Eye className="h-3.5 w-3.5" weight="bold" />}
+                {isBalanceHidden ? <EyeSlash className="h-4 w-4" weight="bold" /> : <Eye className="h-4 w-4" weight="bold" />}
               </button>
             </div>
 
@@ -538,7 +554,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsPerksModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-secondary hover:bg-secondary/80 border border-border transition-colors cursor-pointer text-foreground shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-secondary hover:bg-secondary/80 border border-border transition-colors cursor-pointer text-foreground shadow-xs"
                   title="Click to view Level Perks and Discounts"
                 >
                   <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
@@ -550,66 +566,45 @@ export default function DashboardPage() {
                   ) : (
                     <span className="text-muted-foreground text-[10px]">• Starter</span>
                   )}
-                  <CaretRight size={10} weight="bold" className="text-muted-foreground" />
+                  <CaretRight size={11} weight="bold" className="text-muted-foreground" />
                 </button>
               </div>
             )}
           </div>
 
-          {/* Center: Prominent Balance + 3D Wallet on Semi-circle Pink Stand + Level Hint */}
-          <div className="flex items-center justify-between gap-3 relative z-10">
-            <div className="flex-1 min-w-0">
-              <div className="text-2xl sm:text-3xl font-black text-foreground tracking-tight flex items-baseline gap-1">
-                {isLoadingBalance ? (
-                  <Spinner className="animate-spin h-6 w-6 text-muted-foreground" weight="bold" />
-                ) : isBalanceHidden ? (
-                  <span className="tracking-widest text-xl font-mono text-muted-foreground">••••••••</span>
-                ) : (
-                  <>
-                    <span className="text-lg font-bold text-muted-foreground">₦</span>
-                    {Number(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </>
-                )}
-              </div>
-
-              {/* 1-Line Next Level Progress Hint */}
-              {loyaltyProfile?.nextTier ? (
-                <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 flex-wrap">
-                  <span>Spend <strong className="text-foreground">₦{loyaltyProfile.remainingSpendToNextTier.toLocaleString()}</strong> more for <strong>{loyaltyProfile.nextTier.name}</strong></span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">({loyaltyProfile.nextTier.discountPct}% OFF)</span>
-                </p>
-              ) : loyaltyProfile ? (
-                <p className="text-[11px] text-sky-500 dark:text-sky-400 font-bold mt-1">
-                  💎 Max Platinum VIP Active (6% OFF on all services)
-                </p>
-              ) : null}
+          {/* Center: Prominent Balance + Progress Hint */}
+          <div>
+            <div className="text-3xl sm:text-4xl font-black text-foreground tracking-tight flex items-baseline gap-1.5">
+              {isLoadingBalance ? (
+                <Spinner className="animate-spin h-7 w-7 text-muted-foreground" weight="bold" />
+              ) : isBalanceHidden ? (
+                <span className="tracking-widest text-2xl font-mono text-muted-foreground">••••••••</span>
+              ) : (
+                <>
+                  <span className="text-xl sm:text-2xl font-bold text-muted-foreground">₦</span>
+                  {Number(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </>
+              )}
             </div>
 
-            {/* 3D Mini Wallet Illustration with Cut-off Half-Circle Pink Pedestal */}
-            <div className="relative shrink-0 flex flex-col items-center justify-end select-none pr-1">
-              <div className="relative flex items-center justify-center pt-3">
-                {/* Semicircle / Half-Circle Pink Stand */}
-                <div className="w-16 h-8 bg-gradient-to-t from-primary/30 via-primary/15 to-transparent rounded-t-full border-t border-x border-primary/40 shadow-xs" />
-                
-                {/* Mini 3D Wallet Standing On Pedestal */}
-                <div className="absolute -top-4 w-12 h-12 rounded-xl bg-white dark:bg-slate-900 border border-border/80 dark:border-white/10 shadow-md p-1 flex items-center justify-center overflow-hidden transition-transform duration-200 hover:scale-110">
-                  <Image 
-                    src="/wallet.jpg" 
-                    alt="Wallet" 
-                    width={48} 
-                    height={48} 
-                    className="object-contain w-full h-full rounded-lg"
-                  />
-                </div>
-              </div>
-            </div>
+            {/* 1-Line Next Level Progress Hint */}
+            {loyaltyProfile?.nextTier ? (
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1 flex-wrap font-medium">
+                <span>Spend <strong className="text-foreground font-bold">₦{loyaltyProfile.remainingSpendToNextTier.toLocaleString()}</strong> more for <strong>{loyaltyProfile.nextTier.name}</strong></span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">({loyaltyProfile.nextTier.discountPct}% OFF)</span>
+              </p>
+            ) : loyaltyProfile ? (
+              <p className="text-xs text-sky-500 dark:text-sky-400 font-bold mt-1.5">
+                💎 Max Platinum VIP Active (6% OFF on all services)
+              </p>
+            ) : null}
           </div>
 
           {/* Bottom Row: Quick Action Buttons */}
-          <div className="flex items-center gap-2 pt-2 border-t border-border/70 relative z-10">
+          <div className="flex items-center gap-2 pt-2 border-t border-border/70">
             <button 
               onClick={() => setIsWalletModalOpen(true)}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-xl font-bold text-xs hover:shadow-md hover:shadow-primary/20 transition-all active:scale-[0.98] cursor-pointer"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold text-xs hover:shadow-md hover:shadow-primary/20 transition-all active:scale-[0.98] cursor-pointer"
             >
               <Plus weight="bold" className="h-3.5 w-3.5" />
               <span>Fund Wallet</span>
