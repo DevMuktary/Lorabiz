@@ -381,19 +381,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col min-w-0 relative">
 
         <header className="relative z-40 h-[70px] bg-card border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Modern Sleek Hamburger Button for Mobile */}
             <button
-              className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
+              className="lg:hidden h-10 w-10 -ml-2 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-secondary/60 hover:bg-primary/10 border border-border hover:border-primary/30 text-foreground transition-all duration-200 cursor-pointer shadow-xs group"
               onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open Navigation Menu"
             >
-              <List className="h-6 w-6" weight="bold" />
+              <span className="w-5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 -translate-x-0.5" />
+              <span className="w-3.5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 translate-x-0.5" />
+              <span className="w-5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 -translate-x-0.5" />
             </button>
 
+            {/* Modern Sleek Sidebar Toggle for Desktop */}
             <button
-              className="hidden lg:block p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
+              className="hidden lg:flex h-10 w-10 -ml-2 flex-col items-center justify-center gap-1.5 rounded-xl bg-secondary/60 hover:bg-primary/10 border border-border hover:border-primary/30 text-foreground transition-all duration-200 cursor-pointer shadow-xs group"
               onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
+              aria-label="Toggle Sidebar"
             >
-              <List className="h-6 w-6" weight="bold" />
+              <span className="w-5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 -translate-x-0.5" />
+              <span className="w-3.5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 translate-x-0.5" />
+              <span className="w-5 h-0.5 rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 -translate-x-0.5" />
             </button>
 
             <h2 className="text-lg font-black text-foreground hidden sm:block">
