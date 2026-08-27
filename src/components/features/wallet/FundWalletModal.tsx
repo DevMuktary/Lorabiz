@@ -98,7 +98,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
     <>
       {/* Friendly Dancing Baby Doll Overlay (Dual Light & Dark Theme Support) */}
       {gatewayLoading && (
-        <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-background/95 backdrop-blur-md text-foreground animate-in fade-in duration-300 select-none p-6 text-center" style={{ top: 'calc(-1 * env(safe-area-inset-top, 0px))', bottom: 'calc(-1 * env(safe-area-inset-bottom, 0px))' }}>
+        <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-background/95 backdrop-blur-md text-foreground animate-in fade-in duration-300 select-none p-6 text-center">
           <div className="relative flex items-center justify-center mb-8 w-40 h-40">
             <div className="absolute inset-0 rounded-full bg-[#ff3f7a]/20 animate-ping opacity-75" />
             <div className="absolute inset-2 rounded-full border-2 border-dashed border-[#ff3f7a]/50 animate-[spin_8s_linear_infinite]" />
@@ -146,7 +146,6 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
       {/* Main Modal Content */}
       <div 
         className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in"
-        style={{ top: 'calc(-1 * env(safe-area-inset-top, 0px))', bottom: 'calc(-1 * env(safe-area-inset-bottom, 0px))' }}
         onClick={(e) => {
           if (e.target === e.currentTarget && !isProcessing) {
             onClose();

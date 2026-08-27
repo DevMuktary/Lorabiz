@@ -117,8 +117,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      {/* CRITICAL FIX: Removed transition-colors duration-300 from body */}
-      <body className="antialiased bg-background text-foreground min-h-screen flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <body className="antialiased bg-background text-foreground min-h-screen flex flex-col">
         <DynamicPageTitle /> {/* <-- Auto-manages all Client Page Titles silently! */}
         
         <Providers>
