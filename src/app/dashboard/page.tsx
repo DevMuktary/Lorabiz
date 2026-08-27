@@ -921,12 +921,6 @@ export default function DashboardPage() {
         currentTierLevel={loyaltyProfile?.currentTier?.level}
         allTimeSpend={loyaltyProfile?.allTimeSpend}
       />
-
-      {/* Live Support Script */}
-      <Script 
-        src="https://support.lorabiz.com/lorabiz-chat.js" 
-        strategy="afterInteractive" 
-      />
     </div>
   );
 }

@@ -68,7 +68,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -114,7 +113,7 @@ export default function RootLayout({
         />
       </head>
       {/* CRITICAL FIX: Removed transition-colors duration-300 from body */}
-      <body className="antialiased bg-background text-foreground min-h-[100dvh] flex flex-col">
+      <body className="antialiased bg-background text-foreground min-h-screen flex flex-col">
         <DynamicPageTitle /> {/* <-- Auto-manages all Client Page Titles silently! */}
         
         <Providers>

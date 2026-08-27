@@ -217,7 +217,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = getUserInitials();
 
   return (
-    <div className="min-h-[100dvh] w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
+    <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
 
       {isMobileMenuOpen && (
         <div

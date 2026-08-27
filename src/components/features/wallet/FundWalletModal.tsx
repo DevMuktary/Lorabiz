@@ -36,11 +36,19 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
     window.addEventListener("pageshow", handlePageRestore);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+  // Prevent background scroll bleed while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+
     return () => {
-      window.removeEventListener("pageshow", handlePageRestore);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
     };
-  }, [gatewayLoading]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -130,8 +138,18 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
       )}
 
       {/* Main Modal Content (Dual Light & Dark Theme Support) */}
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-        <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 relative border border-slate-200 dark:border-slate-800">
+      <div 
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
+        onClick={(e) => {
+          if (e.target === e.currentTarget && !isProcessing) {
+            onClose();
+          }
+        }}
+      >
+        <div 
+          className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 relative border border-slate-200 dark:border-slate-800"
+          onClick={(e) => e.stopPropagation()}
+        >
           
           <button 
             type="button"
