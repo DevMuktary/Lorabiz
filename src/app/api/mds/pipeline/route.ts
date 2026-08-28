@@ -16,107 +16,115 @@ export async function GET() {
     if (!admin) {
       return NextResponse.json({ error: "Forbidden. Admin or Staff access required." }, { status: 403 });
     }
+    const safeCount = async (queryFn: () => Promise<number>) => {
+      try {
+        return await queryFn();
+      } catch (err) {
+        return 0;
+      }
+    };
+
     // 1. Fetch counts for CAC Services (Business Names & LLCs)
     const [bizPending, bizApproved, bizQueried, bizFailed] = await Promise.all([
-      prisma.businessRegistration.count({ where: { status: "PENDING" } }),
-      prisma.businessRegistration.count({ where: { status: "APPROVED" } }),
-      prisma.businessRegistration.count({ where: { status: "QUERIED" } }),
-      prisma.businessRegistration.count({ where: { status: "FAILED" } }),
+      safeCount(() => prisma.businessRegistration.count({ where: { status: "PENDING" } })),
+      safeCount(() => prisma.businessRegistration.count({ where: { status: "APPROVED" } })),
+      safeCount(() => prisma.businessRegistration.count({ where: { status: "QUERIED" } })),
+      safeCount(() => prisma.businessRegistration.count({ where: { status: "FAILED" } })),
     ]);
 
     const [llcPending, llcApproved, llcQueried, llcFailed] = await Promise.all([
-      prisma.llcRegistration.count({ where: { status: "PENDING" } }),
-      prisma.llcRegistration.count({ where: { status: "APPROVED" } }),
-      prisma.llcRegistration.count({ where: { status: "QUERIED" } }),
-      prisma.llcRegistration.count({ where: { status: "FAILED" } }),
+      safeCount(() => prisma.llcRegistration.count({ where: { status: "PENDING" } })),
+      safeCount(() => prisma.llcRegistration.count({ where: { status: "APPROVED" } })),
+      safeCount(() => prisma.llcRegistration.count({ where: { status: "QUERIED" } })),
+      safeCount(() => prisma.llcRegistration.count({ where: { status: "FAILED" } })),
     ]);
 
     // 2. Fetch counts for NIN Requests
     const [ninSuccess, ninFailed] = await Promise.all([
-      prisma.ninRequestLog.count({ where: { status: "SUCCESS" } }),
-      prisma.ninRequestLog.count({ where: { status: "FAILED" } }),
+      safeCount(() => prisma.ninRequestLog.count({ where: { status: "SUCCESS" } })),
+      safeCount(() => prisma.ninRequestLog.count({ where: { status: "FAILED" } })),
     ]);
 
     // 2a. Fetch counts for BVN Requests
     const [bvnSuccess, bvnFailed] = await Promise.all([
-      prisma.bvnRequestLog.count({ where: { status: "SUCCESS" } }),
-      prisma.bvnRequestLog.count({ where: { status: "FAILED" } }),
+      safeCount(() => prisma.bvnRequestLog.count({ where: { status: "SUCCESS" } })),
+      safeCount(() => prisma.bvnRequestLog.count({ where: { status: "FAILED" } })),
     ]);
 
     // 2a-2. Fetch counts for BVN Retrieval Requests
     const [bvnRetPending, bvnRetProcessing, bvnRetCompleted, bvnRetFailed] = await Promise.all([
-      prisma.bvnRetrievalRequest.count({ where: { status: "PENDING" } }),
-      prisma.bvnRetrievalRequest.count({ where: { status: "PROCESSING" } }),
-      prisma.bvnRetrievalRequest.count({ where: { status: "COMPLETED" } }),
-      prisma.bvnRetrievalRequest.count({ where: { status: "FAILED" } }),
+      safeCount(() => prisma.bvnRetrievalRequest.count({ where: { status: "PENDING" } })),
+      safeCount(() => prisma.bvnRetrievalRequest.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.bvnRetrievalRequest.count({ where: { status: "COMPLETED" } })),
+      safeCount(() => prisma.bvnRetrievalRequest.count({ where: { status: "FAILED" } })),
     ]);
 
     // 2b. Fetch counts for IPE Clearance Requests
     const [ipeProcessing, ipeCompleted, ipeFailed] = await Promise.all([
-      prisma.ninIpeRequest.count({ where: { status: "PROCESSING" } }),
-      prisma.ninIpeRequest.count({ where: { status: "COMPLETED" } }),
-      prisma.ninIpeRequest.count({ where: { status: "FAILED" } }),
+      safeCount(() => prisma.ninIpeRequest.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.ninIpeRequest.count({ where: { status: "COMPLETED" } })),
+      safeCount(() => prisma.ninIpeRequest.count({ where: { status: "FAILED" } })),
     ]);
 
     // 2c. Fetch counts for NIN Validation Requests
     const [valProcessing, valCompleted, valFailed] = await Promise.all([
-      prisma.ninValidationRequest.count({ where: { status: "PROCESSING" } }),
-      prisma.ninValidationRequest.count({ where: { status: "COMPLETED" } }),
-      prisma.ninValidationRequest.count({ where: { status: "FAILED" } }),
+      safeCount(() => prisma.ninValidationRequest.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.ninValidationRequest.count({ where: { status: "COMPLETED" } })),
+      safeCount(() => prisma.ninValidationRequest.count({ where: { status: "FAILED" } })),
     ]);
 
     // 2d. Fetch counts for NIN Personalization Requests
     const [pznProcessing, pznCompleted, pznFailed] = await Promise.all([
-      prisma.ninPersonalizationRequest.count({ where: { status: "PROCESSING" } }),
-      prisma.ninPersonalizationRequest.count({ where: { status: "COMPLETED" } }),
-      prisma.ninPersonalizationRequest.count({ where: { status: "FAILED" } }),
+      safeCount(() => prisma.ninPersonalizationRequest.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.ninPersonalizationRequest.count({ where: { status: "COMPLETED" } })),
+      safeCount(() => prisma.ninPersonalizationRequest.count({ where: { status: "FAILED" } })),
     ]);
 
     // 2e. Fetch counts for NIN Modification Requests
     const [modPending, modProcessing, modCompleted, modRejected] = await Promise.all([
-      prisma.ninModificationRequest.count({ where: { status: "PENDING" } }),
-      prisma.ninModificationRequest.count({ where: { status: "PROCESSING" } }),
-      prisma.ninModificationRequest.count({ where: { status: "COMPLETED" } }),
-      prisma.ninModificationRequest.count({ where: { status: "REJECTED" } }),
+      safeCount(() => prisma.ninModificationRequest.count({ where: { status: "PENDING" } })),
+      safeCount(() => prisma.ninModificationRequest.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.ninModificationRequest.count({ where: { status: "COMPLETED" } })),
+      safeCount(() => prisma.ninModificationRequest.count({ where: { status: "REJECTED" } })),
     ]);
 
     // 2f. Fetch counts for BVN Modification Requests
     const [bvnModPending, bvnModProcessing, bvnModCompleted, bvnModRejected] = await Promise.all([
-      prisma.bvnModificationRequest.count({ where: { status: "PENDING" } }),
-      prisma.bvnModificationRequest.count({ where: { status: "PROCESSING" } }),
-      prisma.bvnModificationRequest.count({ where: { status: "COMPLETED" } }),
-      prisma.bvnModificationRequest.count({ where: { status: "REJECTED" } }),
+      safeCount(() => prisma.bvnModificationRequest.count({ where: { status: "PENDING" } })),
+      safeCount(() => prisma.bvnModificationRequest.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.bvnModificationRequest.count({ where: { status: "COMPLETED" } })),
+      safeCount(() => prisma.bvnModificationRequest.count({ where: { status: "REJECTED" } })),
     ]);
 
     // 3. Fetch counts for SCUML
     const [scumlPending, scumlProcessing, scumlCompleted] = await Promise.all([
-      prisma.scumlRegistration.count({ where: { status: "PENDING" } }),
-      prisma.scumlRegistration.count({ where: { status: "PROCESSING" } }),
-      prisma.scumlRegistration.count({ where: { status: "COMPLETED" } }),
+      safeCount(() => prisma.scumlRegistration.count({ where: { status: "PENDING" } })),
+      safeCount(() => prisma.scumlRegistration.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.scumlRegistration.count({ where: { status: "COMPLETED" } })),
     ]);
 
     // 4. Fetch counts for Tax ID
     const [taxPending, taxProcessing, taxCompleted] = await Promise.all([
-      prisma.taxIdRequest.count({ where: { status: "PENDING" } }),
-      prisma.taxIdRequest.count({ where: { status: "PROCESSING" } }),
-      prisma.taxIdRequest.count({ where: { status: "COMPLETED" } }),
+      safeCount(() => prisma.taxIdRequest.count({ where: { status: "PENDING" } })),
+      safeCount(() => prisma.taxIdRequest.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.taxIdRequest.count({ where: { status: "COMPLETED" } })),
     ]);
 
     // 5. Fetch counts for Court Affidavit
     const [affPending, affProcessing, affCompleted, affQueried, affRejected] = await Promise.all([
-      prisma.courtAffidavitRequest.count({ where: { status: "PENDING" } }),
-      prisma.courtAffidavitRequest.count({ where: { status: "PROCESSING" } }),
-      prisma.courtAffidavitRequest.count({ where: { status: "COMPLETED" } }),
-      prisma.courtAffidavitRequest.count({ where: { status: "QUERIED" } }),
-      prisma.courtAffidavitRequest.count({ where: { status: "REJECTED" } }),
+      safeCount(() => prisma.courtAffidavitRequest.count({ where: { status: "PENDING" } })),
+      safeCount(() => prisma.courtAffidavitRequest.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.courtAffidavitRequest.count({ where: { status: "COMPLETED" } })),
+      safeCount(() => prisma.courtAffidavitRequest.count({ where: { status: "QUERIED" } })),
+      safeCount(() => prisma.courtAffidavitRequest.count({ where: { status: "REJECTED" } })),
     ]);
 
-    const airtimeCompleted = await prisma.transaction.count({
+    const airtimeCompleted = await safeCount(() => prisma.transaction.count({
       where: { 
         serviceCategory: { in: ["UTILITIES", "AIRTIME", "MOBILE_DATA"] }, 
         status: "SUCCESS" 
       }
-    });
+    }));
 
     // --- AGGREGATE LOGIC ---
 
