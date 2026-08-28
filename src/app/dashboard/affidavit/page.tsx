@@ -294,6 +294,10 @@ export default function CourtAffidavitPage() {
       showToast("Please provide the residential street address.");
       return;
     }
+    if (selectedTier === "HIGH_COURT_ATTESTED" && !deponent.passportUrl) {
+      showToast("Deponent passport photograph is 100% compulsory for Federal High Court Attestation.");
+      return;
+    }
 
     setCurrentStep(4);
     window.scrollTo({ top: 300, behavior: "smooth" });
@@ -327,6 +331,11 @@ export default function CourtAffidavitPage() {
     }
     if (!deponent.stateOfResidence || !deponent.lgaOfResidence || !deponent.streetAddress.trim()) {
       showToast("Please complete the deponent's residential address details.");
+      setCurrentStep(3);
+      return;
+    }
+    if (selectedTier === "HIGH_COURT_ATTESTED" && !deponent.passportUrl) {
+      showToast("Deponent passport photograph is compulsory for Federal High Court Attestation.");
       setCurrentStep(3);
       return;
     }
@@ -470,14 +479,14 @@ export default function CourtAffidavitPage() {
       </div>
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-white dark:bg-white flex items-center justify-center p-1.5 border border-slate-200/80 dark:border-white/20 shrink-0 shadow-xs">
+          <div className="h-12 w-12 rounded-2xl bg-white dark:bg-white flex items-center justify-center p-1.5 border border-slate-200/80 dark:border-white/20 shrink-0 shadow-xs">
             <Image
               src="/court.png"
               alt="High Court Seal"
-              width={36}
-              height={36}
+              width={38}
+              height={38}
               className="object-contain"
               priority
             />
@@ -494,11 +503,12 @@ export default function CourtAffidavitPage() {
           </div>
         </div>
 
+        {/* Stretched & Prominent Affidavit History Link */}
         <Link
           href="/dashboard/affidavit/history"
-          className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-secondary text-foreground text-xs font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all group shrink-0 shadow-xs cursor-pointer self-start sm:self-auto"
+          className="flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-2.5 bg-secondary text-foreground text-xs sm:text-sm font-extrabold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all group shrink-0 shadow-xs cursor-pointer"
         >
-          <ListDashes weight="bold" className="h-3.5 w-3.5" />
+          <ListDashes weight="bold" className="h-4 w-4" />
           <span>Affidavit History</span>
           <ArrowRight weight="bold" className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
         </Link>
@@ -553,7 +563,7 @@ export default function CourtAffidavitPage() {
       {/* STEP 3 & 4: DEPONENT & FACTS -> ONLY SHOWN AFTER STEP 1 AND STEP 2 ARE COMPLETED */}
       {isStep1Done && isStep2Done && (
         <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          
+
           {/* STEP 3: DEPONENT INFORMATION (Person Swearing Oath) */}
           {currentStep === 3 ? (
             <div className="p-4 sm:p-6 rounded-2xl bg-card border border-border shadow-xs space-y-4 text-left w-full overflow-hidden animate-in fade-in">
@@ -616,12 +626,19 @@ export default function CourtAffidavitPage() {
 
                 {/* Portrait Photo */}
                 <div className="sm:col-span-3 space-y-1">
-                  <label className="text-xs font-bold text-foreground">
-                    Deponent Passport Photograph (Plain Background)
-                  </label>
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <label className="text-xs font-bold text-foreground">
+                      Deponent Passport Photograph (Plain Background){" "}
+                      {selectedTier === "HIGH_COURT_ATTESTED" ? (
+                        <span className="text-rose-500 font-extrabold">* (100% Compulsory for Federal High Court)</span>
+                      ) : (
+                        <span className="text-muted-foreground text-[10px] font-normal">(Optional for State Judiciary)</span>
+                      )}
+                    </label>
+                  </div>
                   <FileUpload
                     label="Upload Portrait Photo"
-                    description="Clear photo for official court seal"
+                    description={selectedTier === "HIGH_COURT_ATTESTED" ? "Required: Clear official photo for Federal High Court Seal" : "Clear photo for official court seal"}
                     value={deponent.passportUrl}
                     accept="image/jpeg, image/png"
                     aspectRatio={1}
@@ -659,11 +676,10 @@ export default function CourtAffidavitPage() {
                     </label>
                     {calculatedAge !== null && (
                       <span
-                        className={`text-[10px] font-black px-1.5 py-0.5 rounded-md shrink-0 ${
-                          calculatedAge >= 18
+                        className={`text-[10px] font-black px-1.5 py-0.5 rounded-md shrink-0 ${calculatedAge >= 18
                             ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                             : "bg-amber-500/10 text-amber-600"
-                        }`}
+                          }`}
                       >
                         {calculatedAge} Yrs ({calculatedAge >= 18 ? "Adult" : "Minor"})
                       </span>

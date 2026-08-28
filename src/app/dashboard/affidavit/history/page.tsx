@@ -176,25 +176,13 @@ export default function AffidavitHistoryPage() {
           <ArrowLeft size={14} weight="bold" /> Back to Affidavit Form
         </Link>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => fetchAffidavits(true)}
-            disabled={isRefreshing}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-          >
-            <ArrowsClockwise size={13} weight="bold" className={isRefreshing ? "animate-spin text-primary" : ""} />
-            <span>Refresh</span>
-          </button>
-
-          <Link
-            href="/dashboard/affidavit"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-extrabold shadow-sm hover:shadow-md transition-all cursor-pointer"
-          >
-            <Plus size={14} weight="bold" />
-            <span>New Affidavit</span>
-          </Link>
-        </div>
+        <Link
+          href="/dashboard/affidavit"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-extrabold shadow-sm hover:shadow-md transition-all cursor-pointer"
+        >
+          <Plus size={14} weight="bold" />
+          <span>New Affidavit</span>
+        </Link>
       </div>
 
       {/* Header Banner */}

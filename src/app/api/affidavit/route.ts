@@ -117,6 +117,13 @@ export async function POST(req: NextRequest) {
     const tierServiceKey = isAttested ? "AFFIDAVIT_FEDERAL" : "AFFIDAVIT_STATE";
     const matterServiceKey = `AFFIDAVIT_${category}`;
 
+    if (isAttested && (!passportUrl || !passportUrl.trim())) {
+      return NextResponse.json({
+        success: false,
+        message: "Deponent passport photograph is 100% compulsory for Federal High Court Attestation."
+      }, { status: 400 });
+    }
+
     // 1. Check Stamping Format Service Availability
     const tierPricing = await prisma.servicePricing.findUnique({
       where: { serviceKey: tierServiceKey }
