@@ -27,7 +27,8 @@ import {
   Bank,
   Crown,
   CaretRight,
-  Gavel
+  Gavel,
+  WhatsappLogo
 } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 import LoyaltyPerksModal from "@/components/dashboard/LoyaltyPerksModal";
@@ -56,8 +57,8 @@ const LIVE_SERVICES: ServiceItem[] = [
     turnaround: "30 Mins (BN) • 24–72 Hrs (LLC)",
     actionText: "Start Registration",
     active: true,
-    subservicesCount: "5 Sub-Services",
-    subservicesHighlights: "Business Name • LLC • Trustees • Search • Status",
+    subservicesCount: "2 Sub-Services",
+    subservicesHighlights: "Business Name • LLC Company Registration",
   },
   {
     title: "SCUML Certificate",
@@ -68,8 +69,8 @@ const LIVE_SERVICES: ServiceItem[] = [
     turnaround: "24–72 Hours",
     actionText: "Apply for SCUML",
     active: true,
-    subservicesCount: "3 Sub-Services",
-    subservicesHighlights: "DNFBP Clearance • Corporate Bank Account • NGO",
+    subservicesCount: "1 Sub-Service",
+    subservicesHighlights: "SCUML Compliance Certificate",
   },
   {
     title: "NIN Identity Services",
@@ -80,8 +81,8 @@ const LIVE_SERVICES: ServiceItem[] = [
     turnaround: "Instant – 24 Hours",
     actionText: "Explore NIN Services",
     active: true,
-    subservicesCount: "10 Sub-Services",
-    subservicesHighlights: "DOB • Name • Phone • Premium Slip • IPE Clearance",
+    subservicesCount: "5 Sub-Services",
+    subservicesHighlights: "Slip Generation • Validation • Modification • IPE • Personalization",
   },
   {
     title: "BVN Services",
@@ -92,8 +93,8 @@ const LIVE_SERVICES: ServiceItem[] = [
     turnaround: "Instant Delivery",
     actionText: "Explore BVN Services",
     active: true,
-    subservicesCount: "4 Sub-Services",
-    subservicesHighlights: "Verification Slip • Phone Retrieval • Modification",
+    subservicesCount: "3 Sub-Services",
+    subservicesHighlights: "BVN Slip • BVN Retrieval • Modification",
   },
   {
     title: "Tax ID (TIN)",
@@ -104,20 +105,20 @@ const LIVE_SERVICES: ServiceItem[] = [
     turnaround: "30 Mins – 1 Hour",
     actionText: "Process Tax ID",
     active: true,
-    subservicesCount: "3 Sub-Services",
-    subservicesHighlights: "Corporate TIN • Individual TIN • JTB Validation",
+    subservicesCount: "1 Sub-Service",
+    subservicesHighlights: "Official Tax Identification Number",
   },
   {
     title: "Utilities & Data",
     category: "VTU Telecom Gateway",
-    description: "Instant airtime top-up, cheap mobile data bundles, electricity tokens, and cable subscriptions.",
+    description: "Instant airtime top-up and cheap mobile data bundles across MTN, Airtel, Glo & 9mobile.",
     logo: "/airtime.png",
     href: "/dashboard/utilities",
     turnaround: "Instant Delivery",
     actionText: "Access Utilities",
     active: true,
-    subservicesCount: "12+ Sub-Services",
-    subservicesHighlights: "MTN • Airtel • Glo • 9mobile • Power • Cable TV",
+    subservicesCount: "2 Sub-Services",
+    subservicesHighlights: "Airtime Top-up • Cheap Mobile Data",
   },
   {
     title: "Court Affidavit",
@@ -128,8 +129,8 @@ const LIVE_SERVICES: ServiceItem[] = [
     turnaround: "2–5 Working Hours (Mon–Fri)",
     actionText: "Request Affidavit",
     active: true,
-    subservicesCount: "8 Sub-Services",
-    subservicesHighlights: "State & Federal • Name Change • Age • CAC • Loss",
+    subservicesCount: "1 Sub-Service",
+    subservicesHighlights: "Sworn High Court Affidavit",
   },
 ];
 
@@ -232,6 +233,40 @@ export default function DashboardPage() {
   const [timeGreeting, setTimeGreeting] = useState<string>("Good day");
 
   const { profile: loyaltyProfile } = useLoyalty();
+
+  // WhatsApp Announcements Popup shows on refresh UNLESS user dismissed or is returning from a payment
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
+      if (hasPaymentParam) return false;
+      
+      const isDismissed = localStorage.getItem("lorabiz_whatsapp_popup_dismissed_v1");
+      if (isDismissed) return false;
+    }
+    return true;
+  });
+
+  const handleCloseWhatsAppModal = () => {
+    setIsWhatsAppModalOpen(false);
+    try {
+      localStorage.setItem("lorabiz_whatsapp_popup_dismissed_v1", "true");
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  // Lock body scroll when modal is active
+  useEffect(() => {
+    if (isWhatsAppModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isWhatsAppModalOpen]);
 
   useEffect(() => {
     setMounted(true);
@@ -383,10 +418,99 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12 pt-1 sm:pt-2 transition-opacity duration-300 opacity-100">
+    <div className={`space-y-6 pb-12 pt-1 sm:pt-2 transition-opacity duration-300 ${mounted && isWhatsAppModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
 
       {/* ========================================================================= */}
-      {/* 1. EXECUTIVE HEADER WITH SIDE 3D ARTWORK & PINK CIRCLE (LEADS TO REFERRAL) */}
+      {/* 1. COMPACT CENTER-SCREEN WHATSAPP ANNOUNCEMENT POPUP                      */}
+      {/* ========================================================================= */}
+      {mounted && isWhatsAppModalOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 min-h-screen w-screen bg-background z-[999999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div 
+            className="fixed inset-0 min-h-screen w-screen bg-background" 
+            onClick={handleCloseWhatsAppModal} 
+          />
+
+          <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left">
+            {/* Top Accent Strip */}
+            <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-[#25D366] to-emerald-600" />
+
+            <div className="p-5 sm:p-6">
+              {/* Header with High-Visibility Close Button */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-11 w-11 rounded-2xl bg-[#25D366]/15 border border-[#25D366]/30 flex items-center justify-center text-[#25D366] shrink-0 shadow-xs">
+                    <WhatsappLogo className="h-6 w-6" weight="fill" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#25D366]">
+                      Official Channel
+                    </span>
+                    <h3 className="text-lg font-black text-foreground tracking-tight leading-tight">
+                      Stay Updated With LoraBiz
+                    </h3>
+                  </div>
+                </div>
+
+                {/* Highly Prominent Close Button */}
+                <button
+                  onClick={handleCloseWhatsAppModal}
+                  className="h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
+                  aria-label="Close announcement"
+                  title="Close and go to dashboard"
+                >
+                  <X className="h-4 w-4" weight="bold" />
+                </button>
+              </div>
+
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Join our official WhatsApp channel for real-time announcements, instant notifications on service uptime, portal updates, new features, and regulatory news.
+              </p>
+
+              {/* 2 Compact Value Points */}
+              <div className="my-4 space-y-2 bg-secondary/50 p-3 rounded-xl border border-border text-[11px]">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-4 w-4 rounded-full bg-[#25D366]/15 text-[#25D366] flex items-center justify-center shrink-0">
+                    <Sparkle className="h-2.5 w-2.5" weight="fill" />
+                  </div>
+                  <span className="font-semibold text-foreground">Real-time service uptime &amp; portal notifications</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="h-4 w-4 rounded-full bg-[#25D366]/15 text-[#25D366] flex items-center justify-center shrink-0">
+                    <WhatsappLogo className="h-2.5 w-2.5" weight="fill" />
+                  </div>
+                  <span className="font-semibold text-foreground">Official compliance news &amp; feature announcements</span>
+                </div>
+              </div>
+
+              {/* Action Buttons: Crystal Clear & High Contrast */}
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+                <a
+                  href="https://whatsapp.com/channel/0029VbDVwWbFnSz6VvpMKl3M"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={handleCloseWhatsAppModal}
+                  className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-xs rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer text-center"
+                >
+                  <WhatsappLogo className="h-4 w-4" weight="fill" />
+                  <span>Join WhatsApp Channel</span>
+                  <ArrowRight className="h-3.5 w-3.5" weight="bold" />
+                </a>
+                
+                <button
+                  onClick={handleCloseWhatsAppModal}
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Skip &amp; Open Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. EXECUTIVE HEADER WITH SIDE 3D ARTWORK & PINK CIRCLE (LEADS TO REFERRAL) */}
       {/* ========================================================================= */}
       <div className="relative flex items-start justify-between pb-6 sm:pb-8 overflow-visible">
         {/* Left: Greetings & Subtitle (shifted up 2 steps) */}
@@ -680,7 +804,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. ACTIVE SERVICES (7 Core Categories • 45+ Active Sub-Services)          */}
+      {/* 4. ACTIVE SERVICES (7 Core Categories • 15 Live Sub-Services)             */}
       {/* ========================================================================= */}
       <div className="space-y-3 pt-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-2.5">
@@ -695,7 +819,7 @@ export default function DashboardPage() {
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
                 <span>⚡</span>
-                <span>45+ Active Sub-Services Live</span>
+                <span>15 Live Sub-Services</span>
               </span>
             </div>
           </div>
