@@ -504,8 +504,8 @@ export default function DashboardPage() {
         <div className="relative shrink-0 flex items-center justify-center select-none pointer-events-none pr-1 sm:pr-4">
           {/* Soft pink circle backdrop */}
           <div className="w-48 h-48 sm:w-60 sm:h-60 lg:w-68 lg:h-68 rounded-full bg-pink-100/80 dark:bg-pink-900/25 flex items-center justify-center relative translate-y-3 sm:translate-y-4">
-            {/* 3D Wallet Illustration resting on the 1/4 line */}
-            <div className="relative w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 translate-y-1 sm:translate-y-2">
+            {/* 3D Wallet Illustration shifted up inside circle */}
+            <div className="relative w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 -translate-y-4 sm:-translate-y-5">
               <Image
                 src="/wallet.png"
                 alt="Wallet Illustration"
@@ -522,7 +522,7 @@ export default function DashboardPage() {
       {/* ========================================================================= */}
       {/* 3. DUAL-CARD HERO: COMPACT WALLET & VIP LEVEL + QUICK ACTIONS DOCK         */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch -mt-10 sm:-mt-12 lg:-mt-14 relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch -mt-16 sm:-mt-20 lg:-mt-22 relative z-10">
         
         {/* Left: Professional Compact Wallet Deck */}
         <div className="lg:col-span-6 p-4 sm:p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-3">
