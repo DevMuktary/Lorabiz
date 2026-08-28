@@ -42,18 +42,22 @@ interface ServiceItem {
   turnaround?: string;
   actionText?: string;
   active: boolean;
+  subservicesCount?: string;
+  subservicesHighlights?: string;
 }
 
 const LIVE_SERVICES: ServiceItem[] = [
   {
     title: "CAC Company Registration",
     category: "Corporate Affairs Commission",
-    description: "Register Business Names, Private Limited Companies (LLC), and Incorporated Trustees.",
+    description: "Register Business Names, Private Limited Companies (LLC), Incorporated Trustees & NGOs.",
     logo: "/cac.png",
     href: "/dashboard/cac",
     turnaround: "30 Mins (BN) • 24–72 Hrs (LLC)",
     actionText: "Start Registration",
     active: true,
+    subservicesCount: "5 Sub-Services",
+    subservicesHighlights: "Business Name • LLC • Trustees • Search • Status",
   },
   {
     title: "SCUML Certificate",
@@ -64,46 +68,56 @@ const LIVE_SERVICES: ServiceItem[] = [
     turnaround: "24–72 Hours",
     actionText: "Apply for SCUML",
     active: true,
+    subservicesCount: "3 Sub-Services",
+    subservicesHighlights: "DNFBP Clearance • Corporate Bank Account • NGO",
   },
   {
     title: "NIN Identity Services",
     category: "National Identity Management",
-    description: "Instant NIN verification, record modification, slip printing, IPE clearance, and validation.",
+    description: "Instant verification, date of birth / name modification, standard/premium slips, and IPE clearance.",
     logo: "/nimc.png",
     href: "/dashboard/nin",
     turnaround: "Instant – 24 Hours",
     actionText: "Explore NIN Services",
     active: true,
+    subservicesCount: "10 Sub-Services",
+    subservicesHighlights: "DOB • Name • Phone • Premium Slip • IPE Clearance",
   },
   {
     title: "BVN Services",
     category: "Bank Verification (NIBSS)",
-    description: "BVN slips, BVN retrieval, and BVN modification.",
+    description: "Official BVN verification slips, phone/detail retrieval, and NIBSS data modification.",
     logo: "/nibss.png",
     href: "/dashboard/bvn",
     turnaround: "Instant Delivery",
     actionText: "Explore BVN Services",
     active: true,
+    subservicesCount: "4 Sub-Services",
+    subservicesHighlights: "Verification Slip • Phone Retrieval • Modification",
   },
   {
     title: "Tax ID (TIN)",
     category: "Joint Tax Board / FIRS",
-    description: "Official corporate and personal Tax Identification Number processing and verification.",
+    description: "Official corporate and personal Tax Identification Number processing and validation.",
     logo: "/nrs.png",
     href: "/dashboard/tax-id",
     turnaround: "30 Mins – 1 Hour",
     actionText: "Process Tax ID",
     active: true,
+    subservicesCount: "3 Sub-Services",
+    subservicesHighlights: "Corporate TIN • Individual TIN • JTB Validation",
   },
   {
     title: "Utilities & Data",
     category: "VTU Telecom Gateway",
-    description: "Instant airtime top-up, cheap mobile data bundles, and bill payments from your wallet balance.",
+    description: "Instant airtime top-up, cheap mobile data bundles, electricity tokens, and cable subscriptions.",
     logo: "/airtime.png",
     href: "/dashboard/utilities",
     turnaround: "Instant Delivery",
     actionText: "Access Utilities",
     active: true,
+    subservicesCount: "12+ Sub-Services",
+    subservicesHighlights: "MTN • Airtel • Glo • 9mobile • Power • Cable TV",
   },
   {
     title: "Court Affidavit",
@@ -111,9 +125,11 @@ const LIVE_SERVICES: ServiceItem[] = [
     description: "Official sworn and sealed court affidavits for CAC, change of name, age declaration, and loss of items.",
     logo: "/court.png",
     href: "/dashboard/affidavit",
-    turnaround: "2–5 Hours",
+    turnaround: "2–5 Working Hours (Mon–Fri)",
     actionText: "Request Affidavit",
     active: true,
+    subservicesCount: "8 Sub-Services",
+    subservicesHighlights: "State & Federal • Name Change • Age • CAC • Loss",
   },
 ];
 
@@ -229,28 +245,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Partner Announcement Modal shows on refresh UNLESS user is returning from a payment
-  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
-      if (hasPaymentParam) return false;
-    }
-    return true;
-  });
-
-  // Lock body scroll when modal is active
-  useEffect(() => {
-    if (isPartnerModalOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isPartnerModalOpen]);
-
   const fetchBalance = () => {
     fetch('/api/user/wallet')
       .then(res => res.json())
@@ -272,18 +266,13 @@ export default function DashboardPage() {
   }, []);
 
   // =========================================================================
-  // ROBUST REDIRECT VERIFICATION (SUPPRESSES ANNOUNCEMENT MODAL ON PAYMENT RETURN)
+  // ROBUST REDIRECT VERIFICATION (CONFIRMS WALLET FUNDING)
   // =========================================================================
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const isFunded = params.get("funded");
       const reference = params.get("reference");
-      const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
-      
-      if (hasPaymentParam) {
-        setIsPartnerModalOpen(false);
-      }
 
       if (isFunded === "true" && reference) {
         setAlertInfo({
@@ -394,96 +383,10 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`space-y-6 pb-12 pt-1 sm:pt-2 transition-opacity duration-300 ${mounted && isPartnerModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
+    <div className="space-y-6 pb-12 pt-1 sm:pt-2 transition-opacity duration-300 opacity-100">
 
       {/* ========================================================================= */}
-      {/* 1. COMPACT CENTER-SCREEN PARTNER ANNOUNCEMENT POPUP (FULL-VIEWPORT BACKDROP) */}
-      {/* ========================================================================= */}
-      {mounted && isPartnerModalOpen && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 min-h-screen w-screen bg-background z-[999999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div 
-            className="fixed inset-0 min-h-screen w-screen bg-background" 
-            onClick={() => setIsPartnerModalOpen(false)} 
-          />
-
-          <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200">
-            {/* Top Accent Strip */}
-            <div className="h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-primary" />
-
-            <div className="p-5 sm:p-6">
-              {/* Header with High-Visibility Close Button */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                    <Handshake className="h-5 w-5" weight="bold" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">
-                      Partner Announcement
-                    </span>
-                    <h3 className="text-lg font-black text-foreground tracking-tight leading-tight">
-                      Earn With LoraBiz
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Highly Prominent Close Button */}
-                <button
-                  onClick={() => setIsPartnerModalOpen(false)}
-                  className="h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
-                  aria-label="Close announcement"
-                  title="Close and go to dashboard"
-                >
-                  <X className="h-4 w-4" weight="bold" />
-                </button>
-              </div>
-
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Refer business owners and entrepreneurs to LoraBiz. Whenever they purchase <strong className="text-foreground font-semibold">any service</strong> (CAC, SCUML, NIN, Tax ID, and more — excluding airtime), you earn instant cash commissions paid to your Nigerian bank account.
-              </p>
-
-              {/* 2 Compact Value Points */}
-              <div className="my-4 space-y-2 bg-secondary/50 p-3 rounded-xl border border-border text-[11px]">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-4 w-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Bank className="h-2.5 w-2.5" weight="bold" />
-                  </div>
-                  <span className="font-semibold text-foreground">Instant cash payouts straight to your bank</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="h-4 w-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <ShareNetwork className="h-2.5 w-2.5" weight="bold" />
-                  </div>
-                  <span className="font-semibold text-foreground">Personalized referral links to share anywhere</span>
-                </div>
-              </div>
-
-              {/* Action Buttons: Crystal Clear & High Contrast */}
-              <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
-                <Link
-                  href="/dashboard/referrals"
-                  onClick={() => setIsPartnerModalOpen(false)}
-                  className="w-full sm:flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all"
-                >
-                  <span>Go to Partner Hub</span>
-                  <ArrowRight className="h-3.5 w-3.5" weight="bold" />
-                </Link>
-                
-                <button
-                  onClick={() => setIsPartnerModalOpen(false)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Skip & Open Dashboard
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ========================================================================= */}
-      {/* 2. EXECUTIVE HEADER WITH SIDE 3D ARTWORK & PINK CIRCLE                   */}
+      {/* 1. EXECUTIVE HEADER WITH SIDE 3D ARTWORK & PINK CIRCLE (LEADS TO REFERRAL) */}
       {/* ========================================================================= */}
       <div className="relative flex items-start justify-between pb-6 sm:pb-8 overflow-visible">
         {/* Left: Greetings & Subtitle (shifted up 2 steps) */}
@@ -500,22 +403,26 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Right: Soft Pink Circle & 3D Wallet */}
-        <div className="relative shrink-0 flex items-center justify-center select-none pointer-events-none pr-1 sm:pr-4">
-          {/* Soft pink circle backdrop */}
-          <div className="w-48 h-48 sm:w-60 sm:h-60 lg:w-68 lg:h-68 rounded-full bg-pink-100/80 dark:bg-pink-900/25 flex items-center justify-center relative translate-y-3 sm:translate-y-4">
+        {/* Right: Soft Pink Circle & 3D Wallet (Touching routes to Partner/Referral program) */}
+        <div className="relative shrink-0 flex items-center justify-center select-none pr-1 sm:pr-4">
+          <Link
+            href="/dashboard/referrals"
+            className="w-48 h-48 sm:w-60 sm:h-60 lg:w-68 lg:h-68 rounded-full bg-pink-100/80 dark:bg-pink-900/25 flex items-center justify-center relative translate-y-3 sm:translate-y-4 cursor-pointer group transition-transform active:scale-95"
+            title="LoraBiz Partner Program — Refer & Earn Commissions"
+            aria-label="Go to Referral Program"
+          >
             {/* 3D Wallet Illustration shifted up inside circle */}
-            <div className="relative w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 -translate-y-7 sm:-translate-y-8 lg:-translate-y-9">
+            <div className="relative w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 -translate-y-7 sm:-translate-y-8 lg:-translate-y-9 group-hover:scale-105 transition-transform duration-200">
               <Image
                 src="/wallet.png"
-                alt="Wallet Illustration"
+                alt="Wallet Illustration - Referral Program"
                 width={170}
                 height={170}
                 priority
                 className="object-contain w-full h-full drop-shadow-sm"
               />
             </div>
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -773,18 +680,24 @@ export default function DashboardPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. ACTIVE SERVICES (EXACT TURNAROUNDS SPECIFIED BY USER)                   */}
+      {/* 4. ACTIVE SERVICES (7 Core Categories • 45+ Active Sub-Services)          */}
       {/* ========================================================================= */}
       <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between border-b border-border pb-2.5">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <h2 className="text-lg font-black text-foreground tracking-tight">
               Active Services
             </h2>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              {LIVE_SERVICES.length} Live
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                7 Core Categories
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                <span>⚡</span>
+                <span>45+ Active Sub-Services Live</span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -807,10 +720,17 @@ export default function DashboardPage() {
                     />
                   </div>
 
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Active
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {service.subservicesCount && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-primary/10 text-primary border border-primary/20">
+                        {service.subservicesCount}
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Active
+                    </span>
+                  </div>
                 </div>
 
                 <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors leading-snug">
@@ -820,6 +740,12 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground leading-relaxed my-2 line-clamp-2">
                   {service.description}
                 </p>
+
+                {service.subservicesHighlights && (
+                  <p className="text-[10px] font-bold text-muted-foreground/90 mb-2 truncate">
+                    <span className="text-primary">•</span> {service.subservicesHighlights}
+                  </p>
+                )}
               </div>
 
               <div className="pt-2">
