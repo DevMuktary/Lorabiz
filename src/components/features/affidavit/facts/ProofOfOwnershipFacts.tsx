@@ -17,7 +17,7 @@ export function ProofOfOwnershipFacts({ facts, onChange }: ProofOfOwnershipFacts
           value={facts.subject}
           onChange={(e) => onChange({ subject: e.target.value })}
           placeholder="e.g. Toyota Corolla 2018, Land Parcel, Apple iPhone"
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
 
@@ -30,7 +30,7 @@ export function ProofOfOwnershipFacts({ facts, onChange }: ProofOfOwnershipFacts
           value={facts.identifyingNumber}
           onChange={(e) => onChange({ identifyingNumber: e.target.value })}
           placeholder="e.g. JTD123456789 or Serial Number"
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary font-mono"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary font-mono"
         />
       </div>
 
@@ -43,7 +43,7 @@ export function ProofOfOwnershipFacts({ facts, onChange }: ProofOfOwnershipFacts
           value={facts.details}
           onChange={(e) => onChange({ details: e.target.value })}
           placeholder="Provide details of purchase date, vendor, source, and affirm that you are the lawful owner."
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
     </div>

@@ -35,7 +35,7 @@ export function GeneralPurposeFacts({ facts, onChange }: GeneralPurposeFactsProp
           value={facts.title}
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder="e.g. Affidavit of Bachelorhood / Good Character / Non-Indebtedness"
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
 
@@ -53,7 +53,7 @@ export function GeneralPurposeFacts({ facts, onChange }: GeneralPurposeFactsProp
               value={stmt}
               onChange={(e) => handleStatementChange(idx, e.target.value)}
               placeholder={`Statement clause ${idx + 1}`}
-              className="flex-1 px-3.5 py-2 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+              className="flex-1 px-3.5 py-2 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
             />
             {facts.statements.length > 1 && (
               <button

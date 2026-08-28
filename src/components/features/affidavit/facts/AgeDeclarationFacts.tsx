@@ -19,7 +19,7 @@ export function AgeDeclarationFacts({ facts, onChange }: AgeDeclarationFactsProp
           type="date"
           value={facts.declaredDob}
           onChange={(e) => onChange({ declaredDob: e.target.value })}
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
 
@@ -32,7 +32,7 @@ export function AgeDeclarationFacts({ facts, onChange }: AgeDeclarationFactsProp
           value={facts.placeOfBirth}
           onChange={(e) => onChange({ placeOfBirth: e.target.value })}
           placeholder="e.g. Ikeja"
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
 
@@ -41,7 +41,7 @@ export function AgeDeclarationFacts({ facts, onChange }: AgeDeclarationFactsProp
         <select
           value={facts.stateOfBirth}
           onChange={(e) => onChange({ stateOfBirth: e.target.value })}
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         >
           {Object.keys(NIGERIA_STATES_LGA).map((s) => (
             <option key={s} value={s}>
@@ -58,7 +58,7 @@ export function AgeDeclarationFacts({ facts, onChange }: AgeDeclarationFactsProp
           value={facts.reason}
           onChange={(e) => onChange({ reason: e.target.value })}
           placeholder="e.g. Birth certificate unavailable at time of birth / NIN regularization"
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
     </div>

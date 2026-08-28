@@ -49,7 +49,7 @@ export function CacCorporateFacts({ facts, onChange }: CacCorporateFactsProps) {
             value={facts.companyName}
             onChange={(e) => onChange({ companyName: e.target.value })}
             placeholder="e.g. LORABIZ ENTERPRISE LIMITED"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
           />
         </div>
 
@@ -63,7 +63,7 @@ export function CacCorporateFacts({ facts, onChange }: CacCorporateFactsProps) {
             value={facts.rcBnNumber}
             onChange={(e) => onChange({ rcBnNumber: e.target.value })}
             placeholder="e.g. RC-1928374 or BN-2839481"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary font-mono"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary font-mono"
           />
         </div>
 
@@ -75,7 +75,7 @@ export function CacCorporateFacts({ facts, onChange }: CacCorporateFactsProps) {
           <select
             value={facts.positionInCompany}
             onChange={(e) => onChange({ positionInCompany: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
           >
             <option value="Director">Director</option>
             <option value="Proprietor / Partner">Proprietor / Partner</option>
@@ -95,7 +95,7 @@ export function CacCorporateFacts({ facts, onChange }: CacCorporateFactsProps) {
               <select
                 value={facts.documentLost || "Certificate of Incorporation"}
                 onChange={(e) => onChange({ documentLost: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
               >
                 <option value="Certificate of Incorporation">Original Certificate of Incorporation</option>
                 <option value="Memorandum and Articles of Association (MEMART)">MEMART (Certified Copy)</option>
@@ -109,7 +109,7 @@ export function CacCorporateFacts({ facts, onChange }: CacCorporateFactsProps) {
                 type="date"
                 value={facts.lossDate || ""}
                 onChange={(e) => onChange({ lossDate: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
               />
             </div>
 
@@ -120,7 +120,7 @@ export function CacCorporateFacts({ facts, onChange }: CacCorporateFactsProps) {
                 value={facts.policeReportNo || ""}
                 onChange={(e) => onChange({ policeReportNo: e.target.value })}
                 placeholder="e.g. DPO/IKJ/CR/2026/91"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
               />
             </div>
           </>
@@ -138,7 +138,7 @@ export function CacCorporateFacts({ facts, onChange }: CacCorporateFactsProps) {
                 value={facts.signatureChangeReason || ""}
                 onChange={(e) => onChange({ signatureChangeReason: e.target.value })}
                 placeholder="e.g. Variation from portal signature specimen, change in handwriting, standardization"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
               />
             </div>
 
@@ -188,7 +188,7 @@ export function CacCorporateFacts({ facts, onChange }: CacCorporateFactsProps) {
                 value={facts.erroneousDetail || ""}
                 onChange={(e) => onChange({ erroneousDetail: e.target.value })}
                 placeholder="e.g. John Adebayo (Wrong spelling or wrong DOB)"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
               />
             </div>
 
@@ -201,7 +201,7 @@ export function CacCorporateFacts({ facts, onChange }: CacCorporateFactsProps) {
                 value={facts.correctDetail || ""}
                 onChange={(e) => onChange({ correctDetail: e.target.value })}
                 placeholder="e.g. John Oluwaseun Adebayo"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
               />
             </div>
           </>

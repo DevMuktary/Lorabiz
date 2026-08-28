@@ -50,7 +50,7 @@ export function ChangeOfNameFacts({ facts, onChange }: ChangeOfNameFactsProps) {
               value={facts.formerFirstName || ""}
               onChange={(e) => handleFormerChange("formerFirstName", e.target.value)}
               placeholder="e.g. Mary"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -63,7 +63,7 @@ export function ChangeOfNameFacts({ facts, onChange }: ChangeOfNameFactsProps) {
               value={facts.formerMiddleName || ""}
               onChange={(e) => handleFormerChange("formerMiddleName", e.target.value)}
               placeholder="e.g. Ngozi"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -76,7 +76,7 @@ export function ChangeOfNameFacts({ facts, onChange }: ChangeOfNameFactsProps) {
               value={facts.formerLastName || ""}
               onChange={(e) => handleFormerChange("formerLastName", e.target.value)}
               placeholder="e.g. Okafor"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
             />
           </div>
         </div>
@@ -97,7 +97,7 @@ export function ChangeOfNameFacts({ facts, onChange }: ChangeOfNameFactsProps) {
               value={facts.newFirstName || ""}
               onChange={(e) => handleNewChange("newFirstName", e.target.value)}
               placeholder="e.g. Mary"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -110,7 +110,7 @@ export function ChangeOfNameFacts({ facts, onChange }: ChangeOfNameFactsProps) {
               value={facts.newMiddleName || ""}
               onChange={(e) => handleNewChange("newMiddleName", e.target.value)}
               placeholder="e.g. Ngozi"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -123,7 +123,7 @@ export function ChangeOfNameFacts({ facts, onChange }: ChangeOfNameFactsProps) {
               value={facts.newLastName || ""}
               onChange={(e) => handleNewChange("newLastName", e.target.value)}
               placeholder="e.g. Adeleke"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
             />
           </div>
         </div>
@@ -138,7 +138,7 @@ export function ChangeOfNameFacts({ facts, onChange }: ChangeOfNameFactsProps) {
           <select
             value={facts.reason}
             onChange={(e) => onChange({ reason: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
           >
             <option value="Marriage">Marriage (Change of Marital Surname)</option>
             <option value="Correction of Typographical Error">Correction of Typographical Error on Records</option>
@@ -157,7 +157,7 @@ export function ChangeOfNameFacts({ facts, onChange }: ChangeOfNameFactsProps) {
             value={facts.usageDestination}
             onChange={(e) => onChange({ usageDestination: e.target.value })}
             placeholder="e.g. Banks, NIN, BVN, Employer, Passport, NYSC"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
           />
         </div>
       </div>

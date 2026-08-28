@@ -19,7 +19,7 @@ export function LossOfItemFacts({ facts, onChange }: LossOfItemFactsProps) {
           value={facts.itemLost}
           onChange={(e) => onChange({ itemLost: e.target.value })}
           placeholder="e.g. MTN SIM Card, Original WAEC Certificate, Driver License"
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
 
@@ -32,7 +32,7 @@ export function LossOfItemFacts({ facts, onChange }: LossOfItemFactsProps) {
           value={facts.identifyingNumber}
           onChange={(e) => onChange({ identifyingNumber: e.target.value })}
           placeholder="e.g. 0803XXXXXXX or WASSCE/2018/..."
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary font-mono"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary font-mono"
         />
       </div>
 
@@ -42,7 +42,7 @@ export function LossOfItemFacts({ facts, onChange }: LossOfItemFactsProps) {
           type="date"
           value={facts.lossDate}
           onChange={(e) => onChange({ lossDate: e.target.value })}
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
 
@@ -53,7 +53,7 @@ export function LossOfItemFacts({ facts, onChange }: LossOfItemFactsProps) {
           value={facts.lossLocation}
           onChange={(e) => onChange({ lossLocation: e.target.value })}
           placeholder="e.g. En route Ikeja to Victoria Island, Lagos"
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
 
@@ -64,7 +64,7 @@ export function LossOfItemFacts({ facts, onChange }: LossOfItemFactsProps) {
           value={facts.policeReportNo || ""}
           onChange={(e) => onChange({ policeReportNo: e.target.value })}
           placeholder="e.g. DPO/IKJ/CR/2026/91"
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
     </div>
