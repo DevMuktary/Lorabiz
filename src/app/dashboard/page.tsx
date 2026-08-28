@@ -522,7 +522,7 @@ export default function DashboardPage() {
       {/* ========================================================================= */}
       {/* 3. DUAL-CARD HERO: COMPACT WALLET & VIP LEVEL + QUICK ACTIONS DOCK         */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch -mt-16 sm:-mt-20 lg:-mt-22 relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch -mt-32 sm:-mt-40 lg:-mt-44 relative z-10">
         
         {/* Left: Professional Compact Wallet Deck */}
         <div className="lg:col-span-6 p-4 sm:p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-3">
