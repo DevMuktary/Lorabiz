@@ -111,19 +111,39 @@ export async function POST(req: NextRequest) {
     }
     const isAdult = age >= 18;
 
-    // Price and Loyalty Tier Discount Calculation
+    // Price and Service Availability Verification from ServicePricing
     const isAttested = details?.sealTier === "HIGH_COURT_ATTESTED" || subCategory === "HIGH_COURT_ATTESTED";
-    const settingKey = isAttested ? "PRICE_COURT_AFFIDAVIT_ATTESTED" : "PRICE_COURT_AFFIDAVIT";
-    const defaultPrice = isAttested ? 4000 : 2500;
+    const tierServiceKey = isAttested ? "AFFIDAVIT_FEDERAL" : "AFFIDAVIT_STATE";
+    const matterServiceKey = `AFFIDAVIT_${category}`;
 
-    const priceSetting = await prisma.globalSetting.findUnique({
-      where: { key: settingKey }
+    // 1. Check Stamping Format Service Availability
+    const tierPricing = await prisma.servicePricing.findUnique({
+      where: { serviceKey: tierServiceKey }
     });
-    const basePrice = priceSetting ? Number(priceSetting.value) : defaultPrice;
+    if (tierPricing && !tierPricing.isActive) {
+      return NextResponse.json({
+        success: false,
+        message: tierPricing.maintenanceMsg || `${isAttested ? "Federal High Court" : "State Judiciary"} affidavit service is currently offline for maintenance.`
+      }, { status: 400 });
+    }
+
+    // 2. Check Specific Matter Service Availability (e.g. Change of Name, Age Declaration, CAC)
+    const matterPricing = await prisma.servicePricing.findUnique({
+      where: { serviceKey: matterServiceKey }
+    });
+    if (matterPricing && !matterPricing.isActive) {
+      return NextResponse.json({
+        success: false,
+        message: matterPricing.maintenanceMsg || `Affidavit for ${categoryLabel} is currently offline for maintenance.`
+      }, { status: 400 });
+    }
+
+    // Determine Base Price strictly from ServicePricing (or global setting fallback if seeded)
+    let basePrice = tierPricing ? Number(tierPricing.price) : (isAttested ? 4000 : 2500);
 
     const discountInfo = await getEffectiveServicePrice(
       prisma,
-      "COURT_AFFIDAVIT",
+      tierServiceKey,
       basePrice,
       user.id
     );

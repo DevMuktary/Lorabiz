@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,6 +17,11 @@ import {
   Spinner,
   WarningCircle,
   Gavel,
+  Eye,
+  PencilSimple,
+  User,
+  FileText,
+  ArrowsClockwise,
 } from "@phosphor-icons/react";
 import { useLoyalty } from "@/lib/useLoyalty";
 import { NIGERIA_STATES_LGA } from "@/lib/nigeria-states";
@@ -43,31 +49,47 @@ import {
   GeneralPurposeFacts,
 } from "@/components/features/affidavit/types";
 
-const STANDARD_PRICE = 2500;
-const ATTESTED_PRICE = 4000;
-
 export default function CourtAffidavitPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const { profile: loyaltyProfile } = useLoyalty();
 
+  const [mounted, setMounted] = useState(false);
   const [showGuidelines, setShowGuidelines] = useState<boolean>(true);
   const [showReviewModal, setShowReviewModal] = useState<boolean>(false);
+
+  // Progressive Step State:
+  // Step 1: Court Stamping Format (State Judiciary vs Federal High Court)
+  // Step 2: Affidavit Matter
+  // Step 3: Deponent Particulars
+  // Step 4: Legal Facts & Specimen Signature
+  const [selectedTier, setSelectedTier] = useState<AffidavitSealTier | null>("STANDARD");
+  const [isTierCollapsed, setIsTierCollapsed] = useState<boolean>(false);
+
+  const [category, setCategory] = useState<AffidavitCategoryType | null>(null);
   const [isCategoryCollapsed, setIsCategoryCollapsed] = useState<boolean>(false);
 
-  // Loading & Wallet State
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(true);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<3 | 4>(3);
 
+  // Live Dynamic Pricing from Database (No hardcoded fallbacks if API succeeds)
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [activeMap, setActiveMap] = useState<Record<string, boolean>>({});
+  const [isLoadingPricing, setIsLoadingPricing] = useState<boolean>(true);
+
+  // Lightbox State for "View Example"
+  const [lightbox, setLightbox] = useState<{ isOpen: boolean; src: string; label: string }>({
+    isOpen: false,
+    src: "",
+    label: "",
+  });
+
+  // Submission State
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [successSubmission, setSuccessSubmission] = useState<{
     trackingId: string;
     amountPaid: number;
   } | null>(null);
-
-  // Form State - Selected Category (null initially so matter cards are open)
-  const [category, setCategory] = useState<AffidavitCategoryType | null>(null);
 
   // 1. Deponent Info
   const [deponent, setDeponent] = useState<DeponentInfo>({
@@ -81,8 +103,8 @@ export default function CourtAffidavitPage() {
     calculatedAge: null,
     religion: "Islam", // Islam listed first as requested
     nationality: "Nigerian",
-    stateOfResidence: "", // Default empty prompt
-    lgaOfResidence: "", // Default empty prompt
+    stateOfResidence: "",
+    lgaOfResidence: "",
     streetAddress: "",
     occupation: "",
     signatureUrl: null,
@@ -154,29 +176,27 @@ export default function CourtAffidavitPage() {
     ],
   });
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4500);
-  };
-
-  // Fetch Wallet Balance
   useEffect(() => {
-    async function fetchWallet() {
+    setMounted(true);
+  }, []);
+
+  // Fetch Live Pricing from Database
+  useEffect(() => {
+    async function fetchPricing() {
       try {
-        const res = await fetch("/api/user/wallet");
+        const res = await fetch("/api/pricing");
         const json = await res.json();
-        if (json.success && json.wallet) {
-          setWalletBalance(Number(json.wallet.balance));
+        if (json.success && json.data) {
+          setPrices(json.data);
+          if (json.activeMap) setActiveMap(json.activeMap);
         }
       } catch (err) {
-        console.error("Wallet fetch error:", err);
+        console.error("Pricing fetch error:", err);
       } finally {
-        setIsLoadingWallet(false);
+        setIsLoadingPricing(false);
       }
     }
-    fetchWallet();
+    fetchPricing();
   }, []);
 
   // Pre-fill First and Last name if available from session
@@ -199,6 +219,13 @@ export default function CourtAffidavitPage() {
       }
     }
   }, [session, deponent.firstName, deponent.lastName]);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4500);
+  };
 
   // Derived age calculation
   const calculatedAge = (() => {
@@ -236,20 +263,25 @@ export default function CourtAffidavitPage() {
     }));
   };
 
+  // Step 1: Select Format
+  const handleTierSelect = (tier: AffidavitSealTier) => {
+    setSelectedTier(tier);
+    setDeponent((prev) => ({ ...prev, sealTier: tier }));
+    setIsTierCollapsed(true);
+    if (!category) {
+      setIsCategoryCollapsed(false);
+    }
+  };
+
+  // Step 2: Select Matter
   const handleCategorySelect = (selected: AffidavitCategoryType) => {
     setCategory(selected);
     setIsCategoryCollapsed(true);
+    setCurrentStep(3);
   };
 
-  const currentBasePrice =
-    deponent.sealTier === "HIGH_COURT_ATTESTED" ? ATTESTED_PRICE : STANDARD_PRICE;
-
-  // Validate form before opening Review Modal
-  const handleOpenReview = () => {
-    if (!category) {
-      showToast("Please select an affidavit matter first.");
-      return;
-    }
+  // Step 3 Validation -> Proceed to Step 4
+  const handleProceedToStep4 = () => {
     if (!deponent.firstName.trim() || !deponent.lastName.trim()) {
       showToast("Please enter both First Name and Last Name of the deponent.");
       return;
@@ -259,15 +291,51 @@ export default function CourtAffidavitPage() {
       return;
     }
     if (!deponent.stateOfResidence) {
-      showToast("Please select your State of Residence.");
+      showToast("Please select the State of Residence.");
       return;
     }
     if (!deponent.lgaOfResidence) {
-      showToast("Please select your LGA of Residence.");
+      showToast("Please select the LGA of Residence.");
       return;
     }
     if (!deponent.streetAddress.trim()) {
       showToast("Please provide the residential street address.");
+      return;
+    }
+
+    setCurrentStep(4);
+    window.scrollTo({ top: 400, behavior: "smooth" });
+  };
+
+  // Current Base Price derived dynamically from ServicePricing
+  const currentBasePrice =
+    selectedTier === "HIGH_COURT_ATTESTED"
+      ? Number(prices.AFFIDAVIT_FEDERAL || 4000)
+      : Number(prices.AFFIDAVIT_STATE || 2500);
+
+  // Validate form before opening Review Modal
+  const handleOpenReview = () => {
+    if (!selectedTier) {
+      showToast("Please select a court stamping format first.");
+      return;
+    }
+    if (!category) {
+      showToast("Please select an affidavit matter.");
+      return;
+    }
+    if (!deponent.firstName.trim() || !deponent.lastName.trim()) {
+      showToast("Please enter both First Name and Last Name of the deponent.");
+      setCurrentStep(3);
+      return;
+    }
+    if (!deponent.dob) {
+      showToast("Please enter the deponent's Date of Birth.");
+      setCurrentStep(3);
+      return;
+    }
+    if (!deponent.stateOfResidence || !deponent.lgaOfResidence || !deponent.streetAddress.trim()) {
+      showToast("Please complete the deponent's residential address details.");
+      setCurrentStep(3);
       return;
     }
 
@@ -329,18 +397,13 @@ export default function CourtAffidavitPage() {
 
   // Final Submit Action
   const handleSubmitAffidavit = async () => {
-    if (!category) return;
+    if (!category || !selectedTier) return;
     setIsSubmitting(true);
     try {
       const fullAddress = `${deponent.streetAddress.trim()}, ${deponent.lgaOfResidence}, ${deponent.stateOfResidence} State, Nigeria`;
       const payload = {
         category,
-        subCategory:
-          category === "CAC_CORPORATE"
-            ? cacFacts.subType
-            : deponent.sealTier === "HIGH_COURT_ATTESTED"
-            ? "HIGH_COURT_ATTESTED"
-            : "STANDARD",
+        subCategory: selectedTier,
         deponentFullName: deponent.fullName.trim(),
         passportUrl: deponent.passportUrl,
         gender: deponent.gender,
@@ -352,7 +415,7 @@ export default function CourtAffidavitPage() {
         signatureUrl: deponent.signatureUrl,
         details: {
           ...buildFactsPayload(),
-          sealTier: deponent.sealTier,
+          sealTier: selectedTier,
           deponentFirstName: deponent.firstName,
           deponentMiddleName: deponent.middleName,
           deponentLastName: deponent.lastName,
@@ -421,7 +484,7 @@ export default function CourtAffidavitPage() {
           <div>
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
               <ShieldCheck weight="bold" className="h-3 w-3" />
-              Federal Republic of Nigeria • High Court Registry
+              Federal Republic of Nigeria • Sworn Registry
             </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">Sworn Court Affidavit</h1>
             <p className="text-muted-foreground text-xs sm:text-sm">
@@ -474,353 +537,429 @@ export default function CourtAffidavitPage() {
         </div>
       )}
 
-      {/* STEP 1: INTERACTIVE COLLAPSIBLE CATEGORY SELECTION */}
-      <AffidavitCategoryCards
-        selectedCategory={category}
-        isCollapsed={isCategoryCollapsed}
-        onSelectCategory={handleCategorySelect}
-        onToggleCollapse={() => setIsCategoryCollapsed(false)}
+      {/* STEP 1: CHOOSE KIND OF AFFIDAVIT (State Judiciary vs Federal High Court) */}
+      <AffidavitSealTierSelector
+        selectedTier={selectedTier}
+        isCollapsed={isTierCollapsed}
+        onSelectTier={handleTierSelect}
+        onToggleCollapse={() => setIsTierCollapsed((prev) => !prev)}
+        onViewExample={(src, label) => setLightbox({ isOpen: true, src, label })}
+        prices={prices}
+        activeMap={activeMap}
+        isLoadingPricing={isLoadingPricing}
       />
 
-      {/* ONLY UNROLL STEP 2, 3, 4, 5 AFTER CATEGORY IS SELECTED */}
-      {category && (
+      {/* STEP 2: SELECT AFFIDAVIT MATTER (Change of Name #1, Age Declaration #2, CAC #3) */}
+      {selectedTier && (
+        <AffidavitCategoryCards
+          selectedCategory={category}
+          isCollapsed={isCategoryCollapsed}
+          onSelectCategory={handleCategorySelect}
+          onToggleCollapse={() => setIsCategoryCollapsed((prev) => !prev)}
+          activeMap={activeMap}
+        />
+      )}
+
+      {/* STEP 3 & 4: PROGRESSIVE DISCLOSURE */}
+      {selectedTier && category && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-300">
           
-          {/* STEP 2: CHOOSE COURT STAMPING FORMAT (2 TIERS) */}
-          <AffidavitSealTierSelector
-            selectedTier={deponent.sealTier}
-            onSelectTier={(tier) => setDeponent((prev) => ({ ...prev, sealTier: tier }))}
-            standardPrice={STANDARD_PRICE}
-            attestedPrice={ATTESTED_PRICE}
-          />
-
-          {/* STEP 3: DEPONENT PARTICULARS */}
-          <div className="p-5 sm:p-7 rounded-3xl bg-card border border-border shadow-xs space-y-5 text-left">
-            <div className="border-b border-border pb-3">
-              <h2 className="text-base sm:text-lg font-black text-foreground">
-                3. Deponent Information (Person Swearing Oath)
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                These legal particulars will form the preamble of the sworn affidavit.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* First Name */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">
-                  First Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={deponent.firstName}
-                  onChange={(e) => handleDeponentNameChange("firstName", e.target.value)}
-                  placeholder="e.g. Ibrahim"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              {/* Middle Name */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">
-                  Middle Name <span className="text-muted-foreground text-[10px] font-normal">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={deponent.middleName || ""}
-                  onChange={(e) => handleDeponentNameChange("middleName", e.target.value)}
-                  placeholder="e.g. Chukwuma"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              {/* Last Name / Surname */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">
-                  Surname / Last Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={deponent.lastName}
-                  onChange={(e) => handleDeponentNameChange("lastName", e.target.value)}
-                  placeholder="e.g. Adeleke"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              {/* Portrait Photo */}
-              <div className="sm:col-span-3 space-y-1.5">
-                <label className="text-xs font-bold text-foreground">
-                  Deponent Passport Photograph (Plain Background)
-                </label>
-                <FileUpload
-                  label="Upload Portrait Photo"
-                  description="Clear photo for official court seal"
-                  value={deponent.passportUrl}
-                  accept="image/jpeg, image/png"
-                  aspectRatio={1}
-                  onUploadSuccess={(url) => setDeponent((prev) => ({ ...prev, passportUrl: url }))}
-                  onRemove={() => setDeponent((prev) => ({ ...prev, passportUrl: null }))}
-                />
-              </div>
-
-              {/* Gender */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">
-                  Gender <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={deponent.gender}
-                  onChange={(e) =>
-                    setDeponent((prev) => ({
-                      ...prev,
-                      gender: e.target.value as "MALE" | "FEMALE" | "OTHER",
-                    }))
-                  }
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                >
-                  <option value="MALE">Male</option>
-                  <option value="FEMALE">Female</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
-
-              {/* Date of Birth */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-foreground">
-                    Date of Birth <span className="text-rose-500">*</span>
-                  </label>
-                  {calculatedAge !== null && (
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                        calculatedAge >= 18
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                          : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
-                      }`}
-                    >
-                      {calculatedAge} Yrs ({calculatedAge >= 18 ? "Adult Verified" : "Minor"})
-                    </span>
-                  )}
+          {/* STEP 3: DEPONENT INFORMATION (Person Swearing Oath) */}
+          {currentStep === 3 ? (
+            <div className="p-5 sm:p-7 rounded-3xl bg-card border border-border shadow-xs space-y-5 text-left animate-in fade-in">
+              <div className="border-b border-border pb-3 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-foreground">
+                    3. Deponent Information (Person Swearing Oath)
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    These legal particulars will form the preamble of the sworn court affidavit.
+                  </p>
                 </div>
-                <input
-                  type="date"
-                  value={deponent.dob}
-                  onChange={(e) => setDeponent((prev) => ({ ...prev, dob: e.target.value }))}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              {/* Religion (Islam listed first) */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">
-                  Religion (Court Oath Formula) <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={deponent.religion}
-                  onChange={(e) => setDeponent((prev) => ({ ...prev, religion: e.target.value }))}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                >
-                  <option value="Islam">Islam (Holy Quran)</option>
-                  <option value="Christianity">Christianity (Holy Bible)</option>
-                  <option value="Others">Affirmation (Non-Religious)</option>
-                </select>
-              </div>
-
-              {/* State of Residence (Empty Prompt by default) */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">
-                  State of Residence <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={deponent.stateOfResidence}
-                  onChange={(e) => handleStateChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                >
-                  <option value="">-- Select State of Residence --</option>
-                  {Object.keys(NIGERIA_STATES_LGA).map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* LGA of Residence (Empty Prompt by default) */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">
-                  LGA of Residence <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={deponent.lgaOfResidence}
-                  disabled={!deponent.stateOfResidence}
-                  onChange={(e) => setDeponent((prev) => ({ ...prev, lgaOfResidence: e.target.value }))}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary disabled:opacity-50"
-                >
-                  <option value="">-- Select LGA --</option>
-                  {(NIGERIA_STATES_LGA[deponent.stateOfResidence] || []).map((lga) => (
-                    <option key={lga} value={lga}>
-                      {lga}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Nationality */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Nationality</label>
-                <input
-                  type="text"
-                  value={deponent.nationality}
-                  onChange={(e) => setDeponent((prev) => ({ ...prev, nationality: e.target.value }))}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              {/* Residential Street Address */}
-              <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-xs font-bold text-foreground">
-                  Residential Street Address <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={deponent.streetAddress}
-                  onChange={(e) => setDeponent((prev) => ({ ...prev, streetAddress: e.target.value }))}
-                  placeholder="e.g. 14 Admiralty Way, Lekki Phase 1"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              {/* Occupation */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Occupation / Trade</label>
-                <input
-                  type="text"
-                  value={deponent.occupation || ""}
-                  onChange={(e) => setDeponent((prev) => ({ ...prev, occupation: e.target.value }))}
-                  placeholder="e.g. Business Executive / Trader"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* STEP 4: SWORN CATEGORY FACTS */}
-          <div className="p-5 sm:p-7 rounded-3xl bg-card border border-border shadow-xs space-y-5 text-left">
-            <div className="border-b border-border pb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-base sm:text-lg font-black text-foreground">
-                  4. Sworn Legal Facts
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Provide factual statements required under oath for this specific matter.
-                </p>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-black text-[10px]">
-                {category.replace(/_/g, " ")}
-              </span>
-            </div>
-
-            {category === "CAC_CORPORATE" && (
-              <CacCorporateFacts
-                facts={cacFacts}
-                onChange={(updated) => setCacFacts((prev) => ({ ...prev, ...updated }))}
-              />
-            )}
-
-            {category === "CHANGE_OF_NAME" && (
-              <ChangeOfNameFactsComp
-                facts={nameChangeFacts}
-                onChange={(updated) => setNameChangeFacts((prev) => ({ ...prev, ...updated }))}
-              />
-            )}
-
-            {category === "AGE_DECLARATION" && (
-              <AgeDeclarationFactsComp
-                facts={ageFacts}
-                onChange={(updated) => setAgeFacts((prev) => ({ ...prev, ...updated }))}
-              />
-            )}
-
-            {category === "LOSS_OF_ITEM" && (
-              <LossOfItemFactsComp
-                facts={lossFacts}
-                onChange={(updated) => setLossFacts((prev) => ({ ...prev, ...updated }))}
-              />
-            )}
-
-            {category === "PROOF_OF_OWNERSHIP" && (
-              <ProofOfOwnershipFactsComp
-                facts={ownershipFacts}
-                onChange={(updated) => setOwnershipFacts((prev) => ({ ...prev, ...updated }))}
-              />
-            )}
-
-            {category === "GENERAL_PURPOSE" && (
-              <GeneralPurposeFactsComp
-                facts={generalFacts}
-                onChange={(updated) => setGeneralFacts((prev) => ({ ...prev, ...updated }))}
-              />
-            )}
-          </div>
-
-          {/* STEP 5: DIGITAL SIGNATURE PAD */}
-          <div className="p-5 sm:p-7 rounded-3xl bg-card border border-border shadow-xs space-y-4 text-left">
-            <div className="border-b border-border pb-3">
-              <h2 className="text-base sm:text-lg font-black text-foreground">
-                5. Deponent Specimen Signature
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Draw your signature on the digital pad below or upload a photo of your signature on clean white paper.
-              </p>
-            </div>
-
-            <SignaturePad
-              label="Deponent Specimen Signature"
-              description="Official signature to be placed on the sealed court affidavit."
-              value={deponent.signatureUrl}
-              onChange={(url) => setDeponent((prev) => ({ ...prev, signatureUrl: url }))}
-              required={true}
-            />
-          </div>
-
-          {/* BOTTOM ACTION BAR */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-card border border-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-muted-foreground">Fee:</span>
-                <span className="text-lg font-black text-foreground font-mono">
-                  ₦
-                  {loyaltyProfile?.currentTier?.discountPct
-                    ? (
-                        currentBasePrice -
-                        Math.round((currentBasePrice * loyaltyProfile.currentTier.discountPct) / 100)
-                      ).toLocaleString()
-                    : currentBasePrice.toLocaleString()}
+                <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-black text-[10px]">
+                  Step 3 of 4
                 </span>
-                {loyaltyProfile?.currentTier?.discountPct &&
-                loyaltyProfile.currentTier.discountPct > 0 ? (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black border border-emerald-500/20">
-                    {loyaltyProfile.currentTier.name} ({loyaltyProfile.currentTier.discountPct}% OFF)
-                  </span>
-                ) : null}
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                Wallet Balance: <strong className="text-foreground font-mono">₦{walletBalance.toLocaleString()}</strong>
-              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* First Name */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">
+                    First Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={deponent.firstName}
+                    onChange={(e) => handleDeponentNameChange("firstName", e.target.value)}
+                    placeholder="e.g. Ibrahim"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                {/* Middle Name */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">
+                    Middle Name <span className="text-muted-foreground text-[10px] font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={deponent.middleName || ""}
+                    onChange={(e) => handleDeponentNameChange("middleName", e.target.value)}
+                    placeholder="e.g. Chukwuma"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                {/* Last Name / Surname */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">
+                    Surname / Last Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={deponent.lastName}
+                    onChange={(e) => handleDeponentNameChange("lastName", e.target.value)}
+                    placeholder="e.g. Adeleke"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                {/* Portrait Photo */}
+                <div className="sm:col-span-3 space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">
+                    Deponent Passport Photograph (Plain Background)
+                  </label>
+                  <FileUpload
+                    label="Upload Portrait Photo"
+                    description="Clear photo for official court seal"
+                    value={deponent.passportUrl}
+                    accept="image/jpeg, image/png"
+                    aspectRatio={1}
+                    onUploadSuccess={(url) => setDeponent((prev) => ({ ...prev, passportUrl: url }))}
+                    onRemove={() => setDeponent((prev) => ({ ...prev, passportUrl: null }))}
+                  />
+                </div>
+
+                {/* Gender */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">
+                    Gender <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={deponent.gender}
+                    onChange={(e) =>
+                      setDeponent((prev) => ({
+                        ...prev,
+                        gender: e.target.value as "MALE" | "FEMALE" | "OTHER",
+                      }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  >
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+
+                {/* Date of Birth */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-foreground">
+                      Date of Birth <span className="text-rose-500">*</span>
+                    </label>
+                    {calculatedAge !== null && (
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                          calculatedAge >= 18
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                            : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                        }`}
+                      >
+                        {calculatedAge} Yrs ({calculatedAge >= 18 ? "Adult Verified" : "Minor"})
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="date"
+                    value={deponent.dob}
+                    onChange={(e) => setDeponent((prev) => ({ ...prev, dob: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                {/* Religion (Islam listed first as requested) */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">
+                    Religion (Court Oath Formula) <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={deponent.religion}
+                    onChange={(e) => setDeponent((prev) => ({ ...prev, religion: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  >
+                    <option value="Islam">Islam (Holy Quran)</option>
+                    <option value="Christianity">Christianity (Holy Bible)</option>
+                    <option value="Others">Affirmation (Non-Religious)</option>
+                  </select>
+                </div>
+
+                {/* State of Residence */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">
+                    State of Residence <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={deponent.stateOfResidence}
+                    onChange={(e) => handleStateChange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  >
+                    <option value="">-- Select State of Residence --</option>
+                    {Object.keys(NIGERIA_STATES_LGA).map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* LGA of Residence */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">
+                    LGA of Residence <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={deponent.lgaOfResidence}
+                    disabled={!deponent.stateOfResidence}
+                    onChange={(e) => setDeponent((prev) => ({ ...prev, lgaOfResidence: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary disabled:opacity-50"
+                  >
+                    <option value="">-- Select LGA --</option>
+                    {(NIGERIA_STATES_LGA[deponent.stateOfResidence] || []).map((lga) => (
+                      <option key={lga} value={lga}>
+                        {lga}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Nationality */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Nationality</label>
+                  <input
+                    type="text"
+                    value={deponent.nationality}
+                    onChange={(e) => setDeponent((prev) => ({ ...prev, nationality: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                {/* Residential Street Address */}
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">
+                    Residential Street Address <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={deponent.streetAddress}
+                    onChange={(e) => setDeponent((prev) => ({ ...prev, streetAddress: e.target.value }))}
+                    placeholder="e.g. 14 Admiralty Way, Lekki Phase 1"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                {/* Occupation */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Occupation / Trade</label>
+                  <input
+                    type="text"
+                    value={deponent.occupation || ""}
+                    onChange={(e) => setDeponent((prev) => ({ ...prev, occupation: e.target.value }))}
+                    placeholder="e.g. Business Executive / Trader"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Continue to Step 4 button */}
+              <div className="pt-4 border-t border-border flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryCollapsed(false)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-secondary text-foreground text-xs font-bold hover:bg-secondary/80 transition-colors cursor-pointer"
+                >
+                  <ArrowLeft size={14} weight="bold" />
+                  <span>Change Matter</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleProceedToStep4}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-md hover:shadow-lg transition-all cursor-pointer"
+                >
+                  <span>Next: Legal Facts &amp; Signature</span>
+                  <ArrowRight size={14} weight="bold" />
+                </button>
+              </div>
             </div>
+          ) : (
+            /* Collapsed Deponent Summary Box when user is on Step 4 */
+            <div className="p-5 sm:p-6 rounded-3xl bg-card border border-border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in text-left">
+              <div className="flex items-start sm:items-center gap-4 min-w-0">
+                <div className="h-12 w-12 rounded-2xl bg-secondary border border-border flex items-center justify-center shrink-0 shadow-xs text-foreground">
+                  <User size={24} weight="bold" />
+                </div>
+                <div className="min-w-0 space-y-0.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">
+                    3. Deponent Particulars
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black text-foreground">
+                    {deponent.fullName || `${deponent.firstName} ${deponent.lastName}`}
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed truncate">
+                    {deponent.gender} • {calculatedAge !== null ? `${calculatedAge} Yrs` : "Age Stated"} ({deponent.religion}) • {deponent.streetAddress}, {deponent.lgaOfResidence}, {deponent.stateOfResidence} State
+                  </p>
+                </div>
+              </div>
 
-            <button
-              type="button"
-              onClick={handleOpenReview}
-              className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-md hover:shadow-lg hover:shadow-primary/20 transition-all cursor-pointer"
-            >
-              <span>Review &amp; Pay Affidavit</span>
-              <ArrowRight size={16} weight="bold" />
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(3)}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-xs font-bold text-foreground transition-all shrink-0 cursor-pointer shadow-xs self-start sm:self-auto"
+              >
+                <PencilSimple size={14} weight="bold" />
+                <span>Edit Deponent Info</span>
+              </button>
+            </div>
+          )}
 
-          {/* REVIEW & CHECKOUT MODAL */}
+          {/* STEP 4: SWORN LEGAL FACTS & SPECIMEN SIGNATURE */}
+          {currentStep === 4 && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              {/* Matter Facts Form */}
+              <div className="p-5 sm:p-7 rounded-3xl bg-card border border-border shadow-xs space-y-5 text-left">
+                <div className="border-b border-border pb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-black text-foreground">
+                      4. Sworn Legal Facts
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Provide factual statements required under oath for this specific matter.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-black text-[10px]">
+                    {category.replace(/_/g, " ")}
+                  </span>
+                </div>
+
+                {category === "CHANGE_OF_NAME" && (
+                  <ChangeOfNameFactsComp
+                    facts={nameChangeFacts}
+                    onChange={(updated) => setNameChangeFacts((prev) => ({ ...prev, ...updated }))}
+                  />
+                )}
+
+                {category === "AGE_DECLARATION" && (
+                  <AgeDeclarationFactsComp
+                    facts={ageFacts}
+                    onChange={(updated) => setAgeFacts((prev) => ({ ...prev, ...updated }))}
+                  />
+                )}
+
+                {category === "CAC_CORPORATE" && (
+                  <CacCorporateFacts
+                    facts={cacFacts}
+                    onChange={(updated) => setCacFacts((prev) => ({ ...prev, ...updated }))}
+                  />
+                )}
+
+                {category === "LOSS_OF_ITEM" && (
+                  <LossOfItemFactsComp
+                    facts={lossFacts}
+                    onChange={(updated) => setLossFacts((prev) => ({ ...prev, ...updated }))}
+                  />
+                )}
+
+                {category === "PROOF_OF_OWNERSHIP" && (
+                  <ProofOfOwnershipFactsComp
+                    facts={ownershipFacts}
+                    onChange={(updated) => setOwnershipFacts((prev) => ({ ...prev, ...updated }))}
+                  />
+                )}
+
+                {category === "GENERAL_PURPOSE" && (
+                  <GeneralPurposeFactsComp
+                    facts={generalFacts}
+                    onChange={(updated) => setGeneralFacts((prev) => ({ ...prev, ...updated }))}
+                  />
+                )}
+              </div>
+
+              {/* Digital Specimen Signature Pad */}
+              <div className="p-5 sm:p-7 rounded-3xl bg-card border border-border shadow-xs space-y-4 text-left">
+                <div className="border-b border-border pb-3">
+                  <h2 className="text-base sm:text-lg font-black text-foreground">
+                    5. Deponent Specimen Signature
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Draw your signature on the digital canvas below or upload a clear photo of your signature on white paper.
+                  </p>
+                </div>
+
+                <SignaturePad
+                  label="Deponent Specimen Signature"
+                  description="Official signature to be placed on the sealed court affidavit."
+                  value={deponent.signatureUrl}
+                  onChange={(url) => setDeponent((prev) => ({ ...prev, signatureUrl: url }))}
+                  required={true}
+                />
+              </div>
+
+              {/* Step 4 Action Bar */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-card border border-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-secondary text-foreground text-xs font-bold hover:bg-secondary/80 transition-colors cursor-pointer self-start sm:self-auto"
+                >
+                  <ArrowLeft size={14} weight="bold" />
+                  <span>Back to Deponent Info</span>
+                </button>
+
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-muted-foreground">Total Fee:</span>
+                      <span className="text-lg font-black text-foreground font-mono">
+                        ₦
+                        {loyaltyProfile?.currentTier?.discountPct
+                          ? (
+                              currentBasePrice -
+                              Math.round((currentBasePrice * loyaltyProfile.currentTier.discountPct) / 100)
+                            ).toLocaleString()
+                          : currentBasePrice.toLocaleString()}
+                      </span>
+                      {loyaltyProfile?.currentTier?.discountPct && loyaltyProfile.currentTier.discountPct > 0 ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black border border-emerald-500/20">
+                          {loyaltyProfile.currentTier.name} ({loyaltyProfile.currentTier.discountPct}% OFF)
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenReview}
+                    className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-md hover:shadow-lg hover:shadow-primary/20 transition-all cursor-pointer shrink-0"
+                  >
+                    <span>Review &amp; Pay Affidavit</span>
+                    <ArrowRight size={16} weight="bold" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* REVIEW & CHECKOUT MODAL (Fetches wallet balance on open) */}
           <AffidavitReviewModal
             isOpen={showReviewModal}
             onClose={() => setShowReviewModal(false)}
@@ -835,11 +974,49 @@ export default function CourtAffidavitPage() {
             basePrice={currentBasePrice}
             tierName={loyaltyProfile?.currentTier?.name}
             tierDiscountPct={loyaltyProfile?.currentTier?.discountPct || 0}
-            walletBalance={walletBalance}
             isSubmitting={isSubmitting}
             onConfirmSubmit={handleSubmitAffidavit}
           />
         </div>
+      )}
+
+      {/* Lightbox Specimen Preview Modal for Court Example Affidavits */}
+      {mounted && lightbox.isOpen && typeof document !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
+        >
+          <div
+            className="relative w-full max-w-lg flex flex-col items-center bg-card text-card-foreground border border-border rounded-3xl shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 my-auto max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full bg-card border-b border-border px-5 py-3.5 flex items-center justify-between">
+              <span className="text-sm font-bold text-foreground flex items-center gap-2">
+                <ShieldCheck size={18} weight="fill" className="text-emerald-500" />
+                {lightbox.label} Example Specimen
+              </span>
+              <button
+                type="button"
+                onClick={() => setLightbox({ isOpen: false, src: "", label: "" })}
+                className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <X size={18} weight="bold" />
+              </button>
+            </div>
+            <div className="relative w-full h-80 sm:h-96 bg-card overflow-hidden p-3 flex items-center justify-center">
+              <div className="relative w-full h-full">
+                <Image
+                  src={lightbox.src}
+                  alt={lightbox.label}
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* SIDE SLIDE-IN TOAST ERROR NOTIFICATION */}

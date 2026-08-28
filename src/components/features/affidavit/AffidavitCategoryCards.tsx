@@ -16,6 +16,7 @@ import { AffidavitCategoryType } from "./types";
 
 interface CategoryDef {
   id: AffidavitCategoryType;
+  serviceKey: string;
   title: string;
   subtitle: string;
   icon: any;
@@ -24,28 +25,32 @@ interface CategoryDef {
 
 export const CATEGORIES: CategoryDef[] = [
   {
+    id: "CHANGE_OF_NAME",
+    serviceKey: "AFFIDAVIT_CHANGE_OF_NAME",
+    title: "Change & Correction of Name",
+    subtitle: "For Commercial Banks, NIN, BVN, Employers, International Passports, NYSC, Marriage, Academic records & more",
+    icon: TextT,
+    badge: "Most Popular",
+  },
+  {
+    id: "AGE_DECLARATION",
+    serviceKey: "AFFIDAVIT_AGE_DECLARATION",
+    title: "Age Declaration & DOB Updates",
+    subtitle: "Official declaration of age and date of birth correction for Banks, NIN, Pension, Civil Service, Employment & more",
+    icon: Cake,
+    badge: "High Demand",
+  },
+  {
     id: "CAC_CORPORATE",
+    serviceKey: "AFFIDAVIT_CAC_CORPORATE",
     title: "CAC Corporate Matters",
     subtitle: "Loss of Incorporation Certificate / MEMART, Specimen Signature Variation, Director/Shareholder data corrections & more",
     icon: Buildings,
     badge: "Corporate Legal",
   },
   {
-    id: "CHANGE_OF_NAME",
-    title: "Change & Correction of Name",
-    subtitle: "For Commercial Banks, NIN, BVN, Employers, International Passports, NYSC, Marriage, Academic records & more",
-    icon: TextT,
-    badge: "Most Common",
-  },
-  {
-    id: "AGE_DECLARATION",
-    title: "Age Declaration & DOB Updates",
-    subtitle: "Official declaration of age and date of birth correction for Banks, NIN, Pension, Civil Service, Employment & more",
-    icon: Cake,
-    badge: "Age Verification",
-  },
-  {
     id: "LOSS_OF_ITEM",
+    serviceKey: "AFFIDAVIT_LOSS_OF_ITEM",
     title: "Loss of Document / SIM Card",
     subtitle: "For SIM Card Retrieval (MTN, Airtel, Glo, 9mobile), Lost Certificates, Vehicle Documents, Receipts & more",
     icon: FileText,
@@ -53,6 +58,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     id: "PROOF_OF_OWNERSHIP",
+    serviceKey: "AFFIDAVIT_PROOF_OF_OWNERSHIP",
     title: "Proof of Ownership & Status",
     subtitle: "For Vehicles, Electronics, Land/Property, Declaration of Bachelorhood/Spinsterhood, Next-of-Kin & more",
     icon: Car,
@@ -60,6 +66,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     id: "GENERAL_PURPOSE",
+    serviceKey: "AFFIDAVIT_GENERAL_PURPOSE",
     title: "General Purpose Sworn Statement",
     subtitle: "Custom sworn legal statements and declarations for Embassies, Institutions, FinTechs, Agreements & more",
     icon: Scales,
@@ -72,6 +79,7 @@ interface AffidavitCategoryCardsProps {
   isCollapsed: boolean;
   onSelectCategory: (cat: AffidavitCategoryType) => void;
   onToggleCollapse: () => void;
+  activeMap?: Record<string, boolean>;
 }
 
 export function AffidavitCategoryCards({
@@ -79,6 +87,7 @@ export function AffidavitCategoryCards({
   isCollapsed,
   onSelectCategory,
   onToggleCollapse,
+  activeMap = {},
 }: AffidavitCategoryCardsProps) {
   const currentCategoryObj = CATEGORIES.find((c) => c.id === selectedCategory);
 
@@ -94,7 +103,7 @@ export function AffidavitCategoryCards({
           <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                Selected Matter
+                2. Affidavit Matter
               </span>
               {currentCategoryObj.badge && (
                 <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
@@ -128,7 +137,7 @@ export function AffidavitCategoryCards({
     <div className="p-5 sm:p-7 rounded-3xl bg-card border border-border shadow-xs space-y-4 animate-in fade-in text-left">
       <div className="border-b border-border pb-3">
         <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-          1. Select Affidavit Matter
+          2. Select Affidavit Matter
         </h2>
         <p className="text-xs text-muted-foreground">
           Choose the purpose of your sworn affidavit. Accepted across banks, telecom, CAC, embassies, and institutions nationwide.
@@ -139,22 +148,29 @@ export function AffidavitCategoryCards({
         {CATEGORIES.map((cat) => {
           const Icon = cat.icon;
           const isSelected = selectedCategory === cat.id;
+          const isAvailable = activeMap[cat.serviceKey] !== false;
 
           return (
             <div
               key={cat.id}
-              onClick={() => onSelectCategory(cat.id)}
-              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative group ${
-                isSelected
-                  ? "border-primary bg-primary/5 shadow-md shadow-primary/5"
-                  : "border-border bg-background hover:border-primary/40 hover:bg-secondary/20"
+              onClick={() => {
+                if (isAvailable) onSelectCategory(cat.id);
+              }}
+              className={`p-5 rounded-2xl border-2 transition-all flex flex-col justify-between relative group ${
+                !isAvailable
+                  ? "opacity-50 bg-secondary/20 border-border/60 cursor-not-allowed"
+                  : isSelected
+                  ? "border-primary bg-primary/5 shadow-md shadow-primary/5 cursor-pointer ring-1 ring-primary/30"
+                  : "border-border bg-background hover:border-primary/40 hover:bg-secondary/20 cursor-pointer"
               }`}
             >
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div
                     className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${
-                      isSelected
+                      !isAvailable
+                        ? "bg-secondary text-muted-foreground"
+                        : isSelected
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-foreground group-hover:text-primary"
                     }`}
@@ -162,11 +178,18 @@ export function AffidavitCategoryCards({
                     <Icon size={20} weight="bold" />
                   </div>
 
-                  {cat.badge && (
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                      {cat.badge}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {!isAvailable && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        Offline
+                      </span>
+                    )}
+                    {cat.badge && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                        {cat.badge}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -180,10 +203,16 @@ export function AffidavitCategoryCards({
               </div>
 
               <div className="pt-3 mt-3 border-t border-border/60 flex items-center justify-between text-xs font-bold">
-                <span className={isSelected ? "text-primary font-black" : "text-muted-foreground"}>
-                  {isSelected ? "Selected" : "Select Matter"}
-                </span>
-                {isSelected && <CheckCircle size={18} weight="fill" className="text-primary" />}
+                {!isAvailable ? (
+                  <span className="text-rose-500 font-bold text-[11px]">Unavailable</span>
+                ) : (
+                  <>
+                    <span className={isSelected ? "text-primary font-black" : "text-muted-foreground"}>
+                      {isSelected ? "Selected" : "Select Matter"}
+                    </span>
+                    {isSelected && <CheckCircle size={18} weight="fill" className="text-primary" />}
+                  </>
+                )}
               </div>
             </div>
           );

@@ -49,7 +49,6 @@ interface AffidavitReviewModalProps {
   basePrice: number;
   tierName?: string;
   tierDiscountPct: number;
-  walletBalance: number;
   isSubmitting: boolean;
   onConfirmSubmit: () => void;
 }
@@ -68,12 +67,13 @@ export function AffidavitReviewModal({
   basePrice,
   tierName = "Starter",
   tierDiscountPct = 0,
-  walletBalance,
   isSubmitting,
   onConfirmSubmit,
 }: AffidavitReviewModalProps) {
   const [mounted, setMounted] = useState(false);
   const [statutoryConsent, setStatutoryConsent] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [isLoadingWallet, setIsLoadingWallet] = useState(true);
 
   useEffect(() => {
     setMounted(true);
@@ -83,6 +83,27 @@ export function AffidavitReviewModal({
     if (isOpen) {
       document.body.style.overflow = "hidden";
       document.documentElement.style.overflow = "hidden";
+      setIsLoadingWallet(true);
+
+      // Dynamically fetch wallet balance when modal opens
+      fetch("/api/user/wallet")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.wallet) {
+            setWalletBalance(Number(data.wallet.balance));
+          } else if (typeof data.balance === "number") {
+            setWalletBalance(data.balance);
+          } else {
+            setWalletBalance(0);
+          }
+        })
+        .catch((err) => {
+          console.error("Wallet fetch error inside modal:", err);
+          setWalletBalance(0);
+        })
+        .finally(() => {
+          setIsLoadingWallet(false);
+        });
     } else {
       document.body.style.overflow = "";
       document.documentElement.style.overflow = "";
@@ -98,7 +119,7 @@ export function AffidavitReviewModal({
 
   const discountAmount = Math.round((basePrice * tierDiscountPct) / 100);
   const finalPrice = Math.max(0, basePrice - discountAmount);
-  const hasEnoughFunds = walletBalance >= finalPrice;
+  const hasEnoughFunds = walletBalance !== null && walletBalance >= finalPrice;
 
   return createPortal(
     <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/90 backdrop-blur-md animate-in fade-in duration-200 text-left font-sans">
@@ -230,10 +251,21 @@ export function AffidavitReviewModal({
             <div className="pt-2 border-t border-border flex items-center justify-between text-[11px]">
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Wallet size={14} weight="bold" />
-                <span>Balance: <strong className="text-foreground font-mono">₦{walletBalance.toLocaleString()}</strong></span>
+                <span>
+                  Balance:{" "}
+                  {isLoadingWallet ? (
+                    <span className="inline-block h-3 w-14 bg-secondary animate-pulse rounded"></span>
+                  ) : (
+                    <strong className="text-foreground font-mono">
+                      ₦{Number(walletBalance || 0).toLocaleString()}
+                    </strong>
+                  )}
+                </span>
               </div>
 
-              {!hasEnoughFunds ? (
+              {isLoadingWallet ? (
+                <span className="text-muted-foreground text-[10px] animate-pulse">Checking balance...</span>
+              ) : !hasEnoughFunds ? (
                 <span className="text-rose-600 font-bold flex items-center gap-1">
                   <WarningCircle size={12} weight="fill" /> Insufficient Balance
                 </span>
@@ -270,13 +302,22 @@ export function AffidavitReviewModal({
             Cancel
           </button>
 
-          {!hasEnoughFunds ? (
+          {isLoadingWallet ? (
+            <button
+              type="button"
+              disabled={true}
+              className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-secondary text-muted-foreground font-bold text-xs cursor-not-allowed"
+            >
+              <Spinner size={14} className="animate-spin" />
+              <span>Verifying Wallet...</span>
+            </button>
+          ) : !hasEnoughFunds ? (
             <Link
               href="/dashboard/wallet"
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-md hover:opacity-90 transition-all cursor-pointer"
             >
               <Plus size={14} weight="bold" />
-              <span>Fund Wallet (Need ₦{finalPrice.toLocaleString()})</span>
+              <span>Fund Wallet (Need ₦{Math.max(0, finalPrice - (walletBalance || 0)).toLocaleString()})</span>
             </Link>
           ) : (
             <button

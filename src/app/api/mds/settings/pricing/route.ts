@@ -47,6 +47,15 @@ export async function GET() {
       { serviceKey: "BVN_MOD_PHONE", title: "BVN Modification - Change of Phone Number", price: 2500.0 },
       { serviceKey: "BVN_MOD_DOB", title: "BVN Modification - Change of Date of Birth", price: 15000.0 },
       { serviceKey: "BVN_MOD_DOB_SURCHARGE", title: "BVN Modification - 5-Year DOB Surcharge", price: 5000.0 },
+      // Court Affidavit Services
+      { serviceKey: "AFFIDAVIT_STATE", title: "Court Affidavit - State Judiciary", price: 2500.0 },
+      { serviceKey: "AFFIDAVIT_FEDERAL", title: "Court Affidavit - Federal High Court", price: 4000.0 },
+      { serviceKey: "AFFIDAVIT_CHANGE_OF_NAME", title: "Court Affidavit - Change / Correction of Name", price: 2500.0 },
+      { serviceKey: "AFFIDAVIT_AGE_DECLARATION", title: "Court Affidavit - Age Declaration / DOB", price: 2500.0 },
+      { serviceKey: "AFFIDAVIT_CAC_CORPORATE", title: "Court Affidavit - CAC Corporate Matters", price: 2500.0 },
+      { serviceKey: "AFFIDAVIT_LOSS_OF_ITEM", title: "Court Affidavit - Loss of Document / SIM Card", price: 2500.0 },
+      { serviceKey: "AFFIDAVIT_PROOF_OF_OWNERSHIP", title: "Court Affidavit - Proof of Ownership & Status", price: 2500.0 },
+      { serviceKey: "AFFIDAVIT_GENERAL_PURPOSE", title: "Court Affidavit - General Purpose Statement", price: 2500.0 },
     ];
 
     for (const svc of defaultServices) {
