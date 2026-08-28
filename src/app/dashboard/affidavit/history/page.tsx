@@ -141,7 +141,7 @@ export default function AffidavitHistoryPage() {
     pending: affidavits.filter((a) => a.status === "PENDING").length,
     processing: affidavits.filter((a) => a.status === "PROCESSING").length,
     completed: affidavits.filter((a) => a.status === "COMPLETED").length,
-    queried: affidavits.filter((a) => a.status === "QUERIED" || a.status === "REJECTED").length,
+    failed: affidavits.filter((a) => a.status === "REJECTED" || a.status === "QUERIED").length,
   }), [affidavits]);
 
   const filteredAffidavits = useMemo(() => {
@@ -159,7 +159,7 @@ export default function AffidavitHistoryPage() {
       if (activeStatusFilter === "PENDING") matchesStatus = item.status === "PENDING";
       if (activeStatusFilter === "PROCESSING") matchesStatus = item.status === "PROCESSING";
       if (activeStatusFilter === "COMPLETED") matchesStatus = item.status === "COMPLETED";
-      if (activeStatusFilter === "QUERIED") matchesStatus = item.status === "QUERIED" || item.status === "REJECTED";
+      if (activeStatusFilter === "FAILED") matchesStatus = item.status === "REJECTED" || item.status === "QUERIED";
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
@@ -207,7 +207,7 @@ export default function AffidavitHistoryPage() {
               Court Affidavit History
             </h1>
             <p className="text-muted-foreground text-xs font-medium">
-              Monitor swearing progress, view submitted details, resolve queries, and download stamped certificates (2–5 Working Hours • Mon–Fri).
+              Monitor swearing progress, view submitted details, download sealed certificates (2–5 Working Hours • Mon–Fri).
             </p>
           </div>
         </div>
@@ -281,18 +281,18 @@ export default function AffidavitHistoryPage() {
 
         <button
           type="button"
-          onClick={() => setActiveStatusFilter("QUERIED")}
+          onClick={() => setActiveStatusFilter("FAILED")}
           className={`text-left p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between col-span-2 sm:col-span-1 ${
-            activeStatusFilter === "QUERIED"
+            activeStatusFilter === "FAILED"
               ? "ring-2 ring-rose-500 border-rose-500 bg-rose-500/15 shadow-xs"
               : "bg-rose-500/5 border-rose-500/20 hover:border-rose-500/50"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Queried / Issue</span>
-            <WarningCircle weight={activeStatusFilter === "QUERIED" ? "fill" : "bold"} className="h-4 w-4 text-rose-500" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Failed</span>
+            <XCircle weight={activeStatusFilter === "FAILED" ? "fill" : "bold"} className="h-4 w-4 text-rose-500" />
           </div>
-          <span className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 mt-2">{stats.queried}</span>
+          <span className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 mt-2">{stats.failed}</span>
         </button>
       </div>
 
@@ -427,14 +427,12 @@ export default function AffidavitHistoryPage() {
                               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                               : item.status === "PROCESSING"
                               ? "bg-sky-500/10 text-sky-600 border border-sky-500/20"
-                              : item.status === "QUERIED"
-                              ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
-                              : item.status === "REJECTED"
+                              : item.status === "REJECTED" || item.status === "QUERIED"
                               ? "bg-rose-500/10 text-rose-600 border border-rose-500/20"
                               : "bg-secondary text-muted-foreground border border-border"
                           }`}
                         >
-                          {item.status}
+                          {item.status === "REJECTED" || item.status === "QUERIED" ? "FAILED" : item.status}
                         </span>
                       </td>
 

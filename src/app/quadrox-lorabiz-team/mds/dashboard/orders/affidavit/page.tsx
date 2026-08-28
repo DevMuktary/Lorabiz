@@ -63,8 +63,7 @@ export default function MdsAffidavitPipelinePage() {
       if (activeTab === "PENDING") matchesTab = ticket.status === "PENDING";
       if (activeTab === "PROCESSING") matchesTab = ticket.status === "PROCESSING";
       if (activeTab === "COMPLETED") matchesTab = ticket.status === "COMPLETED";
-      if (activeTab === "QUERIED") matchesTab = ticket.status === "QUERIED";
-      if (activeTab === "REJECTED") matchesTab = ticket.status === "REJECTED";
+      if (activeTab === "REJECTED") matchesTab = ticket.status === "REJECTED" || ticket.status === "QUERIED";
 
       const matchesCategory = categoryFilter === "ALL" || ticket.category === categoryFilter;
 
@@ -150,14 +149,8 @@ export default function MdsAffidavitPipelinePage() {
             onClick={() => setActiveTab("COMPLETED")}
           />
           <TabButton
-            label="Queried"
-            count={pipeline.filter((t) => t.status === "QUERIED").length}
-            isActive={activeTab === "QUERIED"}
-            onClick={() => setActiveTab("QUERIED")}
-          />
-          <TabButton
-            label="Rejected"
-            count={pipeline.filter((t) => t.status === "REJECTED").length}
+            label="Failed / Rejected"
+            count={pipeline.filter((t) => t.status === "REJECTED" || t.status === "QUERIED").length}
             isActive={activeTab === "REJECTED"}
             onClick={() => setActiveTab("REJECTED")}
           />

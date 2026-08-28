@@ -121,14 +121,12 @@ export function AffidavitDetailsModal({
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                       : record.status === "PROCESSING"
                       ? "bg-sky-500/10 text-sky-600 border border-sky-500/20"
-                      : record.status === "QUERIED"
-                      ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
-                      : record.status === "REJECTED"
+                      : record.status === "REJECTED" || record.status === "QUERIED"
                       ? "bg-rose-500/10 text-rose-600 border border-rose-500/20"
                       : "bg-secondary text-muted-foreground border border-border"
                   }`}
                 >
-                  {record.status}
+                  {record.status === "REJECTED" || record.status === "QUERIED" ? "FAILED" : record.status}
                 </span>
               </div>
               <h2 className="text-base font-black text-foreground mt-0.5 truncate">
@@ -174,38 +172,13 @@ export function AffidavitDetailsModal({
           </div>
         )}
 
-        {record.status === "QUERIED" && record.queryReason && (
-          <div className="px-5 py-3 bg-amber-500/10 border-b border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
-            <div className="flex items-start gap-2">
-              <WarningCircle size={18} weight="fill" className="text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-xs">
-                <span className="font-bold text-amber-900 dark:text-amber-300 block">Compliance Query Issued</span>
-                <p className="text-amber-800 dark:text-amber-200 text-[11px]">{record.queryReason}</p>
-              </div>
-            </div>
-
-            {onOpenQueryResolve && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenQueryResolve(record);
-                }}
-                className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors cursor-pointer shrink-0"
-              >
-                <span>Fix &amp; Re-Submit</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {record.status === "REJECTED" && (
+        {(record.status === "REJECTED" || record.status === "QUERIED") && (
           <div className="px-5 py-3 bg-rose-500/10 border-b border-rose-500/20 flex items-start gap-2 shrink-0 text-xs">
             <XCircle size={18} weight="fill" className="text-rose-600 shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-rose-900 dark:text-rose-300 block">Application Rejected &amp; Refunded</span>
+              <span className="font-bold text-rose-900 dark:text-rose-300 block">Application Failed / Rejected</span>
               <p className="text-rose-800 dark:text-rose-200 text-[11px]">
-                {record.adminNotes || "This application did not meet High Court swearing criteria."}
+                {record.adminNotes || record.queryReason || "This application could not be completed by the High Court Registry."}
                 {record.isRefunded && ` (₦${Number(record.refundAmount || record.amountCharged).toLocaleString()} refunded to wallet)`}
               </p>
             </div>
