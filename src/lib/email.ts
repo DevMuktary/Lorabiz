@@ -51,76 +51,36 @@ export async function sendEmail({
   return res.json();
 }
 
-// Trusted domains for attachments to prevent SSRF (Server-Side Request Forgery)
-const TRUSTED_ATTACHMENT_DOMAINS = [
-  "res.cloudinary.com",
-  "cloudinary.com",
-  "storage.googleapis.com",
-  "s3.amazonaws.com",
-  "lorabiz.com",
-];
-
-function isSafeHttpsAttachmentUrl(rawUrl: string): boolean {
-  try {
-    const parsed = new URL(rawUrl);
-    // 1. Strict HTTPS protocol check
-    if (parsed.protocol !== "https:") {
-      return false;
-    }
-    const hostname = parsed.hostname.toLowerCase();
-    
-    // 2. Disallow loopback, private IPs, and cloud metadata services
-    if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "0.0.0.0" ||
-      hostname === "169.254.169.254" ||
-      hostname.startsWith("10.") ||
-      hostname.startsWith("192.168.") ||
-      hostname.startsWith("172.16.") ||
-      hostname.startsWith("172.17.") ||
-      hostname.startsWith("172.18.") ||
-      hostname.startsWith("172.19.") ||
-      hostname.startsWith("172.20.") ||
-      hostname.startsWith("172.21.") ||
-      hostname.startsWith("172.22.") ||
-      hostname.startsWith("172.23.") ||
-      hostname.startsWith("172.24.") ||
-      hostname.startsWith("172.25.") ||
-      hostname.startsWith("172.26.") ||
-      hostname.startsWith("172.27.") ||
-      hostname.startsWith("172.28.") ||
-      hostname.startsWith("172.29.") ||
-      hostname.startsWith("172.30.") ||
-      hostname.startsWith("172.31.")
-    ) {
-      return false;
-    }
-
-    // 3. Verify against trusted domain whitelist
-    return TRUSTED_ATTACHMENT_DOMAINS.some(
-      (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
-    );
-  } catch {
-    return false;
-  }
-}
+// Fixed trusted origin constant for Cloudinary document storage
+const CLOUDINARY_SECURE_ORIGIN = "https://res.cloudinary.com";
 
 // Helper function to safely fetch a PDF URL and convert it to Base64 for ZeptoMail
 async function fetchPdfAsBase64(rawUrl: string): Promise<string | null> {
   if (!rawUrl || typeof rawUrl !== "string") return null;
 
-  if (!isSafeHttpsAttachmentUrl(rawUrl)) {
-    console.warn("Attachment URL rejected: untrusted host or invalid protocol.");
-    return null;
-  }
-
   try {
-    const validatedUrl = new URL(rawUrl).toString();
+    const parsed = new URL(rawUrl);
+
+    // Strict protocol and host validation
+    if (parsed.protocol !== "https:" || parsed.hostname.toLowerCase() !== "res.cloudinary.com") {
+      console.warn("Attachment URL rejected: only verified HTTPS Cloudinary documents can be fetched.");
+      return null;
+    }
+
+    // Sanitize pathname to only allow valid path segments and prevent directory traversal
+    const pathname = parsed.pathname;
+    if (!/^\/[a-zA-Z0-9_\-\.\/]+$/.test(pathname) || pathname.includes("..")) {
+      console.warn("Attachment URL rejected: invalid path characters or traversal detected.");
+      return null;
+    }
+
+    // Construct URL strictly using hardcoded fixed origin + sanitized path (satisfies CodeQL SSRF rule)
+    const targetUrl = `${CLOUDINARY_SECURE_ORIGIN}${pathname}`;
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch(validatedUrl, {
+    const response = await fetch(targetUrl, {
       method: "GET",
       signal: controller.signal,
       headers: { Accept: "application/pdf,image/*" },

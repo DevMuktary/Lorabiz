@@ -6,19 +6,19 @@ import Script from "next/script";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { 
-  ArrowRight, 
-  Sparkle, 
-  X, 
-  Info, 
-  Plus, 
-  Spinner, 
-  Eye, 
-  EyeSlash, 
-  Tag, 
-  CheckCircle, 
-  WarningCircle, 
-  Clock, 
+import {
+  ArrowRight,
+  Sparkle,
+  X,
+  Info,
+  Plus,
+  Spinner,
+  Eye,
+  EyeSlash,
+  Tag,
+  CheckCircle,
+  WarningCircle,
+  Clock,
   Wallet,
   Receipt,
   Handshake,
@@ -240,7 +240,7 @@ export default function DashboardPage() {
       const params = new URLSearchParams(window.location.search);
       const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
       if (hasPaymentParam) return false;
-      
+
       const isDismissed = localStorage.getItem("lorabiz_whatsapp_popup_dismissed_v1");
       if (isDismissed) return false;
     }
@@ -287,7 +287,7 @@ export default function DashboardPage() {
         if (data?.wallet?.balance !== undefined) {
           setBalance(data.wallet.balance);
         } else if (data?.balance !== undefined) {
-          setBalance(data.balance); 
+          setBalance(data.balance);
         }
       })
       .catch(console.error)
@@ -321,35 +321,35 @@ export default function DashboardPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reference })
         })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              setAlertInfo({
+                type: "success",
+                title: "Payment Confirmed",
+                message: "Your wallet has been funded successfully."
+              });
+              fetchBalance();
+            } else {
+              setAlertInfo({
+                type: "warning",
+                title: "Payment Incomplete",
+                message: "Transaction cancelled or failed. No funds were debited."
+              });
+            }
+          })
+          .catch(() => {
             setAlertInfo({
-              type: "success",
-              title: "Payment Confirmed",
-              message: "Your wallet has been funded successfully."
+              type: "info",
+              title: "Processing Payment",
+              message: "Your payment is being confirmed. Balance will update shortly."
             });
-            fetchBalance();
-          } else {
-            setAlertInfo({
-              type: "warning",
-              title: "Payment Incomplete",
-              message: "Transaction cancelled or failed. No funds were debited."
-            });
-          }
-        })
-        .catch(() => {
-          setAlertInfo({
-            type: "info",
-            title: "Processing Payment",
-            message: "Your payment is being confirmed. Balance will update shortly."
+          })
+          .finally(() => {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
           });
-        })
-        .finally(() => {
-          const newUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, newUrl);
-        });
-      } 
+      }
       else if (isFunded === "true" && !reference) {
         setAlertInfo({
           type: "info",
@@ -390,29 +390,29 @@ export default function DashboardPage() {
         body: JSON.stringify({ service: serviceTitle })
       });
       if (res.ok) {
-        setAlertInfo({ 
+        setAlertInfo({
           type: "success",
-          title: serviceTitle, 
-          message: "Added to waitlist. We will notify you once this service goes live." 
+          title: serviceTitle,
+          message: "Added to waitlist. We will notify you once this service goes live."
         });
       } else if (res.status === 409) {
-        setAlertInfo({ 
+        setAlertInfo({
           type: "info",
-          title: serviceTitle, 
-          message: "You are already registered on the waitlist for this service." 
+          title: serviceTitle,
+          message: "You are already registered on the waitlist for this service."
         });
       } else {
-        setAlertInfo({ 
+        setAlertInfo({
           type: "warning",
-          title: "Notice", 
-          message: "Unable to process request. Please try again." 
+          title: "Notice",
+          message: "Unable to process request. Please try again."
         });
       }
     } catch {
-      setAlertInfo({ 
+      setAlertInfo({
         type: "warning",
-        title: "Connection Error", 
-        message: "Network error encountered. Please check your connection." 
+        title: "Connection Error",
+        message: "Network error encountered. Please check your connection."
       });
     }
   };
@@ -425,9 +425,9 @@ export default function DashboardPage() {
       {/* ========================================================================= */}
       {mounted && isWhatsAppModalOpen && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 min-h-screen w-screen bg-background z-[999999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div 
-            className="fixed inset-0 min-h-screen w-screen bg-background" 
-            onClick={handleCloseWhatsAppModal} 
+          <div
+            className="fixed inset-0 min-h-screen w-screen bg-background"
+            onClick={handleCloseWhatsAppModal}
           />
 
           <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left">
@@ -495,7 +495,7 @@ export default function DashboardPage() {
                   <span>Join WhatsApp Channel</span>
                   <ArrowRight className="h-3.5 w-3.5" weight="bold" />
                 </a>
-                
+
                 <button
                   onClick={handleCloseWhatsAppModal}
                   className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-colors cursor-pointer"
@@ -554,10 +554,10 @@ export default function DashboardPage() {
       {/* 3. DUAL-CARD HERO: COMPACT WALLET & VIP LEVEL + QUICK ACTIONS DOCK         */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch -mt-26 sm:-mt-34 lg:-mt-38 relative z-10">
-        
+
         {/* Left: Professional Compact Wallet Deck */}
         <div className="lg:col-span-6 p-4 sm:p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-3">
-          
+
           {/* Top Row: Wallet Label + Active Level Pill */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -633,7 +633,7 @@ export default function DashboardPage() {
 
           {/* Bottom Row: Quick Action Buttons */}
           <div className="flex items-center gap-2 pt-1.5 border-t border-border/70">
-            <button 
+            <button
               onClick={() => setIsWalletModalOpen(true)}
               className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground rounded-xl font-bold text-xs hover:shadow-md hover:shadow-primary/20 transition-all active:scale-[0.98] cursor-pointer"
             >
@@ -676,12 +676,12 @@ export default function DashboardPage() {
                 title="CAC Registration"
               >
                 <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
-                  <Image 
-                    src="/cac.png" 
-                    alt="CAC" 
-                    width={28} 
-                    height={28} 
-                    className="object-contain" 
+                  <Image
+                    src="/cac.png"
+                    alt="CAC"
+                    width={28}
+                    height={28}
+                    className="object-contain"
                   />
                 </div>
                 <span className="text-[10px] font-bold truncate w-full text-center">CAC</span>
@@ -693,12 +693,12 @@ export default function DashboardPage() {
                 title="SCUML Certificate"
               >
                 <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
-                  <Image 
-                    src="/scuml.png" 
-                    alt="SCUML" 
-                    width={28} 
-                    height={28} 
-                    className="object-contain" 
+                  <Image
+                    src="/scuml.png"
+                    alt="SCUML"
+                    width={28}
+                    height={28}
+                    className="object-contain"
                   />
                 </div>
                 <span className="text-[10px] font-bold truncate w-full text-center">SCUML</span>
@@ -710,12 +710,12 @@ export default function DashboardPage() {
                 title="Tax ID (TIN)"
               >
                 <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
-                  <Image 
-                    src="/nrs.png" 
-                    alt="Tax ID" 
-                    width={28} 
-                    height={28} 
-                    className="object-contain" 
+                  <Image
+                    src="/nrs.png"
+                    alt="Tax ID"
+                    width={28}
+                    height={28}
+                    className="object-contain"
                   />
                 </div>
                 <span className="text-[10px] font-bold truncate w-full text-center">Tax ID</span>
@@ -727,12 +727,12 @@ export default function DashboardPage() {
                 title="NIN Services"
               >
                 <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
-                  <Image 
-                    src="/nimc.png" 
-                    alt="NIMC" 
-                    width={28} 
-                    height={28} 
-                    className="object-contain" 
+                  <Image
+                    src="/nimc.png"
+                    alt="NIMC"
+                    width={28}
+                    height={28}
+                    className="object-contain"
                   />
                 </div>
                 <span className="text-[10px] font-bold truncate w-full text-center">NIN</span>
@@ -744,12 +744,12 @@ export default function DashboardPage() {
                 title="BVN Services"
               >
                 <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform mb-1 shadow-xs">
-                  <Image 
-                    src="/nibss.png" 
-                    alt="BVN" 
-                    width={28} 
-                    height={28} 
-                    className="object-contain" 
+                  <Image
+                    src="/nibss.png"
+                    alt="BVN"
+                    width={28}
+                    height={28}
+                    className="object-contain"
                   />
                 </div>
                 <span className="text-[10px] font-bold truncate w-full text-center">BVN</span>
@@ -764,12 +764,12 @@ export default function DashboardPage() {
                 title="Court Affidavit"
               >
                 <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-xs">
-                  <Image 
-                    src="/court.png" 
-                    alt="Court Affidavit" 
-                    width={28} 
-                    height={28} 
-                    className="object-contain" 
+                  <Image
+                    src="/court.png"
+                    alt="Court Affidavit"
+                    width={28}
+                    height={28}
+                    className="object-contain"
                   />
                 </div>
                 <div className="text-left min-w-0">
@@ -784,12 +784,12 @@ export default function DashboardPage() {
                 title="Utilities & Telecom"
               >
                 <div className="h-9 w-9 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-xs">
-                  <Image 
-                    src="/airtime.png" 
-                    alt="Utilities" 
-                    width={28} 
-                    height={28} 
-                    className="object-contain" 
+                  <Image
+                    src="/airtime.png"
+                    alt="Utilities"
+                    width={28}
+                    height={28}
+                    className="object-contain"
                   />
                 </div>
                 <div className="text-left min-w-0">
@@ -835,11 +835,11 @@ export default function DashboardPage() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="h-11 w-11 rounded-xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1.5 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                    <Image 
-                      src={service.logo} 
-                      alt={service.title} 
-                      width={44} 
-                      height={44} 
+                    <Image
+                      src={service.logo}
+                      alt={service.title}
+                      width={44}
+                      height={44}
                       className="object-contain w-full h-full"
                     />
                   </div>
@@ -910,11 +910,11 @@ export default function DashboardPage() {
               <div>
                 <div className="flex items-center justify-between mb-2.5">
                   <div className="h-9 w-9 rounded-lg bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 p-1 flex items-center justify-center grayscale opacity-75 group-hover:grayscale-0 group-hover:opacity-100 transition-all shrink-0 shadow-xs">
-                    <Image 
-                      src={service.logo} 
-                      alt={service.title} 
-                      width={36} 
-                      height={36} 
+                    <Image
+                      src={service.logo}
+                      alt={service.title}
+                      width={36}
+                      height={36}
                       className="object-contain w-full h-full"
                     />
                   </div>
@@ -964,8 +964,8 @@ export default function DashboardPage() {
             <h4 className="font-bold text-xs leading-tight truncate">{alertInfo.title}</h4>
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{alertInfo.message}</p>
           </div>
-          <button 
-            onClick={() => setAlertInfo(null)} 
+          <button
+            onClick={() => setAlertInfo(null)}
             className="p-1 hover:bg-secondary rounded-lg transition-colors cursor-pointer shrink-0 text-muted-foreground hover:text-foreground"
             aria-label="Close notification"
           >
@@ -975,23 +975,23 @@ export default function DashboardPage() {
       )}
 
       {/* Wallet Modal */}
-      <FundWalletModal 
-        isOpen={isWalletModalOpen} 
-        onClose={() => setIsWalletModalOpen(false)} 
+      <FundWalletModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
         onSuccess={(amount) => {
           setBalance((prev) => (Number(prev) + amount).toString());
-          setAlertInfo({ 
+          setAlertInfo({
             type: "success",
-            title: "Funding Successful", 
-            message: `Your wallet was credited with ₦${amount.toLocaleString()}.` 
+            title: "Funding Successful",
+            message: `Your wallet was credited with ₦${amount.toLocaleString()}.`
           });
-          setTimeout(fetchBalance, 3000); 
+          setTimeout(fetchBalance, 3000);
         }}
         onFailure={(message) => {
-          setAlertInfo({ 
+          setAlertInfo({
             type: "warning",
-            title: "Funding Failed", 
-            message: message 
+            title: "Funding Failed",
+            message: message
           });
         }}
       />
