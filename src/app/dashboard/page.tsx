@@ -486,8 +486,8 @@ export default function DashboardPage() {
       {/* 2. EXECUTIVE HEADER WITH SIDE 3D ARTWORK & PINK CIRCLE                   */}
       {/* ========================================================================= */}
       <div className="relative flex items-start justify-between pb-6 sm:pb-8 overflow-visible">
-        {/* Left: Greetings & Subtitle */}
-        <div className="space-y-1.5 max-w-lg z-10 pt-1">
+        {/* Left: Greetings & Subtitle (shifted up 2 steps) */}
+        <div className="space-y-1.5 max-w-lg z-10 -translate-y-2">
           <p className="text-sm sm:text-base font-semibold text-muted-foreground tracking-normal">
             {timeGreeting},
           </p>
@@ -505,7 +505,7 @@ export default function DashboardPage() {
           {/* Soft pink circle backdrop */}
           <div className="w-48 h-48 sm:w-60 sm:h-60 lg:w-68 lg:h-68 rounded-full bg-pink-100/80 dark:bg-pink-900/25 flex items-center justify-center relative translate-y-3 sm:translate-y-4">
             {/* 3D Wallet Illustration shifted up inside circle */}
-            <div className="relative w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 -translate-y-4 sm:-translate-y-5">
+            <div className="relative w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 -translate-y-7 sm:-translate-y-8 lg:-translate-y-9">
               <Image
                 src="/wallet.png"
                 alt="Wallet Illustration"
