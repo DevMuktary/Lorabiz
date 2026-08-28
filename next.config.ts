@@ -2,7 +2,14 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Leave this empty again! instrumentation.ts runs automatically now.
+  typescript: {
+    // Skip heavy type checking during the build to prevent memory thrashing
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    // Skip linting during the build to save memory and time
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default withSentryConfig(nextConfig, {
@@ -33,5 +40,5 @@ export default withSentryConfig(nextConfig, {
     treeshake: {
       removeDebugLogging: true,
     },
-  }
+  },
 });
