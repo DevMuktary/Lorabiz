@@ -833,7 +833,7 @@ export default function CourtAffidavitPage() {
                     </p>
                   </div>
                   <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold text-[10px]">
-                    {category.replace(/_/g, " ")}
+                    {category ? category.replace(/_/g, " ") : ""}
                   </span>
                 </div>
 
@@ -924,23 +924,25 @@ export default function CourtAffidavitPage() {
           )}
 
           {/* REVIEW & CHECKOUT MODAL */}
-          <AffidavitReviewModal
-            isOpen={showReviewModal}
-            onClose={() => setShowReviewModal(false)}
-            category={category}
-            deponent={deponent}
-            cacFacts={cacFacts}
-            nameChangeFacts={nameChangeFacts}
-            ageFacts={ageFacts}
-            lossFacts={lossFacts}
-            ownershipFacts={ownershipFacts}
-            generalFacts={generalFacts}
-            basePrice={currentBasePrice}
-            tierName={loyaltyProfile?.currentTier?.name}
-            tierDiscountPct={loyaltyProfile?.currentTier?.discountPct || 0}
-            isSubmitting={isSubmitting}
-            onConfirmSubmit={handleSubmitAffidavit}
-          />
+          {category && (
+            <AffidavitReviewModal
+              isOpen={showReviewModal}
+              onClose={() => setShowReviewModal(false)}
+              category={category}
+              deponent={deponent}
+              cacFacts={cacFacts}
+              nameChangeFacts={nameChangeFacts}
+              ageFacts={ageFacts}
+              lossFacts={lossFacts}
+              ownershipFacts={ownershipFacts}
+              generalFacts={generalFacts}
+              basePrice={currentBasePrice}
+              tierName={loyaltyProfile?.currentTier?.name}
+              tierDiscountPct={loyaltyProfile?.currentTier?.discountPct || 0}
+              isSubmitting={isSubmitting}
+              onConfirmSubmit={handleSubmitAffidavit}
+            />
+          )}
         </div>
       )}
 
