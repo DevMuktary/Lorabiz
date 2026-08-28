@@ -79,7 +79,7 @@ export function AffidavitGuidelinesModal({ isOpen, onClose }: AffidavitGuideline
           </div>
           <div className="flex items-start gap-2">
             <span className="font-bold text-primary">•</span>
-            <p><strong>Turnaround Time:</strong> Fast digital processing and delivery in <strong>2 to 5 Hours</strong>.</p>
+            <p><strong>Turnaround Time:</strong> Processed and sealed within <strong>2 to 5 Working Hours (Mon–Fri, Excludes Weekends &amp; Public Holidays)</strong>.</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="font-bold text-primary">•</span>

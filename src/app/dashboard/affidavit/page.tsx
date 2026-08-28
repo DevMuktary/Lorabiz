@@ -350,8 +350,12 @@ export default function CourtAffidavitPage() {
         return;
       }
     } else if (category === "AGE_DECLARATION") {
-      if (!ageFacts.declaredDob || !ageFacts.placeOfBirth.trim()) {
-        showToast("Please enter the correct date of birth and place of birth.");
+      if (!ageFacts.declaredDob || !ageFacts.placeOfBirth.trim() || !ageFacts.stateOfBirth) {
+        showToast("Please provide declared date of birth, place of birth, and state of birth.");
+        return;
+      }
+      if (!ageFacts.reason.trim()) {
+        showToast("Please select or specify the compulsory reason for age declaration.");
         return;
       }
     } else if (category === "LOSS_OF_ITEM") {
@@ -485,7 +489,7 @@ export default function CourtAffidavitPage() {
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Sworn Court Affidavit</h1>
             <p className="text-muted-foreground text-xs">
-              Official legal affidavits stamped and sealed by Commissioner for Oaths (2–5 Hours Turnaround).
+              Official legal affidavits stamped and sealed by Commissioner for Oaths (2–5 Working Hours • Mon–Fri, Excludes Weekends &amp; Public Holidays).
             </p>
           </div>
         </div>
@@ -649,13 +653,13 @@ export default function CourtAffidavitPage() {
 
                 {/* Date of Birth */}
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
                     <label className="text-xs font-bold text-foreground">
                       Date of Birth <span className="text-rose-500">*</span>
                     </label>
                     {calculatedAge !== null && (
                       <span
-                        className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                        className={`text-[10px] font-black px-1.5 py-0.5 rounded-md shrink-0 ${
                           calculatedAge >= 18
                             ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                             : "bg-amber-500/10 text-amber-600"
@@ -669,7 +673,7 @@ export default function CourtAffidavitPage() {
                     type="date"
                     value={deponent.dob}
                     onChange={(e) => setDeponent((prev) => ({ ...prev, dob: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
+                    className="w-full min-w-0 max-w-full appearance-none px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
                   />
                 </div>
 

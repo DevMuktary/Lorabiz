@@ -199,36 +199,39 @@ export async function POST(req: Request) {
       });
     }
 
-    // 4. REJECT ACTION (WITH WALLET REFUND)
+    // 4. REJECT ACTION (WITH OPTIONAL WALLET REFUND)
     if (actionType === "REJECT") {
       const reason = rejectionReason || "Application did not meet court swearing guidelines.";
       const refundAmount = Number(affidavit.amountCharged);
+      const isRefundRequested = body.shouldRefund !== false;
       const refundRef = `REF_AFF_${Date.now()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
       const updated = await prisma.$transaction(async (tx) => {
-        // 1. Credit wallet
-        const userWallet = await tx.wallet.findUnique({ where: { userId: affidavit.userId } });
-        if (userWallet) {
-          const balanceBefore = Number(userWallet.balance);
-          const updatedWallet = await tx.wallet.update({
-            where: { id: userWallet.id },
-            data: { balance: { increment: refundAmount } }
-          });
-          const balanceAfter = Number(updatedWallet.balance);
+        // 1. Credit wallet if refund is requested
+        if (isRefundRequested) {
+          const userWallet = await tx.wallet.findUnique({ where: { userId: affidavit.userId } });
+          if (userWallet) {
+            const balanceBefore = Number(userWallet.balance);
+            const updatedWallet = await tx.wallet.update({
+              where: { id: userWallet.id },
+              data: { balance: { increment: refundAmount } }
+            });
+            const balanceAfter = Number(updatedWallet.balance);
 
-          await tx.transaction.create({
-            data: {
-              walletId: userWallet.id,
-              amount: refundAmount,
-              balanceBefore,
-              balanceAfter,
-              type: "CREDIT",
-              status: "SUCCESS",
-              reference: refundRef,
-              serviceCategory: "SERVICES",
-              description: `Refund for Rejected Court Affidavit (${affidavit.trackingId})`,
-            }
-          });
+            await tx.transaction.create({
+              data: {
+                walletId: userWallet.id,
+                amount: refundAmount,
+                balanceBefore,
+                balanceAfter,
+                type: "CREDIT",
+                status: "SUCCESS",
+                reference: refundRef,
+                serviceCategory: "SERVICES",
+                description: `Refund for Rejected Court Affidavit (${affidavit.trackingId})`,
+              }
+            });
+          }
         }
 
         // 2. Update record
@@ -237,8 +240,8 @@ export async function POST(req: Request) {
           data: {
             status: "REJECTED",
             adminNotes: adminNotes ? `${adminNotes} | Rejection: ${reason}` : `Rejection: ${reason}`,
-            isRefunded: true,
-            refundAmount: refundAmount,
+            isRefunded: isRefundRequested,
+            refundAmount: isRefundRequested ? refundAmount : 0,
           }
         });
 
@@ -249,7 +252,7 @@ export async function POST(req: Request) {
         userId: affidavit.userId,
         action: "COURT_AFFIDAVIT_REJECTED",
         category: "SERVICES",
-        description: `Affidavit ${affidavit.trackingId} REJECTED with refund of ₦${refundAmount.toLocaleString()}`,
+        description: `Affidavit ${affidavit.trackingId} REJECTED${isRefundRequested ? ` with refund of ₦${refundAmount.toLocaleString()}` : ""}`,
         status: "SUCCESS",
         referenceId: affidavit.trackingId,
         req,
@@ -257,7 +260,7 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         success: true,
-        message: `Affidavit ${affidavit.trackingId} REJECTED and ₦${refundAmount.toLocaleString()} refunded to user.`,
+        message: `Affidavit ${affidavit.trackingId} REJECTED.${isRefundRequested ? ` ₦${refundAmount.toLocaleString()} refunded to user.` : ""}`,
         affidavit: updated,
       });
     }

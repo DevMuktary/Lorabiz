@@ -18,14 +18,14 @@ export const STAMPING_TIERS: StampingTierOption[] = [
     id: "STANDARD",
     serviceKey: "AFFIDAVIT_STATE",
     name: "State Judiciary",
-    description: "Sworn & stamped by Commissioner for Oaths for State Courts & Magistrates.",
+    description: "Sworn & stamped by Commissioner for Oaths for State Courts, Magistrates & more.",
     exampleImage: "/examples/state_affidavit.jpg",
   },
   {
     id: "HIGH_COURT_ATTESTED",
     serviceKey: "AFFIDAVIT_FEDERAL",
     name: "Federal High Court",
-    description: "Certified Federal High Court attestation seal for CAC, Embassies & Visas.",
+    description: "Certified Federal High Court attestation seal for CAC, Embassies, Visas & more.",
     exampleImage: "/examples/fcj_affidavit.jpg",
   },
 ];

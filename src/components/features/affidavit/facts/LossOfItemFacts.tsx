@@ -42,7 +42,7 @@ export function LossOfItemFacts({ facts, onChange }: LossOfItemFactsProps) {
           type="date"
           value={facts.lossDate}
           onChange={(e) => onChange({ lossDate: e.target.value })}
-          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
+          className="w-full min-w-0 max-w-full appearance-none px-3.5 py-2.5 rounded-xl bg-background border border-border text-base sm:text-sm font-medium focus:outline-none focus:border-primary"
         />
       </div>
 
