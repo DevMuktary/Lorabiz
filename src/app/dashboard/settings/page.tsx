@@ -9,11 +9,15 @@ import { Input } from "@/components/ui/input";
 import AvatarUploadModal from "@/components/features/settings/AvatarUploadModal";
 import PhoneChangeModal from "@/components/features/settings/PhoneChangeModal";
 import PasswordChangeModal from "@/components/features/settings/PasswordChangeModal";
+import TierAvatar from "@/components/ui/TierAvatar";
+import { useLoyalty } from "@/lib/useLoyalty";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error" | "info", message: string } | null>(null);
+
+  const { profile: loyaltyProfile } = useLoyalty();
 
   // Modals state
   const [activeModal, setActiveModal] = useState<"AVATAR" | "PHONE" | "PASSWORD" | null>(null);
@@ -115,22 +119,26 @@ export default function SettingsPage() {
             {/* Avatar Section */}
             <div className="flex items-center gap-4 pb-6 border-b border-border">
               <div className="relative group cursor-pointer" onClick={() => setActiveModal("AVATAR")}>
-                <div className="h-16 w-16 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center border-2 border-border">
-                  {profile.image ? (
-                    <img src={profile.image} alt="Avatar" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-lg font-black text-primary">
-                      {profile.firstName?.[0]}{profile.lastName?.[0]}
-                    </span>
-                  )}
-                </div>
+                <TierAvatar
+                  image={profile.image}
+                  initials={`${profile.firstName?.[0] || ""}${profile.lastName?.[0] || ""}`}
+                  tierLevel={loyaltyProfile?.currentTier?.level || "TIER_1"}
+                  size="xl"
+                />
                 <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
                   <Camera size={20} weight="fill" />
                 </div>
               </div>
-              <div>
-                <h3 className="font-black text-base text-foreground">{profile.firstName} {profile.lastName}</h3>
-                <button onClick={() => setActiveModal("AVATAR")} className="text-xs font-bold text-primary hover:underline flex items-center gap-1 mt-0.5">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-base text-foreground">{profile.firstName} {profile.lastName}</h3>
+                  {loyaltyProfile?.currentTier && (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      {loyaltyProfile.currentTier.name}
+                    </span>
+                  )}
+                </div>
+                <button onClick={() => setActiveModal("AVATAR")} className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
                   Change Profile Picture
                 </button>
               </div>

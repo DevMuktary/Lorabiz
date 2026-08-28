@@ -102,6 +102,15 @@ export async function GET() {
       prisma.taxIdRequest.count({ where: { status: "COMPLETED" } }),
     ]);
 
+    // 5. Fetch counts for Court Affidavit
+    const [affPending, affProcessing, affCompleted, affQueried, affRejected] = await Promise.all([
+      prisma.courtAffidavitRequest.count({ where: { status: "PENDING" } }),
+      prisma.courtAffidavitRequest.count({ where: { status: "PROCESSING" } }),
+      prisma.courtAffidavitRequest.count({ where: { status: "COMPLETED" } }),
+      prisma.courtAffidavitRequest.count({ where: { status: "QUERIED" } }),
+      prisma.courtAffidavitRequest.count({ where: { status: "REJECTED" } }),
+    ]);
+
     const airtimeCompleted = await prisma.transaction.count({
       where: { 
         serviceCategory: { in: ["UTILITIES", "AIRTIME", "MOBILE_DATA"] }, 
@@ -188,6 +197,13 @@ export async function GET() {
       failed: 0,
     };
 
+    const affidavitMetrics = {
+      pending: affPending + affProcessing,
+      completed: affCompleted,
+      queried: affQueried,
+      failed: affRejected,
+    };
+
     const utilityMetrics = {
       pending: 0, // Instant automated API
       completed: airtimeCompleted,
@@ -197,16 +213,25 @@ export async function GET() {
 
     // Calculate Global Totals
     const globalMetrics = {
-      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending + modificationMetrics.pending + bvnRetrievalMetrics.pending + bvnModificationMetrics.pending,
-      completed: cacMetrics.completed + ninMetrics.completed + bvnMetrics.completed + bvnRetrievalMetrics.completed + bvnModificationMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + modificationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed,
-      queried: cacMetrics.queried, 
-      failed: cacMetrics.failed + ninMetrics.failed + bvnMetrics.failed + bvnRetrievalMetrics.failed + bvnModificationMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed + modificationMetrics.failed,
+      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending + modificationMetrics.pending + bvnRetrievalMetrics.pending + bvnModificationMetrics.pending + affidavitMetrics.pending,
+      completed: cacMetrics.completed + ninMetrics.completed + bvnMetrics.completed + bvnRetrievalMetrics.completed + bvnModificationMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + modificationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed + affidavitMetrics.completed,
+      queried: cacMetrics.queried + affidavitMetrics.queried, 
+      failed: cacMetrics.failed + ninMetrics.failed + bvnMetrics.failed + bvnRetrievalMetrics.failed + bvnModificationMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed + modificationMetrics.failed + affidavitMetrics.failed,
     };
 
     // Construct the structured response
     const payload = {
       global: globalMetrics,
       services: [
+        {
+          id: "affidavit",
+          name: "Court Affidavit Processing",
+          description: "High Court sworn affidavits (CAC Corporate, Change of Name, Age Declaration, Loss of Item, Ownership).",
+          metrics: affidavitMetrics,
+          subCategories: ["CAC Corporate", "Change of Name", "Age Declaration", "Loss of Item", "Ownership", "General"],
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/affidavit",
+          isAutomated: false
+        },
         {
           id: "bvn-modification",
           name: "BVN Modification Queue",

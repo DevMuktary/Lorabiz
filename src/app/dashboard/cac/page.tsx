@@ -83,7 +83,7 @@ export default function CacHubPage() {
                 </span>
               )}
 
-              <div className={`h-16 w-16 mb-5 rounded-xl bg-secondary flex items-center justify-center p-3 shadow-inner ${!category.active ? 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all' : ''}`}>
+              <div className={`h-16 w-16 mb-5 rounded-2xl bg-white dark:bg-white border border-slate-200/80 dark:border-white/20 flex items-center justify-center p-2.5 shadow-xs ${!category.active ? 'grayscale opacity-75 group-hover:grayscale-0 group-hover:opacity-100 transition-all' : ''}`}>
                 <Image 
                   src={category.logo} 
                   alt={category.title} 

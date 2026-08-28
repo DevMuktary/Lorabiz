@@ -246,7 +246,7 @@ export default function ScumlPage() {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0">
+          <div className="h-12 w-12 rounded-xl bg-white dark:bg-white flex items-center justify-center p-1.5 border border-slate-200/80 dark:border-white/20 shrink-0 shadow-xs">
             <Image src="/scuml.png" alt="SCUML" width={40} height={40} className="object-contain" />
           </div>
           <div>

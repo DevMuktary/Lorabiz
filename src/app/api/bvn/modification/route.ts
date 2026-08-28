@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { sendBvnModificationSubmittedEmail } from "@/lib/email";
 import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
+import { logUserActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -475,6 +476,27 @@ export async function POST(req: NextRequest) {
       bvn: cleanBvn,
       amountPaid: totalPrice,
     }).catch(err => console.error("❌ Failed to send BVN modification submitted email:", err));
+
+    // Log user activity & dispatch real-time Telegram alert
+    await logUserActivity({
+      userId: user.id,
+      action: "BVN_MODIFICATION_SUBMITTED",
+      category: "SERVICES",
+      description: `Submitted BVN Modification (${modConfig.label}) - BVN: ${cleanBvn} at ${validBank.name}`,
+      status: "SUCCESS",
+      referenceId: trackingId,
+      metadata: {
+        trackingId,
+        amount: totalPrice,
+        modificationType: modConfig.label,
+        enrollingBank: validBank.name,
+        bvn: cleanBvn,
+        nin: cleanNin,
+        fullName: currentFullName,
+        transactionRef,
+      },
+      req,
+    });
 
     return NextResponse.json({
       success: true,

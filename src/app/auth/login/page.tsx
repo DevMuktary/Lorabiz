@@ -65,6 +65,50 @@ function LoginContent() {
     return () => clearInterval(slideInterval);
   }, [testimonials.length]);
 
+  // Resend Timer Countdown
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setResendTimer((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  // Sync active cooldown from server when OTP modal opens
+  useEffect(() => {
+    if (!showOtpModal || !formData.email) return;
+    let isMounted = true;
+    setIsSyncingTimer(true);
+
+    fetch("/api/auth/otp-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: formData.email }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return;
+        if (data.isLocked) {
+          setIsLocked(true);
+        } else if (data.remainingSeconds > 0) {
+          setResendTimer(data.remainingSeconds);
+        } else {
+          // If fresh login OTP was just dispatched, fallback default to 30s
+          setResendTimer(30);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setResendTimer(30);
+      })
+      .finally(() => {
+        if (isMounted) setIsSyncingTimer(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [showOtpModal, formData.email]);
+
   const [isVerifyingSecurity, setIsVerifyingSecurity] = useState(false);
   const pendingSubmitRef = useRef(false);
 

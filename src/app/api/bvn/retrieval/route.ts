@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { generateNumericId } from "@/utils/generateId";
 import { sendBvnRetrievalSubmittedEmail } from "@/lib/email";
 import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
+import { logUserActivity } from "@/lib/activity-logger";
 
 export async function GET() {
   try {
@@ -174,6 +175,24 @@ export async function POST(req: Request) {
     } catch (emailErr) {
       console.error("Failed to send BVN Retrieval submission email:", emailErr);
     }
+
+    // Log user activity & dispatch real-time Telegram alert
+    await logUserActivity({
+      userId: user.id,
+      action: "BVN_RETRIEVAL_SUBMITTED",
+      category: "SERVICES",
+      description: `Submitted BVN Retrieval request for ${result.fullName} (${result.phone})`,
+      status: "SUCCESS",
+      referenceId: result.trackingId,
+      metadata: {
+        trackingId: result.trackingId,
+        amount: Number(result.amountPaid),
+        fullName: result.fullName,
+        phone: result.phone,
+        transactionRef,
+      },
+      req,
+    });
 
     return NextResponse.json({
       success: true,

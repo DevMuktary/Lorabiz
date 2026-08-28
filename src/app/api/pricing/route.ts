@@ -11,6 +11,16 @@ export async function GET() {
       return acc;
     }, {});
 
+    const activeMap = prices.reduce((acc: Record<string, boolean>, item) => {
+      acc[item.serviceKey] = item.isActive;
+      return acc;
+    }, {});
+
+    const maintenanceMap = prices.reduce((acc: Record<string, string>, item) => {
+      if (item.maintenanceMsg) acc[item.serviceKey] = item.maintenanceMsg;
+      return acc;
+    }, {});
+
     const validationNoRecord = pricingMap.NIN_VALIDATION_NO_RECORD ?? pricingMap.NIN_VAL_NO_RECORD ?? 2000;
     const validationVnin = pricingMap.NIN_VALIDATION_VNIN ?? pricingMap.NIN_VAL_VNIN ?? 2500;
     const validationMod = pricingMap.NIN_VALIDATION_MOD ?? pricingMap.NIN_VAL_MOD_RECORD ?? 3000;
@@ -20,9 +30,24 @@ export async function GET() {
     const modAddress = pricingMap.NIN_MOD_ADDRESS ?? 2000;
     const modDob = pricingMap.NIN_MOD_DOB ?? 15000;
 
+    const affidavitState = pricingMap.AFFIDAVIT_STATE ?? pricingMap.PRICE_COURT_AFFIDAVIT ?? 2500;
+    const affidavitFederal = pricingMap.AFFIDAVIT_FEDERAL ?? pricingMap.PRICE_COURT_AFFIDAVIT_ATTESTED ?? 4000;
+
     const defaultPricing: Record<string, number> = {
       // Pass-through all raw database prices first
       ...pricingMap,
+
+      // Court Affidavit Services
+      AFFIDAVIT_STATE: affidavitState,
+      AFFIDAVIT_FEDERAL: affidavitFederal,
+      PRICE_COURT_AFFIDAVIT: affidavitState,
+      PRICE_COURT_AFFIDAVIT_ATTESTED: affidavitFederal,
+      AFFIDAVIT_CHANGE_OF_NAME: pricingMap.AFFIDAVIT_CHANGE_OF_NAME ?? 2500,
+      AFFIDAVIT_AGE_DECLARATION: pricingMap.AFFIDAVIT_AGE_DECLARATION ?? 2500,
+      AFFIDAVIT_CAC_CORPORATE: pricingMap.AFFIDAVIT_CAC_CORPORATE ?? 2500,
+      AFFIDAVIT_LOSS_OF_ITEM: pricingMap.AFFIDAVIT_LOSS_OF_ITEM ?? 2500,
+      AFFIDAVIT_PROOF_OF_OWNERSHIP: pricingMap.AFFIDAVIT_PROOF_OF_OWNERSHIP ?? 2500,
+      AFFIDAVIT_GENERAL_PURPOSE: pricingMap.AFFIDAVIT_GENERAL_PURPOSE ?? 2500,
 
       // CAC Services
       LLC: pricingMap.LLC ?? 35000,
@@ -82,7 +107,7 @@ export async function GET() {
       MOBILE_DATA: 0,
     };
 
-    return NextResponse.json({ success: true, data: defaultPricing });
+    return NextResponse.json({ success: true, data: defaultPricing, activeMap, maintenanceMap });
   } catch (error) {
     console.error("Failed to fetch pricing:", error);
     return NextResponse.json({ success: false, message: "Failed to fetch pricing" }, { status: 500 });
@@ -140,6 +165,16 @@ export async function POST(req: Request) {
     }
     if (service === 'bvn_retrieval' || service === 'BVN_RETRIEVAL') {
       return NextResponse.json({ baseFee: pricingMap.BVN_RETRIEVAL || 2500, total: pricingMap.BVN_RETRIEVAL || 2500 });
+    }
+
+    // Court Affidavits
+    if (service === 'affidavit_state' || service === 'AFFIDAVIT_STATE' || service === 'court_affidavit' || service === 'STANDARD') {
+      const p = pricingMap.AFFIDAVIT_STATE ?? pricingMap.PRICE_COURT_AFFIDAVIT ?? 2500;
+      return NextResponse.json({ baseFee: p, total: p });
+    }
+    if (service === 'affidavit_federal' || service === 'AFFIDAVIT_FEDERAL' || service === 'court_affidavit_attested' || service === 'HIGH_COURT_ATTESTED') {
+      const p = pricingMap.AFFIDAVIT_FEDERAL ?? pricingMap.PRICE_COURT_AFFIDAVIT_ATTESTED ?? 4000;
+      return NextResponse.json({ baseFee: p, total: p });
     }
 
     // Generic lookup fallback for any serviceKey

@@ -66,6 +66,11 @@
   }
 }
 
+/* Ensure html background extends behind iOS safe areas (status bar + toolbar) */
+html {
+  background-color: hsl(var(--background));
+}
+
 @theme {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));

@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma"; 
 import { generateNumericId } from "@/utils/generateId"; 
 import { sendTaxIdSubmittedEmail } from "@/lib/email";
+import { logUserActivity } from "@/lib/activity-logger";
 
 export async function GET(req: Request) {
   try {
@@ -149,6 +150,24 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error("Failed to send TAX ID confirmation email:", e);
     }
+
+    // Log user activity & dispatch real-time Telegram alert
+    await logUserActivity({
+      userId: user.id,
+      action: "TAX_ID_SUBMITTED",
+      category: "SERVICES",
+      description: `Submitted Tax ID request (${type === "CORPORATE" ? "Corporate" : "Individual"}) - Ref: ${transactionRef}`,
+      status: "SUCCESS",
+      referenceId: transactionRef,
+      metadata: {
+        amount: finalPrice,
+        type: type === "CORPORATE" ? "Corporate Tax ID" : "Individual Tax ID",
+        nin: individualData?.nin || null,
+        cacNumber: corporateData?.cacNumber || null,
+        transactionRef,
+      },
+      req,
+    });
 
     return NextResponse.json({ success: true, data: result });
 

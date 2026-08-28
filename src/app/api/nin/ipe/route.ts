@@ -6,6 +6,7 @@ import { submitIpeClearance } from "@/lib/agenthub";
 import { submitDataVerifyIpe } from "@/lib/dataverify";
 import { logUserActivity } from "@/lib/activity-logger";
 import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
+import { getReferrerRewardAmount } from "@/lib/loyalty";
 
 export async function POST(req: NextRequest) {
   try {
@@ -204,9 +205,10 @@ export async function POST(req: NextRequest) {
 
         if (isReferralActive && isNotExpired) {
           const rewardSetting = await tx.globalSetting.findUnique({
-            where: { key: "REF_REWARD_NIN" },
+            where: { key: "REF_REWARD_NIN_IPE" },
           });
-          const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 10.0;
+          const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.0;
+          const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
 
           if (commissionAmount > 0) {
             await tx.referralCommission.create({

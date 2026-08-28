@@ -8,6 +8,7 @@ import {
 } from "@/lib/dataverify";
 import { dispatchNotification } from "@/services/notifications";
 import { logUserActivity } from "@/lib/activity-logger";
+import { getReferrerRewardAmount } from "@/lib/loyalty";
 
 export async function GET(req: NextRequest) {
   try {
@@ -144,7 +145,8 @@ export async function GET(req: NextRequest) {
             const rewardSetting = await prisma.globalSetting.findUnique({
               where: { key: 'REF_REWARD_NIN_PERSONALIZATION' }
             });
-            const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
+            const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
+            const commissionAmount = await getReferrerRewardAmount(prisma, activeReferral.referrerId, baseAmount);
 
             if (commissionAmount > 0) {
               await prisma.referralCommission.create({

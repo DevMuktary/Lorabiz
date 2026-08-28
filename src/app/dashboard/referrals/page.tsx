@@ -201,6 +201,47 @@ export default function ReferralsPage() {
         <p className="text-muted-foreground mt-1">Invite businesses and earn cash directly to your bank account.</p>
       </div>
 
+      {/* Level Multiplier & Cashout Banner */}
+      {stats?.tier && (
+        <div className="p-4 rounded-2xl bg-secondary/40 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 shadow-xs">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl shrink-0">{stats.tier.badge.split(" ")[0]}</span>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-black text-foreground text-sm sm:text-base">
+                  {stats.tier.fullName}
+                </h2>
+                {stats.tier.multiplier > 1.0 ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold text-[10px]">
+                    +{Math.round((stats.tier.multiplier - 1.0) * 100)}% Cashout Bonus Active
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full bg-secondary border border-border text-muted-foreground font-bold text-[10px]">
+                    Base Level
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                {stats.tier.multiplier > 1.0
+                  ? `Your level gives you a ${stats.tier.multiplier}x reward multiplier on all referral commissions & a ₦${stats.minWithdrawal.toLocaleString()} minimum cashout.`
+                  : `Earn commissions on every referral & cash out directly to your bank from ₦${stats.minWithdrawal.toLocaleString()}.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <div className="px-3 py-1.5 rounded-xl bg-background/80 border border-border text-center shadow-xs">
+              <span className="text-[10px] uppercase font-black text-muted-foreground block">Reward Multiplier</span>
+              <span className="text-xs font-black text-foreground">{stats.tier.multiplier}x</span>
+            </div>
+            <div className="px-3 py-1.5 rounded-xl bg-background/80 border border-border text-center shadow-xs">
+              <span className="text-[10px] uppercase font-black text-muted-foreground block">Min Cashout</span>
+              <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">₦{stats.minWithdrawal.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {needsSetup ? (
         <div className="space-y-8">
           
@@ -412,7 +453,10 @@ export default function ReferralsPage() {
                   <Button type="submit" disabled={withdrawing || !withdrawAmount || Number(withdrawAmount) < (stats?.minWithdrawal || 2000)} className="w-full h-11 font-semibold bg-foreground text-background hover:bg-foreground/90">
                     {withdrawing ? <Spinner className="animate-spin h-5 w-5" /> : "Request Cashout"}
                   </Button>
-                  <p className="text-xs text-center text-muted-foreground">Min withdrawal: ₦{(stats?.minWithdrawal || 2000).toLocaleString()}</p>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Min cashout: <strong className="text-foreground">₦{(stats?.minWithdrawal || 2000).toLocaleString()}</strong>
+                    {stats?.tier?.name ? ` (${stats.tier.name} Level)` : ""}
+                  </p>
                 </form>
               </div>
             </div>
@@ -448,7 +492,16 @@ export default function ReferralsPage() {
                 {/* 1. Rates Tab */}
                 {activeTab === "rates" && (
                   <div className="space-y-4 animate-in fade-in duration-300">
-                    <p className="text-sm text-muted-foreground mb-4">You earn cash directly to your balance every time your invited users complete one of the following services. There is no limit.</p>
+                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        You earn cash directly to your balance every time your invited users complete one of the following services.
+                      </p>
+                      {stats?.tier?.multiplier > 1.0 && (
+                        <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                          💎 Boosted by your {stats.tier.name} {stats.tier.multiplier}x level
+                        </span>
+                      )}
+                    </div>
                     <div className="rounded-xl border border-border overflow-hidden">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-secondary/40 text-muted-foreground border-b border-border">
@@ -473,6 +526,10 @@ export default function ReferralsPage() {
                           <tr className="hover:bg-secondary/20 transition-colors">
                             <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500"></div>Tax ID (TIN)</td>
                             <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.taxId || 0).toLocaleString()}</td>
+                          </tr>
+                          <tr className="hover:bg-secondary/20 transition-colors">
+                            <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-yellow-500"></div>Court Affidavit</td>
+                            <td className="p-3 pr-4 font-bold text-emerald-600 text-right">₦{(stats?.rewardRates?.affidavit || 0).toLocaleString()}</td>
                           </tr>
                           <tr className="hover:bg-secondary/20 transition-colors">
                             <td className="p-3 pl-4 text-foreground font-medium flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div>NIN Slip Generation</td>

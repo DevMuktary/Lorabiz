@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { redis } from "@/lib/redis";
 import { notificationQueue } from "@/lib/queue";
 import { logUserActivity } from "@/lib/activity-logger";
+import { sendWalletFundedEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -69,6 +70,8 @@ export async function POST(req: Request) {
     }
 
     // 2. ATOMIC TRANSACTION TO PREVENT RACE CONDITIONS
+    let isNewlyProcessed = false;
+
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.findUnique({ 
         where: { email: userEmail }, 
@@ -103,6 +106,7 @@ export async function POST(req: Request) {
             serviceCategory: "WALLET_FUNDING"
           }
         });
+        isNewlyProcessed = true;
         return;
       }
 
@@ -162,6 +166,7 @@ export async function POST(req: Request) {
         } else {
           await tx.llcRegistration.update({ where: { id: registrationId }, data: { proposedName, altName1, altName2 } });
         }
+        isNewlyProcessed = true;
         return;
       }
 
@@ -193,19 +198,18 @@ export async function POST(req: Request) {
           where: { id: user.wallet.id },
           data: { balance: { decrement: amountPaid } }
         });
-        const balanceAfterDebit = Number(debitedWallet.balance);
 
         await tx.transaction.create({
           data: {
             walletId: user.wallet.id,
             amount: amountPaid,
             balanceBefore: balanceAfterCredit,
-            balanceAfter: balanceAfterDebit,
+            balanceAfter: Number(debitedWallet.balance),
             type: "DEBIT",
             status: "SUCCESS",
             reference: `SRV_PAY_${registrationId}_${Date.now()}`,
-            description: `Payment for Service Registration`,
-            serviceCategory: isScuml ? "SCUML" : "BUSINESS_NAME"
+            description: `Payment for Registration (${isScuml ? "SCUML" : "CAC"})`,
+            serviceCategory: isScuml ? "SCUML" : "CAC"
           }
         });
 
@@ -214,7 +218,7 @@ export async function POST(req: Request) {
             await tx.scumlRegistration.create({ 
               data: {
                 id: registrationId, 
-                userId: scumlDraft.userId,
+                userId: user.id,
                 type: scumlDraft.type,
                 companyName: scumlDraft.companyName,
                 certificateUrl: scumlDraft.documents.certificateUrl,
@@ -244,6 +248,7 @@ export async function POST(req: Request) {
             }
           }
         }
+        isNewlyProcessed = true;
       }
     });
 
@@ -251,59 +256,64 @@ export async function POST(req: Request) {
       await redis.del(registrationId);
     }
 
-    // Non-blocking Activity Logging and Automation Triggers
-    if (reference.startsWith("FW_")) {
+    // Non-blocking Activity Logging and Automation Triggers (Only for newly processed payments)
+    if (isNewlyProcessed && reference.startsWith("FW_")) {
       const user = await prisma.user.findUnique({
         where: { email: userEmail },
         include: { wallet: true },
       });
 
       if (user) {
-        logUserActivity({
+        await logUserActivity({
           userId: user.id,
           action: "WALLET_FUNDING_SUCCESS",
           category: "WALLET",
           description: `Wallet funded with ₦${amountPaid.toLocaleString()}`,
           referenceId: reference,
-          metadata: { amount: amountPaid },
+          metadata: { 
+            amount: amountPaid,
+            reference,
+            channel: "KoraPay Online Gateway"
+          },
           req,
         });
 
         try {
-          const alreadySentFundingEmail = await prisma.automatedEmailLog.findFirst({
+          const existingEmail = await prisma.automatedEmailLog.findFirst({
             where: {
               userId: user.id,
-              emailType: "FIRST_WALLET_FUNDING",
+              emailType: "WALLET_FUNDED",
+              entityId: reference,
             },
           });
 
-          if (!alreadySentFundingEmail) {
+          if (!existingEmail) {
             const currentBalance = user.wallet ? Number(user.wallet.balance) : amountPaid;
             const host = req.headers.get("host") || "lorabiz.com";
             const protocol = host.includes("localhost") ? "http" : "https";
             const baseUrl = `${protocol}://${host}`;
 
-            await notificationQueue.add(
-              "send-first-wallet-funding-email",
-              {
-                type: "FIRST_WALLET_FUNDING_EMAIL",
+            await sendWalletFundedEmail({
+              to: user.email,
+              firstName: user.firstName || "Valued Client",
+              amount: amountPaid,
+              balance: currentBalance,
+              reference,
+              baseUrl,
+            });
+
+            await prisma.automatedEmailLog.create({
+              data: {
                 userId: user.id,
                 email: user.email,
-                firstName: user.firstName || "Valued Client",
-                amount: amountPaid,
-                balance: currentBalance,
-                reference,
-                baseUrl,
+                emailType: "WALLET_FUNDED",
+                entityId: reference,
+                status: "SENT",
               },
-              {
-                attempts: 3,
-                backoff: { type: "exponential", delay: 5000 },
-                removeOnComplete: true,
-              }
-            );
+            }).catch(() => {});
           }
         } catch (fundingErr) {
-          console.error("Failed to check/enqueue first wallet funding email in verify route:", fundingErr);
+          console.error("Failed to send wallet funding receipt in verify route:", fundingErr);
         }
       }
     }

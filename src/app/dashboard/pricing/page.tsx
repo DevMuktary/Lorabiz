@@ -14,7 +14,7 @@ import {
 interface PricingItemMeta {
   label: string;
   desc?: string;
-  category: "CAC Services" | "Compliance & Tax" | "NIN Identity" | "BVN Services" | "Utilities";
+  category: "Court Affidavit" | "CAC Services" | "Compliance & Tax" | "NIN Identity" | "BVN Services" | "Utilities";
   imageSrc?: string;
   icon?: any;
   colorClass: string;
@@ -23,6 +23,21 @@ interface PricingItemMeta {
 }
 
 const PRICING_METADATA: Record<string, PricingItemMeta> = {
+  // COURT AFFIDAVIT
+  AFFIDAVIT_STATE: {
+    label: "State Judiciary Court Affidavit",
+    desc: "Official court affidavit sworn and stamped by the Commissioner for Oaths for State High Court / Magistrate jurisdiction.",
+    category: "Court Affidavit",
+    imageSrc: "/court.png",
+    colorClass: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
+  },
+  AFFIDAVIT_FEDERAL: {
+    label: "Federal High Court Sworn Affidavit",
+    desc: "Certified Federal High Court swearing with official legal attestation seal for CAC, foreign embassies, visas, and federal compliance.",
+    category: "Court Affidavit",
+    imageSrc: "/court.png",
+    colorClass: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+  },
   // CAC SERVICES
   BUSINESS_NAME: { 
     label: "Business Name Registration", 
@@ -247,7 +262,7 @@ const PRICING_METADATA: Record<string, PricingItemMeta> = {
   }
 };
 
-const CATEGORIES = ["ALL", "CAC Services", "Compliance & Tax", "NIN Identity", "BVN Services", "Utilities"] as const;
+const CATEGORIES = ["ALL", "Court Affidavit", "CAC Services", "Compliance & Tax", "NIN Identity", "BVN Services", "Utilities"] as const;
 
 export default function DashboardPricingPage() {
   const [pricingData, setPricingData] = useState<Record<string, number> | null>(null);

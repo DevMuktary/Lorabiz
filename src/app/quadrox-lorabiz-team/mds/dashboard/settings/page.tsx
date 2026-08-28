@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { 
   Settings, Save, RefreshCw, AlertTriangle, Fingerprint, Building2, ShieldCheck,
-  Server, Cpu, CheckCircle2, SlidersHorizontal, ArrowRight, Wifi
+  Server, Cpu, CheckCircle2, SlidersHorizontal, ArrowRight, Wifi, Gavel
 } from "lucide-react";
 import MobileDataPlansManager from "@/components/mds/settings/MobileDataPlansManager";
 
@@ -86,12 +86,19 @@ export default function SettingsDashboard() {
   };
 
   // Visually group the Global Services
+  const affidavitGroup = allServices.filter(
+    (s) =>
+      s.serviceKey.startsWith("AFFIDAVIT") ||
+      s.serviceKey.includes("COURT_AFFIDAVIT")
+  );
   const cacGroup = allServices.filter(
     (s) =>
       !s.serviceKey.includes("SCUML") &&
       !s.serviceKey.includes("TAX_ID") &&
       !s.serviceKey.startsWith("NIN") &&
-      !s.serviceKey.startsWith("BVN")
+      !s.serviceKey.startsWith("BVN") &&
+      !s.serviceKey.startsWith("AFFIDAVIT") &&
+      !s.serviceKey.includes("COURT_AFFIDAVIT")
   );
   const bvnGroup = allServices.filter((s) => s.serviceKey.startsWith("BVN"));
   const complianceGroup = allServices.filter(
@@ -657,10 +664,28 @@ export default function SettingsDashboard() {
             </div>
           </section>
 
+          {/* COURT AFFIDAVIT SECTION */}
+          {affidavitGroup.length > 0 && (
+            <section>
+              <div className="flex items-center mb-4">
+                <Gavel size={20} className="text-amber-500 mr-2" />
+                <div>
+                  <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Court Affidavit Services</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Pricing, active status toggle, and maintenance message configuration for State Judiciary, Federal High Court, and individual affidavit matters.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                {affidavitGroup.map((service) => (
+                  <ServiceConfigCard key={service.id} service={service} />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* CAC SECTION */}
           {cacGroup.length > 0 && (
             <section>
-              <div className="flex items-center mb-4">
+              <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
                 <Building2 size={20} className="text-indigo-500 mr-2" />
                 <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Corporate Affairs Commission</h2>
               </div>

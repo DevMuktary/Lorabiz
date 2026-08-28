@@ -9,12 +9,15 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
 import { SupportWidgetBootstrapper } from "@/components/SupportWidgetBootstrapper";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
+import TierAvatar from "@/components/ui/TierAvatar";
+import { useLoyalty } from "@/lib/useLoyalty";
+import LoyaltyPerksModal from "@/components/dashboard/LoyaltyPerksModal";
 import {
   SquaresFour, Buildings, ShieldCheck, Copyright,
   Handshake, IdentificationCard, IdentificationBadge, DeviceMobile, Wallet,
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
   FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
-  ClockCounterClockwise, Code, CaretDown, CaretRight
+  ClockCounterClockwise, Code, CaretDown, CaretRight, Crown, Sparkle, Gavel
 } from "@phosphor-icons/react";
 
 type SubLink = {
@@ -82,6 +85,15 @@ const NAVIGATION: NavCategory[] = [
           { name: "Mobile Data", href: "/dashboard/utilities/mobile-data" },
         ]
       },
+      {
+        name: "Court Affidavit",
+        href: "/dashboard/affidavit",
+        icon: Gavel,
+        subLinks: [
+          { name: "New Affidavit", href: "/dashboard/affidavit" },
+          { name: "My Affidavits", href: "/dashboard/affidavit/history" },
+        ]
+      },
       { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },
     ]
   },
@@ -126,7 +138,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isPerksModalOpen, setIsPerksModalOpen] = useState(false);
   const [sidebarAlert, setSidebarAlert] = useState<{ title: string, message: string } | null>(null);
+  
+  const { profile: loyaltyProfile } = useLoyalty();
+
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     "/dashboard/nin": true,
     "/dashboard/bvn": true,
@@ -200,22 +216,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const initials = getUserInitials();
 
+  // Prevent background scroll bleed when mobile sidebar drawer is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileMenuOpen]);
+
   return (
     <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
 
+
+      {/* Invisible tap-to-close layer (no color, no box — just catches taps outside the sidebar) */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-background/80 z-[99990] lg:hidden backdrop-blur-sm transition-opacity cursor-pointer"
+          className="fixed inset-0 z-[99990] lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* SIDEBAR */}
-      <aside className={`
-        fixed lg:sticky top-0 inset-y-0 left-0 z-[99995] w-[260px] h-screen bg-card border-r border-border 
-        transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
-        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-        ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:translate-x-0 lg:flex"}
+      <aside 
+        style={{
+          height: 'calc(100dvh + 150px)',
+          minHeight: 'calc(100vh + 150px)',
+          bottom: '-150px',
+        }}
+        className={`
+        fixed lg:sticky top-0 left-0 z-[99995] w-[270px] lg:!h-screen lg:!min-h-screen lg:!bottom-0 bg-card border-r border-border 
+        transform transition-all duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none shrink-0
+        ${isMobileMenuOpen ? "translate-x-0 visible pointer-events-auto" : "-translate-x-full invisible pointer-events-none lg:visible lg:pointer-events-auto lg:translate-x-0"}
+        ${isDesktopSidebarCollapsed ? "lg:hidden" : "lg:flex"}
       `}>
         <div className="h-[70px] flex items-center justify-between px-5 border-b border-border shrink-0">
           <Image
@@ -234,7 +270,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-5 custom-scrollbar pb-10">
+        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-5 custom-scrollbar pb-48 lg:pb-10">
           {NAVIGATION.map((group) => (
             <div key={group.category} className="space-y-1.5">
               <h3 className="px-3 text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
@@ -344,20 +380,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 relative">
 
-        <header className="relative z-40 h-[70px] bg-background border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0 shadow-sm">
-          <div className="flex items-center gap-4">
+        <header className="relative z-40 h-[70px] bg-card border-b border-border flex items-center justify-between px-5 lg:px-8 shrink-0">
+          <div className="flex items-center gap-3">
+            {/* Ultra-Modern Designer Hamburger Button for Mobile */}
             <button
-              className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
+              className="lg:hidden h-10 w-10 -ml-2 flex items-center justify-center rounded-xl bg-secondary/70 hover:bg-primary/10 border border-border/80 hover:border-primary/40 text-foreground transition-all duration-200 cursor-pointer shadow-xs group"
               onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open Navigation Menu"
+              title="Open Navigation"
             >
-              <List className="h-6 w-6" weight="bold" />
+              <div className="flex flex-col items-start justify-center gap-1.5 w-5">
+                <span className="w-5 h-[2px] rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 group-hover:translate-x-0.5" />
+                <div className="flex items-center gap-1 w-full">
+                  <span className="w-3.5 h-[2px] rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 group-hover:w-4" />
+                  <span className="h-[2.5px] w-[2.5px] rounded-full bg-primary shrink-0 group-hover:scale-125 transition-transform" />
+                </div>
+              </div>
             </button>
 
+            {/* Ultra-Modern Designer Toggle for Desktop Sidebar */}
             <button
-              className="hidden lg:block p-2 -ml-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer"
+              className="hidden lg:flex h-10 w-10 -ml-2 items-center justify-center rounded-xl bg-secondary/70 hover:bg-primary/10 border border-border/80 hover:border-primary/40 text-foreground transition-all duration-200 cursor-pointer shadow-xs group"
               onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
+              aria-label="Toggle Sidebar"
+              title="Toggle Sidebar"
             >
-              <List className="h-6 w-6" weight="bold" />
+              <div className="flex flex-col items-start justify-center gap-1.5 w-5">
+                <span className="w-5 h-[2px] rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 group-hover:translate-x-0.5" />
+                <div className="flex items-center gap-1 w-full">
+                  <span className="w-3.5 h-[2px] rounded-full bg-foreground group-hover:bg-primary transition-all duration-200 group-hover:w-4" />
+                  <span className="h-[2.5px] w-[2.5px] rounded-full bg-primary shrink-0 group-hover:scale-125 transition-transform" />
+                </div>
+              </div>
             </button>
 
             <h2 className="text-lg font-black text-foreground hidden sm:block">
@@ -377,27 +431,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <ThemeToggle />
             <NotificationBell />
 
-            {/* NEW: PROFILE DROPDOWN WRAPPER */}
+            {/* PROFILE DROPDOWN WRAPPER WITH TIER RIBBON */}
             <div className="relative ml-1">
-              <div
+              <TierAvatar
+                image={session?.user?.image}
+                initials={initials}
+                tierLevel={loyaltyProfile?.currentTier?.level || "TIER_1"}
+                size="md"
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                className="h-9 w-9 rounded-full overflow-hidden bg-gradient-to-tr from-primary to-[#ff7b9f] flex items-center justify-center text-primary-foreground text-[12px] font-black shadow-md cursor-pointer hover:opacity-90 transition-opacity select-none border border-primary/20 shrink-0"
-              >
-                {session?.user?.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={session.user.image}
-                    alt="Profile"
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).parentElement!.innerHTML = initials;
-                    }}
-                  />
-                ) : (
-                  initials
-                )}
-              </div>
+              />
 
               {/* PROFILE DROPDOWN MENU */}
               {isProfileDropdownOpen && (
@@ -407,33 +449,71 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     onClick={() => setIsProfileDropdownOpen(false)}
                   />
 
-                  <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-[50] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="p-3 border-b border-border bg-secondary/30">
-                      <p className="text-[13px] font-black text-foreground truncate">
-                        {session?.user?.name || "Lorabiz User"}
-                      </p>
-                      <p className="text-[11px] font-medium text-muted-foreground truncate mt-0.5">
+                  <div className="absolute right-0 mt-2 w-64 bg-card border border-border rounded-2xl shadow-xl z-[50] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-3.5 border-b border-border bg-secondary/30 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[13px] font-black text-foreground truncate">
+                          {session?.user?.name || "Lorabiz User"}
+                        </p>
+                        {loyaltyProfile?.currentTier && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
+                            {loyaltyProfile.currentTier.name}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] font-medium text-muted-foreground truncate">
                         {session?.user?.email}
                       </p>
+
+                      {/* Tier Ribbon / Discount Status Strip */}
+                      {loyaltyProfile?.currentTier && (
+                        <div 
+                          onClick={() => {
+                            setIsProfileDropdownOpen(false);
+                            setIsPerksModalOpen(true);
+                          }}
+                          className="mt-2 flex items-center justify-between p-2 rounded-xl bg-background/80 border border-border/80 text-[11px] cursor-pointer hover:border-primary/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5 font-bold text-foreground">
+                            <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
+                            <span>{loyaltyProfile.currentTier.name} Status</span>
+                          </div>
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-[10px]">
+                            {loyaltyProfile.currentTier.discountPct > 0 ? `${loyaltyProfile.currentTier.discountPct}% OFF` : "Starter"} ➔
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-2 space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          setIsPerksModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-bold text-foreground hover:bg-secondary transition-colors cursor-pointer text-left"
+                      >
+                        <Crown className="h-4 w-4 text-[#ff3f7a]" weight="fill" />
+                        <span>Account Levels &amp; Discounts</span>
+                      </button>
+
                       <Link
                         href="/dashboard/settings"
                         onClick={() => setIsProfileDropdownOpen(false)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-foreground hover:bg-secondary transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-bold text-foreground hover:bg-secondary transition-colors"
                       >
                         <UserCircle className="h-4 w-4 text-muted-foreground" weight="bold" />
-                        Profile Settings
+                        <span>Profile Settings</span>
                       </Link>
 
                       <button
                         type="button"
                         onClick={() => signOut({ callbackUrl: "/auth/login", redirect: true })}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors group cursor-pointer"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors group cursor-pointer text-left"
                       >
                         <SignOut className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-destructive transition-transform group-hover:-translate-x-1" weight="bold" />
-                        Log Out
+                        <span>Log Out</span>
                       </button>
                     </div>
                   </div>
@@ -444,7 +524,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 bg-secondary/10 p-5 lg:p-8 pb-24 relative">
+        <main className="flex-1 bg-background p-4 sm:p-6 lg:p-8 relative">
           <div className="max-w-6xl mx-auto w-full animate-in fade-in duration-300">
             <WelcomeBanner />
             {children}
@@ -469,6 +549,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
       )}
+
+      {/* Global Perks Modal */}
+      <LoyaltyPerksModal
+        isOpen={isPerksModalOpen}
+        onClose={() => setIsPerksModalOpen(false)}
+        currentTierLevel={loyaltyProfile?.currentTier?.level}
+        allTimeSpend={loyaltyProfile?.allTimeSpend}
+      />
 
       <SupportWidgetBootstrapper />
     </div>

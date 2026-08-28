@@ -68,7 +68,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+    { media: '(prefers-color-scheme: dark)', color: '#020817' },
+  ],
 };
 
 export default function RootLayout({
@@ -113,8 +117,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      {/* CRITICAL FIX: Removed transition-colors duration-300 from body */}
-      <body className="antialiased bg-background text-foreground min-h-[100dvh] flex flex-col">
+      <body className="antialiased bg-background text-foreground min-h-screen flex flex-col">
         <DynamicPageTitle /> {/* <-- Auto-manages all Client Page Titles silently! */}
         
         <Providers>

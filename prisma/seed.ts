@@ -48,7 +48,16 @@ async function runSeed() {
     { serviceKey: "BVN_MOD_DOB_PHONE", title: "BVN Modification - Change of DOB & Phone", price: 17000.00 },
     { serviceKey: "BVN_MOD_NAME_DOB", title: "BVN Modification - Change of Name & DOB", price: 17500.00 },
     { serviceKey: "BVN_MOD_ALL", title: "BVN Modification - Change of Name, DOB & Phone (All 3)", price: 19500.00 },
-    { serviceKey: "BVN_MOD_DOB_SURCHARGE", title: "BVN Modification - 5-Year DOB Surcharge", price: 5000.00 }
+    { serviceKey: "BVN_MOD_DOB_SURCHARGE", title: "BVN Modification - 5-Year DOB Surcharge", price: 5000.00 },
+    // Court Affidavit Services
+    { serviceKey: "AFFIDAVIT_STATE", title: "Court Affidavit - State Judiciary", price: 2500.00 },
+    { serviceKey: "AFFIDAVIT_FEDERAL", title: "Court Affidavit - Federal High Court", price: 4000.00 },
+    { serviceKey: "AFFIDAVIT_CHANGE_OF_NAME", title: "Court Affidavit - Change / Correction of Name", price: 2500.00 },
+    { serviceKey: "AFFIDAVIT_AGE_DECLARATION", title: "Court Affidavit - Age Declaration / DOB", price: 2500.00 },
+    { serviceKey: "AFFIDAVIT_CAC_CORPORATE", title: "Court Affidavit - CAC Corporate Matters", price: 2500.00 },
+    { serviceKey: "AFFIDAVIT_LOSS_OF_ITEM", title: "Court Affidavit - Loss of Document / SIM Card", price: 2500.00 },
+    { serviceKey: "AFFIDAVIT_PROOF_OF_OWNERSHIP", title: "Court Affidavit - Proof of Ownership & Status", price: 2500.00 },
+    { serviceKey: "AFFIDAVIT_GENERAL_PURPOSE", title: "Court Affidavit - General Purpose Statement", price: 2500.00 }
   ]
 
   for (const p of prices) {

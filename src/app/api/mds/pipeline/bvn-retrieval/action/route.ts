@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { sendBvnRetrievalCompletedEmail, sendBvnRetrievalFailedEmail } from "@/lib/email";
 import { generateNumericId } from "@/utils/generateId";
+import { getReferrerRewardAmount } from "@/lib/loyalty";
 
 export async function POST(req: Request) {
   try {
@@ -101,7 +102,8 @@ export async function POST(req: Request) {
               const rewardSetting = await tx.globalSetting.findUnique({
                 where: { key: 'REF_REWARD_BVN_RETRIEVAL' }
               });
-              const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
+              const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
+              const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
 
               if (commissionAmount > 0) {
                 await tx.referralCommission.create({

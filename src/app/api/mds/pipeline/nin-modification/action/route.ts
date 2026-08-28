@@ -8,6 +8,7 @@ import {
   sendNinModificationRejectedEmail,
 } from "@/lib/email";
 import { logUserActivity } from "@/lib/activity-logger";
+import { getReferrerRewardAmount } from "@/lib/loyalty";
 
 export async function POST(req: Request) {
   try {
@@ -117,7 +118,8 @@ export async function POST(req: Request) {
             const rewardSetting = await prisma.globalSetting.findUnique({
               where: { key: 'REF_REWARD_NIN_MOD' }
             });
-            const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
+            const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
+            const commissionAmount = await getReferrerRewardAmount(prisma, activeReferral.referrerId, baseAmount);
 
             if (commissionAmount > 0) {
               await prisma.referralCommission.create({
