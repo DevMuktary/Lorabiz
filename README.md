@@ -4,7 +4,7 @@ Lorabiz is a comprehensive, automated business registration and management platf
 
 ## 🛠 Tech Stack
 
-* **Framework:** [Next.js](https://nextjs.org/) (App Router)
+* **Framework:** [Next.js](https://nextjs.org/) (App Routerr)
 * **Language:** [TypeScript](https://www.typescriptlang.org/)
 * **Database ORM:** [Prisma](https://www.prisma.io/)
 * **Styling:** [Tailwind CSS](https://tailwindcss.com/)
