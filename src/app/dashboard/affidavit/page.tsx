@@ -354,8 +354,16 @@ export default function CourtAffidavitPage() {
         return;
       }
     } else if (category === "CHANGE_OF_NAME") {
-      if (!nameChangeFacts.oldName.trim() || !nameChangeFacts.newName.trim()) {
-        showToast("Please provide both former name and new legal name.");
+      if (!nameChangeFacts.oldName.trim()) {
+        showToast("Please provide the former legal name.");
+        return;
+      }
+      if (!nameChangeFacts.newName.trim()) {
+        showToast("Please provide the new legal name.");
+        return;
+      }
+      if (nameChangeFacts.oldName.trim().toLowerCase() === nameChangeFacts.newName.trim().toLowerCase()) {
+        showToast("New legal name cannot be identical to the former name.");
         return;
       }
     } else if (category === "AGE_DECLARATION") {
@@ -372,9 +380,19 @@ export default function CourtAffidavitPage() {
         showToast("Please specify the item or document lost.");
         return;
       }
+    } else if (category === "PROOF_OF_OWNERSHIP") {
+      if (!ownershipFacts.subject.trim()) {
+        showToast("Please specify the asset, vehicle, or property of ownership.");
+        return;
+      }
     } else if (category === "GENERAL_PURPOSE") {
       if (!generalFacts.title.trim()) {
         showToast("Please enter a title or purpose for this affidavit.");
+        return;
+      }
+      const validClauses = generalFacts.statements.filter((s) => s.trim().length > 0);
+      if (validClauses.length === 0) {
+        showToast("Please add at least one sworn declaration clause.");
         return;
       }
     }

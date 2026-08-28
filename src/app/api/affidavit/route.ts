@@ -124,6 +124,39 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // Specific Matter Payload Validations
+    if (category === "CAC_CORPORATE") {
+      if (!details.companyName || !details.rcBnNumber) {
+        return NextResponse.json({ success: false, message: "Company name and RC/BN Number are required." }, { status: 400 });
+      }
+      if (details.subType === "CAC_SIGNATURE_CHANGE" && (!details.oldSignatureUrl || !details.newSignatureUrl)) {
+        return NextResponse.json({ success: false, message: "Both old and new specimen signatures are required for CAC signature change." }, { status: 400 });
+      }
+    } else if (category === "CHANGE_OF_NAME") {
+      if (!details.oldName || !details.newName) {
+        return NextResponse.json({ success: false, message: "Former legal name and new legal name are required." }, { status: 400 });
+      }
+    } else if (category === "AGE_DECLARATION") {
+      if (!details.declaredDob || !details.placeOfBirth || !details.stateOfBirth) {
+        return NextResponse.json({ success: false, message: "Declared Date of Birth, Place of Birth, and State of Birth are required." }, { status: 400 });
+      }
+      if (!details.reason || !details.reason.trim()) {
+        return NextResponse.json({ success: false, message: "Reason for age declaration is compulsory." }, { status: 400 });
+      }
+    } else if (category === "LOSS_OF_ITEM") {
+      if (!details.itemLost) {
+        return NextResponse.json({ success: false, message: "Lost item or document specification is required." }, { status: 400 });
+      }
+    } else if (category === "PROOF_OF_OWNERSHIP") {
+      if (!details.subject) {
+        return NextResponse.json({ success: false, message: "Subject of ownership declaration is required." }, { status: 400 });
+      }
+    } else if (category === "GENERAL_PURPOSE") {
+      if (!details.title || !details.statements || details.statements.length === 0) {
+        return NextResponse.json({ success: false, message: "Title and declaration clauses are required." }, { status: 400 });
+      }
+    }
+
     // 1. Check Stamping Format Service Availability
     const tierPricing = await prisma.servicePricing.findUnique({
       where: { serviceKey: tierServiceKey }
