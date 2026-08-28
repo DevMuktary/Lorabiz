@@ -13,30 +13,23 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
-  // For all available options, see:
-  // https://www.npmjs.com/package/@sentry/webpack-plugin#options
-
   org: "quadrox-technologies-limited",
-
   project: "javascript-nextjs",
 
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
+  // Suppress verbose logs in build
+  silent: true,
 
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+  // ⚡ CRITICAL: Set to false to stop the 4GB RAM spike & 15-minute wait
+  widenClientFileUpload: false,
 
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
-  widenClientFileUpload: true,
+  // Don't expose source maps publicly
+  hideSourceMaps: true,
 
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
+  // Route browser requests to Sentry through a Next.js rewrite
   tunnelRoute: "/monitoring",
 
   webpack: {
-    // Enables automatic instrumentation of Vercel Cron Monitors.
     automaticVercelMonitors: true,
-
-    // Tree-shaking options for reducing bundle size
     treeshake: {
       removeDebugLogging: true,
     },
