@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
     const isAdult = age >= 18;
 
     // Price and Service Availability Verification from ServicePricing
+    const categoryLabel = CATEGORY_LABELS[category] || "Court Affidavit";
     const isAttested = details?.sealTier === "HIGH_COURT_ATTESTED" || subCategory === "HIGH_COURT_ATTESTED";
     const tierServiceKey = isAttested ? "AFFIDAVIT_FEDERAL" : "AFFIDAVIT_STATE";
     const matterServiceKey = `AFFIDAVIT_${category}`;
@@ -162,7 +163,6 @@ export async function POST(req: NextRequest) {
     }
 
     const trackingId = `AFF-${generateNumericId(6)}`;
-    const categoryLabel = CATEGORY_LABELS[category] || "Court Affidavit";
     const reference = `TX_AFF_${Date.now()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     // Execute atomic wallet debit and creation
