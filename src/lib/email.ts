@@ -235,10 +235,42 @@ export async function sendUserLoginOTP(to: string, otpCode: string) {
 }
 
 // ============================================================================
-// INTERNAL STAFF & MD TWO-FACTOR AUTHENTICATION PASSKEY
+// USER TWO-FACTOR AUTHENTICATION SETUP OTP
+// ============================================================================
+
+export async function sendUser2FASetupEmail(to: string, otpCode: string) {
+  const subject = `${otpCode} is your Two-Factor Authentication Setup Code`;
+  const previewText = `Code: ${otpCode}. Verify your request to enable Two-Factor Authentication.`;
+
+  const content = `
+    <div style="background: #f8fafc; padding: 20px; text-align: center; font-size: 40px; font-weight: 800; letter-spacing: 8px; color: #ff3f7a; border-radius: 12px; border: 2px dashed #e2e8f0; margin-bottom: 24px; font-family: monospace;">
+      ${otpCode}
+    </div>
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">Enable Two-Factor Authentication</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 24px; font-size: 15px; font-family: sans-serif;">
+      You requested to enable Two-Factor Authentication (2FA) for your LoraBiz account. Please use the authorization code above in your settings to activate this protection. 
+      <strong>This code expires in 10 minutes.</strong>
+    </p>
+    <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 8px;">
+      <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5; font-family: sans-serif;">
+        <strong>Security Notice:</strong> If you did not request to enable 2FA on your account, please change your password immediately.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+// ============================================================================
+// INTERNAL STAFF & MD TWO-FACTOR AUTHENTICATION PASSKEY (ADMIN ONLY)
 // ============================================================================
 
 export async function send2FAPasskeyEmail(to: string, otpCode: string, role?: string) {
+  // If this was called for a standard user, redirect to standard user template
+  if (!role || role === "USER") {
+    return sendUserLoginOTP(to, otpCode);
+  }
+
   const isExecutive = role === "ADMIN";
   const portalName = isExecutive ? "Managing Director Executive Control Plane" : "Staff Operations & Compliance Desk";
   const accentColor = isExecutive ? "#d97706" : "#0d9488";
