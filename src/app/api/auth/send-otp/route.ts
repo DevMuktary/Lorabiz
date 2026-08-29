@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationOTP, sendAccountExistsEmail } from "@/lib/email";
-import { isDisposableEmail } from "@/lib/disposable-emails";
+import { isDisposableEmail, normalizeEmail } from "@/lib/disposable-emails";
 
 export async function POST(req: Request) {
   try {
@@ -19,13 +19,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- MASKED EMAIL FILTERING ---
-    let email = rawEmail.toLowerCase().trim();
-    if (email.includes('@')) {
-      const [localPart, domain] = email.split('@');
-      const cleanLocal = localPart.split('+')[0]; // Strip everything after '+'
-      email = `${cleanLocal}@${domain}`;
-    }
+    // 2. NORMALIZE EMAIL (lowercase, trim, strip plus-aliases)
+    const email = normalizeEmail(rawEmail);
 
     // 2. THE "SILENT CATCH" (Anti-Enumeration)
     // If the user already exists, pretend it worked to trick hackers.

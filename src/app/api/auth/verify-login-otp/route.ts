@@ -3,16 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { logUserActivity } from "@/lib/activity-logger";
 import { verify } from "otplib";
 import { normalizeBackupCode } from "@/lib/backup-codes";
+import { normalizeEmail } from "@/lib/disposable-emails";
 
 export async function POST(req: Request) {
   try {
-    const { email, otpCode, isBackupCode } = await req.json();
+    const { email: rawEmail, otpCode, isBackupCode } = await req.json();
 
-    if (!email || !otpCode) {
+    if (!rawEmail || !otpCode) {
       return NextResponse.json({ message: "Email and verification code are required." }, { status: 400 });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = normalizeEmail(rawEmail);
     const rawCode = otpCode.trim();
 
     const user = await prisma.user.findUnique({

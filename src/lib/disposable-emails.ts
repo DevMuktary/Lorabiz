@@ -480,3 +480,21 @@ export function isDisposableEmail(email: string): boolean {
 
   return false;
 }
+
+/**
+ * Standardizes email formatting across all authentication routes:
+ * - Converts to lowercase
+ * - Trims leading/trailing whitespace
+ * - Strips plus-aliasing (e.g. user+test@gmail.com -> user@gmail.com)
+ */
+export function normalizeEmail(rawEmail: string): string {
+  if (!rawEmail || typeof rawEmail !== "string") return "";
+  let email = rawEmail.toLowerCase().trim();
+  if (email.includes("@")) {
+    const [localPart, domain] = email.split("@");
+    const cleanLocal = localPart.split("+")[0].trim();
+    return `${cleanLocal}@${domain.trim()}`;
+  }
+  return email;
+}
+

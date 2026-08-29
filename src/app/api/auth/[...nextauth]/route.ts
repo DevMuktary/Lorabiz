@@ -5,6 +5,7 @@ import { redis } from "@/lib/redis";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { sendUserLoginOTP } from "@/lib/email";
+import { normalizeEmail } from "@/lib/disposable-emails";
 
 // Pre-computed dummy hash for timing attacks
 const DUMMY_HASH = "$2a$10$X7U.z5G8W8mH1L4y9vP/eeKjK9kYgG3d6fM9a6L7w1h3X9Z2Q5xO6";
@@ -83,10 +84,11 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const normalizedEmail = credentials.email.toLowerCase().trim();
+        const normalizedEmail = normalizeEmail(credentials.email);
         const rawIp = req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
         const clientIp = Array.isArray(rawIp) ? rawIp[0].split(',')[0].trim() : rawIp.split(',')[0].trim();
         const rawUa = req?.headers?.["user-agent"] || "Unknown Browser";
+        const clientDevice = Array.isArray(rawUa) ? rawUa[0] : rawUa;
         const requestedPortal = credentials.portal || "user";
 
         // ====================================================================
