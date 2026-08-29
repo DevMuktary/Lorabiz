@@ -4,6 +4,7 @@ import { logUserActivity } from "@/lib/activity-logger";
 import { verify } from "otplib";
 import { normalizeBackupCode } from "@/lib/backup-codes";
 import { normalizeEmail } from "@/lib/disposable-emails";
+import { sendLoginAlertEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -137,6 +138,18 @@ export async function POST(req: Request) {
         method: authMethodUsed,
       },
     });
+
+    // Dispatch New Sign-in Alert Email (Non-blocking)
+    if (user.emailLoginAlerts !== false) {
+      const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "Unknown IP";
+      const clientDevice = req.headers.get("user-agent") || "Unknown Device";
+      sendLoginAlertEmail(user.email, {
+        name: user.firstName || undefined,
+        ipAddress: clientIp,
+        userAgent: clientDevice,
+        loginTime: new Date(),
+      }).catch((err) => console.error("Failed to send login alert email:", err));
+    }
 
     return NextResponse.json({ message: "Verification successful." }, { status: 200 });
   } catch (error) {

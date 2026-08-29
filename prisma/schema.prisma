@@ -117,6 +117,7 @@ model User {
   
   // Marketing & Email Broadcast Subscriptions
   isSubscribedToMarketing Boolean  @default(true)
+  emailLoginAlerts        Boolean  @default(true)
   
   isSuspended   Boolean   @default(false) // Allows MD to lock out malicious users
   createdAt       DateTime         @default(now())

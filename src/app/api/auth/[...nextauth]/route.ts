@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { sendUserLoginOTP } from "@/lib/email";
+import { sendUserLoginOTP, sendLoginAlertEmail } from "@/lib/email";
 import { normalizeEmail } from "@/lib/disposable-emails";
 
 // Pre-computed dummy hash for timing attacks
@@ -213,6 +213,16 @@ export const authOptions: NextAuthOptions = {
           await logSecurityEvent({
             email: normalizedEmail, role: user.role, event: "LOGIN_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, signed in directly (2FA disabled).`,
           });
+
+          // Dispatch New Sign-in Alert Email (Non-blocking)
+          if (user.emailLoginAlerts !== false) {
+            sendLoginAlertEmail(user.email, {
+              name: user.firstName || undefined,
+              ipAddress: clientIp,
+              userAgent: clientDevice,
+              loginTime: new Date(),
+            }).catch((err) => console.error("Failed to send login alert email:", err));
+          }
         }
 
         return {

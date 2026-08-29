@@ -21,6 +21,7 @@ export async function GET() {
         twoFactorEnabled: true,
         twoFactorMethod: true,
         twoFactorBackupCodes: true,
+        emailLoginAlerts: true,
       }
     });
 
@@ -37,32 +38,29 @@ export async function GET() {
   }
 }
 
-// Update basic details (name)
+// Update settings / preferences (e.g. emailLoginAlerts)
 export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-    const { firstName, lastName } = await req.json();
-    
-    // Security: Sanitize strings and check length
-    const cleanFirstName = firstName?.trim();
-    const cleanLastName = lastName?.trim();
+    const body = await req.json();
+    const dataToUpdate: any = {};
 
-    if (!cleanFirstName || !cleanLastName) {
-      return NextResponse.json({ message: "First and last names are required." }, { status: 400 });
+    if (typeof body.emailLoginAlerts === "boolean") {
+      dataToUpdate.emailLoginAlerts = body.emailLoginAlerts;
     }
 
-    if (cleanFirstName.length > 50 || cleanLastName.length > 50) {
-      return NextResponse.json({ message: "Names must be 50 characters or less." }, { status: 400 });
+    if (Object.keys(dataToUpdate).length === 0) {
+      return NextResponse.json({ message: "No valid settings provided." }, { status: 400 });
     }
 
     await prisma.user.update({
       where: { email: session.user.email },
-      data: { firstName: cleanFirstName, lastName: cleanLastName }
+      data: dataToUpdate,
     });
 
-    return NextResponse.json({ success: true, message: "Profile updated successfully." });
+    return NextResponse.json({ success: true, message: "Settings updated successfully." });
   } catch (error) {
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }

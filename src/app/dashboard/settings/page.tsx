@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { 
   UserCircle, LockKey, EnvelopeSimple, DeviceMobile, 
-  WhatsappLogo, ShieldCheck, Spinner, PencilSimple, Camera, Key
+  WhatsappLogo, ShieldCheck, Spinner, PencilSimple, Camera, Key, CheckCircle, Bell
 } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import AvatarUploadModal from "@/components/features/settings/AvatarUploadModal";
@@ -15,7 +15,7 @@ import { useLoyalty } from "@/lib/useLoyalty";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
-  const [savingProfile, setSavingProfile] = useState(false);
+  const [updatingAlerts, setUpdatingAlerts] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error" | "info", message: string } | null>(null);
 
   const { profile: loyaltyProfile } = useLoyalty();
@@ -33,6 +33,7 @@ export default function SettingsPage() {
     twoFactorEnabled: false,
     twoFactorMethod: null as "EMAIL" | "AUTHENTICATOR" | null,
     backupCodesCount: 0,
+    emailLoginAlerts: true,
   });
 
   const fetchProfile = async () => {
@@ -50,6 +51,7 @@ export default function SettingsPage() {
           twoFactorEnabled: data.user.twoFactorEnabled || false,
           twoFactorMethod: data.user.twoFactorMethod || null,
           backupCodesCount: data.user.backupCodesCount || 0,
+          emailLoginAlerts: data.user.emailLoginAlerts ?? true,
         });
       }
     } catch (err) {
@@ -68,22 +70,28 @@ export default function SettingsPage() {
     setTimeout(() => setToast(null), 5000);
   };
 
-  const handleSaveProfile = async () => {
-    if (!profile.firstName || !profile.lastName) return showToast("error", "First and Last names are required.");
-    setSavingProfile(true);
+  const toggleEmailLoginAlerts = async () => {
+    const newValue = !profile.emailLoginAlerts;
+    setProfile(prev => ({ ...prev, emailLoginAlerts: newValue }));
+    setUpdatingAlerts(true);
     try {
       const res = await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName: profile.firstName, lastName: profile.lastName })
+        body: JSON.stringify({ emailLoginAlerts: newValue }),
       });
       const data = await res.json();
-      if (data.success) showToast("success", "Profile updated successfully!");
-      else showToast("error", data.message);
+      if (data.success) {
+        showToast("success", newValue ? "Login security alerts enabled." : "Login security alerts disabled.");
+      } else {
+        setProfile(prev => ({ ...prev, emailLoginAlerts: !newValue }));
+        showToast("error", data.message || "Failed to update notification setting.");
+      }
     } catch (err) {
+      setProfile(prev => ({ ...prev, emailLoginAlerts: !newValue }));
       showToast("error", "Network error occurred.");
     } finally {
-      setSavingProfile(false);
+      setUpdatingAlerts(false);
     }
   };
 
@@ -105,12 +113,12 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto font-sans pb-12">
       <div>
-        <h1 className="text-2xl font-black text-foreground">Profile Settings</h1>
-        <p className="text-sm font-medium text-muted-foreground">Manage your identity, security, and notification preferences.</p>
+        <h1 className="text-2xl font-black text-foreground">Profile & Settings</h1>
+        <p className="text-sm font-medium text-muted-foreground">Manage your identity, account security, and notification preferences.</p>
       </div>
 
       {toast && (
-        <div className={`p-4 rounded-2xl flex items-center gap-3 shadow-sm border text-sm font-bold animate-in slide-in-from-top-2 ${
+        <div className={`p-3.5 rounded-xl flex items-center gap-3 shadow-sm border text-xs font-bold ${
           toast.type === "success" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600" :
           toast.type === "error" ? "bg-red-500/10 border-red-500/20 text-red-600" :
           "bg-blue-500/10 border-blue-500/20 text-blue-600"
@@ -120,11 +128,13 @@ export default function SettingsPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: Identity & Avatar */}
+        {/* LEFT COLUMN: Identity & Notifications */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
-            {/* Avatar Section */}
-            <div className="flex items-center gap-4 pb-6 border-b border-border">
+          
+          {/* Identity Profile Card */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-5 shadow-sm">
+            {/* Avatar Header */}
+            <div className="flex items-center gap-4 pb-5 border-b border-border">
               <div className="relative group cursor-pointer" onClick={() => setActiveModal("AVATAR")}>
                 <TierAvatar
                   image={profile.image}
@@ -133,136 +143,191 @@ export default function SettingsPage() {
                   size="xl"
                 />
                 <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
-                  <Camera size={20} weight="fill" />
+                  <Camera size={18} weight="fill" />
                 </div>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-black text-base text-foreground">{profile.firstName} {profile.lastName}</h3>
+                  <h3 className="font-bold text-base text-foreground">{profile.firstName} {profile.lastName}</h3>
                   {loyaltyProfile?.currentTier && (
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                       {loyaltyProfile.currentTier.name}
                     </span>
                   )}
                 </div>
-                <button onClick={() => setActiveModal("AVATAR")} className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                  Change Profile Picture
+                <button onClick={() => setActiveModal("AVATAR")} className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+                  Change Photo
                 </button>
               </div>
             </div>
 
-            {/* Basic Info Inputs */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Read-Only Verified Legal Name */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground">Legal Identity</span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md flex items-center gap-1 border border-emerald-500/20">
+                  <CheckCircle weight="fill" className="h-3 w-3" /> Verified Name
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">First Name</label>
-                  <Input value={profile.firstName} onChange={e => setProfile({...profile, firstName: e.target.value})} className="h-11 bg-secondary/50 font-bold" />
+                  <label className="text-[11px] font-semibold text-muted-foreground">First Name</label>
+                  <Input value={profile.firstName} readOnly className="h-10 bg-secondary border-border text-foreground font-semibold cursor-not-allowed" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Last Name</label>
-                  <Input value={profile.lastName} onChange={e => setProfile({...profile, lastName: e.target.value})} className="h-11 bg-secondary/50 font-bold" />
+                  <label className="text-[11px] font-semibold text-muted-foreground">Last Name</label>
+                  <Input value={profile.lastName} readOnly className="h-10 bg-secondary border-border text-foreground font-semibold cursor-not-allowed" />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Email Address</label>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Legal names are locked to maintain compliance with CAC/NIN verification standards and loyalty tier status.
+              </p>
+
+              <div className="space-y-1 pt-1">
+                <label className="text-[11px] font-semibold text-muted-foreground">Registered Email</label>
                 <div className="relative">
-                  <EnvelopeSimple className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" weight="bold" />
-                  <Input value={profile.email} readOnly className="pl-10 h-11 bg-secondary border-border text-muted-foreground font-bold cursor-not-allowed" />
+                  <EnvelopeSimple className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" weight="bold" />
+                  <Input value={profile.email} readOnly className="pl-10 h-10 bg-secondary border-border text-muted-foreground font-semibold cursor-not-allowed" />
                 </div>
               </div>
-
-              <button onClick={handleSaveProfile} disabled={savingProfile} className="h-11 px-6 bg-foreground text-background font-bold rounded-xl text-sm hover:opacity-90 transition-opacity flex items-center justify-center disabled:opacity-50">
-                {savingProfile ? <Spinner className="animate-spin h-5 w-5" /> : "Save Changes"}
-              </button>
             </div>
           </div>
 
-          {/* Notifications Summary */}
-          <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
-            <h3 className="font-black text-base text-foreground pb-2 border-b border-border">Notifications</h3>
-            <div onClick={() => showToast("info", "Critical security notifications cannot be disabled.")} className="flex items-center justify-between p-3.5 bg-secondary/30 border border-border rounded-2xl cursor-not-allowed opacity-80">
-              <div className="flex items-center gap-3">
-                <WhatsappLogo className="h-5 w-5 text-[#25D366]" weight="fill" />
-                <div>
-                  <p className="font-bold text-sm text-foreground">WhatsApp Alerts</p>
-                  <p className="text-xs text-muted-foreground">Application updates and security codes.</p>
+          {/* Notifications Card */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 pb-2 border-b border-border">
+              <Bell className="h-4 w-4 text-primary" weight="bold" />
+              <h3 className="font-bold text-sm text-foreground">Notification Preferences</h3>
+            </div>
+
+            <div className="space-y-3">
+              {/* Login Security Alerts */}
+              <div 
+                onClick={toggleEmailLoginAlerts} 
+                className="flex items-center justify-between p-3.5 bg-secondary/30 hover:bg-secondary/50 border border-border rounded-xl cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <EnvelopeSimple className="h-5 w-5 text-primary" weight="bold" />
+                  <div>
+                    <p className="font-bold text-xs text-foreground">Email Sign-In Alerts</p>
+                    <p className="text-[11px] text-muted-foreground">Instant notifications when a new login is detected on your account.</p>
+                  </div>
                 </div>
+                <button 
+                  type="button"
+                  className={`w-9 h-5 rounded-full transition-colors relative focus:outline-none ${profile.emailLoginAlerts ? "bg-primary" : "bg-muted"}`}
+                >
+                  <div className={`absolute top-0.5 h-4 w-4 bg-white rounded-full transition-transform ${profile.emailLoginAlerts ? "right-0.5" : "left-0.5"}`} />
+                </button>
               </div>
-              <div className="w-9 h-5 bg-primary rounded-full relative"><div className="absolute right-1 top-1 h-3 w-3 bg-white rounded-full" /></div>
+
+              {/* WhatsApp Alerts */}
+              <div className="flex items-center justify-between p-3.5 bg-secondary/20 border border-border rounded-xl opacity-90">
+                <div className="flex items-center gap-3">
+                  <WhatsappLogo className="h-5 w-5 text-[#25D366]" weight="fill" />
+                  <div>
+                    <p className="font-bold text-xs text-foreground">WhatsApp Alerts</p>
+                    <p className="text-[11px] text-muted-foreground">Critical registration updates and transaction notices.</p>
+                  </div>
+                </div>
+                <div className="w-9 h-5 bg-primary rounded-full relative"><div className="absolute right-0.5 top-0.5 h-4 w-4 bg-white rounded-full" /></div>
+              </div>
             </div>
           </div>
+
         </div>
 
-        {/* RIGHT COLUMN: Security Summary Cards */}
+        {/* RIGHT COLUMN: Phone & Unified Security Card */}
         <div className="lg:col-span-5 space-y-6">
+          
           {/* Phone Card */}
-          <div className="bg-card border border-border rounded-3xl p-6 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between border-b border-border pb-2.5">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-amber-500" weight="fill" />
-                <h3 className="font-black text-base text-foreground">Phone Number</h3>
+                <ShieldCheck className="h-4 w-4 text-amber-500" weight="fill" />
+                <h3 className="font-bold text-sm text-foreground">Phone Verification</h3>
               </div>
             </div>
             <div>
-              <p className="text-xs font-bold text-muted-foreground">Registered Number</p>
-              <p className="font-black text-foreground text-lg tracking-wider mt-0.5">{profile.phone}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground">Registered Number</p>
+              <p className="font-bold text-foreground text-base tracking-wider mt-0.5">{profile.phone}</p>
             </div>
             {isPhoneLocked() ? (
-              <p className="text-xs font-bold text-amber-600 bg-amber-500/10 p-3 rounded-xl">
+              <p className="text-[11px] font-semibold text-amber-600 bg-amber-500/10 p-2.5 rounded-lg">
                 Security Lock: You updated your number recently. Wait 30 days before changing again.
               </p>
             ) : (
-              <button onClick={() => setActiveModal("PHONE")} className="w-full h-11 bg-secondary hover:bg-foreground hover:text-background text-foreground font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+              <button 
+                onClick={() => setActiveModal("PHONE")} 
+                className="w-full h-9 bg-secondary hover:bg-secondary/80 text-foreground font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+              >
                 <PencilSimple weight="bold" /> Change Number
               </button>
             )}
           </div>
 
-          {/* Password Card */}
-          <div className="bg-card border border-border rounded-3xl p-6 space-y-4 shadow-sm">
-            <div className="flex items-center gap-2 border-b border-border pb-3">
-              <LockKey className="h-5 w-5 text-red-500" weight="fill" />
-              <h3 className="font-black text-base text-foreground">Password & Access</h3>
+          {/* Unified Security & Access Card (Password & 2FA) */}
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-border pb-2.5">
+              <LockKey className="h-4 w-4 text-primary" weight="fill" />
+              <h3 className="font-bold text-sm text-foreground">Security & Access</h3>
             </div>
-            <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-              Ensure your account uses a strong, unique password. Updating requires verification.
-            </p>
-            <button onClick={() => setActiveModal("PASSWORD")} className="w-full h-11 bg-red-600/10 hover:bg-red-600 text-red-600 hover:text-white font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
-              Update Password
-            </button>
-          </div>
 
-          {/* Two-Factor Authentication (2FA) Card */}
-          <div className="bg-card border border-border rounded-3xl p-6 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-primary" weight="fill" />
-                <h3 className="font-black text-base text-foreground">2-Step Verification</h3>
+            {/* Section 1: Account Password */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground">Account Password</span>
+                <span className="text-[10px] font-semibold text-muted-foreground">Protected</span>
               </div>
-              <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
-                profile.twoFactorEnabled 
-                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
-                  : "bg-secondary text-muted-foreground border-border"
-              }`}>
-                {profile.twoFactorEnabled ? "Active" : "Disabled"}
-              </span>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Ensure your account uses a strong, unique password to safeguard your wallet balance.
+              </p>
+              <button 
+                onClick={() => setActiveModal("PASSWORD")} 
+                className="w-full h-9 bg-secondary hover:bg-secondary/80 text-foreground font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+              >
+                Update Password
+              </button>
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-              {profile.twoFactorEnabled 
-                ? `Protected via ${profile.twoFactorMethod === "AUTHENTICATOR" ? "Google Authenticator" : "Email OTP"}. ${profile.backupCodesCount} backup codes remaining.`
-                : "Protect your wallet balance and transactions with Google Authenticator or Email OTP."}
-            </p>
+            <div className="border-t border-border pt-4 space-y-2.5">
+              {/* Section 2: Two-Factor Authentication */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Key className="h-3.5 w-3.5 text-primary" weight="bold" /> 2-Step Verification
+                </span>
+                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                  profile.twoFactorEnabled 
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
+                    : "bg-secondary text-muted-foreground border-border"
+                }`}>
+                  {profile.twoFactorEnabled ? "Active" : "Disabled"}
+                </span>
+              </div>
 
-            <button 
-              onClick={() => setActiveModal("2FA")} 
-              className="w-full h-11 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
-            >
-              <Key weight="bold" />
-              <span>{profile.twoFactorEnabled ? "Manage 2FA & Recovery Codes" : "Enable Two-Factor (2FA)"}</span>
-            </button>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {profile.twoFactorEnabled 
+                  ? `Protected via ${profile.twoFactorMethod === "AUTHENTICATOR" ? "Authenticator App" : "Email OTP"}. ${profile.backupCodesCount} recovery codes available.`
+                  : "Add an extra layer of protection using Google Authenticator or Email OTP."}
+              </p>
+
+              <button 
+                onClick={() => setActiveModal("2FA")} 
+                className={`w-full h-9 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 ${
+                  profile.twoFactorEnabled 
+                    ? "bg-secondary hover:bg-secondary/80 text-foreground" 
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                }`}
+              >
+                <Key weight="bold" />
+                <span>{profile.twoFactorEnabled ? "Manage 2FA & Backup Codes" : "Enable Two-Factor (2FA)"}</span>
+              </button>
+            </div>
+
           </div>
+
         </div>
       </div>
 
@@ -278,7 +343,6 @@ export default function SettingsPage() {
         backupCodesCount={profile.backupCodesCount}
         userEmail={profile.email}
         onStatusChange={() => {
-          showToast("success", profile.twoFactorEnabled ? "2FA status updated!" : "2FA activated successfully!");
           fetchProfile();
         }}
       />

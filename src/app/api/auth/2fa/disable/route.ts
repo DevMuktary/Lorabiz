@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { send2FADisabledEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
@@ -54,6 +55,11 @@ export async function POST(req: Request) {
         details: "User successfully disabled Two-Factor Authentication.",
       },
     });
+
+    // Dispatch 2FA Disabled Security Warning (Non-blocking)
+    send2FADisabledEmail(user.email, {
+      name: user.firstName || undefined,
+    }).catch((err) => console.error("Failed to send 2FA disabled alert email:", err));
 
     return NextResponse.json({ success: true, message: "Two-Factor Authentication disabled." });
   } catch (error: any) {

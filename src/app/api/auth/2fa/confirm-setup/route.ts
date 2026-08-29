@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { verify } from "otplib";
 import { generateBackupCodes } from "@/lib/backup-codes";
+import { send2FAEnabledEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -106,6 +107,12 @@ export async function POST(req: Request) {
         details: `Successfully enrolled and verified MFA via ${method}. Generated 8 backup codes.`,
       },
     });
+
+    // Dispatch 2FA Activated Email Confirmation (Non-blocking)
+    send2FAEnabledEmail(user.email, {
+      name: user.firstName || undefined,
+      method,
+    }).catch((err) => console.error("Failed to send 2FA enabled alert email:", err));
 
     return NextResponse.json({ success: true, backupCodes });
   } catch (error: any) {
