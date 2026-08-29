@@ -18,11 +18,20 @@ export async function GET() {
         image: true,
         role: true,
         phoneChangedAt: true,
+        twoFactorEnabled: true,
+        twoFactorMethod: true,
+        twoFactorBackupCodes: true,
       }
     });
 
     if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
-    return NextResponse.json({ success: true, user });
+    return NextResponse.json({ 
+      success: true, 
+      user: {
+        ...user,
+        backupCodesCount: user.twoFactorBackupCodes?.length || 0,
+      } 
+    });
   } catch (error) {
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }

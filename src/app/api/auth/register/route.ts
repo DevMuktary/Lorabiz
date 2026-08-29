@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { notificationQueue } from "@/lib/queue";
 import { logUserActivity } from "@/lib/activity-logger";
+import { isDisposableEmail } from "@/lib/disposable-emails";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
@@ -22,6 +23,10 @@ export async function POST(req: Request) {
     // 1. Strict Basic Validation
     if (!firstName || !lastName || !rawEmail || !password || !phone || !whatsapp || !gender || !state || !lga || !street || !otpCode) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+    }
+
+    if (isDisposableEmail(rawEmail)) {
+      return NextResponse.json({ message: "Disposable or temporary email addresses are not permitted." }, { status: 400 });
     }
 
     // --- MASKED EMAIL FILTERING ---

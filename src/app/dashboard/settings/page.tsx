@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { 
   UserCircle, LockKey, EnvelopeSimple, DeviceMobile, 
-  WhatsappLogo, ShieldCheck, Spinner, PencilSimple, Camera
+  WhatsappLogo, ShieldCheck, Spinner, PencilSimple, Camera, Key
 } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import AvatarUploadModal from "@/components/features/settings/AvatarUploadModal";
 import PhoneChangeModal from "@/components/features/settings/PhoneChangeModal";
 import PasswordChangeModal from "@/components/features/settings/PasswordChangeModal";
+import TwoFactorModal from "@/components/features/settings/TwoFactorModal";
 import TierAvatar from "@/components/ui/TierAvatar";
 import { useLoyalty } from "@/lib/useLoyalty";
 
@@ -20,7 +21,7 @@ export default function SettingsPage() {
   const { profile: loyaltyProfile } = useLoyalty();
 
   // Modals state
-  const [activeModal, setActiveModal] = useState<"AVATAR" | "PHONE" | "PASSWORD" | null>(null);
+  const [activeModal, setActiveModal] = useState<"AVATAR" | "PHONE" | "PASSWORD" | "2FA" | null>(null);
 
   const [profile, setProfile] = useState({
     firstName: "",
@@ -29,6 +30,9 @@ export default function SettingsPage() {
     phone: "",
     image: null as string | null,
     phoneChangedAt: null as string | null,
+    twoFactorEnabled: false,
+    twoFactorMethod: null as "EMAIL" | "AUTHENTICATOR" | null,
+    backupCodesCount: 0,
   });
 
   const fetchProfile = async () => {
@@ -43,6 +47,9 @@ export default function SettingsPage() {
           phone: data.user.phone || "",
           image: data.user.image || null,
           phoneChangedAt: data.user.phoneChangedAt,
+          twoFactorEnabled: data.user.twoFactorEnabled || false,
+          twoFactorMethod: data.user.twoFactorMethod || null,
+          backupCodesCount: data.user.backupCodesCount || 0,
         });
       }
     } catch (err) {
@@ -225,6 +232,37 @@ export default function SettingsPage() {
               Update Password
             </button>
           </div>
+
+          {/* Two-Factor Authentication (2FA) Card */}
+          <div className="bg-card border border-border rounded-3xl p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" weight="fill" />
+                <h3 className="font-black text-base text-foreground">2-Step Verification</h3>
+              </div>
+              <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                profile.twoFactorEnabled 
+                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
+                  : "bg-secondary text-muted-foreground border-border"
+              }`}>
+                {profile.twoFactorEnabled ? "Active" : "Disabled"}
+              </span>
+            </div>
+
+            <p className="text-xs font-medium text-muted-foreground leading-relaxed">
+              {profile.twoFactorEnabled 
+                ? `Protected via ${profile.twoFactorMethod === "AUTHENTICATOR" ? "Google Authenticator" : "Email OTP"}. ${profile.backupCodesCount} backup codes remaining.`
+                : "Protect your wallet balance and transactions with Google Authenticator or Email OTP."}
+            </p>
+
+            <button 
+              onClick={() => setActiveModal("2FA")} 
+              className="w-full h-11 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              <Key weight="bold" />
+              <span>{profile.twoFactorEnabled ? "Manage 2FA & Recovery Codes" : "Enable Two-Factor (2FA)"}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -232,6 +270,18 @@ export default function SettingsPage() {
       <AvatarUploadModal isOpen={activeModal === "AVATAR"} onClose={() => setActiveModal(null)} currentImage={profile.image} onSuccess={(url) => setProfile({...profile, image: url})} />
       <PhoneChangeModal isOpen={activeModal === "PHONE"} onClose={() => setActiveModal(null)} currentPhone={profile.phone} onSuccess={() => { showToast("success", "Phone number updated!"); fetchProfile(); }} />
       <PasswordChangeModal isOpen={activeModal === "PASSWORD"} onClose={() => setActiveModal(null)} onSuccess={() => showToast("success", "Password successfully updated!")} />
+      <TwoFactorModal 
+        isOpen={activeModal === "2FA"} 
+        onClose={() => setActiveModal(null)} 
+        twoFactorEnabled={profile.twoFactorEnabled}
+        twoFactorMethod={profile.twoFactorMethod}
+        backupCodesCount={profile.backupCodesCount}
+        userEmail={profile.email}
+        onStatusChange={() => {
+          showToast("success", profile.twoFactorEnabled ? "2FA status updated!" : "2FA activated successfully!");
+          fetchProfile();
+        }}
+      />
     </div>
   );
 }

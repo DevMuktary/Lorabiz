@@ -113,6 +113,7 @@ model User {
   twoFactorEnabled Boolean         @default(false)
   twoFactorMethod  TwoFactorMethod?
   twoFactorSecret  String?         // Stores encrypted Base32 TOTP secret for Google Authenticator
+  twoFactorBackupCodes String[]    @default([]) // Single-use 8-character recovery codes
   
   // Marketing & Email Broadcast Subscriptions
   isSubscribedToMarketing Boolean  @default(true)

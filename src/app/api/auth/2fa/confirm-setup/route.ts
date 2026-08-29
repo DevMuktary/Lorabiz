@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { verify } from "otplib";
+import { generateBackupCodes } from "@/lib/backup-codes";
 
 export async function POST(req: Request) {
   try {
@@ -42,7 +43,6 @@ export async function POST(req: Request) {
         secret: user.twoFactorSecret,
       });
 
-      // Strictly inspect boolean properties inside the result object
       let isValid = false;
       if (typeof verificationResult === "boolean") {
         isValid = verificationResult === true;
@@ -80,6 +80,11 @@ export async function POST(req: Request) {
     }
 
     // ========================================================================
+    // GENERATE 8 SINGLE-USE RECOVERY BACKUP CODES
+    // ========================================================================
+    const backupCodes = generateBackupCodes(8);
+
+    // ========================================================================
     // ACTIVATE TWO-FACTOR ENROLLMENT IN DATABASE
     // ========================================================================
     await prisma.user.update({
@@ -87,6 +92,7 @@ export async function POST(req: Request) {
       data: {
         twoFactorEnabled: true,
         twoFactorMethod: method,
+        twoFactorBackupCodes: backupCodes,
       },
     });
 
@@ -97,11 +103,11 @@ export async function POST(req: Request) {
         event: "MFA_ENROLLMENT_SUCCESS",
         ipAddress,
         userAgent,
-        details: `Successfully enrolled and verified MFA via ${method}`,
+        details: `Successfully enrolled and verified MFA via ${method}. Generated 8 backup codes.`,
       },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, backupCodes });
   } catch (error: any) {
     console.error("2FA Setup Confirmation Error:", error);
     return NextResponse.json(
