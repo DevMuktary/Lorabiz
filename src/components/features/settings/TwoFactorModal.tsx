@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { 
   ShieldCheck, LockKey, DeviceMobile, EnvelopeSimple, 
-  Key, Copy, Check, Spinner, X, ArrowLeft, DownloadSimple, AlertTriangle
+  Key, Copy, Check, Spinner, X, ArrowLeft, DownloadSimple, Warning
 } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -420,7 +420,7 @@ export default function TwoFactorModal({
         {step === "SHOW_BACKUP_CODES" && (
           <div className="space-y-5">
             <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 rounded-2xl flex items-start gap-2.5">
-              <AlertTriangle weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
+              <Warning weight="fill" className="h-5 w-5 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
                 <p className="font-bold">Save Your Recovery Backup Codes!</p>
                 <p className="opacity-90">
