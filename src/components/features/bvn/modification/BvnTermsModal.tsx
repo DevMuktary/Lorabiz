@@ -94,6 +94,7 @@ export default function BvnTermsModal({
 
         {/* Clear Legal & Policy Guidelines */}
         <div className="max-h-[260px] overflow-y-auto space-y-3 pr-2 text-xs leading-relaxed border border-border/80 rounded-2xl p-4 bg-secondary/20">
+          <div className="space-y-2 text-muted-foreground">
             <p>
               1. <strong>Mandatory Ownership &amp; Authorization:</strong> I solemnly affirm under penalty of identity fraud, the <strong>Nigeria Data Protection Act (NDPA) 2023</strong>, and the <strong>Cybercrimes Act 2015</strong> that I am either the <strong>legitimate registered owner</strong> of BVN <strong className="font-mono text-foreground">{bvn}</strong> or have been <strong>duly authorized with documented proxy consent</strong> by the BVN owner to submit this modification.
             </p>
