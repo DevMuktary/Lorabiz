@@ -80,6 +80,10 @@ export default function Footer() {
               <Link href="/privacy" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Terms of Use</Link>
               <Link href="/acceptable-use" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Acceptable Use</Link>
+              <Link href="/compliance" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors flex items-center gap-1.5">
+                <span>NDPC Compliance</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">NDPA</span>
+              </Link>
             </div>
           </div>
 

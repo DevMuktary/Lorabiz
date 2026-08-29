@@ -65,7 +65,7 @@ export default function BvnRetrievalIntroModal({
             This service is designed for users who need to recover their forgotten 11-digit Bank Verification Number (BVN) from NIBSS records.
           </p>
           <p>
-            Please do not attempt to search or retrieve BVN records of other individuals without their express permission or legal authorization. Unauthorized record queries violate identity privacy regulations.
+            Please do not attempt to search or retrieve BVN records of other individuals without their express, documented written authorization. Unauthorized record queries violate the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> and the <strong>Cybercrimes Act 2015</strong>. LoraBiz maintains permanent audit trails and cooperates fully with law enforcement.
           </p>
           <p className="text-xs bg-secondary/50 p-3 rounded-xl border border-border">
             <strong>Turnaround Time:</strong> Standard fulfillment is between <strong>1 to 24 working hours</strong>. You will receive an automated email notification once completed.
