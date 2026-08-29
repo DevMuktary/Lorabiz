@@ -162,7 +162,7 @@ export function IpeSubmissionForm({
           </p>
         </div>
 
-        {/* Concise Statutory Attestation */}
+        {/* Statutory Attestation */}
         <label className="flex items-start gap-3 p-4 bg-secondary/50 rounded-xl cursor-pointer border border-transparent hover:border-border transition-colors select-none">
           <input
             type="checkbox"
@@ -172,7 +172,7 @@ export function IpeSubmissionForm({
             className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer shrink-0"
           />
           <span className="text-xs text-muted-foreground leading-relaxed">
-            I confirm that I am the applicant or a designated agent authorized to request IPE clearance for this Tracking ID.
+            I declare under penalty of perjury and the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> that I am the applicant or hold lawful proxy consent to request IPE clearance for this Tracking ID. I acknowledge that my IP and audit logs are recorded.
           </span>
         </label>
 

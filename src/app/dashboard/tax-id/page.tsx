@@ -356,7 +356,7 @@ export default function TaxIdPage() {
               <label className="flex items-start gap-3 p-4 bg-secondary/50 rounded-xl cursor-pointer border border-transparent hover:border-border transition-colors">
                 <input type="checkbox" required checked={consentChecked} onChange={(e) => setConsentChecked(e.target.checked)} className="mt-1 w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer shrink-0" />
                 <span className="text-xs text-muted-foreground leading-relaxed select-none">
-                  I hereby consent to the processing of my information for tax-related identity verification and authorize Lorabiz to process it on my behalf.
+                  I hereby declare under the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> that I am the applicant or authorized corporate proxy for this entity, and authorize Lorabiz to process this tax identity application with relevant revenue authorities.
                 </span>
               </label>
 
