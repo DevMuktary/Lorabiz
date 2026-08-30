@@ -5,7 +5,6 @@ import {
   UserCircle, LockKey, EnvelopeSimple, DeviceMobile, 
   WhatsappLogo, ShieldCheck, Spinner, PencilSimple, Camera, Key, CheckCircle, Bell
 } from "@phosphor-icons/react";
-import { Input } from "@/components/ui/input";
 import AvatarUploadModal from "@/components/features/settings/AvatarUploadModal";
 import PhoneChangeModal from "@/components/features/settings/PhoneChangeModal";
 import PasswordChangeModal from "@/components/features/settings/PasswordChangeModal";
@@ -173,11 +172,15 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-semibold text-muted-foreground">First Name</label>
-                  <Input value={profile.firstName} readOnly className="h-10 bg-secondary border-border text-foreground font-semibold cursor-not-allowed" />
+                  <div className="h-10 px-3.5 flex items-center bg-secondary/50 border border-border rounded-xl text-foreground font-semibold text-sm select-all">
+                    {profile.firstName}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-semibold text-muted-foreground">Last Name</label>
-                  <Input value={profile.lastName} readOnly className="h-10 bg-secondary border-border text-foreground font-semibold cursor-not-allowed" />
+                  <div className="h-10 px-3.5 flex items-center bg-secondary/50 border border-border rounded-xl text-foreground font-semibold text-sm select-all">
+                    {profile.lastName}
+                  </div>
                 </div>
               </div>
 
@@ -187,9 +190,9 @@ export default function SettingsPage() {
 
               <div className="space-y-1 pt-1">
                 <label className="text-[11px] font-semibold text-muted-foreground">Registered Email</label>
-                <div className="relative">
-                  <EnvelopeSimple className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" weight="bold" />
-                  <Input value={profile.email} readOnly className="pl-10 h-10 bg-secondary border-border text-muted-foreground font-semibold cursor-not-allowed" />
+                <div className="h-10 px-3.5 flex items-center gap-2.5 bg-secondary/50 border border-border rounded-xl text-muted-foreground font-semibold text-sm select-all">
+                  <EnvelopeSimple className="h-4 w-4 shrink-0 text-muted-foreground" weight="bold" />
+                  <span>{profile.email}</span>
                 </div>
               </div>
             </div>
