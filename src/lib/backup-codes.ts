@@ -11,11 +11,10 @@ export function generateBackupCodes(count: number = 8): string[] {
   for (let i = 0; i < count; i++) {
     let part1 = "";
     let part2 = "";
-    const randomBytes = crypto.randomBytes(8);
 
     for (let j = 0; j < 4; j++) {
-      part1 += characters[randomBytes[j] % characters.length];
-      part2 += characters[randomBytes[j + 4] % characters.length];
+      part1 += characters[crypto.randomInt(characters.length)];
+      part2 += characters[crypto.randomInt(characters.length)];
     }
 
     codes.push(`${part1}-${part2}`);
