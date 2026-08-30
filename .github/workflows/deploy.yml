@@ -53,9 +53,15 @@ jobs:
 
       - name: Trigger Coolify Deployment Webhook
         if: env.COOLIFY_WEBHOOK != ''
+        continue-on-error: true
         env:
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
           echo "Triggering Coolify deployment webhook..."
-          curl -f -X POST "${{ secrets.COOLIFY_WEBHOOK_URL }}" || curl -f -X GET "${{ secrets.COOLIFY_WEBHOOK_URL }}"
-          echo "Coolify deployment triggered successfully!"
+          if [ -n "$COOLIFY_TOKEN" ]; then
+            curl -f -X POST -H "Authorization: Bearer $COOLIFY_TOKEN" "${{ secrets.COOLIFY_WEBHOOK_URL }}" || curl -f -X GET -H "Authorization: Bearer $COOLIFY_TOKEN" "${{ secrets.COOLIFY_WEBHOOK_URL }}" || true
+          else
+            curl -f -X POST "${{ secrets.COOLIFY_WEBHOOK_URL }}" || curl -f -X GET "${{ secrets.COOLIFY_WEBHOOK_URL }}" || true
+          fi
+          echo "Coolify deployment trigger finished!"
