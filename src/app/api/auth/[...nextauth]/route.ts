@@ -85,7 +85,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         const normalizedEmail = normalizeEmail(credentials.email);
-        const rawIp = req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
+        const rawIp = req?.headers?.["cf-connecting-ip"] || req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
         const clientIp = Array.isArray(rawIp) ? rawIp[0].split(',')[0].trim() : rawIp.split(',')[0].trim();
         const rawUa = req?.headers?.["user-agent"] || "Unknown Browser";
         const clientDevice = Array.isArray(rawUa) ? rawUa[0] : rawUa;

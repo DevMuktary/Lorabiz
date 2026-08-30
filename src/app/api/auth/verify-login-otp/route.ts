@@ -141,7 +141,7 @@ export async function POST(req: Request) {
 
     // Dispatch New Sign-in Alert Email (Non-blocking)
     if (user.emailLoginAlerts !== false) {
-      const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "Unknown IP";
+      const clientIp = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "Unknown IP";
       const clientDevice = req.headers.get("user-agent") || "Unknown Device";
       sendLoginAlertEmail(user.email, {
         name: user.firstName || undefined,
