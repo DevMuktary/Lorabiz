@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { 
   User, EnvelopeSimple, LockKey, Spinner, CheckCircle, 
   GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash, Users
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NIGERIA_STATES_LGA } from "@/lib/nigeria-states";
-import { TurnstileWidget } from "@/components/TurnstileWidget"; // <-- ADDED ISOLATED WIDGET
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -24,10 +23,6 @@ export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // Turnstile State (Refs and explicit script loading have been removed)
-  const [captchaVerified, setCaptchaVerified] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
-
   // Loading states for OTP specific actions
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -93,24 +88,7 @@ export default function RegisterForm() {
     }
   }, [termsAccepted, errors.terms]);
 
-  const [isVerifyingSecurity, setIsVerifyingSecurity] = useState(false);
-  const pendingSubmitRef = useRef(false);
-
-  // NEW: Memoized Turnstile Callback to prevent re-renders on typing
-  const handleTurnstileVerify = useCallback((token: string) => {
-    (window as any).__lastRegisterTurnstileToken = token;
-    setCaptchaToken(token);
-    setCaptchaVerified(true);
-    setErrors(prev => ({ ...prev, captcha: "" }));
-
-    if (pendingSubmitRef.current) {
-      pendingSubmitRef.current = false;
-      setIsVerifyingSecurity(false);
-      executeRegister(token);
-    }
-  }, [formData, otpCode]);
-
-  const executeRegister = async (tokenToUse: string) => {
+  const executeRegister = async () => {
     setLoading(true);
 
     try {
@@ -118,7 +96,6 @@ export default function RegisterForm() {
         ...formData,
         state: formatStateName(formData.state), 
         otpCode,
-        captchaToken: tokenToUse
       };
 
       const res = await fetch("/api/auth/register", {
@@ -142,14 +119,6 @@ export default function RegisterForm() {
       setErrors({ form: "An unexpected error occurred. Please try again." });
     } finally {
       setLoading(false);
-      setIsVerifyingSecurity(false);
-      pendingSubmitRef.current = false;
-      // Cleanly reset global turnstile on failure
-      if ((window as any).turnstile) {
-        try { (window as any).turnstile.reset(); } catch (e) {}
-        setCaptchaVerified(false);
-        setCaptchaToken("");
-      }
     }
   };
 
@@ -180,39 +149,7 @@ export default function RegisterForm() {
       return;
     }
 
-    const activeToken = captchaToken || (window as any).__lastRegisterTurnstileToken;
-    if (activeToken) {
-      executeRegister(activeToken);
-      return;
-    }
-
-    pendingSubmitRef.current = true;
-    setLoading(true);
-    setIsVerifyingSecurity(true);
-
-    const startTime = Date.now();
-    const checkInterval = setInterval(() => {
-      const token = captchaToken || (window as any).__lastRegisterTurnstileToken;
-      if (token) {
-        clearInterval(checkInterval);
-        if (pendingSubmitRef.current) {
-          pendingSubmitRef.current = false;
-          setIsVerifyingSecurity(false);
-          executeRegister(token);
-        }
-      } else if (Date.now() - startTime > 4000) {
-        clearInterval(checkInterval);
-        if (pendingSubmitRef.current) {
-          pendingSubmitRef.current = false;
-          setLoading(false);
-          setIsVerifyingSecurity(false);
-          setErrors({ form: "Security check is taking longer than expected. Please verify the box below." });
-          if ((window as any).turnstile) {
-            try { (window as any).turnstile.reset(); } catch (e) {}
-          }
-        }
-      }
-    }, 100);
+    executeRegister();
   };
 
   useEffect(() => {
@@ -539,9 +476,6 @@ export default function RegisterForm() {
           </div>
         </div>
 
-        {/* Background Security Verification */}
-        <TurnstileWidget onVerify={handleTurnstileVerify} />
-
         {/* CHECKBOX & SUBMIT CONTAINER */}
         <div className="pt-6 border-t border-border space-y-4">
           <label className="flex items-start gap-3 p-4 border border-border bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors select-none">
@@ -554,12 +488,7 @@ export default function RegisterForm() {
           {errors.terms && <p className="text-sm text-destructive font-medium pl-1">{errors.terms}</p>}
 
           <Button type="submit" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 transition-all cursor-pointer flex items-center justify-center gap-2">
-            {isVerifyingSecurity ? (
-              <>
-                <Spinner className="animate-spin h-6 w-6" weight="bold" />
-                <span>Verifying Security...</span>
-              </>
-            ) : loading ? (
+            {loading ? (
               <Spinner className="animate-spin h-6 w-6" weight="bold" />
             ) : (
               <>Create Account</>
