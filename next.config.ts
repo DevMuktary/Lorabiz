@@ -2,7 +2,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Leave this empty again! instrumentation.ts runs automatically now.
+  output: "standalone",
 };
 
 export default withSentryConfig(nextConfig, {

@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env*.local
+.npmrc
+*.log
+README.md
+SECURITY_AUDIT.md
+docs
