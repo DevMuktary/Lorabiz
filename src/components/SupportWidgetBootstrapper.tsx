@@ -1,52 +1,83 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 
-const CHATWOOT_BASE_URL = process.env.NEXT_PUBLIC_CHATWOOT_BASE_URL || "https://support.lorabiz.com";
-const CHATWOOT_TOKEN = process.env.NEXT_PUBLIC_CHATWOOT_WEBSITE_TOKEN || "";
-
 export function SupportWidgetBootstrapper() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const { resolvedTheme } = useTheme();
+  const [config, setConfig] = useState<{ baseUrl: string; websiteToken: string; enabled: boolean } | null>(null);
 
-  // 1. Initialize Chatwoot SDK
+  // 1. Fetch runtime config
   useEffect(() => {
-    if (!CHATWOOT_TOKEN || typeof window === "undefined") return;
-
-    (function(d: Document, t: string) {
-      const BASE_URL = CHATWOOT_BASE_URL;
-      const g = d.createElement(t) as HTMLScriptElement;
-      const s = d.getElementsByTagName(t)[0];
-      g.src = `${BASE_URL}/packs/js/sdk.js`;
-      g.defer = true;
-      g.async = true;
-      s.parentNode?.insertBefore(g, s);
-      g.onload = function() {
-        (window as any).chatwootSDK?.run({
-          websiteToken: CHATWOOT_TOKEN,
-          baseUrl: BASE_URL,
-        });
-      };
-    })(document, "script");
+    fetch("/api/config/chatwoot")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.enabled) {
+          setConfig(data);
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  // 2. Identify Logged-in User
+  // 2. Initialize Chatwoot SDK
   useEffect(() => {
-    if (status === "loading" || !CHATWOOT_TOKEN) return;
+    if (!config?.enabled || !config.websiteToken || typeof window === "undefined") return;
 
-    if (session?.user && typeof window !== "undefined" && (window as any).$chatwoot) {
-      try {
-        (window as any).$chatwoot.setUser((session.user as any).id || session.user.email, {
-          name: session.user.name || "",
-          email: session.user.email || "",
+    if (document.getElementById("chatwoot-sdk-script")) {
+      if ((window as any).chatwootSDK && !(window as any).$chatwoot) {
+        (window as any).chatwootSDK.run({
+          websiteToken: config.websiteToken,
+          baseUrl: config.baseUrl,
         });
-      } catch (e) {}
+      }
+      return;
     }
-  }, [session, status]);
 
-  // 3. Sync Dark/Light Mode with Next-Themes
+    const script = document.createElement("script");
+    script.id = "chatwoot-sdk-script";
+    script.src = `${config.baseUrl}/packs/js/sdk.js`;
+    script.async = true;
+    script.defer = true;
+
+    script.onload = () => {
+      if ((window as any).chatwootSDK) {
+        (window as any).chatwootSDK.run({
+          websiteToken: config.websiteToken,
+          baseUrl: config.baseUrl,
+        });
+      }
+    };
+
+    document.head.appendChild(script);
+  }, [config]);
+
+  // 3. Identify Logged-in User
+  useEffect(() => {
+    if (!config?.enabled || typeof window === "undefined") return;
+
+    const identifyUser = () => {
+      if (session?.user && (window as any).$chatwoot) {
+        try {
+          (window as any).$chatwoot.setUser((session.user as any).id || session.user.email, {
+            name: session.user.name || "",
+            email: session.user.email || "",
+            avatar_url: session.user.image || "",
+          });
+        } catch (e) {}
+      }
+    };
+
+    window.addEventListener("chatwoot:ready", identifyUser);
+    identifyUser();
+
+    return () => {
+      window.removeEventListener("chatwoot:ready", identifyUser);
+    };
+  }, [session, config]);
+
+  // 4. Sync Dark/Light Mode
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).$chatwoot && resolvedTheme) {
       try {

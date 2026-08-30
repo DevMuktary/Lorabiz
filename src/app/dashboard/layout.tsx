@@ -562,8 +562,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         currentTierLevel={loyaltyProfile?.currentTier?.level}
         allTimeSpend={loyaltyProfile?.allTimeSpend}
       />
-
-      <SupportWidgetBootstrapper />
     </div>
   );
 }
