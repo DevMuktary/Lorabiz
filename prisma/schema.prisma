@@ -95,7 +95,6 @@ model User {
   street          String?
   buildingNo      String?
   ipAddress       String?          // Tracks registration IP
-  isProfileComplete Boolean        @default(true)
 
   referralCode       String?   @unique
   referredBy         String?   

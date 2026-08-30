@@ -275,7 +275,6 @@ export const authOptions: NextAuthOptions = {
               lastName,
               image: user.image || null,
               referralCode: generatedReferralCode,
-              isProfileComplete: false,
             },
           });
 
@@ -305,9 +304,10 @@ export const authOptions: NextAuthOptions = {
           });
         }
 
+        const isComplete = Boolean(existingUser.phone && existingUser.phone.trim().length > 0);
         user.id = existingUser.id;
         (user as any).role = existingUser.role;
-        (user as any).isProfileComplete = existingUser.isProfileComplete ?? (!!existingUser.phone);
+        (user as any).isProfileComplete = isComplete;
         (user as any).mfaVerified = true;
         (user as any).twoFactorEnabled = existingUser.twoFactorEnabled;
         (user as any).twoFactorMethod = existingUser.twoFactorMethod;
@@ -331,7 +331,7 @@ export const authOptions: NextAuthOptions = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true, twoFactorMethod: true, isProfileComplete: true, phone: true }
+            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true, twoFactorMethod: true, phone: true }
           });
 
           if (!dbUser || dbUser.isSuspended) {
@@ -348,7 +348,7 @@ export const authOptions: NextAuthOptions = {
           
           token.twoFactorEnabled = dbUser.twoFactorEnabled;
           token.twoFactorMethod = dbUser.twoFactorMethod;
-          token.isProfileComplete = dbUser.isProfileComplete ?? (!!dbUser.phone);
+          token.isProfileComplete = Boolean(dbUser.phone && dbUser.phone.trim().length > 0);
 
         } catch (error) {
           console.error("Database session verification failed:", error);
@@ -389,6 +389,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/auth/login",
     newUser: "/auth/register",
+    error: "/auth/login",
   },
   session: {
     strategy: "jwt",

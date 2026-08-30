@@ -96,7 +96,6 @@ export async function POST(req: Request) {
           lga: lga.trim(),
           street: street?.trim() || null,
           buildingNo: buildingNo?.trim() || null,
-          isProfileComplete: true,
           referredBy: matchedReferrer?.referralCode || undefined,
         },
       });
