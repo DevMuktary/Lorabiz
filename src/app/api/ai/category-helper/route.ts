@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { CAC_CATEGORIES } from "@/lib/cac-categories";
 
+export const dynamic = "force-dynamic";
+
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || "dummy-key-for-build",
 });
 
 export async function POST(req: Request) {

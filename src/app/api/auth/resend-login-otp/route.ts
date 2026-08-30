@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendUserLoginOTP } from "@/lib/email";
+import { normalizeEmail } from "@/lib/disposable-emails";
 
 // Server-side escalating timeouts in seconds
 const ESCALATING_TIMEOUTS = [30, 60, 300, 600, 1800]; 
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
-    if (!email) return NextResponse.json({ message: "Email is required" }, { status: 400 });
+    const { email: rawEmail } = await req.json();
+    if (!rawEmail) return NextResponse.json({ message: "Email is required" }, { status: 400 });
+
+    const email = normalizeEmail(rawEmail);
 
     const record = await prisma.otpCode.findUnique({ where: { email } });
     if (!record) return NextResponse.json({ message: "Invalid request." }, { status: 400 });

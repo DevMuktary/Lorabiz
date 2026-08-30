@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { sendUserLoginOTP } from "@/lib/email";
+import { sendUserLoginOTP, sendLoginAlertEmail } from "@/lib/email";
+import { normalizeEmail } from "@/lib/disposable-emails";
 
 // Pre-computed dummy hash for timing attacks
 const DUMMY_HASH = "$2a$10$X7U.z5G8W8mH1L4y9vP/eeKjK9kYgG3d6fM9a6L7w1h3X9Z2Q5xO6";
@@ -83,42 +84,45 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const normalizedEmail = credentials.email.toLowerCase().trim();
-        const rawIp = req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
+        const normalizedEmail = normalizeEmail(credentials.email);
+        const rawIp = req?.headers?.["cf-connecting-ip"] || req?.headers?.["x-forwarded-for"] || req?.headers?.["x-real-ip"] || "Unknown IP";
         const clientIp = Array.isArray(rawIp) ? rawIp[0].split(',')[0].trim() : rawIp.split(',')[0].trim();
         const rawUa = req?.headers?.["user-agent"] || "Unknown Browser";
         const clientDevice = Array.isArray(rawUa) ? rawUa[0] : rawUa;
+        const requestedPortal = credentials.portal || "user";
 
         // ====================================================================
-        // CLOUDFLARE TURNSTILE SERVER-SIDE VERIFICATION
+        // CLOUDFLARE TURNSTILE SERVER-SIDE VERIFICATION (MDS / Admin Only)
         // ====================================================================
-        const token = credentials.captchaToken;
-        if (!token) {
-          throw new Error("Security verification missing. Please complete the CAPTCHA.");
-        }
+        if (requestedPortal === "mds") {
+          const token = credentials.captchaToken;
+          if (!token) {
+            throw new Error("Security verification missing. Please complete the CAPTCHA.");
+          }
 
-        let turnstileResult;
-        try {
-          const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              secret: process.env.TURNSTILE_SECRET as string,
-              response: token,
-              remoteip: clientIp,
-            }),
-          });
-          
-          if (!r.ok) throw new Error(`siteverify ${r.status}`);
-          turnstileResult = await r.json();
-        } catch (err) {
-          await logSecurityEvent({ email: normalizedEmail, event: "CAPTCHA_ERROR", ipAddress: clientIp, userAgent: clientDevice, details: "Turnstile network failure" });
-          throw new Error("Security verification failed. Please try again."); 
-        }
+          let turnstileResult;
+          try {
+            const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                secret: process.env.TURNSTILE_SECRET as string,
+                response: token,
+                remoteip: clientIp,
+              }),
+            });
+            
+            if (!r.ok) throw new Error(`siteverify ${r.status}`);
+            turnstileResult = await r.json();
+          } catch (err) {
+            await logSecurityEvent({ email: normalizedEmail, event: "CAPTCHA_ERROR", ipAddress: clientIp, userAgent: clientDevice, details: "Turnstile network failure" });
+            throw new Error("Security verification failed. Please try again."); 
+          }
 
-        if (!turnstileResult.success) {
-          await logSecurityEvent({ email: normalizedEmail, event: "CAPTCHA_REJECTED", ipAddress: clientIp, userAgent: clientDevice, details: "Turnstile returned success:false" });
-          throw new Error("Security verification failed. Please try again.");
+          if (!turnstileResult.success) {
+            await logSecurityEvent({ email: normalizedEmail, event: "CAPTCHA_REJECTED", ipAddress: clientIp, userAgent: clientDevice, details: "Turnstile returned success:false" });
+            throw new Error("Security verification failed. Please try again.");
+          }
         }
         // ====================================================================
 
@@ -140,8 +144,6 @@ export const authOptions: NextAuthOptions = {
           await recordFailedAttempt(normalizedEmail, clientIp);
           throw new Error("Invalid email or password."); 
         }
-
-        const requestedPortal = credentials.portal || "user";
         
         if (
           (requestedPortal === "user" && user.role !== "USER") ||
@@ -167,8 +169,10 @@ export const authOptions: NextAuthOptions = {
 
         await clearFailedAttempts(normalizedEmail, clientIp);
         
-        // ONLY generate and send Email OTP if it's a regular user OR if they explicitly chose Email 2FA
-        if (requestedPortal === "user" || user.twoFactorMethod === "EMAIL") {
+        const isMfaRequired = user.role === "ADMIN" || user.role === "STAFF" || user.twoFactorEnabled === true;
+        
+        // ONLY generate and send Email OTP if 2FA is required AND method is EMAIL
+        if (isMfaRequired && user.twoFactorMethod === "EMAIL") {
           const now = new Date();
           const existingOtp = await prisma.otpCode.findUnique({
             where: { email: normalizedEmail }
@@ -199,11 +203,26 @@ export const authOptions: NextAuthOptions = {
               email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, reused existing active OTP (cooldown enforcement).`,
             });
           }
-        } else {
-          // Log success for MDS/STAFF using authenticator app
+        } else if (isMfaRequired) {
+          // Log success for users with Authenticator 2FA active
           await logSecurityEvent({
             email: normalizedEmail, role: user.role, event: "LOGIN_PHASE_1_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, proceeding to Authenticator 2FA.`,
           });
+        } else {
+          // Standard User: Instant password login without 2FA
+          await logSecurityEvent({
+            email: normalizedEmail, role: user.role, event: "LOGIN_SUCCESS", ipAddress: clientIp, userAgent: clientDevice, details: `Password verified, signed in directly (2FA disabled).`,
+          });
+
+          // Dispatch New Sign-in Alert Email (Non-blocking)
+          if (user.emailLoginAlerts !== false) {
+            sendLoginAlertEmail(user.email, {
+              name: user.firstName || undefined,
+              ipAddress: clientIp,
+              userAgent: clientDevice,
+              loginTime: new Date(),
+            }).catch((err) => console.error("Failed to send login alert email:", err));
+          }
         }
 
         return {
@@ -212,6 +231,9 @@ export const authOptions: NextAuthOptions = {
           name: `${user.firstName} ${user.lastName}`,
           role: user.role,
           image: user.image,
+          twoFactorEnabled: user.twoFactorEnabled,
+          twoFactorMethod: user.twoFactorMethod,
+          mfaVerified: !isMfaRequired,
         };
       },
     }),
@@ -222,15 +244,16 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = (user as any).role;
         token.picture = user.image; 
-        token.mfaVerified = false; 
+        token.mfaVerified = (user as any).mfaVerified ?? false; 
+        token.twoFactorEnabled = (user as any).twoFactorEnabled ?? false;
+        token.twoFactorMethod = (user as any).twoFactorMethod ?? null;
       }
 
       if (token?.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            // ADDED twoFactorEnabled to query
-            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true }
+            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true, twoFactorMethod: true }
           });
 
           if (!dbUser || dbUser.isSuspended) {
@@ -245,8 +268,8 @@ export const authOptions: NextAuthOptions = {
              token.picture = dbUser.image;
           }
           
-          // MAP IT TO THE TOKEN
           token.twoFactorEnabled = dbUser.twoFactorEnabled;
+          token.twoFactorMethod = dbUser.twoFactorMethod;
 
         } catch (error) {
           console.error("Database session verification failed:", error);
@@ -273,9 +296,9 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role as string;
         (session.user as any).mfaVerified = token.mfaVerified as boolean;
-        session.user.image = token.picture as string | null | undefined; 
-        // MAP IT TO THE SESSION SO YOUR MDS LOGIN PAGE CAN READ IT
         (session.user as any).twoFactorEnabled = token.twoFactorEnabled as boolean;
+        (session.user as any).twoFactorMethod = token.twoFactorMethod as string | null | undefined;
+        session.user.image = token.picture as string | null | undefined; 
       }
       return session;
     },

@@ -412,7 +412,7 @@ export default function ScumlPage() {
                     className="mt-1 w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer shrink-0" 
                   />
                   <span className="text-xs text-muted-foreground leading-relaxed select-none">
-                    I acknowledge that this application is processed through an authorized third-party agency. I confirm that all uploaded documents are authentic.
+                    I declare under the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> and the Money Laundering (Prevention and Prohibition) Act 2022 that I am authorized to submit this corporate SCUML application, and that all uploaded documents are authentic and unmanipulated.
                   </span>
                 </label>
 

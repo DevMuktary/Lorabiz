@@ -428,7 +428,9 @@ export default function NinByNinPage() {
               onChange={(e) => setAttestation1(e.target.checked)}
               className="mt-0.5 h-4 w-4 rounded text-[#ff3f7a] focus:ring-[#ff3f7a] border-border cursor-pointer"
             />
-            <span>I declare that I am the owner of this NIN or have lawful consent to query this record.</span>
+            <span className="leading-relaxed">
+              I declare under penalty of perjury, the <strong>Nigeria Data Protection Act (NDPA) 2023</strong>, and the Cybercrimes Act 2015 that I am the verified owner of this NIN or hold express written statutory consent from the data subject. I acknowledge my IP, timestamp, and account identity are permanently logged for regulatory audit.
+            </span>
           </label>
 
           <label className="flex items-start gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">

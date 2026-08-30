@@ -2,23 +2,20 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { preconnect } from "react-dom";
-import { useState, useEffect, Suspense, useCallback, useRef } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   LockKey, SignIn, Spinner, CheckCircle, 
   ShieldCheck, Eye, EyeSlash, Info, X,
-  FacebookLogo, GoogleLogo, Star, Envelope, ChatCircleDots 
+  FacebookLogo, GoogleLogo, Star, Envelope, ChatCircleDots,
+  Key, DeviceMobile
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 function LoginContent() {
-  preconnect('https://challenges.cloudflare.com');
-
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, update } = useSession();
@@ -35,13 +32,13 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
   
-  const [captchaVerified, setCaptchaVerified] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
-  
   const [activeTooltip, setActiveTooltip] = useState<"google" | "facebook" | null>(null);
 
+  // 2FA State
   const [showOtpModal, setShowOtpModal] = useState(false);
+  const [twoFactorMethod, setTwoFactorMethod] = useState<"EMAIL" | "AUTHENTICATOR" | null>("EMAIL");
   const [otpCode, setOtpCode] = useState("");
+  const [useBackupCode, setUseBackupCode] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
   
@@ -74,9 +71,9 @@ function LoginContent() {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
-  // Sync active cooldown from server when OTP modal opens
+  // Sync active cooldown from server when OTP modal opens for email method
   useEffect(() => {
-    if (!showOtpModal || !formData.email) return;
+    if (!showOtpModal || !formData.email || twoFactorMethod !== "EMAIL") return;
     let isMounted = true;
     setIsSyncingTimer(true);
 
@@ -93,7 +90,6 @@ function LoginContent() {
         } else if (data.remainingSeconds > 0) {
           setResendTimer(data.remainingSeconds);
         } else {
-          // If fresh login OTP was just dispatched, fallback default to 30s
           setResendTimer(30);
         }
       })
@@ -107,28 +103,12 @@ function LoginContent() {
     return () => {
       isMounted = false;
     };
-  }, [showOtpModal, formData.email]);
+  }, [showOtpModal, formData.email, twoFactorMethod]);
 
-  const [isVerifyingSecurity, setIsVerifyingSecurity] = useState(false);
-  const pendingSubmitRef = useRef(false);
-
-  // Wrapped in useCallback so React.memo works in the child component
-  const handleTurnstileVerify = useCallback((token: string) => {
-    setCaptchaToken(token);
-    setCaptchaVerified(true);
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError("");
-
-    // If the user already clicked "Log In" while verification was loading, auto-submit now
-    if (pendingSubmitRef.current) {
-      pendingSubmitRef.current = false;
-      setIsVerifyingSecurity(false);
-      executeLogin(token);
-    }
-  }, [formData.email, formData.password]);
-
-  const executeLogin = async (tokenToUse: string) => {
     setLoading(true);
-    setError("");
 
     try {
       const res = await signIn("credentials", {
@@ -136,74 +116,31 @@ function LoginContent() {
         email: formData.email,
         password: formData.password,
         portal: "user",
-        captchaToken: tokenToUse,
       });
 
       if (res?.error) {
         setError(res.error === "CredentialsSignin" ? "Invalid email or password." : res.error);
         setLoading(false);
-        setIsVerifyingSecurity(false);
-        pendingSubmitRef.current = false;
-        // Reset turnstile cleanly on failure so user can try again
-        if ((window as any).turnstile) {
-          (window as any).turnstile.reset();
-          setCaptchaVerified(false);
-          setCaptchaToken("");
-        }
-      } else {
+        return;
+      }
+
+      // Fetch fresh session to inspect 2FA requirement
+      const sessionRes = await fetch("/api/auth/session");
+      const sessionData = await sessionRes.json();
+
+      if (sessionData?.user?.twoFactorEnabled && !sessionData?.user?.mfaVerified) {
+        setTwoFactorMethod(sessionData.user.twoFactorMethod || "EMAIL");
         setShowOtpModal(true);
         setLoading(false);
-        setIsVerifyingSecurity(false);
+      } else {
+        // Instant Login (2FA Disabled)
+        router.push(callbackUrl);
+        router.refresh();
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       setLoading(false);
-      setIsVerifyingSecurity(false);
-      pendingSubmitRef.current = false;
     }
-  };
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    const activeToken = captchaToken || (window as any).__lastTurnstileToken;
-
-    // If token is already available, execute immediately
-    if (activeToken) {
-      executeLogin(activeToken);
-      return;
-    }
-
-    // If token is still generating (e.g. instant mobile autofill), enter auto-queue state
-    pendingSubmitRef.current = true;
-    setLoading(true);
-    setIsVerifyingSecurity(true);
-
-    // Fallback: Wait up to 3.5s for token to arrive
-    const startTime = Date.now();
-    const checkInterval = setInterval(() => {
-      const token = captchaToken || (window as any).__lastTurnstileToken;
-      if (token) {
-        clearInterval(checkInterval);
-        if (pendingSubmitRef.current) {
-          pendingSubmitRef.current = false;
-          setIsVerifyingSecurity(false);
-          executeLogin(token);
-        }
-      } else if (Date.now() - startTime > 4000) {
-        clearInterval(checkInterval);
-        if (pendingSubmitRef.current) {
-          pendingSubmitRef.current = false;
-          setLoading(false);
-          setIsVerifyingSecurity(false);
-          setError("Security check is taking longer than usual. Please verify the box below and try again.");
-          if ((window as any).turnstile) {
-            try { (window as any).turnstile.reset(); } catch (e) {}
-          }
-        }
-      }
-    }, 100);
   };
 
   const showTooltip = (type: "google" | "facebook") => {
@@ -213,7 +150,7 @@ function LoginContent() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode.length !== 6) return;
+    if (!otpCode.trim()) return;
     setVerifying(true);
     setOtpError("");
 
@@ -221,7 +158,11 @@ function LoginContent() {
       const res = await fetch("/api/auth/verify-login-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, otpCode }),
+        body: JSON.stringify({ 
+          email: formData.email, 
+          otpCode: otpCode.trim(),
+          isBackupCode: useBackupCode
+        }),
       });
 
       if (res.ok) {
@@ -272,6 +213,7 @@ function LoginContent() {
     setShowOtpModal(false);
     setOtpCode("");
     setOtpError("");
+    setUseBackupCode(false);
     setFormData(prev => ({ ...prev, password: "" }));
   };
 
@@ -383,28 +325,16 @@ function LoginContent() {
                     {showPassword ? <EyeSlash className="h-5 w-5" weight="fill" /> : <Eye className="h-5 w-5" weight="fill" />}
                   </button>
                 </div>
-                <p className="text-[11px] sm:text-xs text-muted-foreground mt-2 flex items-start gap-1.5">
-                  <ShieldCheck weight="fill" className="h-4 w-4 shrink-0 mt-0.5" /> 
-                  <span>For your security, we will send a one-time OTP upon login.</span>
-                </p>
               </div>
             </div>
 
-            {/* Background Security Verification */}
-            <TurnstileWidget onVerify={handleTurnstileVerify} />
-
-              <Button type="submit" aria-label="Log In" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 cursor-pointer flex items-center justify-center gap-2">
-                {isVerifyingSecurity ? (
-                  <>
-                    <Spinner className="animate-spin h-6 w-6" weight="bold" />
-                    <span>Verifying Security...</span>
-                  </>
-                ) : loading ? (
-                  <Spinner className="animate-spin h-6 w-6" weight="bold" />
-                ) : (
-                  <>Log In <SignIn className="h-5 w-5 ml-2" weight="bold" /></>
-                )}
-              </Button>
+            <Button type="submit" aria-label="Log In" disabled={loading} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-xl shadow-[#ff3f7a]/25 cursor-pointer flex items-center justify-center gap-2">
+              {loading ? (
+                <Spinner className="animate-spin h-6 w-6" weight="bold" />
+              ) : (
+                <>Log In <SignIn className="h-5 w-5 ml-2" weight="bold" /></>
+              )}
+            </Button>
 
             <div className="pt-4 pb-2">
               <div className="relative flex items-center py-2 mb-6">
@@ -447,30 +377,81 @@ function LoginContent() {
         </article>
       </section>
 
+      {/* 2FA VERIFICATION MODAL */}
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-secondary p-6 sm:p-8 rounded-2xl border border-border shadow-2xl relative animate-in zoom-in-95">
+          <div className="w-full max-w-md bg-secondary p-6 sm:p-8 rounded-3xl border border-border shadow-2xl relative animate-in zoom-in-95">
             <button onClick={handleCloseModal} aria-label="Close OTP Modal" className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-full transition-colors"><X className="h-5 w-5" weight="bold" /></button>
+            
             <div className="text-center mb-6">
-              <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-4 mt-2"><ShieldCheck weight="fill" className="h-6 w-6" /></div>
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground">2-Step Verification</h2>
-              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">We&apos;ve sent a 6-digit authorization code to <br/><span className="font-medium text-foreground">{formData.email}</span>.</p>
-            </div>
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
-              {otpError && <div className="p-3 bg-destructive/10 text-destructive text-sm font-medium rounded-lg text-center animate-in shake">{otpError}</div>}
-              {isLocked && <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm font-medium rounded-lg text-center">Too many resend attempts. For your security, this action has been temporarily blocked.</div>}
-              <div className="space-y-2">
-                <Input value={otpCode} aria-label="Enter 6 digit OTP" onChange={(e) => {setOtpCode(e.target.value.replace(/\D/g, "")); setOtpError("");}} maxLength={6} placeholder="000000" disabled={isSyncingTimer} className="h-14 sm:h-16 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]" />
+              <div className="mx-auto w-12 h-12 bg-[#ff3f7a]/10 text-[#ff3f7a] rounded-full flex items-center justify-center mb-3 mt-1">
+                {useBackupCode ? <Key weight="fill" className="h-6 w-6" /> : twoFactorMethod === "AUTHENTICATOR" ? <DeviceMobile weight="fill" className="h-6 w-6" /> : <ShieldCheck weight="fill" className="h-6 w-6" />}
               </div>
-              <div className="flex flex-col gap-3 pt-2">
-                <Button type="submit" aria-label="Verify OTP" disabled={verifying || otpCode.length < 6 || isSyncingTimer} className="w-full h-14 text-lg font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white">
-                  {verifying ? <Spinner className="animate-spin h-6 w-6" weight="bold" /> : "Verify & Access"}
+              <h2 className="text-xl sm:text-2xl font-black text-foreground">
+                {useBackupCode ? "Recovery Code" : twoFactorMethod === "AUTHENTICATOR" ? "Authenticator App" : "2-Step Verification"}
+              </h2>
+              <p className="text-muted-foreground mt-2 text-xs sm:text-sm leading-relaxed">
+                {useBackupCode ? (
+                  "Enter one of your 8-character single-use backup recovery codes."
+                ) : twoFactorMethod === "AUTHENTICATOR" ? (
+                  "Enter the 6-digit code from Google Authenticator or Authy."
+                ) : (
+                  <>We&apos;ve sent a 6-digit authorization code to <br/><span className="font-semibold text-foreground">{formData.email}</span>.</>
+                )}
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              {otpError && <div className="p-3 bg-destructive/10 text-destructive text-xs sm:text-sm font-bold rounded-xl text-center animate-in shake">{otpError}</div>}
+              {isLocked && twoFactorMethod === "EMAIL" && <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold rounded-xl text-center">Too many resend attempts. This action has been temporarily blocked for 1 hour.</div>}
+              
+              <div className="space-y-2">
+                {useBackupCode ? (
+                  <Input 
+                    value={otpCode} 
+                    aria-label="Enter backup code" 
+                    onChange={(e) => { setOtpCode(e.target.value.toUpperCase()); setOtpError(""); }} 
+                    placeholder="e.g. 7K9A-4B2D" 
+                    maxLength={10}
+                    className="h-14 text-center text-xl font-mono uppercase tracking-widest font-black bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]" 
+                  />
+                ) : (
+                  <Input 
+                    value={otpCode} 
+                    aria-label="Enter 6 digit code" 
+                    onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setOtpError(""); }} 
+                    maxLength={6} 
+                    placeholder="000000" 
+                    disabled={isSyncingTimer && twoFactorMethod === "EMAIL"} 
+                    className="h-14 sm:h-16 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-bold bg-background border-border text-foreground focus-visible:ring-[#ff3f7a]" 
+                  />
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2.5 pt-1">
+                <Button type="submit" aria-label="Verify & Sign In" disabled={verifying || !otpCode.trim()} className="w-full h-12 text-base font-bold bg-[#ff3f7a] hover:bg-[#e02b62] text-white rounded-xl shadow-lg cursor-pointer">
+                  {verifying ? <Spinner className="animate-spin h-5 w-5" weight="bold" /> : "Verify & Access"}
                 </Button>
-                {!isLocked && (
-                  <Button type="button" variant="outline" onClick={handleResendOtp} disabled={isResending || resendTimer > 0 || isSyncingTimer} className="w-full h-12 font-medium bg-transparent border-border text-foreground hover:bg-background disabled:opacity-50">
-                    {isSyncingTimer ? <Spinner className="animate-spin h-5 w-5" /> : isResending ? <Spinner className="animate-spin h-5 w-5" /> : resendTimer > 0 ? `Resend code in ${formatTime(resendTimer)}` : "Resend Code"}
+
+                {twoFactorMethod === "EMAIL" && !useBackupCode && !isLocked && (
+                  <Button type="button" variant="outline" onClick={handleResendOtp} disabled={isResending || resendTimer > 0 || isSyncingTimer} className="w-full h-11 text-xs font-bold bg-transparent border-border text-foreground hover:bg-background disabled:opacity-50 rounded-xl">
+                    {isSyncingTimer ? <Spinner className="animate-spin h-4 w-4" /> : isResending ? <Spinner className="animate-spin h-4 w-4" /> : resendTimer > 0 ? `Resend code in ${formatTime(resendTimer)}` : "Resend Email Code"}
                   </Button>
                 )}
+
+                <div className="pt-2 border-t border-border text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseBackupCode(!useBackupCode);
+                      setOtpCode("");
+                      setOtpError("");
+                    }}
+                    className="text-xs font-bold text-[#ff3f7a] hover:underline"
+                  >
+                    {useBackupCode ? "← Back to standard code" : "Lost access? Use a Backup Recovery Code"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

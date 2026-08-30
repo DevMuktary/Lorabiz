@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendVerificationOTP, sendAccountExistsEmail } from "@/lib/email"; // Make sure to add sendAccountExistsEmail to your email lib
-
-// A robust list of common disposable/temporary email domains
-const DISPOSABLE_DOMAINS = [
-  "mailinator.com", "guerrillamail.com", "10minutemail.com", 
-  "temp-mail.org", "yopmail.com", "throwawaymail.com", 
-  "tempmail.com", "tempmail.net", "sharklasers.com", "dispostable.com"
-];
+import { sendVerificationOTP, sendAccountExistsEmail } from "@/lib/email";
+import { isDisposableEmail, normalizeEmail } from "@/lib/disposable-emails";
 
 export async function POST(req: Request) {
   try {
@@ -17,22 +11,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Email is required" }, { status: 400 });
     }
 
-    // --- MASKED EMAIL FILTERING ---
-    let email = rawEmail.toLowerCase().trim();
-    if (email.includes('@')) {
-      const [localPart, domain] = email.split('@');
-      
-      // 1. TEMP MAIL BLOCKER
-      if (DISPOSABLE_DOMAINS.includes(domain)) {
-        return NextResponse.json(
-          { message: "Disposable or temporary email addresses are not allowed." }, 
-          { status: 400 }
-        );
-      }
-
-      const cleanLocal = localPart.split('+')[0]; // Strip everything after '+'
-      email = `${cleanLocal}@${domain}`;
+    // 1. TEMP / DISPOSABLE MAIL BLOCKER
+    if (isDisposableEmail(rawEmail)) {
+      return NextResponse.json(
+        { message: "Disposable or temporary email addresses are not permitted. Please use a permanent email address." }, 
+        { status: 400 }
+      );
     }
+
+    // 2. NORMALIZE EMAIL (lowercase, trim, strip plus-aliases)
+    const email = normalizeEmail(rawEmail);
 
     // 2. THE "SILENT CATCH" (Anti-Enumeration)
     // If the user already exists, pretend it worked to trick hackers.

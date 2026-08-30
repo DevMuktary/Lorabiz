@@ -1,10 +1,6 @@
 import Redis from "ioredis";
 
-const redisUrl = process.env.REDIS_URL;
-
-if (!redisUrl) {
-  throw new Error("REDIS_URL is not defined in your environment variables");
-}
+const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
 const globalForRedis = global as unknown as { redis: Redis };
 
@@ -12,6 +8,9 @@ export const redis =
   globalForRedis.redis ||
   new Redis(redisUrl, {
     maxRetriesPerRequest: null,
+    lazyConnect: true,
+    enableOfflineQueue: true,
   });
 
 if (process.env.NODE_ENV !== "production") globalForRedis.redis = redis;
+
