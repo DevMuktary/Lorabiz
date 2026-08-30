@@ -57,6 +57,15 @@ export async function middleware(req: NextRequest) {
       response = NextResponse.redirect(new URL("/auth/login", req.url));
     } else if (role !== "USER") {
       response = forceLogoutAndRedirect(req, "/auth/login");
+    } else if (token.isProfileComplete === false) {
+      response = NextResponse.redirect(new URL("/auth/complete-profile", req.url));
+    }
+  }
+  else if (pathname === "/auth/complete-profile") {
+    if (!token) {
+      response = NextResponse.redirect(new URL("/auth/login", req.url));
+    } else if (token.isProfileComplete === true) {
+      response = NextResponse.redirect(new URL("/dashboard", req.url));
     }
   }
   // ===========================================================================

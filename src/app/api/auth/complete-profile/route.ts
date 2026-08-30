@@ -49,6 +49,19 @@ export async function POST(req: Request) {
     const cleanPhone = phone.trim();
     const cleanWhatsapp = (whatsapp || phone).trim();
 
+    // Check if user is already complete
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true, isProfileComplete: true },
+    });
+
+    if (currentUser?.phone) {
+      return NextResponse.json({
+        success: true,
+        message: "Profile is already completed.",
+      });
+    }
+
     // Check duplicate phone or whatsapp on other accounts
     const existingConflict = await prisma.user.findFirst({
       where: {
@@ -61,7 +74,7 @@ export async function POST(req: Request) {
     });
 
     if (existingConflict) {
-      return NextResponse.json({ message: "Phone or WhatsApp number is already linked to another account." }, { status: 409 });
+      return NextResponse.json({ message: "This phone number is already registered. Please use your personal number." }, { status: 409 });
     }
 
     // Process referral code
