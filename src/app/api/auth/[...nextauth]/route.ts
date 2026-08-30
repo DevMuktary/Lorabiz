@@ -275,6 +275,7 @@ export const authOptions: NextAuthOptions = {
               lastName,
               image: user.image || null,
               referralCode: generatedReferralCode,
+              isProfileComplete: false,
             },
           });
 
