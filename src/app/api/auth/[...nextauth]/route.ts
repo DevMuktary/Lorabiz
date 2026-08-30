@@ -394,6 +394,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 24 * 60 * 60, 
   },
+  useSecureCookies: process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_URL?.startsWith("http://localhost"),
   secret: process.env.NEXTAUTH_SECRET,
 };
 
