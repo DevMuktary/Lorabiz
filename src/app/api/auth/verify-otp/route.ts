@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeEmail } from "@/lib/disposable-emails";
 
 export async function POST(req: Request) {
   try {
-    const { email, otpCode } = await req.json();
+    const { email: rawEmail, otpCode } = await req.json();
 
-    if (!email || !otpCode) {
+    if (!rawEmail || !otpCode) {
       return NextResponse.json({ message: "Email and OTP code are required" }, { status: 400 });
     }
+
+    const email = normalizeEmail(rawEmail);
 
     // Securely look up the OTP in the database
     const validOtp = await prisma.otpCode.findUnique({

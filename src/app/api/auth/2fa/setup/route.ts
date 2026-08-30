@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { send2FAPasskeyEmail } from "@/lib/email";
+import { sendUser2FASetupEmail } from "@/lib/email";
 import { generateSecret } from "otplib";
 import qrcode from "qrcode";
 
@@ -77,9 +77,9 @@ export async function POST(req: Request) {
         },
       });
 
-      // 4. Dispatch executive 2FA setup passkey via ZeptoMail
-      await send2FAPasskeyEmail(user.email, otpCode, user.role);
-      console.log(`[SECURITY ENROLLMENT] Dispatched 2FA setup passkey to ${user.email}`);
+      // 4. Dispatch user 2FA setup passkey via ZeptoMail
+      await sendUser2FASetupEmail(user.email, otpCode);
+      console.log(`[USER 2FA ENROLLMENT] Dispatched 2FA setup passkey to ${user.email}`);
 
       return NextResponse.json({
         success: true,

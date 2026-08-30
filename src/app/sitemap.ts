@@ -1,30 +1,31 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://lorabiz.com';
+  const baseUrl = 'https://lorabiz.com';
 
-  // These are all your public-facing landing and service pages
-  const routes = [
-    '',
-    '/about',
-    '/contact',
-    '/careers',
-    '/blog',
-    '/faq',
-    '/services/cac',
-    '/services/scuml',
-    '/services/tax-id',
-    '/services/nin',
-    '/services/utilities',
-    '/privacy',
-    '/terms',
-    '/acceptable-use',
-  ];
+  // These are all your public-facing landing and service pages
+  const routes = [
+    '',
+    '/about',
+    '/contact',
+    '/careers',
+    '/blog',
+    '/faq',
+    '/services/cac',
+    '/services/scuml',
+    '/services/tax-id',
+    '/services/nin',
+    '/services/utilities',
+    '/privacy',
+    '/terms',
+    '/acceptable-use',
+    '/compliance',
+  ];
 
-  return routes.map((route) => ({
-    url: `${baseUrl}${route}`,
-    lastModified: new Date(),
-    changeFrequency: route === '' ? 'weekly' : 'monthly',
-    priority: route === '' ? 1 : 0.8,
-  }));
+  return routes.map((route) => ({
+    url: `${baseUrl}${route}`,
+    lastModified: new Date(),
+    changeFrequency: route === '' ? 'weekly' : 'monthly',
+    priority: route === '' ? 1 : 0.8,
+  }));
 }

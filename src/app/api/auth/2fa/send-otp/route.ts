@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { send2FAPasskeyEmail } from "@/lib/email";
+import { send2FAPasskeyEmail, sendUserLoginOTP } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -46,9 +46,13 @@ export async function POST(req: Request) {
       },
     });
 
-    // 4. Dispatch daily login passkey via ZeptoMail
-    await send2FAPasskeyEmail(user.email, otpCode, user.role);
-    console.log(`[MFA DISPATCH] Sent daily passkey to ${user.email}`);
+    // 4. Dispatch passkey via ZeptoMail
+    if (user.role === "ADMIN" || user.role === "STAFF") {
+      await send2FAPasskeyEmail(user.email, otpCode, user.role);
+    } else {
+      await sendUserLoginOTP(user.email, otpCode);
+    }
+    console.log(`[MFA DISPATCH] Sent passkey to ${user.email} (${user.role})`);
 
     return NextResponse.json({
       success: true,

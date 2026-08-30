@@ -246,7 +246,7 @@ export function ValidationSubmissionForm({
           </div>
         </div>
 
-        {/* Step 3: Concise Attestation Checkbox */}
+        {/* Step 3: Statutory Attestation */}
         <div className="space-y-4 pt-5 border-t border-border">
           <label className="flex items-start gap-3 p-4 bg-secondary/40 hover:bg-secondary/60 rounded-xl cursor-pointer border border-border/80 transition-colors select-none">
             <input
@@ -257,7 +257,7 @@ export function ValidationSubmissionForm({
               className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer shrink-0"
             />
             <span className="text-xs text-muted-foreground leading-relaxed">
-              I confirm that I am the applicant or an authorized agent submitting this NIN for validation.
+              I declare under penalty of perjury and the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> that I am the applicant or hold lawful proxy consent from the data subject. I authorize Lorabiz to process this validation and acknowledge that my IP and audit logs are recorded.
             </span>
           </label>
 

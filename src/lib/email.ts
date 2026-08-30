@@ -235,10 +235,140 @@ export async function sendUserLoginOTP(to: string, otpCode: string) {
 }
 
 // ============================================================================
-// INTERNAL STAFF & MD TWO-FACTOR AUTHENTICATION PASSKEY
+// LOGIN SECURITY ALERT (INSTANT NOTIFICATION)
+// ============================================================================
+
+export async function sendLoginAlertEmail(to: string, data: { name?: string; ipAddress: string; userAgent: string; loginTime: Date }) {
+  const formattedDate = data.loginTime.toLocaleString("en-US", {
+    timeZone: "Africa/Lagos",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  const subject = "Security Alert: New Sign-in to Your LoraBiz Account";
+  const previewText = `A new sign-in was detected on your account at ${formattedDate} WAT.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">New Sign-In Detected</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello ${data.name ? data.name : "there"}, a new sign-in was successfully completed for your LoraBiz account.
+    </p>
+
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 24px; font-family: sans-serif;">
+      <table style="width: 100%; font-size: 14px; color: #334155;" cellpadding="4" cellspacing="0">
+        <tr>
+          <td style="font-weight: 700; width: 35%;">Date & Time:</td>
+          <td>${formattedDate} (WAT)</td>
+        </tr>
+        <tr>
+          <td style="font-weight: 700;">IP Address:</td>
+          <td style="font-family: monospace; font-weight: 600;">${data.ipAddress}</td>
+        </tr>
+        <tr>
+          <td style="font-weight: 700;">Device / Browser:</td>
+          <td>${data.userAgent}</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 14px; font-family: sans-serif;">
+      If this was you, you can safely ignore this email. If you did not sign in recently, someone else may have access to your account.
+    </p>
+
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="https://lorabiz.com/auth/forgot-password" style="display: inline-block; background-color: #ef4444; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 8px; font-family: sans-serif;">
+        Secure My Account
+      </a>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+// ============================================================================
+// 2FA STATE CHANGE ALERTS
+// ============================================================================
+
+export async function send2FAEnabledEmail(to: string, data: { name?: string; method: string }) {
+  const methodLabel = data.method === "AUTHENTICATOR" ? "Google Authenticator / TOTP App" : "Email Passkey (OTP)";
+  const subject = "Security Update: Two-Factor Authentication Activated";
+  const previewText = `Two-Factor Authentication is now active on your LoraBiz account (${methodLabel}).`;
+
+  const content = `
+    <div style="display: inline-block; background-color: #ecfdf5; color: #059669; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 9999px; margin-bottom: 16px; border: 1px solid #a7f3d0; font-family: sans-serif;">
+      ✓ Two-Factor Security Active
+    </div>
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">2FA Successfully Enabled</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello ${data.name ? data.name : "there"}, Two-Factor Authentication has been successfully enabled on your account via <strong>${methodLabel}</strong>.
+    </p>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 24px; font-size: 14px; font-family: sans-serif;">
+      Your wallet balance and identity submissions are now guarded with extra security. Be sure to keep your 8 single-use recovery backup codes in a safe place in case you lose access to your primary device.
+    </p>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+export async function send2FADisabledEmail(to: string, data: { name?: string }) {
+  const subject = "Security Alert: Two-Factor Authentication Was Disabled";
+  const previewText = "Two-Factor Authentication has been turned off on your LoraBiz account.";
+
+  const content = `
+    <div style="display: inline-block; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 9999px; margin-bottom: 16px; border: 1px solid #fecaca; font-family: sans-serif;">
+      ⚠️ Security Status Change
+    </div>
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">2FA Has Been Disabled</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 20px; font-size: 15px; font-family: sans-serif;">
+      Hello ${data.name ? data.name : "there"}, Two-Factor Authentication was recently turned off for your LoraBiz account.
+    </p>
+    <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+      <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5; font-family: sans-serif;">
+        <strong>Important:</strong> If you did not authorize this change, please log in immediately and change your account password to prevent unauthorized access.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+// ============================================================================
+// USER TWO-FACTOR AUTHENTICATION SETUP OTP
+// ============================================================================
+
+export async function sendUser2FASetupEmail(to: string, otpCode: string) {
+  const subject = `${otpCode} is your Two-Factor Authentication Setup Code`;
+  const previewText = `Code: ${otpCode}. Verify your request to enable Two-Factor Authentication.`;
+
+  const content = `
+    <div style="background: #f8fafc; padding: 20px; text-align: center; font-size: 40px; font-weight: 800; letter-spacing: 8px; color: #ff3f7a; border-radius: 12px; border: 2px dashed #e2e8f0; margin-bottom: 24px; font-family: monospace;">
+      ${otpCode}
+    </div>
+    <h2 style="color: #0f172a; margin: 0 0 16px; font-size: 20px; font-family: sans-serif;">Enable Two-Factor Authentication</h2>
+    <p style="color: #475569; line-height: 1.6; margin: 0 0 24px; font-size: 15px; font-family: sans-serif;">
+      You requested to enable Two-Factor Authentication (2FA) for your LoraBiz account. Please use the authorization code above in your settings to activate this protection. 
+      <strong>This code expires in 10 minutes.</strong>
+    </p>
+    <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 8px;">
+      <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5; font-family: sans-serif;">
+        <strong>Security Notice:</strong> If you did not request to enable 2FA on your account, please change your password immediately.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, htmlBody: getBaseLayout(content, previewText) });
+}
+
+// ============================================================================
+// INTERNAL STAFF & MD TWO-FACTOR AUTHENTICATION PASSKEY (ADMIN ONLY)
 // ============================================================================
 
 export async function send2FAPasskeyEmail(to: string, otpCode: string, role?: string) {
+  // If this was called for a standard user, redirect to standard user template
+  if (!role || role === "USER") {
+    return sendUserLoginOTP(to, otpCode);
+  }
+
   const isExecutive = role === "ADMIN";
   const portalName = isExecutive ? "Managing Director Executive Control Plane" : "Staff Operations & Compliance Desk";
   const accentColor = isExecutive ? "#d97706" : "#0d9488";

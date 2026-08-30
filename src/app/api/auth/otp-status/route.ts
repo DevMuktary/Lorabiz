@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeEmail } from "@/lib/disposable-emails";
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const { email: rawEmail } = await req.json();
 
-    if (!email) {
+    if (!rawEmail) {
       return NextResponse.json({ message: "Email is required" }, { status: 400 });
     }
+
+    const email = normalizeEmail(rawEmail);
 
     const record = await prisma.otpCode.findUnique({
       where: { email },

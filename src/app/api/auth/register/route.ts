@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { notificationQueue } from "@/lib/queue";
 import { logUserActivity } from "@/lib/activity-logger";
+import { isDisposableEmail, normalizeEmail } from "@/lib/disposable-emails";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
@@ -24,13 +25,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
-    // --- MASKED EMAIL FILTERING ---
-    let email = rawEmail.toLowerCase().trim();
-    if (email.includes('@')) {
-      const [localPart, domain] = email.split('@');
-      const cleanLocal = localPart.split('+')[0]; 
-      email = `${cleanLocal}@${domain}`;
+    if (isDisposableEmail(rawEmail)) {
+      return NextResponse.json({ message: "Disposable or temporary email addresses are not permitted." }, { status: 400 });
     }
+
+    // 2. NORMALIZE EMAIL (lowercase, trim, strip plus-aliases)
+    const email = normalizeEmail(rawEmail);
 
     // 2. VERIFY THE OTP
     const validOtp = await prisma.otpCode.findUnique({

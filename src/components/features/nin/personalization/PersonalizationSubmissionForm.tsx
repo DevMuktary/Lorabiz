@@ -142,17 +142,17 @@ export function PersonalizationSubmissionForm({
           </p>
         </div>
 
-        {/* Attestation Checkbox (Minimized) */}
+        {/* Attestation Checkbox */}
         <div className="pt-2">
-          <label className="flex items-center gap-3 p-3.5 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition-colors">
+          <label className="flex items-start gap-3 p-3.5 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition-colors">
             <input
               type="checkbox"
               checked={attestationsAccepted}
               onChange={(e) => setAttestationsAccepted(e.target.checked)}
-              className="h-4 w-4 rounded border-input text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer shrink-0"
+              className="mt-0.5 h-4 w-4 rounded border-input text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer shrink-0"
             />
             <span className="text-xs font-medium text-foreground leading-relaxed">
-              I confirm that this Tracking ID is correct and authorize Lorabiz to process this personalization request.
+              I confirm under the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> that I am the owner or authorized proxy for this Tracking ID, and authorize Lorabiz to process this personalization request.
             </span>
           </label>
         </div>
