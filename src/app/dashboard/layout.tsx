@@ -224,6 +224,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, [isMobileMenuOpen]);
 
+  // Prevent flash of dashboard content while redirecting incomplete profile
+  if (session?.user && (session.user as any).isProfileComplete === false) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-3 border-[#ff3f7a] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full bg-background text-foreground font-sans flex selection:bg-primary selection:text-primary-foreground relative">
 

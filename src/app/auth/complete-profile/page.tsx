@@ -8,14 +8,11 @@ import Image from "next/image";
 import { 
   Phone, 
   WhatsappLogo, 
-  MapPin, 
-  Buildings, 
   Users, 
   CheckCircle, 
   WarningCircle, 
   Spinner,
-  ArrowRight,
-  ShieldCheck
+  ArrowRight
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +27,7 @@ export default function CompleteProfilePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [sameAsPhone, setSameAsPhone] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const [formData, setFormData] = useState({
     phone: "",
@@ -181,39 +179,37 @@ export default function CompleteProfilePage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-background text-foreground">
       <div className="w-full max-w-lg bg-card border border-border rounded-2xl shadow-xl p-6 sm:p-8 space-y-6">
         
-        {/* Header */}
+        {/* Clean Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#ff3f7a]/10 text-[#ff3f7a] mb-1">
-            <ShieldCheck className="w-6 h-6" weight="bold" />
+          <div className="flex justify-center mb-3">
+            <Image src="/logo.png" alt="LoraBiz" width={140} height={45} className="object-contain h-10 w-auto dark:brightness-110" priority />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Complete Your Account</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Complete Your Profile</h1>
           <p className="text-sm text-muted-foreground">
-            Just a few more details to set up your verification & filings workspace.
+            Add your contact details to finish setting up your account.
           </p>
         </div>
 
-        {/* Pre-filled Google User Details (Read-only) */}
-        <div className="bg-secondary/40 border border-border rounded-xl p-3.5 flex items-center gap-3">
-          {session?.user?.image ? (
-            <Image 
+        {/* Pre-filled Google User Details */}
+        <div className="bg-secondary/30 border border-border rounded-xl p-3.5 flex items-center gap-3">
+          {session?.user?.image && !imgError ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img 
               src={session.user.image} 
               alt="Avatar" 
-              width={40} 
-              height={40} 
-              className="rounded-full border border-border object-cover shrink-0" 
+              referrerPolicy="no-referrer"
+              onError={() => setImgError(true)}
+              className="w-10 h-10 rounded-full border border-border object-cover shrink-0" 
             />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-[#ff3f7a]/20 text-[#ff3f7a] flex items-center justify-center font-bold text-sm shrink-0">
-              {session?.user?.name?.charAt(0) || "U"}
+            <div className="w-10 h-10 rounded-full bg-[#ff3f7a]/15 text-[#ff3f7a] flex items-center justify-center font-bold text-sm shrink-0 border border-[#ff3f7a]/30">
+              {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
           )}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground truncate">{session?.user?.name || "Google User"}</p>
             <p className="text-xs text-muted-foreground truncate">{session?.user?.email}</p>
           </div>
-          <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
-            ✓ Verified
-          </span>
         </div>
 
         {errors.form && (
@@ -279,11 +275,11 @@ export default function CompleteProfilePage() {
               id="gender"
               value={formData.gender}
               onChange={handleChange}
-              className="w-full h-11 px-3 text-[16px] rounded-md bg-secondary/30 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-[#ff3f7a]"
+              className="w-full h-11 px-3 text-[16px] rounded-lg bg-background dark:bg-slate-900 border border-border text-foreground dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] [&>option]:bg-white [&>option]:text-slate-900 dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
             >
               <option value="MALE">Male</option>
               <option value="FEMALE">Female</option>
-              <option value="OTHER">Other</option>
+              <option value="OTHER">Prefer not to say</option>
             </select>
           </div>
 
@@ -298,7 +294,7 @@ export default function CompleteProfilePage() {
                   handleChange(e);
                   setFormData(p => ({ ...p, lga: "" }));
                 }}
-                className="w-full h-11 px-3 text-[16px] rounded-md bg-secondary/30 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-[#ff3f7a]"
+                className="w-full h-11 px-3 text-[16px] rounded-lg bg-background dark:bg-slate-900 border border-border text-foreground dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] [&>option]:bg-white [&>option]:text-slate-900 dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
               >
                 <option value="">Select State</option>
                 {Object.keys(NIGERIA_STATES_LGA).map((s) => (
@@ -315,7 +311,7 @@ export default function CompleteProfilePage() {
                 value={formData.lga}
                 onChange={handleChange}
                 disabled={!formData.state}
-                className="w-full h-11 px-3 text-[16px] rounded-md bg-secondary/30 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] disabled:opacity-50"
+                className="w-full h-11 px-3 text-[16px] rounded-lg bg-background dark:bg-slate-900 border border-border text-foreground dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#ff3f7a] disabled:opacity-50 [&>option]:bg-white [&>option]:text-slate-900 dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
               >
                 <option value="">Select LGA</option>
                 {availableLgas.map((l) => (
@@ -332,7 +328,7 @@ export default function CompleteProfilePage() {
               <Label htmlFor="referralCode" className="text-xs font-semibold text-foreground">Referral Code (Optional)</Label>
               {referralState.status === "validating" && (
                 <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                  <Spinner className="h-3 w-3 animate-spin" /> Checking...
+                  <Spinner className="h-3 w-3 animate-spin text-[#ff3f7a]" /> Checking...
                 </span>
               )}
               {referralState.status === "valid" && (
@@ -385,13 +381,13 @@ export default function CompleteProfilePage() {
           <Button 
             type="submit" 
             disabled={loading} 
-            className="w-full h-12 text-base font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 transition-all flex items-center justify-center gap-2"
+            className="w-full h-12 text-base font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white shadow-lg shadow-[#ff3f7a]/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? (
               <Spinner className="animate-spin h-5 w-5" weight="bold" />
             ) : (
               <>
-                <span>Complete Account & Access Dashboard</span>
+                <span>Complete Account</span>
                 <ArrowRight className="w-4 h-4" weight="bold" />
               </>
             )}
