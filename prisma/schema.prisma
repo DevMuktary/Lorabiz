@@ -83,18 +83,19 @@ model User {
   middleName      String?
   lastName        String
   email           String           @unique
-  phone           String           @unique
-  whatsapp        String           @unique
+  phone           String?          @unique
+  whatsapp        String?          @unique
   oldPhone        String?          // Tracks previous number in case of fraud
   phoneChangedAt  DateTime?        // Tracks when they last changed it
   image          String?           // Added for profile picture
-  passwordHash    String
-  gender          Gender
-  state           String
-  lga             String
-  street          String
+  passwordHash    String?
+  gender          Gender?
+  state           String?
+  lga             String?
+  street          String?
   buildingNo      String?
   ipAddress       String?          // Tracks registration IP
+  isProfileComplete Boolean        @default(true)
 
   referralCode       String?   @unique
   referredBy         String?   

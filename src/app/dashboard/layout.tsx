@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationBell from "@/components/features/notifications/NotificationBell";
@@ -76,25 +76,19 @@ const NAVIGATION: NavCategory[] = [
           { name: "BVN Retrieval", href: "/dashboard/bvn/retrieval" },
         ]
       },
-      {
-        name: "Utilities",
-        href: "/dashboard/utilities",
-        icon: DeviceMobile,
-        subLinks: [
-          { name: "Airtime Top-Up", href: "/dashboard/utilities/airtime" },
-          { name: "Mobile Data", href: "/dashboard/utilities/mobile-data" },
-        ]
-      },
-      {
-        name: "Court Affidavit",
-        href: "/dashboard/affidavit",
-        icon: Gavel,
-        subLinks: [
-          { name: "New Affidavit", href: "/dashboard/affidavit" },
-          { name: "My Affidavits", href: "/dashboard/affidavit/history" },
-        ]
-      },
-      { name: "Tax ID (TIN)", href: "/dashboard/tax-id", icon: Cards },
+      { name: "TIN (Tax ID)", href: "/dashboard/tin", icon: Tag },
+      { name: "Court Affidavits", href: "/dashboard/affidavits", icon: Gavel },
+      { name: "Airtime & Utilities", href: "/dashboard/utilities", icon: DeviceMobile },
+    ]
+  },
+  {
+    category: "Corporate Filings",
+    links: [
+      { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
+      { name: "Nigerian Copyright Commission (NCC)", href: "#", icon: Copyright, isComingSoon: true },
+      { name: "Smart Legal Documents", href: "#", icon: FileText, isComingSoon: true },
+      { name: "Build Online Presence", href: "#", icon: Globe, isComingSoon: true },
+      { name: "NAFDAC Registration", href: "#", icon: Flask, isComingSoon: true },
     ]
   },
   {
@@ -107,11 +101,6 @@ const NAVIGATION: NavCategory[] = [
     category: "Upcoming Services",
     links: [
       { name: "CAC Post Incorporation", href: "#", icon: Buildings, isComingSoon: true },
-      { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
-      { name: "Nigerian Copyright Commission (NCC)", href: "#", icon: Copyright, isComingSoon: true },
-      { name: "Smart Legal Documents", href: "#", icon: FileText, isComingSoon: true },
-      { name: "Build Online Presence", href: "#", icon: Globe, isComingSoon: true },
-      { name: "NAFDAC Registration", href: "#", icon: Flask, isComingSoon: true },
       { name: "PENCOM Compliance", href: "#", icon: Shield, isComingSoon: true },
       { name: "SON Certification", href: "#", icon: Certificate, isComingSoon: true },
       { name: "NEPC Export License", href: "#", icon: AirplaneTilt, isComingSoon: true },
@@ -131,9 +120,16 @@ const NAVIGATION: NavCategory[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   // Safe fallback to prevent Railway build crashes
   const { data: session } = useSession() || {};
+
+  useEffect(() => {
+    if (session?.user && (session.user as any).isProfileComplete === false) {
+      router.replace("/auth/complete-profile");
+    }
+  }, [session, router]);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);

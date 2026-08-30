@@ -3,10 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { signIn } from "next-auth/react";
 import { 
   User, EnvelopeSimple, LockKey, Spinner, CheckCircle, 
-  GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash, Users
+  GenderIntersex, MapPin, Buildings, WhatsappLogo, Eye, EyeSlash, Users, WarningCircle
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,13 @@ export default function RegisterForm() {
   const [sameAsPhone, setSameAsPhone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Referral Validation State
+  const [referralState, setReferralState] = useState<{
+    status: "idle" | "validating" | "valid" | "invalid";
+    referrerName?: string;
+    message?: string;
+  }>({ status: "idle" });
   
   // Loading states for OTP specific actions
   const [isSendingOtp, setIsSendingOtp] = useState(false);
@@ -56,6 +64,46 @@ export default function RegisterForm() {
   };
   const passScore = getPasswordStrength();
 
+  // Validate referral code function
+  const validateReferral = useCallback(async (code: string) => {
+    const clean = code.trim();
+    if (!clean) {
+      setReferralState({ status: "idle" });
+      return;
+    }
+
+    setReferralState({ status: "validating" });
+    try {
+      const res = await fetch(`/api/auth/validate-referral?code=${encodeURIComponent(clean)}`);
+      const data = await res.json();
+      if (data.valid) {
+        setReferralState({
+          status: "valid",
+          referrerName: data.referrerName,
+        });
+      } else {
+        setReferralState({
+          status: "invalid",
+          message: data.message || "Referral code not found",
+        });
+      }
+    } catch {
+      setReferralState({ status: "idle" });
+    }
+  }, []);
+
+  // Debounced referral validation
+  useEffect(() => {
+    if (!formData.referralCode) {
+      setReferralState({ status: "idle" });
+      return;
+    }
+    const timer = setTimeout(() => {
+      validateReferral(formData.referralCode);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [formData.referralCode, validateReferral]);
+
   // Auto-capture referral code from URL
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -63,9 +111,10 @@ export default function RegisterForm() {
       const ref = params.get("ref");
       if (ref) {
         setFormData(prev => ({ ...prev, referralCode: ref }));
+        validateReferral(ref);
       }
     }
-  }, []);
+  }, [validateReferral]);
 
   useEffect(() => {
     if (sameAsPhone) {
@@ -238,6 +287,31 @@ export default function RegisterForm() {
 
       <form onSubmit={handleRegisterSubmit} className="space-y-8">
         
+        {/* GOOGLE ONE-CLICK SIGN UP */}
+        <div className="space-y-4">
+          <Button 
+            type="button" 
+            variant="outline" 
+            aria-label="Sign up with Google" 
+            className="w-full h-13 border-border font-semibold flex items-center justify-center gap-3 bg-secondary/20 hover:bg-secondary/40 text-foreground transition-all cursor-pointer shadow-sm text-base" 
+            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+          >
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            <span>Sign up with Google</span>
+          </Button>
+
+          <div className="relative flex items-center py-2">
+            <div className="flex-grow border-t border-border"></div>
+            <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-semibold uppercase tracking-wider">Or register with email</span>
+            <div className="flex-grow border-t border-border"></div>
+          </div>
+        </div>
+
         {errors.form && (
           <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-lg border border-destructive/20 flex items-center gap-2">
             <CheckCircle weight="bold" className="h-5 w-5 shrink-0" />
@@ -465,14 +539,43 @@ export default function RegisterForm() {
 
         {/* SECTION 4: Referral (Optional) */}
         <div className="space-y-5">
-          <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">4. Referral (Optional)</h3>
+          <div className="flex items-center justify-between border-b border-border pb-2">
+            <h3 className="text-lg font-semibold text-foreground">4. Referral (Optional)</h3>
+            {referralState.status === "validating" && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
+                <Spinner className="h-3.5 w-3.5 animate-spin text-[#ff3f7a]" /> Checking...
+              </span>
+            )}
+            {referralState.status === "valid" && (
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1.5 shadow-sm">
+                <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" weight="bold" />
+                Referred by {referralState.referrerName}
+              </span>
+            )}
+            {referralState.status === "invalid" && (
+              <span className="text-xs font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <WarningCircle className="w-4 h-4 text-amber-500" weight="bold" />
+                {referralState.message}
+              </span>
+            )}
+          </div>
           <div className="space-y-2">
             <Label htmlFor="referralCode" className="text-foreground font-medium">Referral Code</Label>
             <div className="relative">
               <Users className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
-              <Input id="referralCode" value={formData.referralCode} onChange={handleChange} placeholder="If you were referred, enter the code here" className="pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#ff3f7a]" />
+              <Input 
+                id="referralCode" 
+                value={formData.referralCode} 
+                onChange={handleChange} 
+                placeholder="If you were referred, enter the code here" 
+                className={`pl-11 h-12 text-[16px] bg-secondary/40 border-border text-foreground placeholder:text-muted-foreground uppercase ${
+                  referralState.status === "valid" ? "border-emerald-500/70 focus-visible:ring-emerald-500" : "focus-visible:ring-[#ff3f7a]"
+                }`} 
+              />
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Leave this blank if you don&apos;t have one.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {referralState.status === "valid" ? "Your sponsor will receive their referral reward upon your registration." : "Leave this blank if you don't have one."}
+            </p>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import bcrypt from "bcryptjs";
@@ -234,11 +235,87 @@ export const authOptions: NextAuthOptions = {
           twoFactorEnabled: user.twoFactorEnabled,
           twoFactorMethod: user.twoFactorMethod,
           mfaVerified: !isMfaRequired,
+          isProfileComplete: user.isProfileComplete ?? (!!user.phone),
         };
       },
     }),
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "google") {
+        if (!user.email) return false;
+        const normalizedEmail = normalizeEmail(user.email);
+
+        let existingUser = await prisma.user.findUnique({
+          where: { email: normalizedEmail },
+        });
+
+        if (!existingUser) {
+          const nameParts = (user.name || "").trim().split(" ");
+          const firstName = nameParts[0] || "User";
+          const lastName = nameParts.slice(1).join(" ") || "Client";
+
+          const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+          const cleanFirstName = firstName.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 4) || 'LORA';
+          const generatedReferralCode = `${cleanFirstName}-${randomSuffix}`;
+
+          existingUser = await prisma.user.create({
+            data: {
+              email: normalizedEmail,
+              firstName,
+              lastName,
+              image: user.image || null,
+              referralCode: generatedReferralCode,
+              isProfileComplete: false,
+            },
+          });
+
+          await logSecurityEvent({
+            email: normalizedEmail,
+            role: "USER",
+            event: "GOOGLE_SIGNUP_SUCCESS",
+            details: "New user registered via Google OAuth",
+          });
+        } else {
+          if (existingUser.isSuspended) {
+            return false;
+          }
+
+          if (!existingUser.image && user.image) {
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { image: user.image },
+            });
+          }
+
+          await logSecurityEvent({
+            email: normalizedEmail,
+            role: existingUser.role,
+            event: "GOOGLE_LOGIN_SUCCESS",
+            details: "User signed in via Google OAuth (2FA bypassed)",
+          });
+        }
+
+        user.id = existingUser.id;
+        (user as any).role = existingUser.role;
+        (user as any).isProfileComplete = existingUser.isProfileComplete ?? (!!existingUser.phone);
+        (user as any).mfaVerified = true;
+        (user as any).twoFactorEnabled = existingUser.twoFactorEnabled;
+        (user as any).twoFactorMethod = existingUser.twoFactorMethod;
+        return true;
+      }
+      return true;
+    },
+
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
@@ -247,13 +324,14 @@ export const authOptions: NextAuthOptions = {
         token.mfaVerified = (user as any).mfaVerified ?? false; 
         token.twoFactorEnabled = (user as any).twoFactorEnabled ?? false;
         token.twoFactorMethod = (user as any).twoFactorMethod ?? null;
+        token.isProfileComplete = (user as any).isProfileComplete ?? true;
       }
 
       if (token?.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true, twoFactorMethod: true }
+            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true, twoFactorMethod: true, isProfileComplete: true, phone: true }
           });
 
           if (!dbUser || dbUser.isSuspended) {
@@ -270,6 +348,7 @@ export const authOptions: NextAuthOptions = {
           
           token.twoFactorEnabled = dbUser.twoFactorEnabled;
           token.twoFactorMethod = dbUser.twoFactorMethod;
+          token.isProfileComplete = dbUser.isProfileComplete ?? (!!dbUser.phone);
 
         } catch (error) {
           console.error("Database session verification failed:", error);
@@ -282,6 +361,9 @@ export const authOptions: NextAuthOptions = {
         }
         if (session.image !== undefined) {
           token.picture = session.image; 
+        }
+        if (session.isProfileComplete !== undefined) {
+          token.isProfileComplete = session.isProfileComplete;
         }
       }
       return token;
@@ -298,6 +380,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).mfaVerified = token.mfaVerified as boolean;
         (session.user as any).twoFactorEnabled = token.twoFactorEnabled as boolean;
         (session.user as any).twoFactorMethod = token.twoFactorMethod as string | null | undefined;
+        (session.user as any).isProfileComplete = token.isProfileComplete as boolean ?? true;
         session.user.image = token.picture as string | null | undefined; 
       }
       return session;
