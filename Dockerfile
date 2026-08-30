@@ -10,8 +10,7 @@ WORKDIR /app
 # ==========================================
 FROM base AS deps
 COPY package.json package-lock.json* .npmrc* ./
-COPY prisma ./prisma/
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+RUN npm config set legacy-peer-deps true && npm install --legacy-peer-deps
 
 # ==========================================
 # 3. BUILDER STAGE
