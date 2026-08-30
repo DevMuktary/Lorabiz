@@ -27,7 +27,12 @@ export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const admin = await prisma.user.findFirst({ where: { email: session.user.email, role: "ADMIN" } });
+    const admin = await prisma.user.findFirst({ 
+      where: { 
+        email: { equals: session.user.email, mode: "insensitive" }, 
+        role: "ADMIN" 
+      } 
+    });
     if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     // 1. Fetch Pending Withdrawals
@@ -60,22 +65,23 @@ export async function GET() {
     });
 
     const enrolledUsers = enrolledPartnersRaw.map(user => {
-      const totalEarned = user.referralsGiven.reduce((acc, ref) => {
-        return acc + ref.commissions.reduce((sum, comm) => sum + Number(comm.amount), 0);
+      const totalEarned = (user.referralsGiven || []).reduce((acc, ref) => {
+        const comms = ref?.commissions || [];
+        return acc + comms.reduce((sum, comm) => sum + (Number(comm.amount) || 0), 0);
       }, 0);
 
       return {
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
-        name: `${user.firstName} ${user.lastName}`.trim(),
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "User",
         email: user.email,
         phone: user.phone,
         referralCode: user.referralCode,
         code: user.referralCode,
-        referralBalance: Number(user.referralBalance),
-        balance: Number(user.referralBalance),
-        totalReferred: user._count.referralsGiven,
+        referralBalance: Number(user.referralBalance || 0),
+        balance: Number(user.referralBalance || 0),
+        totalReferred: user._count?.referralsGiven || 0,
         totalEarned,
         bankDetails: user.payoutAccountNo ? {
           bankName: user.payoutBankName,
@@ -105,21 +111,23 @@ export async function GET() {
       take: 100
     });
 
-    const refereeUserIds = referralPairsRaw.map(r => r.referredUserId);
-    const refereeUsers = await prisma.user.findMany({
-      where: { id: { in: refereeUserIds } },
-      select: { id: true, firstName: true, lastName: true, email: true, phone: true, createdAt: true }
-    });
+    const refereeUserIds = (referralPairsRaw || []).map(r => r.referredUserId).filter(Boolean);
+    const refereeUsers = refereeUserIds.length > 0 
+      ? await prisma.user.findMany({
+          where: { id: { in: refereeUserIds } },
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true, createdAt: true }
+        })
+      : [];
 
-    const referralPairs = referralPairsRaw.map(r => {
+    const referralPairs = (referralPairsRaw || []).map(r => {
       const refUser = refereeUsers.find(u => u.id === r.referredUserId);
-      const commissionsEarned = r.commissions.reduce((sum, c) => sum + Number(c.amount), 0);
+      const commissionsEarned = (r.commissions || []).reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
       return {
         id: r.id,
-        referrerName: r.referrer ? `${r.referrer.firstName} ${r.referrer.lastName}`.trim() : "Unknown",
+        referrerName: r.referrer ? `${r.referrer.firstName || ''} ${r.referrer.lastName || ''}`.trim() : "Unknown",
         referrerEmail: r.referrer?.email || "Unknown",
         referrerCode: r.referrer?.referralCode || "N/A",
-        refereeName: refUser ? `${refUser.firstName} ${refUser.lastName}`.trim() : "Unknown User",
+        refereeName: refUser ? `${refUser.firstName || ''} ${refUser.lastName || ''}`.trim() : "Unknown User",
         refereeEmail: refUser?.email || "Unknown",
         refereePhone: refUser?.phone || "N/A",
         commissionsEarned,

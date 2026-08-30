@@ -114,18 +114,21 @@ export async function POST(req: Request) {
         },
       });
 
-      // Record referral if valid
+      // Record referral link if valid
       if (matchedReferrer && matchedReferrer.referralCode) {
         const existingRefRecord = await tx.referral.findFirst({
-          where: { referredId: userId },
+          where: { referredUserId: userId },
         });
 
         if (!existingRefRecord) {
+          const oneYearFromNow = new Date();
+          oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
           await tx.referral.create({
             data: {
               referrerId: matchedReferrer.id,
-              referredId: userId,
-              status: "REGISTERED",
+              referredUserId: userId,
+              expiresAt: oneYearFromNow,
             },
           });
         }
