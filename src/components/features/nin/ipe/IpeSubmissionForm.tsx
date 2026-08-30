@@ -172,7 +172,7 @@ export function IpeSubmissionForm({
             className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer shrink-0"
           />
           <span className="text-xs text-muted-foreground leading-relaxed">
-            I declare under penalty of perjury and the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> that I am the applicant or hold lawful proxy consent to request IPE clearance for this Tracking ID. I acknowledge that my IP and audit logs are recorded.
+            I confirm that I am the applicant or hold lawful authorization to request IPE clearance for this Tracking ID in accordance with the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> and LoraBiz Terms.
           </span>
         </label>
 

@@ -425,7 +425,7 @@ export default function NinByPhonePage() {
               className="mt-0.5 h-4 w-4 rounded text-sky-500 focus:ring-sky-500 border-border cursor-pointer"
             />
             <span className="leading-relaxed">
-              I declare under penalty of perjury, the <strong>Nigeria Data Protection Act (NDPA) 2023</strong>, and the Cybercrimes Act 2015 that I am the verified owner of this phone number or hold express written statutory consent from the data subject. I acknowledge my IP, timestamp, and account identity are permanently logged for regulatory audit.
+              I confirm that I am the owner of this phone number or have lawful authorization to query this record in accordance with the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> and LoraBiz Terms.
             </span>
           </label>
 

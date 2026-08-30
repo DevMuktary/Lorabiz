@@ -331,7 +331,7 @@ export function NinTermsModal({ isOpen, userFullName = "", onAgreed, onClose }: 
                 <span>Strict Ownership Declaration & Anti-Tampering Notice</span>
               </div>
               <p className="text-muted-foreground pl-7 text-xs sm:text-[13px]">
-                I declare under penalty of perjury, the <strong>Nigeria Data Protection Act (NDPA) 2023</strong>, and the <strong>Cybercrimes Act 2015</strong> that I am the sole owner of the submitted NIN or possess verifiable written proxy consent from the owner. <strong>LoraBiz maintains complete non-repudiation audit logs (including IP address, browser fingerprint, digital signature, and timestamps)</strong> and cooperates fully with law enforcement in cases of identity theft or fraudulent submissions.
+                I confirm that I am the sole owner of the submitted NIN or possess verifiable proxy authorization from the owner to request this modification in accordance with the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> and LoraBiz Service Terms.
               </p>
             </div>
 

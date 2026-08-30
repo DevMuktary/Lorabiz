@@ -429,7 +429,7 @@ export default function NinByNinPage() {
               className="mt-0.5 h-4 w-4 rounded text-[#ff3f7a] focus:ring-[#ff3f7a] border-border cursor-pointer"
             />
             <span className="leading-relaxed">
-              I declare under penalty of perjury, the <strong>Nigeria Data Protection Act (NDPA) 2023</strong>, and the Cybercrimes Act 2015 that I am the verified owner of this NIN or hold express written statutory consent from the data subject. I acknowledge my IP, timestamp, and account identity are permanently logged for regulatory audit.
+              I confirm that I am the owner of this NIN or have lawful authorization to retrieve this record in accordance with the <strong>Nigeria Data Protection Act (NDPA) 2023</strong> and LoraBiz Terms.
             </span>
           </label>
 
