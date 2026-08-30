@@ -9,9 +9,9 @@ WORKDIR /app
 # 2. DEPENDENCIES STAGE
 # ==========================================
 FROM base AS deps
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json* .npmrc* ./
 COPY prisma ./prisma/
-RUN npm ci
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 # ==========================================
 # 3. BUILDER STAGE
@@ -24,14 +24,11 @@ COPY . .
 # Generate Prisma Client & Build Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-
-# Dummy env variables during build to pass build-time checks if any
+ENV SKIP_ENV_VALIDATION=1
 ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/dummy"
-ENV NEXTAUTH_SECRET="build_time_dummy_secret_1234567890"
-ENV NEXTAUTH_URL="http://localhost:3000"
 
 RUN npx prisma generate
-RUN npm run build || npx next build
+RUN npx next build
 
 # ==========================================
 # 4. RUNNER STAGE (Production Standalone)
