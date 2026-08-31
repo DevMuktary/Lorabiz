@@ -3,130 +3,93 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
+
+declare global {
+  interface Window {
+    $crisp: any[];
+    CRISP_WEBSITE_ID: string;
+  }
+}
 
 export function SupportWidgetBootstrapper() {
   const { data: session } = useSession();
-  const { resolvedTheme } = useTheme();
   const pathname = usePathname();
-  const [config, setConfig] = useState<{ baseUrl: string; websiteToken: string; enabled: boolean } | null>(null);
+  const [websiteId, setWebsiteId] = useState<string | null>(null);
 
   // 1. Fetch runtime config
   useEffect(() => {
-    fetch("/api/config/chatwoot")
+    fetch("/api/config/support")
       .then((res) => res.json())
       .then((data) => {
-        if (data.enabled) {
-          setConfig(data);
+        if (data.enabled && data.websiteId) {
+          setWebsiteId(data.websiteId);
         }
       })
       .catch(() => {});
   }, []);
 
-  // 2. Initialize Chatwoot SDK
+  // 2. Initialize Crisp SDK
   useEffect(() => {
-    if (!config?.enabled || !config.websiteToken || typeof window === "undefined") return;
+    if (!websiteId || typeof window === "undefined") return;
 
-    if (document.getElementById("chatwoot-sdk-script")) {
-      if ((window as any).chatwootSDK && !(window as any).$chatwoot) {
-        (window as any).chatwootSDK.run({
-          websiteToken: config.websiteToken,
-          baseUrl: config.baseUrl,
-        });
-      }
-      return;
-    }
+    if (document.getElementById("crisp-sdk-script")) return;
+
+    window.$crisp = window.$crisp || [];
+    window.CRISP_WEBSITE_ID = websiteId;
 
     const script = document.createElement("script");
-    script.id = "chatwoot-sdk-script";
-    script.src = `${config.baseUrl}/packs/js/sdk.js`;
+    script.id = "crisp-sdk-script";
+    script.src = "https://client.crisp.chat/l.js";
     script.async = true;
-    script.defer = true;
-
-    script.onload = () => {
-      if ((window as any).chatwootSDK) {
-        (window as any).chatwootSDK.run({
-          websiteToken: config.websiteToken,
-          baseUrl: config.baseUrl,
-        });
-      }
-    };
 
     document.head.appendChild(script);
-  }, [config]);
+  }, [websiteId]);
 
   // 3. Route-based visibility: Hide on Register/Complete-profile, Show on Dashboard/Login/Home
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!websiteId || typeof window === "undefined" || !window.$crisp) return;
 
     const isRegisterRoute = 
       pathname === "/auth/register" || 
       pathname === "/auth/complete-profile";
 
-    const applyVisibility = () => {
-      const widget = document.querySelector(".woot-widget-holder") as HTMLElement | null;
-      const bubble = document.querySelector(".woot--bubble-holder") as HTMLElement | null;
-      
+    try {
       if (isRegisterRoute) {
-        if (widget) widget.style.display = "none";
-        if (bubble) bubble.style.display = "none";
-        try {
-          (window as any).$chatwoot?.toggle?.("hide");
-        } catch (e) {}
+        window.$crisp.push(["do", "chat:hide"]);
       } else {
-        if (widget) {
-          widget.style.display = "";
-          widget.style.zIndex = "999999";
-        }
-        if (bubble) {
-          bubble.style.display = "";
-          bubble.style.zIndex = "999999";
-        }
+        window.$crisp.push(["do", "chat:show"]);
       }
-    };
-
-    applyVisibility();
-    window.addEventListener("chatwoot:ready", applyVisibility);
-
-    return () => {
-      window.removeEventListener("chatwoot:ready", applyVisibility);
-    };
-  }, [pathname, config]);
+    } catch (e) {}
+  }, [pathname, websiteId]);
 
   // 4. Identify Logged-in User
   useEffect(() => {
-    if (!config?.enabled || typeof window === "undefined") return;
+    if (!websiteId || typeof window === "undefined" || !window.$crisp) return;
 
-    const identifyUser = () => {
-      if (session?.user && (window as any).$chatwoot) {
-        try {
-          (window as any).$chatwoot.setUser((session.user as any).id || session.user.email, {
-            name: session.user.name || "",
-            email: session.user.email || "",
-            avatar_url: session.user.image || "",
-          });
-        } catch (e) {}
-      }
-    };
-
-    window.addEventListener("chatwoot:ready", identifyUser);
-    identifyUser();
-
-    return () => {
-      window.removeEventListener("chatwoot:ready", identifyUser);
-    };
-  }, [session, config]);
-
-  // 5. Sync Dark/Light Mode
-  useEffect(() => {
-    if (typeof window !== "undefined" && (window as any).$chatwoot && resolvedTheme) {
+    if (session?.user) {
       try {
-        (window as any).$chatwoot.setDarkMode?.(resolvedTheme === "dark");
+        if (session.user.email) {
+          window.$crisp.push(["set", "user:email", [session.user.email]]);
+        }
+        if (session.user.name) {
+          window.$crisp.push(["set", "user:nickname", [session.user.name]]);
+        }
+        if (session.user.image) {
+          window.$crisp.push(["set", "user:avatar", [session.user.image]]);
+        }
+        if ((session.user as any).id) {
+          window.$crisp.push([
+            "set",
+            "session:data",
+            [[["user_id", (session.user as any).id]]],
+          ]);
+        }
       } catch (e) {}
     }
-  }, [resolvedTheme]);
+  }, [session, websiteId]);
 
   return null;
 }
+
 
 
