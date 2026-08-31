@@ -257,6 +257,7 @@ export const authOptions: NextAuthOptions = {
 
         let existingUser = await prisma.user.findUnique({
           where: { email: normalizedEmail },
+          include: { wallet: true },
         });
 
         if (!existingUser) {
@@ -276,7 +277,18 @@ export const authOptions: NextAuthOptions = {
               image: user.image || null,
               referralCode: generatedReferralCode,
               isProfileComplete: false,
+              wallet: {
+                create: {
+                  balance: 0.00,
+                },
+              },
+              developerSandboxWallet: {
+                create: {
+                  balance: 1000000.00,
+                },
+              },
             },
+            include: { wallet: true },
           });
 
           await logSecurityEvent({
@@ -288,6 +300,15 @@ export const authOptions: NextAuthOptions = {
         } else {
           if (existingUser.isSuspended) {
             return false;
+          }
+
+          // Auto-heal / Ensure wallet exists for existing user
+          if (!existingUser.wallet) {
+            await prisma.wallet.upsert({
+              where: { userId: existingUser.id },
+              create: { userId: existingUser.id, balance: 0.00 },
+              update: {},
+            });
           }
 
           if (!existingUser.image && user.image) {
