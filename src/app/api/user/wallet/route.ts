@@ -12,10 +12,24 @@ export async function GET() {
     }
 
     // Fetch user and include their connected wallet
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: { wallet: true }
     });
+
+    if (!user) {
+      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+    }
+
+    if (!user.wallet) {
+      const newWallet = await prisma.wallet.create({
+        data: {
+          userId: user.id,
+          balance: 0.00,
+        },
+      });
+      user.wallet = newWallet;
+    }
 
     // Safely convert the Prisma Decimal to a standard Javascript Number
     const currentBalance = user?.wallet?.balance ? Number(user.wallet.balance) : 0;
