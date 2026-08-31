@@ -279,8 +279,8 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
     "/api/v1/nin-verification/vnin": {
       post: {
         tags: ["NIN Verification"],
-        summary: "Verify NIN by Virtual NIN (vNIN)",
-        description: "Fetches citizen identity details using a 16-character Virtual NIN (vNIN).",
+        summary: "Generate VNIN Slip by 11-Digit NIN",
+        description: "Generates an official NIMC Virtual NIN (vNIN) slip and resolves demographic identity details for a given 11-digit National Identification Number (NIN).",
         parameters: [
           {
             name: "Idempotency-Key",
@@ -296,17 +296,12 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
             "application/json": {
               schema: {
                 type: "object",
-                required: ["vnin"],
+                required: ["nin"],
                 properties: {
-                  vnin: {
+                  nin: {
                     type: "string",
-                    description: "16-character alphanumeric Virtual NIN.",
-                    example: "AB11111111111XYZ",
-                  },
-                  includeSlip: {
-                    type: "boolean",
-                    description: "If true, generates and returns an official PDF verification slip URL.",
-                    example: false,
+                    description: "11-digit citizen National Identification Number (NIN).",
+                    example: "11111111111",
                   },
                 },
               },
@@ -315,7 +310,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
         },
         responses: {
           "200": {
-            description: "vNIN details retrieved successfully.",
+            description: "VNIN slip and citizen identity details generated successfully.",
             content: {
               "application/json": {
                 schema: {
@@ -332,7 +327,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
             },
           },
           "400": {
-            description: "Invalid vNIN format.",
+            description: "Invalid NIN format or missing input.",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/StandardErrorResponse" },
@@ -340,7 +335,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
             },
           },
           "404": {
-            description: "No record found matching the Virtual NIN.",
+            description: "No record found for the provided NIN (Auto-refunded).",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/StandardErrorResponse" },
@@ -352,3 +347,4 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
     },
   },
 };
+

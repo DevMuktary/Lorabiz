@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateApiKey } from "@/lib/developer-api/auth";
 import { executeApiTransaction } from "@/lib/developer-api/executor";
 import { getSandboxNinRecord } from "@/lib/developer-api/sandbox-fixtures";
-import { fetchNinSlip } from "@/lib/nin-slips-provider";
+import { executeNinSlipGeneration } from "@/lib/nin-slips-provider";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export const dynamic = "force-dynamic";
 
@@ -29,27 +36,27 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const vnin = body.vnin ? String(body.vnin).trim().replace(/\s+/g, "") : "";
-  const includeSlip = Boolean(body.includeSlip || body.generateSlip);
+  // Accept nin to generate VNIN slip
+  const nin = body.nin ? String(body.nin).trim().replace(/\s+/g, "") : "";
 
-  if (!vnin) {
+  if (!nin) {
     return NextResponse.json(
       {
         status: false,
-        error: "MISSING_VNIN",
-        message: "The 'vnin' (Virtual NIN) field is required.",
+        error: "MISSING_NIN",
+        message: "The 'nin' field is required to generate a Virtual NIN (vNIN) slip.",
         statusCode: 400,
       },
       { status: 400 }
     );
   }
 
-  if (vnin.length < 10 || vnin.length > 20) {
+  if (!/^\d{11}$/.test(nin)) {
     return NextResponse.json(
       {
         status: false,
-        error: "INVALID_VNIN_FORMAT",
-        message: "Invalid Virtual NIN format. VNIN should be a 16-character alphanumeric string.",
+        error: "INVALID_NIN_FORMAT",
+        message: "NIN must be exactly 11 numeric digits.",
         statusCode: 400,
       },
       { status: 400 }
@@ -60,19 +67,19 @@ export async function POST(req: NextRequest) {
   return executeApiTransaction({
     req,
     auth: authResult.context,
-    serviceKey: "VNIN_LOOKUP",
+    serviceKey: "VNIN_SLIP",
     defaultPrice: 100.0,
     endpoint: "/api/v1/nin-verification/vnin",
     isRefundableOnFailure: true,
-    requestPayload: { vnin: `${vnin.slice(0, 4)}****${vnin.slice(-4)}`, includeSlip },
+    requestPayload: { nin: `${nin.slice(0, 3)}*****${nin.slice(-3)}`, slipType: "nin_vnin" },
 
     // --- SANDBOX EXECUTION ---
     executeSandbox: async () => {
-      const mockRecord = getSandboxNinRecord(vnin);
+      const mockRecord = getSandboxNinRecord(nin);
       if (!mockRecord) {
         return {
           success: false,
-          error: "No record found matching the provided Virtual NIN.",
+          error: "No record found for the provided NIN in the NIMC database.",
           statusCode: 404,
         };
       }
@@ -80,12 +87,12 @@ export async function POST(req: NextRequest) {
       return {
         success: true,
         data: {
-          vnin: mockRecord.vnin || vnin,
           nin: mockRecord.nin,
+          vnin: mockRecord.vnin,
           firstname: mockRecord.firstname,
           surname: mockRecord.surname,
           middlename: mockRecord.middlename || "",
-          fullname: `${mockRecord.firstname} ${mockRecord.middlename ? mockRecord.middlename + " " : ""}${mockRecord.surname}`,
+          fullname: `${mockRecord.firstname} ${mockRecord.middlename ? mockRecord.middlename + " " : ""}${mockRecord.surname}`.trim(),
           birthdate: mockRecord.birthdate,
           gender: mockRecord.gender,
           telephoneno: mockRecord.telephoneno,
@@ -93,45 +100,60 @@ export async function POST(req: NextRequest) {
           residence_lga: mockRecord.residence_lga,
           residence_address: mockRecord.residence_address,
           photo: mockRecord.photo,
-          slipPdfUrl: includeSlip
-            ? "https://res.cloudinary.com/lorabiz/image/upload/sample_nin_slip_preview.pdf"
-            : undefined,
+          slipType: "nin_vnin",
+          slipPdfUrl: "https://res.cloudinary.com/lorabiz/image/upload/sample_vnin_slip_preview.pdf",
         },
       };
     },
 
     // --- LIVE PRODUCTION EXECUTION ---
     executeLive: async () => {
-      const slipType = "nin_vnin";
-      const result = await fetchNinSlip(slipType, vnin, "NIN", authResult.context.userId);
+      const result = await executeNinSlipGeneration("nin_vnin", nin, "NIN");
 
-      if (!result.success || !result.demographics) {
+      if (!result.success) {
         return {
           success: false,
-          error: result.error || "No record found matching the provided Virtual NIN.",
-          statusCode: result.error?.includes("offline") ? 503 : 404,
+          error: result.error || result.message || "Failed to generate VNIN slip for the provided NIN.",
+          statusCode: result.error?.includes("maintenance") ? 503 : 404,
         };
       }
 
-      const demo = result.demographics;
+      let securePdfUrl: string | undefined = undefined;
+      if (result.pdfBase64) {
+        try {
+          const uploadResult = await cloudinary.uploader.upload(
+            `data:application/pdf;base64,${result.pdfBase64}`,
+            {
+              folder: "lorabiz_api_vnin_slips",
+              resource_type: "auto",
+            }
+          );
+          securePdfUrl = uploadResult.secure_url;
+        } catch (cloudErr) {
+          console.warn("⚠️ Cloudinary PDF Upload Warning in B2B API:", cloudErr);
+        }
+      }
+
+      const u = result.userData || {};
       return {
         success: true,
         data: {
-          vnin: vnin,
-          nin: demo.nin || undefined,
-          firstname: demo.firstName || "",
-          surname: demo.lastName || "",
-          middlename: demo.middleName || "",
-          fullname: demo.fullName || `${demo.firstName || ""} ${demo.lastName || ""}`.trim(),
-          birthdate: demo.dob || "",
-          gender: demo.gender || "",
-          telephoneno: demo.phone || "",
-          residence_state: demo.state || "",
-          residence_lga: demo.lga || "",
-          residence_address: demo.address || "",
-          photo: demo.photoUrl || "",
-          trackingId: demo.trackingId || undefined,
-          slipPdfUrl: includeSlip ? result.pdfUrl : undefined,
+          nin: result.nin || nin,
+          vnin: (u.vnin as string) || undefined,
+          firstname: result.firstName || (u.firstname as string) || "",
+          surname: result.lastName || (u.surname as string) || "",
+          middlename: result.middleName || (u.middlename as string) || "",
+          fullname: result.fullName || `${result.firstName || ""} ${result.lastName || ""}`.trim(),
+          birthdate: result.dob || (u.birthdate as string) || "",
+          gender: result.gender || (u.gender as string) || "",
+          telephoneno: result.phone || (u.telephoneno as string) || "",
+          residence_state: (u.residence_state as string) || (u.state as string) || "",
+          residence_lga: (u.residence_lga as string) || (u.lga as string) || "",
+          residence_address: result.address || (u.residence_address as string) || "",
+          photo: result.photo || (u.photo as string) || "",
+          slipType: "nin_vnin",
+          slipPdfUrl: securePdfUrl,
+          pdfBase64: !securePdfUrl ? result.pdfBase64 : undefined,
         },
       };
     },
