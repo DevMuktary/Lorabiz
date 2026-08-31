@@ -4,92 +4,166 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
+interface ChatwootUserAttributes {
+  name?: string;
+  email?: string;
+  avatar_url?: string;
+  phone_number?: string;
+  identifier_hash?: string;
+}
+
+interface ChatwootSDKInstance {
+  setUser: (identifier: string, user: ChatwootUserAttributes) => void;
+  setCustomAttributes: (attributes: Record<string, any>) => void;
+  deleteCustomAttribute: (customAttribute: string) => void;
+  setLocale: (locale: string) => void;
+  setText: (text: string) => void;
+  toggle: (state?: "open" | "close") => void;
+  toggleBubbleVisibility: (visibility: "show" | "hide") => void;
+  popoutChatWindow: () => void;
+  reset: () => void;
+}
+
 declare global {
   interface Window {
-    $crisp: any[];
-    CRISP_WEBSITE_ID: string;
+    chatwootSettings?: {
+      hideMessageBubble?: boolean;
+      position?: "left" | "right";
+      locale?: string;
+      type?: "standard" | "expanded_bubble";
+      darkMode?: "light" | "auto";
+      launcherTitle?: string;
+      showPopoutButton?: boolean;
+      [key: string]: any;
+    };
+    chatwootSDK?: {
+      run: (config: { websiteToken: string; baseUrl: string }) => void;
+    };
+    $chatwoot?: ChatwootSDKInstance;
   }
 }
 
 export function SupportWidgetBootstrapper() {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const [websiteId, setWebsiteId] = useState<string | null>(null);
+  const [supportConfig, setSupportConfig] = useState<{
+    enabled: boolean;
+    websiteToken: string;
+    baseUrl: string;
+  } | null>(null);
 
-  // 1. Fetch runtime config
+  // 1. Fetch runtime support configuration
   useEffect(() => {
     fetch("/api/config/support")
       .then((res) => res.json())
       .then((data) => {
-        if (data.enabled && data.websiteId) {
-          setWebsiteId(data.websiteId);
+        if (data.enabled && data.websiteToken) {
+          setSupportConfig({
+            enabled: true,
+            websiteToken: data.websiteToken,
+            baseUrl: data.baseUrl || "https://app.chatwoot.com",
+          });
         }
       })
       .catch(() => {});
   }, []);
 
-  // 2. Initialize Crisp SDK
+  // 2. Initialize Chatwoot SDK
   useEffect(() => {
-    if (!websiteId || typeof window === "undefined") return;
+    if (!supportConfig?.enabled || typeof window === "undefined") return;
 
-    if (document.getElementById("crisp-sdk-script")) return;
+    if (document.getElementById("chatwoot-sdk-script")) return;
 
-    window.$crisp = window.$crisp || [];
-    window.CRISP_WEBSITE_ID = websiteId;
+    window.chatwootSettings = {
+      position: "right",
+      type: "standard",
+      launcherTitle: "Chat with us",
+      darkMode: "auto",
+      showPopoutButton: true,
+      ...window.chatwootSettings,
+    };
 
     const script = document.createElement("script");
-    script.id = "crisp-sdk-script";
-    script.src = "https://client.crisp.chat/l.js";
+    script.id = "chatwoot-sdk-script";
+    script.src = `${supportConfig.baseUrl}/packs/js/sdk.js`;
     script.async = true;
 
+    script.onload = () => {
+      if (window.chatwootSDK) {
+        window.chatwootSDK.run({
+          websiteToken: supportConfig.websiteToken,
+          baseUrl: supportConfig.baseUrl,
+        });
+      }
+    };
+
     document.head.appendChild(script);
-  }, [websiteId]);
+  }, [supportConfig]);
 
-  // 3. Route-based visibility: Hide on Register/Complete-profile, Show on Dashboard/Login/Home
+  // 3. Route-based visibility: Hide on Register/Complete-profile, Show on Dashboard/Home
   useEffect(() => {
-    if (!websiteId || typeof window === "undefined" || !window.$crisp) return;
+    if (!supportConfig?.enabled || typeof window === "undefined") return;
 
-    const isRegisterRoute = 
-      pathname === "/auth/register" || 
+    const isRegisterRoute =
+      pathname === "/auth/register" ||
       pathname === "/auth/complete-profile";
 
-    try {
-      if (isRegisterRoute) {
-        window.$crisp.push(["do", "chat:hide"]);
-      } else {
-        window.$crisp.push(["do", "chat:show"]);
-      }
-    } catch (e) {}
-  }, [pathname, websiteId]);
+    const updateVisibility = () => {
+      try {
+        if (window.$chatwoot?.toggleBubbleVisibility) {
+          window.$chatwoot.toggleBubbleVisibility(isRegisterRoute ? "hide" : "show");
+        }
+      } catch (e) {}
+    };
+
+    // If chatwoot is already initialized
+    updateVisibility();
+
+    // In case Chatwoot initializes asynchronously after route change
+    window.addEventListener("chatwoot:ready", updateVisibility);
+    return () => {
+      window.removeEventListener("chatwoot:ready", updateVisibility);
+    };
+  }, [pathname, supportConfig]);
 
   // 4. Identify Logged-in User
   useEffect(() => {
-    if (!websiteId || typeof window === "undefined" || !window.$crisp) return;
+    if (!supportConfig?.enabled || typeof window === "undefined") return;
 
-    if (session?.user) {
+    const syncUser = () => {
       try {
-        if (session.user.email) {
-          window.$crisp.push(["set", "user:email", [session.user.email]]);
-        }
-        if (session.user.name) {
-          window.$crisp.push(["set", "user:nickname", [session.user.name]]);
-        }
-        if (session.user.image) {
-          window.$crisp.push(["set", "user:avatar", [session.user.image]]);
-        }
-        if ((session.user as any).id) {
-          window.$crisp.push([
-            "set",
-            "session:data",
-            [[["user_id", (session.user as any).id]]],
-          ]);
+        if (!window.$chatwoot) return;
+
+        if (session?.user) {
+          const user = session.user as any;
+          const identifier = user.id || user.email;
+
+          if (identifier) {
+            window.$chatwoot.setUser(String(identifier), {
+              name: user.name || undefined,
+              email: user.email || undefined,
+              avatar_url: user.image || undefined,
+            });
+
+            window.$chatwoot.setCustomAttributes({
+              user_id: user.id || undefined,
+              role: user.role || undefined,
+            });
+          }
         }
       } catch (e) {}
-    }
-  }, [session, websiteId]);
+    };
+
+    syncUser();
+    window.addEventListener("chatwoot:ready", syncUser);
+    return () => {
+      window.removeEventListener("chatwoot:ready", syncUser);
+    };
+  }, [session, supportConfig]);
 
   return null;
 }
+
 
 
 
