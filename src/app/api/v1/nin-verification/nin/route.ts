@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateApiKey } from "@/lib/developer-api/auth";
 import { executeApiTransaction } from "@/lib/developer-api/executor";
-import { getSandboxNinRecord } from "@/lib/developer-api/sandbox-fixtures";
+import { getSandboxNinRecord, getSandboxPdfBase64 } from "@/lib/developer-api/sandbox-fixtures";
 import { executeNinSlipGeneration } from "@/lib/nin-slips-provider";
-import { v2 as cloudinary } from "cloudinary";
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 export const dynamic = "force-dynamic";
+
+const VALID_NIN_SLIP_TYPES = [
+  "nin_basic",
+  "nin_vnin",
+  "nin_regular",
+  "nin_standard",
+  "nin_premium",
+] as const;
 
 export async function POST(req: NextRequest) {
   // 1. Authenticate API Key
@@ -37,8 +38,9 @@ export async function POST(req: NextRequest) {
   }
 
   const nin = body.nin ? String(body.nin).trim().replace(/\s+/g, "") : "";
-  const slipType = body.slipType ? String(body.slipType).trim().toLowerCase() : "nin_standard";
-  const includeSlip = Boolean(body.includeSlip || body.generateSlip);
+  const slipType = body.slipType
+    ? String(body.slipType).trim().toLowerCase()
+    : "nin_standard";
 
   if (!nin) {
     return NextResponse.json(
@@ -64,13 +66,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const validSlipTypes = ["nin_basic", "nin_vnin", "nin_regular", "nin_standard", "nin_premium"];
-  if (slipType && !validSlipTypes.includes(slipType)) {
+  if (!VALID_NIN_SLIP_TYPES.includes(slipType as any)) {
     return NextResponse.json(
       {
         status: false,
         error: "INVALID_SLIP_TYPE",
-        message: `Invalid slipType. Allowed values are: ${validSlipTypes.join(", ")}.`,
+        message: `Invalid slipType. Allowed values are: ${VALID_NIN_SLIP_TYPES.join(", ")}.`,
         statusCode: 400,
       },
       { status: 400 }
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
     defaultPrice: 100.0,
     endpoint: "/api/v1/nin-verification/nin",
     isRefundableOnFailure: true,
-    requestPayload: { nin: `${nin.slice(0, 3)}*****${nin.slice(-3)}`, slipType, includeSlip },
+    requestPayload: { nin: `${nin.slice(0, 3)}*****${nin.slice(-3)}`, slipType },
 
     // --- SANDBOX EXECUTION ---
     executeSandbox: async () => {
@@ -102,7 +103,6 @@ export async function POST(req: NextRequest) {
         success: true,
         data: {
           nin: mockRecord.nin,
-          vnin: mockRecord.vnin,
           firstname: mockRecord.firstname,
           surname: mockRecord.surname,
           middlename: mockRecord.middlename || "",
@@ -113,11 +113,9 @@ export async function POST(req: NextRequest) {
           residence_state: mockRecord.residence_state,
           residence_lga: mockRecord.residence_lga,
           residence_address: mockRecord.residence_address,
-          photo: mockRecord.photo,
+          photo: mockRecord.photo_base64,
           slipType,
-          slipPdfUrl: includeSlip
-            ? "https://res.cloudinary.com/lorabiz/image/upload/sample_nin_slip_preview.pdf"
-            : undefined,
+          pdf_base64: getSandboxPdfBase64(),
         },
       };
     },
@@ -134,23 +132,9 @@ export async function POST(req: NextRequest) {
         };
       }
 
-      let securePdfUrl: string | undefined = undefined;
-      if (includeSlip && result.pdfBase64) {
-        try {
-          const uploadResult = await cloudinary.uploader.upload(
-            `data:application/pdf;base64,${result.pdfBase64}`,
-            {
-              folder: "lorabiz_api_nin_slips",
-              resource_type: "auto",
-            }
-          );
-          securePdfUrl = uploadResult.secure_url;
-        } catch (cloudErr) {
-          console.warn("⚠️ Cloudinary PDF Upload Warning in B2B API:", cloudErr);
-        }
-      }
-
       const u = result.userData || {};
+      const photoBase64 = result.photo || (u.photo as string) || undefined;
+
       return {
         success: true,
         data: {
@@ -165,11 +149,11 @@ export async function POST(req: NextRequest) {
           residence_state: (u.residence_state as string) || (u.state as string) || "",
           residence_lga: (u.residence_lga as string) || (u.lga as string) || "",
           residence_address: result.address || (u.residence_address as string) || "",
-          photo: result.photo || (u.photo as string) || "",
+          photo: photoBase64,
           signature: result.signature || undefined,
+          trackingId: (u.tracking_id as string) || undefined,
           slipType,
-          slipPdfUrl: securePdfUrl,
-          pdfBase64: includeSlip && !securePdfUrl ? result.pdfBase64 : undefined,
+          pdf_base64: result.pdfBase64 || undefined,
         },
       };
     },

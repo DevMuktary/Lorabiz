@@ -6,7 +6,7 @@ export const OPENAPI_SPEC = {
     description: `
 Welcome to the **Lorabiz Developer API Reference**.
 
-Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian identities (NIN, Phone, vNIN, BVN), business compliance (CAC, Tax ID/TIN, SCUML), utility vending, and AI KYC Biometric Liveness.
+Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian identities (NIN, Phone Number, BVN), business compliance, utility vending, and KYC Biometric verification.
 
 ---
 
@@ -14,6 +14,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
 * **Dual-Wallet Sandbox Isolation**: Test requests with \`lora_test_...\` keys run in a full deterministic sandbox environment funded with ₦1,000,000 test funds. Live funds are never touched during sandbox testing.
 * **Idempotency Guarantee**: Pass an \`Idempotency-Key: <unique_uuid>\` header to safely retry requests without risk of double-charging.
 * **Automatic Instant Refunds**: If a refundable lookup fails or no record is found, the charged fee is automatically and instantly returned to your wallet.
+* **Base64 Slip Delivery**: Direct high-resolution \`pdf_base64\` strings returned straight from the provider with zero third-party storage latency.
 * **Authentication**: Pass your API key in the \`Authorization: Bearer <your_api_key>\` HTTP header.
 
 ---
@@ -21,7 +22,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
 * **11111111111** (or **08011111111**): Valid citizen record (Musa Ibrahim Bello).
 * **22222222222** (or **08022222222**): Valid citizen record (Chidinma Grace Okonkwo).
 * **33333333333** (or **08033333333**): Valid citizen record (Oluwaseun David Adeleke).
-* **99999999999**: Simulates a \`404 NO_RECORD_FOUND\` response and triggers an automated refund test.
+* **99999999999**: Simulates a \`404 NO_RECORD_FOUND\` response and triggers an automated refund.
     `,
     contact: {
       name: "Lorabiz Developer Support",
@@ -92,7 +93,6 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
         type: "object",
         properties: {
           nin: { type: "string", example: "11111111111" },
-          vnin: { type: "string", example: "AB11111111111XYZ" },
           firstname: { type: "string", example: "Musa" },
           surname: { type: "string", example: "Bello" },
           middlename: { type: "string", example: "Ibrahim" },
@@ -103,8 +103,22 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
           residence_state: { type: "string", example: "Kano" },
           residence_lga: { type: "string", example: "Nasarawa" },
           residence_address: { type: "string", example: "Plot 14, Gwarzo Road, Kano" },
-          photo: { type: "string", example: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d" },
-          slipPdfUrl: { type: "string", nullable: true, example: "https://res.cloudinary.com/lorabiz/sample_slip.pdf" },
+          photo: {
+            type: "string",
+            description: "Raw Base64-encoded citizen passport photograph from NIMC database.",
+            example: "/9j/4AAQSkZJRgABAQEAAAAAAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
+          },
+          trackingId: { type: "string", nullable: true, example: "TRK-849201" },
+          slipType: {
+            type: "string",
+            enum: ["nin_basic", "nin_vnin", "nin_regular", "nin_standard", "nin_premium"],
+            example: "nin_standard",
+          },
+          pdf_base64: {
+            type: "string",
+            description: "Raw Base64-encoded binary string of the official PDF slip.",
+            example: "JVBERi0xLjQKJcTl8uXrCgoxIDAgb2JqCjw8Ci9UeXBlIC9DYXRhbG9nCi9QYWdlcyAyIDAgUgo+PgplbmRvYmoK...",
+          },
         },
       },
     },
@@ -113,8 +127,8 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
     "/api/v1/nin-verification/nin": {
       post: {
         tags: ["NIN Verification"],
-        summary: "Verify NIN by 11-Digit Number",
-        description: "Fetches official NIMC identity details and demographics for a given 11-digit National Identification Number (NIN).",
+        summary: "Verify NIN & Generate Official Slip by 11-Digit NIN",
+        description: "Fetches official NIMC demographic identity details and generates the requested PDF slip (Base64) for a given 11-digit National Identification Number (NIN).",
         parameters: [
           {
             name: "Idempotency-Key",
@@ -137,10 +151,12 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
                     description: "The 11-digit NIN of the citizen.",
                     example: "11111111111",
                   },
-                  includeSlip: {
-                    type: "boolean",
-                    description: "If true, generates and returns an official PDF verification slip URL.",
-                    example: false,
+                  slipType: {
+                    type: "string",
+                    enum: ["nin_standard", "nin_premium", "nin_regular", "nin_basic", "nin_vnin"],
+                    default: "nin_standard",
+                    description: "The specific NIMC slip layout to generate: standard, premium, regular, basic, or vNIN slip.",
+                    example: "nin_standard",
                   },
                 },
               },
@@ -149,7 +165,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
         },
         responses: {
           "200": {
-            description: "NIN details retrieved successfully.",
+            description: "NIN details and base64 slip retrieved successfully.",
             content: {
               "application/json": {
                 schema: {
@@ -166,7 +182,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
             },
           },
           "400": {
-            description: "Invalid input or format error.",
+            description: "Invalid input, incorrect NIN format, or invalid slipType.",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/StandardErrorResponse" },
@@ -204,8 +220,8 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
     "/api/v1/nin-verification/phone": {
       post: {
         tags: ["NIN Verification"],
-        summary: "Verify NIN by Linked Phone Number",
-        description: "Fetches official NIMC identity details linked to an 11-digit Nigerian mobile phone number.",
+        summary: "Verify NIN & Generate Official Slip by Linked Phone Number",
+        description: "Fetches official NIMC identity demographics and generates the requested PDF slip (Base64) linked to an 11-digit Nigerian mobile phone number.",
         parameters: [
           {
             name: "Idempotency-Key",
@@ -228,80 +244,12 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
                     description: "11-digit Nigerian mobile phone number.",
                     example: "08011111111",
                   },
-                  includeSlip: {
-                    type: "boolean",
-                    description: "If true, generates and returns an official PDF verification slip URL.",
-                    example: false,
-                  },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          "200": {
-            description: "Identity details retrieved successfully.",
-            content: {
-              "application/json": {
-                schema: {
-                  allOf: [
-                    { $ref: "#/components/schemas/StandardSuccessResponse" },
-                    {
-                      properties: {
-                        data: { $ref: "#/components/schemas/NinDemographics" },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          },
-          "400": {
-            description: "Invalid phone number format.",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/StandardErrorResponse" },
-              },
-            },
-          },
-          "404": {
-            description: "No NIMC record found linked to the provided phone number.",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/StandardErrorResponse" },
-              },
-            },
-          },
-        },
-      },
-    },
-
-    "/api/v1/nin-verification/vnin": {
-      post: {
-        tags: ["NIN Verification"],
-        summary: "Generate VNIN Slip by 11-Digit NIN",
-        description: "Generates an official NIMC Virtual NIN (vNIN) slip and resolves demographic identity details for a given 11-digit National Identification Number (NIN).",
-        parameters: [
-          {
-            name: "Idempotency-Key",
-            in: "header",
-            required: false,
-            schema: { type: "string" },
-            description: "Optional UUID to prevent duplicate billing on network retries.",
-          },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                required: ["nin"],
-                properties: {
-                  nin: {
+                  slipType: {
                     type: "string",
-                    description: "11-digit citizen National Identification Number (NIN).",
-                    example: "11111111111",
+                    enum: ["nin_regular", "nin_standard", "nin_premium"],
+                    default: "nin_regular",
+                    description: "The specific slip format to generate for phone lookups: regular, standard, or premium.",
+                    example: "nin_regular",
                   },
                 },
               },
@@ -310,7 +258,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
         },
         responses: {
           "200": {
-            description: "VNIN slip and citizen identity details generated successfully.",
+            description: "Identity demographics and base64 slip retrieved successfully.",
             content: {
               "application/json": {
                 schema: {
@@ -327,7 +275,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
             },
           },
           "400": {
-            description: "Invalid NIN format or missing input.",
+            description: "Invalid phone number format or invalid slipType.",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/StandardErrorResponse" },
@@ -335,7 +283,7 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
             },
           },
           "404": {
-            description: "No record found for the provided NIN (Auto-refunded).",
+            description: "No NIMC record found linked to the provided phone number (Auto-refunded).",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/StandardErrorResponse" },
@@ -347,4 +295,3 @@ Lorabiz provides high-speed, enterprise-grade verification APIs for Nigerian ide
     },
   },
 };
-

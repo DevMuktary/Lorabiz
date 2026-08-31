@@ -1,6 +1,6 @@
 /**
  * Deterministic sandbox mock datasets for Developer B2B testing
- * Allows developers to test successful lookups, edge cases, and error responses with zero real money.
+ * All photo and slip outputs use raw Base64 strings matching live provider formats.
  */
 
 export interface MockNinData {
@@ -15,14 +15,13 @@ export interface MockNinData {
   residence_state: string;
   residence_lga: string;
   residence_address: string;
-  photo: string;
+  photo_base64: string;
   trackingId?: string;
 }
 
-const SAMPLE_AVATARS = {
-  male: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80",
-  female: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80",
-};
+// Sample 1x1 PNG base64 placeholder for sandbox mock portraits
+const SAMPLE_PHOTO_BASE64 = "/9j/4AAQSkZJRgABAQEAAAAAAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+const SAMPLE_PDF_BASE64 = "JVBERi0xLjQKJcTl8uXrCgoxIDAgb2JqCjw8Ci9UeXBlIC9DYXRhbG9nCi9QYWdlcyAyIDAgUgo+PgplbmRvYmoKMSAwIG9iago8PAovUHJvZHVjZXIgKExvcmFiaXogSWRlbnRpdHkgR2F0ZXdheSkKPj4KZW5kb2JqCnRyYWlsZXIKPDwKL1Jvb3QgMSAwIFIKPj4KJSVFT0YK";
 
 export const SANDBOX_NIN_FIXTURES: Record<string, MockNinData> = {
   // Test Case 1: Standard Active Citizen (Musa Ibrahim Bello)
@@ -38,7 +37,7 @@ export const SANDBOX_NIN_FIXTURES: Record<string, MockNinData> = {
     residence_state: "Kano",
     residence_lga: "Nasarawa",
     residence_address: "Plot 14, Gwarzo Road, Kano",
-    photo: SAMPLE_AVATARS.male,
+    photo_base64: SAMPLE_PHOTO_BASE64,
   },
 
   // Test Case 2: Standard Active Citizen (Chidinma Grace Okonkwo)
@@ -54,7 +53,7 @@ export const SANDBOX_NIN_FIXTURES: Record<string, MockNinData> = {
     residence_state: "Lagos",
     residence_lga: "Ikeja",
     residence_address: "24 Allen Avenue, Ikeja, Lagos",
-    photo: SAMPLE_AVATARS.female,
+    photo_base64: SAMPLE_PHOTO_BASE64,
   },
 
   // Test Case 3: Standard Active Citizen (Oluwaseun David Adeleke)
@@ -70,7 +69,7 @@ export const SANDBOX_NIN_FIXTURES: Record<string, MockNinData> = {
     residence_state: "Oyo",
     residence_lga: "Ibadan North",
     residence_address: "12 Bodija Estate, Ibadan, Oyo",
-    photo: SAMPLE_AVATARS.male,
+    photo_base64: SAMPLE_PHOTO_BASE64,
   },
 };
 
@@ -118,9 +117,13 @@ export function getSandboxNinRecord(identifier: string): MockNinData | null {
       residence_state: "Federal Capital Territory",
       residence_lga: "Abuja Municipal",
       residence_address: "Lorabiz Sandbox Test Environment, Abuja",
-      photo: SAMPLE_AVATARS.male,
+      photo_base64: SAMPLE_PHOTO_BASE64,
     };
   }
 
   return null;
+}
+
+export function getSandboxPdfBase64(): string {
+  return SAMPLE_PDF_BASE64;
 }

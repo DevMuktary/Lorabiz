@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Code2, ShieldCheck, Zap } from "lucide-react";
+import { ArrowLeft, Key, Code } from "@phosphor-icons/react";
 
 export default function DeveloperDocsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,8 +66,8 @@ export default function DeveloperDocsPage() {
             href="/dashboard/developer"
             className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all border border-white/10"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Developer Portal
+            <ArrowLeft className="w-4 h-4" weight="bold" />
+            Back to Developer Dashboard
           </Link>
           <div className="h-4 w-px bg-white/10 hidden sm:block" />
           <div className="flex items-center gap-2">
@@ -79,17 +79,16 @@ export default function DeveloperDocsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/developer"
-            className="inline-flex items-center gap-2 text-xs font-bold px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-[#c7365f] to-[#e8447a] text-white shadow-md hover:opacity-95 transition-all"
+            className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-lg bg-[#c7365f] text-white hover:bg-[#c7365f]/90 transition-colors shadow-sm"
           >
-            <Key className="w-3.5 h-3.5" />
-            Get API Keys
+            <Key className="w-3.5 h-3.5" weight="bold" />
+            API Keys
           </Link>
         </div>
       </header>
 
       {/* Scalar Container */}
       <main className="flex-1 w-full" ref={containerRef}>
-        {/* Scalar loads here and injects its interactive UI */}
         <noscript>
           <div className="p-8 text-center text-slate-400">
             Please enable JavaScript to view the interactive Scalar documentation.
