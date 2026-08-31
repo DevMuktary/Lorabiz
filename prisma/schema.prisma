@@ -157,6 +157,12 @@ model User {
   // --- STAFF ASSIGNMENTS ---
   assignedBiz      BusinessRegistration[] @relation("BizStaffAssignment")
   assignedLlcs     LlcRegistration[]      @relation("LlcStaffAssignment")
+
+  // --- DEVELOPER API PLATFORM ---
+  sandboxWallet    DeveloperSandboxWallet?
+  apiKeys          ApiKey[]
+  apiRequestLogs   ApiRequestLog[]
+  webhookEndpoints WebhookEndpoint[]
 }
 
 // ==========================================
@@ -1235,6 +1241,118 @@ model CourtAffidavitRequest {
   @@index([category])
   @@index([createdAt])
 }
+
+// ==========================================
+// DEVELOPER B2B API PLATFORM & SANDBOX
+// ==========================================
+
+model DeveloperSandboxWallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Decimal  @default(1000000.00) @db.Decimal(14, 2) // ₦1,000,000.00 test funds
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ApiKeyType {
+  SANDBOX
+  LIVE
+}
+
+model ApiKey {
+  id          String     @id @default(cuid())
+  userId      String
+  name        String     // e.g. "Staging Backend", "Production Server"
+  keyPrefix   String     // e.g. "lora_test_a1b2..." (first 16 chars)
+  keyHash     String     @unique // SHA-256 hash of the complete raw secret key
+  type        ApiKeyType @default(SANDBOX)
+  ipWhitelist String[]   @default([])
+  rateLimit   Int        @default(120) // Max requests per minute
+  isActive    Boolean    @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs        ApiRequestLog[]
+
+  @@index([userId])
+  @@index([keyHash])
+}
+
+model ApiServicePricing {
+  id                    String   @id @default(cuid())
+  serviceKey            String   @unique // e.g. "NIN_LOOKUP", "NIN_PHONE", "VNIN_LOOKUP", "NIN_SLIP_REGULAR", etc.
+  title                 String
+  apiPrice              Decimal  @default(0.00) @db.Decimal(10, 2)
+  isRefundableOnFailure Boolean  @default(true)
+  isActive              Boolean  @default(true)
+  maintenanceMsg        String?
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
+}
+
+model ApiRequestLog {
+  id             String      @id @default(cuid())
+  userId         String
+  apiKeyId       String?
+  endpoint       String      // e.g. "/api/v1/nin-verification/nin"
+  method         String      // "POST", "GET"
+  statusCode     Int         // 200, 400, 404, 500
+  latencyMs      Int         // Response time in milliseconds
+  environment    ApiKeyType  // SANDBOX | LIVE
+  ipAddress      String?
+  idempotencyKey String?
+  amountCharged  Decimal     @default(0.00) @db.Decimal(10, 2)
+  isRefunded     Boolean     @default(false)
+  refundAmount   Decimal?    @db.Decimal(10, 2)
+  reference      String?     @unique
+  requestBody    Json?       // Safe sanitized request
+  responseBody   Json?       // Safe sanitized response
+  errorMessage   String?
+  createdAt      DateTime    @default(now())
+
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKey         ApiKey?     @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([endpoint])
+  @@index([environment])
+  @@index([statusCode])
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(cuid())
+  userId      String
+  url         String   // Developer's HTTPS webhook URL
+  secret      String   // Signing secret e.g. "whsec_..."
+  description String?
+  events      String[] @default(["*"]) // e.g. ["nin.verified", "bvn.retrieved"]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ApiIdempotencyRecord {
+  id             String   @id @default(cuid())
+  userId         String
+  idempotencyKey String
+  endpoint       String
+  responseStatus Int
+  responseBody   Json
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  @@unique([userId, idempotencyKey, endpoint])
+  @@index([expiresAt])
+}
+
 
 
 
