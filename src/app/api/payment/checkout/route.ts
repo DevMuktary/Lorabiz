@@ -17,13 +17,24 @@ export async function POST(req: Request) {
     const { registrationId, paymentMethod, service, amount, promoCode } = body; 
 
     // 1. Fetch User & Wallet from Database
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: { wallet: true }
     });
 
-    if (!user || !user.wallet) {
-      return NextResponse.json({ success: false, message: "User account or wallet not found." }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ success: false, message: "User account not found." }, { status: 404 });
+    }
+
+    // Auto-heal missing wallet if user exists but has no wallet record
+    if (!user.wallet) {
+      const newWallet = await prisma.wallet.create({
+        data: {
+          userId: user.id,
+          balance: 0.00,
+        }
+      });
+      user.wallet = newWallet;
     }
 
     let baseAmountToPay = 0;
