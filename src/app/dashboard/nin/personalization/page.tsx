@@ -19,11 +19,15 @@ import { PersonalizationNoticeModal } from "@/components/features/nin/personaliz
 
 export default function NinPersonalizationPage() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
+<<<<<<< HEAD
   const [servicePrice, setServicePrice] = useState<number>(1500);
   const [originalPrice, setOriginalPrice] = useState<number | undefined>(undefined);
   const [hasDiscount, setHasDiscount] = useState<boolean>(false);
   const [discountBadge, setDiscountBadge] = useState<string | undefined>(undefined);
   const [savedAmount, setSavedAmount] = useState<number | undefined>(undefined);
+=======
+  const [servicePrice, setServicePrice] = useState<number>(200);
+>>>>>>> 7102ba037f2239b5b0540ec418a958b60f0b98df
   const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [submittedResult, setSubmittedResult] = useState<{ reference: string; trackingId: string } | null>(null);
@@ -40,12 +44,17 @@ export default function NinPersonalizationPage() {
       const data = await res.json();
       if (data.success) {
         setWalletBalance(data.walletBalance || 0);
+<<<<<<< HEAD
         setServicePrice(data.servicePrice ?? data.price ?? 1500);
         setOriginalPrice(data.originalPrice);
         setHasDiscount(Boolean(data.hasDiscount));
         setDiscountBadge(data.discountBadge);
         setSavedAmount(data.savedAmount);
         setIsServiceActive(data.isServiceActive ?? data.isActive ?? true);
+=======
+        setServicePrice(data.servicePrice || 200);
+        setIsServiceActive(data.isServiceActive ?? true);
+>>>>>>> 7102ba037f2239b5b0540ec418a958b60f0b98df
       }
     } catch (err) {
       console.error("Failed to load initial Personalization data:", err);
