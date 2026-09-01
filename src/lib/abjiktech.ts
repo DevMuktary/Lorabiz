@@ -350,13 +350,28 @@ export async function checkAbjiktechNinValidationStatus(identifier: {
       api_key: apiKey,
     };
 
-    if (identifier.ticketId) payload.ticket_id = identifier.ticketId.trim();
-    if (identifier.transactionId) payload.transaction_id = identifier.transactionId.trim();
+    const targetTxId = identifier.transactionId?.trim();
+    const targetTicketId = identifier.ticketId?.trim();
 
-    // Primary endpoint: validation_status.php; Fallback: get_status.php
+    if (targetTicketId) {
+      payload.ticket_id = targetTicketId;
+      payload.ticketId = targetTicketId;
+    }
+    if (targetTxId) {
+      payload.transaction_id = targetTxId;
+      payload.transactionId = targetTxId;
+      payload.reference = targetTxId;
+    }
+    if (!targetTicketId && targetTxId) {
+      payload.identifier = targetTxId;
+    } else if (targetTicketId) {
+      payload.identifier = targetTicketId;
+    }
+
+    // Status Endpoints: get_status.php (Primary) and validation_status.php (Secondary fallback)
     const endpoints = [
-      `${baseUrl}/validation_status.php`,
       `${baseUrl}/get_status.php`,
+      `${baseUrl}/validation_status.php`,
     ];
 
     let json: any = null;
@@ -384,8 +399,18 @@ export async function checkAbjiktechNinValidationStatus(identifier: {
 
         const rawText = await response.text();
         try {
-          json = JSON.parse(rawText);
-          break; // successfully parsed JSON
+          const parsed = JSON.parse(rawText);
+          const rawMsg = (parsed.message || parsed.msg || parsed.error || "").toString().toLowerCase();
+
+          // If Abjiktech's endpoint threw an internal MySQL/SQL error (e.g. unknown column nv.processed_at), try fallback endpoint!
+          if (rawMsg.includes("system error") || rawMsg.includes("unknown column") || rawMsg.includes("sql syntax")) {
+            console.warn(`[Abjiktech Gateway DB Warning] Endpoint ${endpoint} returned database error: ${parsed.message || rawText}. Trying fallback.`);
+            lastError = parsed.message || "Provider endpoint returned internal query error.";
+            continue;
+          }
+
+          json = parsed;
+          break; // successfully received valid response
         } catch {
           lastError = `Invalid non-JSON response from ${endpoint}`;
           continue;
@@ -408,8 +433,8 @@ export async function checkAbjiktechNinValidationStatus(identifier: {
     const rawStatus = (dataObj.status || json.status || "pending").toString();
     const normalizedStatus = normalizeAbjiktechStatus(rawStatus);
 
-    const ticketId = dataObj.ticket_id || json.ticket_id || identifier.ticketId;
-    const transactionId = dataObj.transaction_id || json.transaction_id || identifier.transactionId;
+    const ticketId = dataObj.ticket_id || json.ticket_id || targetTicketId;
+    const transactionId = dataObj.transaction_id || json.transaction_id || targetTxId;
     const message = dataObj.message || json.message || json.msg || "Status retrieved successfully.";
 
     return {
