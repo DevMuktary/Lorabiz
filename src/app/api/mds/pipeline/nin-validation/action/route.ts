@@ -59,42 +59,79 @@ export async function POST(req: Request) {
     if (actionType === "PUSH_TO_PROVIDER") {
       const submitRes = await submitAbjiktechNinValidation(ticket.nin, ticket.category);
 
-      if (!submitRes.success || !submitRes.data) {
-        return NextResponse.json(
-          {
-            error: submitRes.message || "Failed to transmit request to Abjiktech gateway.",
-            details: submitRes.rawResponse,
-          },
-          { status: 422 }
-        );
-      }
-
+      // Always persist the raw gateway response for auditability and debugging
       const updatedTicket = await prisma.ninValidationRequest.update({
         where: { id: ticketId },
         data: {
           provider: "ABJIKTECH",
-          externalTicketId: submitRes.data.ticket_id,
-          externalTxId: submitRes.data.transaction_id,
-          externalStatus: submitRes.data.status || "pending",
-          apiMessage: submitRes.message || "Pushed to Abjiktech gateway successfully.",
-          apiResponse: submitRes.rawResponse as any,
+          externalTicketId: submitRes.data?.ticket_id || ticket.externalTicketId || undefined,
+          externalTxId: submitRes.data?.transaction_id || ticket.externalTxId || undefined,
+          externalStatus: submitRes.data?.status || (submitRes.success ? "pending" : "submission_error"),
+          apiMessage: submitRes.message,
+          apiResponse: (submitRes.rawResponse || submitRes) as any,
           lastSyncedAt: new Date(),
           adminNotes: adminNotes ? `${ticket.adminNotes ? ticket.adminNotes + "\n" : ""}${adminNotes}` : undefined,
         },
       });
+
+      if (!submitRes.success && !submitRes.data?.ticket_id && !submitRes.data?.transaction_id) {
+        return NextResponse.json(
+          {
+            error: submitRes.message || "Failed to transmit request to Abjiktech gateway.",
+            details: submitRes.rawResponse,
+            data: updatedTicket,
+          },
+          { status: 422 }
+        );
+      }
 
       await prisma.staffActionLog.create({
         data: {
           userId: admin.id,
           action: "NINVAL_PUSH_ABJIKTECH",
           targetId: ticketId,
-          details: `Admin pushed ticket ${ticket.transactionRef} (NIN: ${ticket.nin}) to Abjiktech. Received Ticket ID: ${submitRes.data.ticket_id}`,
+          details: `Admin pushed ticket ${ticket.transactionRef} (NIN: ${ticket.nin}) to Abjiktech. Received Ticket ID: ${submitRes.data?.ticket_id || "N/A"}`,
         },
       });
 
       return NextResponse.json({
         success: true,
-        message: `Successfully transmitted to Abjiktech! Ticket ID: ${submitRes.data.ticket_id}`,
+        message: submitRes.message || `Successfully transmitted to Abjiktech! Ticket ID: ${submitRes.data?.ticket_id || "Recorded"}`,
+        data: updatedTicket,
+      });
+    }
+
+    // =========================================================================
+    // ACTION: SET_EXTERNAL_TICKET (Admin manually inputs/links Abjiktech Ticket ID)
+    // =========================================================================
+    if (actionType === "SET_EXTERNAL_TICKET") {
+      const { manualTicketId, manualTxId } = body;
+      if (!manualTicketId && !manualTxId) {
+        return NextResponse.json({ error: "Please provide a valid Ticket ID or Transaction ID." }, { status: 400 });
+      }
+
+      const updatedTicket = await prisma.ninValidationRequest.update({
+        where: { id: ticketId },
+        data: {
+          provider: "ABJIKTECH",
+          externalTicketId: manualTicketId?.trim() || undefined,
+          externalTxId: manualTxId?.trim() || undefined,
+          lastSyncedAt: new Date(),
+        },
+      });
+
+      await prisma.staffActionLog.create({
+        data: {
+          userId: admin.id,
+          action: "NINVAL_LINK_TICKET",
+          targetId: ticketId,
+          details: `Admin manually linked Ticket ID ${manualTicketId || "N/A"} to Ref ${ticket.transactionRef}`,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Successfully linked Ticket ID: ${manualTicketId || manualTxId}`,
         data: updatedTicket,
       });
     }

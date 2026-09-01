@@ -1,7 +1,7 @@
 // src/components/mds/nin-validation/NinValidationApplicationDrawer.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { 
   X, 
@@ -20,8 +20,11 @@ import {
   RefreshCw,
   Tag,
   ShieldCheck,
-  ExternalLink,
-  Zap
+  Zap,
+  Code2,
+  ChevronDown,
+  ChevronUp,
+  Edit3
 } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -32,7 +35,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function NinValidationApplicationDrawer({
-  ticket,
+  ticket: initialTicket,
   onClose,
   onUpdateSuccess,
 }: {
@@ -40,19 +43,30 @@ export default function NinValidationApplicationDrawer({
   onClose: () => void;
   onUpdateSuccess: () => void;
 }) {
+  const [ticket, setTicket] = useState<any | null>(initialTicket);
   const [activeAction, setActiveAction] = useState<"COMPLETE" | "FAIL" | "PROCESS" | "">("");
   const [failureReason, setFailureReason] = useState<string>("");
   const [adminNotes, setAdminNotes] = useState<string>("");
   const [issueRefund, setIssueRefund] = useState<boolean>(false);
-  const [refundAmount, setRefundAmount] = useState<number | string>(ticket?.amountCharged || 0);
+  const [refundAmount, setRefundAmount] = useState<number | string>(initialTicket?.amountCharged || 0);
   
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isPushingToAbj, setIsPushingToAbj] = useState<boolean>(false);
   const [isSyncingStatus, setIsSyncingStatus] = useState<boolean>(false);
+  const [isLinkingManual, setIsLinkingManual] = useState<boolean>(false);
+  const [manualTicketInput, setManualTicketInput] = useState<string>("");
+  const [showDebugJson, setShowDebugJson] = useState<boolean>(false);
   
   const [error, setError] = useState<string>("");
   const [successMsg, setSuccessMsg] = useState<string>("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTicket(initialTicket);
+    if (initialTicket) {
+      setRefundAmount(initialTicket.amountCharged || 0);
+    }
+  }, [initialTicket]);
 
   if (!ticket) return null;
 
@@ -90,13 +104,17 @@ export default function NinValidationApplicationDrawer({
 
       const result = await response.json();
       if (!response.ok || !result.success) {
+        if (result.data) {
+          setTicket(result.data);
+        }
         throw new Error(result.error || "Failed to push ticket to Abjiktech.");
       }
 
+      if (result.data) {
+        setTicket(result.data);
+      }
       setSuccessMsg(result.message || "Successfully transmitted to Abjiktech!");
-      setTimeout(() => {
-        onUpdateSuccess();
-      }, 1200);
+      onUpdateSuccess();
     } catch (err: any) {
       setError(err.message || "Failed to transmit to Abjiktech.");
     } finally {
@@ -125,14 +143,60 @@ export default function NinValidationApplicationDrawer({
         throw new Error(result.error || "Failed to fetch status from Abjiktech.");
       }
 
+      if (result.status) {
+        setTicket((prev: any) => ({
+          ...prev,
+          status: result.status,
+          externalStatus: result.rawStatus,
+          lastSyncedAt: new Date().toISOString(),
+        }));
+      }
+
       setSuccessMsg(result.message || "Live status synced from Abjiktech!");
-      setTimeout(() => {
-        onUpdateSuccess();
-      }, 1200);
+      onUpdateSuccess();
     } catch (err: any) {
       setError(err.message || "Failed to sync status from Abjiktech.");
     } finally {
       setIsSyncingStatus(false);
+    }
+  };
+
+  // Handle Manual Ticket ID Linking
+  const handleLinkManualTicket = async () => {
+    if (!manualTicketInput.trim()) {
+      setError("Please enter a valid Abjiktech Ticket ID.");
+      return;
+    }
+    setIsProcessing(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const response = await fetch("/api/mds/pipeline/nin-validation/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: ticket.id,
+          actionType: "SET_EXTERNAL_TICKET",
+          manualTicketId: manualTicketInput.trim(),
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to link ticket ID.");
+      }
+
+      if (result.data) {
+        setTicket(result.data);
+      }
+      setIsLinkingManual(false);
+      setSuccessMsg(`Ticket ID ${manualTicketInput.trim()} linked successfully!`);
+      onUpdateSuccess();
+    } catch (err: any) {
+      setError(err.message || "Failed to link ticket ID.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -172,6 +236,13 @@ export default function NinValidationApplicationDrawer({
         throw new Error(result.error || "Action execution failed.");
       }
 
+      setTicket((prev: any) => ({
+        ...prev,
+        status: activeAction === "COMPLETE" ? "COMPLETED" : activeAction === "FAIL" ? "FAILED" : "PROCESSING",
+        failureReason: activeAction === "FAIL" ? failureReason : prev?.failureReason,
+      }));
+
+      setSuccessMsg(`Ticket successfully updated to ${activeAction}!`);
       onUpdateSuccess();
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
@@ -346,15 +417,26 @@ export default function NinValidationApplicationDrawer({
                     {ticket.lastSyncedAt ? `Last Synced: ${format(new Date(ticket.lastSyncedAt), "p")}` : "Not synced yet"}
                   </span>
 
-                  <button
-                    type="button"
-                    onClick={handleSyncAbjiktechStatus}
-                    disabled={isSyncingStatus}
-                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw size={13} className={isSyncingStatus ? "animate-spin" : ""} />
-                    <span>{isSyncingStatus ? "Syncing..." : "Check Live Status"}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsLinkingManual(!isLinkingManual)}
+                      className="px-2.5 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
+                    >
+                      <Edit3 size={12} />
+                      <span>Edit ID</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSyncAbjiktechStatus}
+                      disabled={isSyncingStatus}
+                      className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw size={13} className={isSyncingStatus ? "animate-spin" : ""} />
+                      <span>{isSyncingStatus ? "Syncing..." : "Check Live Status"}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -363,24 +445,92 @@ export default function NinValidationApplicationDrawer({
                   This request is queued in the manual ledger. Click the button below to transmit the 11-digit NIN and category (<strong>{categoryLabel}</strong>) to the Abjiktech verification engine.
                 </p>
 
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePushToAbjiktech}
+                    disabled={isPushingToAbj || ticket.status !== "PROCESSING"}
+                    className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isPushingToAbj ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        <span>Transmitting to Abjiktech API...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={15} />
+                        <span>Push to Abjiktech (ABJ)</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsLinkingManual(!isLinkingManual)}
+                    className="py-3 px-3.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                  >
+                    <Edit3 size={14} />
+                    <span>Link ID</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Manual Link Input */}
+            {isLinkingManual && (
+              <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2 animate-in fade-in">
+                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
+                  Manually Link Abjiktech Ticket ID (TKT...)
+                </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={manualTicketInput}
+                    onChange={(e) => setManualTicketInput(e.target.value)}
+                    placeholder="e.g. TKT17100000001234"
+                    className="flex-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleLinkManualTicket}
+                    disabled={isProcessing}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Collapsible Debug / Raw API Payload Viewer */}
+            {ticket.apiResponse && (
+              <div className="pt-2 border-t border-indigo-500/20">
                 <button
                   type="button"
-                  onClick={handlePushToAbjiktech}
-                  disabled={isPushingToAbj || ticket.status !== "PROCESSING"}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  onClick={() => setShowDebugJson(!showDebugJson)}
+                  className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  {isPushingToAbj ? (
-                    <>
-                      <Loader2 size={15} className="animate-spin" />
-                      <span>Transmitting to Abjiktech API...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap size={15} />
-                      <span>Push to Abjiktech (ABJ)</span>
-                    </>
-                  )}
+                  <Code2 size={13} />
+                  <span>{showDebugJson ? "Hide Gateway Response Payload" : "View Gateway Response Payload (JSON)"}</span>
+                  {showDebugJson ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                 </button>
+
+                {showDebugJson && (
+                  <div className="mt-2 p-3 bg-zinc-950 rounded-xl border border-zinc-800 font-mono text-[11px] text-emerald-400 overflow-x-auto max-h-48 animate-in fade-in">
+                    <div className="flex justify-between items-center mb-1 text-zinc-500 text-[10px]">
+                      <span>RAW GATEWAY PAYLOAD</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy("debug_json", JSON.stringify(ticket.apiResponse, null, 2))}
+                        className="hover:text-zinc-200"
+                      >
+                        {copiedKey === "debug_json" ? "Copied!" : "Copy JSON"}
+                      </button>
+                    </div>
+                    <pre>{JSON.stringify(ticket.apiResponse, null, 2)}</pre>
+                  </div>
+                )}
               </div>
             )}
           </div>
