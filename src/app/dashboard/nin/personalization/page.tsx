@@ -11,7 +11,8 @@ import {
   Clock, 
   Spinner,
   ShieldCheck,
-  Fingerprint
+  Fingerprint,
+  IdentificationCard
 } from "@phosphor-icons/react";
 import { PersonalizationSubmissionForm } from "@/components/features/nin/personalization/PersonalizationSubmissionForm";
 import { PersonalizationNoticeModal } from "@/components/features/nin/personalization/PersonalizationNoticeModal";
@@ -78,7 +79,7 @@ export default function NinPersonalizationPage() {
     <div className="space-y-6 max-w-6xl mx-auto relative pb-12 animate-in fade-in duration-200">
       {/* Notice Modal */}
       {showNoticeModal && !submittedResult && !isLoading && isServiceActive && (
-        <PersonalizationNoticeModal onClose={() => setShowNoticeModal(false)} />
+        <PersonalizationNoticeModal isOpen={showNoticeModal} onClose={() => setShowNoticeModal(false)} />
       )}
 
       {/* Top Navigation */}
