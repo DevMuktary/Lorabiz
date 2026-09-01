@@ -102,20 +102,25 @@ export async function POST(req: Request) {
     }
 
     // =========================================================================
-    // ACTION: SET_EXTERNAL_TICKET (Admin manually inputs/links Abjiktech Ticket ID)
+    // ACTION: SET_EXTERNAL_TICKET (Admin manually inputs/links Abjiktech Transaction ID)
     // =========================================================================
     if (actionType === "SET_EXTERNAL_TICKET") {
-      const { manualTicketId, manualTxId } = body;
-      if (!manualTicketId && !manualTxId) {
-        return NextResponse.json({ error: "Please provide a valid Ticket ID or Transaction ID." }, { status: 400 });
+      const rawInput = (body.manualId || body.manualTxId || body.manualTicketId || "").toString().trim();
+      if (!rawInput) {
+        return NextResponse.json({ error: "Please provide a valid Transaction ID." }, { status: 400 });
       }
+
+      const isTicketPrefix = rawInput.toUpperCase().startsWith("TKT");
+      const externalTicketId = isTicketPrefix ? rawInput : (body.manualTicketId?.trim() || ticket.externalTicketId || undefined);
+      const externalTxId = !isTicketPrefix ? rawInput : (body.manualTxId?.trim() || ticket.externalTxId || rawInput);
 
       const updatedTicket = await prisma.ninValidationRequest.update({
         where: { id: ticketId },
         data: {
           provider: "ABJIKTECH",
-          externalTicketId: manualTicketId?.trim() || undefined,
-          externalTxId: manualTxId?.trim() || undefined,
+          externalTxId,
+          externalTicketId,
+          externalStatus: ticket.externalStatus || "pending",
           lastSyncedAt: new Date(),
         },
       });
@@ -125,13 +130,13 @@ export async function POST(req: Request) {
           userId: admin.id,
           action: "NINVAL_LINK_TICKET",
           targetId: ticketId,
-          details: `Admin manually linked Ticket ID ${manualTicketId || "N/A"} to Ref ${ticket.transactionRef}`,
+          details: `Admin manually linked Abjiktech Transaction ID (${rawInput}) to Ref ${ticket.transactionRef}`,
         },
       });
 
       return NextResponse.json({
         success: true,
-        message: `Successfully linked Ticket ID: ${manualTicketId || manualTxId}`,
+        message: `Successfully linked Transaction ID: ${rawInput}`,
         data: updatedTicket,
       });
     }

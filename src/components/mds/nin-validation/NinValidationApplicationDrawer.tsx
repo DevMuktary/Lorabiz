@@ -161,10 +161,10 @@ export default function NinValidationApplicationDrawer({
     }
   };
 
-  // Handle Manual Ticket ID Linking
+  // Handle Manual Transaction/Ticket ID Linking
   const handleLinkManualTicket = async () => {
     if (!manualTicketInput.trim()) {
-      setError("Please enter a valid Abjiktech Ticket ID.");
+      setError("Please enter a valid Abjiktech Transaction ID.");
       return;
     }
     setIsProcessing(true);
@@ -178,23 +178,23 @@ export default function NinValidationApplicationDrawer({
         body: JSON.stringify({
           ticketId: ticket.id,
           actionType: "SET_EXTERNAL_TICKET",
-          manualTicketId: manualTicketInput.trim(),
+          manualId: manualTicketInput.trim(),
         }),
       });
 
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to link ticket ID.");
+        throw new Error(result.error || "Failed to link transaction ID.");
       }
 
       if (result.data) {
         setTicket(result.data);
       }
       setIsLinkingManual(false);
-      setSuccessMsg(`Ticket ID ${manualTicketInput.trim()} linked successfully!`);
+      setSuccessMsg(`Transaction ID ${manualTicketInput.trim()} linked successfully!`);
       onUpdateSuccess();
     } catch (err: any) {
-      setError(err.message || "Failed to link ticket ID.");
+      setError(err.message || "Failed to link transaction ID.");
     } finally {
       setIsProcessing(false);
     }
@@ -481,23 +481,26 @@ export default function NinValidationApplicationDrawer({
             {isLinkingManual && (
               <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2 animate-in fade-in">
                 <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                  Manually Link Abjiktech Ticket ID (TKT...)
+                  Link Abjiktech Transaction ID / Reference
                 </span>
+                <p className="text-[11px] text-zinc-500">
+                  Copy the Transaction ID from the Abjiktech portal (or your transaction history) and paste it below to link and track this ticket.
+                </p>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={manualTicketInput}
                     onChange={(e) => setManualTicketInput(e.target.value)}
-                    placeholder="e.g. TKT17100000001234"
-                    className="flex-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono outline-none"
+                    placeholder="e.g. nin_val_a1b2c3d4e5f6g7h8i9j0kl or transaction ID"
+                    className="flex-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono outline-none text-zinc-900 dark:text-zinc-100"
                   />
                   <button
                     type="button"
                     onClick={handleLinkManualTicket}
                     disabled={isProcessing}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-sm"
                   >
-                    Save
+                    Link ID
                   </button>
                 </div>
               </div>
