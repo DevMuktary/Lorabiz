@@ -18,7 +18,7 @@ import { PersonalizationNoticeModal } from "@/components/features/nin/personaliz
 
 export default function NinPersonalizationPage() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [servicePrice, setServicePrice] = useState<number>(1500);
+  const [servicePrice, setServicePrice] = useState<number>(200);
   const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [submittedResult, setSubmittedResult] = useState<{ reference: string; trackingId: string } | null>(null);
@@ -35,7 +35,7 @@ export default function NinPersonalizationPage() {
       const data = await res.json();
       if (data.success) {
         setWalletBalance(data.walletBalance || 0);
-        setServicePrice(data.servicePrice || 1500);
+        setServicePrice(data.servicePrice || 200);
         setIsServiceActive(data.isServiceActive ?? true);
       }
     } catch (err) {
