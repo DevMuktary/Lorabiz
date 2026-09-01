@@ -13,6 +13,10 @@ import { PersonalizationConfirmationModal } from "./PersonalizationConfirmationM
 interface PersonalizationSubmissionFormProps {
   walletBalance: number;
   servicePrice: number;
+  originalPrice?: number;
+  hasDiscount?: boolean;
+  discountBadge?: string;
+  savedAmount?: number;
   isServiceActive: boolean;
   onSuccess: (result: { reference: string; trackingId: string }) => void;
 }
@@ -20,6 +24,10 @@ interface PersonalizationSubmissionFormProps {
 export function PersonalizationSubmissionForm({
   walletBalance,
   servicePrice,
+  originalPrice,
+  hasDiscount,
+  discountBadge,
+  savedAmount,
   isServiceActive,
   onSuccess,
 }: PersonalizationSubmissionFormProps) {
@@ -89,12 +97,24 @@ export function PersonalizationSubmissionForm({
   return (
     <div className="space-y-6">
       <form onSubmit={handleFormSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
-        {/* Processing Fee Tag Badge */}
+        {/* Processing Fee Tag Badge with Discount Support */}
         <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit">
-          <Tag weight="fill" className="h-4 w-4" />
-          <span className="text-xs font-bold uppercase tracking-wider">
-            Processing Fee: ₦{servicePrice.toLocaleString()}
-          </span>
+          <Tag weight="fill" className="h-4 w-4 shrink-0" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Processing Fee: ₦{servicePrice.toLocaleString()}
+            </span>
+            {hasDiscount && originalPrice && originalPrice > servicePrice && (
+              <div className="flex items-center gap-1.5">
+                <span className="line-through text-muted-foreground text-xs opacity-75">
+                  ₦{originalPrice.toLocaleString()}
+                </span>
+                <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                  {discountBadge || "DISCOUNTED"}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Form Header */}
@@ -116,7 +136,7 @@ export function PersonalizationSubmissionForm({
           </div>
         )}
 
-        {/* Tracking ID Input */}
+        {/* Tracking ID Input (text-base prevents iOS/mobile auto-zooming) */}
         <div className="space-y-2">
           <label htmlFor="trackingId" className="text-sm font-bold text-foreground flex items-center gap-1.5">
             <Key weight="bold" className="h-4 w-4 text-primary" />
@@ -131,7 +151,7 @@ export function PersonalizationSubmissionForm({
               placeholder="e.g. 0SQT6M4S4RJISV1"
               value={trackingId}
               onChange={(e) => setTrackingId(e.target.value.toUpperCase())}
-              className="w-full px-4 py-3.5 bg-background border border-input rounded-xl text-foreground font-mono font-bold text-base placeholder:font-sans placeholder:font-normal placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all uppercase tracking-wider"
+              className="w-full px-4 py-3.5 bg-background border border-input rounded-xl text-foreground font-mono font-bold text-base placeholder:font-sans placeholder:font-normal placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all uppercase tracking-wider text-base sm:text-base"
             />
           </div>
           <p className="text-xs text-muted-foreground flex items-center justify-between">

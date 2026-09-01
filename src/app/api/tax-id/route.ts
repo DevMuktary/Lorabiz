@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { generateNumericId } from "@/utils/generateId"; 
 import { sendTaxIdSubmittedEmail } from "@/lib/email";
 import { logUserActivity } from "@/lib/activity-logger";
+import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
 
 export async function GET(req: Request) {
   try {
@@ -63,13 +64,15 @@ export async function POST(req: Request) {
 
     if (taxIdPricing && !taxIdPricing.isActive) {
       return NextResponse.json({ 
-        success: false,
+        success: false, 
         error: taxIdPricing.maintenanceMsg || "Tax ID processing is currently undergoing maintenance." 
       }, { status: 400 });
     }
 
     const defaultPrice = type === "CORPORATE" ? 1000 : 500;
-    const finalPrice = taxIdPricing ? Number(taxIdPricing.price) : (Number(price) || defaultPrice);
+    const basePrice = taxIdPricing ? Number(taxIdPricing.price) : defaultPrice;
+    const discountInfo = await getEffectiveServicePrice(prisma, targetServiceKey, basePrice, user.id);
+    const finalPrice = discountInfo.finalPrice;
 
     const userBalance = Number(user.wallet.balance);
     if (userBalance < finalPrice) {
@@ -135,6 +138,10 @@ export async function POST(req: Request) {
           transactionRef
         }
       });
+
+      if (discountInfo.hasDiscount && discountInfo.promoId) {
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id, discountInfo.savedAmount, targetServiceKey);
+      }
 
       return taxReq;
     });

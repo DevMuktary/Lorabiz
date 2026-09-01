@@ -25,6 +25,7 @@ export default function TaxIdPage() {
   const [reqType, setReqType] = useState<TaxIdType>("INDIVIDUAL");
   
   const [prices, setPrices] = useState({ individual: 0, corporate: 0 });
+  const [discountDetails, setDiscountDetails] = useState<Record<string, any>>({});
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [mounted, setMounted] = useState(false);
@@ -63,6 +64,9 @@ export default function TaxIdPage() {
             individual: priceData.data.TAX_ID_INDIVIDUAL || 500,
             corporate: priceData.data.TAX_ID_CORPORATE || 1000
           });
+          if (priceData.discountDetails) {
+            setDiscountDetails(priceData.discountDetails);
+          }
         }
         if (walletRes.ok) {
           const walletData = await walletRes.json();
@@ -98,7 +102,13 @@ export default function TaxIdPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const currentDiscountKey = reqType === "INDIVIDUAL" ? "TAX_ID_INDIVIDUAL" : "TAX_ID_CORPORATE";
+  const currentDiscount = discountDetails[currentDiscountKey];
   const currentPrice = reqType === "INDIVIDUAL" ? prices.individual : prices.corporate;
+  const originalPrice = currentDiscount?.originalPrice || currentPrice;
+  const hasDiscount = Boolean(currentDiscount?.hasDiscount);
+  const discountBadge = currentDiscount?.badge;
+
   const isInsufficientBalance = walletBalance < currentPrice;
 
   const handleOpenConfirm = (e: React.FormEvent) => {
@@ -198,24 +208,33 @@ export default function TaxIdPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto relative">
       
-      {/* Intro Modal (Processing Timeline) */}
-      {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in slide-in-from-bottom-6 fade-in duration-300">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
-                <Info weight="fill" className="h-6 w-6 text-blue-500" />
+      {/* Intro Modal (I Understand) */}
+      {showIntroModal && mounted && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 border-b border-border pb-4 mb-5">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <Info weight="fill" className="h-5 w-5" />
               </div>
-              <h2 className="text-xl font-black">Processing Timeline</h2>
+              <div>
+                <h3 className="text-lg font-black text-foreground">Tax ID (TIN) Service Guidelines</h3>
+                <p className="text-xs text-muted-foreground">Please read before proceeding</p>
+              </div>
             </div>
-            
-            <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-              <p>
-                Processing time is typically within <strong className="text-foreground">30 minutes</strong> between 9:00 AM and 5:00 PM. 
-              </p>
-              <p>
-                Applications submitted outside these working hours may take 1 hour or more to process. If your request is delayed beyond the expected timeframe, please log a complaint using the email option on our Support widget.
-              </p>
+
+            <div className="space-y-4 text-sm text-muted-foreground">
+              <div className="flex gap-3">
+                <span className="font-bold text-foreground">1.</span>
+                <p><strong className="text-foreground">Official JTB / FIRS Verification:</strong> Ensure that your NIN details (for individuals) match your official records, or CAC RC/BN is registered properly.</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="font-bold text-foreground">2.</span>
+                <p><strong className="text-foreground">Processing Turnaround:</strong> Applications are processed digitally between 1 to 24 hours.</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="font-bold text-foreground">3.</span>
+                <p><strong className="text-foreground">Digital Delivery:</strong> Your 13-digit Tax ID will be generated and available for instant download in your history ledger.</p>
+              </div>
             </div>
 
             <button 
@@ -280,8 +299,22 @@ export default function TaxIdPage() {
 
               {!isLoadingPrice && (
                 <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit mt-3">
-                  <Tag weight="fill" className="h-4 w-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Processing Fee: ₦{currentPrice.toLocaleString()}</span>
+                  <Tag weight="fill" className="h-4 w-4 shrink-0" />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Processing Fee: ₦{currentPrice.toLocaleString()}
+                    </span>
+                    {hasDiscount && originalPrice > currentPrice && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="line-through text-muted-foreground text-xs opacity-75">
+                          ₦{originalPrice.toLocaleString()}
+                        </span>
+                        <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                          {discountBadge || "DISCOUNTED"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -291,28 +324,28 @@ export default function TaxIdPage() {
                 <div className="space-y-5 animate-in fade-in">
                   <div>
                     <label className="text-sm font-bold mb-2 block">National Identity Number (NIN)</label>
-                    <input required type="text" pattern="\d{11}" maxLength={11} value={nin} onChange={(e) => setNin(e.target.value.replace(/\D/g, ''))} placeholder="Enter your 11-digit NIN" className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all" />
+                    <input required type="text" pattern="\d{11}" maxLength={11} value={nin} onChange={(e) => setNin(e.target.value.replace(/\D/g, ''))} placeholder="Enter your 11-digit NIN" className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-base sm:text-base focus:ring-2 focus:ring-primary/50 outline-none transition-all" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-bold mb-2 block">First Name</label>
-                      <input required type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="e.g. John" className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all" />
+                      <input required type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="e.g. John" className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-base sm:text-base focus:ring-2 focus:ring-primary/50 outline-none transition-all" />
                     </div>
                     <div>
                       <label className="text-sm font-bold mb-2 block">Last Name</label>
-                      <input required type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="e.g. Doe" className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all" />
+                      <input required type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="e.g. Doe" className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-base sm:text-base focus:ring-2 focus:ring-primary/50 outline-none transition-all" />
                     </div>
                   </div>
                   <div>
                     <label className="text-sm font-bold mb-2 block">Date of Birth</label>
-                    <input required type="date" value={dob} onChange={(e) => setDob(e.target.value)} max={new Date().toISOString().split("T")[0]} className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all appearance-none cursor-pointer" style={{ colorScheme: "dark" }} />
+                    <input required type="date" value={dob} onChange={(e) => setDob(e.target.value)} max={new Date().toISOString().split("T")[0]} className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-base sm:text-base focus:ring-2 focus:ring-primary/50 outline-none transition-all appearance-none cursor-pointer" style={{ colorScheme: "dark" }} />
                   </div>
                 </div>
               ) : (
                 <div className="space-y-5 animate-in fade-in">
                   <div>
                     <label className="text-sm font-bold mb-2 block">CAC Registration Number</label>
-                    <input required type="text" value={cacNumber} onChange={(e) => setCacNumber(e.target.value.toUpperCase())} placeholder="e.g. RC123456 or BN987654" className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all uppercase" />
+                    <input required type="text" value={cacNumber} onChange={(e) => setCacNumber(e.target.value.toUpperCase())} placeholder="e.g. RC123456 or BN987654" className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-base sm:text-base focus:ring-2 focus:ring-primary/50 outline-none transition-all uppercase" />
                   </div>
                   
                   {/* Designed Dropdown for Corporate Category */}
@@ -323,7 +356,7 @@ export default function TaxIdPage() {
                       onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
                       className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all text-left ${isCategoryDropdownOpen ? 'border-primary ring-2 ring-primary/20 bg-background' : 'border-border bg-background hover:border-primary/50'}`}
                     >
-                      <span className={corpCategory ? "font-bold text-sm text-foreground" : "text-sm text-muted-foreground"}>
+                      <span className={corpCategory ? "font-bold text-base sm:text-base text-foreground" : "text-base sm:text-base text-muted-foreground"}>
                         {corpCategory || "Select your CAC Category..."}
                       </span>
                       {isCategoryDropdownOpen ? <CaretUp weight="bold" className="h-4 w-4 text-muted-foreground" /> : <CaretDown weight="bold" className="h-4 w-4 text-muted-foreground" />}

@@ -1,9 +1,19 @@
 // src/app/api/pricing/route.ts
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveServicePrice } from "@/lib/discounts";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions).catch(() => null);
+    let userId: string | undefined;
+    if (session?.user?.email) {
+      const u = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+      userId = u?.id;
+    }
+
     const prices = await prisma.servicePricing.findMany();
     
     const pricingMap = prices.reduce((acc: Record<string, number>, item) => {
@@ -110,7 +120,51 @@ export async function GET() {
       MOBILE_DATA: 0,
     };
 
-    return NextResponse.json({ success: true, data: defaultPricing, activeMap, maintenanceMap });
+    // Calculate dynamic discount info for keys
+    const discountDetails: Record<string, any> = {};
+    const keysToEvaluate = [
+      "TAX_ID_INDIVIDUAL",
+      "TAX_ID_CORPORATE",
+      "NIN_PERSONALIZATION",
+      "NIN_IPE_CLEARANCE",
+      "AFFIDAVIT_STATE",
+      "AFFIDAVIT_FEDERAL",
+      "BUSINESS_NAME",
+      "LLC",
+      "NGO",
+      "SCUML",
+      "NIN_VALIDATION_NO_RECORD",
+      "NIN_VALIDATION_VNIN",
+      "NIN_VALIDATION_MOD",
+      "NIN_VALIDATION_PHOTO_ERROR",
+      "NIN_MOD_NAME",
+      "NIN_MOD_PHONE",
+      "NIN_MOD_ADDRESS",
+      "NIN_MOD_DOB",
+      "BVN_RETRIEVAL",
+      "BVN_MOD_NAME",
+      "BVN_MOD_PHONE",
+      "BVN_MOD_DOB"
+    ];
+
+    for (const k of keysToEvaluate) {
+      const base = defaultPricing[k] || 0;
+      if (base > 0) {
+        const info = await getEffectiveServicePrice(prisma, k, base, userId);
+        discountDetails[k] = info;
+        if (info.hasDiscount) {
+          defaultPricing[k] = info.finalPrice; // supply slashed price
+        }
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      data: defaultPricing, 
+      activeMap, 
+      maintenanceMap,
+      discountDetails
+    });
   } catch (error) {
     console.error("Failed to fetch pricing:", error);
     return NextResponse.json({ success: false, message: "Failed to fetch pricing" }, { status: 500 });
@@ -119,6 +173,13 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions).catch(() => null);
+    let userId: string | undefined;
+    if (session?.user?.email) {
+      const u = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+      userId = u?.id;
+    }
+
     const body = await req.json();
     const { service, shares } = body;
 
@@ -142,10 +203,26 @@ export async function POST(req: Request) {
     if (service === 'scuml') return NextResponse.json({ baseFee: pricingMap.SCUML || 15000, total: pricingMap.SCUML || 15000 });
     
     if (service === 'tax-id-individual') {
-      return NextResponse.json({ baseFee: pricingMap.TAX_ID_INDIVIDUAL || 500, total: pricingMap.TAX_ID_INDIVIDUAL || 500 });
+      const baseFee = pricingMap.TAX_ID_INDIVIDUAL || 500;
+      const discountInfo = await getEffectiveServicePrice(prisma, "TAX_ID_INDIVIDUAL", baseFee, userId);
+      return NextResponse.json({ 
+        baseFee: discountInfo.originalPrice, 
+        total: discountInfo.finalPrice,
+        hasDiscount: discountInfo.hasDiscount,
+        discountBadge: discountInfo.badge,
+        savedAmount: discountInfo.savedAmount,
+      });
     }
     if (service === 'tax-id-corporate') {
-      return NextResponse.json({ baseFee: pricingMap.TAX_ID_CORPORATE || 1000, total: pricingMap.TAX_ID_CORPORATE || 1000 });
+      const baseFee = pricingMap.TAX_ID_CORPORATE || 1000;
+      const discountInfo = await getEffectiveServicePrice(prisma, "TAX_ID_CORPORATE", baseFee, userId);
+      return NextResponse.json({ 
+        baseFee: discountInfo.originalPrice, 
+        total: discountInfo.finalPrice,
+        hasDiscount: discountInfo.hasDiscount,
+        discountBadge: discountInfo.badge,
+        savedAmount: discountInfo.savedAmount,
+      });
     }
 
     // NIN Slips

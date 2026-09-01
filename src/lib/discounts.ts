@@ -103,8 +103,20 @@ export async function getEffectiveServicePrice(
         if (norm === "NIN_IPE" || norm === "NIN_IPE_CLEARANCE") {
           return normalizedKey === "NIN_IPE_CLEARANCE";
         }
+        if (norm === "NIN_PERSONALIZATION" || norm === "PERSONALIZATION") {
+          return normalizedKey === "NIN_PERSONALIZATION";
+        }
+        if (norm === "AFFIDAVIT" || norm === "AFFIDAVITS" || norm === "COURT_AFFIDAVIT") {
+          return normalizedKey.startsWith("AFFIDAVIT") || normalizedKey.startsWith("PRICE_COURT_AFFIDAVIT");
+        }
+        if (norm === "TAX_ID" || norm === "TAXID" || norm === "TIN") {
+          return normalizedKey.startsWith("TAX_ID");
+        }
         if (norm === "BVN_RETRIEVAL") {
           return normalizedKey === "BVN_RETRIEVAL";
+        }
+        if (norm === "CAC") {
+          return ["BUSINESS_NAME", "LLC", "NGO"].includes(normalizedKey);
         }
         return false;
       });

@@ -19,6 +19,10 @@ import { PersonalizationNoticeModal } from "@/components/features/nin/personaliz
 export default function NinPersonalizationPage() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [servicePrice, setServicePrice] = useState<number>(1500);
+  const [originalPrice, setOriginalPrice] = useState<number | undefined>(undefined);
+  const [hasDiscount, setHasDiscount] = useState<boolean>(false);
+  const [discountBadge, setDiscountBadge] = useState<string | undefined>(undefined);
+  const [savedAmount, setSavedAmount] = useState<number | undefined>(undefined);
   const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [submittedResult, setSubmittedResult] = useState<{ reference: string; trackingId: string } | null>(null);
@@ -35,8 +39,12 @@ export default function NinPersonalizationPage() {
       const data = await res.json();
       if (data.success) {
         setWalletBalance(data.walletBalance || 0);
-        setServicePrice(data.servicePrice || 1500);
-        setIsServiceActive(data.isServiceActive ?? true);
+        setServicePrice(data.servicePrice ?? data.price ?? 1500);
+        setOriginalPrice(data.originalPrice);
+        setHasDiscount(Boolean(data.hasDiscount));
+        setDiscountBadge(data.discountBadge);
+        setSavedAmount(data.savedAmount);
+        setIsServiceActive(data.isServiceActive ?? data.isActive ?? true);
       }
     } catch (err) {
       console.error("Failed to load initial Personalization data:", err);
@@ -68,38 +76,27 @@ export default function NinPersonalizationPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto relative pb-12 animate-in fade-in duration-200">
-      {/* Notice Modal (I Understand) */}
-      <PersonalizationNoticeModal 
-        isOpen={showNoticeModal} 
-        onClose={() => setShowNoticeModal(false)} 
-      />
+      {/* Notice Modal */}
+      {showNoticeModal && !submittedResult && !isLoading && isServiceActive && (
+        <PersonalizationNoticeModal onClose={() => setShowNoticeModal(false)} />
+      )}
 
-      {/* Back Breadcrumb */}
+      {/* Top Navigation */}
       <Link 
         href="/dashboard/nin" 
-        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl"
+        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit group"
       >
-        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to NIN Services
+        <ArrowLeft weight="bold" className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+        Back to NIN Services
       </Link>
 
-      {/* Page Header */}
+      {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div className="flex items-center gap-3.5">
-          <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
-            <Image 
-              src="/nimc.png" 
-              alt="NIMC Logo" 
-              width={40} 
-              height={40} 
-              className="object-contain" 
-              priority 
-            />
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-2xl bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center shrink-0">
+            <IdentificationCard weight="fill" className="h-6 w-6" />
           </div>
           <div>
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
-              <ShieldCheck weight="bold" className="h-3 w-3" />
-              National Identity Management Commission
-            </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">NIN Personalization</h1>
             <p className="text-muted-foreground text-sm">
               Submit your enrollment tracking ID for personalization.

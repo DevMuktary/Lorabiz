@@ -4,14 +4,71 @@ import { useState, useEffect, useMemo } from "react";
 import { format, isPast } from "date-fns";
 import { 
   Ticket, Tag, Activity, Plus, RefreshCw, X, Copy, Check, Percent, DollarSign, Eye, Users, Trash2, AlertTriangle,
-  Zap, Sparkles, ChevronDown, ChevronUp, CheckCircle2, Info
+  Zap, Sparkles, ChevronDown, ChevronUp, CheckCircle2, Info, Edit3
 } from "lucide-react";
 
 // Catalog definition with price lookup keys
 const SERVICE_GROUPS = [
   {
+    category: "Corporate & Compliance Services",
+    items: [
+      { id: "BUSINESS_NAME", name: "CAC Business Name Registration", priceKey: "BUSINESS_NAME" },
+      { id: "LLC", name: "CAC Company (LLC) Registration", priceKey: "LLC" },
+      { id: "NGO", name: "CAC NGO / Incorporated Trustees", priceKey: "NGO" },
+      { id: "SCUML", name: "SCUML Certificate Processing", priceKey: "SCUML" },
+      { id: "TAX_ID", name: "Tax Identification Number (TIN)", priceKey: "TAX_ID" },
+    ],
+  },
+  {
+    category: "Court Sworn Affidavits",
+    items: [
+      { 
+        id: "AFFIDAVIT", 
+        name: "Court Sworn Affidavits (All 6 Types)", 
+        priceKey: "AFFIDAVIT_STATE",
+        isParent: true,
+        subOptions: [
+          { id: "AFFIDAVIT_STATE", name: "State High Court Sworn Affidavit", priceKey: "AFFIDAVIT_STATE" },
+          { id: "AFFIDAVIT_FEDERAL", name: "Federal High Court Sworn Affidavit (Attested)", priceKey: "AFFIDAVIT_FEDERAL" },
+          { id: "AFFIDAVIT_CHANGE_OF_NAME", name: "Affidavit of Change / Correction of Name", priceKey: "AFFIDAVIT_CHANGE_OF_NAME" },
+          { id: "AFFIDAVIT_AGE_DECLARATION", name: "Affidavit of Age Declaration / DOB", priceKey: "AFFIDAVIT_AGE_DECLARATION" },
+          { id: "AFFIDAVIT_CAC_CORPORATE", name: "Affidavit for CAC Corporate / Loss of Reg", priceKey: "AFFIDAVIT_CAC_CORPORATE" },
+          { id: "AFFIDAVIT_LOSS_OF_ITEM", name: "Affidavit of Loss of Document / SIM", priceKey: "AFFIDAVIT_LOSS_OF_ITEM" },
+          { id: "AFFIDAVIT_PROOF_OF_OWNERSHIP", name: "Affidavit of Proof of Ownership", priceKey: "AFFIDAVIT_PROOF_OF_OWNERSHIP" },
+          { id: "AFFIDAVIT_GENERAL_PURPOSE", name: "General Sworn Affidavit", priceKey: "AFFIDAVIT_GENERAL_PURPOSE" },
+        ]
+      },
+    ],
+  },
+  {
     category: "Identity & Verification Services (Direct)",
     items: [
+      { id: "NIN_PERSONALIZATION", name: "NIN Personalization (Tracking ID)", priceKey: "NIN_PERSONALIZATION" },
+      { id: "NIN_IPE_CLEARANCE", name: "NIN IPE Clearance", priceKey: "NIN_IPE_CLEARANCE" },
+      { 
+        id: "NIN_VALIDATION", 
+        name: "NIN Validation (All 4 Categories)", 
+        priceKey: "NIN_VALIDATION_VNIN",
+        isParent: true,
+        subOptions: [
+          { id: "NIN_VALIDATION_NO_RECORD", name: "No Record Found Validation", priceKey: "NIN_VALIDATION_NO_RECORD" },
+          { id: "NIN_VALIDATION_VNIN", name: "VNIN & SIM/Bank Validation", priceKey: "NIN_VALIDATION_VNIN" },
+          { id: "NIN_VALIDATION_MOD", name: "Update Record / Mod Validation", priceKey: "NIN_VALIDATION_MOD" },
+          { id: "NIN_VALIDATION_PHOTO_ERROR", name: "Photographic Error Validation", priceKey: "NIN_VALIDATION_PHOTO_ERROR" },
+        ]
+      },
+      { 
+        id: "NIN_MODIFICATION", 
+        name: "NIN Modification (All Types)", 
+        priceKey: "NIN_MOD_NAME",
+        isParent: true,
+        subOptions: [
+          { id: "NIN_MOD_NAME", name: "NIN Change of Name", priceKey: "NIN_MOD_NAME" },
+          { id: "NIN_MOD_PHONE", name: "NIN Change of Phone", priceKey: "NIN_MOD_PHONE" },
+          { id: "NIN_MOD_ADDRESS", name: "NIN Change of Address", priceKey: "NIN_MOD_ADDRESS" },
+          { id: "NIN_MOD_DOB", name: "NIN Change of Date of Birth", priceKey: "NIN_MOD_NAME" },
+        ]
+      },
       { id: "BVN_RETRIEVAL", name: "BVN Retrieval", priceKey: "BVN_RETRIEVAL" },
       { 
         id: "BVN_MODIFICATION", 
@@ -28,38 +85,6 @@ const SERVICE_GROUPS = [
           { id: "BVN_MOD_ALL", name: "Change of Name, DOB & Phone (All 3)", priceKey: "BVN_MOD_ALL" },
         ]
       },
-      { id: "NIN_IPE_CLEARANCE", name: "NIN IPE Clearance", priceKey: "NIN_IPE_CLEARANCE" },
-      { 
-        id: "NIN_VALIDATION", 
-        name: "NIN Validation (All 3 Categories)", 
-        priceKey: "NIN_VALIDATION_VNIN",
-        isParent: true,
-        subOptions: [
-          { id: "NIN_VALIDATION_NO_RECORD", name: "No Record Found Validation", priceKey: "NIN_VALIDATION_NO_RECORD" },
-          { id: "NIN_VALIDATION_VNIN", name: "VNIN Validation", priceKey: "NIN_VALIDATION_VNIN" },
-          { id: "NIN_VALIDATION_MOD", name: "Update Record / Mod Validation", priceKey: "NIN_VALIDATION_MOD" },
-        ]
-      },
-      { 
-        id: "NIN_MODIFICATION", 
-        name: "NIN Modification (All 3 Types)", 
-        priceKey: "NIN_MOD_NAME",
-        isParent: true,
-        subOptions: [
-          { id: "NIN_MOD_NAME", name: "NIN Change of Name", priceKey: "NIN_MOD_NAME" },
-          { id: "NIN_MOD_PHONE", name: "NIN Change of Phone", priceKey: "NIN_MOD_PHONE" },
-          { id: "NIN_MOD_ADDRESS", name: "NIN Change of Address", priceKey: "NIN_MOD_ADDRESS" },
-        ]
-      },
-    ],
-  },
-  {
-    category: "Registration & Compliance Services",
-    items: [
-      { id: "BUSINESS_NAME", name: "CAC Business Name Registration", priceKey: "BUSINESS_NAME" },
-      { id: "LLC", name: "CAC Company (LLC) Registration", priceKey: "LLC" },
-      { id: "SCUML", name: "SCUML Certificate Processing", priceKey: "SCUML" },
-      { id: "TAX_ID", name: "Tax Identification Number (TIN)", priceKey: "TAX_ID" },
     ],
   },
 ];
@@ -88,6 +113,7 @@ export default function MarketingDashboard() {
   const [isAutoDrawerOpen, setIsAutoDrawerOpen] = useState(false);
   const [isVoucherDrawerOpen, setIsVoucherDrawerOpen] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState<any | null>(null);
+  const [editingPromo, setEditingPromo] = useState<any | null>(null);
   
   // Custom Delete State
   const [promoToDelete, setPromoToDelete] = useState<{ id: string; code: string; isAuto: boolean } | null>(null);
@@ -469,10 +495,17 @@ export default function MarketingDashboard() {
                         </span>
                       </td>
 
-                      <td className="px-6 py-4 text-center space-x-2">
+                      <td className="px-6 py-4 text-center space-x-1.5">
+                        <button 
+                          onClick={() => setEditingPromo(p)}
+                          className="p-2 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer inline-block"
+                          title="Edit Promo / Discount"
+                        >
+                          <Edit3 size={17} />
+                        </button>
                         <button 
                           onClick={() => setSelectedPromo(p)}
-                          className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer inline-block"
                           title="View Redeemers"
                         >
                           <Eye size={17} />
@@ -489,7 +522,7 @@ export default function MarketingDashboard() {
                         </button>
                         <button 
                           onClick={() => handleDeleteClick(p.id, p.code, p.isAutoApplied)}
-                          className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400 rounded-lg transition-colors cursor-pointer inline-block"
                           title="Delete"
                         >
                           <Trash2 size={17} />
@@ -556,8 +589,17 @@ export default function MarketingDashboard() {
         onClose={() => setIsVoucherDrawerOpen(false)} 
         onSuccess={() => { setIsVoucherDrawerOpen(false); fetchPromos(); }}
       />
+
+      {/* 4. Edit Promo / Discount Drawer */}
+      <EditPromoDrawer 
+        isOpen={!!editingPromo} 
+        promo={editingPromo}
+        servicePricingMap={servicePricingMap}
+        onClose={() => setEditingPromo(null)} 
+        onSuccess={() => { setEditingPromo(null); fetchPromos(); }}
+      />
       
-      {/* 4. Inspection Drawer */}
+      {/* 5. Inspection Drawer */}
       <PromoInspectionDrawer 
         promo={selectedPromo}
         onClose={() => setSelectedPromo(null)}
@@ -1100,21 +1142,46 @@ function CreateVoucherDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean; 
             </div>
 
             <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4">
-              <label className="text-xs font-bold uppercase text-zinc-500 mb-2 block">Apply to Services</label>
-              <div className="grid grid-cols-2 gap-2">
-                {["ALL", "LLC", "BUSINESS_NAME", "SCUML", "TAX_ID"].map((s) => (
-                  <button 
-                    key={s}
-                    type="button"
-                    onClick={() => toggleService(s)}
-                    className={`px-3 py-2 text-xs font-bold rounded-xl border transition-colors cursor-pointer ${
-                      selectedServices.includes(s) 
-                        ? "bg-indigo-600 text-white border-indigo-600" 
-                        : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-indigo-300"
-                    }`}
-                  >
-                    {s === "ALL" ? "All Services" : s.replace("_", " ")}
-                  </button>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase text-zinc-500 block">Apply to Services</label>
+                <button
+                  type="button"
+                  onClick={() => toggleService("ALL")}
+                  className={`px-2.5 py-0.5 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
+                    selectedServices.includes("ALL")
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 hover:border-indigo-400"
+                  }`}
+                >
+                  ⚡ All Services
+                </button>
+              </div>
+
+              <div className="space-y-3 max-h-52 overflow-y-auto pr-1">
+                {SERVICE_GROUPS.map((grp) => (
+                  <div key={grp.category} className="space-y-1.5">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-zinc-400">{grp.category}</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {grp.items.map((item) => {
+                        const isSelected = selectedServices.includes(item.id);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => toggleService(item.id)}
+                            className={`px-2.5 py-1.5 text-left text-xs font-bold rounded-xl border transition-all cursor-pointer truncate ${
+                              isSelected
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-indigo-300"
+                            }`}
+                            title={item.name}
+                          >
+                            {item.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -1173,6 +1240,309 @@ function CreateVoucherDrawer({ isOpen, onClose, onSuccess }: { isOpen: boolean; 
                 className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex justify-center items-center text-sm font-bold transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer"
               >
                 {isProcessing ? <RefreshCw size={18} className="animate-spin" /> : "Generate Voucher Code"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// 3. EDIT PROMO CODE / AUTO-APPLIED DISCOUNT DRAWER
+// ----------------------------------------------------------------------
+
+function EditPromoDrawer({
+  isOpen,
+  promo,
+  servicePricingMap,
+  onClose,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  promo: any;
+  servicePricingMap: Record<string, number>;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [type, setType] = useState<"PERCENTAGE" | "FIXED">("PERCENTAGE");
+  const [value, setValue] = useState("");
+  const [selectedServices, setSelectedServices] = useState<string[]>(["ALL"]);
+  const [perUserLimit, setPerUserLimit] = useState("1");
+  const [usageLimit, setUsageLimit] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (promo) {
+      setName(promo.name || "");
+      setCode(promo.code || "");
+      setType(promo.discountPct ? "PERCENTAGE" : "FIXED");
+      setValue(String(promo.discountPct || promo.fixedAmount || ""));
+      setSelectedServices(promo.restrictedServices && promo.restrictedServices.length > 0 ? promo.restrictedServices : ["ALL"]);
+      setPerUserLimit(String(promo.perUserLimit || 1));
+      setUsageLimit(promo.usageLimit ? String(promo.usageLimit) : "");
+      if (promo.expiresAt) {
+        try {
+          const dt = new Date(promo.expiresAt);
+          const iso = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+          setExpiresAt(iso);
+        } catch {
+          setExpiresAt("");
+        }
+      } else {
+        setExpiresAt("");
+      }
+      setError("");
+    }
+  }, [promo]);
+
+  if (!isOpen || !promo) return null;
+
+  const toggleService = (sId: string) => {
+    if (sId === "ALL") {
+      setSelectedServices(["ALL"]);
+    } else {
+      const filtered = selectedServices.filter((s) => s !== "ALL");
+      if (filtered.includes(sId)) {
+        const next = filtered.filter((s) => s !== sId);
+        setSelectedServices(next.length === 0 ? ["ALL"] : next);
+      } else {
+        setSelectedServices([...filtered, sId]);
+      }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsProcessing(true);
+
+    try {
+      const res = await fetch("/api/mds/marketing/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          actionType: "UPDATE",
+          id: promo.id,
+          name: name.trim(),
+          code: code.trim().toUpperCase(),
+          type,
+          value,
+          restrictedServices: selectedServices,
+          perUserLimit,
+          usageLimit: usageLimit || null,
+          expiresAt: expiresAt || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || "Failed to update discount/promo code.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const isAuto = promo.isAutoApplied;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-zinc-900/60 transition-opacity animate-in fade-in duration-200" onClick={onClose}></div>
+      <div className="relative w-full max-w-lg h-full bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+        
+        {/* Header */}
+        <div className={`p-6 border-b border-zinc-200 dark:border-zinc-800 ${isAuto ? 'bg-emerald-500/5' : 'bg-indigo-500/5'} flex items-center justify-between`}>
+          <div>
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border mb-1 ${
+              isAuto 
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
+            }`}>
+              {isAuto ? <Zap size={12} className="fill-current" /> : <Ticket size={12} />}
+              <span>{isAuto ? "Edit Auto-Applied Discount" : "Edit Voucher Promo Code"}</span>
+            </div>
+            <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100">
+              Edit Campaign: {promo.code}
+            </h3>
+          </div>
+          <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-white dark:bg-zinc-800 rounded-full shadow-sm cursor-pointer">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            
+            {/* Title / Name */}
+            <div>
+              <label className="text-xs font-bold uppercase text-zinc-500 mb-1 block">
+                {isAuto ? "Campaign Title" : "Promo Label / Name"}
+              </label>
+              <input 
+                type="text" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+                placeholder="e.g. September Special 5% Off" 
+                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary" 
+              />
+            </div>
+
+            {/* Code */}
+            {!isAuto && (
+              <div>
+                <label className="text-xs font-bold uppercase text-zinc-500 mb-1 block">
+                  Promo Code <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  required 
+                  type="text" 
+                  value={code} 
+                  onChange={(e) => setCode(e.target.value.toUpperCase().replace(/\s/g, ""))} 
+                  placeholder="e.g. SEPTEMBER" 
+                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm font-mono tracking-wider font-bold focus:ring-2 focus:ring-primary uppercase" 
+                />
+              </div>
+            )}
+
+            {/* Discount Type & Value */}
+            <div className="grid grid-cols-2 gap-3 p-4 bg-zinc-50 dark:bg-zinc-900/60 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+              <div>
+                <label className="text-xs font-bold uppercase text-zinc-500 mb-1 block">Discount Type</label>
+                <select 
+                  value={type} 
+                  onChange={(e: any) => setType(e.target.value)} 
+                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary"
+                >
+                  <option value="PERCENTAGE">Percentage (%)</option>
+                  <option value="FIXED">Fixed Amount (₦)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase text-zinc-500 mb-1 block">
+                  Discount Value <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  required 
+                  type="number" 
+                  min="1" 
+                  max={type === "PERCENTAGE" ? "100" : undefined} 
+                  value={value} 
+                  onChange={(e) => setValue(e.target.value)} 
+                  placeholder={type === "PERCENTAGE" ? "e.g. 5" : "e.g. 500"} 
+                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary" 
+                />
+              </div>
+            </div>
+
+            {/* Applicable Services */}
+            <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase text-zinc-500 block">Applicable Services</label>
+                <button
+                  type="button"
+                  onClick={() => toggleService("ALL")}
+                  className={`px-2.5 py-0.5 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
+                    selectedServices.includes("ALL")
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 hover:border-primary"
+                  }`}
+                >
+                  ⚡ All Services
+                </button>
+              </div>
+
+              <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                {SERVICE_GROUPS.map((grp) => (
+                  <div key={grp.category} className="space-y-1.5">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-zinc-400">{grp.category}</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {grp.items.map((item) => {
+                        const isSelected = selectedServices.includes(item.id);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => toggleService(item.id)}
+                            className={`px-2.5 py-1.5 text-left text-xs font-bold rounded-xl border transition-all cursor-pointer truncate ${
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-primary/50"
+                            }`}
+                            title={item.name}
+                          >
+                            {item.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Limits & Expiry */}
+            <div className="grid grid-cols-2 gap-3 border-t border-zinc-100 dark:border-zinc-800 pt-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-500 mb-1 block">Per-User Limit</label>
+                <input 
+                  required 
+                  type="number" 
+                  min="1" 
+                  value={perUserLimit} 
+                  onChange={(e) => setPerUserLimit(e.target.value)} 
+                  placeholder="e.g. 5" 
+                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-primary" 
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-500 mb-1 block">Global Limit (Optional)</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={usageLimit} 
+                  onChange={(e) => setUsageLimit(e.target.value)} 
+                  placeholder="Unlimited" 
+                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-primary" 
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase text-zinc-500 mb-1 flex items-center">
+                Expiry Date & Time <span className="text-[10px] text-zinc-400 font-normal ml-2">(Optional)</span>
+              </label>
+              <input 
+                type="datetime-local" 
+                value={expiresAt} 
+                onChange={(e) => setExpiresAt(e.target.value)} 
+                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-primary" 
+              />
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl">
+                <p className="text-xs text-red-600 font-bold">{error}</p>
+              </div>
+            )}
+
+            <div className="pt-4 mt-auto">
+              <button 
+                disabled={isProcessing} 
+                type="submit" 
+                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl flex justify-center items-center text-sm font-bold transition-all shadow-md hover:opacity-90 disabled:opacity-50 cursor-pointer"
+              >
+                {isProcessing ? <RefreshCw size={18} className="animate-spin" /> : "Save Changes"}
               </button>
             </div>
           </form>

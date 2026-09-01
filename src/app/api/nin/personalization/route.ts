@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { submitDataVerifyPersonalization } from "@/lib/dataverify";
 import { logUserActivity } from "@/lib/activity-logger";
+import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
 
 export async function POST(req: NextRequest) {
   try {
@@ -60,7 +61,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const requiredAmount = servicePricing ? Number(servicePricing.price) : 1500.0;
+    const basePrice = servicePricing ? Number(servicePricing.price) : 1500.0;
+    const discountInfo = await getEffectiveServicePrice(prisma, "NIN_PERSONALIZATION", basePrice, user.id);
+    const requiredAmount = discountInfo.finalPrice;
     const currentBalance = Number(user.wallet.balance);
 
     if (currentBalance < requiredAmount) {
@@ -277,10 +280,19 @@ export async function GET() {
       where: { serviceKey: "NIN_PERSONALIZATION" },
     });
 
+    const basePrice = pricing ? Number(pricing.price) : 1500;
+    const discountInfo = await getEffectiveServicePrice(prisma, "NIN_PERSONALIZATION", basePrice, user.id);
+
     return NextResponse.json({
       success: true,
-      price: pricing ? Number(pricing.price) : 1500,
+      price: discountInfo.finalPrice,
+      servicePrice: discountInfo.finalPrice,
+      originalPrice: discountInfo.originalPrice,
+      hasDiscount: discountInfo.hasDiscount,
+      discountBadge: discountInfo.badge,
+      savedAmount: discountInfo.savedAmount,
       isActive: pricing ? pricing.isActive : true,
+      isServiceActive: pricing ? pricing.isActive : true,
       maintenanceMsg: pricing?.maintenanceMsg || null,
       walletBalance: user.wallet ? Number(user.wallet.balance) : 0,
       recentRequests: user.ninPersonalizationRequests,

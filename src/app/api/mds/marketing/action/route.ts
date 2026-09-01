@@ -69,7 +69,55 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: isAutoApplied ? "Auto-applied discount activated." : "Promo code generated." });
     }
 
-    // 2. TOGGLE PROMO STATUS
+    // 2. UPDATE / EDIT PROMO CODE
+    if (actionType === "UPDATE") {
+      const { id, name, code, type, value, usageLimit, perUserLimit, expiresAt, restrictedServices } = data;
+      if (!id) {
+        return NextResponse.json({ error: "Promo Code ID is required." }, { status: 400 });
+      }
+
+      const existing = await prisma.promoCode.findUnique({ where: { id } });
+      if (!existing) {
+        return NextResponse.json({ error: "Promo Code not found." }, { status: 404 });
+      }
+
+      let formattedCode = code ? String(code).trim().toUpperCase().replace(/\s+/g, '') : existing.code;
+      if (formattedCode !== existing.code) {
+        const codeConflict = await prisma.promoCode.findUnique({ where: { code: formattedCode } });
+        if (codeConflict) {
+          return NextResponse.json({ error: "Another promo with this code already exists." }, { status: 400 });
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.promoCode.update({
+          where: { id },
+          data: {
+            code: formattedCode,
+            name: name ? String(name).trim() : existing.name,
+            discountPct: type === "PERCENTAGE" ? Number(value) : null,
+            fixedAmount: type === "FIXED" ? Number(value) : null,
+            usageLimit: usageLimit ? Number(usageLimit) : null,
+            perUserLimit: perUserLimit ? Number(perUserLimit) : existing.perUserLimit,
+            expiresAt: expiresAt ? new Date(expiresAt) : null,
+            restrictedServices: restrictedServices && restrictedServices.length > 0 ? restrictedServices : ["ALL"],
+          }
+        });
+
+        await tx.staffActionLog.create({
+          data: {
+            userId: admin.id,
+            action: "UPDATED_PROMO_CODE",
+            targetId: formattedCode,
+            details: `Updated ${existing.isAutoApplied ? 'Auto-Applied Discount' : 'Voucher'} (${type}: ${value}) for [${(restrictedServices || ['ALL']).join(', ')}]`
+          }
+        });
+      });
+
+      return NextResponse.json({ success: true, message: "Discount / Promo Code updated successfully." });
+    }
+
+    // 3. TOGGLE PROMO STATUS
     if (actionType === "TOGGLE_STATUS") {
       const { id, isActive, code } = data;
       await prisma.$transaction(async (tx) => {
@@ -86,7 +134,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // 3. DELETE PROMO CODE
+    // 4. DELETE PROMO CODE
     if (actionType === "DELETE") {
       const { id, code } = data;
       
