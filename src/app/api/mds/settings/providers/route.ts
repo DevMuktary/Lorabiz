@@ -24,12 +24,15 @@ export async function GET() {
       );
     }
 
-    const [ipeSetting, pznSetting, slipSettingNin, slipLegacySetting, slipSettingPhone, phoneSetting] = await Promise.all([
+    const [ipeSetting, pznSetting, validationSetting, slipSettingNin, slipLegacySetting, slipSettingPhone, phoneSetting] = await Promise.all([
       prisma.globalSetting.findUnique({
         where: { key: "NIN_IPE_PROVIDER" },
       }),
       prisma.globalSetting.findUnique({
         where: { key: "NIN_PERSONALIZATION_PROVIDER" },
+      }),
+      prisma.globalSetting.findUnique({
+        where: { key: "NIN_VALIDATION_PROVIDER" },
       }),
       prisma.globalSetting.findUnique({
         where: { key: "NIN_SLIP_PROVIDER_NIN" },
@@ -52,6 +55,7 @@ export async function GET() {
       success: true,
       ipeProvider: ipeSetting?.value || "DATAVERIFY",
       personalizationProvider: pznSetting?.value || "DATAVERIFY",
+      ninValidationProvider: validationSetting?.value || "ABJIKTECH",
       ninSlipProvider: activeNin, // legacy compatibility
       ninSlipProviderNin: activeNin,
       ninSlipProviderPhone: activePhone,
@@ -90,6 +94,7 @@ export async function POST(req: NextRequest) {
     const { 
       ipeProvider, 
       personalizationProvider, 
+      ninValidationProvider,
       ninSlipProvider, 
       ninSlipProviderNin, 
       ninSlipProviderPhone, 
@@ -121,6 +126,20 @@ export async function POST(req: NextRequest) {
             key: "NIN_PERSONALIZATION_PROVIDER",
             value: personalizationProvider.toUpperCase(),
             description: "Active routing provider for NIN Personalization (DATAVERIFY | MANUAL)",
+          },
+        })
+      );
+    }
+
+    if (ninValidationProvider && ["ABJIKTECH", "MANUAL"].includes(ninValidationProvider.toUpperCase())) {
+      updates.push(
+        prisma.globalSetting.upsert({
+          where: { key: "NIN_VALIDATION_PROVIDER" },
+          update: { value: ninValidationProvider.toUpperCase() },
+          create: {
+            key: "NIN_VALIDATION_PROVIDER",
+            value: ninValidationProvider.toUpperCase(),
+            description: "Active routing provider for NIN Validation (ABJIKTECH | MANUAL)",
           },
         })
       );

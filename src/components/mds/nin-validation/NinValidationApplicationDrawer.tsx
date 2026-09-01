@@ -11,7 +11,6 @@ import {
   Copy, 
   Check, 
   Fingerprint, 
-  Layers, 
   User, 
   Mail, 
   Phone, 
@@ -20,13 +19,16 @@ import {
   Loader2,
   RefreshCw,
   Tag,
-  ShieldCheck
+  ShieldCheck,
+  ExternalLink,
+  Zap
 } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
   NO_RECORD_FOUND: "No Record Found",
-  VNIN_VALIDATION: "VNIN Validation",
+  VNIN_VALIDATION: "SIM/Bank & VNIN Validation",
   UPDATE_RECORD_MOD: "Update Record (Mod Validation)",
+  PHOTO_ERROR: "Photographic Error",
 };
 
 export default function NinValidationApplicationDrawer({
@@ -43,8 +45,13 @@ export default function NinValidationApplicationDrawer({
   const [adminNotes, setAdminNotes] = useState<string>("");
   const [issueRefund, setIssueRefund] = useState<boolean>(false);
   const [refundAmount, setRefundAmount] = useState<number | string>(ticket?.amountCharged || 0);
+  
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [isPushingToAbj, setIsPushingToAbj] = useState<boolean>(false);
+  const [isSyncingStatus, setIsSyncingStatus] = useState<boolean>(false);
+  
   const [error, setError] = useState<string>("");
+  const [successMsg, setSuccessMsg] = useState<string>("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   if (!ticket) return null;
@@ -64,9 +71,75 @@ export default function NinValidationApplicationDrawer({
 
   const categoryLabel = CATEGORY_LABELS[ticket.category] || ticket.category;
 
+  // Handle Admin Manual Push to Abjiktech
+  const handlePushToAbjiktech = async () => {
+    setIsPushingToAbj(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const response = await fetch("/api/mds/pipeline/nin-validation/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: ticket.id,
+          actionType: "PUSH_TO_PROVIDER",
+          adminNotes: "Pushed to Abjiktech API via MDS Drawer",
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to push ticket to Abjiktech.");
+      }
+
+      setSuccessMsg(result.message || "Successfully transmitted to Abjiktech!");
+      setTimeout(() => {
+        onUpdateSuccess();
+      }, 1200);
+    } catch (err: any) {
+      setError(err.message || "Failed to transmit to Abjiktech.");
+    } finally {
+      setIsPushingToAbj(false);
+    }
+  };
+
+  // Handle Admin Live Status Check from Abjiktech
+  const handleSyncAbjiktechStatus = async () => {
+    setIsSyncingStatus(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const response = await fetch("/api/mds/pipeline/nin-validation/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: ticket.id,
+          actionType: "SYNC_PROVIDER",
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to fetch status from Abjiktech.");
+      }
+
+      setSuccessMsg(result.message || "Live status synced from Abjiktech!");
+      setTimeout(() => {
+        onUpdateSuccess();
+      }, 1200);
+    } catch (err: any) {
+      setError(err.message || "Failed to sync status from Abjiktech.");
+    } finally {
+      setIsSyncingStatus(false);
+    }
+  };
+
   const handleActionSubmit = async () => {
     setIsProcessing(true);
     setError("");
+    setSuccessMsg("");
 
     try {
       if (!activeAction) {
@@ -107,6 +180,8 @@ export default function NinValidationApplicationDrawer({
     }
   };
 
+  const hasPushedToAbj = Boolean(ticket.externalTicketId || ticket.externalTxId);
+
   return (
     <div className="fixed inset-0 z-[100] flex justify-end font-sans">
       {/* Backdrop */}
@@ -121,13 +196,18 @@ export default function NinValidationApplicationDrawer({
         {/* Header */}
         <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-start justify-between bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0">
           <div>
-            <div className="flex items-center gap-2.5 mb-1.5">
+            <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
               <span className={`px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest rounded-md ${statusColor}`}>
                 {ticket.status}
               </span>
               <span className="font-mono text-xs font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
                 {ticket.transactionRef}
               </span>
+              {ticket.externalTicketId && (
+                <span className="font-mono text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/20">
+                  ABJ: {ticket.externalTicketId}
+                </span>
+              )}
             </div>
             <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
               {ticket.clientName}
@@ -148,6 +228,21 @@ export default function NinValidationApplicationDrawer({
         {/* Body Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
+          {/* Feedback messages */}
+          {successMsg && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <CheckCircle size={16} className="text-emerald-500 shrink-0" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-800 dark:text-rose-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <AlertTriangle size={16} className="text-rose-500 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
           {/* 1. HIGHLIGHT CARD: 11-DIGIT NIN & QUICK COPY */}
           <div className="p-5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-900/80 border border-zinc-800 shadow-lg space-y-3">
             <div className="flex items-center justify-between text-xs text-zinc-400">
@@ -188,7 +283,109 @@ export default function NinValidationApplicationDrawer({
             </p>
           </div>
 
-          {/* 2. CLIENT & TICKET DETAILS */}
+          {/* 2. ABJIKTECH GATEWAY & AUTOMATION PANEL */}
+          <div className="p-5 rounded-2xl bg-indigo-950/20 border-2 border-indigo-500/30 dark:bg-indigo-950/30 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                <Zap size={15} className="text-indigo-500 fill-indigo-500" />
+                <span>Abjiktech Automated Gateway</span>
+              </div>
+              <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
+                hasPushedToAbj 
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+              }`}>
+                {hasPushedToAbj ? `Pushed (${ticket.externalStatus || "pending"})` : "Manual Queue (Not Pushed)"}
+              </span>
+            </div>
+
+            {hasPushedToAbj ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400">Abjik Ticket ID</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{ticket.externalTicketId || "N/A"}</span>
+                      {ticket.externalTicketId && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy("ticket_id", ticket.externalTicketId)}
+                          className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-zinc-400"
+                        >
+                          {copiedKey === "ticket_id" ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400">Abjik Transaction ID</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-[11px] truncate max-w-[140px]">{ticket.externalTxId || "N/A"}</span>
+                      {ticket.externalTxId && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy("tx_id", ticket.externalTxId)}
+                          className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-zinc-400"
+                        >
+                          {copiedKey === "tx_id" ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {ticket.apiMessage && (
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300 italic bg-white/60 dark:bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800">
+                    "{ticket.apiMessage}"
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <span className="text-[11px] text-zinc-400">
+                    {ticket.lastSyncedAt ? `Last Synced: ${format(new Date(ticket.lastSyncedAt), "p")}` : "Not synced yet"}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={handleSyncAbjiktechStatus}
+                    disabled={isSyncingStatus}
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw size={13} className={isSyncingStatus ? "animate-spin" : ""} />
+                    <span>{isSyncingStatus ? "Syncing..." : "Check Live Status"}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  This request is queued in the manual ledger. Click the button below to transmit the 11-digit NIN and category (<strong>{categoryLabel}</strong>) to the Abjiktech verification engine.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handlePushToAbjiktech}
+                  disabled={isPushingToAbj || ticket.status !== "PROCESSING"}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isPushingToAbj ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      <span>Transmitting to Abjiktech API...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={15} />
+                      <span>Push to Abjiktech (ABJ)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 3. CLIENT & TICKET DETAILS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             
             <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
@@ -232,7 +429,7 @@ export default function NinValidationApplicationDrawer({
 
           </div>
 
-          {/* 3. CURRENT FAILURE REASON (If FAILED) */}
+          {/* 4. CURRENT FAILURE REASON (If FAILED) */}
           {ticket.status === "FAILED" && ticket.failureReason && (
             <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-xs text-rose-700 dark:text-rose-400 space-y-1">
               <p className="font-bold flex items-center gap-1">
@@ -242,15 +439,15 @@ export default function NinValidationApplicationDrawer({
             </div>
           )}
 
-          {/* 4. ADMIN ACTIONS PANEL */}
+          {/* 5. ADMIN ACTIONS PANEL */}
           <div className="p-5 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 space-y-5">
             <div>
               <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
                 <ShieldCheck size={16} className="text-indigo-500" />
-                <span>Execute Operational Action</span>
+                <span>Manual Status Override</span>
               </h3>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Update status and trigger automatic client email notification.
+                Manually mark completed or failed and trigger automated client email notification.
               </p>
             </div>
 
@@ -338,7 +535,7 @@ export default function NinValidationApplicationDrawer({
                       className="h-4 w-4 rounded border-zinc-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
                     />
                     <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                      Issue wallet refund to client
+                      Force manual wallet refund to client
                     </span>
                   </label>
 
@@ -354,13 +551,6 @@ export default function NinValidationApplicationDrawer({
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* Error banner */}
-            {error && (
-              <div className="p-3 rounded-lg bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-medium">
-                {error}
               </div>
             )}
 

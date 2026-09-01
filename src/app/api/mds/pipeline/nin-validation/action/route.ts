@@ -5,11 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { notificationQueue } from "@/lib/queue";
 import { NotificationEvent, dispatchNotification } from "@/services/notifications";
 import { getReferrerRewardAmount } from "@/lib/loyalty";
+import { submitAbjiktechNinValidation, checkAbjiktechNinValidationStatus } from "@/lib/abjiktech";
 
 const CATEGORY_LABELS: Record<string, string> = {
   NO_RECORD_FOUND: "No Record Found",
-  VNIN_VALIDATION: "VNIN Validation",
+  VNIN_VALIDATION: "SIM/Bank & VNIN Validation",
   UPDATE_RECORD_MOD: "Update Record (Mod Validation)",
+  PHOTO_ERROR: "Photographic Error",
 };
 
 export async function POST(req: Request) {
@@ -49,8 +51,216 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ticket not found." }, { status: 404 });
     }
 
-    let notificationPayload: NotificationEvent | null = null;
     const categoryLabel = CATEGORY_LABELS[ticket.category] || ticket.category;
+
+    // =========================================================================
+    // ACTION: PUSH_TO_PROVIDER (Admin manually pushes ticket to Abjiktech API)
+    // =========================================================================
+    if (actionType === "PUSH_TO_PROVIDER") {
+      const submitRes = await submitAbjiktechNinValidation(ticket.nin, ticket.category);
+
+      if (!submitRes.success || !submitRes.data) {
+        return NextResponse.json(
+          {
+            error: submitRes.message || "Failed to transmit request to Abjiktech gateway.",
+            details: submitRes.rawResponse,
+          },
+          { status: 422 }
+        );
+      }
+
+      const updatedTicket = await prisma.ninValidationRequest.update({
+        where: { id: ticketId },
+        data: {
+          provider: "ABJIKTECH",
+          externalTicketId: submitRes.data.ticket_id,
+          externalTxId: submitRes.data.transaction_id,
+          externalStatus: submitRes.data.status || "pending",
+          apiMessage: submitRes.message || "Pushed to Abjiktech gateway successfully.",
+          apiResponse: submitRes.rawResponse as any,
+          lastSyncedAt: new Date(),
+          adminNotes: adminNotes ? `${ticket.adminNotes ? ticket.adminNotes + "\n" : ""}${adminNotes}` : undefined,
+        },
+      });
+
+      await prisma.staffActionLog.create({
+        data: {
+          userId: admin.id,
+          action: "NINVAL_PUSH_ABJIKTECH",
+          targetId: ticketId,
+          details: `Admin pushed ticket ${ticket.transactionRef} (NIN: ${ticket.nin}) to Abjiktech. Received Ticket ID: ${submitRes.data.ticket_id}`,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Successfully transmitted to Abjiktech! Ticket ID: ${submitRes.data.ticket_id}`,
+        data: updatedTicket,
+      });
+    }
+
+    // =========================================================================
+    // ACTION: SYNC_PROVIDER (Admin checks live status from Abjiktech on demand)
+    // =========================================================================
+    if (actionType === "SYNC_PROVIDER") {
+      if (!ticket.externalTicketId && !ticket.externalTxId) {
+        return NextResponse.json(
+          { error: "This ticket has not been pushed to Abjiktech yet. Please push it first." },
+          { status: 400 }
+        );
+      }
+
+      const statusRes = await checkAbjiktechNinValidationStatus({
+        ticketId: ticket.externalTicketId || undefined,
+        transactionId: ticket.externalTxId || undefined,
+      });
+
+      if (!statusRes.success || !statusRes.result) {
+        return NextResponse.json(
+          { error: statusRes.message || "Failed to fetch live status from Abjiktech." },
+          { status: 422 }
+        );
+      }
+
+      const { normalizedStatus, rawStatus, message: apiMessage } = statusRes.result;
+
+      if (normalizedStatus === "COMPLETED") {
+        await prisma.$transaction(async (tx) => {
+          await tx.ninValidationRequest.update({
+            where: { id: ticketId },
+            data: {
+              status: "COMPLETED",
+              externalStatus: rawStatus,
+              apiMessage: apiMessage || "Completed on Abjiktech.",
+              apiResponse: statusRes.rawResponse as any,
+              lastSyncedAt: new Date(),
+              completedAt: new Date(),
+            },
+          });
+
+          // Referral reward check
+          const activeReferral = await tx.referral.findUnique({
+            where: { referredUserId: ticket.userId },
+          });
+
+          if (activeReferral) {
+            const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
+            if (isNotExpired) {
+              const existingCommission = await tx.referralCommission.findUnique({
+                where: { serviceId: ticketId },
+              });
+
+              if (!existingCommission) {
+                const rewardSetting = await tx.globalSetting.findUnique({
+                  where: { key: "REF_REWARD_NIN_VAL" },
+                });
+                const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.0;
+                const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
+
+                if (commissionAmount > 0) {
+                  await tx.referralCommission.create({
+                    data: {
+                      referralId: activeReferral.id,
+                      serviceType: "NIN_VALIDATION",
+                      serviceId: ticketId,
+                      amount: commissionAmount,
+                    },
+                  });
+
+                  await tx.user.update({
+                    where: { id: activeReferral.referrerId },
+                    data: { referralBalance: { increment: commissionAmount } },
+                  });
+                }
+              }
+            }
+          }
+        });
+
+        // Dispatch completion notification
+        try {
+          await dispatchNotification({
+            type: "NIN_VALIDATION_COMPLETED",
+            userId: ticket.userId,
+            email: ticket.user.email,
+            name: `${ticket.user.firstName} ${ticket.user.lastName}`.trim() || "Valued Client",
+            category: categoryLabel,
+            nin: ticket.nin,
+            transactionRef: ticket.transactionRef,
+          });
+        } catch (notifErr) {
+          console.error("Notification dispatch error:", notifErr);
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: `Live status synced: COMPLETED! Notification sent to client.`,
+          status: "COMPLETED",
+          rawStatus,
+        });
+      } else if (normalizedStatus === "FAILED") {
+        const recordedReason = apiMessage || "Validation failed verification requirements on Abjiktech.";
+
+        await prisma.ninValidationRequest.update({
+          where: { id: ticketId },
+          data: {
+            status: "FAILED",
+            externalStatus: rawStatus,
+            failureReason: recordedReason,
+            apiMessage: recordedReason,
+            apiResponse: statusRes.rawResponse as any,
+            lastSyncedAt: new Date(),
+          },
+        });
+
+        // STRICT NO-REFUND POLICY PER USER INSTRUCTION
+        try {
+          await dispatchNotification({
+            type: "NIN_VALIDATION_FAILED",
+            userId: ticket.userId,
+            email: ticket.user.email,
+            name: `${ticket.user.firstName} ${ticket.user.lastName}`.trim() || "Valued Client",
+            category: categoryLabel,
+            nin: ticket.nin,
+            failureReason: recordedReason,
+            refundAmount: 0,
+            transactionRef: ticket.transactionRef,
+          });
+        } catch (notifErr) {
+          console.error("Notification dispatch error:", notifErr);
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: `Live status synced: FAILED (${rawStatus}). Client notified without refund.`,
+          status: "FAILED",
+          rawStatus,
+        });
+      } else {
+        // Still processing
+        await prisma.ninValidationRequest.update({
+          where: { id: ticketId },
+          data: {
+            externalStatus: rawStatus,
+            apiMessage: apiMessage || "Validation in progress at Abjiktech.",
+            apiResponse: statusRes.rawResponse as any,
+            lastSyncedAt: new Date(),
+          },
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: `Live status synced from Abjiktech: ${rawStatus.toUpperCase()} (${apiMessage || "In progress"})`,
+          status: "PROCESSING",
+          rawStatus,
+        });
+      }
+    }
+
+    // =========================================================================
+    // MANUAL OPERATIONAL ACTIONS (PROCESS, COMPLETE, FAIL)
+    // =========================================================================
+    let notificationPayload: NotificationEvent | null = null;
 
     await prisma.$transaction(async (tx) => {
       if (actionType === "PROCESS") {
@@ -84,9 +294,9 @@ export async function POST(req: Request) {
 
             if (!existingCommission) {
               const rewardSetting = await tx.globalSetting.findUnique({
-                where: { key: 'REF_REWARD_NIN_VAL' }
+                where: { key: "REF_REWARD_NIN_VAL" },
               });
-              const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.00;
+              const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.0;
               const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
 
               if (commissionAmount > 0) {
@@ -119,6 +329,7 @@ export async function POST(req: Request) {
           },
         });
 
+        // If admin explicitly forces a refund
         if (issueRefund && refundAmount > 0) {
           const wallet = await tx.wallet.findUnique({ where: { userId: ticket.userId } });
 
@@ -201,8 +412,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, message: `NIN Validation request successfully updated to ${actionType}.` });
-  } catch (error) {
+  } catch (error: any) {
     console.error("NIN Validation Action API Error:", error);
-    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
+    return NextResponse.json({ error: error?.message || "Internal server error." }, { status: 500 });
   }
 }

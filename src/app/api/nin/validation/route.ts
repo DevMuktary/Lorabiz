@@ -17,12 +17,17 @@ export const CATEGORY_PRICE_KEYS: Record<NinValidationCategory, { key: string; d
   VNIN_VALIDATION: {
     key: "NIN_VALIDATION_VNIN",
     defaultPrice: 2500.0,
-    label: "VNIN Validation",
+    label: "SIM/Bank & VNIN Validation",
   },
   UPDATE_RECORD_MOD: {
     key: "NIN_VALIDATION_MOD",
     defaultPrice: 3000.0,
     label: "Update Record (Mod Validation)",
+  },
+  PHOTO_ERROR: {
+    key: "NIN_VALIDATION_PHOTO_ERROR",
+    defaultPrice: 1600.0,
+    label: "Photographic Error",
   },
 };
 
@@ -227,6 +232,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           category: validCategory,
           nin: sanitizedNin,
+          provider: "ABJIKTECH",
           status: "PROCESSING",
           amountCharged: requiredAmount,
           transactionRef,

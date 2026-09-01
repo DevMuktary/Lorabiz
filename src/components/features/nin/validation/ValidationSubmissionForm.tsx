@@ -6,6 +6,7 @@ import {
   MagnifyingGlass,
   QrCode,
   ArrowsClockwise,
+  Camera,
   CheckCircle, 
   Circle,
   WarningCircle, 
@@ -38,13 +39,18 @@ const CATEGORIES = [
   },
   {
     id: "VNIN_VALIDATION",
-    label: "VNIN Validation",
+    label: "SIM/Bank & VNIN Validation",
     icon: QrCode,
   },
   {
     id: "UPDATE_RECORD_MOD",
-    label: "Update Record (Mod Validation)",
+    label: "Modification Validation",
     icon: ArrowsClockwise,
+  },
+  {
+    id: "PHOTO_ERROR",
+    label: "Photographic Error",
+    icon: Camera,
   },
 ];
 

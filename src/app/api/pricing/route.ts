@@ -24,6 +24,7 @@ export async function GET() {
     const validationNoRecord = pricingMap.NIN_VALIDATION_NO_RECORD ?? pricingMap.NIN_VAL_NO_RECORD ?? 2000;
     const validationVnin = pricingMap.NIN_VALIDATION_VNIN ?? pricingMap.NIN_VAL_VNIN ?? 2500;
     const validationMod = pricingMap.NIN_VALIDATION_MOD ?? pricingMap.NIN_VAL_MOD_RECORD ?? 3000;
+    const validationPhotoError = pricingMap.NIN_VALIDATION_PHOTO_ERROR ?? pricingMap.NIN_VAL_PHOTO_ERROR ?? 1600;
 
     const modName = pricingMap.NIN_MOD_NAME ?? 2500;
     const modPhone = pricingMap.NIN_MOD_PHONE ?? 2000;
@@ -77,9 +78,11 @@ export async function GET() {
       NIN_VALIDATION_NO_RECORD: validationNoRecord,
       NIN_VALIDATION_VNIN: validationVnin,
       NIN_VALIDATION_MOD: validationMod,
+      NIN_VALIDATION_PHOTO_ERROR: validationPhotoError,
       NIN_VAL_NO_RECORD: validationNoRecord,
       NIN_VAL_VNIN: validationVnin,
       NIN_VAL_MOD_RECORD: validationMod,
+      NIN_VAL_PHOTO_ERROR: validationPhotoError,
 
       // NIN Modification
       NIN_MOD_NAME: modName,

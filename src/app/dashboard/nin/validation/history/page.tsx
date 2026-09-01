@@ -24,7 +24,7 @@ import {
 
 interface ValidationRecord {
   id: string;
-  category: "NO_RECORD_FOUND" | "VNIN_VALIDATION" | "UPDATE_RECORD_MOD";
+  category: "NO_RECORD_FOUND" | "VNIN_VALIDATION" | "UPDATE_RECORD_MOD" | "PHOTO_ERROR";
   nin: string;
   status: "PROCESSING" | "COMPLETED" | "FAILED";
   amountCharged: number | string;
@@ -38,8 +38,9 @@ interface ValidationRecord {
 
 const CATEGORY_LABELS: Record<string, string> = {
   NO_RECORD_FOUND: "No Record Found",
-  VNIN_VALIDATION: "VNIN Validation",
-  UPDATE_RECORD_MOD: "Update Record (Mod)",
+  VNIN_VALIDATION: "SIM/Bank & VNIN Validation",
+  UPDATE_RECORD_MOD: "Modification Validation",
+  PHOTO_ERROR: "Photographic Error",
 };
 
 export default function NinValidationHistoryPage() {

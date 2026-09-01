@@ -32,8 +32,9 @@ export async function GET() {
       { serviceKey: "NIN_PERSONALIZATION", title: "NIN Personalization", price: 1500.0 },
       { serviceKey: "NIN_IPE_CLEARANCE", title: "IPE Clearance (Exception Resolution)", price: 2500.0 },
       { serviceKey: "NIN_VALIDATION_NO_RECORD", title: "NIN Validation (No Record Found)", price: 2000.0 },
-      { serviceKey: "NIN_VALIDATION_VNIN", title: "NIN Validation (VNIN Validation)", price: 2500.0 },
+      { serviceKey: "NIN_VALIDATION_VNIN", title: "NIN Validation (SIM/Bank & VNIN Validation)", price: 2500.0 },
       { serviceKey: "NIN_VALIDATION_MOD", title: "NIN Validation (Update Record Mod)", price: 3000.0 },
+      { serviceKey: "NIN_VALIDATION_PHOTO_ERROR", title: "NIN Validation (Photographic Error)", price: 1600.0 },
       // NIN Modification Services
       { serviceKey: "NIN_MOD_NAME", title: "NIN Modification - Change of Name", price: 2500.0 },
       { serviceKey: "NIN_MOD_PHONE", title: "NIN Modification - Change of Phone Number", price: 2000.0 },

@@ -6,9 +6,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     remotePatterns: [
       {
@@ -38,7 +35,9 @@ export default withSentryConfig(nextConfig, {
   widenClientFileUpload: false,
 
   // Don't expose source maps publicly
-  hideSourceMaps: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
 
   // Route browser requests to Sentry through a Next.js rewrite
   tunnelRoute: "/monitoring",

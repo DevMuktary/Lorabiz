@@ -282,11 +282,6 @@ export const authOptions: NextAuthOptions = {
                   balance: 0.00,
                 },
               },
-              developerSandboxWallet: {
-                create: {
-                  balance: 1000000.00,
-                },
-              },
             },
             include: { wallet: true },
           });
@@ -325,6 +320,8 @@ export const authOptions: NextAuthOptions = {
             details: "User signed in via Google OAuth (2FA bypassed)",
           });
         }
+
+        if (!existingUser) return false;
 
         const isComplete = Boolean(existingUser.phone && existingUser.phone.trim().length > 0);
         user.id = existingUser.id;

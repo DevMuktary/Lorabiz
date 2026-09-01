@@ -25,8 +25,9 @@ import NinValidationApplicationDrawer from "@/components/mds/nin-validation/NinV
 
 const CATEGORY_LABELS: Record<string, string> = {
   NO_RECORD_FOUND: "No Record Found",
-  VNIN_VALIDATION: "VNIN Validation",
-  UPDATE_RECORD_MOD: "Update Record (Mod)",
+  VNIN_VALIDATION: "SIM/Bank & VNIN Validation",
+  UPDATE_RECORD_MOD: "Modification Validation",
+  PHOTO_ERROR: "Photographic Error",
 };
 
 export default function NinValidationAdminPipelinePage() {
@@ -196,8 +197,9 @@ export default function NinValidationAdminPipelinePage() {
             >
               <option value="ALL">All Categories</option>
               <option value="NO_RECORD_FOUND">No Record Found</option>
-              <option value="VNIN_VALIDATION">VNIN Validation</option>
-              <option value="UPDATE_RECORD_MOD">Update Record (Mod)</option>
+              <option value="VNIN_VALIDATION">SIM/Bank & VNIN</option>
+              <option value="UPDATE_RECORD_MOD">Modification</option>
+              <option value="PHOTO_ERROR">Photographic Error</option>
             </select>
 
             {/* Sort Order */}

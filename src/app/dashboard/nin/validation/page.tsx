@@ -24,6 +24,7 @@ export default function NinValidationPage() {
     NO_RECORD_FOUND: { price: 2000, isActive: true },
     VNIN_VALIDATION: { price: 2500, isActive: true },
     UPDATE_RECORD_MOD: { price: 3000, isActive: true },
+    PHOTO_ERROR: { price: 1600, isActive: true },
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showNoticeModal, setShowNoticeModal] = useState<boolean>(true);
