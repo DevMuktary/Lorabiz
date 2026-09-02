@@ -6,7 +6,8 @@ import {
   Key, 
   CheckCircle, 
   WarningCircle, 
-  ShieldCheck 
+  ShieldCheck,
+  Ticket 
 } from "@phosphor-icons/react";
 import { PersonalizationConfirmationModal } from "./PersonalizationConfirmationModal";
 
@@ -17,6 +18,7 @@ interface PersonalizationSubmissionFormProps {
   hasDiscount?: boolean;
   discountBadge?: string;
   savedAmount?: number;
+  freePassCount?: number;
   isServiceActive: boolean;
   onSuccess: (result: { reference: string; trackingId: string }) => void;
 }
@@ -28,11 +30,13 @@ export function PersonalizationSubmissionForm({
   hasDiscount,
   discountBadge,
   savedAmount,
+  freePassCount = 0,
   isServiceActive,
   onSuccess,
 }: PersonalizationSubmissionFormProps) {
   const [trackingId, setTrackingId] = useState("");
   const [attestationsAccepted, setAttestationsAccepted] = useState(false);
+  const [useRewardCredit, setUseRewardCredit] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,6 +44,8 @@ export function PersonalizationSubmissionForm({
   const sanitizedTrackingId = trackingId.trim().toUpperCase();
   const isValidTrackingId = sanitizedTrackingId.length >= 8 && sanitizedTrackingId.length <= 30;
   const canSubmit = isValidTrackingId && attestationsAccepted && isServiceActive;
+
+  const effectiveFee = useRewardCredit ? 0 : servicePrice;
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +75,7 @@ export function PersonalizationSubmissionForm({
         body: JSON.stringify({
           trackingId: sanitizedTrackingId,
           attestationsAccepted,
+          useRewardCredit,
         }),
       });
 
@@ -102,9 +109,13 @@ export function PersonalizationSubmissionForm({
           <Tag weight="fill" className="h-4 w-4 shrink-0" />
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold uppercase tracking-wider">
-              Processing Fee: ₦{servicePrice.toLocaleString()}
+              Processing Fee: ₦{effectiveFee.toLocaleString()}
             </span>
-            {hasDiscount && originalPrice && originalPrice > servicePrice && (
+            {useRewardCredit ? (
+              <span className="bg-indigo-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                FREE PASS APPLIED
+              </span>
+            ) : hasDiscount && originalPrice && originalPrice > servicePrice ? (
               <div className="flex items-center gap-1.5">
                 <span className="line-through text-muted-foreground text-xs opacity-75">
                   ₦{originalPrice.toLocaleString()}
@@ -113,9 +124,38 @@ export function PersonalizationSubmissionForm({
                   {discountBadge || "DISCOUNTED"}
                 </span>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
+
+        {/* Optional Reward Pass Toggle */}
+        {freePassCount > 0 && (
+          <div className="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between gap-3 text-xs animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <Ticket weight="fill" className="h-4 w-4 text-indigo-500 shrink-0" />
+              <div>
+                <span className="font-bold text-foreground block">
+                  Free Personalization Pass Available ({freePassCount})
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Apply a pass from your Vouchers Vault to submit for ₦0.
+                </span>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={useRewardCredit}
+                onChange={(e) => setUseRewardCredit(e.target.checked)}
+                className="h-4 w-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer"
+              />
+              <span className="font-black text-indigo-600 dark:text-indigo-400">
+                Apply Pass
+              </span>
+            </label>
+          </div>
+        )}
 
         {/* Form Header */}
         <div className="space-y-1">

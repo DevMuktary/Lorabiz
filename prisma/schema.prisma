@@ -154,6 +154,10 @@ model User {
   activityLogs       UserActivityLog[]
   automatedEmailLogs AutomatedEmailLog[]
   
+  // --- REWARDS & SPINS ---
+  spinTokens         SpinToken[]
+  rewardCredits      UserRewardCredit[]
+
   // --- STAFF ASSIGNMENTS ---
   assignedBiz      BusinessRegistration[] @relation("BizStaffAssignment")
   assignedLlcs     LlcRegistration[]      @relation("LlcStaffAssignment")
@@ -1243,6 +1247,79 @@ model CourtAffidavitRequest {
   @@index([userId, status])
   @@index([trackingId])
   @@index([category])
+  @@index([createdAt])
+}
+
+// ==========================================
+// REWARDS, LUCKY SPINS & VOUCHER VAULT
+// ==========================================
+
+enum RewardStatus {
+  AVAILABLE
+  USED
+  EXPIRED
+}
+
+enum UserRewardType {
+  NIN_SLIP
+  NIN_VALIDATION
+  NIN_PERSONALIZATION
+  CAC_VOUCHER
+  SCUML_VOUCHER
+  WALLET_CASH
+  AIRTIME
+}
+
+enum CreditStatus {
+  ACTIVE
+  REDEEMED
+  EXPIRED
+}
+
+model SpinToken {
+  id              String       @id @default(cuid())
+  userId          String
+  sourceTxRef     String       // Wallet funding transaction reference
+  depositAmount   Decimal      @db.Decimal(10, 2)
+  status          RewardStatus @default(AVAILABLE)
+  
+  wonPrizeType    String?      // e.g. "WALLET_CASH", "AIRTIME", "NIN_SLIP", "CAC_VOUCHER", "NIN_VALIDATION", "NIN_PERSONALIZATION"
+  wonPrizeValue   Decimal?     @db.Decimal(10, 2)
+  wonPrizeLabel   String?      // e.g. "₦500 Wallet Credit", "Free Premium NIN Slip"
+  wonPrizeDetails Json?        // Structured prize metadata (e.g. voucher code, network)
+
+  createdAt       DateTime     @default(now())
+  spunAt          DateTime?
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([sourceTxRef])
+  @@index([createdAt])
+}
+
+model UserRewardCredit {
+  id                String         @id @default(cuid())
+  userId            String
+  rewardType        UserRewardType
+  title             String         // e.g. "Free Premium NIN Slip Pass"
+  description       String         // e.g. "Valid for 1 instant NIN Slip generation at ₦0 fee."
+  value             Decimal        @default(0.00) @db.Decimal(10, 2)
+  voucherCode       String?        @unique // e.g. "SPIN-CAC-8492" (if applicable)
+  status            CreditStatus   @default(ACTIVE)
+  
+  sourceSpinId      String?        // ID of the SpinToken that generated this credit
+  usedForServiceRef String?        // Service transaction reference where it was redeemed
+
+  createdAt         DateTime       @default(now())
+  expiresAt         DateTime?      // e.g. 30 or 60 days validity
+  redeemedAt        DateTime?
+
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([rewardType, status])
+  @@index([voucherCode])
   @@index([createdAt])
 }
 

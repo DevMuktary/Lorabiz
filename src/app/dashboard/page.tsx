@@ -28,7 +28,8 @@ import {
   Crown,
   CaretRight,
   Gavel,
-  WhatsappLogo
+  WhatsappLogo,
+  Gift
 } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 import LoyaltyPerksModal from "@/components/dashboard/LoyaltyPerksModal";
@@ -801,6 +802,48 @@ export default function DashboardPage() {
           </div>
         </div>
 
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3.5. REWARD VAULT & LUCKY SPIN BANNER (DEPOSIT ₦20,000+ INCENTIVE)         */}
+      {/* ========================================================================= */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden">
+        <div className="flex items-center gap-3.5">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+            <Gift weight="fill" className="h-6 w-6 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-black text-foreground">
+                Lorabiz Reward Vault &amp; Lucky Spin
+              </h2>
+              <span className="text-[9px] uppercase font-black tracking-wider bg-amber-500 text-white px-2 py-0.5 rounded-full shadow-xs">
+                Guaranteed Perks
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Fund <strong>₦20,000+</strong> in a single deposit to earn instant Spin Tokens for cashback, free NIN slips, and CAC vouchers.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+          <Link
+            href="/dashboard/rewards"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Sparkle weight="fill" className="h-4 w-4" />
+            <span>Spin &amp; Win</span>
+            <ArrowRight weight="bold" className="h-3.5 w-3.5" />
+          </Link>
+
+          <Link
+            href="/dashboard/vouchers"
+            className="inline-flex items-center justify-center px-3.5 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-bold rounded-xl border border-border transition-colors"
+          >
+            My Vouchers
+          </Link>
+        </div>
       </div>
 
       {/* ========================================================================= */}

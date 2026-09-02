@@ -24,6 +24,7 @@ export default function NinPersonalizationPage() {
   const [hasDiscount, setHasDiscount] = useState<boolean>(false);
   const [discountBadge, setDiscountBadge] = useState<string | undefined>(undefined);
   const [savedAmount, setSavedAmount] = useState<number | undefined>(undefined);
+  const [freePassCount, setFreePassCount] = useState<number>(0);
   const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [submittedResult, setSubmittedResult] = useState<{ reference: string; trackingId: string } | null>(null);
@@ -45,6 +46,7 @@ export default function NinPersonalizationPage() {
         setHasDiscount(Boolean(data.hasDiscount));
         setDiscountBadge(data.discountBadge);
         setSavedAmount(data.savedAmount);
+        setFreePassCount(data.freePassCount || 0);
         setIsServiceActive(data.isServiceActive ?? data.isActive ?? true);
       }
     } catch (err) {
@@ -186,6 +188,11 @@ export default function NinPersonalizationPage() {
             <PersonalizationSubmissionForm
               walletBalance={walletBalance}
               servicePrice={servicePrice}
+              originalPrice={originalPrice}
+              hasDiscount={hasDiscount}
+              discountBadge={discountBadge}
+              savedAmount={savedAmount}
+              freePassCount={freePassCount}
               isServiceActive={isServiceActive}
               onSuccess={handleSuccess}
             />

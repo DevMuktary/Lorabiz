@@ -7,6 +7,7 @@ import { redis } from "@/lib/redis";
 import { notificationQueue } from "@/lib/queue";
 import { logUserActivity } from "@/lib/activity-logger";
 import { sendWalletFundedEmail } from "@/lib/email";
+import { grantSpinTokenIfEligible } from "@/lib/rewards";
 
 export async function POST(req: Request) {
   try {
@@ -106,6 +107,8 @@ export async function POST(req: Request) {
             serviceCategory: "WALLET_FUNDING"
           }
         });
+
+        await grantSpinTokenIfEligible(tx, user.id, amountPaid, reference);
         isNewlyProcessed = true;
         return;
       }
