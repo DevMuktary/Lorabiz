@@ -1,3 +1,4 @@
+// src/components/features/nin/slips/SlipConfirmationModal.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -6,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   X, Wallet, Sparkle, ArrowRight, Spinner, 
-  ShieldCheck, DeviceMobile, IdentificationCard 
+  ShieldCheck, DeviceMobile, IdentificationCard, Gift 
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
@@ -21,6 +22,9 @@ interface SlipConfirmationModalProps {
   slipImage: string;
   price: number;
   walletBalance: number;
+  availablePasses?: number;
+  useRewardCredit?: boolean;
+  onToggleRewardCredit?: (useCredit: boolean) => void;
 }
 
 export default function SlipConfirmationModal({
@@ -34,6 +38,9 @@ export default function SlipConfirmationModal({
   slipImage,
   price,
   walletBalance,
+  availablePasses = 0,
+  useRewardCredit = false,
+  onToggleRewardCredit,
 }: SlipConfirmationModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -53,9 +60,10 @@ export default function SlipConfirmationModal({
 
   if (!isOpen || !mounted || typeof document === "undefined") return null;
 
-  const isInsufficient = walletBalance < price;
-  const remainingBalance = Math.max(0, walletBalance - price);
-  const shortfall = Math.max(0, price - walletBalance);
+  const effectivePrice = useRewardCredit ? 0 : price;
+  const isInsufficient = !useRewardCredit && walletBalance < price;
+  const remainingBalance = useRewardCredit ? walletBalance : Math.max(0, walletBalance - price);
+  const shortfall = Math.max(0, effectivePrice - walletBalance);
 
   return createPortal(
     <div 
@@ -96,7 +104,34 @@ export default function SlipConfirmationModal({
           </button>
         </div>
 
-        {/* IF INSUFFICIENT WALLET BALANCE */}
+        {/* REWARD PASS SELECTOR (If User has Free Passes) */}
+        {availablePasses > 0 && (
+          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-2 text-xs animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <span className="font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                <Gift weight="fill" className="h-4 w-4" />
+                <span>Free Service Pass Available</span>
+              </span>
+              <span className="bg-emerald-500 text-white font-black text-[10px] px-2 py-0.5 rounded-full">
+                {availablePasses} Pass{availablePasses > 1 ? "es" : ""} Left
+              </span>
+            </div>
+            
+            <label className="flex items-center gap-2.5 p-2 bg-background/80 dark:bg-background/40 rounded-xl border border-emerald-500/30 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={useRewardCredit}
+                onChange={(e) => onToggleRewardCredit?.(e.target.checked)}
+                className="h-4 w-4 accent-emerald-500 rounded cursor-pointer"
+              />
+              <span className="font-bold text-foreground">
+                Apply Free Pass (₦0.00 Fee • 100% Free)
+              </span>
+            </label>
+          </div>
+        )}
+
+        {/* IF INSUFFICIENT WALLET BALANCE & NO PASS APPLIED */}
         {isInsufficient ? (
           <div className="space-y-4">
             <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 space-y-3">
@@ -140,7 +175,7 @@ export default function SlipConfirmationModal({
                 Cancel
               </Button>
               <Link
-                href="/dashboard/wallet"
+                href="/dashboard"
                 className="h-11 rounded-xl font-black bg-primary text-primary-foreground hover:opacity-90 flex items-center justify-center gap-2 text-sm shadow-md transition-all cursor-pointer"
               >
                 <Wallet size={16} weight="bold" />
@@ -150,7 +185,7 @@ export default function SlipConfirmationModal({
             </div>
           </div>
         ) : (
-          /* SUFFICIENT BALANCE - CONFIRMATION WITH SPECIMEN IMAGE */
+          /* SUFFICIENT BALANCE OR FREE PASS APPLIED */
           <div className="space-y-4">
             
             {/* Specimen Slip Preview Container */}
@@ -180,58 +215,72 @@ export default function SlipConfirmationModal({
                   {identifier}
                 </span>
               </div>
+
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Slip Type:</span>
                 <span className="font-bold text-foreground">{slipLabel}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Wallet Balance:</span>
-                <span className="font-semibold text-foreground">₦{walletBalance.toLocaleString()}</span>
+
+              <div className="flex justify-between items-center border-t border-border pt-2">
+                <span className="text-muted-foreground">Generation Fee:</span>
+                {useRewardCredit ? (
+                  <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-1">
+                    <span className="line-through text-muted-foreground text-xs">₦{price.toLocaleString()}</span>
+                    <span>FREE (1 Pass)</span>
+                  </span>
+                ) : (
+                  <span className="font-black text-foreground text-sm">₦{price.toLocaleString()}</span>
+                )}
               </div>
-              <div className="flex justify-between items-center border-t border-border/60 pt-2 font-black text-sm">
-                <span>Amount to Debit:</span>
-                <span className="text-primary text-base">₦{price.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-0.5">
-                <span>Balance After Debit:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  ₦{remainingBalance.toLocaleString()}
-                </span>
+
+              <div className="flex justify-between items-center text-[11px] text-muted-foreground">
+                <span>Wallet Balance After:</span>
+                <span className="font-mono font-bold text-foreground">₦{remainingBalance.toLocaleString()}</span>
               </div>
             </div>
 
-            {/* Prompt */}
-            <p className="text-xs text-muted-foreground text-center px-2">
-              Are you sure you want to verify and generate this slip?
+            {/* Disclaimer */}
+            <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+              By confirming, you authorize retrieval of the official verified NIMC record. This request will be processed immediately.
             </p>
 
-            {/* Actions */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={isLoading}
-                className="h-11 rounded-xl font-bold border-border"
+                className="h-12 rounded-2xl font-bold border-border"
               >
                 Cancel
               </Button>
+
               <Button
                 type="button"
                 onClick={onConfirm}
                 disabled={isLoading}
-                className="h-11 rounded-xl font-black bg-primary text-primary-foreground hover:opacity-90 shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                className={`h-12 rounded-2xl font-black text-sm shadow-md transition-all cursor-pointer ${
+                  useRewardCredit
+                    ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                    : "bg-primary text-primary-foreground hover:opacity-90"
+                }`}
               >
                 {isLoading ? (
-                  <>
+                  <div className="flex items-center gap-2">
                     <Spinner size={16} className="animate-spin" />
-                    <span>Verifying...</span>
-                  </>
-                ) : (
-                  <>
+                    <span>Processing...</span>
+                  </div>
+                ) : useRewardCredit ? (
+                  <div className="flex items-center gap-1.5">
                     <Sparkle size={16} weight="fill" />
-                    <span>Yes, Generate</span>
-                  </>
+                    <span>Generate Free Slip</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <span>Pay ₦{price.toLocaleString()}</span>
+                    <ArrowRight size={14} weight="bold" />
+                  </div>
                 )}
               </Button>
             </div>

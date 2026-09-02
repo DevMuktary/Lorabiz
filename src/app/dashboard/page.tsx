@@ -230,6 +230,7 @@ export default function DashboardPage() {
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [availableSpinTokens, setAvailableSpinTokens] = useState<number>(0);
   const [mounted, setMounted] = useState(false);
   const [timeGreeting, setTimeGreeting] = useState<string>("Good day");
 
@@ -295,6 +296,15 @@ export default function DashboardPage() {
       .finally(() => {
         setIsLoadingBalance(false);
       });
+
+    fetch('/api/rewards/spin')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.success) {
+          setAvailableSpinTokens(data.availableTokens || 0);
+        }
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -526,6 +536,24 @@ export default function DashboardPage() {
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pt-0.5 font-medium max-w-md">
             Explore available services and manage your transactions below.
           </p>
+
+          {/* Active Spin Tokens Incentive Pill */}
+          {availableSpinTokens > 0 && (
+            <div className="pt-2 animate-in fade-in">
+              <Link
+                href="/dashboard/rewards"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-foreground hover:bg-amber-500/20 text-xs font-bold transition-all group shadow-xs"
+              >
+                <Gift weight="fill" className="h-4 w-4 text-amber-500 animate-bounce shrink-0" />
+                <span>
+                  You have <strong className="text-amber-600 dark:text-amber-400 font-black">{availableSpinTokens} Lucky Spin token{availableSpinTokens > 1 ? "s" : ""}</strong> ready!
+                </span>
+                <span className="text-amber-600 dark:text-amber-400 underline font-black group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 ml-1">
+                  Spin &amp; Win →
+                </span>
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Right: Soft Pink Circle & 3D Wallet (Touching routes to Partner/Referral program) */}
@@ -577,31 +605,44 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Level Pill with 'Account Level' label */}
-            {loyaltyProfile?.currentTier && (
-              <div className="flex flex-col items-end shrink-0">
-                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">
-                  Account Level
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsPerksModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-secondary hover:bg-secondary/80 border border-border transition-colors cursor-pointer text-foreground shadow-xs"
-                  title="Click to view Level Perks and Discounts"
-                >
-                  <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
-                  <span>{loyaltyProfile.currentTier.name}</span>
-                  {loyaltyProfile.currentTier.discountPct > 0 ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-black">
-                      • {loyaltyProfile.currentTier.discountPct}% OFF
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground text-[10px]">• Starter</span>
-                  )}
-                  <CaretRight size={10} weight="bold" className="text-muted-foreground" />
-                </button>
-              </div>
-            )}
+            {/* Level Pill + Spin Pill */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/dashboard/rewards"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 transition-all shadow-xs"
+                title="Lucky Spin & Rewards"
+              >
+                <Gift weight="fill" className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+                <span>Spin &amp; Win</span>
+                {availableSpinTokens > 0 && (
+                  <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                    {availableSpinTokens}
+                  </span>
+                )}
+              </Link>
+
+              {loyaltyProfile?.currentTier && (
+                <div className="flex flex-col items-end shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsPerksModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-secondary hover:bg-secondary/80 border border-border transition-colors cursor-pointer text-foreground shadow-xs"
+                    title="Click to view Level Perks and Discounts"
+                  >
+                    <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
+                    <span>{loyaltyProfile.currentTier.name}</span>
+                    {loyaltyProfile.currentTier.discountPct > 0 ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                        • {loyaltyProfile.currentTier.discountPct}% OFF
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-[10px]">• Starter</span>
+                    )}
+                    <CaretRight size={10} weight="bold" className="text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Center: Prominent Balance + Progress Hint */}
@@ -800,49 +841,6 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
-        </div>
-
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3.5. REWARD VAULT & LUCKY SPIN BANNER (DEPOSIT ₦20,000+ INCENTIVE)         */}
-      {/* ========================================================================= */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden">
-        <div className="flex items-center gap-3.5">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
-            <Gift weight="fill" className="h-6 w-6 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-black text-foreground">
-                Lorabiz Reward Vault &amp; Lucky Spin
-              </h2>
-              <span className="text-[9px] uppercase font-black tracking-wider bg-amber-500 text-white px-2 py-0.5 rounded-full shadow-xs">
-                Guaranteed Perks
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Fund <strong>₦20,000+</strong> in a single deposit to earn instant Spin Tokens for cashback, free NIN slips, and CAC vouchers.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
-          <Link
-            href="/dashboard/rewards"
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Sparkle weight="fill" className="h-4 w-4" />
-            <span>Spin &amp; Win</span>
-            <ArrowRight weight="bold" className="h-3.5 w-3.5" />
-          </Link>
-
-          <Link
-            href="/dashboard/vouchers"
-            className="inline-flex items-center justify-center px-3.5 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-bold rounded-xl border border-border transition-colors"
-          >
-            My Vouchers
-          </Link>
         </div>
       </div>
 

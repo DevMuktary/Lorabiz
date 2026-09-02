@@ -80,6 +80,8 @@ export default function NinByNinPage() {
   const [attestation1, setAttestation1] = useState(false);
   const [attestation2, setAttestation2] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availablePasses, setAvailablePasses] = useState<number>(0);
+  const [useRewardCredit, setUseRewardCredit] = useState<boolean>(false);
 
   const [lightbox, setLightbox] = useState<{ isOpen: boolean; src: string; label: string }>({
     isOpen: false, src: "", label: ""
@@ -121,18 +123,28 @@ export default function NinByNinPage() {
 
   const loadData = async () => {
     try {
-      const [statusRes, historyRes, walletRes] = await Promise.all([
+      const [statusRes, historyRes, walletRes, vouchersRes] = await Promise.all([
         fetch("/api/nin/slips/status", { cache: "no-store" }),
         fetch("/api/nin/slips/history?searchType=NIN", { cache: "no-store" }),
         fetch("/api/user/wallet", { cache: "no-store" }),
+        fetch("/api/vouchers", { cache: "no-store" }),
       ]);
 
       const statusData = await statusRes.json();
       const historyData = await historyRes.json();
       const walletData = await walletRes.json();
+      const vouchersData = await vouchersRes.json();
 
       if (walletData.success) {
         setWalletBalance(typeof walletData.balance === "number" ? walletData.balance : (walletData.wallet?.balance || 0));
+      }
+
+      if (vouchersData.success && vouchersData.summary) {
+        const passCount = Number(vouchersData.summary.ninSlip) || 0;
+        setAvailablePasses(passCount);
+        if (passCount > 0) {
+          setUseRewardCredit(true); // Default to applying free pass
+        }
       }
 
       if (statusData.success && statusData.status) {
@@ -223,7 +235,8 @@ export default function NinByNinPage() {
           identifier: nin.trim(),
           searchType: "NIN",
           slipType,
-          attestationsAccepted: attestation1 && attestation2
+          attestationsAccepted: attestation1 && attestation2,
+          useRewardCredit,
         })
       });
 
@@ -480,6 +493,9 @@ export default function NinByNinPage() {
         slipImage={selectedOption.img}
         price={currentPrice}
         walletBalance={walletBalance}
+        availablePasses={availablePasses}
+        useRewardCredit={useRewardCredit}
+        onToggleRewardCredit={(v) => setUseRewardCredit(v)}
       />
 
       {/* LIGHTBOX SPECIMEN PREVIEW OVERLAY */}

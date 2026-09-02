@@ -1,3 +1,4 @@
+// src/app/dashboard/vouchers/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -15,7 +16,10 @@ import {
   ArrowRight,
   Tag,
   CheckCircle,
-  Coins
+  Coins,
+  IdentificationCard,
+  Fingerprint,
+  FileText
 } from "@phosphor-icons/react";
 
 export default function VouchersVaultPage() {
@@ -67,20 +71,56 @@ export default function VouchersVaultPage() {
       ? activeItems.filter((i: any) => i.rewardType === "CAC_VOUCHER" || i.rewardType === "SCUML_VOUCHER")
       : redeemedItems;
 
-  const getServiceLink = (type: string) => {
+  const getServiceDetails = (type: string) => {
     switch (type) {
       case "NIN_SLIP":
-        return "/dashboard/nin";
+        return {
+          link: "/dashboard/nin/slips/nin",
+          label: "NIN Slip Generator",
+          badge: "100% Free Pass",
+          icon: IdentificationCard,
+          color: "blue"
+        };
       case "NIN_VALIDATION":
-        return "/dashboard/nin/validation";
+        return {
+          link: "/dashboard/nin/validation",
+          label: "NIN Validation Pipeline",
+          badge: "100% Free Pass",
+          icon: Fingerprint,
+          color: "emerald"
+        };
       case "NIN_PERSONALIZATION":
-        return "/dashboard/nin/personalization";
+        return {
+          link: "/dashboard/nin/personalization",
+          label: "NIN Personalization",
+          badge: "100% Free Pass",
+          icon: ShieldCheck,
+          color: "indigo"
+        };
       case "CAC_VOUCHER":
-        return "/dashboard/cac/business-name";
+        return {
+          link: "/dashboard/cac/business-name",
+          label: "CAC Business Registration",
+          badge: "Discount Voucher",
+          icon: FileText,
+          color: "amber"
+        };
       case "SCUML_VOUCHER":
-        return "/dashboard/scuml";
+        return {
+          link: "/dashboard/scuml",
+          label: "SCUML Registration",
+          badge: "Discount Voucher",
+          icon: Tag,
+          color: "purple"
+        };
       default:
-        return "/dashboard";
+        return {
+          link: "/dashboard",
+          label: "LoraBiz Services",
+          badge: "Reward Credit",
+          icon: Gift,
+          color: "pink"
+        };
     }
   };
 
@@ -97,18 +137,18 @@ export default function VouchersVaultPage() {
             Back to Dashboard
           </Link>
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center shrink-0">
+            <div className="h-12 w-12 rounded-2xl bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center shrink-0 shadow-sm">
               <Ticket weight="fill" className="h-6 w-6" />
             </div>
             <div>
               <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
-                My Vouchers & Reward Passes
+                <span>My Vouchers &amp; Reward Passes</span>
                 <span className="text-[10px] uppercase font-black tracking-wider bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 px-2.5 py-0.5 rounded-full border border-cyan-500/20">
                   {summary.totalActive} Active
                 </span>
               </h1>
-              <p className="text-muted-foreground text-sm">
-                Your free service passes and discount codes unlocked from Lucky Spins and Promotions.
+              <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
+                Redeem free service passes and discount codes unlocked from Lucky Spins and Promotions.
               </p>
             </div>
           </div>
@@ -116,7 +156,7 @@ export default function VouchersVaultPage() {
 
         <Link
           href="/dashboard/rewards"
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-bold rounded-xl shadow-md hover:opacity-90 transition-all group shrink-0"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md hover:opacity-90 transition-all group shrink-0"
         >
           <Gift weight="fill" className="h-4 w-4" />
           <span>Go to Lucky Spin Wheel</span>
@@ -124,45 +164,45 @@ export default function VouchersVaultPage() {
         </Link>
       </div>
 
-      {/* Summary Stat Pills */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {/* Summary Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-            <ShieldCheck weight="bold" className="h-5 w-5" />
+            <IdentificationCard weight="bold" className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">Free NIN Slips</span>
-            <span className="text-lg font-black text-foreground font-mono">{summary.ninSlip} Passes</span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">NIN Slip Passes</span>
+            <span className="text-base sm:text-lg font-black text-foreground font-mono">{summary.ninSlip} Available</span>
           </div>
         </div>
 
         <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0">
-            <CheckCircle weight="bold" className="h-5 w-5" />
+          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+            <Fingerprint weight="bold" className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">Free Validations</span>
-            <span className="text-lg font-black text-foreground font-mono">{summary.ninValidation} Passes</span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Validations</span>
+            <span className="text-base sm:text-lg font-black text-foreground font-mono">{summary.ninValidation} Available</span>
           </div>
         </div>
 
         <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
-            <Sparkle weight="bold" className="h-5 w-5" />
+            <ShieldCheck weight="bold" className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">Personalization</span>
-            <span className="text-lg font-black text-foreground font-mono">{summary.ninPersonalization} Passes</span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Personalization</span>
+            <span className="text-base sm:text-lg font-black text-foreground font-mono">{summary.ninPersonalization} Available</span>
           </div>
         </div>
 
         <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
             <Tag weight="bold" className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">CAC Vouchers</span>
-            <span className="text-lg font-black text-foreground font-mono">{summary.cacVouchers} Available</span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">CAC Vouchers</span>
+            <span className="text-base sm:text-lg font-black text-foreground font-mono">{summary.cacVouchers} Available</span>
           </div>
         </div>
       </div>
@@ -172,7 +212,7 @@ export default function VouchersVaultPage() {
         <button
           type="button"
           onClick={() => setActiveTab("ALL")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === "ALL"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
@@ -184,7 +224,7 @@ export default function VouchersVaultPage() {
         <button
           type="button"
           onClick={() => setActiveTab("PASSES")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === "PASSES"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
@@ -196,7 +236,7 @@ export default function VouchersVaultPage() {
         <button
           type="button"
           onClick={() => setActiveTab("DISCOUNTS")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === "DISCOUNTS"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
@@ -208,13 +248,13 @@ export default function VouchersVaultPage() {
         <button
           type="button"
           onClick={() => setActiveTab("USED")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === "USED"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
           }`}
         >
-          Used & History ({redeemedItems.length})
+          Used &amp; History ({redeemedItems.length})
         </button>
       </div>
 
@@ -231,41 +271,38 @@ export default function VouchersVaultPage() {
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-foreground">No Vouchers Found</h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               {activeTab === "USED"
                 ? "You haven't redeemed any vouchers yet."
-                : "Fund your wallet with ₦20,000 or more to unlock instant Lucky Spins and earn free passes!"}
+                : "Fund your wallet with ₦20,000 or more in a single deposit to unlock instant Lucky Spins and win 100% Free Passes!"}
             </p>
           </div>
           {activeTab !== "USED" && (
             <Link
               href="/dashboard/rewards"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-sm"
             >
               <Gift weight="fill" className="h-4 w-4" />
-              Spin to Win Vouchers
+              <span>Spin &amp; Win Passes</span>
             </Link>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredItems.map((voucher: any) => {
             const isRedeemed = voucher.status === "REDEEMED";
-            const serviceLink = getServiceLink(voucher.rewardType);
+            const details = getServiceDetails(voucher.rewardType);
+            const IconComp = details.icon;
 
             return (
               <div
                 key={voucher.id}
-                className={`relative rounded-3xl border transition-all p-6 flex flex-col justify-between overflow-hidden group ${
+                className={`rounded-3xl border transition-all p-5 sm:p-6 flex flex-col justify-between shadow-xs ${
                   isRedeemed
-                    ? "bg-secondary/40 border-border opacity-70"
-                    : "bg-card border-border hover:border-primary/50 shadow-sm hover:shadow-md"
+                    ? "bg-secondary/30 border-border opacity-75"
+                    : "bg-card border-border hover:border-primary/40 hover:shadow-md"
                 }`}
               >
-                {/* Decorative Ticket Perforations on sides */}
-                <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border border-border" />
-                <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border border-border" />
-
                 <div className="space-y-4">
                   {/* Card Header Tag */}
                   <div className="flex items-center justify-between gap-2">
@@ -276,13 +313,13 @@ export default function VouchersVaultPage() {
                           : voucher.rewardType === "NIN_SLIP"
                           ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
                           : voucher.rewardType === "NIN_VALIDATION"
-                          ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                           : voucher.rewardType === "NIN_PERSONALIZATION"
                           ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
-                          : "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20"
+                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                       }`}
                     >
-                      {isRedeemed ? "REDEEMED" : voucher.rewardType.replace("_", " ")}
+                      {isRedeemed ? "REDEEMED" : details.badge}
                     </span>
 
                     {voucher.expiresAt && !isRedeemed && (
@@ -293,20 +330,36 @@ export default function VouchersVaultPage() {
                     )}
                   </div>
 
-                  {/* Title & Description */}
-                  <div className="space-y-1.5">
-                    <h3 className="text-base font-black text-foreground">{voucher.title}</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {voucher.description}
-                    </p>
+                  {/* Icon & Title */}
+                  <div className="flex items-start gap-3">
+                    <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                      voucher.rewardType === "NIN_SLIP"
+                        ? "bg-blue-500/10 text-blue-500"
+                        : voucher.rewardType === "NIN_VALIDATION"
+                        ? "bg-emerald-500/10 text-emerald-500"
+                        : voucher.rewardType === "NIN_PERSONALIZATION"
+                        ? "bg-indigo-500/10 text-indigo-500"
+                        : "bg-amber-500/10 text-amber-500"
+                    }`}>
+                      <IconComp size={20} weight="bold" />
+                    </div>
+
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="text-sm sm:text-base font-black text-foreground leading-snug">
+                        {voucher.title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {voucher.description}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Voucher Code Box (If applicable) */}
+                  {/* Promo Code Box (If applicable) */}
                   {voucher.voucherCode && (
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-secondary border border-border">
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-secondary/60 border border-border">
                       <div>
                         <span className="text-[9px] uppercase font-bold text-muted-foreground block">Promo Code</span>
-                        <span className="font-mono font-black text-sm text-foreground tracking-wider">
+                        <span className="font-mono font-black text-xs sm:text-sm text-foreground tracking-wider">
                           {voucher.voucherCode}
                         </span>
                       </div>
@@ -326,19 +379,19 @@ export default function VouchersVaultPage() {
                   )}
                 </div>
 
-                {/* Bottom Action */}
-                <div className="pt-6 border-t border-dashed border-border mt-4">
+                {/* Bottom Action CTA */}
+                <div className="pt-4 border-t border-border mt-4">
                   {isRedeemed ? (
-                    <div className="text-center text-xs font-bold text-muted-foreground flex items-center justify-center gap-1.5">
+                    <div className="text-center text-xs font-bold text-muted-foreground flex items-center justify-center gap-1.5 py-1">
                       <CheckCircle weight="fill" className="h-4 w-4 text-emerald-500" />
-                      <span>Redeemed on {new Date(voucher.redeemedAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}</span>
+                      <span>Used on {new Date(voucher.redeemedAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}</span>
                     </div>
                   ) : (
                     <Link
-                      href={serviceLink}
-                      className="w-full py-2.5 rounded-xl bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground text-xs font-bold border border-border hover:border-primary flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      href={details.link}
+                      className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:opacity-90 flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
                     >
-                      <span>Use Pass in Service</span>
+                      <span>Use Pass Now ({details.label})</span>
                       <ArrowRight weight="bold" className="h-3.5 w-3.5" />
                     </Link>
                   )}

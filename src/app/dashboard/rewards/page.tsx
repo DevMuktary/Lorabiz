@@ -1,3 +1,4 @@
+// src/app/dashboard/rewards/page.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -16,7 +17,9 @@ import {
   WarningCircle,
   Spinner,
   CaretRight,
-  Lightning
+  Lightning,
+  Wallet,
+  X
 } from "@phosphor-icons/react";
 import { WheelSlice, DEFAULT_WHEEL_SLICES } from "@/lib/rewards";
 
@@ -119,6 +122,7 @@ export default function RewardsSpinPage() {
   const [rotationAngle, setRotationAngle] = useState<number>(0);
   const [wonPrize, setWonPrize] = useState<any | null>(null);
   const [showCelebrationModal, setShowCelebrationModal] = useState<boolean>(false);
+  const [showNoTokensModal, setShowNoTokensModal] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -207,26 +211,40 @@ export default function RewardsSpinPage() {
       ctx.restore();
     });
 
-    // Center Hub Pin
+    // Center Hub Outer Ring
     ctx.save();
     ctx.beginPath();
-    ctx.arc(center, center, 28, 0, 2 * Math.PI);
+    ctx.arc(center, center, 32, 0, 2 * Math.PI);
     ctx.fillStyle = "#0F172A";
     ctx.fill();
     ctx.lineWidth = 4;
     ctx.strokeStyle = "#F59E0B";
     ctx.stroke();
 
-    // Center icon badge
+    // Center Hub Inner Core with "SPIN" Label
     ctx.beginPath();
-    ctx.arc(center, center, 14, 0, 2 * Math.PI);
+    ctx.arc(center, center, 24, 0, 2 * Math.PI);
     ctx.fillStyle = "#F59E0B";
     ctx.fill();
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "900 11px system-ui, -apple-system, sans-serif";
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = 3;
+    ctx.fillText("SPIN", center, center);
     ctx.restore();
   }, [slices, rotationAngle]);
 
   const handleSpinClick = async () => {
-    if (isSpinning || availableTokens <= 0) return;
+    if (isSpinning) return;
+
+    // If zero tokens, show the friendly branded modal instead of failing silently
+    if (availableTokens <= 0) {
+      setShowNoTokensModal(true);
+      return;
+    }
 
     setErrorMessage(null);
     setIsSpinning(true);
@@ -249,18 +267,15 @@ export default function RewardsSpinPage() {
       const totalSlices = slices.length;
       const sliceDeg = 360 / totalSlices;
 
-      // The top pointer is at 270 degrees (or -90 deg from 0 rad at 3 o'clock).
       // Calculate target angle to place the winning slice right under the top pointer
       const sliceCenterAngle = winningIndex * sliceDeg + sliceDeg / 2;
       const targetPointerAngle = 270;
       
-      // Calculate delta to rotate so winning slice center aligns with top pointer
       const extraSpins = 360 * 6; // 6 full dramatic spins
       const currentNormalized = rotationAngle % 360;
       const targetSliceOffset = (targetPointerAngle - sliceCenterAngle + 360) % 360;
       const totalNewRotation = rotationAngle + extraSpins + (targetSliceOffset - currentNormalized + 360) % 360;
 
-      // Smooth deceleration animation using requestAnimationFrame
       const startTime = performance.now();
       const spinDuration = 5500; // 5.5 seconds
       const initialAngle = rotationAngle;
@@ -318,47 +333,35 @@ export default function RewardsSpinPage() {
             <div>
               <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
                 Lorabiz Reward Vault
-                <span className="text-[10px] uppercase font-black tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
-                  Lucky Spin & Win
+                <span className="text-[10px] uppercase font-black tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                  Lucky Spin &amp; Win
                 </span>
               </h1>
               <p className="text-muted-foreground text-sm">
-                Fund ₦{minDeposit.toLocaleString()} or more in a single deposit to unlock guaranteed reward tokens.
+                Deposit ₦{minDeposit.toLocaleString()} or more to earn free spin tokens and win cashback, free NIN slips, and CAC discounts.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Link to Vouchers Hub */}
+        {/* Action button to My Vouchers */}
         <Link
           href="/dashboard/vouchers"
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground text-sm font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all group shrink-0"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-bold rounded-xl border border-border transition-colors group shrink-0"
         >
-          <Ticket weight="bold" className="h-4 w-4" />
-          <span>My Vouchers & Passes</span>
+          <Ticket weight="fill" className="h-4 w-4 text-cyan-500" />
+          <span>View My Vouchers &amp; Passes</span>
           <ArrowRight weight="bold" className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
 
-      {/* Campaign Notice Banner */}
-      {!isCampaignActive && (
-        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 text-yellow-700 dark:text-yellow-400 rounded-2xl text-sm flex items-center gap-3">
-          <Info weight="fill" className="h-5 w-5 shrink-0" />
-          <span>The Reward Vault campaign is currently paused. Please check back shortly.</span>
-        </div>
-      )}
-
-      {/* Main Wheel Grid */}
+      {/* Main Wheel & History Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* Left Side: Interactive Wheel (7 Cols) */}
-        <div className="lg:col-span-7 bg-card border border-border rounded-3xl p-6 sm:p-10 shadow-sm flex flex-col items-center justify-center text-center relative overflow-hidden">
+        {/* Left Side: Spin Wheel Stage (7 Cols) */}
+        <div className="lg:col-span-7 bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
           
-          {/* Subtle Background Glow */}
-          <div className="absolute -top-24 -left-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          {/* Available Tokens Counter */}
+          {/* Top Token Pill */}
           <div className="mb-6 inline-flex items-center gap-2 bg-secondary/80 border border-border px-4 py-2 rounded-2xl">
             <Coins weight="fill" className="h-5 w-5 text-amber-500 animate-bounce" />
             <span className="text-xs text-muted-foreground font-bold">
@@ -375,10 +378,13 @@ export default function RewardsSpinPage() {
             </div>
           )}
 
-          {/* Wheel Canvas Container */}
-          <div className="relative my-2 flex items-center justify-center">
-            
-            {/* Pointer / Ticker Arrow at top */}
+          {/* Wheel Canvas Container (Clickable to trigger spin!) */}
+          <div 
+            onClick={handleSpinClick}
+            className="relative my-2 flex items-center justify-center cursor-pointer group hover:scale-[1.01] active:scale-[0.99] transition-transform select-none"
+            title="Click wheel to spin"
+          >
+            {/* Pointer Arrow at top */}
             <div className="absolute -top-3 z-20 flex flex-col items-center drop-shadow-md">
               <div className="w-6 h-7 bg-amber-500 border-2 border-white rounded-b-md transform rotate-180 flex items-center justify-center shadow-lg" />
               <div className="w-2 h-2 bg-amber-600 rounded-full -mt-1" />
@@ -398,11 +404,11 @@ export default function RewardsSpinPage() {
             <button
               type="button"
               onClick={handleSpinClick}
-              disabled={isSpinning || availableTokens <= 0 || !isCampaignActive}
-              className={`w-full py-4 rounded-2xl font-black text-base uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all shadow-lg ${
+              disabled={isSpinning || !isCampaignActive}
+              className={`w-full py-4 rounded-2xl font-black text-base uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer ${
                 availableTokens > 0 && !isSpinning && isCampaignActive
-                  ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-amber-500/25"
-                  : "bg-secondary text-muted-foreground border border-border cursor-not-allowed opacity-75"
+                  ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white hover:scale-[1.02] active:scale-[0.98] shadow-amber-500/25"
+                  : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
               }`}
             >
               {isSpinning ? (
@@ -413,18 +419,19 @@ export default function RewardsSpinPage() {
               ) : availableTokens > 0 ? (
                 <>
                   <Sparkle weight="fill" className="h-5 w-5" />
-                  <span>SPIN & CLAIM REWARD</span>
+                  <span>SPIN &amp; CLAIM REWARD</span>
                 </>
               ) : (
-                <span>No Spin Tokens Available</span>
+                <>
+                  <Coins weight="fill" className="h-5 w-5 text-amber-500" />
+                  <span>Get Spin Tokens</span>
+                </>
               )}
             </button>
 
-            {availableTokens <= 0 && (
-              <p className="text-xs text-muted-foreground">
-                Deposit <strong>₦{minDeposit.toLocaleString()}+</strong> into your wallet to automatically unlock a free Lucky Spin.
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Deposit <strong>₦{minDeposit.toLocaleString()}+</strong> into your wallet to automatically earn 1 free Lucky Spin.
+            </p>
           </div>
         </div>
 
@@ -462,111 +469,160 @@ export default function RewardsSpinPage() {
                   3
                 </div>
                 <div>
-                  <strong className="text-foreground">Instant Fulfillment</strong>: Cashback is deposited straight into your wallet. Service passes are stored in your <Link href="/dashboard/vouchers" className="text-primary underline font-bold">Vouchers Vault</Link> to use whenever you wish.
+                  <strong className="text-foreground">Instant Redemption</strong>: Free passes are applied with 1-click in service forms, and cashback is immediately added to your wallet!
                 </div>
               </li>
             </ul>
           </div>
 
-          {/* My Spin History */}
+          {/* Spin History Card */}
           <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h2 className="text-sm font-black text-foreground flex items-center gap-2">
-                <Clock weight="bold" className="h-4 w-4 text-primary" />
-                My Recent Spins
-              </h2>
-              <span className="text-xs text-muted-foreground">{spinHistory.length} Recorded</span>
-            </div>
+            <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Clock weight="bold" className="h-4 w-4 text-primary" />
+              Your Recent Rewards
+            </h2>
 
             {isLoading ? (
-              <div className="py-8 text-center text-muted-foreground">
-                <Spinner weight="bold" className="h-6 w-6 animate-spin mx-auto text-primary" />
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                <Spinner weight="bold" className="h-5 w-5 animate-spin mx-auto text-primary mb-2" />
+                <span>Loading rewards history...</span>
               </div>
             ) : spinHistory.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground text-xs space-y-1">
-                <Gift weight="duotone" className="h-8 w-8 mx-auto text-muted-foreground/40" />
-                <p>No spins recorded yet.</p>
-                <p className="text-[11px] opacity-75">Fund your wallet to get your first Lucky Spin!</p>
+              <div className="py-8 text-center bg-secondary/30 rounded-2xl border border-border/50 text-xs text-muted-foreground space-y-1">
+                <p className="font-bold text-foreground">No Spins Yet</p>
+                <p>Deposit ₦{minDeposit.toLocaleString()} or more to spin the wheel!</p>
               </div>
             ) : (
-              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+              <div className="divide-y divide-border/60 max-h-60 overflow-y-auto pr-1">
                 {spinHistory.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border text-xs"
-                  >
+                  <div key={item.id} className="py-3 flex items-center justify-between gap-3 text-xs">
                     <div className="space-y-0.5">
-                      <span className="font-bold text-foreground block">
-                        {item.wonPrizeLabel || item.wonPrizeType || "Reward Won"}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {item.spunAt ? new Date(item.spunAt).toLocaleDateString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recently"}
-                      </span>
+                      <p className="font-bold text-foreground">{item.prizeLabel}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {new Date(item.createdAt).toLocaleDateString("en-NG", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
                     </div>
 
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      <CheckCircle weight="fill" className="h-3 w-3" />
-                      Claimed
+                    <span className="font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0">
+                      {item.prizeType === "CASH"
+                        ? `+₦${item.prizeValue.toLocaleString()}`
+                        : "Pass Granted"}
                     </span>
                   </div>
                 ))}
               </div>
             )}
           </div>
+
         </div>
+
       </div>
 
-      {/* Winning Celebration Modal */}
-      {showCelebrationModal && wonPrize && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-card border border-border rounded-3xl p-8 max-w-md w-full text-center shadow-2xl space-y-6 animate-in zoom-in-95 duration-200 relative overflow-hidden">
-            
-            <div className="h-20 w-20 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
-              <Gift weight="fill" className="h-10 w-10 animate-bounce" />
+      {/* NO TOKENS AVAILABLE BRANDED MODAL */}
+      {showNoTokensModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-5 animate-in zoom-in-95">
+            <div className="h-16 w-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
+              <Coins weight="fill" className="h-8 w-8 animate-bounce" />
             </div>
 
             <div className="space-y-2">
-              <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-                🎉 Congratulations!
-              </span>
-              <h2 className="text-2xl font-black text-foreground pt-1">{wonPrize.label}</h2>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Your reward has been processed and instantly added to your account!
+              <h3 className="text-lg sm:text-xl font-black text-foreground">
+                No Spin Tokens Remaining
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                You currently have <strong>0 Spin Tokens</strong>. Top up your wallet with <strong>₦{minDeposit.toLocaleString()}</strong> or more in a single deposit to unlock instant free Lucky Spins!
               </p>
             </div>
 
-            {/* Voucher Code Preview if applicable */}
-            {wonPrize.details?.voucherCode && (
-              <div className="p-3.5 bg-secondary border border-border rounded-2xl space-y-1">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
-                  Your Voucher Code
-                </span>
-                <div className="font-mono font-black text-base text-primary tracking-widest select-all">
-                  {wonPrize.details.voucherCode}
-                </div>
-              </div>
-            )}
+            <div className="p-3.5 bg-secondary/50 rounded-2xl border border-border text-left space-y-1 text-xs">
+              <p className="font-bold text-foreground flex items-center gap-1.5">
+                <Gift weight="fill" className="h-4 w-4 text-amber-500" />
+                <span>What can you win?</span>
+              </p>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                Wallet Cashbacks up to ₦10,000, 100% Free NIN Slip Passes, Free NIN Validation Passes, and CAC Discount Vouchers.
+              </p>
+            </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-              <Link
-                href="/dashboard/vouchers"
-                className="w-full sm:flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-              >
-                <Ticket weight="bold" className="h-4 w-4" />
-                <span>View in Vouchers</span>
-              </Link>
-              
+            <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setShowCelebrationModal(false)}
-                className="w-full sm:flex-1 py-3.5 rounded-xl border border-border bg-secondary hover:bg-secondary/80 text-foreground font-bold text-xs transition-colors cursor-pointer"
+                onClick={() => setShowNoTokensModal(false)}
+                className="py-3 rounded-xl border border-border hover:bg-secondary text-foreground text-xs font-bold transition-colors cursor-pointer"
               >
-                Close & Continue
+                Close
               </button>
+
+              <Link
+                href="/dashboard"
+                onClick={() => setShowNoTokensModal(false)}
+                className="py-3 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:opacity-90 flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+              >
+                <Wallet size={14} weight="bold" />
+                <span>Fund Wallet</span>
+              </Link>
             </div>
           </div>
         </div>
       )}
+
+      {/* CELEBRATION WIN MODAL */}
+      {showCelebrationModal && wonPrize && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-6 animate-in zoom-in-95">
+            <div className="h-20 w-20 bg-gradient-to-br from-amber-400 to-amber-600 text-white rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-amber-500/25">
+              <Gift weight="fill" className="h-10 w-10 animate-bounce" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                🎉 Congratulations!
+              </span>
+              <h2 className="text-2xl font-black text-foreground tracking-tight pt-1">
+                {wonPrize.label}
+              </h2>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {wonPrize.description}
+              </p>
+            </div>
+
+            {wonPrize.type === "CASH" ? (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-600 dark:text-emerald-400 font-bold text-xs space-y-1">
+                <p>₦{wonPrize.value.toLocaleString()} has been credited to your wallet balance.</p>
+              </div>
+            ) : (
+              <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl text-cyan-600 dark:text-cyan-400 font-bold text-xs space-y-1">
+                <p>This pass has been added to your Vouchers Vault and is ready for use!</p>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCelebrationModal(false)}
+                className="flex-1 py-3 bg-secondary hover:bg-secondary/80 text-foreground font-bold text-xs rounded-xl border border-border transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+
+              <Link
+                href="/dashboard/vouchers"
+                className="flex-1 py-3 bg-primary text-primary-foreground font-black text-xs rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+              >
+                <span>View Vouchers</span>
+                <ArrowRight weight="bold" className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
