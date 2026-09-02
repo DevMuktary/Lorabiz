@@ -1,0 +1,79 @@
+name: Build and Deploy Development to Coolify
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: dev-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-dev:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=dev
+            type=ref,event=branch
+            type=sha,format=short
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trigger Coolify Development Deployment Webhook
+        continue-on-error: true
+        env:
+          COOLIFY_DEV_WEBHOOK: ${{ secrets.COOLIFY_DEV_WEBHOOK_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: |
+          TARGET_URL="${{ secrets.COOLIFY_DEV_WEBHOOK_URL }}"
+          if [ -z "$TARGET_URL" ]; then
+            echo "⚠️ Notice: COOLIFY_DEV_WEBHOOK_URL is not set in GitHub repository secrets."
+            echo "The Docker image was successfully built and pushed to GHCR (tag: dev)."
+            echo "To enable automatic container redeployment on Coolify, add COOLIFY_DEV_WEBHOOK_URL to GitHub Secrets."
+            exit 0
+          fi
+
+          echo "Triggering Coolify Development deployment webhook..."
+          if [ -n "$COOLIFY_TOKEN" ]; then
+            curl -f -X POST -H "Authorization: Bearer $COOLIFY_TOKEN" "$TARGET_URL" || curl -f -X GET -H "Authorization: Bearer $COOLIFY_TOKEN" "$TARGET_URL" || true
+          else
+            curl -f -X POST "$TARGET_URL" || curl -f -X GET "$TARGET_URL" || true
+          fi
+          echo "Coolify Development deployment trigger finished!"
