@@ -33,6 +33,7 @@ import {
 } from "@phosphor-icons/react";
 import FundWalletModal from "@/components/features/wallet/FundWalletModal";
 import LoyaltyPerksModal from "@/components/dashboard/LoyaltyPerksModal";
+import DashboardLuckySpinModal from "@/components/features/rewards/DashboardLuckySpinModal";
 import { useLoyalty } from "@/lib/useLoyalty";
 
 interface ServiceItem {
@@ -227,6 +228,7 @@ export default function DashboardPage() {
 
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isPerksModalOpen, setIsPerksModalOpen] = useState(false);
+  const [isSpinModalOpen, setIsSpinModalOpen] = useState(false);
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [balance, setBalance] = useState<string>("0.00");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
@@ -341,6 +343,17 @@ export default function DashboardPage() {
                 message: "Your wallet has been funded successfully."
               });
               fetchBalance();
+
+              // Auto-pop center-screen Lucky Spin modal if tokens are available
+              fetch('/api/rewards/spin')
+                .then(res => res.json())
+                .then(rewardData => {
+                  if (rewardData?.availableTokens > 0) {
+                    setAvailableSpinTokens(rewardData.availableTokens);
+                    setTimeout(() => setIsSpinModalOpen(true), 800);
+                  }
+                })
+                .catch(() => {});
             } else {
               setAlertInfo({
                 type: "warning",
@@ -367,7 +380,18 @@ export default function DashboardPage() {
           title: "Processing Payment",
           message: "Balance will update momentarily upon confirmation."
         });
-        setTimeout(fetchBalance, 3000);
+        setTimeout(() => {
+          fetchBalance();
+          fetch('/api/rewards/spin')
+            .then(res => res.json())
+            .then(rewardData => {
+              if (rewardData?.availableTokens > 0) {
+                setAvailableSpinTokens(rewardData.availableTokens);
+                setTimeout(() => setIsSpinModalOpen(true), 800);
+              }
+            })
+            .catch(() => {});
+        }, 3000);
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
       }
@@ -540,9 +564,10 @@ export default function DashboardPage() {
           {/* Active Spin Tokens Incentive Pill */}
           {availableSpinTokens > 0 && (
             <div className="pt-2 animate-in fade-in">
-              <Link
-                href="/dashboard/rewards"
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-foreground hover:bg-amber-500/20 text-xs font-bold transition-all group shadow-xs"
+              <button
+                type="button"
+                onClick={() => setIsSpinModalOpen(true)}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-foreground hover:bg-amber-500/20 text-xs font-bold transition-all group shadow-xs cursor-pointer"
               >
                 <Gift weight="fill" className="h-4 w-4 text-amber-500 animate-bounce shrink-0" />
                 <span>
@@ -551,7 +576,7 @@ export default function DashboardPage() {
                 <span className="text-amber-600 dark:text-amber-400 underline font-black group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 ml-1">
                   Spin &amp; Win →
                 </span>
-              </Link>
+              </button>
             </div>
           )}
         </div>
@@ -605,44 +630,31 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Level Pill + Spin Pill */}
-            <div className="flex items-center gap-2 shrink-0">
-              <Link
-                href="/dashboard/rewards"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 transition-all shadow-xs"
-                title="Lucky Spin & Rewards"
-              >
-                <Gift weight="fill" className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
-                <span>Spin &amp; Win</span>
-                {availableSpinTokens > 0 && (
-                  <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                    {availableSpinTokens}
-                  </span>
-                )}
-              </Link>
-
-              {loyaltyProfile?.currentTier && (
-                <div className="flex flex-col items-end shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsPerksModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-secondary hover:bg-secondary/80 border border-border transition-colors cursor-pointer text-foreground shadow-xs"
-                    title="Click to view Level Perks and Discounts"
-                  >
-                    <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
-                    <span>{loyaltyProfile.currentTier.name}</span>
-                    {loyaltyProfile.currentTier.discountPct > 0 ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-black">
-                        • {loyaltyProfile.currentTier.discountPct}% OFF
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground text-[10px]">• Starter</span>
-                    )}
-                    <CaretRight size={10} weight="bold" className="text-muted-foreground" />
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Level Pill with 'Account Level' label */}
+            {loyaltyProfile?.currentTier && (
+              <div className="flex flex-col items-end shrink-0">
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">
+                  Account Level
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsPerksModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-secondary hover:bg-secondary/80 border border-border transition-colors cursor-pointer text-foreground shadow-xs"
+                  title="Click to view Level Perks and Discounts"
+                >
+                  <span>{loyaltyProfile.currentTier.badge.split(" ")[0]}</span>
+                  <span>{loyaltyProfile.currentTier.name}</span>
+                  {loyaltyProfile.currentTier.discountPct > 0 ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                      • {loyaltyProfile.currentTier.discountPct}% OFF
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-[10px]">• Starter</span>
+                  )}
+                  <CaretRight size={10} weight="bold" className="text-muted-foreground" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Center: Prominent Balance + Progress Hint */}
@@ -707,6 +719,22 @@ export default function DashboardPage() {
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
               Quick Actions
             </span>
+
+            {/* Lucky Spin Action Button */}
+            <button
+              type="button"
+              onClick={() => setIsSpinModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 transition-all shadow-xs cursor-pointer active:scale-95"
+              title="Lucky Spin Wheel & Rewards"
+            >
+              <Gift weight="fill" className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+              <span>Spin &amp; Win</span>
+              {availableSpinTokens > 0 && (
+                <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                  {availableSpinTokens}
+                </span>
+              )}
+            </button>
           </div>
 
           <div className="space-y-2">
@@ -1027,6 +1055,11 @@ export default function DashboardPage() {
             message: `Your wallet was credited with ₦${amount.toLocaleString()}.`
           });
           setTimeout(fetchBalance, 3000);
+          if (amount >= 20000) {
+            setTimeout(() => {
+              setIsSpinModalOpen(true);
+            }, 1000);
+          }
         }}
         onFailure={(message) => {
           setAlertInfo({
@@ -1043,6 +1076,14 @@ export default function DashboardPage() {
         onClose={() => setIsPerksModalOpen(false)}
         currentTierLevel={loyaltyProfile?.currentTier?.level}
         allTimeSpend={loyaltyProfile?.allTimeSpend}
+      />
+
+      {/* Interactive Center-Screen Lucky Spin Modal */}
+      <DashboardLuckySpinModal
+        isOpen={isSpinModalOpen}
+        onClose={() => setIsSpinModalOpen(false)}
+        onRefreshBalance={fetchBalance}
+        onOpenFundWallet={() => setIsWalletModalOpen(true)}
       />
     </div>
   );
