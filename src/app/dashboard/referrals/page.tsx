@@ -8,7 +8,7 @@ import {
   Users, Wallet, CheckCircle, 
   Copy, Bank, Spinner, Info, Money, Check, PencilSimple, 
   ArrowLeft, CaretDown, MagnifyingGlass, X, Coins, EnvelopeSimple, ChartLineUp,
-  Gift, ShieldWarning // <-- Added new icons for the onboarding view
+  Gift, ShieldWarning, ShieldCheck
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -372,6 +372,16 @@ export default function ReferralsPage() {
                   <span className="text-sm text-muted-foreground leading-relaxed">I have read and agree to the LoraBiz Partner Program Rules & Terms outlined above.</span>
                 </label>
               )}
+
+              <div className="p-3 bg-secondary/50 border border-border rounded-xl text-xs text-muted-foreground space-y-1">
+                <p className="font-bold text-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" weight="fill" />
+                  <span>Official Bank Identity Sync</span>
+                </p>
+                <p className="leading-relaxed text-[11px]">
+                  Upon verification, your registered profile name will be synchronized to match your official verified CBN/NIBSS bank account name for all commission cashouts.
+                </p>
+              </div>
 
               <div className="flex gap-3 pt-2">
                 {isEditingBank && <Button type="button" variant="outline" onClick={() => setIsEditingBank(false)} className="h-12 px-6 border-border">Cancel</Button>}

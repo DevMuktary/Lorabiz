@@ -40,6 +40,7 @@ export async function GET() {
       externalTxId: req.externalTxId || null,
       externalStatus: req.externalStatus || null,
       apiMessage: req.apiMessage || null,
+      apiResponse: req.apiResponse || null,
       status: req.status,
       amountCharged: Number(req.amountCharged),
       transactionRef: req.transactionRef,

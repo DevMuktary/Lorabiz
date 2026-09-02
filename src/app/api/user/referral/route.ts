@@ -242,22 +242,20 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // 2. Strict Name Matching Validation
-    const resolvedName = paystackData.data.account_name.toLowerCase();
-    const userFirstName = (user.firstName || "").toLowerCase().trim();
-    const userLastName = (user.lastName || "").toLowerCase().trim();
-
-    if (!resolvedName.includes(userFirstName) || !resolvedName.includes(userLastName)) {
-      return NextResponse.json({ 
-        success: false, 
-        message: `Verification Failed: The bank account name (${paystackData.data.account_name}) must match your registered LoraBiz name (${user.firstName?.trim()} ${user.lastName?.trim()}).` 
-      }, { status: 400 });
-    }
+    // 2. Bank Account Name Resolution & Profile Legal Name Sync (Option 1)
+    const rawAccountName = paystackData.data.account_name.trim();
+    const nameTokens = rawAccountName.split(/\s+/).filter(Boolean);
+    const resolvedFirstName = nameTokens[0] 
+      ? nameTokens[0].charAt(0).toUpperCase() + nameTokens[0].slice(1).toLowerCase() 
+      : (user.firstName || "User");
+    const resolvedLastName = nameTokens.slice(1).length > 0
+      ? nameTokens.slice(1).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ")
+      : (user.lastName || "Client");
 
     // 3. Generate Code (Only if they don't already have one)
     let newReferralCode = user.referralCode;
     if (!newReferralCode) {
-      const cleanFirstName = (userFirstName.replace(/[^a-z0-9]/g, '') || "partner").slice(0, 10);
+      const cleanFirstName = (resolvedFirstName.toLowerCase().replace(/[^a-z0-9]/g, '') || "partner").slice(0, 10);
       let isUnique = false;
       let generatedCode = "";
       let attempts = 0;
@@ -279,15 +277,17 @@ export async function POST(req: Request) {
       newReferralCode = isUnique ? generatedCode : `lora-${cleanFirstName}-${Date.now().toString().slice(-6)}`;
     }
 
-    // 4. Update User Profile
+    // 4. Update User Profile with Verified Bank Details and Synchronize Official Legal Name
     await prisma.user.update({
       where: { id: user.id },
       data: {
+        firstName: resolvedFirstName,
+        lastName: resolvedLastName,
         referralCode: newReferralCode,
         payoutBankCode: bankCode,
         payoutBankName: bankName,
         payoutAccountNo: accountNumber,
-        payoutAccountName: paystackData.data.account_name
+        payoutAccountName: rawAccountName
       }
     });
 
