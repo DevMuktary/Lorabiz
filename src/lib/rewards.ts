@@ -243,7 +243,20 @@ export async function spinWheelServerSide(userId: string) {
 
       if (!user) throw new Error("USER_NOT_FOUND");
 
-      if (selectedSlice.type === "WALLET_CASH" || selectedSlice.type === "AIRTIME") {
+      if (selectedSlice.type === "AIRTIME") {
+        await tx.userRewardCredit.create({
+          data: {
+            userId,
+            rewardType: "AIRTIME",
+            title: "₦200 Free Airtime Discount",
+            description: "₦200 off your next airtime recharge on any network (MTN, Airtel, Glo, 9mobile).",
+            value: selectedSlice.value,
+            status: "ACTIVE",
+            sourceSpinId: availableToken.id,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          },
+        });
+      } else if (selectedSlice.type === "WALLET_CASH") {
         if (user.wallet && selectedSlice.value > 0) {
           const balanceBefore = Number(user.wallet.balance);
           const balanceAfter = balanceBefore + selectedSlice.value;
@@ -264,6 +277,20 @@ export async function spinWheelServerSide(userId: string) {
               reference: `REW_SPIN_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`,
               serviceCategory: "REWARD",
               description: `🎁 Lorabiz Lucky Spin Reward - ${selectedSlice.label}`,
+            },
+          });
+
+          // Also record in UserRewardCredit so it shows in "My Won Rewards" history
+          await tx.userRewardCredit.create({
+            data: {
+              userId,
+              rewardType: "WALLET_CASH",
+              title: selectedSlice.label,
+              description: `₦${selectedSlice.value.toLocaleString()} credited directly to your wallet balance.`,
+              value: selectedSlice.value,
+              status: "REDEEMED",
+              redeemedAt: new Date(),
+              sourceSpinId: availableToken.id,
             },
           });
         }

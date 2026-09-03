@@ -117,7 +117,7 @@ export default function AirtimeForm({ onSubmit, disabled }: AirtimeFormProps) {
             }}
             placeholder="08012345678"
             maxLength={14}
-            className="h-12 bg-background rounded-xl font-mono text-sm tracking-wide border focus-visible:ring-emerald-500/50"
+            className="h-12 bg-background rounded-xl font-mono text-base sm:text-sm tracking-wide border focus-visible:ring-emerald-500/50"
           />
         </div>
 
@@ -140,7 +140,7 @@ export default function AirtimeForm({ onSubmit, disabled }: AirtimeFormProps) {
             placeholder="e.g. 1000"
             min={50}
             max={10000}
-            className="h-12 bg-background rounded-xl font-bold text-base border focus-visible:ring-emerald-500/50"
+            className="h-12 bg-background rounded-xl font-bold text-base sm:text-sm border focus-visible:ring-emerald-500/50"
           />
 
           {/* Quick Amount Pills */}

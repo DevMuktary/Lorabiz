@@ -327,13 +327,13 @@ export default function RewardsSpinPage() {
             Back to Dashboard
           </Link>
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center shrink-0">
+            <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0">
               <Gift weight="fill" className="h-6 w-6" />
             </div>
             <div>
               <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
                 Lorabiz Spin &amp; Win
-                <span className="text-[10px] uppercase font-black tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                <span className="text-[10px] uppercase font-black tracking-wider bg-primary/10 text-primary px-2.5 py-0.5 rounded-full border border-primary/20">
                   Instant Rewards
                 </span>
               </h1>
@@ -494,27 +494,35 @@ export default function RewardsSpinPage() {
               </div>
             ) : (
               <div className="divide-y divide-border/60 max-h-60 overflow-y-auto pr-1">
-                {spinHistory.map((item) => (
-                  <div key={item.id} className="py-3 flex items-center justify-between gap-3 text-xs">
-                    <div className="space-y-0.5">
-                      <p className="font-bold text-foreground">{item.prizeLabel}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {new Date(item.createdAt).toLocaleDateString("en-NG", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
+                {spinHistory.map((item: any) => {
+                  const label = item.wonPrizeLabel || item.prizeLabel || "Lucky Prize";
+                  const type = item.wonPrizeType || item.prizeType || "";
+                  const val = Number(item.wonPrizeValue || item.prizeValue || 0);
 
-                    <span className="font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0">
-                      {item.prizeType === "CASH"
-                        ? `+₦${item.prizeValue.toLocaleString()} Cashback`
-                        : "✓ Won"}
-                    </span>
-                  </div>
-                ))}
+                  return (
+                    <div key={item.id} className="py-3 flex items-center justify-between gap-3 text-xs">
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-foreground">{label}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {new Date(item.spunAt || item.createdAt).toLocaleDateString("en-NG", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+
+                      <span className="font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0">
+                        {type === "WALLET_CASH" || type === "CASH"
+                          ? `+₦${val.toLocaleString()} Cash`
+                          : type === "AIRTIME"
+                          ? `+₦${val.toLocaleString()} Airtime`
+                          : "✓ Claimed"}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

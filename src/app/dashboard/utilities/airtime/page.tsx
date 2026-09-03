@@ -33,6 +33,8 @@ export default function AirtimeDashboardPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [pendingPurchase, setPendingPurchase] = useState<{ network: string; phone: string; amount: number } | null>(null);
+  const [availableAirtimeDiscount, setAvailableAirtimeDiscount] = useState<number>(0);
+  const [useRewardDiscount, setUseRewardDiscount] = useState<boolean>(true);
   const [disputeTransaction, setDisputeTransaction] = useState<Transaction | null>(null);
   const [toastNotification, setToastNotification] = useState<{ type: "success" | "error"; title: string; message: string } | null>(null);
 
@@ -93,6 +95,24 @@ export default function AirtimeDashboardPage() {
           setHistory(airtimeTxs);
         }
       }
+
+      // Check for user's active Airtime Reward credits
+      try {
+        const vRes = await fetch("/api/vouchers", { cache: "no-store" });
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          const airtimeCredits = (vData.active || []).filter((c: any) => c.rewardType === "AIRTIME");
+          if (airtimeCredits.length > 0) {
+            const totalDiscount = airtimeCredits.reduce((sum: number, c: any) => sum + Number(c.value || 0), 0);
+            setAvailableAirtimeDiscount(totalDiscount);
+            setUseRewardDiscount(true);
+          } else {
+            setAvailableAirtimeDiscount(0);
+          }
+        }
+      } catch (vErr) {
+        console.error("Failed to check airtime reward credits:", vErr);
+      }
     } catch (error) {
       console.error("Failed to load airtime data:", error);
     }
@@ -142,12 +162,16 @@ export default function AirtimeDashboardPage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(pendingPurchase) 
+        body: JSON.stringify({
+          ...pendingPurchase,
+          useRewardCredit: useRewardDiscount && availableAirtimeDiscount > 0
+        }) 
       });
       
       const result = await res.json();
 
       if (result.success) {
+        fetchData(); // Refresh wallet and redeemed voucher states
         const newTransaction: Transaction = {
           reference: result.reference || `ref_${Date.now()}`,
           phone: pendingPurchase.phone,
@@ -271,7 +295,7 @@ export default function AirtimeDashboardPage() {
 
       </div>
 
-      {/* MODAL 1: Confirmation Modal (Handles Crying Emoji when insufficient balance) */}
+      {/* MODAL 1: Confirmation Modal */}
       {pendingPurchase && (
         <AirtimeConfirmationModal
           isOpen={showConfirmModal}
@@ -285,6 +309,9 @@ export default function AirtimeDashboardPage() {
           phone={pendingPurchase.phone}
           amount={pendingPurchase.amount}
           walletBalance={walletBalance}
+          availableAirtimeDiscount={availableAirtimeDiscount}
+          useRewardDiscount={useRewardDiscount}
+          onToggleRewardDiscount={setUseRewardDiscount}
         />
       )}
 

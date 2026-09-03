@@ -19,7 +19,9 @@ import {
   Coins,
   IdentificationCard,
   Fingerprint,
-  FileText
+  FileText,
+  DeviceMobile,
+  Wallet
 } from "@phosphor-icons/react";
 
 export default function MyWonRewardsPage() {
@@ -28,7 +30,7 @@ export default function MyWonRewardsPage() {
     active: [],
     redeemed: [],
     expired: [],
-    summary: { totalActive: 0, ninSlip: 0, ninValidation: 0, ninPersonalization: 0, cacVouchers: 0 },
+    summary: { totalActive: 0, ninSlip: 0, ninValidation: 0, ninPersonalization: 0, cacVouchers: 0, airtimeDiscounts: 0 },
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export default function MyWonRewardsPage() {
 
   const activeItems = vouchersData.active || [];
   const redeemedItems = vouchersData.redeemed || [];
-  const summary = vouchersData.summary || { totalActive: 0, ninSlip: 0, ninValidation: 0, ninPersonalization: 0, cacVouchers: 0 };
+  const summary = vouchersData.summary || { totalActive: 0, ninSlip: 0, ninValidation: 0, ninPersonalization: 0, cacVouchers: 0, airtimeDiscounts: 0 };
 
   const filteredItems = 
     activeTab === "ALL" 
@@ -68,7 +70,7 @@ export default function MyWonRewardsPage() {
       : activeTab === "SERVICES" 
       ? activeItems.filter((i: any) => i.rewardType === "NIN_SLIP" || i.rewardType === "NIN_VALIDATION" || i.rewardType === "NIN_PERSONALIZATION")
       : activeTab === "DISCOUNTS"
-      ? activeItems.filter((i: any) => i.rewardType === "CAC_VOUCHER" || i.rewardType === "SCUML_VOUCHER")
+      ? activeItems.filter((i: any) => i.rewardType === "CAC_VOUCHER" || i.rewardType === "SCUML_VOUCHER" || i.rewardType === "AIRTIME")
       : redeemedItems;
 
   const getServiceDetails = (type: string) => {
@@ -97,6 +99,14 @@ export default function MyWonRewardsPage() {
           icon: ShieldCheck,
           color: "indigo"
         };
+      case "AIRTIME":
+        return {
+          link: "/dashboard/utilities/airtime",
+          label: "Recharge Airtime (Discount)",
+          badge: "Airtime Discount",
+          icon: DeviceMobile,
+          color: "emerald"
+        };
       case "CAC_VOUCHER":
         return {
           link: "/dashboard/cac",
@@ -112,6 +122,14 @@ export default function MyWonRewardsPage() {
           badge: "Discount Code",
           icon: Tag,
           color: "purple"
+        };
+      case "WALLET_CASH":
+        return {
+          link: "/dashboard/wallet",
+          label: "View Wallet",
+          badge: "Wallet Cash",
+          icon: Wallet,
+          color: "amber"
         };
       default:
         return {
@@ -144,12 +162,12 @@ export default function MyWonRewardsPage() {
             <div>
               <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
                 <span>My Won Rewards</span>
-                <span className="text-[10px] uppercase font-black tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                <span className="text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                   {summary.totalActive} Ready to Use
                 </span>
               </h1>
               <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-                All your free services, free slips, and discounts won from Lucky Spins and Promotions.
+                All your free services, free slips, airtime bonuses, and discounts won from Lucky Spins and Promotions.
               </p>
             </div>
           </div>
@@ -163,6 +181,14 @@ export default function MyWonRewardsPage() {
           <span>Spin &amp; Win More</span>
           <ArrowRight weight="bold" className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </Link>
+      </div>
+
+      {/* Helpful Checkout Explanation Banner */}
+      <div className="p-3.5 rounded-2xl bg-secondary/50 border border-border flex items-center gap-3 text-xs text-muted-foreground">
+        <Sparkle weight="fill" className="h-4 w-4 text-primary shrink-0" />
+        <span>
+          <strong className="text-foreground font-semibold">Applied at checkout:</strong> Your free slips and discounts are automatically applied when you checkout on the service forms. Click any reward below to jump straight to the service!
+        </span>
       </div>
 
       {/* Summary Stat Cards */}
@@ -202,8 +228,8 @@ export default function MyWonRewardsPage() {
             <Tag weight="bold" className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Discounts</span>
-            <span className="text-base font-black text-foreground font-mono">{summary.cacVouchers} Available</span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Discounts &amp; Airtime</span>
+            <span className="text-base font-black text-foreground font-mono">{(summary.cacVouchers || 0) + (summary.airtimeDiscounts || 0)} Available</span>
           </div>
         </div>
       </div>
@@ -243,7 +269,7 @@ export default function MyWonRewardsPage() {
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
           }`}
         >
-          Discounts ({summary.cacVouchers})
+          Discounts &amp; Airtime ({(summary.cacVouchers || 0) + (summary.airtimeDiscounts || 0)})
         </button>
 
         <button
@@ -274,8 +300,8 @@ export default function MyWonRewardsPage() {
             <h3 className="text-base font-bold text-foreground">No Rewards Here Yet</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {activeTab === "USED"
-                ? "You haven't redeemed any rewards yet."
-                : "Top up your wallet with ₦20,000 or more to earn Lucky Spins and win 100% Free NIN Slips, cashback, and discounts!"}
+                ? "You haven't used any rewards yet."
+                : "Top up your wallet with ₦20,000 or more to earn Lucky Spins and win 100% Free NIN Slips, Airtime bonuses, and discounts!"}
             </p>
           </div>
           {activeTab !== "USED" && (
@@ -284,7 +310,7 @@ export default function MyWonRewardsPage() {
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-xs"
             >
               <Gift weight="fill" className="h-4 w-4" />
-              <span>Spin &amp; Win Free Slips</span>
+              <span>Spin &amp; Win Free Rewards</span>
             </Link>
           )}
         </div>
@@ -300,27 +326,29 @@ export default function MyWonRewardsPage() {
                 key={voucher.id}
                 className={`rounded-2xl sm:rounded-3xl border transition-all p-4 sm:p-5 flex flex-col justify-between shadow-xs ${
                   isRedeemed
-                    ? "bg-secondary/30 border-border opacity-70"
+                    ? "bg-secondary/30 border-border opacity-65"
                     : "bg-card border-border hover:border-primary/40 hover:shadow-md"
                 }`}
               >
                 <div className="space-y-3">
-                  {/* Card Header Tag */}
+                  {/* Card Header Tag with Normal Clean Font */}
                   <div className="flex items-center justify-between gap-2">
                     <span
-                      className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${
                         isRedeemed
-                          ? "bg-muted text-muted-foreground border-border"
+                          ? "bg-secondary text-muted-foreground border-border"
                           : voucher.rewardType === "NIN_SLIP"
                           ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
                           : voucher.rewardType === "NIN_VALIDATION"
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                           : voucher.rewardType === "NIN_PERSONALIZATION"
                           ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                          : voucher.rewardType === "AIRTIME"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                           : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                       }`}
                     >
-                      {isRedeemed ? "REDEEMED" : details.badge}
+                      {isRedeemed ? "Used" : details.badge}
                     </span>
 
                     {voucher.expiresAt && !isRedeemed && (
@@ -336,7 +364,7 @@ export default function MyWonRewardsPage() {
                     <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
                       voucher.rewardType === "NIN_SLIP"
                         ? "bg-blue-500/10 text-blue-500"
-                        : voucher.rewardType === "NIN_VALIDATION"
+                        : voucher.rewardType === "NIN_VALIDATION" || voucher.rewardType === "AIRTIME"
                         ? "bg-emerald-500/10 text-emerald-500"
                         : voucher.rewardType === "NIN_PERSONALIZATION"
                         ? "bg-indigo-500/10 text-indigo-500"
@@ -346,7 +374,7 @@ export default function MyWonRewardsPage() {
                     </div>
 
                     <div className="space-y-0.5 min-w-0">
-                      <h3 className="text-sm sm:text-base font-black text-foreground leading-snug">
+                      <h3 className="text-sm sm:text-base font-bold text-foreground leading-snug">
                         {voucher.title}
                       </h3>
                       <p className="text-xs text-muted-foreground leading-relaxed">
@@ -360,7 +388,7 @@ export default function MyWonRewardsPage() {
                     <div className="flex items-center justify-between p-2.5 rounded-xl bg-secondary/60 border border-border">
                       <div>
                         <span className="text-[9px] uppercase font-bold text-muted-foreground block">Promo Code</span>
-                        <span className="font-mono font-black text-xs sm:text-sm text-foreground tracking-wider">
+                        <span className="font-mono font-bold text-xs sm:text-sm text-foreground tracking-wider">
                           {voucher.voucherCode}
                         </span>
                       </div>
@@ -385,12 +413,12 @@ export default function MyWonRewardsPage() {
                   {isRedeemed ? (
                     <div className="text-center text-xs font-bold text-muted-foreground flex items-center justify-center gap-1.5 py-1">
                       <CheckCircle weight="fill" className="h-4 w-4 text-emerald-500" />
-                      <span>Used on {new Date(voucher.redeemedAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}</span>
+                      <span>Used {voucher.redeemedAt ? `on ${new Date(voucher.redeemedAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}` : ""}</span>
                     </div>
                   ) : (
                     <Link
                       href={details.link}
-                      className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:opacity-90 flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                      className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
                     >
                       <span>{details.label}</span>
                       <ArrowRight weight="bold" className="h-3 w-3" />
