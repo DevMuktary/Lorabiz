@@ -1,8 +1,9 @@
+// src/components/features/airtime/AirtimeForm.tsx
 "use client";
 
 import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
-import { Phone, CurrencyNgn, Lightning, WarningCircle, Check } from "@phosphor-icons/react";
+import { Phone, CurrencyNgn, Lightning, WarningCircle, Check, Gift, Sparkle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -18,9 +19,18 @@ const QUICK_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 interface AirtimeFormProps {
   onSubmit: (data: { network: string; phone: string; amount: number }) => void;
   disabled: boolean;
+  availableAirtimeDiscount?: number;
+  useRewardDiscount?: boolean;
+  onToggleRewardDiscount?: (use: boolean) => void;
 }
 
-export default function AirtimeForm({ onSubmit, disabled }: AirtimeFormProps) {
+export default function AirtimeForm({ 
+  onSubmit, 
+  disabled,
+  availableAirtimeDiscount = 0,
+  useRewardDiscount = true,
+  onToggleRewardDiscount,
+}: AirtimeFormProps) {
   const [network, setNetwork] = useState<string>("");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
@@ -58,8 +68,13 @@ export default function AirtimeForm({ onSubmit, disabled }: AirtimeFormProps) {
     onSubmit({ network, phone: cleanPhone, amount: numAmount });
   };
 
+  const numAmount = Number(amount) || 0;
+  const isVoucherActive = useRewardDiscount && availableAirtimeDiscount > 0;
+  const currentDiscount = isVoucherActive ? Math.min(numAmount, availableAirtimeDiscount) : 0;
+  const currentPayable = Math.max(0, numAmount - currentDiscount);
+
   return (
-    <form onSubmit={handleSubmit} className="bg-card border border-border p-6 sm:p-7 rounded-3xl shadow-sm space-y-6">
+    <form onSubmit={handleSubmit} className="bg-card border border-border p-5 sm:p-7 rounded-3xl shadow-sm space-y-6">
       
       {/* Network Selector */}
       <div className="space-y-2.5">
@@ -143,27 +158,90 @@ export default function AirtimeForm({ onSubmit, disabled }: AirtimeFormProps) {
             className="h-12 bg-background rounded-xl font-bold text-base sm:text-sm border focus-visible:ring-emerald-500/50"
           />
 
-          {/* Quick Amount Pills */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {QUICK_AMOUNTS.map((val) => (
-              <button
-                key={val}
-                type="button"
-                onClick={() => {
-                  setAmount(val.toString());
-                  if (error) setError(null);
-                }}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  amount === val.toString()
-                    ? "bg-foreground text-background shadow-xs"
-                    : "bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                ₦{val.toLocaleString()}
-              </button>
-            ))}
+          {/* Quick Amount Pills with PalmPay/OPay Price Slashes */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-1">
+            {QUICK_AMOUNTS.map((val) => {
+              const isSelected = amount === val.toString();
+              const pillDiscount = isVoucherActive ? Math.min(val, availableAirtimeDiscount) : 0;
+              const pillPayable = Math.max(0, val - pillDiscount);
+
+              return (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => {
+                    setAmount(val.toString());
+                    if (error) setError(null);
+                  }}
+                  className={`py-2 px-2 rounded-xl text-center transition-all cursor-pointer border flex flex-col items-center justify-center gap-0.5 ${
+                    isSelected
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.02]"
+                      : isVoucherActive
+                      ? "bg-emerald-500/5 hover:bg-emerald-500/15 border-emerald-500/25 text-foreground"
+                      : "bg-secondary hover:bg-secondary/80 border-border text-foreground"
+                  }`}
+                >
+                  {isVoucherActive ? (
+                    <>
+                      <span className={`text-[10px] line-through ${isSelected ? "text-white/70" : "text-muted-foreground"}`}>
+                        ₦{val.toLocaleString()}
+                      </span>
+                      <span className="font-black text-xs">
+                        {pillPayable === 0 ? "₦0 Free" : `₦${pillPayable.toLocaleString()}`}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-bold text-xs">
+                      ₦{val.toLocaleString()}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
+
+        {/* PalmPay / OPay Style Voucher Selector Row */}
+        {availableAirtimeDiscount > 0 && (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3 sm:p-3.5 transition-all">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                  <Gift size={18} weight="fill" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-foreground">Airtime Voucher</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                      -₦{availableAirtimeDiscount.toLocaleString()} OFF
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {useRewardDiscount
+                      ? `Applied! Saving ₦${Math.min(numAmount || availableAirtimeDiscount, availableAirtimeDiscount).toLocaleString()}`
+                      : "Voucher available. Click toggle to apply to this order."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                type="button"
+                onClick={() => onToggleRewardDiscount?.(!useRewardDiscount)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  useRewardDiscount ? "bg-emerald-600" : "bg-muted-foreground/30"
+                }`}
+                title={useRewardDiscount ? "Remove Voucher" : "Apply Voucher"}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    useRewardDiscount ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
 
@@ -175,14 +253,25 @@ export default function AirtimeForm({ onSubmit, disabled }: AirtimeFormProps) {
         </div>
       )}
 
-      {/* Submit Button */}
+      {/* Submit Button with Live Price Slashes */}
       <Button 
         type="submit" 
         disabled={disabled || !network || cleanPhone.length !== 11 || !amount}
         className="w-full h-12 rounded-xl font-black text-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all"
       >
         <Lightning size={18} weight="fill" />
-        <span>{amount ? `Recharge ₦${Number(amount).toLocaleString()} Airtime` : "Buy Airtime"}</span>
+        {numAmount > 0 && currentDiscount > 0 ? (
+          currentPayable === 0 ? (
+            <span>Recharge ₦{numAmount.toLocaleString()} Airtime (₦0.00 Free!)</span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <span>Recharge Airtime (Pay ₦{currentPayable.toLocaleString()})</span>
+              <span className="text-xs opacity-75 line-through">₦{numAmount.toLocaleString()}</span>
+            </span>
+          )
+        ) : (
+          <span>{amount ? `Recharge ₦${Number(amount).toLocaleString()} Airtime` : "Buy Airtime"}</span>
+        )}
       </Button>
 
     </form>

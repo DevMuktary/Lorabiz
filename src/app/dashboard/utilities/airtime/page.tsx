@@ -282,6 +282,9 @@ export default function AirtimeDashboardPage() {
           <AirtimeForm 
             onSubmit={initiatePurchase} 
             disabled={isProcessing} 
+            availableAirtimeDiscount={availableAirtimeDiscount}
+            useRewardDiscount={useRewardDiscount}
+            onToggleRewardDiscount={setUseRewardDiscount}
           />
         </div>
 
