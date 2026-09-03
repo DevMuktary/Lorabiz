@@ -26,6 +26,8 @@ export default function NinValidationPage() {
     UPDATE_RECORD_MOD: { price: 3000, isActive: true },
     PHOTO_ERROR: { price: 1600, isActive: true },
   });
+  const [availablePasses, setAvailablePasses] = useState<number>(0);
+  const [useRewardCredit, setUseRewardCredit] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showNoticeModal, setShowNoticeModal] = useState<boolean>(true);
   const [mounted, setMounted] = useState<boolean>(false);
@@ -49,6 +51,9 @@ export default function NinValidationPage() {
       if (data.success) {
         setWalletBalance(data.walletBalance || 0);
         if (data.pricing) setPricing(data.pricing);
+        const passes = Number(data.freePassCount || 0);
+        setAvailablePasses(passes);
+        if (passes > 0) setUseRewardCredit(true);
       }
     } catch (err) {
       console.error("Failed to load initial validation data:", err);
@@ -193,6 +198,9 @@ export default function NinValidationPage() {
             <ValidationSubmissionForm
               walletBalance={walletBalance}
               pricing={pricing}
+              availablePasses={availablePasses}
+              useRewardCredit={useRewardCredit}
+              onToggleRewardCredit={setUseRewardCredit}
               onSuccess={handleSuccess}
             />
           </div>

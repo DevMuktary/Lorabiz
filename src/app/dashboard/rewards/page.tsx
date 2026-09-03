@@ -513,12 +513,14 @@ export default function RewardsSpinPage() {
                         </p>
                       </div>
 
-                      <span className="font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0">
+                      <span className="font-bold text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0">
                         {type === "WALLET_CASH" || type === "CASH"
                           ? `+₦${val.toLocaleString()} Cash`
                           : type === "AIRTIME"
                           ? `+₦${val.toLocaleString()} Airtime`
-                          : "✓ Claimed"}
+                          : type === "CAC_VOUCHER" || type === "SCUML_VOUCHER"
+                          ? `₦${val.toLocaleString()} Discount`
+                          : "✓ Won & Ready"}
                       </span>
                     </div>
                   );

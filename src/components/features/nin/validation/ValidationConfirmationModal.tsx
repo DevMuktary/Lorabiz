@@ -10,7 +10,8 @@ import {
   Clock, 
   ShieldCheck, 
   Spinner, 
-  ArrowRight
+  ArrowRight,
+  Gift
 } from "@phosphor-icons/react";
 
 interface ValidationConfirmationModalProps {
@@ -22,6 +23,7 @@ interface ValidationConfirmationModalProps {
   nin: string;
   price: number;
   walletBalance: number;
+  isUsingCredit?: boolean;
 }
 
 export function ValidationConfirmationModal({
@@ -33,6 +35,7 @@ export function ValidationConfirmationModal({
   nin,
   price,
   walletBalance,
+  isUsingCredit = false,
 }: ValidationConfirmationModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -42,8 +45,9 @@ export function ValidationConfirmationModal({
 
   if (!isOpen || !mounted || typeof document === "undefined") return null;
 
-  const remainingBalance = walletBalance - price;
-  const isInsufficient = walletBalance < price;
+  const effectivePrice = isUsingCredit ? 0 : price;
+  const remainingBalance = walletBalance - effectivePrice;
+  const isInsufficient = walletBalance < effectivePrice;
 
   return createPortal(
     <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-md animate-in fade-in duration-200">
@@ -58,7 +62,7 @@ export function ValidationConfirmationModal({
               </div>
               <div>
                 <h3 className="text-lg font-black text-foreground">Confirm Validation</h3>
-                <p className="text-xs text-muted-foreground">Verify details before debit.</p>
+                <p className="text-xs text-muted-foreground">Verify details before proceeding.</p>
               </div>
             </div>
 
@@ -72,7 +76,7 @@ export function ValidationConfirmationModal({
             </button>
           </div>
 
-          {/* Breakdown Box matching Tax ID & IPE */}
+          {/* Breakdown Box */}
           <div className="bg-secondary/50 rounded-2xl p-4 space-y-2.5 border border-border text-xs sm:text-sm">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Category</span>
@@ -93,11 +97,31 @@ export function ValidationConfirmationModal({
               <span className="font-semibold text-foreground">24–48 Hours</span>
             </div>
 
+            {isUsingCredit && (
+              <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold border-t border-dashed border-emerald-500/30 pt-2 mt-2">
+                <span className="flex items-center gap-1">
+                  <Gift size={15} weight="fill" /> Reward Applied
+                </span>
+                <span>1x Free Validation Pass (-₦{price.toLocaleString()})</span>
+              </div>
+            )}
+
             <div className="flex justify-between items-end border-t border-border pt-3 mt-3">
               <span className="text-muted-foreground text-xs sm:text-sm">Total Cost</span>
-              <span className="font-black text-primary text-xl leading-none">
-                ₦{price.toLocaleString()}
-              </span>
+              <div className="text-right">
+                {isUsingCredit ? (
+                  <div>
+                    <span className="text-xs text-muted-foreground line-through mr-2">₦{price.toLocaleString()}</span>
+                    <span className="font-black text-emerald-600 dark:text-emerald-400 text-xl leading-none">
+                      ₦0.00 Free
+                    </span>
+                  </div>
+                ) : (
+                  <span className="font-black text-primary text-xl leading-none">
+                    ₦{price.toLocaleString()}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -110,7 +134,7 @@ export function ValidationConfirmationModal({
                   <span>Insufficient Wallet Balance</span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Your balance is <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong>, but this validation requires <strong className="text-foreground">₦{price.toLocaleString()}</strong>.
+                  Your balance is <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong>, but this validation requires <strong className="text-foreground">₦{effectivePrice.toLocaleString()}</strong>.
                 </p>
               </div>
 
@@ -139,12 +163,12 @@ export function ValidationConfirmationModal({
                 <span className="font-bold text-foreground">₦{remainingBalance.toLocaleString()}</span>
               </div>
 
-              <div className="flex gap-3 pt-1">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={isLoading}
-                  className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-3 bg-secondary text-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -153,24 +177,23 @@ export function ValidationConfirmationModal({
                   type="button"
                   onClick={onConfirm}
                   disabled={isLoading}
-                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
+                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-50 text-sm"
                 >
                   {isLoading ? (
                     <>
-                      <Spinner weight="bold" className="h-4 w-4 animate-spin" />
-                      <span>Processing...</span>
+                      <Spinner className="h-4 w-4 animate-spin" weight="bold" />
+                      <span>Transmitting...</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle weight="bold" className="h-4 w-4" />
-                      <span>Pay & Submit</span>
+                      <span>{isUsingCredit ? "Confirm & Process (₦0 Free)" : "Confirm & Pay"}</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
           )}
-
         </div>
 
       </div>

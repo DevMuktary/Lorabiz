@@ -193,43 +193,43 @@ export default function MyWonRewardsPage() {
 
       {/* Summary Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
+        <div className="p-3 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-2.5 min-w-0">
           <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
             <IdentificationCard weight="bold" className="h-5 w-5" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Free NIN Slips</span>
-            <span className="text-base font-black text-foreground font-mono">{summary.ninSlip} Available</span>
+          <div className="min-w-0 flex-1">
+            <span className="text-xs text-muted-foreground block truncate font-medium">Free NIN Slips</span>
+            <span className="text-sm sm:text-base font-bold text-foreground block truncate">{summary.ninSlip} Available</span>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
+        <div className="p-3 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-2.5 min-w-0">
           <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
             <Fingerprint weight="bold" className="h-5 w-5" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Free Validations</span>
-            <span className="text-base font-black text-foreground font-mono">{summary.ninValidation} Available</span>
+          <div className="min-w-0 flex-1">
+            <span className="text-xs text-muted-foreground block truncate font-medium">Free Validations</span>
+            <span className="text-sm sm:text-base font-bold text-foreground block truncate">{summary.ninValidation} Available</span>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
+        <div className="p-3 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-2.5 min-w-0">
           <div className="h-9 w-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
             <ShieldCheck weight="bold" className="h-5 w-5" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Personalization</span>
-            <span className="text-base font-black text-foreground font-mono">{summary.ninPersonalization} Available</span>
+          <div className="min-w-0 flex-1">
+            <span className="text-xs text-muted-foreground block truncate font-medium">Personalization</span>
+            <span className="text-sm sm:text-base font-bold text-foreground block truncate">{summary.ninPersonalization} Available</span>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
+        <div className="p-3 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-2.5 min-w-0">
           <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
             <Tag weight="bold" className="h-5 w-5" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Discounts &amp; Airtime</span>
-            <span className="text-base font-black text-foreground font-mono">{(summary.cacVouchers || 0) + (summary.airtimeDiscounts || 0)} Available</span>
+          <div className="min-w-0 flex-1">
+            <span className="text-xs text-muted-foreground block truncate font-medium">Discounts &amp; Airtime</span>
+            <span className="text-sm sm:text-base font-bold text-foreground block truncate">{(summary.cacVouchers || 0) + (summary.airtimeDiscounts || 0)} Available</span>
           </div>
         </div>
       </div>
