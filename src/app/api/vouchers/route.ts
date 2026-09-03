@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
       ninSlip: activePasses.filter((c) => c.rewardType === "NIN_SLIP").length,
       ninValidation: activePasses.filter((c) => c.rewardType === "NIN_VALIDATION").length,
       ninPersonalization: activePasses.filter((c) => c.rewardType === "NIN_PERSONALIZATION").length,
+      taxIdPass: activePasses.filter((c) => (c.rewardType as string) === "TAX_ID_PASS").length,
       cacVouchers: activePasses.filter((c) => c.rewardType === "CAC_VOUCHER" || c.rewardType === "SCUML_VOUCHER").length,
       airtimeDiscounts: activePasses.filter((c) => c.rewardType === "AIRTIME").length,
       totalActive: activePasses.length,

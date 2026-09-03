@@ -128,7 +128,7 @@ export function PersonalizationSubmissionForm({
                       {freePassCount} Ready (100% Free)
                     </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
                     {useRewardCredit
                       ? "Pass applied · Fee slashed to ₦0.00"
                       : "Pass available · Click toggle to apply"}

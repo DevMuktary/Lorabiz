@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     const isCampaignActive = !campaignSetting || campaignSetting.value !== "false";
-    const minDeposit = thresholdSetting ? Number(thresholdSetting.value) : 20000;
+    const minDeposit = thresholdSetting ? Number(thresholdSetting.value) : 15000;
 
     let slices = DEFAULT_WHEEL_SLICES;
     if (slicesSetting?.value) {
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           code: "NO_SPIN_TOKEN_AVAILABLE",
-          message: "You do not have any available Spin Tokens. Fund ₦20,000 or more to earn a Lucky Spin!",
+          message: "You do not have any available Spin Tokens. Fund ₦15,000 or more to earn a Lucky Spin!",
         },
         { status: 400 }
       );

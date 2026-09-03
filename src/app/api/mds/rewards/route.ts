@@ -22,14 +22,18 @@ export async function GET(req: NextRequest) {
     }
 
     // 1. Fetch Campaign Settings
-    const [campaignSetting, thresholdSetting, slicesSetting] = await Promise.all([
+    const [campaignSetting, thresholdSetting, slicesSetting, whatsappPopupSetting, spinPopupSetting] = await Promise.all([
       prisma.globalSetting.findUnique({ where: { key: "SPIN_CAMPAIGN_ACTIVE" } }),
       prisma.globalSetting.findUnique({ where: { key: "SPIN_MIN_DEPOSIT" } }),
       prisma.globalSetting.findUnique({ where: { key: "SPIN_SLICES_CONFIG" } }),
+      prisma.globalSetting.findUnique({ where: { key: "ENABLE_WHATSAPP_POPUP" } }),
+      prisma.globalSetting.findUnique({ where: { key: "ENABLE_SPIN_POPUP" } }),
     ]);
 
     const isCampaignActive = !campaignSetting || campaignSetting.value !== "false";
-    const minDeposit = thresholdSetting ? Number(thresholdSetting.value) : 20000;
+    const minDeposit = thresholdSetting ? Number(thresholdSetting.value) : 15000;
+    const enableWhatsAppPopup = !whatsappPopupSetting || whatsappPopupSetting.value !== "false";
+    const enableSpinPopup = !spinPopupSetting || spinPopupSetting.value !== "false";
 
     let slices = DEFAULT_WHEEL_SLICES;
     if (slicesSetting?.value) {
@@ -69,6 +73,8 @@ export async function GET(req: NextRequest) {
         isCampaignActive,
         minDeposit,
         slices,
+        enableWhatsAppPopup,
+        enableSpinPopup,
       },
       stats: {
         totalSpinsUsed,
@@ -172,6 +178,28 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json({ success: true, message: "Reward slices and weights updated successfully" });
+    }
+
+    if (action === "TOGGLE_WHATSAPP_POPUP") {
+      const { enabled } = payload;
+      await prisma.globalSetting.upsert({
+        where: { key: "ENABLE_WHATSAPP_POPUP" },
+        update: { value: enabled ? "true" : "false" },
+        create: { key: "ENABLE_WHATSAPP_POPUP", value: enabled ? "true" : "false" },
+      });
+
+      return NextResponse.json({ success: true, message: `WhatsApp announcement popup ${enabled ? "enabled" : "disabled"}` });
+    }
+
+    if (action === "TOGGLE_SPIN_POPUP") {
+      const { enabled } = payload;
+      await prisma.globalSetting.upsert({
+        where: { key: "ENABLE_SPIN_POPUP" },
+        update: { value: enabled ? "true" : "false" },
+        create: { key: "ENABLE_SPIN_POPUP", value: enabled ? "true" : "false" },
+      });
+
+      return NextResponse.json({ success: true, message: `Spin & Win promo popup ${enabled ? "enabled" : "disabled"}` });
     }
 
     if (action === "GRANT_MANUAL_SPIN") {

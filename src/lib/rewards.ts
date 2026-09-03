@@ -5,7 +5,7 @@ export interface WheelSlice {
   id: string;
   label: string;
   shortLabel: string;
-  type: "WALLET_CASH" | "AIRTIME" | "NIN_SLIP" | "NIN_VALIDATION" | "NIN_PERSONALIZATION" | "CAC_VOUCHER" | "SCUML_VOUCHER";
+  type: "WALLET_CASH" | "AIRTIME" | "NIN_SLIP" | "NIN_VALIDATION" | "NIN_PERSONALIZATION" | "CAC_VOUCHER" | "SCUML_VOUCHER" | "TAX_ID_PASS";
   value: number;
   weight: number; // Server-side drop rate weight (0 = locked/teaser)
   color: string;
@@ -20,7 +20,7 @@ export const DEFAULT_WHEEL_SLICES: WheelSlice[] = [
     shortLabel: "₦200 Airtime",
     type: "AIRTIME",
     value: 200,
-    weight: 30, // 30% drop rate
+    weight: 25, // 25% drop rate
     color: "#059669", // Emerald
     textColor: "#FFFFFF",
   },
@@ -30,7 +30,7 @@ export const DEFAULT_WHEEL_SLICES: WheelSlice[] = [
     shortLabel: "Free NIN Slip",
     type: "NIN_SLIP",
     value: 1000,
-    weight: 30, // 30% drop rate
+    weight: 20, // 20% drop rate
     color: "#2563EB", // Blue
     textColor: "#FFFFFF",
   },
@@ -51,7 +51,7 @@ export const DEFAULT_WHEEL_SLICES: WheelSlice[] = [
     shortLabel: "₦500 Bonus",
     type: "WALLET_CASH",
     value: 500,
-    weight: 20, // 20% drop rate
+    weight: 15, // 15% drop rate
     color: "#7C3AED", // Violet
     textColor: "#FFFFFF",
   },
@@ -82,18 +82,28 @@ export const DEFAULT_WHEEL_SLICES: WheelSlice[] = [
     shortLabel: "Free Validation",
     type: "NIN_VALIDATION",
     value: 2000,
-    weight: 5, // 5% drop rate
+    weight: 10, // 10% drop rate
     color: "#0D9488", // Teal
     textColor: "#FFFFFF",
   },
   {
     id: "slice-8",
     label: "Free NIN Personalization Pass",
-    shortLabel: "Free Personalize",
+    shortLabel: "Free Personalization",
     type: "NIN_PERSONALIZATION",
     value: 1500,
-    weight: 5, // 5% drop rate
+    weight: 10, // 10% drop rate
     color: "#4F46E5", // Indigo
+    textColor: "#FFFFFF",
+  },
+  {
+    id: "slice-9",
+    label: "1 Free Tax ID Pass",
+    shortLabel: "Free Tax ID",
+    type: "TAX_ID_PASS",
+    value: 1000,
+    weight: 10, // 10% drop rate
+    color: "#EA580C", // Orange
     textColor: "#FFFFFF",
   },
 ];
@@ -117,11 +127,11 @@ export async function grantSpinTokenIfEligible(
       return null;
     }
 
-    // 2. Check threshold
+    // 2. Check threshold (Default ₦15,000)
     const thresholdSetting = await db.globalSetting.findUnique({
       where: { key: "SPIN_MIN_DEPOSIT" },
     });
-    const minDeposit = thresholdSetting ? Number(thresholdSetting.value) : 20000.0;
+    const minDeposit = thresholdSetting ? Number(thresholdSetting.value) : 15000.0;
 
     if (depositAmount < minDeposit) {
       return null;
@@ -159,6 +169,17 @@ export async function grantSpinTokenIfEligible(
   }
 }
 
+let hasEnsuredTaxIdEnum = false;
+export async function ensureTaxIdRewardEnum(db: Prisma.TransactionClient | PrismaClient) {
+  if (hasEnsuredTaxIdEnum) return;
+  try {
+    await db.$executeRawUnsafe(`ALTER TYPE "UserRewardType" ADD VALUE IF NOT EXISTS 'TAX_ID_PASS';`);
+    hasEnsuredTaxIdEnum = true;
+  } catch {
+    hasEnsuredTaxIdEnum = true;
+  }
+}
+
 /**
  * Server-side spin wheel execution with strict atomic state guard
  * against race conditions and concurrent multi-device double clicks.
@@ -166,6 +187,8 @@ export async function grantSpinTokenIfEligible(
 export async function spinWheelServerSide(userId: string) {
   return await prisma.$transaction(
     async (tx) => {
+      await ensureTaxIdRewardEnum(tx);
+
       // 1. Find the earliest available spin token for this user
       const availableToken = await tx.spinToken.findFirst({
         where: {
@@ -348,6 +371,19 @@ export async function spinWheelServerSide(userId: string) {
             status: "ACTIVE",
             sourceSpinId: availableToken.id,
             expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          },
+        });
+      } else if (selectedSlice.type === "TAX_ID_PASS") {
+        await tx.userRewardCredit.create({
+          data: {
+            userId,
+            rewardType: "TAX_ID_PASS",
+            title: "1 Free Tax ID Pass",
+            description: "Valid for 1 instant Tax ID (TIN) processing (Individual or Corporate) at ₦0 fee.",
+            value: selectedSlice.value,
+            status: "ACTIVE",
+            sourceSpinId: availableToken.id,
+            expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
           },
         });
       }

@@ -30,7 +30,7 @@ export default function MyWonRewardsPage() {
     active: [],
     redeemed: [],
     expired: [],
-    summary: { totalActive: 0, ninSlip: 0, ninValidation: 0, ninPersonalization: 0, cacVouchers: 0, airtimeDiscounts: 0 },
+    summary: { totalActive: 0, ninSlip: 0, ninValidation: 0, ninPersonalization: 0, taxIdPass: 0, cacVouchers: 0, airtimeDiscounts: 0 },
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -62,13 +62,13 @@ export default function MyWonRewardsPage() {
 
   const activeItems = vouchersData.active || [];
   const redeemedItems = vouchersData.redeemed || [];
-  const summary = vouchersData.summary || { totalActive: 0, ninSlip: 0, ninValidation: 0, ninPersonalization: 0, cacVouchers: 0, airtimeDiscounts: 0 };
+  const summary = vouchersData.summary || { totalActive: 0, ninSlip: 0, ninValidation: 0, ninPersonalization: 0, taxIdPass: 0, cacVouchers: 0, airtimeDiscounts: 0 };
 
   const filteredItems = 
     activeTab === "ALL" 
       ? activeItems 
       : activeTab === "SERVICES" 
-      ? activeItems.filter((i: any) => i.rewardType === "NIN_SLIP" || i.rewardType === "NIN_VALIDATION" || i.rewardType === "NIN_PERSONALIZATION")
+      ? activeItems.filter((i: any) => i.rewardType === "NIN_SLIP" || i.rewardType === "NIN_VALIDATION" || i.rewardType === "NIN_PERSONALIZATION" || i.rewardType === "TAX_ID_PASS")
       : activeTab === "DISCOUNTS"
       ? activeItems.filter((i: any) => i.rewardType === "CAC_VOUCHER" || i.rewardType === "SCUML_VOUCHER" || i.rewardType === "AIRTIME")
       : redeemedItems;
@@ -98,6 +98,14 @@ export default function MyWonRewardsPage() {
           badge: "100% Free Service",
           icon: ShieldCheck,
           color: "indigo"
+        };
+      case "TAX_ID_PASS":
+        return {
+          link: "/dashboard/tax-id",
+          label: "Generate Tax ID Free",
+          badge: "100% Free Tax ID",
+          icon: IdentificationCard,
+          color: "orange"
         };
       case "AIRTIME":
         return {
@@ -192,14 +200,14 @@ export default function MyWonRewardsPage() {
       </div>
 
       {/* Summary Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div className="p-3 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-2.5 min-w-0">
           <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
             <IdentificationCard weight="bold" className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-xs text-muted-foreground block truncate font-medium">Free NIN Slips</span>
-            <span className="text-sm sm:text-base font-bold text-foreground block truncate">{summary.ninSlip} Available</span>
+            <span className="text-[11px] sm:text-xs text-muted-foreground block font-medium leading-tight">Free NIN Slips</span>
+            <span className="text-sm sm:text-base font-bold text-foreground block leading-normal mt-0.5">{summary.ninSlip || 0} Available</span>
           </div>
         </div>
 
@@ -208,8 +216,8 @@ export default function MyWonRewardsPage() {
             <Fingerprint weight="bold" className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-xs text-muted-foreground block truncate font-medium">Free Validations</span>
-            <span className="text-sm sm:text-base font-bold text-foreground block truncate">{summary.ninValidation} Available</span>
+            <span className="text-[11px] sm:text-xs text-muted-foreground block font-medium leading-tight">Free Validations</span>
+            <span className="text-sm sm:text-base font-bold text-foreground block leading-normal mt-0.5">{summary.ninValidation || 0} Available</span>
           </div>
         </div>
 
@@ -218,18 +226,28 @@ export default function MyWonRewardsPage() {
             <ShieldCheck weight="bold" className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-xs text-muted-foreground block truncate font-medium">Personalization</span>
-            <span className="text-sm sm:text-base font-bold text-foreground block truncate">{summary.ninPersonalization} Available</span>
+            <span className="text-[11px] sm:text-xs text-muted-foreground block font-medium leading-tight">Personalization</span>
+            <span className="text-sm sm:text-base font-bold text-foreground block leading-normal mt-0.5">{summary.ninPersonalization || 0} Available</span>
           </div>
         </div>
 
         <div className="p-3 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-2.5 min-w-0">
+          <div className="h-9 w-9 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
+            <IdentificationCard weight="bold" className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] sm:text-xs text-muted-foreground block font-medium leading-tight">Free Tax IDs</span>
+            <span className="text-sm sm:text-base font-bold text-foreground block leading-normal mt-0.5">{summary.taxIdPass || 0} Available</span>
+          </div>
+        </div>
+
+        <div className="p-3 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-2.5 min-w-0 col-span-2 sm:col-span-1">
           <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
             <Tag weight="bold" className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-xs text-muted-foreground block truncate font-medium">Discounts &amp; Airtime</span>
-            <span className="text-sm sm:text-base font-bold text-foreground block truncate">{(summary.cacVouchers || 0) + (summary.airtimeDiscounts || 0)} Available</span>
+            <span className="text-[11px] sm:text-xs text-muted-foreground block font-medium leading-tight">Discounts &amp; Airtime</span>
+            <span className="text-sm sm:text-base font-bold text-foreground block leading-normal mt-0.5">{(summary.cacVouchers || 0) + (summary.airtimeDiscounts || 0)} Available</span>
           </div>
         </div>
       </div>
@@ -257,7 +275,7 @@ export default function MyWonRewardsPage() {
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
           }`}
         >
-          Free Services ({summary.ninSlip + summary.ninValidation + summary.ninPersonalization})
+          Free Services ({summary.ninSlip + summary.ninValidation + summary.ninPersonalization + (summary.taxIdPass || 0)})
         </button>
 
         <button
@@ -301,7 +319,7 @@ export default function MyWonRewardsPage() {
             <p className="text-xs text-muted-foreground leading-relaxed">
               {activeTab === "USED"
                 ? "You haven't used any rewards yet."
-                : "Top up your wallet with ₦20,000 or more to earn Lucky Spins and win 100% Free NIN Slips, Airtime bonuses, and discounts!"}
+                : "Top up your wallet with ₦15,000 or more to earn Lucky Spins and win 100% Free NIN Slips, Airtime bonuses, and discounts!"}
             </p>
           </div>
           {activeTab !== "USED" && (
@@ -343,6 +361,8 @@ export default function MyWonRewardsPage() {
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                           : voucher.rewardType === "NIN_PERSONALIZATION"
                           ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                          : voucher.rewardType === "TAX_ID_PASS"
+                          ? "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
                           : voucher.rewardType === "AIRTIME"
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                           : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
@@ -368,6 +388,8 @@ export default function MyWonRewardsPage() {
                         ? "bg-emerald-500/10 text-emerald-500"
                         : voucher.rewardType === "NIN_PERSONALIZATION"
                         ? "bg-indigo-500/10 text-indigo-500"
+                        : voucher.rewardType === "TAX_ID_PASS"
+                        ? "bg-orange-500/10 text-orange-500"
                         : "bg-amber-500/10 text-amber-500"
                     }`}>
                       <IconComp size={20} weight="bold" />

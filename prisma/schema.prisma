@@ -1268,6 +1268,7 @@ enum UserRewardType {
   SCUML_VOUCHER
   WALLET_CASH
   AIRTIME
+  TAX_ID_PASS
 }
 
 enum CreditStatus {

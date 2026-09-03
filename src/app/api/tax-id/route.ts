@@ -8,6 +8,7 @@ import { generateNumericId } from "@/utils/generateId";
 import { sendTaxIdSubmittedEmail } from "@/lib/email";
 import { logUserActivity } from "@/lib/activity-logger";
 import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
+import { getUserRewardPassCount, redeemServiceRewardCredit } from "@/lib/rewards";
 
 export async function GET(req: Request) {
   try {
@@ -21,12 +22,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: "User account not found." }, { status: 404 });
     }
 
-    const history = await prisma.taxIdRequest.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' }
-    });
+    const [history, freePassCount] = await Promise.all([
+      prisma.taxIdRequest.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' }
+      }),
+      getUserRewardPassCount(user.id, "TAX_ID_PASS")
+    ]);
 
-    return NextResponse.json({ success: true, history });
+    return NextResponse.json({ success: true, history, freePassCount });
   } catch (error) {
     console.error("Tax ID History Fetch Error:", error);
     return NextResponse.json({ success: false, error: "Failed to fetch Tax ID application history." }, { status: 500 });
@@ -41,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     const data = await req.json();
-    const { type, individualData, corporateData, price } = data;
+    const { type, individualData, corporateData, price, useRewardCredit } = data;
 
     if (!type || (type !== "INDIVIDUAL" && type !== "CORPORATE")) {
       return NextResponse.json({ success: false, error: "Invalid request type specified." }, { status: 400 });
@@ -72,7 +76,17 @@ export async function POST(req: Request) {
     const defaultPrice = type === "CORPORATE" ? 1000 : 500;
     const basePrice = taxIdPricing ? Number(taxIdPricing.price) : defaultPrice;
     const discountInfo = await getEffectiveServicePrice(prisma, targetServiceKey, basePrice, user.id);
-    const finalPrice = discountInfo.finalPrice;
+    const effectivePrice = discountInfo.finalPrice;
+
+    let isPassApplied = false;
+    if (useRewardCredit) {
+      const passCount = await getUserRewardPassCount(user.id, "TAX_ID_PASS");
+      if (passCount > 0) {
+        isPassApplied = true;
+      }
+    }
+
+    const finalPrice = isPassApplied ? 0 : effectivePrice;
 
     const userBalance = Number(user.wallet.balance);
     if (userBalance < finalPrice) {
@@ -102,27 +116,32 @@ export async function POST(req: Request) {
     const transactionRef = `TIN-${generateNumericId(8)}`;
 
     const result = await prisma.$transaction(async (tx) => {
-      const updatedWallet = await tx.wallet.update({
-        where: { id: user.wallet!.id },
-        data: { balance: { decrement: finalPrice } }
-      });
+      let updatedBalance = userBalance;
+      let balanceBeforeUpdate = userBalance;
 
-      const updatedBalance = Number(updatedWallet.balance);
-      const balanceBeforeUpdate = updatedBalance + finalPrice;
+      if (!isPassApplied && finalPrice > 0) {
+        const updatedWallet = await tx.wallet.update({
+          where: { id: user.wallet!.id },
+          data: { balance: { decrement: finalPrice } }
+        });
 
-      await tx.transaction.create({
-        data: {
-          walletId: user.wallet!.id,
-          amount: finalPrice,
-          balanceBefore: balanceBeforeUpdate,
-          balanceAfter: updatedBalance,
-          type: "DEBIT",
-          status: "SUCCESS",
-          reference: transactionRef,
-          serviceCategory: "TAX_ID",
-          description: `Tax ID Generation (${type === "CORPORATE" ? "Corporate" : "Individual"})`
-        }
-      });
+        updatedBalance = Number(updatedWallet.balance);
+        balanceBeforeUpdate = updatedBalance + finalPrice;
+
+        await tx.transaction.create({
+          data: {
+            walletId: user.wallet!.id,
+            amount: finalPrice,
+            balanceBefore: balanceBeforeUpdate,
+            balanceAfter: updatedBalance,
+            type: "DEBIT",
+            status: "SUCCESS",
+            reference: transactionRef,
+            serviceCategory: "TAX_ID",
+            description: `Tax ID Generation (${type === "CORPORATE" ? "Corporate" : "Individual"})`
+          }
+        });
+      }
 
       const taxReq = await tx.taxIdRequest.create({
         data: {
@@ -139,7 +158,9 @@ export async function POST(req: Request) {
         }
       });
 
-      if (discountInfo.hasDiscount && discountInfo.promoId) {
+      if (isPassApplied) {
+        await redeemServiceRewardCredit(tx, user.id, "TAX_ID_PASS", taxReq.id);
+      } else if (discountInfo.hasDiscount && discountInfo.promoId) {
         await recordPromoUsageInTx(tx, discountInfo.promoId, user.id, discountInfo.savedAmount, targetServiceKey);
       }
 

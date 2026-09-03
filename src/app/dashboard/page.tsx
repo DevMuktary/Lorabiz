@@ -238,31 +238,16 @@ export default function DashboardPage() {
 
   const { profile: loyaltyProfile } = useLoyalty();
 
-  // WhatsApp Announcements Popup shows on refresh UNLESS user dismissed or is returning from a payment
-  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
-      if (hasPaymentParam) return false;
+  // Alternating Promo Modal ("WHATSAPP" | "SPIN" | "NONE") on refresh
+  const [activePromoModal, setActivePromoModal] = useState<"NONE" | "WHATSAPP" | "SPIN">("NONE");
 
-      const isDismissed = localStorage.getItem("lorabiz_whatsapp_popup_dismissed_v1");
-      if (isDismissed) return false;
-    }
-    return true;
-  });
-
-  const handleCloseWhatsAppModal = () => {
-    setIsWhatsAppModalOpen(false);
-    try {
-      localStorage.setItem("lorabiz_whatsapp_popup_dismissed_v1", "true");
-    } catch {
-      // ignore storage errors
-    }
+  const handleClosePromoModal = () => {
+    setActivePromoModal("NONE");
   };
 
-  // Lock body scroll when modal is active
+  // Lock body scroll when promo modal is active
   useEffect(() => {
-    if (isWhatsAppModalOpen) {
+    if (activePromoModal !== "NONE") {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -270,7 +255,7 @@ export default function DashboardPage() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isWhatsAppModalOpen]);
+  }, [activePromoModal]);
 
   useEffect(() => {
     setMounted(true);
@@ -304,6 +289,39 @@ export default function DashboardPage() {
       .then(data => {
         if (data?.success) {
           setAvailableSpinTokens(data.availableTokens || 0);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch Global Settings for Alternating Modal Popup
+    fetch('/api/settings/global')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.success && data?.settings) {
+          const waEnabled = data.settings.enableWhatsAppPopup ?? true;
+          const spinEnabled = data.settings.enableSpinPopup ?? true;
+
+          const params = new URLSearchParams(window.location.search);
+          const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
+
+          if (!hasPaymentParam) {
+            if (waEnabled && spinEnabled) {
+              const lastPopup = sessionStorage.getItem("lora_last_dashboard_popup");
+              if (lastPopup === "WHATSAPP") {
+                setActivePromoModal("SPIN");
+                sessionStorage.setItem("lora_last_dashboard_popup", "SPIN");
+              } else {
+                setActivePromoModal("WHATSAPP");
+                sessionStorage.setItem("lora_last_dashboard_popup", "WHATSAPP");
+              }
+            } else if (waEnabled) {
+              setActivePromoModal("WHATSAPP");
+            } else if (spinEnabled) {
+              setActivePromoModal("SPIN");
+            } else {
+              setActivePromoModal("NONE");
+            }
+          }
         }
       })
       .catch(() => {});
@@ -453,16 +471,16 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`space-y-6 pb-12 pt-1 sm:pt-2 transition-opacity duration-300 ${mounted && isWhatsAppModalOpen ? "opacity-0 pointer-events-none select-none max-h-[80vh] overflow-hidden" : "opacity-100"}`}>
+    <div className="space-y-6 pb-24 pt-1 sm:pt-2">
 
       {/* ========================================================================= */}
       {/* 1. COMPACT CENTER-SCREEN WHATSAPP ANNOUNCEMENT POPUP                      */}
       {/* ========================================================================= */}
-      {mounted && isWhatsAppModalOpen && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 min-h-screen w-screen bg-background z-[999999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      {mounted && activePromoModal === "WHATSAPP" && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-sm animate-in fade-in duration-200">
           <div
-            className="fixed inset-0 min-h-screen w-screen bg-background"
-            onClick={handleCloseWhatsAppModal}
+            className="fixed inset-0 min-h-screen w-screen"
+            onClick={handleClosePromoModal}
           />
 
           <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left">
@@ -488,7 +506,7 @@ export default function DashboardPage() {
 
                 {/* Highly Prominent Close Button */}
                 <button
-                  onClick={handleCloseWhatsAppModal}
+                  onClick={handleClosePromoModal}
                   className="h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
                   aria-label="Close announcement"
                   title="Close and go to dashboard"
@@ -523,7 +541,7 @@ export default function DashboardPage() {
                   href="https://whatsapp.com/channel/0029VbDVwWbFnSz6VvpMKl3M"
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={handleCloseWhatsAppModal}
+                  onClick={handleClosePromoModal}
                   className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-xs rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer text-center"
                 >
                   <WhatsappLogo className="h-4 w-4" weight="fill" />
@@ -532,11 +550,107 @@ export default function DashboardPage() {
                 </a>
 
                 <button
-                  onClick={handleCloseWhatsAppModal}
+                  onClick={handleClosePromoModal}
                   className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Skip &amp; Open Dashboard
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. COMPACT CENTER-SCREEN LUCKY SPIN PROMO POPUP                           */}
+      {/* ========================================================================= */}
+      {mounted && activePromoModal === "SPIN" && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 min-h-screen w-screen z-[99999] flex items-center justify-center p-4 bg-background/80 dark:bg-background/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="fixed inset-0 min-h-screen w-screen"
+            onClick={handleClosePromoModal}
+          />
+
+          <div className="relative w-full max-w-md bg-card text-card-foreground rounded-3xl border border-border shadow-2xl overflow-hidden z-10 animate-in zoom-in-95 duration-200 text-left">
+            {/* Top Amber Accent Strip */}
+            <div className="h-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600" />
+
+            <div className="p-5 sm:p-6">
+              {/* Header with High-Visibility Close Button */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-11 w-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0 shadow-xs">
+                    <Gift className="h-6 w-6" weight="fill" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                      Lucky Spin Rewards
+                    </span>
+                    <h3 className="text-lg font-black text-foreground tracking-tight leading-tight">
+                      Fund ₦15,000 &amp; Win Rewards!
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleClosePromoModal}
+                  className="h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
+                  aria-label="Close promotion"
+                  title="Close and go to dashboard"
+                >
+                  <X className="h-4 w-4" weight="bold" />
+                </button>
+              </div>
+
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Deposit ₦15,000 or more into your wallet to automatically earn Lucky Spin tokens. Spin the wheel to unlock 100% Free NIN Slips, Free Tax IDs, Free Validations, Airtime recharges, and instant wallet cashbacks!
+              </p>
+
+              {/* 3 Value Points */}
+              <div className="my-4 space-y-2 bg-secondary/50 p-3 rounded-xl border border-border text-[11px]">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-4 w-4 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+                    <Sparkle className="h-2.5 w-2.5" weight="fill" />
+                  </div>
+                  <span className="font-semibold text-foreground">Free NIN Slips &amp; Tax ID Passes (₦0 fee)</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="h-4 w-4 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
+                    <CheckCircle className="h-2.5 w-2.5" weight="fill" />
+                  </div>
+                  <span className="font-semibold text-foreground">₦200 Airtime top-ups &amp; ₦5,000 cash jackpots</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="h-4 w-4 rounded-full bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
+                    <Gift className="h-2.5 w-2.5" weight="fill" />
+                  </div>
+                  <span className="font-semibold text-foreground">1 Token earned automatically per ₦15,000 funded</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleClosePromoModal();
+                    setIsWalletModalOpen(true);
+                  }}
+                  className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-xs rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer text-center"
+                >
+                  <Wallet className="h-4 w-4" weight="bold" />
+                  <span>Fund Wallet &amp; Spin</span>
+                  <ArrowRight className="h-3.5 w-3.5" weight="bold" />
+                </button>
+
+                <Link
+                  href="/dashboard/rewards"
+                  onClick={handleClosePromoModal}
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  View Rewards Vault
+                </Link>
               </div>
             </div>
           </div>

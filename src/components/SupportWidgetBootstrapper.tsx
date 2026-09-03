@@ -1,8 +1,10 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
+import { Headset } from "@phosphor-icons/react";
 
 interface ChatwootUserAttributes {
   name?: string;
@@ -43,6 +45,134 @@ declare global {
   }
 }
 
+function DraggableSupportBubble({ isVisible }: { isVisible: boolean }) {
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const draggingRef = useRef<{
+    isDragging: boolean;
+    hasMoved: boolean;
+    startX: number;
+    startY: number;
+    initialX: number;
+    initialY: number;
+  }>({
+    isDragging: false,
+    hasMoved: false,
+    startX: 0,
+    startY: 0,
+    initialX: 0,
+    initialY: 0,
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const saved = localStorage.getItem("lora_draggable_support_pos_v2");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+          const maxX = window.innerWidth - 64;
+          const maxY = window.innerHeight - 64;
+          setPos({
+            x: Math.max(10, Math.min(maxX, parsed.x)),
+            y: Math.max(10, Math.min(maxY, parsed.y)),
+          });
+          return;
+        }
+      }
+    } catch {}
+    // Default position: bottom-right corner, safe from bottom docks
+    const defaultX = typeof window !== "undefined" ? window.innerWidth - 76 : 300;
+    const defaultY = typeof window !== "undefined" ? window.innerHeight - 100 : 500;
+    setPos({ x: Math.max(10, defaultX), y: Math.max(10, defaultY) });
+  }, []);
+
+  if (!mounted || !isVisible || !pos || typeof document === "undefined") return null;
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    draggingRef.current = {
+      isDragging: true,
+      hasMoved: false,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: pos.x,
+      initialY: pos.y,
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current.isDragging) return;
+    const dx = e.clientX - draggingRef.current.startX;
+    const dy = e.clientY - draggingRef.current.startY;
+
+    if (!draggingRef.current.hasMoved && Math.hypot(dx, dy) > 6) {
+      draggingRef.current.hasMoved = true;
+    }
+
+    if (draggingRef.current.hasMoved) {
+      const maxX = window.innerWidth - 60;
+      const maxY = window.innerHeight - 60;
+      const newX = Math.max(10, Math.min(maxX, draggingRef.current.initialX + dx));
+      const newY = Math.max(10, Math.min(maxY, draggingRef.current.initialY + dy));
+      setPos({ x: newX, y: newY });
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current.isDragging) return;
+    try {
+      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {}
+
+    const wasMoved = draggingRef.current.hasMoved;
+    draggingRef.current.isDragging = false;
+
+    if (wasMoved) {
+      try {
+        localStorage.setItem("lora_draggable_support_pos_v2", JSON.stringify(pos));
+      } catch {}
+    } else {
+      // Tap / Click action -> Open Chatwoot
+      if (window.$chatwoot) {
+        window.$chatwoot.toggle();
+      } else {
+        window.open("https://whatsapp.com/channel/0029VbDVwWbFnSz6VvpMKl3M", "_blank");
+      }
+    }
+  };
+
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        left: `${pos.x}px`,
+        top: `${pos.y}px`,
+        zIndex: 999999,
+        touchAction: "none",
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      className="select-none cursor-grab active:cursor-grabbing group animate-in fade-in duration-300"
+      title="Drag to reposition · Tap to chat with support"
+    >
+      <div className="relative flex items-center justify-center h-13 w-13 sm:h-14 sm:w-14 rounded-full bg-gradient-to-tr from-[#ff3f7a] to-[#d82a62] text-white shadow-2xl hover:scale-105 active:scale-95 transition-all border-2 border-white/25">
+        <Headset size={26} weight="fill" className="drop-shadow-sm pointer-events-none" />
+        
+        {/* Pulse online green ring indicator */}
+        <span className="absolute top-0.5 right-0.5 flex h-3.5 w-3.5 pointer-events-none">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white"></span>
+        </span>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export function SupportWidgetBootstrapper() {
   const { data: session } = useSession();
   const pathname = usePathname();
@@ -68,13 +198,14 @@ export function SupportWidgetBootstrapper() {
       .catch(() => {});
   }, []);
 
-  // 2. Initialize Chatwoot SDK
+  // 2. Initialize Chatwoot SDK with hideMessageBubble: true (so our custom draggable bubble controls it)
   useEffect(() => {
     if (!supportConfig?.enabled || typeof window === "undefined") return;
 
     if (document.getElementById("chatwoot-sdk-script")) return;
 
     window.chatwootSettings = {
+      hideMessageBubble: true,
       position: "right",
       type: "standard",
       launcherTitle: "Chat with us",
@@ -100,33 +231,7 @@ export function SupportWidgetBootstrapper() {
     document.head.appendChild(script);
   }, [supportConfig]);
 
-  // 3. Route-based visibility: Hide on Register/Complete-profile, Show on Dashboard/Home
-  useEffect(() => {
-    if (!supportConfig?.enabled || typeof window === "undefined") return;
-
-    const isRegisterRoute =
-      pathname === "/auth/register" ||
-      pathname === "/auth/complete-profile";
-
-    const updateVisibility = () => {
-      try {
-        if (window.$chatwoot?.toggleBubbleVisibility) {
-          window.$chatwoot.toggleBubbleVisibility(isRegisterRoute ? "hide" : "show");
-        }
-      } catch (e) {}
-    };
-
-    // If chatwoot is already initialized
-    updateVisibility();
-
-    // In case Chatwoot initializes asynchronously after route change
-    window.addEventListener("chatwoot:ready", updateVisibility);
-    return () => {
-      window.removeEventListener("chatwoot:ready", updateVisibility);
-    };
-  }, [pathname, supportConfig]);
-
-  // 4. Identify Logged-in User
+  // 3. Identify Logged-in User
   useEffect(() => {
     if (!supportConfig?.enabled || typeof window === "undefined") return;
 
@@ -161,177 +266,12 @@ export function SupportWidgetBootstrapper() {
     };
   }, [session, supportConfig]);
 
-  // 5. Make the Support Launcher Bubble Draggable (Desktop & Mobile)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  // Determine visibility per route (Hide on register and complete profile)
+  const isRegisterRoute =
+    pathname === "/auth/register" ||
+    pathname === "/auth/complete-profile";
 
-    let cleanup: (() => void) | null = null;
+  const isVisible = Boolean(supportConfig?.enabled) && !isRegisterRoute;
 
-    const initDraggable = () => {
-      const bubble = (
-        document.querySelector(".woot--bubble-holder") ||
-        document.querySelector(".woot-widget-bubble") ||
-        document.querySelector("#chatwoot_live_chat_widget")
-      ) as HTMLElement | null;
-
-      if (!bubble || (bubble as any).__isDraggableInitialized) return;
-      (bubble as any).__isDraggableInitialized = true;
-
-      bubble.style.touchAction = "none";
-      bubble.style.cursor = "grab";
-      bubble.style.userSelect = "none";
-
-      // Restore position if previously dragged
-      try {
-        const savedPos = sessionStorage.getItem("lora_support_pos");
-        if (savedPos) {
-          const { x, y } = JSON.parse(savedPos);
-          if (typeof x === "number" && typeof y === "number") {
-            const maxX = window.innerWidth - (bubble.offsetWidth || 60) - 10;
-            const maxY = window.innerHeight - (bubble.offsetHeight || 60) - 10;
-            const safeX = Math.max(10, Math.min(maxX, x));
-            const safeY = Math.max(10, Math.min(maxY, y));
-            bubble.style.position = "fixed";
-            bubble.style.left = `${safeX}px`;
-            bubble.style.top = `${safeY}px`;
-            bubble.style.right = "auto";
-            bubble.style.bottom = "auto";
-          }
-        }
-      } catch (e) {}
-
-      let isDragging = false;
-      let hasMoved = false;
-      let startX = 0;
-      let startY = 0;
-      let initialLeft = 0;
-      let initialTop = 0;
-
-      const onStart = (clientX: number, clientY: number) => {
-        const rect = bubble.getBoundingClientRect();
-        startX = clientX;
-        startY = clientY;
-        initialLeft = rect.left;
-        initialTop = rect.top;
-        hasMoved = false;
-        isDragging = true;
-        bubble.style.cursor = "grabbing";
-        bubble.style.transition = "none";
-      };
-
-      const onMove = (clientX: number, clientY: number, e: Event) => {
-        if (!isDragging) return;
-        const dx = clientX - startX;
-        const dy = clientY - startY;
-
-        if (!hasMoved && Math.hypot(dx, dy) > 5) {
-          hasMoved = true;
-        }
-
-        if (hasMoved) {
-          if (e.cancelable) e.preventDefault();
-          const bubbleWidth = bubble.offsetWidth || 60;
-          const bubbleHeight = bubble.offsetHeight || 60;
-          const maxX = window.innerWidth - bubbleWidth - 10;
-          const maxY = window.innerHeight - bubbleHeight - 10;
-
-          const newX = Math.max(10, Math.min(maxX, initialLeft + dx));
-          const newY = Math.max(10, Math.min(maxY, initialTop + dy));
-
-          bubble.style.position = "fixed";
-          bubble.style.left = `${newX}px`;
-          bubble.style.top = `${newY}px`;
-          bubble.style.right = "auto";
-          bubble.style.bottom = "auto";
-        }
-      };
-
-      const onEnd = () => {
-        if (!isDragging) return;
-        isDragging = false;
-        bubble.style.cursor = "grab";
-        bubble.style.transition = "";
-
-        if (hasMoved) {
-          const rect = bubble.getBoundingClientRect();
-          try {
-            sessionStorage.setItem("lora_support_pos", JSON.stringify({ x: rect.left, y: rect.top }));
-          } catch (e) {}
-
-          // Suppress accidental click/open event caused by dragging
-          const blockClick = (ev: MouseEvent) => {
-            ev.stopPropagation();
-            ev.preventDefault();
-            bubble.removeEventListener("click", blockClick, true);
-          };
-          bubble.addEventListener("click", blockClick, true);
-          setTimeout(() => {
-            bubble.removeEventListener("click", blockClick, true);
-          }, 100);
-        }
-      };
-
-      // Mouse handlers
-      const handleMouseDown = (e: MouseEvent) => {
-        if (e.button !== 0) return;
-        onStart(e.clientX, e.clientY);
-
-        const handleMouseMove = (ev: MouseEvent) => onMove(ev.clientX, ev.clientY, ev);
-        const handleMouseUp = () => {
-          onEnd();
-          window.removeEventListener("mousemove", handleMouseMove);
-          window.removeEventListener("mouseup", handleMouseUp);
-        };
-
-        window.addEventListener("mousemove", handleMouseMove, { passive: false });
-        window.addEventListener("mouseup", handleMouseUp, { once: true });
-      };
-
-      // Touch handlers
-      const handleTouchStart = (e: TouchEvent) => {
-        if (e.touches.length !== 1) return;
-        const touch = e.touches[0];
-        onStart(touch.clientX, touch.clientY);
-
-        const handleTouchMove = (ev: TouchEvent) => {
-          if (ev.touches.length !== 1) return;
-          const t = ev.touches[0];
-          onMove(t.clientX, t.clientY, ev);
-        };
-
-        const handleTouchEnd = () => {
-          onEnd();
-          window.removeEventListener("touchmove", handleTouchMove);
-          window.removeEventListener("touchend", handleTouchEnd);
-          window.removeEventListener("touchcancel", handleTouchEnd);
-        };
-
-        window.addEventListener("touchmove", handleTouchMove, { passive: false });
-        window.addEventListener("touchend", handleTouchEnd, { once: true });
-        window.addEventListener("touchcancel", handleTouchEnd, { once: true });
-      };
-
-      bubble.addEventListener("mousedown", handleMouseDown);
-      bubble.addEventListener("touchstart", handleTouchStart, { passive: true });
-
-      cleanup = () => {
-        bubble.removeEventListener("mousedown", handleMouseDown);
-        bubble.removeEventListener("touchstart", handleTouchStart);
-      };
-    };
-
-    const interval = setInterval(initDraggable, 1000);
-    const observer = new MutationObserver(initDraggable);
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    initDraggable();
-
-    return () => {
-      clearInterval(interval);
-      observer.disconnect();
-      if (cleanup) cleanup();
-    };
-  }, [pathname]);
-
-  return null;
+  return <DraggableSupportBubble isVisible={isVisible} />;
 }

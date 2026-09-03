@@ -112,7 +112,7 @@ export default function RewardsSpinPage() {
   const [availableTokens, setAvailableTokens] = useState<number>(0);
   const [spinHistory, setSpinHistory] = useState<any[]>([]);
   const [slices, setSlices] = useState<WheelSlice[]>(DEFAULT_WHEEL_SLICES);
-  const [minDeposit, setMinDeposit] = useState<number>(20000);
+  const [minDeposit, setMinDeposit] = useState<number>(15000);
   const [isCampaignActive, setIsCampaignActive] = useState<boolean>(true);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -143,7 +143,7 @@ export default function RewardsSpinPage() {
         if (data.slices && data.slices.length > 0) {
           setSlices(data.slices);
         }
-        setMinDeposit(data.minDeposit || 20000);
+        setMinDeposit(data.minDeposit || 15000);
         setIsCampaignActive(data.isCampaignActive ?? true);
         setWalletBalance(data.walletBalance || 0);
       }
