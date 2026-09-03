@@ -100,7 +100,7 @@ export default function MyWonRewardsPage() {
       case "CAC_VOUCHER":
         return {
           link: "/dashboard/cac",
-          label: "Register Business",
+          label: "Apply Discount (₦1,000 OFF)",
           badge: "Discount Code",
           icon: FileText,
           color: "amber"
@@ -108,7 +108,7 @@ export default function MyWonRewardsPage() {
       case "SCUML_VOUCHER":
         return {
           link: "/dashboard/scuml",
-          label: "Register SCUML",
+          label: "Apply SCUML Discount",
           badge: "Discount Code",
           icon: Tag,
           color: "purple"

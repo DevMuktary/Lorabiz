@@ -51,13 +51,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Sanitize slices: NEVER expose internal drop-rate weights or teaser flags to the browser!
+    const publicSlices = slices.map((s) => ({
+      id: s.id,
+      label: s.label,
+      shortLabel: s.shortLabel,
+      color: s.color,
+      textColor: s.textColor,
+    }));
+
     return NextResponse.json({
       success: true,
       availableTokens,
       spinHistory,
       isCampaignActive,
       minDeposit,
-      slices,
+      slices: publicSlices,
       walletBalance: user.wallet ? Number(user.wallet.balance) : 0,
     });
   } catch (error: any) {
