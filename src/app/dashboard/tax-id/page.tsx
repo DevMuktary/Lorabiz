@@ -218,7 +218,7 @@ export default function TaxIdPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto relative">
+    <div className="space-y-6 max-w-4xl mx-auto relative pb-16 animate-in fade-in duration-200">
       
       {/* Intro Modal (I Understand) */}
       {showIntroModal && mounted && createPortal(
@@ -283,9 +283,8 @@ export default function TaxIdPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <form onSubmit={handleOpenConfirm} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
+      <div className="max-w-3xl mx-auto">
+        <form onSubmit={handleOpenConfirm} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
             
             {/* PalmPay / OPay Style Free Tax ID Pass Voucher Card (Compact) */}
             {freePassCount > 0 && (
@@ -477,29 +476,6 @@ export default function TaxIdPage() {
               </button>
             </div>
           </form>
-        </div>
-
-        {/* Info Sidebar */}
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24">
-            <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground mb-5">Why you need a TIN</h3>
-            <ul className="space-y-5">
-              <li className="flex gap-3">
-                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">1</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">Required for opening corporate or personal bank accounts.</p>
-              </li>
-              <li className="flex gap-3">
-                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">2</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">Required for registering your business for VAT and filing your annual tax returns.</p>
-              </li>
-              <li className="flex gap-3">
-                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">3</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">Mandatory for importing/exporting goods and bidding for government contracts.</p>
-              </li>
-            </ul>
-          </div>
-        </div>
-
       </div>
 
       {/* Confirmation Modal */}

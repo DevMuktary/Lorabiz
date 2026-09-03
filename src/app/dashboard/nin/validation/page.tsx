@@ -67,7 +67,7 @@ export default function NinValidationPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto relative pb-12 animate-in fade-in duration-200 font-sans">
+    <div className="space-y-6 max-w-4xl mx-auto relative pb-16 animate-in fade-in duration-200 font-sans">
       
       {/* Intro Modal (Processing Timeline) */}
       <ValidationNoticeModal
@@ -190,72 +190,15 @@ export default function NinValidationPage() {
           </div>
         </div>
       ) : (
-        /* 3-Column Standard Layout */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Main Form (Left 2 cols) */}
-          <div className="lg:col-span-2">
-            <ValidationSubmissionForm
-              walletBalance={walletBalance}
-              pricing={pricing}
-              availablePasses={availablePasses}
-              useRewardCredit={useRewardCredit}
-              onToggleRewardCredit={setUseRewardCredit}
-              onSuccess={handleSuccess}
-            />
-          </div>
-
-          {/* Info Sidebar (Right 1 col) matching IPE & Tax ID */}
-          <div className="space-y-6">
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24 space-y-5">
-              <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground">
-                How to Track Your Request
-              </h3>
-              
-              <ul className="space-y-4">
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Select Category & Submit</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Choose your validation category, enter your 11-digit NIN, and submit your request.
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Validation & Verification</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Our operations team verifies your record with the central identity database.
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Instant Notification</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      You will receive an automated email when resolved. Full details remain accessible in your History.
-                    </p>
-                  </div>
-                </li>
-              </ul>
-
-              <div className="p-3.5 rounded-xl bg-secondary/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">Need help?</strong> If you have questions about your validation status, reach out to our team via live support.
-              </div>
-            </div>
-          </div>
-
+        <div className="max-w-3xl mx-auto">
+          <ValidationSubmissionForm
+            walletBalance={walletBalance}
+            pricing={pricing}
+            availablePasses={availablePasses}
+            useRewardCredit={useRewardCredit}
+            onToggleRewardCredit={setUseRewardCredit}
+            onSuccess={handleSuccess}
+          />
         </div>
       )}
 

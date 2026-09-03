@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Wallet, Spinner, Sparkle, MusicNotes, ArrowRight } from "@phosphor-icons/react";
+import { X, Wallet, Spinner, Sparkle, MusicNotes, ArrowRight, Gift } from "@phosphor-icons/react";
 
 interface FundWalletModalProps {
   isOpen: boolean;
@@ -194,6 +194,38 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
                 </button>
               ))}
             </div>
+
+            {/* Lucky Spin Milestone Incentive Banner */}
+            <button
+              type="button"
+              onClick={() => setAmount("15000")}
+              disabled={isProcessing}
+              className={`w-full p-3 rounded-2xl border transition-all text-left flex items-center justify-between gap-2.5 cursor-pointer disabled:opacity-50 ${
+                amount === "15000"
+                  ? "border-amber-500 bg-amber-500/15 shadow-sm"
+                  : "border-amber-500/30 bg-amber-500/5 hover:border-amber-500/60"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="h-8 w-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Gift size={18} weight="fill" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-black text-foreground">Fund ₦15,000+ for Lucky Spin</span>
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500 text-white shadow-xs">
+                      1 FREE TOKEN
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Spin to win Free NIN Slips, Tax IDs, Airtime &amp; Cashbacks
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0">
+                {amount === "15000" ? "Selected ✓" : "Tap ₦15,000 →"}
+              </span>
+            </button>
 
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Custom Amount</label>

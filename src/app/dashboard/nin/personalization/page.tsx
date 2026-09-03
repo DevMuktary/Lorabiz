@@ -78,7 +78,7 @@ export default function NinPersonalizationPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto relative pb-28 sm:pb-20 animate-in fade-in duration-200">
+    <div className="space-y-6 max-w-4xl mx-auto relative pb-16 animate-in fade-in duration-200">
       {/* Notice Modal */}
       {showNoticeModal && !submittedResult && !isLoading && isServiceActive && (
         <PersonalizationNoticeModal isOpen={showNoticeModal} onClose={() => setShowNoticeModal(false)} />
@@ -181,73 +181,18 @@ export default function NinPersonalizationPage() {
           </div>
         </div>
       ) : (
-        /* Standard 3-Column Layout */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Form (Left 2 cols) */}
-          <div className="lg:col-span-2">
-            <PersonalizationSubmissionForm
-              walletBalance={walletBalance}
-              servicePrice={servicePrice}
-              originalPrice={originalPrice}
-              hasDiscount={hasDiscount}
-              discountBadge={discountBadge}
-              savedAmount={savedAmount}
-              freePassCount={freePassCount}
-              isServiceActive={isServiceActive}
-              onSuccess={handleSuccess}
-            />
-          </div>
-
-          {/* Guidelines Sidebar (Right 1 col) */}
-          <div className="space-y-6">
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24 space-y-5">
-              <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground">
-                Fulfillment Steps
-              </h3>
-              
-              <ul className="space-y-4">
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Tracking ID Submission</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Submit your enrollment tracking ID for personalization.
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Gateway Processing</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Processed within 1 to 24 hours (slight delay may occur on weekends).
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">NIN & Slip Generation</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Get your resolved National Identity Number (NIN) and download your identity slip.
-                    </p>
-                  </div>
-                </li>
-              </ul>
-
-              <div className="p-3.5 rounded-xl bg-secondary/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">No Refund Policy:</strong> Personalization requests are non-refundable once submitted.
-              </div>
-            </div>
-          </div>
+        <div className="max-w-3xl mx-auto">
+          <PersonalizationSubmissionForm
+            walletBalance={walletBalance}
+            servicePrice={servicePrice}
+            originalPrice={originalPrice}
+            hasDiscount={hasDiscount}
+            discountBadge={discountBadge}
+            savedAmount={savedAmount}
+            freePassCount={freePassCount}
+            isServiceActive={isServiceActive}
+            onSuccess={handleSuccess}
+          />
         </div>
       )}
     </div>

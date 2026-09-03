@@ -238,11 +238,16 @@ export default function DashboardPage() {
 
   const { profile: loyaltyProfile } = useLoyalty();
 
-  // Alternating Promo Modal ("WHATSAPP" | "SPIN" | "NONE") on refresh
+  // Alternating Promo Modal ("WHATSAPP" | "SPIN" | "NONE") with 1-hour limit on dismissal
   const [activePromoModal, setActivePromoModal] = useState<"NONE" | "WHATSAPP" | "SPIN">("NONE");
 
   const handleClosePromoModal = () => {
     setActivePromoModal("NONE");
+    try {
+      // Snooze dashboard popups for 1 hour (3,600,000 ms)
+      const oneHourFromNow = Date.now() + 60 * 60 * 1000;
+      localStorage.setItem("lora_promo_snoozed_until_v1", String(oneHourFromNow));
+    } catch {}
   };
 
   // Lock body scroll when promo modal is active
@@ -293,7 +298,7 @@ export default function DashboardPage() {
       })
       .catch(() => {});
 
-    // Fetch Global Settings for Alternating Modal Popup
+    // Fetch Global Settings for Alternating Modal Popup (1-Hour Snooze Respecting)
     fetch('/api/settings/global')
       .then(res => res.json())
       .then(data => {
@@ -304,15 +309,24 @@ export default function DashboardPage() {
           const params = new URLSearchParams(window.location.search);
           const hasPaymentParam = params.has("funded") || params.has("reference") || params.has("trxref") || params.has("cancelled") || params.has("status");
 
-          if (!hasPaymentParam) {
+          // Check if snoozed for 1 hour
+          let isSnoozed = false;
+          try {
+            const snoozedUntil = Number(localStorage.getItem("lora_promo_snoozed_until_v1") || 0);
+            if (Date.now() < snoozedUntil) {
+              isSnoozed = true;
+            }
+          } catch {}
+
+          if (!hasPaymentParam && !isSnoozed) {
             if (waEnabled && spinEnabled) {
-              const lastPopup = sessionStorage.getItem("lora_last_dashboard_popup");
+              const lastPopup = localStorage.getItem("lora_last_dashboard_popup");
               if (lastPopup === "WHATSAPP") {
                 setActivePromoModal("SPIN");
-                sessionStorage.setItem("lora_last_dashboard_popup", "SPIN");
+                localStorage.setItem("lora_last_dashboard_popup", "SPIN");
               } else {
                 setActivePromoModal("WHATSAPP");
-                sessionStorage.setItem("lora_last_dashboard_popup", "WHATSAPP");
+                localStorage.setItem("lora_last_dashboard_popup", "WHATSAPP");
               }
             } else if (waEnabled) {
               setActivePromoModal("WHATSAPP");
@@ -778,6 +792,12 @@ export default function DashboardPage() {
                 💎 Max Platinum VIP Active (6% OFF on all services)
               </p>
             ) : null}
+
+            {/* Lucky Spin Deposit Milestone Incentive */}
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 w-fit">
+              <Gift size={13} weight="fill" />
+              <span>Fund ₦15,000+ to earn Lucky Spin tokens</span>
+            </div>
           </div>
 
           {/* Bottom Row: Quick Action Buttons */}
