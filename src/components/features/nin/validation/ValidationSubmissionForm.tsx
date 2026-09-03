@@ -155,25 +155,25 @@ export function ValidationSubmissionForm({
           </div>
         )}
 
-        {/* PalmPay / OPay Style Free Pass Voucher Card */}
+        {/* PalmPay / OPay Style Free Pass Voucher Card (Compact) */}
         {availablePasses > 0 && (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 sm:p-4 space-y-2 transition-all">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-                  <Gift size={20} weight="fill" />
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all">
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                  <Gift size={15} weight="fill" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-sm font-bold text-foreground">Free NIN Validation Pass</span>
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-bold text-foreground">Free NIN Validation Pass</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.2 rounded">
                       {availablePasses} Ready (100% Free)
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-[11px] text-muted-foreground truncate">
                     {useRewardCredit
-                      ? "Pass applied! Fee slashed to ₦0.00 for this validation."
-                      : "Pass available. Click toggle to apply to this validation."}
+                      ? "Pass applied · Fee slashed to ₦0.00"
+                      : "Pass available · Click toggle to apply"}
                   </p>
                 </div>
               </div>
@@ -182,14 +182,14 @@ export function ValidationSubmissionForm({
               <button
                 type="button"
                 onClick={() => onToggleRewardCredit?.(!useRewardCredit)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                   useRewardCredit ? "bg-emerald-600" : "bg-muted-foreground/30"
                 }`}
                 title={useRewardCredit ? "Remove Free Pass" : "Apply Free Pass"}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    useRewardCredit ? "translate-x-5" : "translate-x-0"
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    useRewardCredit ? "translate-x-4" : "translate-x-0"
                   }`}
                 />
               </button>

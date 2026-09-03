@@ -69,8 +69,9 @@ export default function AirtimeForm({
   };
 
   const numAmount = Number(amount) || 0;
+  const isEligibleForVoucher = numAmount >= availableAirtimeDiscount;
   const isVoucherActive = useRewardDiscount && availableAirtimeDiscount > 0;
-  const currentDiscount = isVoucherActive ? Math.min(numAmount, availableAirtimeDiscount) : 0;
+  const currentDiscount = isVoucherActive && isEligibleForVoucher ? availableAirtimeDiscount : 0;
   const currentPayable = Math.max(0, numAmount - currentDiscount);
 
   return (
@@ -79,12 +80,8 @@ export default function AirtimeForm({
       {/* Network Selector */}
       <div className="space-y-2.5">
         <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-          <span>1. Select Network Provider <span className="text-destructive">*</span></span>
-          {network && (
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-              Selected: {network}
-            </span>
-          )}
+          <span>Select Network</span>
+          {network && <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black">ACTIVE</span>}
         </label>
         
         <div className="grid grid-cols-4 gap-2.5">
@@ -98,32 +95,35 @@ export default function AirtimeForm({
                   setNetwork(net.id);
                   if (error) setError(null);
                 }}
-                className={`relative h-16 rounded-2xl border-2 transition-all flex flex-col items-center justify-center p-2 overflow-hidden cursor-pointer ${
+                className={`relative flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                   isSelected 
-                    ? `${net.color} shadow-md scale-[1.02]` 
-                    : "border-border hover:border-primary/40 bg-secondary/30 grayscale opacity-75 hover:grayscale-0 hover:opacity-100"
+                    ? "border-emerald-600 bg-emerald-500/10 shadow-sm" 
+                    : "border-border hover:border-emerald-500/40 bg-secondary/30"
                 }`}
               >
-                <Image src={net.logo} alt={net.name} width={34} height={34} className="object-contain" />
+                <div className="w-10 h-10 relative mb-1.5 flex items-center justify-center">
+                  <Image 
+                    src={net.logo} 
+                    alt={net.name} 
+                    width={38} 
+                    height={38} 
+                    className="object-contain rounded-full"
+                  />
+                </div>
+                <span className="text-xs font-bold text-foreground">{net.name}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Inputs */}
-      <div className="space-y-4">
-        
-        {/* Phone Number */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <Phone size={15} weight="bold" />
-              <span>Recipient Phone Number <span className="text-destructive">*</span></span>
-            </span>
-            <span className="font-mono text-[11px]">{cleanPhone.length}/11</span>
-          </label>
-          <Input 
+      {/* Recipient Phone Number */}
+      <div className="space-y-2">
+        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+          Recipient Phone Number
+        </label>
+        <div className="relative">
+          <Input
             type="tel"
             value={phone}
             onChange={(e) => {
@@ -131,21 +131,27 @@ export default function AirtimeForm({
               if (error) setError(null);
             }}
             placeholder="08012345678"
-            maxLength={14}
-            className="h-12 bg-background rounded-xl font-mono text-base sm:text-sm tracking-wide border focus-visible:ring-emerald-500/50"
+            maxLength={11}
+            className="h-12 bg-background rounded-xl font-bold text-base sm:text-sm border focus-visible:ring-emerald-500/50"
           />
         </div>
+      </div>
 
-        {/* Amount */}
+      {/* Amount + Dynamic Price Slashes */}
+      <div className="space-y-3">
         <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <CurrencyNgn size={16} weight="bold" />
-              <span>Recharge Amount (₦50 – ₦10,000) <span className="text-destructive">*</span></span>
-            </span>
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+              Recharge Amount (₦)
+            </label>
+            {numAmount > 0 && isVoucherActive && (
+              <span className={`text-[11px] font-bold ${isEligibleForVoucher ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                {isEligibleForVoucher ? `Save ₦${currentDiscount.toLocaleString()} with voucher` : `Min. ₦${availableAirtimeDiscount.toLocaleString()} to use voucher`}
+              </span>
+            )}
+          </div>
           
-          <Input 
+          <Input
             type="number"
             value={amount}
             onChange={(e) => {
@@ -162,7 +168,8 @@ export default function AirtimeForm({
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-1">
             {QUICK_AMOUNTS.map((val) => {
               const isSelected = amount === val.toString();
-              const pillDiscount = isVoucherActive ? Math.min(val, availableAirtimeDiscount) : 0;
+              const pillEligible = val >= availableAirtimeDiscount;
+              const pillDiscount = isVoucherActive && pillEligible ? availableAirtimeDiscount : 0;
               const pillPayable = Math.max(0, val - pillDiscount);
 
               return (
@@ -176,12 +183,12 @@ export default function AirtimeForm({
                   className={`py-2 px-2 rounded-xl text-center transition-all cursor-pointer border flex flex-col items-center justify-center gap-0.5 ${
                     isSelected
                       ? "bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.02]"
-                      : isVoucherActive
+                      : isVoucherActive && pillEligible
                       ? "bg-emerald-500/5 hover:bg-emerald-500/15 border-emerald-500/25 text-foreground"
                       : "bg-secondary hover:bg-secondary/80 border-border text-foreground"
                   }`}
                 >
-                  {isVoucherActive ? (
+                  {isVoucherActive && pillEligible ? (
                     <>
                       <span className={`text-[10px] line-through ${isSelected ? "text-white/70" : "text-muted-foreground"}`}>
                         ₦{val.toLocaleString()}
@@ -201,25 +208,27 @@ export default function AirtimeForm({
           </div>
         </div>
 
-        {/* PalmPay / OPay Style Voucher Selector Row */}
+        {/* PalmPay / OPay Style Voucher Selector Row (Compact) */}
         {availableAirtimeDiscount > 0 && (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3 sm:p-3.5 transition-all">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-                  <Gift size={18} weight="fill" />
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all">
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                  <Gift size={15} weight="fill" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs font-bold text-foreground">Airtime Voucher</span>
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.2 rounded">
                       -₦{availableAirtimeDiscount.toLocaleString()} OFF
                     </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {useRewardDiscount
-                      ? `Applied! Saving ₦${Math.min(numAmount || availableAirtimeDiscount, availableAirtimeDiscount).toLocaleString()}`
-                      : "Voucher available. Click toggle to apply to this order."}
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {!useRewardDiscount
+                      ? "Voucher available · Click toggle to apply"
+                      : numAmount > 0 && !isEligibleForVoucher
+                      ? `Min. ₦${availableAirtimeDiscount.toLocaleString()} recharge required to apply`
+                      : `Applied! Saving ₦${availableAirtimeDiscount.toLocaleString()} on ₦${availableAirtimeDiscount.toLocaleString()}+ orders`}
                   </p>
                 </div>
               </div>
@@ -228,14 +237,14 @@ export default function AirtimeForm({
               <button
                 type="button"
                 onClick={() => onToggleRewardDiscount?.(!useRewardDiscount)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                   useRewardDiscount ? "bg-emerald-600" : "bg-muted-foreground/30"
                 }`}
                 title={useRewardDiscount ? "Remove Voucher" : "Apply Voucher"}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    useRewardDiscount ? "translate-x-5" : "translate-x-0"
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    useRewardDiscount ? "translate-x-4" : "translate-x-0"
                   }`}
                 />
               </button>

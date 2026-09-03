@@ -55,7 +55,8 @@ export default function AirtimeConfirmationModal({
 
   if (!isOpen || !mounted || typeof document === "undefined") return null;
 
-  const discount = useRewardDiscount ? Math.min(amount, availableAirtimeDiscount) : 0;
+  const isEligible = amount >= availableAirtimeDiscount;
+  const discount = useRewardDiscount && isEligible ? availableAirtimeDiscount : 0;
   const payableAmount = Math.max(0, amount - discount);
   const isInsufficient = walletBalance < payableAmount;
   const remainingBalance = Math.max(0, walletBalance - payableAmount);
@@ -190,22 +191,28 @@ export default function AirtimeConfirmationModal({
               {/* REWARD DISCOUNT SELECTOR (If User has won Airtime Discount) */}
               {availableAirtimeDiscount > 0 && (
                 <div className="border-t border-dashed border-emerald-500/30 pt-1.5 mt-1">
-                  <label className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 cursor-pointer select-none">
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="checkbox"
-                        checked={useRewardDiscount}
-                        onChange={(e) => onToggleRewardDiscount?.(e.target.checked)}
-                        className="h-3.5 w-3.5 accent-emerald-500 rounded cursor-pointer"
-                      />
-                      <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                        Apply Airtime Reward (-₦{availableAirtimeDiscount.toLocaleString()})
+                  {isEligible ? (
+                    <label className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 cursor-pointer select-none">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={useRewardDiscount}
+                          onChange={(e) => onToggleRewardDiscount?.(e.target.checked)}
+                          className="h-3.5 w-3.5 accent-emerald-500 rounded cursor-pointer"
+                        />
+                        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                          Apply Airtime Reward (-₦{availableAirtimeDiscount.toLocaleString()})
+                        </span>
+                      </div>
+                      <span className="text-[9px] font-black uppercase bg-emerald-500 text-white px-1.5 py-0.2 rounded">
+                        SAVE ₦{availableAirtimeDiscount.toLocaleString()}
                       </span>
+                    </label>
+                  ) : (
+                    <div className="p-1.5 rounded-lg bg-secondary/50 border border-border text-[11px] text-muted-foreground">
+                      <span>Airtime voucher (-₦{availableAirtimeDiscount.toLocaleString()}) requires min. recharge of <strong>₦{availableAirtimeDiscount.toLocaleString()}</strong>.</span>
                     </div>
-                    <span className="text-[9px] font-black uppercase bg-emerald-500 text-white px-1.5 py-0.2 rounded">
-                      SAVE ₦{discount}
-                    </span>
-                  </label>
+                  )}
                 </div>
               )}
 

@@ -26,7 +26,7 @@ export const DEFAULT_WHEEL_SLICES: WheelSlice[] = [
   },
   {
     id: "slice-2",
-    label: "Free Premium NIN Slip",
+    label: "1 Free NIN Slip",
     shortLabel: "Free NIN Slip",
     type: "NIN_SLIP",
     value: 1000,
@@ -299,8 +299,8 @@ export async function spinWheelServerSide(userId: string) {
           data: {
             userId,
             rewardType: "NIN_SLIP",
-            title: "1x Free Premium NIN Slip Pass",
-            description: "Valid for 1 instant Premium NIN Slip generation at ₦0 fee.",
+            title: "1 Free NIN Slip Pass",
+            description: "Valid for 1 instant NIN Slip generation (by NIN or Phone Number) at ₦0 fee.",
             value: selectedSlice.value,
             status: "ACTIVE",
             sourceSpinId: availableToken.id,

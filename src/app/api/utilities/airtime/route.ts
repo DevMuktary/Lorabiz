@@ -57,8 +57,8 @@ export async function POST(req: Request) {
         orderBy: { createdAt: "asc" }
       });
 
-      if (rewardCredit) {
-        discountAmount = Math.min(numAmount, Number(rewardCredit.value));
+      if (rewardCredit && numAmount >= Number(rewardCredit.value)) {
+        discountAmount = Number(rewardCredit.value);
         appliedCreditId = rewardCredit.id;
       }
     }
