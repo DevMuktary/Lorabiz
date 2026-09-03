@@ -13,7 +13,7 @@ import {
   ShieldCheck, 
   Sparkle, 
   Spinner,
-  ArrowRight,
+  ArrowRight, 
   Tag,
   CheckCircle,
   Coins,
@@ -22,8 +22,8 @@ import {
   FileText
 } from "@phosphor-icons/react";
 
-export default function VouchersVaultPage() {
-  const [activeTab, setActiveTab] = useState<"ALL" | "PASSES" | "DISCOUNTS" | "USED">("ALL");
+export default function MyWonRewardsPage() {
+  const [activeTab, setActiveTab] = useState<"ALL" | "SERVICES" | "DISCOUNTS" | "USED">("ALL");
   const [vouchersData, setVouchersData] = useState<any>({
     active: [],
     redeemed: [],
@@ -46,7 +46,7 @@ export default function VouchersVaultPage() {
         setVouchersData(data);
       }
     } catch (err) {
-      console.error("Failed to load vouchers:", err);
+      console.error("Failed to load rewards:", err);
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +65,7 @@ export default function VouchersVaultPage() {
   const filteredItems = 
     activeTab === "ALL" 
       ? activeItems 
-      : activeTab === "PASSES" 
+      : activeTab === "SERVICES" 
       ? activeItems.filter((i: any) => i.rewardType === "NIN_SLIP" || i.rewardType === "NIN_VALIDATION" || i.rewardType === "NIN_PERSONALIZATION")
       : activeTab === "DISCOUNTS"
       ? activeItems.filter((i: any) => i.rewardType === "CAC_VOUCHER" || i.rewardType === "SCUML_VOUCHER")
@@ -76,48 +76,48 @@ export default function VouchersVaultPage() {
       case "NIN_SLIP":
         return {
           link: "/dashboard/nin/slips/nin",
-          label: "NIN Slip Generator",
-          badge: "100% Free Pass",
+          label: "Use Free Slip Now",
+          badge: "100% Free Slip",
           icon: IdentificationCard,
           color: "blue"
         };
       case "NIN_VALIDATION":
         return {
           link: "/dashboard/nin/validation",
-          label: "NIN Validation Pipeline",
-          badge: "100% Free Pass",
+          label: "Validate NIN Free",
+          badge: "100% Free Validation",
           icon: Fingerprint,
           color: "emerald"
         };
       case "NIN_PERSONALIZATION":
         return {
           link: "/dashboard/nin/personalization",
-          label: "NIN Personalization",
-          badge: "100% Free Pass",
+          label: "Personalize NIN Free",
+          badge: "100% Free Service",
           icon: ShieldCheck,
           color: "indigo"
         };
       case "CAC_VOUCHER":
         return {
-          link: "/dashboard/cac/business-name",
-          label: "CAC Business Registration",
-          badge: "Discount Voucher",
+          link: "/dashboard/cac",
+          label: "Register Business",
+          badge: "Discount Code",
           icon: FileText,
           color: "amber"
         };
       case "SCUML_VOUCHER":
         return {
           link: "/dashboard/scuml",
-          label: "SCUML Registration",
-          badge: "Discount Voucher",
+          label: "Register SCUML",
+          badge: "Discount Code",
           icon: Tag,
           color: "purple"
         };
       default:
         return {
           link: "/dashboard",
-          label: "LoraBiz Services",
-          badge: "Reward Credit",
+          label: "Claim Reward",
+          badge: "Free Reward",
           icon: Gift,
           color: "pink"
         };
@@ -125,7 +125,8 @@ export default function VouchersVaultPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-16 animate-in fade-in duration-200">
+    <div className="space-y-6 max-w-6xl mx-auto pb-16 animate-in fade-in duration-200">
+      
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
@@ -137,18 +138,18 @@ export default function VouchersVaultPage() {
             Back to Dashboard
           </Link>
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center shrink-0 shadow-sm">
+            <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0 shadow-xs">
               <Ticket weight="fill" className="h-6 w-6" />
             </div>
             <div>
               <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
-                <span>My Vouchers &amp; Reward Passes</span>
-                <span className="text-[10px] uppercase font-black tracking-wider bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 px-2.5 py-0.5 rounded-full border border-cyan-500/20">
-                  {summary.totalActive} Active
+                <span>My Won Rewards</span>
+                <span className="text-[10px] uppercase font-black tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                  {summary.totalActive} Ready to Use
                 </span>
               </h1>
               <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-                Redeem free service passes and discount codes unlocked from Lucky Spins and Promotions.
+                All your free services, free slips, and discounts won from Lucky Spins and Promotions.
               </p>
             </div>
           </div>
@@ -159,50 +160,50 @@ export default function VouchersVaultPage() {
           className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md hover:opacity-90 transition-all group shrink-0"
         >
           <Gift weight="fill" className="h-4 w-4" />
-          <span>Go to Lucky Spin Wheel</span>
+          <span>Spin &amp; Win More</span>
           <ArrowRight weight="bold" className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
 
       {/* Summary Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
             <IdentificationCard weight="bold" className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">NIN Slip Passes</span>
-            <span className="text-base sm:text-lg font-black text-foreground font-mono">{summary.ninSlip} Available</span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Free NIN Slips</span>
+            <span className="text-base font-black text-foreground font-mono">{summary.ninSlip} Available</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+        <div className="p-3.5 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
             <Fingerprint weight="bold" className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Validations</span>
-            <span className="text-base sm:text-lg font-black text-foreground font-mono">{summary.ninValidation} Available</span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Free Validations</span>
+            <span className="text-base font-black text-foreground font-mono">{summary.ninValidation} Available</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+        <div className="p-3.5 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
             <ShieldCheck weight="bold" className="h-5 w-5" />
           </div>
           <div>
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Personalization</span>
-            <span className="text-base sm:text-lg font-black text-foreground font-mono">{summary.ninPersonalization} Available</span>
+            <span className="text-base font-black text-foreground font-mono">{summary.ninPersonalization} Available</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+        <div className="p-3.5 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
             <Tag weight="bold" className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">CAC Vouchers</span>
-            <span className="text-base sm:text-lg font-black text-foreground font-mono">{summary.cacVouchers} Available</span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Discounts</span>
+            <span className="text-base font-black text-foreground font-mono">{summary.cacVouchers} Available</span>
           </div>
         </div>
       </div>
@@ -212,7 +213,7 @@ export default function VouchersVaultPage() {
         <button
           type="button"
           onClick={() => setActiveTab("ALL")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === "ALL"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
@@ -223,32 +224,32 @@ export default function VouchersVaultPage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab("PASSES")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === "PASSES"
+          onClick={() => setActiveTab("SERVICES")}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === "SERVICES"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
           }`}
         >
-          Free Service Passes ({summary.ninSlip + summary.ninValidation + summary.ninPersonalization})
+          Free Services ({summary.ninSlip + summary.ninValidation + summary.ninPersonalization})
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("DISCOUNTS")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === "DISCOUNTS"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
           }`}
         >
-          Discount Vouchers ({summary.cacVouchers})
+          Discounts ({summary.cacVouchers})
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("USED")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === "USED"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
@@ -258,37 +259,37 @@ export default function VouchersVaultPage() {
         </button>
       </div>
 
-      {/* Vouchers Grid */}
+      {/* Rewards Grid */}
       {isLoading ? (
         <div className="py-16 text-center">
           <Spinner weight="bold" className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-xs text-muted-foreground mt-2 font-medium">Loading your vouchers vault...</p>
+          <p className="text-xs text-muted-foreground mt-2 font-medium">Loading your rewards...</p>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="p-12 text-center bg-card border border-border rounded-3xl space-y-4 max-w-lg mx-auto">
-          <div className="h-16 w-16 bg-secondary text-muted-foreground rounded-full flex items-center justify-center mx-auto">
-            <Ticket weight="duotone" className="h-8 w-8" />
+        <div className="p-10 text-center bg-card border border-border rounded-3xl space-y-4 max-w-md mx-auto">
+          <div className="h-14 w-14 bg-secondary text-muted-foreground rounded-full flex items-center justify-center mx-auto">
+            <Ticket weight="duotone" className="h-7 w-7" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-foreground">No Vouchers Found</h3>
+            <h3 className="text-base font-bold text-foreground">No Rewards Here Yet</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {activeTab === "USED"
-                ? "You haven't redeemed any vouchers yet."
-                : "Fund your wallet with ₦20,000 or more in a single deposit to unlock instant Lucky Spins and win 100% Free Passes!"}
+                ? "You haven't redeemed any rewards yet."
+                : "Top up your wallet with ₦20,000 or more to earn Lucky Spins and win 100% Free NIN Slips, cashback, and discounts!"}
             </p>
           </div>
           {activeTab !== "USED" && (
             <Link
               href="/dashboard/rewards"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-xs"
             >
               <Gift weight="fill" className="h-4 w-4" />
-              <span>Spin &amp; Win Passes</span>
+              <span>Spin &amp; Win Free Slips</span>
             </Link>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredItems.map((voucher: any) => {
             const isRedeemed = voucher.status === "REDEEMED";
             const details = getServiceDetails(voucher.rewardType);
@@ -297,17 +298,17 @@ export default function VouchersVaultPage() {
             return (
               <div
                 key={voucher.id}
-                className={`rounded-3xl border transition-all p-5 sm:p-6 flex flex-col justify-between shadow-xs ${
+                className={`rounded-2xl sm:rounded-3xl border transition-all p-4 sm:p-5 flex flex-col justify-between shadow-xs ${
                   isRedeemed
-                    ? "bg-secondary/30 border-border opacity-75"
+                    ? "bg-secondary/30 border-border opacity-70"
                     : "bg-card border-border hover:border-primary/40 hover:shadow-md"
                 }`}
               >
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {/* Card Header Tag */}
                   <div className="flex items-center justify-between gap-2">
                     <span
-                      className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                      className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                         isRedeemed
                           ? "bg-muted text-muted-foreground border-border"
                           : voucher.rewardType === "NIN_SLIP"
@@ -332,7 +333,7 @@ export default function VouchersVaultPage() {
 
                   {/* Icon & Title */}
                   <div className="flex items-start gap-3">
-                    <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
                       voucher.rewardType === "NIN_SLIP"
                         ? "bg-blue-500/10 text-blue-500"
                         : voucher.rewardType === "NIN_VALIDATION"
@@ -344,7 +345,7 @@ export default function VouchersVaultPage() {
                       <IconComp size={20} weight="bold" />
                     </div>
 
-                    <div className="space-y-1 min-w-0">
+                    <div className="space-y-0.5 min-w-0">
                       <h3 className="text-sm sm:text-base font-black text-foreground leading-snug">
                         {voucher.title}
                       </h3>
@@ -356,7 +357,7 @@ export default function VouchersVaultPage() {
 
                   {/* Promo Code Box (If applicable) */}
                   {voucher.voucherCode && (
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-secondary/60 border border-border">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-secondary/60 border border-border">
                       <div>
                         <span className="text-[9px] uppercase font-bold text-muted-foreground block">Promo Code</span>
                         <span className="font-mono font-black text-xs sm:text-sm text-foreground tracking-wider">
@@ -366,13 +367,13 @@ export default function VouchersVaultPage() {
                       <button
                         type="button"
                         onClick={() => handleCopy(voucher.voucherCode)}
-                        className="p-2 rounded-xl bg-background border border-border hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer text-muted-foreground"
+                        className="p-1.5 rounded-lg bg-background border border-border hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer text-muted-foreground"
                         title="Copy Code"
                       >
                         {copiedCode === voucher.voucherCode ? (
-                          <Check weight="bold" className="h-4 w-4 text-emerald-500" />
+                          <Check weight="bold" className="h-3.5 w-3.5 text-emerald-500" />
                         ) : (
-                          <Copy weight="bold" className="h-4 w-4" />
+                          <Copy weight="bold" className="h-3.5 w-3.5" />
                         )}
                       </button>
                     </div>
@@ -380,7 +381,7 @@ export default function VouchersVaultPage() {
                 </div>
 
                 {/* Bottom Action CTA */}
-                <div className="pt-4 border-t border-border mt-4">
+                <div className="pt-3 border-t border-border mt-3">
                   {isRedeemed ? (
                     <div className="text-center text-xs font-bold text-muted-foreground flex items-center justify-center gap-1.5 py-1">
                       <CheckCircle weight="fill" className="h-4 w-4 text-emerald-500" />
@@ -389,10 +390,10 @@ export default function VouchersVaultPage() {
                   ) : (
                     <Link
                       href={details.link}
-                      className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:opacity-90 flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                      className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:opacity-90 flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
                     >
-                      <span>Use Pass Now ({details.label})</span>
-                      <ArrowRight weight="bold" className="h-3.5 w-3.5" />
+                      <span>{details.label}</span>
+                      <ArrowRight weight="bold" className="h-3 w-3" />
                     </Link>
                   )}
                 </div>

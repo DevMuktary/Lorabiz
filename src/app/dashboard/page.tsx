@@ -560,25 +560,6 @@ export default function DashboardPage() {
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pt-0.5 font-medium max-w-md">
             Explore available services and manage your transactions below.
           </p>
-
-          {/* Active Spin Tokens Incentive Pill */}
-          {availableSpinTokens > 0 && (
-            <div className="pt-2 animate-in fade-in">
-              <button
-                type="button"
-                onClick={() => setIsSpinModalOpen(true)}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-foreground hover:bg-amber-500/20 text-xs font-bold transition-all group shadow-xs cursor-pointer"
-              >
-                <Gift weight="fill" className="h-4 w-4 text-amber-500 animate-bounce shrink-0" />
-                <span>
-                  You have <strong className="text-amber-600 dark:text-amber-400 font-black">{availableSpinTokens} Lucky Spin token{availableSpinTokens > 1 ? "s" : ""}</strong> ready!
-                </span>
-                <span className="text-amber-600 dark:text-amber-400 underline font-black group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 ml-1">
-                  Spin &amp; Win →
-                </span>
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Right: Soft Pink Circle & 3D Wallet (Touching routes to Partner/Referral program) */}
@@ -720,12 +701,11 @@ export default function DashboardPage() {
               Quick Actions
             </span>
 
-            {/* Lucky Spin Action Button */}
-            <button
-              type="button"
-              onClick={() => setIsSpinModalOpen(true)}
+            {/* Lucky Spin Navigation Link */}
+            <Link
+              href="/dashboard/rewards"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 transition-all shadow-xs cursor-pointer active:scale-95"
-              title="Lucky Spin Wheel & Rewards"
+              title="Go to Spin & Win"
             >
               <Gift weight="fill" className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
               <span>Spin &amp; Win</span>
@@ -734,7 +714,7 @@ export default function DashboardPage() {
                   {availableSpinTokens}
                 </span>
               )}
-            </button>
+            </Link>
           </div>
 
           <div className="space-y-2">

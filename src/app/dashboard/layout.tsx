@@ -45,8 +45,8 @@ const NAVIGATION: NavCategory[] = [
     category: "Main",
     links: [
       { name: "Service Hub", href: "/dashboard", icon: SquaresFour },
-      { name: "Reward Vault", href: "/dashboard/rewards", icon: Gift },
-      { name: "My Vouchers", href: "/dashboard/vouchers", icon: Ticket },
+      { name: "Spin & Win", href: "/dashboard/rewards", icon: Gift },
+      { name: "My Rewards", href: "/dashboard/vouchers", icon: Ticket },
       { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
       { name: "Wallet", href: "/dashboard/wallet", icon: Wallet },
       { name: "Partner Program", href: "/dashboard/referrals", icon: Users },

@@ -374,116 +374,128 @@ export default function DashboardLuckySpinModal({
           </div>
         )}
 
-        {/* WON PRIZE CELEBRATION CARD */}
-        {wonPrize && (
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-transparent border border-amber-500/30 text-left space-y-2 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-black tracking-wider bg-emerald-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+        {/* WON PRIZE CELEBRATION VIEW (Replaces wheel so modal never stretches!) */}
+        {wonPrize ? (
+          <div className="py-2 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto shadow-inner">
+              <Sparkle weight="fill" className="h-8 w-8 animate-pulse text-emerald-500" />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-black tracking-wider bg-emerald-500 text-white px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
                 <CheckCircle weight="fill" className="h-3 w-3" />
-                <span>You Won!</span>
+                <span>Prize Unlocked!</span>
               </span>
-              <span className="text-[11px] font-bold text-muted-foreground">
-                {wonPrize.type === "CASH" ? "Cashback" : "Service Pass"}
-              </span>
+              <h3 className="text-xl font-black text-foreground pt-1">{wonPrize.label}</h3>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto">{wonPrize.description}</p>
             </div>
-            <div>
-              <h3 className="text-base font-black text-foreground">{wonPrize.label}</h3>
-              <p className="text-xs text-muted-foreground">{wonPrize.description}</p>
-            </div>
-            <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 pt-0.5">
+
+            <div className="p-3 rounded-xl bg-secondary/60 border border-border text-xs text-muted-foreground">
               {wonPrize.type === "CASH"
-                ? "✓ Credited to your wallet balance immediately!"
-                : "✓ Added to your Vouchers Vault & ready to redeem!"}
-            </p>
-          </div>
-        )}
-
-        {/* Interactive Canvas Wheel */}
-        <div 
-          onClick={handleSpinClick}
-          className="relative my-1 flex items-center justify-center cursor-pointer group hover:scale-[1.01] active:scale-[0.99] transition-transform select-none"
-          title="Click wheel to spin!"
-        >
-          {/* Top Ticker Pointer */}
-          <div className="absolute -top-2.5 z-20 flex flex-col items-center drop-shadow-md">
-            <div className="w-5 h-6 bg-amber-500 border-2 border-white rounded-b-md transform rotate-180 flex items-center justify-center shadow-lg" />
-            <div className="w-1.5 h-1.5 bg-amber-600 rounded-full -mt-0.5" />
-          </div>
-
-          <canvas
-            ref={canvasRef}
-            width={340}
-            height={340}
-            className="max-w-[270px] sm:max-w-[300px] aspect-square rounded-full shadow-xl"
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="space-y-2 pt-1">
-          {availableTokens > 0 ? (
-            <button
-              type="button"
-              onClick={handleSpinClick}
-              disabled={isSpinning}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
-            >
-              {isSpinning ? (
-                <>
-                  <Spinner weight="bold" className="h-4 w-4 animate-spin" />
-                  <span>Spinning Wheel...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkle weight="fill" className="h-4 w-4" />
-                  <span>TAP TO SPIN &amp; WIN</span>
-                </>
-              )}
-            </button>
-          ) : (
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={onClose}
-                className="py-3 rounded-xl border border-border hover:bg-secondary text-foreground text-xs font-bold transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenFundWallet?.();
-                }}
-                className="py-3 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:opacity-90 flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
-              >
-                <Wallet size={14} weight="bold" />
-                <span>Fund Wallet</span>
-              </button>
+                ? "✓ Cash prize added directly to your wallet balance!"
+                : "✓ Saved to your Won Rewards & ready to use immediately!"}
             </div>
-          )}
 
-          {wonPrize && (
-            <div className="flex items-center justify-center gap-4 pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {availableTokens > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setWonPrize(null)}
+                  className="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <Sparkle weight="fill" size={13} />
+                  <span>Spin Again ({availableTokens})</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="py-2.5 rounded-xl border border-border hover:bg-secondary text-foreground text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Done
+                </button>
+              )}
+
               <Link
                 href="/dashboard/vouchers"
                 onClick={onClose}
-                className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                className="py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:opacity-90 flex items-center justify-center gap-1 transition-all shadow-sm"
               >
                 <Ticket weight="bold" size={13} />
-                <span>View Vouchers</span>
+                <span>My Rewards</span>
               </Link>
-              <span className="text-muted-foreground">•</span>
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-xs font-bold text-muted-foreground hover:text-foreground"
-              >
-                Continue to Dashboard
-              </button>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          /* ACTIVE SPIN WHEEL VIEW */
+          <div className="space-y-3">
+            {/* Interactive Canvas Wheel */}
+            <div 
+              onClick={handleSpinClick}
+              className="relative my-1 flex items-center justify-center cursor-pointer group hover:scale-[1.01] active:scale-[0.99] transition-transform select-none"
+              title="Click wheel to spin!"
+            >
+              {/* Top Ticker Pointer */}
+              <div className="absolute -top-2 z-20 flex flex-col items-center drop-shadow-md">
+                <div className="w-4 h-5 bg-amber-500 border-2 border-white rounded-b-md transform rotate-180 flex items-center justify-center shadow-lg" />
+                <div className="w-1.5 h-1.5 bg-amber-600 rounded-full -mt-0.5" />
+              </div>
+
+              <canvas
+                ref={canvasRef}
+                width={300}
+                height={300}
+                className="max-w-[230px] sm:max-w-[250px] aspect-square rounded-full shadow-lg"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-1">
+              {availableTokens > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleSpinClick}
+                  disabled={isSpinning}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-amber-500/25 transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
+                >
+                  {isSpinning ? (
+                    <>
+                      <Spinner weight="bold" className="h-4 w-4 animate-spin" />
+                      <span>Spinning Wheel...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkle weight="fill" className="h-4 w-4" />
+                      <span>TAP TO SPIN &amp; WIN</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="py-2.5 rounded-xl border border-border hover:bg-secondary text-foreground text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenFundWallet?.();
+                    }}
+                    className="py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:opacity-90 flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                  >
+                    <Wallet size={13} weight="bold" />
+                    <span>Fund Wallet</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>,

@@ -332,25 +332,25 @@ export default function RewardsSpinPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
-                Lorabiz Reward Vault
+                Lorabiz Spin &amp; Win
                 <span className="text-[10px] uppercase font-black tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                  Lucky Spin &amp; Win
+                  Instant Rewards
                 </span>
               </h1>
               <p className="text-muted-foreground text-sm">
-                Deposit ₦{minDeposit.toLocaleString()} or more to earn free spin tokens and win cashback, free NIN slips, and CAC discounts.
+                Deposit ₦{minDeposit.toLocaleString()} or more into your wallet to earn free spins and win instant wallet cash, free NIN slips, and registration discounts.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Action button to My Vouchers */}
+        {/* Action button to My Won Rewards */}
         <Link
           href="/dashboard/vouchers"
           className="flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-bold rounded-xl border border-border transition-colors group shrink-0"
         >
           <Ticket weight="fill" className="h-4 w-4 text-cyan-500" />
-          <span>View My Vouchers &amp; Passes</span>
+          <span>View My Won Rewards</span>
           <ArrowRight weight="bold" className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
@@ -442,7 +442,7 @@ export default function RewardsSpinPage() {
           <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <Lightning weight="fill" className="h-4 w-4 text-amber-500" />
-              How Reward Vault Works
+              How Spin &amp; Win Works
             </h2>
 
             <ul className="space-y-3 text-xs text-muted-foreground">
@@ -460,7 +460,7 @@ export default function RewardsSpinPage() {
                   2
                 </div>
                 <div>
-                  <strong className="text-foreground">Guaranteed Win</strong>: Spin the wheel to receive wallet cashback, free NIN slip passes, or CAC vouchers.
+                  <strong className="text-foreground">Guaranteed Win</strong>: Spin the wheel to receive wallet cashback, free NIN slips, or business discounts.
                 </div>
               </li>
 
@@ -469,7 +469,7 @@ export default function RewardsSpinPage() {
                   3
                 </div>
                 <div>
-                  <strong className="text-foreground">Instant Redemption</strong>: Free passes are applied with 1-click in service forms, and cashback is immediately added to your wallet!
+                  <strong className="text-foreground">Instant Redemption</strong>: Free slips and discounts are ready to use in your forms, and cashback is immediately credited to your wallet!
                 </div>
               </li>
             </ul>
@@ -510,8 +510,8 @@ export default function RewardsSpinPage() {
 
                     <span className="font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0">
                       {item.prizeType === "CASH"
-                        ? `+₦${item.prizeValue.toLocaleString()}`
-                        : "Pass Granted"}
+                        ? `+₦${item.prizeValue.toLocaleString()} Cashback`
+                        : "✓ Won"}
                     </span>
                   </div>
                 ))}
