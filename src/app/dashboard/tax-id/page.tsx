@@ -466,10 +466,7 @@ export default function TaxIdPage() {
                 {isLoadingPrice ? (
                   "Loading pricing..."
                 ) : isPassApplied ? (
-                  <span className="flex items-center gap-2">
-                    <span>Submit Application (₦0.00 Free)</span>
-                    <span className="text-xs opacity-75 line-through">₦{currentPrice.toLocaleString()}</span>
-                  </span>
+                  <span>Submit Application (₦0.00 Free)</span>
                 ) : (
                   "Submit Application"
                 )}

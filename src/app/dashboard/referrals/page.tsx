@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { 
-  Users, Wallet, CheckCircle, 
+  Users, Wallet, CheckCircle, WarningCircle,
   Copy, Bank, Spinner, Info, Money, Check, PencilSimple, 
   ArrowLeft, CaretDown, MagnifyingGlass, X, Coins, EnvelopeSimple, ChartLineUp,
   Gift, ShieldWarning // <-- Added new icons for the onboarding view
@@ -44,6 +44,55 @@ export default function ReferralsPage() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
   };
+
+  // Auto Bank Account Resolution State
+  const [resolvedAccountName, setResolvedAccountName] = useState<string | null>(null);
+  const [isResolvingAccount, setIsResolvingAccount] = useState<boolean>(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [isNameMatch, setIsNameMatch] = useState<boolean | null>(null);
+  const [registeredName, setRegisteredName] = useState<string>("");
+
+  useEffect(() => {
+    // Whenever bankCode and a complete 10-digit accountNumber are present
+    if (setupData.bankCode && setupData.accountNumber.length === 10) {
+      let isCancelled = false;
+      setIsResolvingAccount(true);
+      setResolveError(null);
+      setResolvedAccountName(null);
+      setIsNameMatch(null);
+
+      fetch(`/api/bank/resolve?bankCode=${encodeURIComponent(setupData.bankCode)}&accountNumber=${encodeURIComponent(setupData.accountNumber)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (isCancelled) return;
+          if (data.success && data.accountName) {
+            setResolvedAccountName(data.accountName);
+            setIsNameMatch(data.isNameMatch);
+            setRegisteredName(data.registeredName || "");
+            setResolveError(null);
+          } else {
+            setResolvedAccountName(null);
+            setResolveError(data.message || "Could not resolve this account with the selected bank.");
+          }
+        })
+        .catch(() => {
+          if (isCancelled) return;
+          setResolveError("Network error while resolving bank account.");
+        })
+        .finally(() => {
+          if (!isCancelled) setIsResolvingAccount(false);
+        });
+
+      return () => {
+        isCancelled = true;
+      };
+    } else {
+      setResolvedAccountName(null);
+      setResolveError(null);
+      setIsResolvingAccount(false);
+      setIsNameMatch(null);
+    }
+  }, [setupData.bankCode, setupData.accountNumber]);
 
   useEffect(() => {
     fetchBanks();
@@ -363,8 +412,54 @@ export default function ReferralsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="accountNumber">Account Number (NUBAN)</Label>
-                <Input id="accountNumber" type="text" maxLength={10} value={setupData.accountNumber} onChange={(e) => setSetupData({...setupData, accountNumber: e.target.value.replace(/\D/g, "")})} required placeholder="0000000000" className="h-12 bg-secondary/40 border-border text-foreground focus-visible:ring-[#ff3f7a]" />
+                <Input 
+                  id="accountNumber" 
+                  type="text" 
+                  maxLength={10} 
+                  value={setupData.accountNumber} 
+                  onChange={(e) => setSetupData({...setupData, accountNumber: e.target.value.replace(/\D/g, "")})} 
+                  required 
+                  placeholder="0000000000" 
+                  className="h-12 bg-secondary/40 border-border text-foreground focus-visible:ring-[#ff3f7a]" 
+                />
               </div>
+
+              {/* Auto-resolved Account Name Feedback Card */}
+              {isResolvingAccount && (
+                <div className="p-3.5 rounded-xl bg-secondary/50 border border-border text-xs flex items-center gap-2.5 text-muted-foreground animate-in fade-in">
+                  <Spinner className="animate-spin h-4 w-4 text-[#ff3f7a]" />
+                  <span>Verifying account details with NIBSS &amp; {setupData.bankName || "selected bank"}...</span>
+                </div>
+              )}
+
+              {resolvedAccountName && (
+                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-2 animate-in slide-in-from-bottom-2 duration-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle weight="fill" className="h-4 w-4 text-emerald-500" />
+                      Verified Account Name
+                    </span>
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      {setupData.bankName}
+                    </span>
+                  </div>
+                  <p className="text-base font-black text-foreground tracking-tight">
+                    {resolvedAccountName}
+                  </p>
+                  {isNameMatch === false && registeredName && (
+                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
+                      <strong>Name Notice:</strong> Your registered LoraBiz name is <strong>{registeredName}</strong>. Payouts require matching legal names.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {resolveError && (
+                <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2 animate-in fade-in">
+                  <WarningCircle weight="fill" className="h-4 w-4 shrink-0" />
+                  <span>{resolveError}</span>
+                </div>
+              )}
 
               {!stats?.bankDetails && (
                 <label className="flex items-start gap-3 p-4 border border-border bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors select-none">
@@ -375,7 +470,7 @@ export default function ReferralsPage() {
 
               <div className="flex gap-3 pt-2">
                 {isEditingBank && <Button type="button" variant="outline" onClick={() => setIsEditingBank(false)} className="h-12 px-6 border-border">Cancel</Button>}
-                <Button type="submit" disabled={settingUp || !setupData.bankCode || setupData.accountNumber.length !== 10 || !setupData.acceptTerms} className="flex-1 h-12 font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white">
+                <Button type="submit" disabled={settingUp || isResolvingAccount || !setupData.bankCode || setupData.accountNumber.length !== 10 || !setupData.acceptTerms || Boolean(resolveError)} className="flex-1 h-12 font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white cursor-pointer disabled:opacity-50">
                   {settingUp ? <Spinner className="animate-spin h-5 w-5" /> : "Verify & Save Details"}
                 </Button>
               </div>

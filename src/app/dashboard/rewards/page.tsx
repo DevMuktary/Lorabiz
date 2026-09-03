@@ -477,10 +477,17 @@ export default function RewardsSpinPage() {
 
           {/* Spin History Card */}
           <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
-            <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Clock weight="bold" className="h-4 w-4 text-primary" />
-              Your Recent Rewards
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Clock weight="bold" className="h-4 w-4 text-primary" />
+                Your Won Rewards History
+              </h2>
+              {spinHistory.length > 0 && (
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  {spinHistory.length} Total Won
+                </span>
+              )}
+            </div>
 
             {isLoading ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
@@ -493,30 +500,39 @@ export default function RewardsSpinPage() {
                 <p>Deposit ₦{minDeposit.toLocaleString()} or more to spin the wheel!</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/60 max-h-60 overflow-y-auto pr-1">
+              <div className="divide-y divide-border/60 max-h-96 overflow-y-auto pr-1">
                 {spinHistory.map((item: any) => {
                   const label = item.wonPrizeLabel || item.prizeLabel || "Lucky Prize";
                   const type = item.wonPrizeType || item.prizeType || "";
                   const val = Number(item.wonPrizeValue || item.prizeValue || 0);
+                  const isCash = type === "WALLET_CASH" || type === "CASH";
+                  const isAirtime = type === "AIRTIME";
 
                   return (
                     <div key={item.id} className="py-3 flex items-center justify-between gap-3 text-xs">
-                      <div className="space-y-0.5">
-                        <p className="font-bold text-foreground">{label}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {new Date(item.spunAt || item.createdAt).toLocaleDateString("en-NG", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                      <div className="space-y-0.5 min-w-0">
+                        <p className="font-bold text-foreground truncate">{label}</p>
+                        <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                          <span>
+                            {new Date(item.spunAt || item.createdAt).toLocaleDateString("en-NG", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          {isCash && (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              · Credited to Wallet ✓
+                            </span>
+                          )}
                         </p>
                       </div>
 
                       <span className="font-bold text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0">
-                        {type === "WALLET_CASH" || type === "CASH"
+                        {isCash
                           ? `+₦${val.toLocaleString()} Cash`
-                          : type === "AIRTIME"
+                          : isAirtime
                           ? `+₦${val.toLocaleString()} Airtime`
                           : type === "CAC_VOUCHER" || type === "SCUML_VOUCHER"
                           ? `₦${val.toLocaleString()} Discount`
@@ -527,6 +543,17 @@ export default function RewardsSpinPage() {
                 })}
               </div>
             )}
+
+            <div className="pt-2 border-t border-border/60">
+              <Link
+                href="/dashboard/vouchers"
+                className="w-full py-2.5 px-4 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-xs font-bold text-foreground flex items-center justify-center gap-2 transition-colors group cursor-pointer"
+              >
+                <Ticket weight="fill" className="h-4 w-4 text-cyan-500" />
+                <span>View Full Rewards &amp; Vouchers Vault</span>
+                <ArrowRight weight="bold" className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
           </div>
 
         </div>

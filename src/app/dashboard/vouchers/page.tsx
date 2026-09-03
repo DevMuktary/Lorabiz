@@ -60,13 +60,14 @@ export default function MyWonRewardsPage() {
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
+  const allItems = vouchersData.all || [];
   const activeItems = vouchersData.active || [];
   const redeemedItems = vouchersData.redeemed || [];
   const summary = vouchersData.summary || { totalActive: 0, ninSlip: 0, ninValidation: 0, ninPersonalization: 0, taxIdPass: 0, cacVouchers: 0, airtimeDiscounts: 0 };
 
   const filteredItems = 
     activeTab === "ALL" 
-      ? activeItems 
+      ? allItems.length > 0 ? allItems : activeItems 
       : activeTab === "SERVICES" 
       ? activeItems.filter((i: any) => i.rewardType === "NIN_SLIP" || i.rewardType === "NIN_VALIDATION" || i.rewardType === "NIN_PERSONALIZATION" || i.rewardType === "TAX_ID_PASS")
       : activeTab === "DISCOUNTS"
@@ -263,7 +264,7 @@ export default function MyWonRewardsPage() {
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
           }`}
         >
-          All Active ({activeItems.length})
+          All Rewards ({allItems.length > 0 ? allItems.length : activeItems.length})
         </button>
 
         <button
@@ -343,7 +344,9 @@ export default function MyWonRewardsPage() {
               <div
                 key={voucher.id}
                 className={`rounded-2xl sm:rounded-3xl border transition-all p-4 sm:p-5 flex flex-col justify-between shadow-xs ${
-                  isRedeemed
+                  voucher.rewardType === "WALLET_CASH"
+                    ? "bg-emerald-500/5 border-emerald-500/25 shadow-xs"
+                    : isRedeemed
                     ? "bg-secondary/30 border-border opacity-65"
                     : "bg-card border-border hover:border-primary/40 hover:shadow-md"
                 }`}
@@ -353,7 +356,9 @@ export default function MyWonRewardsPage() {
                   <div className="flex items-center justify-between gap-2">
                     <span
                       className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${
-                        isRedeemed
+                        voucher.rewardType === "WALLET_CASH"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          : isRedeemed
                           ? "bg-secondary text-muted-foreground border-border"
                           : voucher.rewardType === "NIN_SLIP"
                           ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
@@ -368,7 +373,11 @@ export default function MyWonRewardsPage() {
                           : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                       }`}
                     >
-                      {isRedeemed ? "Used" : details.badge}
+                      {voucher.rewardType === "WALLET_CASH"
+                        ? "Credited to Wallet ✓"
+                        : isRedeemed
+                        ? "Used"
+                        : details.badge}
                     </span>
 
                     {voucher.expiresAt && !isRedeemed && (
@@ -432,7 +441,15 @@ export default function MyWonRewardsPage() {
 
                 {/* Bottom Action CTA */}
                 <div className="pt-3 border-t border-border mt-3">
-                  {isRedeemed ? (
+                  {voucher.rewardType === "WALLET_CASH" ? (
+                    <Link
+                      href="/dashboard/wallet"
+                      className="w-full py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-emerald-500/20"
+                    >
+                      <CheckCircle weight="fill" className="h-4 w-4" />
+                      <span>Credited to Wallet ({new Date(voucher.redeemedAt || voucher.createdAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })})</span>
+                    </Link>
+                  ) : isRedeemed ? (
                     <div className="text-center text-xs font-bold text-muted-foreground flex items-center justify-center gap-1.5 py-1">
                       <CheckCircle weight="fill" className="h-4 w-4 text-emerald-500" />
                       <span>Used {voucher.redeemedAt ? `on ${new Date(voucher.redeemedAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}` : ""}</span>

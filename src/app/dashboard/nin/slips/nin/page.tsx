@@ -540,14 +540,9 @@ export default function NinByNinPage() {
           {statusState.loading ? (
             <span>Loading pricing...</span>
           ) : useRewardCredit && availablePasses > 0 ? (
-            <span className="flex items-center gap-2">
-              <span>Verify &amp; Generate Slip (₦0.00 Free)</span>
-              <span className="text-xs opacity-75 line-through">
-                ₦{Number(currentPrice || selectedOption.defaultPrice || 500).toLocaleString()}
-              </span>
-            </span>
+            <span>Verify &amp; Generate (₦0.00 Free)</span>
           ) : (
-            <span>Verify &amp; Generate Slip (₦{Number(currentPrice || selectedOption.defaultPrice || 500).toLocaleString()})</span>
+            <span>Verify &amp; Generate (₦{Number(currentPrice || selectedOption.defaultPrice || 500).toLocaleString()})</span>
           )}
         </Button>
 

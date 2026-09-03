@@ -25,11 +25,17 @@ export async function GET(req: NextRequest) {
       where: { userId: user.id, status: "AVAILABLE" },
     });
 
-    // Get recent spin history
+    // Get comprehensive spin history & won reward credits
     const spinHistory = await prisma.spinToken.findMany({
       where: { userId: user.id, status: "USED" },
       orderBy: { spunAt: "desc" },
-      take: 10,
+      take: 50,
+    });
+
+    const userCredits = await prisma.userRewardCredit.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
     });
 
     // Get campaign status and threshold
@@ -64,6 +70,7 @@ export async function GET(req: NextRequest) {
       success: true,
       availableTokens,
       spinHistory,
+      userCredits,
       isCampaignActive,
       minDeposit,
       slices: publicSlices,

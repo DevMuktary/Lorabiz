@@ -793,11 +793,15 @@ export default function DashboardPage() {
               </p>
             ) : null}
 
-            {/* Lucky Spin Deposit Milestone Incentive */}
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-bold bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20 w-fit">
-              <Gift size={13} weight="fill" />
+            {/* Lucky Spin Deposit Milestone Incentive (Clickable Link to Spin & Win) */}
+            <Link
+              href="/dashboard/rewards"
+              className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-primary font-bold bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg border border-primary/20 hover:border-primary/40 transition-all w-fit cursor-pointer group"
+            >
+              <Gift size={13} weight="fill" className="group-hover:scale-110 transition-transform" />
               <span>Fund ₦15,000+ to earn Lucky Spin tokens</span>
-            </div>
+              <ArrowRight size={11} weight="bold" className="group-hover:translate-x-0.5 transition-transform opacity-75 group-hover:opacity-100" />
+            </Link>
           </div>
 
           {/* Bottom Row: Quick Action Buttons */}

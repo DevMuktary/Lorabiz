@@ -95,11 +95,22 @@ export default function NinPersonalizationPage() {
 
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center shrink-0">
-            <IdentificationCard weight="fill" className="h-6 w-6" />
+        <div className="flex items-center gap-3.5">
+          <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
+            <Image 
+              src="/nimc.png" 
+              alt="NIMC Logo" 
+              width={40} 
+              height={40} 
+              className="object-contain" 
+              priority 
+            />
           </div>
           <div>
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
+              <ShieldCheck weight="bold" className="h-3 w-3" />
+              National Identity Management Commission
+            </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">NIN Personalization</h1>
             <p className="text-muted-foreground text-sm">
               Submit your enrollment tracking ID for personalization.

@@ -340,12 +340,9 @@ export function ValidationSubmissionForm({
           >
             <ShieldCheck weight="bold" className="h-4 w-4" />
             {isPassApplied ? (
-              <span className="flex items-center gap-2">
-                <span>Submit NIN Validation (₦0.00 Free)</span>
-                <span className="text-xs opacity-75 line-through">₦{currentPrice.toLocaleString()}</span>
-              </span>
+              <span>Submit Validation (₦0.00 Free)</span>
             ) : (
-              <span>Submit NIN Validation · ₦{currentPrice.toLocaleString()}</span>
+              <span>Submit Validation · ₦{currentPrice.toLocaleString()}</span>
             )}
           </button>
         </div>
