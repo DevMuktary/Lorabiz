@@ -202,18 +202,18 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
               disabled={isProcessing}
               className={`w-full p-3 rounded-2xl border transition-all text-left flex items-center justify-between gap-2.5 cursor-pointer disabled:opacity-50 ${
                 amount === "15000"
-                  ? "border-amber-500 bg-amber-500/15 shadow-sm"
-                  : "border-amber-500/30 bg-amber-500/5 hover:border-amber-500/60"
+                  ? "border-[#ff3f7a] bg-[#ff3f7a]/15 shadow-sm"
+                  : "border-[#ff3f7a]/30 bg-[#ff3f7a]/5 hover:border-[#ff3f7a]/60"
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="h-8 w-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-xl bg-[#ff3f7a]/20 text-[#ff3f7a] flex items-center justify-center shrink-0">
                   <Gift size={18} weight="fill" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs font-black text-foreground">Fund ₦15,000+ for Lucky Spin</span>
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500 text-white shadow-xs">
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#ff3f7a] text-white shadow-xs">
                       1 FREE TOKEN
                     </span>
                   </div>
@@ -222,7 +222,7 @@ export default function FundWalletModal({ isOpen, onClose, onSuccess, onFailure 
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0">
+              <span className="text-xs font-bold text-[#ff3f7a] shrink-0">
                 {amount === "15000" ? "Selected ✓" : "Tap ₦15,000 →"}
               </span>
             </button>

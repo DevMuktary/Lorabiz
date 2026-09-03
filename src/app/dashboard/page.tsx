@@ -794,7 +794,7 @@ export default function DashboardPage() {
             ) : null}
 
             {/* Lucky Spin Deposit Milestone Incentive */}
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 w-fit">
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-bold bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20 w-fit">
               <Gift size={13} weight="fill" />
               <span>Fund ₦15,000+ to earn Lucky Spin tokens</span>
             </div>
