@@ -20,12 +20,38 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "URL parameter is required." }, { status: 400 });
     }
 
-    // Security check: only allow safe http/https URLs
-    if (!fileUrl.startsWith("http://") && !fileUrl.startsWith("https://")) {
+    // Security check: parse and validate URL before fetching (SSRF hardening)
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(fileUrl);
+    } catch {
+      return NextResponse.json({ error: "Invalid URL format." }, { status: 400 });
+    }
+
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
       return NextResponse.json({ error: "Invalid URL scheme." }, { status: 400 });
     }
 
-    const response = await fetch(fileUrl);
+    // Allowlist trusted hostnames only
+    const ALLOWED_HOSTNAMES = new Set([
+      "res.cloudinary.com",
+      "cloudinary.com",
+      "lorabiz.com",
+      "www.lorabiz.com",
+    ]);
+
+    if (!ALLOWED_HOSTNAMES.has(parsedUrl.hostname)) {
+      return NextResponse.json({ error: "URL host is not allowed." }, { status: 400 });
+    }
+
+    // Prevent path traversal
+    if (parsedUrl.pathname.includes("..")) {
+      return NextResponse.json({ error: "Invalid path in URL." }, { status: 400 });
+    }
+
+    const response = await fetch(parsedUrl.toString(), {
+      signal: AbortSignal.timeout(15000),
+    });
     if (!response.ok) {
       return NextResponse.json(
         { error: `Failed to fetch resource (${response.statusText})` },
