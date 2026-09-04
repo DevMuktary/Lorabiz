@@ -9,7 +9,7 @@ import {
   Users, Wallet, CheckCircle, WarningCircle,
   Copy, Bank, Spinner, Info, Money, Check, PencilSimple, 
   ArrowLeft, CaretDown, MagnifyingGlass, X, Coins, EnvelopeSimple, ChartLineUp,
-  Gift, ShieldWarning // <-- Added new icons for the onboarding view
+  Gift, ShieldWarning, ShieldCheck
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ export default function ReferralsPage() {
   const [loadingInit, setLoadingInit] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"rates" | "referees" | "history">("rates");
-  
+
   // Bank Setup State
   const [banks, setBanks] = useState<any[]>([]);
   const [setupData, setSetupData] = useState({ bankCode: "", bankName: "", accountNumber: "", acceptTerms: false });
@@ -131,7 +131,7 @@ export default function ReferralsPage() {
       if (json.success) {
         setStats(json.data);
         if (json.data.bankDetails) {
-          setSetupData(prev => ({ ...prev, acceptTerms: true })); 
+          setSetupData(prev => ({ ...prev, acceptTerms: true }));
         }
       }
     } catch (e) {
@@ -215,7 +215,7 @@ export default function ReferralsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const filteredBanks = banks.filter(bank => 
+  const filteredBanks = banks.filter(bank =>
     bank.name.toLowerCase().includes(bankSearch.toLowerCase())
   );
 
@@ -233,11 +233,10 @@ export default function ReferralsPage() {
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-12">
       {toast && (
         <div className="fixed top-24 right-4 z-[100] animate-in slide-in-from-right-8 fade-in duration-300">
-          <div className={`flex items-center gap-3 p-4 pr-12 rounded-xl shadow-2xl border ${
-            toast.type === "success" 
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200" 
+          <div className={`flex items-center gap-3 p-4 pr-12 rounded-xl shadow-2xl border ${toast.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
               : "bg-red-50 text-red-800 border-red-200"
-          }`}>
+            }`}>
             {toast.type === "success" ? <CheckCircle className="h-6 w-6 shrink-0" weight="fill" /> : <Info className="h-6 w-6 shrink-0" weight="fill" />}
             <p className="text-sm font-medium">{toast.message}</p>
             <button onClick={() => setToast(null)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 opacity-70 hover:opacity-100 transition-opacity">
@@ -299,11 +298,11 @@ export default function ReferralsPage() {
 
       {needsSetup ? (
         <div className="space-y-8">
-          
+
           {/* NEW: Onboarding Benefits & Rules (Hidden if just editing an existing bank) */}
           {!isEditingBank && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
+
               {/* The Benefits */}
               <div className="bg-[#ff3f7a]/5 border border-[#ff3f7a]/20 p-6 sm:p-8 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
@@ -367,7 +366,7 @@ export default function ReferralsPage() {
                 <p className="text-muted-foreground text-sm">Where should we send your cash rewards?</p>
               </div>
             </div>
-            
+
             <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 p-4 rounded-xl mb-8 text-sm flex gap-3 leading-relaxed">
               <Info className="h-5 w-5 shrink-0 mt-0.5" weight="fill" />
               <p><strong>Notice:</strong> The bank account name must match with the name you registered with on LoraBiz.</p>
@@ -376,7 +375,7 @@ export default function ReferralsPage() {
             <form onSubmit={handleSetupBank} className="space-y-6">
               <div className="space-y-2 relative" ref={dropdownRef}>
                 <Label htmlFor="bankSearch">Select Bank</Label>
-                <div 
+                <div
                   className="relative flex items-center h-12 w-full rounded-md border border-border bg-secondary/40 px-3 cursor-pointer text-[16px] text-foreground hover:border-[#ff3f7a]/50 transition-colors"
                   onClick={() => setIsBankDropdownOpen(!isBankDropdownOpen)}
                 >
@@ -397,8 +396,8 @@ export default function ReferralsPage() {
                         <li className="p-3 text-sm text-center text-muted-foreground">No banks found</li>
                       ) : (
                         filteredBanks.map((bank) => (
-                          <li 
-                            key={bank.code} 
+                          <li
+                            key={bank.code}
                             className="px-3 py-2.5 text-sm hover:bg-secondary rounded-lg cursor-pointer transition-colors flex items-center justify-between"
                             onClick={() => {
                               setSetupData(prev => ({ ...prev, bankCode: bank.code, bankName: bank.name }));
@@ -481,10 +480,20 @@ export default function ReferralsPage() {
 
               {!stats?.bankDetails && (
                 <label className="flex items-start gap-3 p-4 border border-border bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors select-none">
-                  <input type="checkbox" checked={setupData.acceptTerms} onChange={(e) => setSetupData({...setupData, acceptTerms: e.target.checked})} className="mt-0.5 h-5 w-5 accent-[#ff3f7a] rounded border-border cursor-pointer shrink-0" />
+                  <input type="checkbox" checked={setupData.acceptTerms} onChange={(e) => setSetupData({ ...setupData, acceptTerms: e.target.checked })} className="mt-0.5 h-5 w-5 accent-[#ff3f7a] rounded border-border cursor-pointer shrink-0" />
                   <span className="text-sm text-muted-foreground leading-relaxed">I have read and agree to the LoraBiz Partner Program Rules & Terms outlined above.</span>
                 </label>
               )}
+
+              <div className="p-3 bg-secondary/50 border border-border rounded-xl text-xs text-muted-foreground space-y-1">
+                <p className="font-bold text-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" weight="fill" />
+                  <span>Bank Identity Sync</span>
+                </p>
+                <p className="leading-relaxed text-[11px]">
+                  Upon verification, your registered profile name will be synchronized to match your official verified CBN/NIBSS bank account name for all commission cashouts.
+                </p>
+              </div>
 
               <div className="flex gap-3 pt-2">
                 {isEditingBank && <Button type="button" variant="outline" onClick={() => setIsEditingBank(false)} className="h-12 px-6 border-border">Cancel</Button>}
@@ -510,7 +519,7 @@ export default function ReferralsPage() {
               <div className="flex items-center gap-2 text-muted-foreground mb-2"><Users className="h-5 w-5" /> <span className="font-medium text-sm">Total Invited</span></div>
               <p className="text-3xl font-bold text-foreground">{stats?.totalSignups || 0}</p>
             </div>
-            
+
             <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex flex-col justify-center">
               <div className="flex items-center gap-2 text-muted-foreground mb-2"><ChartLineUp className="h-5 w-5" /> <span className="font-medium text-sm">Total Earned All-Time</span></div>
               <p className="text-3xl font-bold text-foreground">₦{(stats?.totalEarnedAllTime || 0).toLocaleString()}</p>
@@ -524,15 +533,15 @@ export default function ReferralsPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             {/* Share & Cashout Column */}
             <div className="lg:col-span-1 space-y-6">
-              
+
               {/* Share Link Card */}
               <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
                 <h3 className="text-lg font-bold text-foreground flex items-center gap-2 mb-2"><Users className="h-5 w-5 text-[#ff3f7a]" weight="fill" /> Your Partner Link</h3>
                 <p className="text-sm text-muted-foreground mb-4">Share this link. You earn cash every time they complete a paid service.</p>
-                
+
                 <div className="flex flex-col gap-2 p-1.5 bg-secondary/50 border border-border rounded-lg mb-4">
                   <div className="truncate px-3 pt-2 text-sm font-mono text-foreground font-medium select-all">
                     {typeof window !== "undefined" ? `${window.location.origin}/auth/register?ref=${stats?.referralCode}` : `.../?ref=${stats?.referralCode}`}
@@ -561,11 +570,11 @@ export default function ReferralsPage() {
                 <form onSubmit={handleWithdraw} className="space-y-4">
                   <div className="relative">
                     <span className="absolute left-4 top-3 font-bold text-muted-foreground">₦</span>
-                    <Input 
-                      type="text" 
-                      value={withdrawAmount} 
-                      onChange={(e) => setWithdrawAmount(e.target.value.replace(/\D/g, ""))} 
-                      placeholder="Amount" 
+                    <Input
+                      type="text"
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Amount"
                       className="pl-9 h-11 font-bold bg-background border-border"
                     />
                   </div>
@@ -582,22 +591,22 @@ export default function ReferralsPage() {
 
             {/* Transparency & History Area */}
             <div className="lg:col-span-2 bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
-              
+
               {/* Tab Navigation */}
               <div className="flex border-b border-border bg-secondary/20 px-4 pt-4 gap-6 overflow-x-auto custom-scrollbar">
-                <button 
+                <button
                   onClick={() => setActiveTab("rates")}
                   className={`pb-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === "rates" ? "border-[#ff3f7a] text-[#ff3f7a]" : "border-transparent text-muted-foreground hover:text-foreground"}`}
                 >
                   How You Earn
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveTab("referees")}
                   className={`pb-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === "referees" ? "border-[#ff3f7a] text-[#ff3f7a]" : "border-transparent text-muted-foreground hover:text-foreground"}`}
                 >
                   My Referees ({stats?.refereesList?.length || 0})
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveTab("history")}
                   className={`pb-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === "history" ? "border-[#ff3f7a] text-[#ff3f7a]" : "border-transparent text-muted-foreground hover:text-foreground"}`}
                 >
@@ -607,7 +616,7 @@ export default function ReferralsPage() {
 
               {/* Tab Content */}
               <div className="p-6 flex-1 bg-card">
-                
+
                 {/* 1. Rates Tab */}
                 {activeTab === "rates" && (
                   <div className="space-y-4 animate-in fade-in duration-300">
@@ -739,9 +748,9 @@ export default function ReferralsPage() {
                             {stats?.earningsHistory?.map((item: any) => (
                               <tr key={item.id} className="hover:bg-secondary/20 transition-colors">
                                 <td className="p-3 pl-4 font-medium text-foreground">
-                                  {item.serviceType === "CAC_BIZ" ? "CAC Business" 
-                                  : item.serviceType === "CAC_LLC" ? "CAC LLC"
-                                  : item.serviceType.replace("_", " ")}
+                                  {item.serviceType === "CAC_BIZ" ? "CAC Business"
+                                    : item.serviceType === "CAC_LLC" ? "CAC LLC"
+                                      : item.serviceType.replace("_", " ")}
                                 </td>
                                 <td className="p-3 text-muted-foreground">{item.refereeName}</td>
                                 <td className="p-3 text-muted-foreground whitespace-nowrap">{format(new Date(item.date), "MMM d, yyyy")}</td>
@@ -754,7 +763,7 @@ export default function ReferralsPage() {
                     )}
                   </div>
                 )}
-                
+
               </div>
             </div>
 

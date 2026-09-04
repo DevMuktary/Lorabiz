@@ -204,43 +204,45 @@ export async function POST(req: Request) {
               apiMessage: apiMessage || "Completed on DataVerify.",
               apiResponse: statusRes.rawResponse as any,
               lastSyncedAt: new Date(),
-              completedAt: new Date(),
+              completedAt: ticket.completedAt || new Date(),
             },
           });
 
-          // Referral reward check
-          const activeReferral = await tx.referral.findUnique({
-            where: { referredUserId: ticket.userId },
-          });
+          // Referral reward check (only if not already completed)
+          if (!wasAlreadyCompleted) {
+            const activeReferral = await tx.referral.findUnique({
+              where: { referredUserId: ticket.userId },
+            });
 
-          if (activeReferral) {
-            const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
-            if (isNotExpired) {
-              const existingCommission = await tx.referralCommission.findUnique({
-                where: { serviceId: ticketId },
-              });
-
-              if (!existingCommission) {
-                const rewardSetting = await tx.globalSetting.findUnique({
-                  where: { key: "REF_REWARD_NIN_VAL" },
+            if (activeReferral) {
+              const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
+              if (isNotExpired) {
+                const existingCommission = await tx.referralCommission.findUnique({
+                  where: { serviceId: ticketId },
                 });
-                const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.0;
-                const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
 
-                if (commissionAmount > 0) {
-                  await tx.referralCommission.create({
-                    data: {
-                      referralId: activeReferral.id,
-                      serviceType: "NIN_VALIDATION",
-                      serviceId: ticketId,
-                      amount: commissionAmount,
-                    },
+                if (!existingCommission) {
+                  const rewardSetting = await tx.globalSetting.findUnique({
+                    where: { key: "REF_REWARD_NIN_VAL" },
                   });
+                  const baseAmount = rewardSetting ? Number(rewardSetting.value) : 250.0;
+                  const commissionAmount = await getReferrerRewardAmount(tx, activeReferral.referrerId, baseAmount);
 
-                  await tx.user.update({
-                    where: { id: activeReferral.referrerId },
-                    data: { referralBalance: { increment: commissionAmount } },
-                  });
+                  if (commissionAmount > 0) {
+                    await tx.referralCommission.create({
+                      data: {
+                        referralId: activeReferral.id,
+                        serviceType: "NIN_VALIDATION",
+                        serviceId: ticketId,
+                        amount: commissionAmount,
+                      },
+                    });
+
+                    await tx.user.update({
+                      where: { id: activeReferral.referrerId },
+                      data: { referralBalance: { increment: commissionAmount } },
+                    });
+                  }
                 }
               }
             }
@@ -300,21 +302,23 @@ export async function POST(req: Request) {
           },
         });
 
-        // STRICT NO-REFUND POLICY PER USER INSTRUCTION
-        try {
-          await dispatchNotification({
-            type: "NIN_VALIDATION_FAILED",
-            userId: ticket.userId,
-            email: ticket.user.email,
-            name: `${ticket.user.firstName} ${ticket.user.lastName}`.trim() || "Valued Client",
-            category: categoryLabel,
-            nin: ticket.nin,
-            failureReason: recordedReason,
-            refundAmount: 0,
-            transactionRef: ticket.transactionRef,
-          });
-        } catch (notifErr) {
-          console.error("Notification dispatch error:", notifErr);
+        // Dispatch failure notification ONLY IF it was NOT already failed before!
+        if (!wasAlreadyFailed) {
+          try {
+            await dispatchNotification({
+              type: "NIN_VALIDATION_FAILED",
+              userId: ticket.userId,
+              email: ticket.user.email,
+              name: `${ticket.user.firstName} ${ticket.user.lastName}`.trim() || "Valued Client",
+              category: categoryLabel,
+              nin: ticket.nin,
+              failureReason: recordedReason,
+              refundAmount: 0,
+              transactionRef: ticket.transactionRef,
+            });
+          } catch (notifErr) {
+            console.error("Notification dispatch error:", notifErr);
+          }
         }
 
         return NextResponse.json({
@@ -460,7 +464,7 @@ export async function POST(req: Request) {
       const userEmail = ticket.user?.email || "";
       const userName = `${ticket.user?.firstName || ""} ${ticket.user?.lastName || ""}`.trim() || "Valued Customer";
 
-      if (actionType === "COMPLETE") {
+      if (actionType === "COMPLETE" && ticket.status !== "COMPLETED") {
         notificationPayload = {
           type: "NIN_VALIDATION_COMPLETED",
           userId: ticket.userId,
@@ -470,7 +474,7 @@ export async function POST(req: Request) {
           nin: ticket.nin,
           transactionRef: ticket.transactionRef,
         };
-      } else if (actionType === "FAIL") {
+      } else if (actionType === "FAIL" && ticket.status !== "FAILED") {
         notificationPayload = {
           type: "NIN_VALIDATION_FAILED",
           userId: ticket.userId,
