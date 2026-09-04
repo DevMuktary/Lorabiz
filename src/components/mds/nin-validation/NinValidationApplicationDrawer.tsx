@@ -41,7 +41,7 @@ export default function NinValidationApplicationDrawer({
 }: {
   ticket: any | null;
   onClose: () => void;
-  onUpdateSuccess: () => void;
+  onUpdateSuccess?: (updatedTicket?: any) => void;
 }) {
   const [ticket, setTicket] = useState<any | null>(initialTicket);
   const [activeAction, setActiveAction] = useState<"COMPLETE" | "FAIL" | "PROCESS" | "">("");
@@ -55,7 +55,7 @@ export default function NinValidationApplicationDrawer({
   const [isSyncingStatus, setIsSyncingStatus] = useState<boolean>(false);
   const [isLinkingManual, setIsLinkingManual] = useState<boolean>(false);
   const [manualTicketInput, setManualTicketInput] = useState<string>("");
-  const [showDebugJson, setShowDebugJson] = useState<boolean>(false);
+  const [showDebugJson, setShowDebugJson] = useState<boolean>(true); // Default to visible for easy diagnostics
   
   const [error, setError] = useState<string>("");
   const [successMsg, setSuccessMsg] = useState<string>("");
@@ -106,6 +106,7 @@ export default function NinValidationApplicationDrawer({
       if (!response.ok || !result.success) {
         if (result.data) {
           setTicket(result.data);
+          onUpdateSuccess?.(result.data);
         }
         throw new Error(result.error || "Failed to push ticket to DataVerify.");
       }
@@ -143,14 +144,13 @@ export default function NinValidationApplicationDrawer({
         throw new Error(result.error || "Failed to fetch status from DataVerify.");
       }
 
-      if (result.status) {
-        setTicket((prev: any) => ({
-          ...prev,
-          status: result.status,
-          externalStatus: result.rawStatus,
-          lastSyncedAt: new Date().toISOString(),
-        }));
-      }
+      const updated = {
+        ...ticket,
+        status: result.status || ticket.status,
+        externalStatus: result.rawStatus || ticket.externalStatus,
+        lastSyncedAt: new Date().toISOString(),
+        apiResponse: result.rawStatus ? { status: result.rawStatus, message: result.message } : ticket.apiResponse,
+      };
 
       setSuccessMsg(result.message || "Live status synced from DataVerify!");
       onUpdateSuccess();
@@ -237,14 +237,16 @@ export default function NinValidationApplicationDrawer({
         throw new Error(result.error || "Action execution failed.");
       }
 
-      setTicket((prev: any) => ({
-        ...prev,
+      const updated = {
+        ...ticket,
         status: activeAction === "COMPLETE" ? "COMPLETED" : activeAction === "FAIL" ? "FAILED" : "PROCESSING",
-        failureReason: activeAction === "FAIL" ? failureReason : prev?.failureReason,
-      }));
+        failureReason: activeAction === "FAIL" ? failureReason : ticket.failureReason,
+        completedAt: activeAction === "COMPLETE" ? new Date().toISOString() : ticket.completedAt,
+      };
 
+      setTicket(updated);
       setSuccessMsg(`Ticket successfully updated to ${activeAction}!`);
-      onUpdateSuccess();
+      onUpdateSuccess?.(updated);
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
     } finally {
@@ -277,9 +279,9 @@ export default function NinValidationApplicationDrawer({
               <span className="font-mono text-xs font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
                 {ticket.transactionRef}
               </span>
-              {ticket.externalTicketId && (
+              {ticket.externalTxId && (
                 <span className="font-mono text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/20">
-                  ABJ: {ticket.externalTicketId}
+                  ABJ: {ticket.externalTxId}
                 </span>
               )}
             </div>
@@ -293,7 +295,7 @@ export default function NinValidationApplicationDrawer({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -302,59 +304,46 @@ export default function NinValidationApplicationDrawer({
         {/* Body Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
-          {/* Feedback messages */}
-          {successMsg && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
-              <CheckCircle size={16} className="text-emerald-500 shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-          )}
-
+          {/* Notification Banners */}
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-800 dark:text-rose-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
-              <AlertTriangle size={16} className="text-rose-500 shrink-0" />
+            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 flex items-center gap-2 text-rose-700 dark:text-rose-400 text-xs font-bold animate-in fade-in">
+              <AlertTriangle size={16} className="shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* 1. HIGHLIGHT CARD: 11-DIGIT NIN & QUICK COPY */}
-          <div className="p-5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-900/80 border border-zinc-800 shadow-lg space-y-3">
-            <div className="flex items-center justify-between text-xs text-zinc-400">
-              <span className="flex items-center gap-1.5 uppercase font-bold tracking-wider text-[11px] text-indigo-400">
-                <Fingerprint size={14} /> National Identification Number (NIN)
+          {successMsg && (
+            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-xs font-bold animate-in fade-in">
+              <CheckCircle size={16} className="shrink-0" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* 1. NIN & VERIFICATION CATEGORY HERO */}
+          <div className="p-5 rounded-2xl bg-zinc-900 text-white space-y-4 shadow-sm border border-zinc-800">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Fingerprint size={16} className="text-indigo-400" />
+                <span>NIN To Validate</span>
               </span>
-              <span className="text-[11px] font-bold px-2 py-0.5 bg-zinc-800 rounded text-zinc-300">
+              <span className="px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-black text-xs border border-indigo-500/30">
                 {categoryLabel}
               </span>
             </div>
 
-            <div className="flex items-center justify-between gap-4 bg-zinc-950 p-4 rounded-xl border border-zinc-800">
-              <span className="font-mono text-2xl md:text-3xl font-black tracking-widest text-emerald-400">
+            <div className="flex items-center justify-between bg-zinc-950 p-4 rounded-xl border border-zinc-800">
+              <span className="font-mono text-2xl sm:text-3xl font-black tracking-widest text-white">
                 {ticket.nin}
               </span>
-
               <button
                 type="button"
-                onClick={() => handleCopy("nin", ticket.nin)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-md shrink-0"
+                onClick={() => handleCopy("nin_copy", ticket.nin)}
+                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
               >
-                {copiedKey === "nin" ? (
-                  <>
-                    <Check size={14} />
-                    <span>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={14} />
-                    <span>Copy NIN</span>
-                  </>
-                )}
+                {copiedKey === "nin_copy" ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copiedKey === "nin_copy" ? "Copied" : "Copy NIN"}</span>
               </button>
             </div>
-            
-            <p className="text-[11px] text-zinc-400">
-              Click the button above to copy the 11-digit NIN directly to your clipboard for verification.
-            </p>
           </div>
 
           {/* 2. DATAVERIFY GATEWAY & AUTOMATION PANEL */}
@@ -449,7 +438,7 @@ export default function NinValidationApplicationDrawer({
                     <button
                       type="button"
                       onClick={() => setIsLinkingManual(!isLinkingManual)}
-                      className="px-2.5 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
+                      className="px-2.5 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                     >
                       <Edit3 size={12} />
                       <span>Edit ID</span>
@@ -496,16 +485,15 @@ export default function NinValidationApplicationDrawer({
                   <button
                     type="button"
                     onClick={() => setIsLinkingManual(!isLinkingManual)}
-                    className="py-3 px-3.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                    className="px-3 py-2.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                   >
-                    <Edit3 size={14} />
-                    <span>Link ID</span>
+                    Link Manual ID
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Manual Link Input */}
+            {/* Manual ID Input */}
             {isLinkingManual && (
               <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2 animate-in fade-in">
                 <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
@@ -517,6 +505,7 @@ export default function NinValidationApplicationDrawer({
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
+                    placeholder="e.g. nin_val_649f... or TKT171000..."
                     value={manualTicketInput}
                     onChange={(e) => setManualTicketInput(e.target.value)}
                     placeholder="e.g. a1b2c3d4e5f6a7b8c9d0e1f2a3"
@@ -534,36 +523,36 @@ export default function NinValidationApplicationDrawer({
               </div>
             )}
 
-            {/* Collapsible Debug / Raw API Payload Viewer */}
-            {ticket.apiResponse && (
-              <div className="pt-2 border-t border-indigo-500/20">
-                <button
-                  type="button"
-                  onClick={() => setShowDebugJson(!showDebugJson)}
-                  className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Code2 size={13} />
-                  <span>{showDebugJson ? "Hide Gateway Response Payload" : "View Gateway Response Payload (JSON)"}</span>
-                  {showDebugJson ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                </button>
+            {/* Always-Accessible Live Gateway Raw JSON Response Viewer */}
+            <div className="pt-2 border-t border-indigo-500/20">
+              <button
+                type="button"
+                onClick={() => setShowDebugJson(!showDebugJson)}
+                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center justify-between w-full cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Code2 size={14} />
+                  <span>Last Gateway JSON Response</span>
+                </div>
+                {showDebugJson ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
 
-                {showDebugJson && (
-                  <div className="mt-2 p-3 bg-zinc-950 rounded-xl border border-zinc-800 font-mono text-[11px] text-emerald-400 overflow-x-auto max-h-48 animate-in fade-in">
-                    <div className="flex justify-between items-center mb-1 text-zinc-500 text-[10px]">
-                      <span>RAW GATEWAY PAYLOAD</span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy("debug_json", JSON.stringify(ticket.apiResponse, null, 2))}
-                        className="hover:text-zinc-200"
-                      >
-                        {copiedKey === "debug_json" ? "Copied!" : "Copy JSON"}
-                      </button>
-                    </div>
-                    <pre>{JSON.stringify(ticket.apiResponse, null, 2)}</pre>
+              {showDebugJson && (
+                <div className="mt-2.5 p-3.5 bg-zinc-950 rounded-2xl border border-zinc-800 font-mono text-[11px] text-emerald-400 overflow-x-auto max-h-56 animate-in fade-in">
+                  <div className="flex justify-between items-center mb-1.5 text-zinc-500 text-[10px] border-b border-zinc-800 pb-1">
+                    <span>RAW GATEWAY RESPONSE</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy("debug_json", JSON.stringify(ticket.apiResponse || { message: ticket.apiMessage || "No raw JSON response recorded yet." }, null, 2))}
+                      className="text-zinc-400 hover:text-zinc-100 cursor-pointer font-bold"
+                    >
+                      {copiedKey === "debug_json" ? "Copied!" : "Copy JSON"}
+                    </button>
                   </div>
-                )}
-              </div>
-            )}
+                  <pre>{JSON.stringify(ticket.apiResponse || { message: ticket.apiMessage || "No raw JSON recorded yet." }, null, 2)}</pre>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 3. CLIENT & TICKET DETAILS */}
@@ -620,7 +609,7 @@ export default function NinValidationApplicationDrawer({
             </div>
           )}
 
-          {/* 5. ADMIN ACTIONS PANEL */}
+          {/* 5. ADMIN OVERRIDE PANEL */}
           <div className="p-5 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 space-y-5">
             <div>
               <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
@@ -628,133 +617,89 @@ export default function NinValidationApplicationDrawer({
                 <span>Manual Status Override</span>
               </h3>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Manually mark completed or failed and trigger automated client email notification.
+                Manually mark this ticket as Completed, Failed, or Queued if resolving outside the gateway.
               </p>
             </div>
 
-            {/* Action Buttons Selector */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setActiveAction("COMPLETE")}
-                className={`py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                onClick={() => setActiveAction(activeAction === "COMPLETE" ? "" : "COMPLETE")}
+                className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   activeAction === "COMPLETE"
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20 ring-2 ring-emerald-500"
-                    : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                    : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-emerald-500"
                 }`}
               >
-                <CheckCircle size={16} />
+                <CheckCircle size={15} />
                 <span>Mark Completed</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setActiveAction("FAIL")}
-                className={`py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                onClick={() => setActiveAction(activeAction === "FAIL" ? "" : "FAIL")}
+                className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   activeAction === "FAIL"
-                    ? "bg-rose-600 text-white shadow-md shadow-rose-600/20 ring-2 ring-rose-500"
-                    : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                    ? "bg-rose-600 text-white border-rose-600 shadow-sm"
+                    : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-rose-500"
                 }`}
               >
-                <XCircle size={16} />
+                <XCircle size={15} />
                 <span>Mark Failed</span>
               </button>
             </div>
 
-            {/* SUB-PANEL: COMPLETE */}
-            {activeAction === "COMPLETE" && (
-              <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 space-y-3 animate-in fade-in">
-                <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
-                  <CheckCircle size={16} />
-                  <span>Validation Success Confirmation</span>
-                </div>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  Marking this ticket as <strong>COMPLETED</strong> will update the client's dashboard and immediately dispatch an automated email notification confirming successful resolution for <strong>{categoryLabel}</strong>.
-                </p>
-                <div>
-                  <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400 block mb-1">
-                    Internal Admin Notes (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
-                    placeholder="e.g. Validated via NIMC portal batch #492"
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 outline-none"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* SUB-PANEL: FAIL */}
+            {/* Action Form Inputs */}
             {activeAction === "FAIL" && (
-              <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 space-y-3 animate-in fade-in">
-                <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 text-xs font-bold">
-                  <XCircle size={16} />
-                  <span>Validation Rejection Reason</span>
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400 block mb-1">
-                    Reason for Failure (Required - Visible to Client)
-                  </label>
+              <div className="space-y-3 p-4 bg-rose-50/50 dark:bg-rose-500/5 rounded-xl border border-rose-200 dark:border-rose-500/20 animate-in fade-in">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-rose-800 dark:text-rose-300 block">Failure / Rejection Reason</label>
                   <textarea
                     rows={2}
+                    placeholder="e.g. NIN does not exist in NIMC database, or invalid biometric match"
                     value={failureReason}
                     onChange={(e) => setFailureReason(e.target.value)}
-                    placeholder="e.g. NIN record could not be matched with provided biometric profile or duplicate record detected."
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 outline-none resize-none"
+                    className="w-full p-2.5 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
 
-                {/* Refund toggle */}
-                <div className="pt-2 border-t border-rose-200 dark:border-rose-500/20 space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                <div className="space-y-2 pt-2 border-t border-rose-200 dark:border-rose-500/20">
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={issueRefund}
                       onChange={(e) => setIssueRefund(e.target.checked)}
-                      className="h-4 w-4 rounded border-zinc-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                      className="rounded border-zinc-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
                     />
                     <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                      Force manual wallet refund to client
+                      Issue Refund to Client Wallet (₦{Number(ticket.amountCharged).toLocaleString()})
                     </span>
                   </label>
-
-                  {issueRefund && (
-                    <div className="flex items-center gap-2 pt-1 animate-in fade-in">
-                      <span className="text-xs text-zinc-500">Refund Amount (₦):</span>
-                      <input
-                        type="number"
-                        value={refundAmount}
-                        onChange={(e) => setRefundAmount(e.target.value)}
-                        className="w-32 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1 text-xs font-bold font-mono outline-none"
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
             )}
 
-            {/* Submit Action Button */}
             {activeAction && (
-              <button
-                type="button"
-                onClick={handleActionSubmit}
-                disabled={isProcessing}
-                className="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>Executing Action...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} />
-                    <span>Confirm & Dispatch Notification</span>
-                  </>
-                )}
-              </button>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">Admin Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="Internal notes for this action..."
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  className="w-full p-2.5 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleActionSubmit}
+                  disabled={isProcessing}
+                  className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  <span>{isProcessing ? "Executing Action..." : `Confirm ${activeAction} Override`}</span>
+                </button>
+              </div>
             )}
 
           </div>

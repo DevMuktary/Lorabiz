@@ -57,11 +57,25 @@ export default function BvnResultModal({
   const [downloadStarted, setDownloadStarted] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Hook 1: Set mounted
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!isOpen || !mounted || typeof document === "undefined") return null;
+  // Hook 2: Lock body scroll when modal is open (MOVED BEFORE ANY RETURNS)
+  useEffect(() => {
+    if (isOpen && mounted) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [isOpen, mounted]);
+
+  // ALL HOOKS ARE CALLED. Guard condition can safely return here:
+  if (!isOpen || !mounted || typeof document === "undefined") {
+    return null;
+  }
 
   const triggerPdfDownload = (base64Data?: string, url?: string, bvnNum?: string) => {
     setDownloadStarted(true);
@@ -89,16 +103,6 @@ export default function BvnResultModal({
       }
     }
   };
-
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-  }, [isOpen]);
 
   // Deeply unwrap and normalize all demographic fields
   const demo = parseDemographics(userData, propFullName);

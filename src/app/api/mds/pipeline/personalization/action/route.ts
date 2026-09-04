@@ -93,23 +93,27 @@ export async function POST(req: Request) {
           },
         });
 
-        // Notify client
-        try {
-          await dispatchNotification({
-            type: "NIN_PERSONALIZATION_COMPLETED",
-            userId: pznItem.user.id,
-            email: pznItem.user.email,
-            name: pznItem.user.firstName || "Valued Client",
-            trackingId: pznItem.trackingId,
-            reference: pznItem.reference,
-          });
-        } catch (e) {
-          console.error("Personalization notification error:", e);
+        // Notify client ONLY IF not already completed before
+        if (pznItem.status !== "COMPLETED") {
+          try {
+            await dispatchNotification({
+              type: "NIN_PERSONALIZATION_COMPLETED",
+              userId: pznItem.user.id,
+              email: pznItem.user.email,
+              name: pznItem.user.firstName || "Valued Client",
+              trackingId: pznItem.trackingId,
+              reference: pznItem.reference,
+            });
+          } catch (e) {
+            console.error("Personalization notification error:", e);
+          }
         }
 
         return NextResponse.json({
           success: true,
-          message: "Personalization Completed and slip retrieved successfully!",
+          message: pznItem.status === "COMPLETED" 
+            ? "Status verified: Still Completed (no duplicate email sent)."
+            : "Personalization Completed and slip retrieved successfully!",
           request: updated,
         });
       } else if (parsed.normalizedStatus === "FAILED") {
@@ -125,19 +129,21 @@ export async function POST(req: Request) {
           },
         });
 
-        // Notify client (Strictly no auto-refund)
-        try {
-          await dispatchNotification({
-            type: "NIN_PERSONALIZATION_FAILED",
-            userId: pznItem.user.id,
-            email: pznItem.user.email,
-            name: pznItem.user.firstName || "Valued Client",
-            trackingId: pznItem.trackingId,
-            reference: pznItem.reference,
-            failureReason: failureReason,
-            refundAmount: 0,
-          });
-        } catch (e) {}
+        // Notify client ONLY IF not already failed before
+        if (pznItem.status !== "FAILED") {
+          try {
+            await dispatchNotification({
+              type: "NIN_PERSONALIZATION_FAILED",
+              userId: pznItem.user.id,
+              email: pznItem.user.email,
+              name: pznItem.user.firstName || "Valued Client",
+              trackingId: pznItem.trackingId,
+              reference: pznItem.reference,
+              failureReason: failureReason,
+              refundAmount: 0,
+            });
+          } catch (e) {}
+        }
 
         return NextResponse.json({
           success: true,
@@ -202,18 +208,20 @@ export async function POST(req: Request) {
         },
       });
 
-      try {
-        await dispatchNotification({
-          type: "NIN_PERSONALIZATION_FAILED",
-          userId: pznItem.user.id,
-          email: pznItem.user.email,
-          name: pznItem.user.firstName || "Valued Client",
-          trackingId: pznItem.trackingId,
-          reference: pznItem.reference,
-          failureReason: failureReason,
-          refundAmount: refundAmount,
-        });
-      } catch (e) {}
+      if (pznItem.status !== "FAILED") {
+        try {
+          await dispatchNotification({
+            type: "NIN_PERSONALIZATION_FAILED",
+            userId: pznItem.user.id,
+            email: pznItem.user.email,
+            name: pznItem.user.firstName || "Valued Client",
+            trackingId: pznItem.trackingId,
+            reference: pznItem.reference,
+            failureReason: failureReason,
+            refundAmount: refundAmount,
+          });
+        } catch (e) {}
+      }
 
       return NextResponse.json({
         success: true,
@@ -241,7 +249,7 @@ export async function POST(req: Request) {
           residenceState: residenceState?.trim() || pznItem.residenceState,
           pdfUrl: pdfUrl?.trim() || pznItem.pdfUrl,
           adminNotes: adminNotes || pznItem.adminNotes,
-          completedAt: new Date(),
+          completedAt: pznItem.completedAt || new Date(),
         },
       });
 
@@ -255,17 +263,19 @@ export async function POST(req: Request) {
         },
       });
 
-      // Notify client
-      try {
-        await dispatchNotification({
-          type: "NIN_PERSONALIZATION_COMPLETED",
-          userId: pznItem.user.id,
-          email: pznItem.user.email,
-          name: pznItem.user.firstName || "Valued Client",
-          trackingId: pznItem.trackingId,
-          reference: pznItem.reference,
-        });
-      } catch (e) {}
+      // Notify client only if not already completed
+      if (pznItem.status !== "COMPLETED") {
+        try {
+          await dispatchNotification({
+            type: "NIN_PERSONALIZATION_COMPLETED",
+            userId: pznItem.user.id,
+            email: pznItem.user.email,
+            name: pznItem.user.firstName || "Valued Client",
+            trackingId: pznItem.trackingId,
+            reference: pznItem.reference,
+          });
+        } catch (e) {}
+      }
 
       return NextResponse.json({
         success: true,
