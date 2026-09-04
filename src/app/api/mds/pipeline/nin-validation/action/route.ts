@@ -173,6 +173,9 @@ export async function POST(req: Request) {
     // ACTION: SYNC_PROVIDER (Admin checks live status from DataVerify on demand)
     // =========================================================================
     if (actionType === "SYNC_PROVIDER") {
+      const wasAlreadyCompleted = ticket.status === "COMPLETED";
+      const wasAlreadyFailed = ticket.status === "FAILED";
+
       if (!ticket.externalTicketId && !ticket.externalTxId) {
         return NextResponse.json(
           { error: "This ticket has not been pushed to DataVerify yet. Please push it first." },

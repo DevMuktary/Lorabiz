@@ -115,7 +115,7 @@ export default function NinValidationApplicationDrawer({
         setTicket(result.data);
       }
       setSuccessMsg(result.message || "Successfully transmitted to DataVerify!");
-      onUpdateSuccess();
+      onUpdateSuccess?.(result.data);
     } catch (err: any) {
       setError(err.message || "Failed to transmit to DataVerify.");
     } finally {
@@ -153,7 +153,7 @@ export default function NinValidationApplicationDrawer({
       };
 
       setSuccessMsg(result.message || "Live status synced from DataVerify!");
-      onUpdateSuccess();
+      onUpdateSuccess?.(updated);
     } catch (err: any) {
       setError(err.message || "Failed to sync status from DataVerify.");
     } finally {
@@ -193,7 +193,7 @@ export default function NinValidationApplicationDrawer({
       setSuccessMsg(result.message || "Successfully linked DataVerify Transaction ID!");
       setIsLinkingManual(false);
       setManualTicketInput("");
-      onUpdateSuccess();
+      onUpdateSuccess?.(result.data);
     } catch (err: any) {
       setError(err.message || "Failed to link DataVerify Transaction ID.");
     } finally {
@@ -505,10 +505,9 @@ export default function NinValidationApplicationDrawer({
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="e.g. nin_val_649f... or TKT171000..."
                     value={manualTicketInput}
                     onChange={(e) => setManualTicketInput(e.target.value)}
-                    placeholder="e.g. a1b2c3d4e5f6a7b8c9d0e1f2a3"
+                    placeholder="e.g. nin_val_649f... or a1b2c3d4e5f6a7b8c9d0"
                     className="flex-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono outline-none text-zinc-900 dark:text-zinc-100"
                   />
                   <button
