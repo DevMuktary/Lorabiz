@@ -35,7 +35,7 @@ export async function GET() {
       userId: req.userId,
       category: req.category,
       nin: req.nin,
-      provider: req.provider || "ABJIKTECH",
+      provider: req.provider || "DATAVERIFY",
       externalTicketId: req.externalTicketId || null,
       externalTxId: req.externalTxId || null,
       externalStatus: req.externalStatus || null,

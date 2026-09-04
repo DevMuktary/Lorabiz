@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { checkAbjiktechNinValidationStatus } from "@/lib/abjiktech";
+import { checkDataVerifyNinValidationStatus } from "@/lib/dataverify-validation";
 import { dispatchNotification } from "@/services/notifications";
 import { getReferrerRewardAmount } from "@/lib/loyalty";
 
@@ -37,11 +37,11 @@ async function handleSync(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Unauthorized cron request." }, { status: 401 });
     }
 
-    // Find up to 30 processing NIN validation requests pushed to Abjiktech
+    // Find up to 30 processing NIN validation requests pushed to DataVerify or legacy provider
     const processingRequests = await prisma.ninValidationRequest.findMany({
       where: {
         status: "PROCESSING",
-        provider: "ABJIKTECH",
+        provider: { in: ["DATAVERIFY", "ABJIKTECH"] },
         OR: [
           { externalTicketId: { not: null } },
           { externalTxId: { not: null } },
@@ -57,7 +57,7 @@ async function handleSync(req: NextRequest) {
     if (processingRequests.length === 0) {
       return NextResponse.json({
         success: true,
-        message: "No active Abjiktech validation requests to synchronize.",
+        message: "No active DataVerify validation requests to synchronize.",
         processedCount: 0,
       });
     }
@@ -68,29 +68,30 @@ async function handleSync(req: NextRequest) {
 
     for (const item of processingRequests) {
       try {
-        const identifier = {
-          ticketId: item.externalTicketId || undefined,
-          transactionId: item.externalTxId || undefined,
-        };
+        const txId = item.externalTxId || item.externalTicketId || undefined;
+        const statusRes = await checkDataVerifyNinValidationStatus({
+          transactionId: txId,
+          nin: item.nin,
+        });
 
-        const statusRes = await checkAbjiktechNinValidationStatus(identifier);
-
-        if (!statusRes.success || !statusRes.result) {
+        if (!statusRes.success && statusRes.rawStatus === "NETWORK_ERROR") {
           stillProcessingCount++;
           continue;
         }
 
-        const { normalizedStatus, rawStatus, message: apiMessage } = statusRes.result;
+        const { normalizedStatus, rawStatus, message: apiMessage } = statusRes;
         const categoryLabel = CATEGORY_LABELS[item.category] || item.category;
 
         if (normalizedStatus === "COMPLETED") {
+          const completionMsg = statusRes.response || apiMessage || "Record found and validated successfully.";
+
           await prisma.$transaction(async (tx) => {
             await tx.ninValidationRequest.update({
               where: { id: item.id },
               data: {
                 status: "COMPLETED",
                 externalStatus: rawStatus,
-                apiMessage: apiMessage || "Validation completed successfully.",
+                apiMessage: completionMsg,
                 apiResponse: statusRes.rawResponse as any,
                 lastSyncedAt: new Date(),
                 completedAt: new Date(),
@@ -153,7 +154,7 @@ async function handleSync(req: NextRequest) {
 
           completedCount++;
         } else if (normalizedStatus === "FAILED") {
-          const failureReason = apiMessage || "Validation request failed verification on Abjiktech gateway.";
+          const failureReason = statusRes.errorDetail || apiMessage || "NIN Validation request failed verification on DataVerify gateway.";
 
           await prisma.ninValidationRequest.update({
             where: { id: item.id },
@@ -187,12 +188,12 @@ async function handleSync(req: NextRequest) {
 
           failedCount++;
         } else {
-          // Still processing/pending on Abjiktech
+          // Still processing/pending on DataVerify
           await prisma.ninValidationRequest.update({
             where: { id: item.id },
             data: {
               externalStatus: rawStatus,
-              apiMessage: apiMessage || "Validation in progress at Abjiktech.",
+              apiMessage: apiMessage || "Validation in progress at DataVerify gateway.",
               apiResponse: statusRes.rawResponse as any,
               lastSyncedAt: new Date(),
             },

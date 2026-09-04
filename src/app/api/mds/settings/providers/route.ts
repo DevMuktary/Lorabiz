@@ -55,7 +55,7 @@ export async function GET() {
       success: true,
       ipeProvider: ipeSetting?.value || "DATAVERIFY",
       personalizationProvider: pznSetting?.value || "DATAVERIFY",
-      ninValidationProvider: validationSetting?.value || "ABJIKTECH",
+      ninValidationProvider: validationSetting?.value || "DATAVERIFY",
       ninSlipProvider: activeNin, // legacy compatibility
       ninSlipProviderNin: activeNin,
       ninSlipProviderPhone: activePhone,
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (ninValidationProvider && ["ABJIKTECH", "MANUAL"].includes(ninValidationProvider.toUpperCase())) {
+    if (ninValidationProvider && ["DATAVERIFY", "ABJIKTECH", "MANUAL"].includes(ninValidationProvider.toUpperCase())) {
       updates.push(
         prisma.globalSetting.upsert({
           where: { key: "NIN_VALIDATION_PROVIDER" },
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
           create: {
             key: "NIN_VALIDATION_PROVIDER",
             value: ninValidationProvider.toUpperCase(),
-            description: "Active routing provider for NIN Validation (ABJIKTECH | MANUAL)",
+            description: "Active routing provider for NIN Validation (DATAVERIFY | MANUAL)",
           },
         })
       );
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId: staffUser.id,
         action: "UPDATE_IDENTITY_PROVIDERS",
-        details: `Updated identity providers -> IPE: ${ipeProvider || "UNCHANGED"}, Personalization: ${personalizationProvider || "UNCHANGED"}, NIN Slips: ${ninSlipProvider || "UNCHANGED"}, Phone Search: ${ninPhoneSearchActive !== undefined ? ninPhoneSearchActive : "UNCHANGED"}`,
+        details: `Updated identity providers -> IPE: ${ipeProvider || "UNCHANGED"}, Personalization: ${personalizationProvider || "UNCHANGED"}, Validation: ${ninValidationProvider || "UNCHANGED"}, NIN Slips: ${ninSlipProvider || "UNCHANGED"}, Phone Search: ${ninPhoneSearchActive !== undefined ? ninPhoneSearchActive : "UNCHANGED"}`,
       },
     });
 

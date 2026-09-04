@@ -263,7 +263,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           category: validCategory,
           nin: sanitizedNin,
-          provider: "ABJIKTECH",
+          provider: "DATAVERIFY",
           status: "PROCESSING",
           amountCharged: requiredAmount,
           transactionRef,
