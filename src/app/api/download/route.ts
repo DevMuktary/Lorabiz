@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "URL parameter is required." }, { status: 400 });
     }
 
-    // Security check: parse and validate URL before fetching (SSRF hardening)
+    // Security check: parse and validate URL format
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(fileUrl);
@@ -28,28 +28,37 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Invalid URL format." }, { status: 400 });
     }
 
-    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-      return NextResponse.json({ error: "Invalid URL scheme." }, { status: 400 });
+    // Only allow HTTPS
+    if (parsedUrl.protocol !== "https:") {
+      return NextResponse.json(
+        { error: "Invalid URL scheme. Only HTTPS is allowed." },
+        { status: 400 }
+      );
     }
 
-    // Allowlist trusted hostnames only
-    const ALLOWED_HOSTNAMES = new Set([
-      "res.cloudinary.com",
-      "cloudinary.com",
-      "lorabiz.com",
-      "www.lorabiz.com",
-    ]);
+    // Sanitize pathname to prevent directory traversal attacks (CWE-22 / CWE-918)
+    const pathname = parsedUrl.pathname;
+    if (pathname.includes("..") || !/^\/[a-zA-Z0-9_\-\.\/%@]+$/.test(pathname)) {
+      return NextResponse.json({ error: "Invalid URL path." }, { status: 400 });
+    }
 
-    if (!ALLOWED_HOSTNAMES.has(parsedUrl.hostname)) {
+    // SSRF Prevention: Select fixed trusted origin based on validated hostname
+    let trustedOrigin: string;
+    const hostname = parsedUrl.hostname.toLowerCase();
+    if (hostname === "res.cloudinary.com") {
+      trustedOrigin = "https://res.cloudinary.com";
+    } else if (hostname === "lorabiz.com") {
+      trustedOrigin = "https://lorabiz.com";
+    } else if (hostname === "www.lorabiz.com") {
+      trustedOrigin = "https://www.lorabiz.com";
+    } else {
       return NextResponse.json({ error: "URL host is not allowed." }, { status: 400 });
     }
 
-    // Prevent path traversal
-    if (parsedUrl.pathname.includes("..")) {
-      return NextResponse.json({ error: "Invalid path in URL." }, { status: 400 });
-    }
+    // Construct the outgoing request URL strictly from the fixed trusted origin
+    const safeUrl = `${trustedOrigin}${pathname}${parsedUrl.search}`;
 
-    const response = await fetch(parsedUrl.toString(), {
+    const response = await fetch(safeUrl, {
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) {
