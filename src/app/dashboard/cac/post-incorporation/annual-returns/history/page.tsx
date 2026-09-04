@@ -278,7 +278,7 @@ export default function AnnualReturnsHistoryPage() {
         <div className="flex items-center gap-3.5">
           <div className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
             <Image 
-              src="/cac-logo.png" 
+              src="/cac.png" 
               alt="CAC Logo" 
               width={40} 
               height={40} 

@@ -31,8 +31,13 @@ import { Button } from "@/components/ui/button";
 
 export type CompanyType = "BUSINESS_NAME" | "LLC";
 
-interface PricingConfig {
+export interface PricingConfig {
   price: number;
+  originalPrice?: number;
+  hasDiscount?: boolean;
+  discountBadge?: string;
+  savedAmount?: number;
+  isActive?: boolean;
   label: string;
 }
 
@@ -121,11 +126,19 @@ export default function AnnualReturnsPage() {
         if (data.pricing) {
           setPricing({
             BUSINESS_NAME: {
-              price: Number(data.pricing.BUSINESS_NAME) || 12000,
+              price: Number(data.pricing.BUSINESS_NAME?.price) || 12000,
+              originalPrice: data.pricing.BUSINESS_NAME?.originalPrice,
+              hasDiscount: data.pricing.BUSINESS_NAME?.hasDiscount,
+              discountBadge: data.pricing.BUSINESS_NAME?.discountBadge,
+              savedAmount: data.pricing.BUSINESS_NAME?.savedAmount,
               label: "Business Name / Enterprise",
             },
             LLC: {
-              price: Number(data.pricing.LLC) || 18000,
+              price: Number(data.pricing.LLC?.price) || 18000,
+              originalPrice: data.pricing.LLC?.originalPrice,
+              hasDiscount: data.pricing.LLC?.hasDiscount,
+              discountBadge: data.pricing.LLC?.discountBadge,
+              savedAmount: data.pricing.LLC?.savedAmount,
               label: "Company (LLC / LTD)",
             },
           });
@@ -143,7 +156,8 @@ export default function AnnualReturnsPage() {
     }
   };
 
-  const currentPrice = selectedType ? pricing[selectedType].price : 0;
+  const activePricing = selectedType ? pricing[selectedType] : null;
+  const currentPrice = activePricing ? activePricing.price : 0;
   const isBalanceSufficient = walletBalance >= currentPrice;
   const shortfall = Math.max(0, currentPrice - walletBalance);
   const remainingBalance = Math.max(0, walletBalance - currentPrice);
@@ -377,12 +391,12 @@ export default function AnnualReturnsPage() {
         <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Post-Incorporation
       </Link>
 
-      {/* Page Header (Exact Standard IPE Layout matching NIN Modification) */}
+      {/* Page Header (Exact Standard IPE Layout with cac.png) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="flex items-center gap-3.5">
           <div className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
             <Image 
-              src="/cac-logo.png" 
+              src="/cac.png" 
               alt="CAC Logo" 
               width={40} 
               height={40} 
@@ -422,7 +436,7 @@ export default function AnnualReturnsPage() {
       ) : (
         <div className="space-y-6 sm:space-y-8">
           
-          {/* 1. Structure Selection State (matches NIN Modification Selection Cards) */}
+          {/* 1. Structure Selection State with Slashed Price Support */}
           {!selectedType ? (
             <div className="space-y-4">
               <div>
@@ -437,58 +451,84 @@ export default function AnnualReturnsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 
                 {/* Business Name Card */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedType("BUSINESS_NAME");
-                    setErrorMessage(null);
-                  }}
-                  className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
-                      <Buildings weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
-                    </div>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      ₦{pricing.BUSINESS_NAME.price.toLocaleString()}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                      Business Name / Enterprise
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      Sole proprietorships, ventures, and general trading partnerships (BN Series).
-                    </p>
-                  </div>
-                </button>
+                {(() => {
+                  const cfg = pricing.BUSINESS_NAME;
+                  const hasDisc = cfg.hasDiscount && cfg.originalPrice && cfg.originalPrice > cfg.price;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedType("BUSINESS_NAME");
+                        setErrorMessage(null);
+                      }}
+                      className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                          <Buildings weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {hasDisc && (
+                            <span className="line-through text-muted-foreground opacity-70 text-[10px] font-normal">
+                              ₦{cfg.originalPrice!.toLocaleString()}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            ₦{cfg.price.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                          Business Name / Enterprise
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          Sole proprietorships, ventures, and general trading partnerships (BN Series).
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })()}
 
                 {/* Company (LLC / LTD) Card */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedType("LLC");
-                    setErrorMessage(null);
-                  }}
-                  className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
-                      <Buildings weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
-                    </div>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      ₦{pricing.LLC.price.toLocaleString()}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                      Company (LLC / LTD)
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      Private Limited Liability Companies and Ltd by Guarantee (RC Series).
-                    </p>
-                  </div>
-                </button>
+                {(() => {
+                  const cfg = pricing.LLC;
+                  const hasDisc = cfg.hasDiscount && cfg.originalPrice && cfg.originalPrice > cfg.price;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedType("LLC");
+                        setErrorMessage(null);
+                      }}
+                      className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                          <Buildings weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {hasDisc && (
+                            <span className="line-through text-muted-foreground opacity-70 text-[10px] font-normal">
+                              ₦{cfg.originalPrice!.toLocaleString()}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            ₦{cfg.price.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                          Company (LLC / LTD)
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          Private Limited Liability Companies and Ltd by Guarantee (RC Series).
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })()}
 
               </div>
 
@@ -506,7 +546,7 @@ export default function AnnualReturnsPage() {
               </div>
             </div>
           ) : (
-            /* Selected Structure Active Banner (Exact Active Service Banner in NIN Modification) */
+            /* Selected Structure Active Banner (With Price Slash Display) */
             <div className="p-4 sm:p-5 rounded-3xl bg-card border border-primary/30 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-200">
               <div className="flex items-center gap-3.5">
                 <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0 shadow-sm">
@@ -517,9 +557,19 @@ export default function AnnualReturnsPage() {
                     <span className="text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
                       Active Structure
                     </span>
+                    {activePricing?.hasDiscount && activePricing?.originalPrice && activePricing.originalPrice > activePricing.price && (
+                      <span className="line-through text-muted-foreground opacity-70 text-xs font-normal">
+                        ₦{activePricing.originalPrice.toLocaleString()}
+                      </span>
+                    )}
                     <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">
                       ₦{currentPrice.toLocaleString()}
                     </span>
+                    {activePricing?.discountBadge && (
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                        {activePricing.discountBadge}
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-base sm:text-lg font-black text-foreground mt-0.5">
                     {pricing[selectedType].label} Annual Returns
@@ -565,6 +615,11 @@ export default function AnnualReturnsPage() {
                 
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-muted-foreground">Fee:</span>
+                  {activePricing?.hasDiscount && activePricing?.originalPrice && activePricing.originalPrice > activePricing.price && (
+                    <span className="line-through text-muted-foreground opacity-70 text-xs font-normal">
+                      ₦{activePricing.originalPrice.toLocaleString()}
+                    </span>
+                  )}
                   <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
                     ₦{currentPrice.toLocaleString()}
                   </span>
@@ -621,15 +676,15 @@ export default function AnnualReturnsPage() {
                 </div>
               </div>
 
-              {/* Document Notice: ONLY ONE NEEDED */}
+              {/* Document Notice: Professional phrasing */}
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-200 flex items-start gap-3">
                 <Info size={18} weight="bold" className="shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div className="text-xs space-y-1">
                   <p className="font-bold text-foreground">
-                    Upload Only One Document (Certificate OR Status Report)
+                    Upload Either CAC Certificate OR Status Report (Only One is Required)
                   </p>
                   <p className="leading-relaxed opacity-90">
-                    You only need to upload either your <strong>CAC Certificate</strong> or your <strong>CAC Status Report</strong>. Both are not required.
+                    Please upload either your <strong>CAC Registration Certificate</strong> or your <strong>CAC Status Report / Extract</strong>. Uploading one document is sufficient to verify your entity.
                   </p>
                 </div>
               </div>
@@ -753,7 +808,7 @@ export default function AnnualReturnsPage() {
                 )}
               </div>
 
-              {/* Authorizing Officer & Designation with "Other" */}
+              {/* Authorizing Officer & Full Comprehensive Designation List with "Other" */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border">
                 <div>
                   <label className="block text-xs font-bold text-foreground mb-1.5">
@@ -781,15 +836,24 @@ export default function AnnualReturnsPage() {
                     {selectedType === "BUSINESS_NAME" ? (
                       <>
                         <option value="Proprietor">Proprietor / Business Owner</option>
-                        <option value="Partner">General Partner</option>
-                        <option value="Accredited Agent / Solicitor">Accredited Agent / Solicitor</option>
+                        <option value="Partner">General Partner / Co-Owner</option>
+                        <option value="Shareholder">Shareholder / Equity Holder</option>
+                        <option value="Director">Managing Director / Executive</option>
+                        <option value="Manager">General / Operations Manager</option>
+                        <option value="Company Secretary">Company Secretary / Administrator</option>
+                        <option value="Accredited Agent / Legal Practitioner">Accredited Agent / Legal Practitioner</option>
                         <option value="Other">Other (Specify Below)</option>
                       </>
                     ) : (
                       <>
-                        <option value="Director">Managing Director / Director</option>
-                        <option value="Company Secretary">Company Secretary</option>
-                        <option value="Authorized Representative">Authorized Representative</option>
+                        <option value="Director">Managing Director / Board Member</option>
+                        <option value="Shareholder">Shareholder / Equity Holder</option>
+                        <option value="Company Secretary">Company Secretary / Legal Counsel</option>
+                        <option value="Chairman / Board President">Chairman / Board President</option>
+                        <option value="Chief Executive Officer (CEO)">Chief Executive Officer (CEO)</option>
+                        <option value="Proprietor / Partner">Proprietor / Partner</option>
+                        <option value="General Manager / Authorized Representative">General Manager / Authorized Representative</option>
+                        <option value="Accredited Agent / Solicitor">Accredited Agent / Solicitor</option>
                         <option value="Other">Other (Specify Below)</option>
                       </>
                     )}
@@ -805,7 +869,7 @@ export default function AnnualReturnsPage() {
                       type="text"
                       value={otherDesigneeRole}
                       onChange={(e) => setOtherDesigneeRole(e.target.value)}
-                      placeholder="e.g. Managing Partner, Trustee, Administrator"
+                      placeholder="e.g. Managing Partner, Trustee, Executive Secretary, or Legal Representative"
                       className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background"
                       required
                     />
@@ -905,15 +969,27 @@ export default function AnnualReturnsPage() {
                 )}
               </div>
 
-              {/* Submit Action */}
+              {/* Submit Action with Price Slash Summary */}
               <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-muted-foreground block">
-                    Total Filing Fee:
+                    Total Statutory Filing Fee:
                   </span>
-                  <span className="text-xl font-black text-foreground">
-                    ₦{currentPrice.toLocaleString()}
-                  </span>
+                  <div className="flex items-baseline gap-2">
+                    {activePricing?.hasDiscount && activePricing?.originalPrice && activePricing.originalPrice > activePricing.price && (
+                      <span className="line-through text-muted-foreground opacity-70 text-sm font-bold">
+                        ₦{activePricing.originalPrice.toLocaleString()}
+                      </span>
+                    )}
+                    <span className="text-xl font-black text-foreground font-mono">
+                      ₦{currentPrice.toLocaleString()}
+                    </span>
+                    {activePricing?.discountBadge && (
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                        {activePricing.discountBadge}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <Button
@@ -953,6 +1029,10 @@ export default function AnnualReturnsPage() {
                 <X size={14} weight="bold" />
               </button>
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              Sign clearly inside the box below using your mouse or finger (touchscreen).
+            </p>
 
             <div className="bg-white rounded-2xl border-2 border-dashed border-border p-2 flex justify-center">
               <canvas 
@@ -1104,7 +1184,14 @@ export default function AnnualReturnsPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Required Fee:</span>
-                      <span className="font-bold text-destructive">₦{currentPrice.toLocaleString()}</span>
+                      <div className="flex items-center gap-1.5">
+                        {activePricing?.hasDiscount && activePricing?.originalPrice && activePricing.originalPrice > activePricing.price && (
+                          <span className="line-through text-muted-foreground text-xs">
+                            ₦{activePricing.originalPrice.toLocaleString()}
+                          </span>
+                        )}
+                        <span className="font-bold text-destructive">₦{currentPrice.toLocaleString()}</span>
+                      </div>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Current Balance:</span>
@@ -1156,7 +1243,16 @@ export default function AnnualReturnsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Statutory Fee:</span>
-                    <span className="font-black text-emerald-600 dark:text-emerald-400">₦{currentPrice.toLocaleString()}</span>
+                    <div className="flex items-center gap-1.5">
+                      {activePricing?.hasDiscount && activePricing?.originalPrice && activePricing.originalPrice > activePricing.price && (
+                        <span className="line-through text-muted-foreground text-xs">
+                          ₦{activePricing.originalPrice.toLocaleString()}
+                        </span>
+                      )}
+                      <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                        ₦{currentPrice.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Current Balance:</span>

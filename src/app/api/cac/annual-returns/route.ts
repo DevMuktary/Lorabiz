@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { generateNumericId } from "@/utils/generateId";
 import { logUserActivity } from "@/lib/activity-logger";
 import { sendAnnualReturnsSubmittedEmail } from "@/lib/email";
+import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
 
 export const dynamic = "force-dynamic";
 
@@ -38,23 +39,43 @@ export async function GET() {
       }),
     ]);
 
-    const pricingMap = {
-      BUSINESS_NAME: 12000,
-      LLC: 18000,
+    const serviceConfigs = {
+      BUSINESS_NAME: { key: "CAC_ANNUAL_RETURNS_BN", defaultPrice: 12000, label: "Business Name / Enterprise" },
+      LLC: { key: "CAC_ANNUAL_RETURNS_LLC", defaultPrice: 18000, label: "Company (LLC / LTD)" },
     };
 
-    pricingItems.forEach((p) => {
-      if (p.serviceKey === "CAC_ANNUAL_RETURNS_BN") {
-        pricingMap.BUSINESS_NAME = Number(p.price);
-      } else if (p.serviceKey === "CAC_ANNUAL_RETURNS_LLC") {
-        pricingMap.LLC = Number(p.price);
-      }
-    });
+    const pricing: Record<string, {
+      price: number;
+      originalPrice?: number;
+      hasDiscount?: boolean;
+      discountBadge?: string;
+      savedAmount?: number;
+      isActive: boolean;
+      maintenanceMsg?: string | null;
+      label: string;
+    }> = {};
+
+    for (const [type, config] of Object.entries(serviceConfigs)) {
+      const found = pricingItems.find((p) => p.serviceKey === config.key);
+      const base = found ? Number(found.price) : config.defaultPrice;
+      const discountInfo = await getEffectiveServicePrice(prisma, config.key, base, user.id);
+
+      pricing[type] = {
+        price: discountInfo.finalPrice,
+        originalPrice: discountInfo.originalPrice,
+        hasDiscount: discountInfo.hasDiscount,
+        discountBadge: discountInfo.badge,
+        savedAmount: discountInfo.savedAmount,
+        isActive: found ? found.isActive : true,
+        maintenanceMsg: found?.maintenanceMsg || null,
+        label: config.label,
+      };
+    }
 
     return NextResponse.json({
       success: true,
       history,
-      pricing: pricingMap,
+      pricing,
     });
   } catch (error: any) {
     console.error("Fetch CAC Annual Returns Error:", error);
@@ -131,7 +152,9 @@ export async function POST(req: Request) {
     }
 
     const defaultPrice = companyType === "LLC" ? 18000 : 12000;
-    const requiredAmount = servicePricing ? Number(servicePricing.price) : defaultPrice;
+    const basePrice = servicePricing ? Number(servicePricing.price) : defaultPrice;
+    const discountInfo = await getEffectiveServicePrice(prisma, targetServiceKey, basePrice, user.id);
+    const requiredAmount = discountInfo.finalPrice;
 
     const userBalance = Number(user.wallet.balance);
     if (userBalance < requiredAmount) {
@@ -171,6 +194,11 @@ export async function POST(req: Request) {
           description: `CAC Annual Returns Filing [${companyType === "LLC" ? "LLC" : "BN"}] - ${companyName.trim()} (${registrationNumber.trim()})`,
         },
       });
+
+      // 3. Record Promo / Discount Usage if applicable
+      if (discountInfo.hasDiscount && discountInfo.promoId) {
+        await recordPromoUsageInTx(tx, discountInfo.promoId, user.id, discountInfo.savedAmount, targetServiceKey);
+      }
 
       // 3. Create Annual Return Request
       const created = await tx.cacAnnualReturnRequest.create({
