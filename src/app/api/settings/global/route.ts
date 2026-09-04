@@ -25,7 +25,17 @@ export async function GET() {
     const isAnyNinActive = (ninRegular?.isActive || ninStandard?.isActive || ninPremium?.isActive);
     const isAnyTaxIdActive = (taxIdInd?.isActive ?? true) || (taxIdCorp?.isActive ?? true);
 
+    const [waPopupSetting, spinPopupSetting, spinMinDepSetting] = await Promise.all([
+      prisma.globalSetting.findUnique({ where: { key: "ENABLE_WHATSAPP_POPUP" } }),
+      prisma.globalSetting.findUnique({ where: { key: "ENABLE_SPIN_POPUP" } }),
+      prisma.globalSetting.findUnique({ where: { key: "SPIN_MIN_DEPOSIT" } }),
+    ]);
+
     const settings = {
+      enableWhatsAppPopup: waPopupSetting ? waPopupSetting.value !== "false" : true,
+      enableSpinPopup: spinPopupSetting ? spinPopupSetting.value !== "false" : true,
+      spinMinDeposit: spinMinDepSetting ? Number(spinMinDepSetting.value) : 15000,
+
       bnEnabled: bn?.isActive ?? true,
       bnReason: bn?.maintenanceMsg || "Business Name registration is currently down for maintenance.",
       llcEnabled: llc?.isActive ?? true,

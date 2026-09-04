@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   Info, CheckCircle, X, WarningCircle, ArrowRight, ListDashes, 
-  ArrowLeft, Tag, IdentificationCard, Buildings, CaretDown, CaretUp 
+  ArrowLeft, Tag, IdentificationCard, Buildings, CaretDown, CaretUp, Gift 
 } from "@phosphor-icons/react";
 
 type TaxIdType = "INDIVIDUAL" | "CORPORATE";
@@ -26,6 +26,8 @@ export default function TaxIdPage() {
   
   const [prices, setPrices] = useState({ individual: 0, corporate: 0 });
   const [discountDetails, setDiscountDetails] = useState<Record<string, any>>({});
+  const [freePassCount, setFreePassCount] = useState<number>(0);
+  const [useRewardCredit, setUseRewardCredit] = useState<boolean>(true);
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [mounted, setMounted] = useState(false);
@@ -53,10 +55,11 @@ export default function TaxIdPage() {
     setMounted(true);
     const fetchPricingAndWallet = async () => {
       try {
-        const [priceRes, walletRes, settingsRes] = await Promise.all([
+        const [priceRes, walletRes, settingsRes, taxRes] = await Promise.all([
           fetch("/api/pricing"),
           fetch("/api/user/wallet"),
-          fetch("/api/settings/global")
+          fetch("/api/settings/global"),
+          fetch("/api/tax-id")
         ]);
         const priceData = await priceRes.json();
         if (priceData.success) {
@@ -73,6 +76,12 @@ export default function TaxIdPage() {
           const balance = walletData.wallet?.balance ?? walletData.balance;
           if (balance !== undefined && balance !== null) {
             setWalletBalance(Number(balance));
+          }
+        }
+        if (taxRes.ok) {
+          const taxData = await taxRes.json();
+          if (taxData.freePassCount) {
+            setFreePassCount(taxData.freePassCount);
           }
         }
         const settingsData = await settingsRes.json();
@@ -109,7 +118,9 @@ export default function TaxIdPage() {
   const hasDiscount = Boolean(currentDiscount?.hasDiscount);
   const discountBadge = currentDiscount?.badge;
 
-  const isInsufficientBalance = walletBalance < currentPrice;
+  const isPassApplied = freePassCount > 0 && useRewardCredit;
+  const payablePrice = isPassApplied ? 0 : currentPrice;
+  const isInsufficientBalance = walletBalance < payablePrice;
 
   const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +161,8 @@ export default function TaxIdPage() {
     try {
       const payload: any = { 
         type: reqType,
-        price: currentPrice,
+        price: payablePrice,
+        useRewardCredit: isPassApplied,
       };
 
       if (reqType === "INDIVIDUAL") {
@@ -206,7 +218,7 @@ export default function TaxIdPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto relative">
+    <div className="space-y-6 max-w-4xl mx-auto relative pb-16 animate-in fade-in duration-200">
       
       {/* Intro Modal (I Understand) */}
       {showIntroModal && mounted && createPortal(
@@ -271,10 +283,51 @@ export default function TaxIdPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <form onSubmit={handleOpenConfirm} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
+      <div className="max-w-3xl mx-auto">
+        <form onSubmit={handleOpenConfirm} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm space-y-8">
             
+            {/* PalmPay / OPay Style Free Tax ID Pass Voucher Card (Compact) */}
+            {freePassCount > 0 && (
+              <div className="rounded-xl border border-orange-500/25 bg-orange-500/5 px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all">
+                <div className="flex items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/25 flex items-center justify-center shrink-0">
+                      <Gift size={15} weight="fill" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-bold text-foreground">1 Free Tax ID Pass</span>
+                        <span className="text-[9px] font-black uppercase tracking-wider bg-orange-500 text-white px-1.5 py-0.2 rounded">
+                          {freePassCount} {freePassCount === 1 ? "READY" : "AVAILABLE"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {useRewardCredit
+                          ? "Applied! Valid for Individual or Corporate Tax ID at ₦0 fee."
+                          : "Pass available · Click toggle to apply to this order"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Toggle Switch */}
+                  <button
+                    type="button"
+                    onClick={() => setUseRewardCredit(!useRewardCredit)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      useRewardCredit ? "bg-orange-600" : "bg-muted-foreground/30"
+                    }`}
+                    title={useRewardCredit ? "Remove Free Pass" : "Apply Free Pass"}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        useRewardCredit ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Toggle Tabs */}
             <div className="space-y-4">
               <label className="text-sm font-bold">1. Select Request Type</label>
@@ -301,18 +354,34 @@ export default function TaxIdPage() {
                 <div className="animate-in fade-in flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-500 px-3 py-2 rounded-lg w-fit mt-3">
                   <Tag weight="fill" className="h-4 w-4 shrink-0" />
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold uppercase tracking-wider">
-                      Processing Fee: ₦{currentPrice.toLocaleString()}
-                    </span>
-                    {hasDiscount && originalPrice > currentPrice && (
+                    {isPassApplied ? (
                       <div className="flex items-center gap-1.5">
-                        <span className="line-through text-muted-foreground text-xs opacity-75">
-                          ₦{originalPrice.toLocaleString()}
+                        <span className="text-xs font-bold uppercase tracking-wider">
+                          Processing Fee: ₦0.00 Free
                         </span>
-                        <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-xs">
-                          {discountBadge || "DISCOUNTED"}
+                        <span className="line-through text-muted-foreground text-xs opacity-75">
+                          ₦{currentPrice.toLocaleString()}
+                        </span>
+                        <span className="bg-orange-500 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-xs">
+                          FREE WITH PASS
                         </span>
                       </div>
+                    ) : (
+                      <>
+                        <span className="text-xs font-bold uppercase tracking-wider">
+                          Processing Fee: ₦{currentPrice.toLocaleString()}
+                        </span>
+                        {hasDiscount && originalPrice > currentPrice && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="line-through text-muted-foreground text-xs opacity-75">
+                              ₦{originalPrice.toLocaleString()}
+                            </span>
+                            <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                              {discountBadge || "DISCOUNTED"}
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -394,33 +463,16 @@ export default function TaxIdPage() {
               </label>
 
               <button type="submit" disabled={!consentChecked || isLoadingPrice} className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md cursor-pointer">
-                {isLoadingPrice ? "Loading pricing..." : "Submit Application"}
+                {isLoadingPrice ? (
+                  "Loading pricing..."
+                ) : isPassApplied ? (
+                  <span>Submit Application (₦0.00 Free)</span>
+                ) : (
+                  "Submit Application"
+                )}
               </button>
             </div>
           </form>
-        </div>
-
-        {/* Info Sidebar */}
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24">
-            <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground mb-5">Why you need a TIN</h3>
-            <ul className="space-y-5">
-              <li className="flex gap-3">
-                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">1</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">Required for opening corporate or personal bank accounts.</p>
-              </li>
-              <li className="flex gap-3">
-                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">2</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">Required for registering your business for VAT and filing your annual tax returns.</p>
-              </li>
-              <li className="flex gap-3">
-                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">3</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">Mandatory for importing/exporting goods and bidding for government contracts.</p>
-              </li>
-            </ul>
-          </div>
-        </div>
-
       </div>
 
       {/* Confirmation Modal */}
@@ -467,7 +519,14 @@ export default function TaxIdPage() {
                 
                 <div className="flex justify-between items-end border-t border-border pt-3 mt-3">
                   <span className="text-muted-foreground text-sm">Total Cost</span>
-                  <span className="font-black text-primary text-xl leading-none">₦{currentPrice.toLocaleString()}</span>
+                  {isPassApplied ? (
+                    <div className="text-right">
+                      <span className="font-black text-emerald-600 dark:text-emerald-400 text-xl leading-none block">₦0.00 Free</span>
+                      <span className="text-xs text-muted-foreground line-through">₦{currentPrice.toLocaleString()}</span>
+                    </div>
+                  ) : (
+                    <span className="font-black text-primary text-xl leading-none">₦{currentPrice.toLocaleString()}</span>
+                  )}
                 </div>
               </div>
 
@@ -487,7 +546,7 @@ export default function TaxIdPage() {
                       <span>Insufficient Wallet Balance</span>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Your balance is <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong>, but this request requires <strong className="text-foreground">₦{currentPrice.toLocaleString()}</strong>.
+                      Your balance is <strong className="text-foreground">₦{walletBalance.toLocaleString()}</strong>, but this request requires <strong className="text-foreground">₦{payablePrice.toLocaleString()}</strong>.
                     </p>
                   </div>
 
@@ -512,7 +571,7 @@ export default function TaxIdPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between text-xs text-muted-foreground px-1">
                     <span>Balance After Debit:</span>
-                    <span className="font-bold text-foreground">₦{(walletBalance - currentPrice).toLocaleString()}</span>
+                    <span className="font-bold text-foreground">₦{(walletBalance - payablePrice).toLocaleString()}</span>
                   </div>
 
                   <div className="flex gap-3 pt-2">
@@ -530,7 +589,13 @@ export default function TaxIdPage() {
                       disabled={isSubmitting} 
                       className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
                     >
-                      {isSubmitting ? "Processing..." : <><CheckCircle weight="bold" className="h-4 w-4" /> Pay & Submit</>}
+                      {isSubmitting ? (
+                        "Processing..."
+                      ) : isPassApplied ? (
+                        <><CheckCircle weight="bold" className="h-4 w-4" /> Submit (₦0.00 Free)</>
+                      ) : (
+                        <><CheckCircle weight="bold" className="h-4 w-4" /> Pay & Submit</>
+                      )}
                     </button>
                   </div>
                 </div>

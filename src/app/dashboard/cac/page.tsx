@@ -17,7 +17,8 @@ const CAC_CATEGORIES = [
     title: "Post Incorporation",
     description: "File annual returns, change directors, upgrade business name to LLC, and more.",
     logo: "/cac.png",
-    active: false,
+    href: "/dashboard/cac/post-incorporation",
+    active: true,
   }
 ];
 

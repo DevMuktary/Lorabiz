@@ -8,6 +8,8 @@ import { redis } from "@/lib/redis";
 import { sendScumlSubmittedEmail, sendWalletFundedEmail } from "@/lib/email";
 import { logUserActivity } from "@/lib/activity-logger";
 
+import { grantSpinTokenIfEligible } from "@/lib/rewards";
+
 export async function POST(req: Request) {
   console.log("\n==============================================");
   console.log("🔔 KORAPAY WEBHOOK TRIGGERED (STATELESS)");
@@ -136,6 +138,8 @@ export async function POST(req: Request) {
                     serviceCategory: "WALLET_FUNDING"
                   }
                 });
+
+                await grantSpinTokenIfEligible(tx, user.id, amountPaid, reference);
                 isPaymentFullySuccessful = true;
                 return;
             }

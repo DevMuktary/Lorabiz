@@ -350,11 +350,15 @@ export const authOptions: NextAuthOptions = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true, twoFactorMethod: true, phone: true }
+            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true, twoFactorMethod: true, phone: true, firstName: true, lastName: true }
           });
 
           if (!dbUser || dbUser.isSuspended) {
             return {} as any; 
+          }
+
+          if (dbUser.firstName || dbUser.lastName) {
+            token.name = `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim();
           }
 
           if (dbUser.role !== token.role) {
@@ -401,6 +405,9 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).twoFactorMethod = token.twoFactorMethod as string | null | undefined;
         (session.user as any).isProfileComplete = token.isProfileComplete as boolean ?? true;
         session.user.image = token.picture as string | null | undefined; 
+        if (token.name) {
+          session.user.name = token.name as string;
+        }
       }
       return session;
     },

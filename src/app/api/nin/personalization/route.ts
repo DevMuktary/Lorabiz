@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { submitDataVerifyPersonalization } from "@/lib/dataverify";
 import { logUserActivity } from "@/lib/activity-logger";
 import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
+import { redeemServiceRewardCredit, getUserRewardPassCount } from "@/lib/rewards";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { trackingId, attestationsAccepted } = await req.json();
+    const { trackingId, attestationsAccepted, useRewardCredit } = await req.json();
 
     if (!trackingId || typeof trackingId !== "string" || trackingId.trim().length < 8) {
       return NextResponse.json(
@@ -61,12 +62,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let isUsingCredit = false;
+    if (useRewardCredit) {
+      const availablePasses = await getUserRewardPassCount(user.id, "NIN_PERSONALIZATION");
+      if (availablePasses > 0) {
+        isUsingCredit = true;
+      }
+    }
+
     const basePrice = servicePricing ? Number(servicePricing.price) : 1500.0;
     const discountInfo = await getEffectiveServicePrice(prisma, "NIN_PERSONALIZATION", basePrice, user.id);
-    const requiredAmount = discountInfo.finalPrice;
+    const requiredAmount = isUsingCredit ? 0 : discountInfo.finalPrice;
     const currentBalance = Number(user.wallet.balance);
 
-    if (currentBalance < requiredAmount) {
+    if (!isUsingCredit && currentBalance < requiredAmount) {
       return NextResponse.json(
         {
           success: false,
@@ -131,19 +140,29 @@ export async function POST(req: NextRequest) {
       apiMessage = "Request queued for manual verification and personalization processing.";
     }
 
-    // Execute atomic transaction for wallet debit, ledger record, and Personalization request creation
+    // Execute atomic transaction for wallet debit (or free credit redemption), ledger record, and Personalization request creation
     const createdPersonalization = await prisma.$transaction(async (tx) => {
-      const currentWallet = await tx.wallet.findUnique({ where: { id: user.wallet!.id } });
-      if (!currentWallet || Number(currentWallet.balance) < requiredAmount) {
-        throw new Error("INSUFFICIENT_BALANCE");
-      }
+      let balanceBefore = Number(user.wallet!.balance);
+      let balanceAfter = balanceBefore;
 
-      const balanceBefore = Number(currentWallet.balance);
-      const updatedWallet = await tx.wallet.update({
-        where: { id: user.wallet!.id },
-        data: { balance: { decrement: requiredAmount } },
-      });
-      const balanceAfter = Number(updatedWallet.balance);
+      if (isUsingCredit) {
+        const redeemed = await redeemServiceRewardCredit(tx, user.id, "NIN_PERSONALIZATION", reference);
+        if (!redeemed) {
+          throw new Error("REWARD_PASS_UNAVAILABLE");
+        }
+      } else {
+        const currentWallet = await tx.wallet.findUnique({ where: { id: user.wallet!.id } });
+        if (!currentWallet || Number(currentWallet.balance) < requiredAmount) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
+
+        balanceBefore = Number(currentWallet.balance);
+        const updatedWallet = await tx.wallet.update({
+          where: { id: user.wallet!.id },
+          data: { balance: { decrement: requiredAmount } },
+        });
+        balanceAfter = Number(updatedWallet.balance);
+      }
 
       // 2. Ledger Transaction Record
       await tx.transaction.create({
@@ -156,7 +175,9 @@ export async function POST(req: NextRequest) {
           status: "SUCCESS",
           reference: reference,
           serviceCategory: "IDENTITY",
-          description: `NIMC NIN Personalization Service - Tracking ID: ${sanitizedTrackingId}`,
+          description: isUsingCredit
+            ? `NIMC NIN Personalization Service - Free Pass Redeemed - Tracking ID: ${sanitizedTrackingId}`
+            : `NIMC NIN Personalization Service - Tracking ID: ${sanitizedTrackingId}`,
         },
       });
 
@@ -175,38 +196,40 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // 4. Referral commission
-      const activeReferral = await tx.referral.findUnique({
-        where: { referredUserId: user.id },
-      });
-
-      if (activeReferral) {
-        const isReferralActiveSetting = await tx.globalSetting.findUnique({
-          where: { key: "REFERRAL_ACTIVE" },
+      // 4. Referral commission (only on cash paid)
+      if (!isUsingCredit) {
+        const activeReferral = await tx.referral.findUnique({
+          where: { referredUserId: user.id },
         });
-        const isReferralActive = !isReferralActiveSetting || isReferralActiveSetting.value === "true";
-        const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
 
-        if (isReferralActive && isNotExpired) {
-          const rewardSetting = await tx.globalSetting.findUnique({
-            where: { key: "REF_REWARD_NIN" },
+        if (activeReferral) {
+          const isReferralActiveSetting = await tx.globalSetting.findUnique({
+            where: { key: "REFERRAL_ACTIVE" },
           });
-          const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 10.0;
+          const isReferralActive = !isReferralActiveSetting || isReferralActiveSetting.value === "true";
+          const isNotExpired = !activeReferral.expiresAt || new Date() < activeReferral.expiresAt;
 
-          if (commissionAmount > 0) {
-            await tx.referralCommission.create({
-              data: {
-                referralId: activeReferral.id,
-                serviceType: "NIN",
-                serviceId: record.id,
-                amount: commissionAmount,
-              },
+          if (isReferralActive && isNotExpired) {
+            const rewardSetting = await tx.globalSetting.findUnique({
+              where: { key: "REF_REWARD_NIN" },
             });
+            const commissionAmount = rewardSetting ? Number(rewardSetting.value) : 10.0;
 
-            await tx.user.update({
-              where: { id: activeReferral.referrerId },
-              data: { referralBalance: { increment: commissionAmount } },
-            });
+            if (commissionAmount > 0) {
+              await tx.referralCommission.create({
+                data: {
+                  referralId: activeReferral.id,
+                  serviceType: "NIN",
+                  serviceId: record.id,
+                  amount: commissionAmount,
+                },
+              });
+
+              await tx.user.update({
+                where: { id: activeReferral.referrerId },
+                data: { referralBalance: { increment: commissionAmount } },
+              });
+            }
           }
         }
       }
@@ -214,46 +237,49 @@ export async function POST(req: NextRequest) {
       return record;
     });
 
-    // Log Activity
+    // Record user activity
     await logUserActivity({
       userId: user.id,
       action: "NIN_PERSONALIZATION_SUBMITTED",
       category: "SERVICES",
-      description: `Submitted NIN Personalization for Tracking ID: ${sanitizedTrackingId}`,
+      description: `Submitted NIN Personalization request for Tracking ID: ${sanitizedTrackingId} (${activeProvider} routing)`,
       status: "SUCCESS",
       referenceId: reference,
       req,
       metadata: {
         trackingId: sanitizedTrackingId,
-        reference,
+        amount: requiredAmount,
         provider: activeProvider,
-        amountCharged: requiredAmount,
-        transactionId: externalTxId,
+        externalTxId,
+        isUsingCredit,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: "NIN Personalization request submitted successfully. Processing has started.",
-      reference: createdPersonalization.reference,
-      transactionId: externalTxId,
+      reference: reference,
+      trackingId: sanitizedTrackingId,
       status: "PROCESSING",
+      message: "Personalization request submitted successfully. Processing has started.",
     });
   } catch (error: any) {
-    console.error("❌ NIN Personalization Submission Error:", error);
+    console.error("❌ NIN Personalization API Error:", error);
     return NextResponse.json(
-      { success: false, message: error.message || "An unexpected error occurred during personalization submission." },
+      {
+        success: false,
+        message: error.message || "An unexpected error occurred while submitting your personalization request.",
+      },
       { status: 500 }
     );
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized access." },
+        { success: false, message: "Unauthorized access. Please log in." },
         { status: 401 }
       );
     }
@@ -276,9 +302,12 @@ export async function GET() {
       );
     }
 
-    const pricing = await prisma.servicePricing.findUnique({
-      where: { serviceKey: "NIN_PERSONALIZATION" },
-    });
+    const [pricing, freePassCount] = await Promise.all([
+      prisma.servicePricing.findUnique({
+        where: { serviceKey: "NIN_PERSONALIZATION" },
+      }),
+      getUserRewardPassCount(user.id, "NIN_PERSONALIZATION"),
+    ]);
 
     const basePrice = pricing ? Number(pricing.price) : 1500;
     const discountInfo = await getEffectiveServicePrice(prisma, "NIN_PERSONALIZATION", basePrice, user.id);
@@ -296,6 +325,7 @@ export async function GET() {
       maintenanceMsg: pricing?.maintenanceMsg || null,
       walletBalance: user.wallet ? Number(user.wallet.balance) : 0,
       recentRequests: user.ninPersonalizationRequests,
+      freePassCount,
     });
   } catch (error: any) {
     console.error("❌ NIN Personalization Info GET Error:", error);

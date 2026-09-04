@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft, WarningCircle, Eye, X, Check,
-  Sparkle, ShieldCheck, CheckCircle, Wrench, IdentificationCard
+  Sparkle, ShieldCheck, CheckCircle, Wrench, IdentificationCard, Gift
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,8 @@ export default function NinByPhonePage() {
   const [attestation1, setAttestation1] = useState(false);
   const [attestation2, setAttestation2] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availablePasses, setAvailablePasses] = useState<number>(0);
+  const [useRewardCredit, setUseRewardCredit] = useState<boolean>(false);
 
   const [lightbox, setLightbox] = useState<{ isOpen: boolean; src: string; label: string }>({
     isOpen: false, src: "", label: ""
@@ -110,18 +112,28 @@ export default function NinByPhonePage() {
 
   const loadData = async () => {
     try {
-      const [statusRes, historyRes, walletRes] = await Promise.all([
+      const [statusRes, historyRes, walletRes, vouchersRes] = await Promise.all([
         fetch("/api/nin/slips/status", { cache: "no-store" }),
         fetch("/api/nin/slips/history?searchType=PHONE", { cache: "no-store" }),
         fetch("/api/user/wallet", { cache: "no-store" }),
+        fetch("/api/vouchers", { cache: "no-store" }),
       ]);
 
       const statusData = await statusRes.json();
       const historyData = await historyRes.json();
       const walletData = await walletRes.json();
+      const vouchersData = await vouchersRes.json();
 
       if (walletData.success) {
         setWalletBalance(typeof walletData.balance === "number" ? walletData.balance : (walletData.wallet?.balance || 0));
+      }
+
+      if (vouchersData.success && vouchersData.summary) {
+        const passCount = Number(vouchersData.summary.ninSlip) || 0;
+        setAvailablePasses(passCount);
+        if (passCount > 0) {
+          setUseRewardCredit(true);
+        }
       }
 
       if (statusData.success && statusData.status) {
@@ -212,7 +224,8 @@ export default function NinByPhonePage() {
           identifier: phoneNumber.trim(),
           searchType: "PHONE",
           slipType,
-          attestationsAccepted: attestation1 && attestation2
+          attestationsAccepted: attestation1 && attestation2,
+          useRewardCredit,
         })
       });
 
@@ -338,6 +351,48 @@ export default function NinByPhonePage() {
           </div>
         </div>
 
+        {/* PalmPay / OPay Style Free Pass Voucher Card (Compact) */}
+        {availablePasses > 0 && (
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all">
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                  <Gift size={15} weight="fill" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-foreground">1 Free NIN Slip Pass</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.2 rounded">
+                      {availablePasses} Ready (100% Free)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {useRewardCredit
+                      ? "Pass applied · Fee slashed to ₦0.00"
+                      : "Pass available · Click toggle to apply"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                type="button"
+                onClick={() => setUseRewardCredit(!useRewardCredit)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  useRewardCredit ? "bg-emerald-600" : "bg-muted-foreground/30"
+                }`}
+                title={useRewardCredit ? "Remove Free Pass" : "Apply Free Pass"}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    useRewardCredit ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Slips Radio List with Eye + "View Example" & Maintenance Badges */}
         <div className="space-y-3">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
@@ -394,6 +449,12 @@ export default function NinByPhonePage() {
                         <span>View Example</span>
                       </button>
 
+                      {useRewardCredit && availablePasses > 0 && isAvailable && (
+                        <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 px-2 py-0.5 rounded-full">
+                          FREE WITH PASS
+                        </span>
+                      )}
+
                       {!isAvailable && (
                         <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
                           Unavailable
@@ -402,11 +463,22 @@ export default function NinByPhonePage() {
                     </div>
                   </div>
 
-                  <div className={`font-black text-sm shrink-0 pl-2 ${!isAvailable ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                  <div className="text-right shrink-0 pl-2">
                     {statusState.loading ? (
                       <span className="inline-block h-4 w-12 bg-secondary/80 animate-pulse rounded-md"></span>
+                    ) : useRewardCredit && availablePasses > 0 && isAvailable ? (
+                      <div className="flex flex-col items-end">
+                        <span className="text-[11px] text-muted-foreground line-through">
+                          ₦{Number(price || option.defaultPrice || 500).toLocaleString()}
+                        </span>
+                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                          ₦0.00 Free
+                        </span>
+                      </div>
                     ) : (
-                      `₦${Number(price || option.defaultPrice || 500).toLocaleString()}`
+                      <span className={`font-black text-sm ${!isAvailable ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                        ₦{Number(price || option.defaultPrice || 500).toLocaleString()}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -437,13 +509,19 @@ export default function NinByPhonePage() {
               className="mt-0.5 h-4 w-4 rounded text-sky-500 focus:ring-sky-500 border-border cursor-pointer"
             />
             <span>
-              I authorize the fee of{" "}
-              {statusState.loading ? (
-                <span className="inline-block h-3.5 w-12 bg-secondary animate-pulse rounded align-middle mx-1"></span>
+              {useRewardCredit && availablePasses > 0 ? (
+                <>I authorize this transaction using my <strong>1x Free NIN Slip Pass (₦0 wallet debit)</strong>.</>
               ) : (
-                <strong>₦{Number(currentPrice || selectedOption.defaultPrice || 500).toLocaleString()}</strong>
-              )}{" "}
-              to be debited from my wallet.
+                <>
+                  I authorize the fee of{" "}
+                  {statusState.loading ? (
+                    <span className="inline-block h-3.5 w-12 bg-secondary animate-pulse rounded align-middle mx-1"></span>
+                  ) : (
+                    <strong>₦{Number(currentPrice || selectedOption.defaultPrice || 500).toLocaleString()}</strong>
+                  )}{" "}
+                  to be debited from my wallet.
+                </>
+              )}
             </span>
           </label>
         </div>
@@ -457,8 +535,10 @@ export default function NinByPhonePage() {
           <Sparkle size={18} weight="fill" />
           {statusState.loading ? (
             <span>Loading pricing...</span>
+          ) : useRewardCredit && availablePasses > 0 ? (
+            <span>Verify &amp; Generate (₦0.00 Free)</span>
           ) : (
-            <span>Verify & Generate Slip (₦{Number(currentPrice || selectedOption.defaultPrice || 500).toLocaleString()})</span>
+            <span>Verify &amp; Generate (₦{Number(currentPrice || selectedOption.defaultPrice || 500).toLocaleString()})</span>
           )}
         </Button>
 
@@ -476,6 +556,9 @@ export default function NinByPhonePage() {
         slipImage={selectedOption.img}
         price={currentPrice}
         walletBalance={walletBalance}
+        availablePasses={availablePasses}
+        useRewardCredit={useRewardCredit}
+        onToggleRewardCredit={(v) => setUseRewardCredit(v)}
       />
 
       {/* LIGHTBOX SPECIMEN PREVIEW OVERLAY */}
