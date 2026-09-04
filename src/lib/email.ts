@@ -2261,3 +2261,118 @@ export async function sendAnnualReturnsApprovedEmail({
   return sendEmail({ to, subject, htmlBody, attachments });
 }
 
+export async function sendAnnualReturnsSubmittedEmail({
+  to,
+  firstName,
+  companyName,
+  trackingId,
+  registrationNumber,
+  filingYears,
+  amountPaid,
+}: {
+  to: string;
+  firstName?: string;
+  companyName: string;
+  trackingId: string;
+  registrationNumber: string;
+  filingYears?: string;
+  amountPaid: number;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `CAC Annual Returns Received: ${companyName} – [${trackingId}]`;
+  const previewText = `We have received your CAC Annual Returns filing request for ${companyName} (${registrationNumber}).`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Annual Returns Filing Received &#128196;</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">We have received your statutory <strong>CAC Annual Returns Filing</strong> application for <strong>${companyName}</strong> (Reg No: <strong>${registrationNumber}</strong>).</p>
+    
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #0f172a; font-weight: 700;">Filing Summary:</p>
+      <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Tracking Reference:</strong> ${trackingId}</p>
+      <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Financial Year(s):</strong> ${filingYears || "Current"}</p>
+      <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Amount Paid:</strong> &#8358;${amountPaid.toLocaleString()}</p>
+      <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Status:</strong> Processing under Staff Review</p>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">Our CAC accredited compliance team is reviewing your documentation. Once filed on the commission's portal, your official CAC Acknowledgement Letter will be uploaded directly to your dashboard.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Warm regards,<br/><strong>The LoraBiz Corporate Compliance Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendAnnualReturnsQueriedEmail({
+  to,
+  firstName,
+  companyName,
+  trackingId,
+  queryReason,
+}: {
+  to: string;
+  firstName?: string;
+  companyName: string;
+  trackingId: string;
+  queryReason: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Action Required: Query on CAC Annual Returns – [${trackingId}]`;
+  const previewText = `A query was raised regarding your CAC Annual Returns application for ${companyName}.`;
+
+  const content = `
+    <h2 style="color: #b45309; margin-top: 0; font-size: 20px; font-weight: 700;">Action Required: Filing Query &#9888;</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">A query has been raised regarding your <strong>CAC Annual Returns Filing</strong> for <strong>${companyName}</strong> (${trackingId}):</p>
+    
+    <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 6px; font-size: 12px; color: #92400e; font-weight: 700; text-transform: uppercase;">Reason for Query:</p>
+      <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;">${queryReason}</p>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">Please log in to your dashboard to view details and resolve the required documentation so our team can proceed with your CAC filing.</p>
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="https://lorabiz.com/dashboard/cac/post-incorporation/annual-returns/history" style="background-color: #d97706; color: #ffffff; padding: 13px 26px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">View Query & Resolve</a>
+    </div>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">The LoraBiz Corporate Compliance Team</p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendAnnualReturnsRejectedEmail({
+  to,
+  firstName,
+  companyName,
+  trackingId,
+  rejectionReason,
+}: {
+  to: string;
+  firstName?: string;
+  companyName: string;
+  trackingId: string;
+  rejectionReason: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `Update: CAC Annual Returns Filing Rejected – [${trackingId}]`;
+  const previewText = `Your CAC Annual Returns filing for ${companyName} could not be completed.`;
+
+  const content = `
+    <h2 style="color: #be123c; margin-top: 0; font-size: 20px; font-weight: 700;">Annual Returns Filing Rejected &#10060;</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Unfortunately, your statutory <strong>CAC Annual Returns Filing</strong> for <strong>${companyName}</strong> (${trackingId}) could not be processed due to the following reason:</p>
+    
+    <div style="background-color: #fff1f2; border: 1px solid #ffe4e6; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0; font-size: 14px; color: #9f1239; line-height: 1.5;">${rejectionReason}</p>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">If you have any questions or require guidance on regularizing your records, please contact our support team via WhatsApp or live chat.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">The LoraBiz Corporate Compliance Team</p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+

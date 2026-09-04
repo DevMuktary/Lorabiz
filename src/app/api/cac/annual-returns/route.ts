@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { generateNumericId } from "@/utils/generateId";
 import { logUserActivity } from "@/lib/activity-logger";
+import { sendAnnualReturnsSubmittedEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -222,6 +223,19 @@ export async function POST(req: Request) {
         transactionRef,
       },
       req,
+    });
+
+    // 6. Send Submission Receipt Email (non-blocking)
+    sendAnnualReturnsSubmittedEmail({
+      to: user.email,
+      firstName: user.firstName || "Valued Client",
+      companyName: companyName.trim(),
+      trackingId,
+      registrationNumber: registrationNumber.trim().toUpperCase(),
+      filingYears: filingYears?.trim() || new Date().getFullYear().toString(),
+      amountPaid: requiredAmount,
+    }).catch((emailErr) => {
+      console.error("Failed to send Annual Returns submission email:", emailErr);
     });
 
     return NextResponse.json({
