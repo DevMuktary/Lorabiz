@@ -6,6 +6,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { logUserActivity } from "@/lib/activity-logger";
 import { executeNinSlipGeneration } from "@/lib/nin-slips-provider";
 import { getReferrerRewardAmount } from "@/lib/loyalty";
+import { redeemServiceRewardCredit, getUserRewardPassCount } from "@/lib/rewards";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Unauthorized access. Please log in." }, { status: 401 });
     }
 
-    const { identifier, searchType = "NIN", slipType, attestationsAccepted } = await req.json();
+    const { identifier, searchType = "NIN", slipType, attestationsAccepted, useRewardCredit } = await req.json();
 
     if (!identifier || !/^\d{11}$/.test(identifier.trim())) {
       return NextResponse.json({ 
@@ -102,10 +103,18 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const currentBalance = Number(user.wallet.balance);
-    const requiredAmount = Number(pricing.price);
+    let isUsingCredit = false;
+    if (useRewardCredit) {
+      const availablePasses = await getUserRewardPassCount(user.id, "NIN_SLIP");
+      if (availablePasses > 0) {
+        isUsingCredit = true;
+      }
+    }
 
-    if (currentBalance < requiredAmount) {
+    const currentBalance = Number(user.wallet.balance);
+    const requiredAmount = isUsingCredit ? 0 : Number(pricing.price);
+
+    if (!isUsingCredit && currentBalance < requiredAmount) {
       return NextResponse.json({ 
         success: false, 
         message: `Insufficient wallet balance. You need ₦${requiredAmount.toLocaleString()} but your balance is ₦${currentBalance.toLocaleString()}. Please fund your wallet.` 
@@ -140,19 +149,29 @@ export async function POST(req: NextRequest) {
     const referencePrefix = isPhoneSearch ? "TEL" : "NIN";
     const reference = `${referencePrefix}_${slipType.toUpperCase()}_${Date.now()}`;
 
-    // Database transaction: debit wallet atomically, log transaction, save demographic details to NinRequestLog
+    // Database transaction: debit wallet atomically or redeem reward pass, log transaction, save demographic details to NinRequestLog
     const ninLog = await prisma.$transaction(async (tx) => {
-      const currentWallet = await tx.wallet.findUnique({ where: { id: user.wallet!.id } });
-      if (!currentWallet || Number(currentWallet.balance) < requiredAmount) {
-        throw new Error("INSUFFICIENT_BALANCE");
-      }
+      let balanceBefore = Number(user.wallet!.balance);
+      let balanceAfter = balanceBefore;
 
-      const balanceBefore = Number(currentWallet.balance);
-      const updatedWallet = await tx.wallet.update({
-        where: { id: user.wallet!.id },
-        data: { balance: { decrement: requiredAmount } }
-      });
-      const balanceAfter = Number(updatedWallet.balance);
+      if (isUsingCredit) {
+        const redeemed = await redeemServiceRewardCredit(tx, user.id, "NIN_SLIP", reference);
+        if (!redeemed) {
+          throw new Error("REWARD_PASS_UNAVAILABLE");
+        }
+      } else {
+        const currentWallet = await tx.wallet.findUnique({ where: { id: user.wallet!.id } });
+        if (!currentWallet || Number(currentWallet.balance) < requiredAmount) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
+
+        balanceBefore = Number(currentWallet.balance);
+        const updatedWallet = await tx.wallet.update({
+          where: { id: user.wallet!.id },
+          data: { balance: { decrement: requiredAmount } }
+        });
+        balanceAfter = Number(updatedWallet.balance);
+      }
 
       await tx.transaction.create({
         data: {
@@ -164,7 +183,9 @@ export async function POST(req: NextRequest) {
           status: "SUCCESS",
           reference: reference,
           serviceCategory: "IDENTITY",
-          description: `NIMC Slip Printing (${pricing.title}) - ${maskedIdentifier}`
+          description: isUsingCredit 
+            ? `NIMC Slip Printing (${pricing.title}) - Free Pass Redeemed - ${maskedIdentifier}`
+            : `NIMC Slip Printing (${pricing.title}) - ${maskedIdentifier}`
         }
       });
 

@@ -76,7 +76,7 @@ export default function IpeClearancePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto relative pb-12 animate-in fade-in duration-200">
+    <div className="space-y-6 max-w-4xl mx-auto relative pb-16 animate-in fade-in duration-200">
       
       {/* Intro Modal (Processing Timeline) */}
       {mounted && showIntroModal && typeof document !== "undefined" && createPortal(
@@ -215,73 +215,16 @@ export default function IpeClearancePage() {
           </div>
         </div>
       ) : (
-        /* 3-Column Standard Tax ID Layout */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Main Form (Left 2 cols) */}
-          <div className="lg:col-span-2">
-            <IpeSubmissionForm
-              walletBalance={walletBalance}
-              servicePrice={servicePrice}
-              originalPrice={originalPrice}
-              hasDiscount={hasDiscount}
-              discountBadge={discountBadge}
-              isServiceActive={isServiceActive}
-              onSuccess={handleSuccess}
-            />
-          </div>
-
-          {/* Info Sidebar (Right 1 col) matching Tax ID */}
-          <div className="space-y-6">
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24 space-y-5">
-              <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground">
-                How to Track Your Request
-              </h3>
-              
-              <ul className="space-y-4">
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Gateway Submission</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Your Tracking ID is immediately queued and transmitted to the NIMC gateway.
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Automated Status Sync</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Our background system periodically syncs with NIMC to verify when the error clears.
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Instant Notification</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      You will receive an email once resolved. You can also view full details from your History page.
-                    </p>
-                  </div>
-                </li>
-              </ul>
-
-              <div className="p-3.5 rounded-xl bg-secondary/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">Need help?</strong> If your request is delayed beyond 24 hours, reach out to our team using the live support widget.
-              </div>
-            </div>
-          </div>
-
+        <div className="max-w-3xl mx-auto">
+          <IpeSubmissionForm
+            walletBalance={walletBalance}
+            servicePrice={servicePrice}
+            originalPrice={originalPrice}
+            hasDiscount={hasDiscount}
+            discountBadge={discountBadge}
+            isServiceActive={isServiceActive}
+            onSuccess={handleSuccess}
+          />
         </div>
       )}
 

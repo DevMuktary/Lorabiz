@@ -51,7 +51,7 @@ export default function NinValidationApplicationDrawer({
   const [refundAmount, setRefundAmount] = useState<number | string>(initialTicket?.amountCharged || 0);
   
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [isPushingToAbj, setIsPushingToAbj] = useState<boolean>(false);
+  const [isPushingToDataVerify, setIsPushingToDataVerify] = useState<boolean>(false);
   const [isSyncingStatus, setIsSyncingStatus] = useState<boolean>(false);
   const [isLinkingManual, setIsLinkingManual] = useState<boolean>(false);
   const [manualTicketInput, setManualTicketInput] = useState<string>("");
@@ -85,9 +85,9 @@ export default function NinValidationApplicationDrawer({
 
   const categoryLabel = CATEGORY_LABELS[ticket.category] || ticket.category;
 
-  // Handle Admin Manual Push to Abjiktech
-  const handlePushToAbjiktech = async () => {
-    setIsPushingToAbj(true);
+  // Handle Admin Manual Push to DataVerify
+  const handlePushToDataVerify = async () => {
+    setIsPushingToDataVerify(true);
     setError("");
     setSuccessMsg("");
 
@@ -98,7 +98,7 @@ export default function NinValidationApplicationDrawer({
         body: JSON.stringify({
           ticketId: ticket.id,
           actionType: "PUSH_TO_PROVIDER",
-          adminNotes: "Pushed to Abjiktech API via MDS Drawer",
+          adminNotes: "Pushed to DataVerify API via MDS Drawer",
         }),
       });
 
@@ -108,26 +108,23 @@ export default function NinValidationApplicationDrawer({
           setTicket(result.data);
           onUpdateSuccess?.(result.data);
         }
-        throw new Error(result.error || "Failed to push ticket to Abjiktech.");
+        throw new Error(result.error || "Failed to push ticket to DataVerify.");
       }
 
-      const updated = result.data || {
-        ...ticket,
-        externalStatus: "pending",
-        lastSyncedAt: new Date().toISOString(),
-      };
-      setTicket(updated);
-      setSuccessMsg(result.message || "Successfully transmitted to Abjiktech!");
-      onUpdateSuccess?.(updated);
+      if (result.data) {
+        setTicket(result.data);
+      }
+      setSuccessMsg(result.message || "Successfully transmitted to DataVerify!");
+      onUpdateSuccess?.(result.data);
     } catch (err: any) {
-      setError(err.message || "Failed to transmit to Abjiktech.");
+      setError(err.message || "Failed to transmit to DataVerify.");
     } finally {
-      setIsPushingToAbj(false);
+      setIsPushingToDataVerify(false);
     }
   };
 
-  // Handle Admin Live Status Check from Abjiktech
-  const handleSyncAbjiktechStatus = async () => {
+  // Handle Admin Live Status Check from DataVerify
+  const handleSyncDataVerifyStatus = async () => {
     setIsSyncingStatus(true);
     setError("");
     setSuccessMsg("");
@@ -144,7 +141,7 @@ export default function NinValidationApplicationDrawer({
 
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to fetch status from Abjiktech.");
+        throw new Error(result.error || "Failed to fetch status from DataVerify.");
       }
 
       const updated = {
@@ -155,11 +152,10 @@ export default function NinValidationApplicationDrawer({
         apiResponse: result.rawStatus ? { status: result.rawStatus, message: result.message } : ticket.apiResponse,
       };
 
-      setTicket(updated);
-      setSuccessMsg(result.message || "Live status synced from Abjiktech!");
+      setSuccessMsg(result.message || "Live status synced from DataVerify!");
       onUpdateSuccess?.(updated);
     } catch (err: any) {
-      setError(err.message || "Failed to sync status from Abjiktech.");
+      setError(err.message || "Failed to sync status from DataVerify.");
     } finally {
       setIsSyncingStatus(false);
     }
@@ -168,7 +164,7 @@ export default function NinValidationApplicationDrawer({
   // Handle Manual Transaction/Ticket ID Linking
   const handleLinkManualTicket = async () => {
     if (!manualTicketInput.trim()) {
-      setError("Please enter a valid Abjiktech Transaction ID.");
+      setError("Please enter a valid DataVerify Transaction ID.");
       return;
     }
     setIsProcessing(true);
@@ -188,19 +184,18 @@ export default function NinValidationApplicationDrawer({
 
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to link transaction ID.");
+        throw new Error(result.error || "Failed to link DataVerify Transaction ID.");
       }
 
-      const updated = result.data || {
-        ...ticket,
-        externalTxId: manualTicketInput.trim(),
-      };
-      setTicket(updated);
+      if (result.data) {
+        setTicket(result.data);
+      }
+      setSuccessMsg(result.message || "Successfully linked DataVerify Transaction ID!");
       setIsLinkingManual(false);
-      setSuccessMsg(`Transaction ID ${manualTicketInput.trim()} linked successfully!`);
-      onUpdateSuccess?.(updated);
+      setManualTicketInput("");
+      onUpdateSuccess?.(result.data);
     } catch (err: any) {
-      setError(err.message || "Failed to link transaction ID.");
+      setError(err.message || "Failed to link DataVerify Transaction ID.");
     } finally {
       setIsProcessing(false);
     }
@@ -259,7 +254,9 @@ export default function NinValidationApplicationDrawer({
     }
   };
 
-  const hasPushedToAbj = Boolean(ticket.externalTicketId || ticket.externalTxId);
+  const hasPushedToProvider = Boolean(ticket.externalTicketId || ticket.externalTxId);
+  const isNoRecordCategory = ticket.category === "NO_RECORD_FOUND";
+  const isCompletedOrFailed = ticket.status === "COMPLETED" || ticket.status === "FAILED";
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end font-sans">
@@ -349,61 +346,86 @@ export default function NinValidationApplicationDrawer({
             </div>
           </div>
 
-          {/* 2. ABJIKTECH GATEWAY & AUTOMATION PANEL */}
-          <div className="p-5 rounded-2xl bg-indigo-950/20 border-2 border-indigo-500/30 dark:bg-indigo-950/30 space-y-4 shadow-sm">
+          {/* 2. DATAVERIFY GATEWAY & AUTOMATION PANEL */}
+          <div className="p-5 rounded-2xl bg-emerald-950/20 border-2 border-emerald-500/30 dark:bg-emerald-950/30 space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
-                <Zap size={15} className="text-indigo-500 fill-indigo-500" />
-                <span>Abjiktech Automated Gateway</span>
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                <Zap size={15} className="text-emerald-500 fill-emerald-500" />
+                <span>DataVerify Automated Gateway</span>
               </div>
-              <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
-                hasPushedToAbj 
+              <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
+                isCompletedOrFailed
+                  ? "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20"
+                  : hasPushedToProvider 
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
-                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                  : !isNoRecordCategory
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                  : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
               }`}>
-                {hasPushedToAbj ? `Pushed (${ticket.externalStatus || "pending"})` : "Manual Queue (Not Pushed)"}
+                {isCompletedOrFailed 
+                  ? `Finalized (${ticket.status})`
+                  : hasPushedToProvider 
+                  ? `Pushed (${ticket.externalStatus || "pending"})` 
+                  : !isNoRecordCategory
+                  ? "Manual Processing Only"
+                  : "Ready to Push (No Record)"}
               </span>
             </div>
 
-            {hasPushedToAbj ? (
+            {isCompletedOrFailed ? (
               <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-zinc-400">Abjik Ticket ID</span>
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{ticket.externalTicketId || "N/A"}</span>
-                      {ticket.externalTicketId && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopy("ticket_id", ticket.externalTicketId)}
-                          className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-zinc-400"
-                        >
-                          {copiedKey === "ticket_id" ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-                        </button>
-                      )}
-                    </div>
+                <div className="p-3.5 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                      <CheckCircle size={14} className="text-emerald-500" />
+                      <span>Request is {ticket.status}</span>
+                    </span>
+                    {hasPushedToProvider && (
+                      <span className="font-mono text-zinc-500 text-[11px]">
+                        Tx: {ticket.externalTxId || ticket.externalTicketId}
+                      </span>
+                    )}
                   </div>
-
-                  <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-zinc-400">Abjik Transaction ID</span>
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-[11px] truncate max-w-[140px]">{ticket.externalTxId || "N/A"}</span>
-                      {ticket.externalTxId && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopy("tx_id", ticket.externalTxId)}
-                          className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-zinc-400"
-                        >
-                          {copiedKey === "tx_id" ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-                        </button>
-                      )}
-                    </div>
+                  <p className="text-[11px] text-zinc-500 leading-normal">
+                    This request has been finalized. Transmission to the provider is locked to protect against duplicate charges.
+                  </p>
+                </div>
+              </div>
+            ) : !isNoRecordCategory ? (
+              <div className="space-y-3">
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/25 rounded-xl text-xs space-y-1.5">
+                  <div className="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                    <AlertTriangle size={14} />
+                    <span>Manual Fulfillment Required</span>
+                  </div>
+                  <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-[11px]">
+                    DataVerify automated validation currently <strong>only supports &ldquo;No Record Found&rdquo;</strong>. Requests for <strong>{categoryLabel}</strong> must be handled manually by staff using the operator actions below.
+                  </p>
+                </div>
+              </div>
+            ) : hasPushedToProvider ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-1 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-zinc-400">DataVerify Transaction ID</span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">
+                      {ticket.externalTxId || ticket.externalTicketId || "N/A"}
+                    </span>
+                    {(ticket.externalTxId || ticket.externalTicketId) && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopy("tx_id", ticket.externalTxId || ticket.externalTicketId)}
+                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-zinc-400"
+                      >
+                        {copiedKey === "tx_id" ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {ticket.apiMessage && (
                   <p className="text-xs text-zinc-600 dark:text-zinc-300 italic bg-white/60 dark:bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800">
-                    "{ticket.apiMessage}"
+                    &ldquo;{ticket.apiMessage}&rdquo;
                   </p>
                 )}
 
@@ -424,9 +446,9 @@ export default function NinValidationApplicationDrawer({
 
                     <button
                       type="button"
-                      onClick={handleSyncAbjiktechStatus}
+                      onClick={handleSyncDataVerifyStatus}
                       disabled={isSyncingStatus}
-                      className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       <RefreshCw size={13} className={isSyncingStatus ? "animate-spin" : ""} />
                       <span>{isSyncingStatus ? "Syncing..." : "Check Live Status"}</span>
@@ -437,18 +459,27 @@ export default function NinValidationApplicationDrawer({
             ) : (
               <div className="space-y-3">
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  This request is queued in the manual ledger. Click the button below to transmit the 11-digit NIN and category (<strong>{categoryLabel}</strong>) to the Abjiktech verification engine.
+                  This request is queued in the manual ledger. Click the button below to transmit the 11-digit NIN to the <strong>DataVerify</strong> validation engine for automated clearance.
                 </p>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handlePushToAbjiktech}
-                    disabled={isPushingToAbj}
-                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    onClick={handlePushToDataVerify}
+                    disabled={isPushingToDataVerify || ticket.status !== "PROCESSING"}
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    {isPushingToAbj ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                    <span>{isPushingToAbj ? "Transmitting..." : "Push to Abjiktech Gateway"}</span>
+                    {isPushingToDataVerify ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        <span>Transmitting to DataVerify...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={15} />
+                        <span>Push to DataVerify (DVR)</span>
+                      </>
+                    )}
                   </button>
 
                   <button
@@ -465,20 +496,25 @@ export default function NinValidationApplicationDrawer({
             {/* Manual ID Input */}
             {isLinkingManual && (
               <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2 animate-in fade-in">
-                <label className="text-[10px] font-bold text-zinc-400 uppercase">Input Abjiktech Transaction / Ticket ID</label>
-                <div className="flex gap-2">
+                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
+                  Link DataVerify Transaction ID / Reference
+                </span>
+                <p className="text-[11px] text-zinc-500">
+                  Copy the Transaction ID from the DataVerify portal (or your transaction history) and paste it below to link and track this ticket.
+                </p>
+                <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="e.g. nin_val_649f... or TKT171000..."
                     value={manualTicketInput}
                     onChange={(e) => setManualTicketInput(e.target.value)}
-                    className="flex-1 px-3 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                    placeholder="e.g. nin_val_649f... or a1b2c3d4e5f6a7b8c9d0"
+                    className="flex-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono outline-none text-zinc-900 dark:text-zinc-100"
                   />
                   <button
                     type="button"
                     onClick={handleLinkManualTicket}
                     disabled={isProcessing}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-sm"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-sm"
                   >
                     Link ID
                   </button>

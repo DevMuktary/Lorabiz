@@ -24,6 +24,7 @@ export default function NinPersonalizationPage() {
   const [hasDiscount, setHasDiscount] = useState<boolean>(false);
   const [discountBadge, setDiscountBadge] = useState<string | undefined>(undefined);
   const [savedAmount, setSavedAmount] = useState<number | undefined>(undefined);
+  const [freePassCount, setFreePassCount] = useState<number>(0);
   const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [submittedResult, setSubmittedResult] = useState<{ reference: string; trackingId: string } | null>(null);
@@ -45,6 +46,7 @@ export default function NinPersonalizationPage() {
         setHasDiscount(Boolean(data.hasDiscount));
         setDiscountBadge(data.discountBadge);
         setSavedAmount(data.savedAmount);
+        setFreePassCount(data.freePassCount || 0);
         setIsServiceActive(data.isServiceActive ?? data.isActive ?? true);
       }
     } catch (err) {
@@ -76,7 +78,7 @@ export default function NinPersonalizationPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto relative pb-12 animate-in fade-in duration-200">
+    <div className="space-y-6 max-w-4xl mx-auto relative pb-16 animate-in fade-in duration-200">
       {/* Notice Modal */}
       {showNoticeModal && !submittedResult && !isLoading && isServiceActive && (
         <PersonalizationNoticeModal isOpen={showNoticeModal} onClose={() => setShowNoticeModal(false)} />
@@ -93,11 +95,22 @@ export default function NinPersonalizationPage() {
 
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center shrink-0">
-            <IdentificationCard weight="fill" className="h-6 w-6" />
+        <div className="flex items-center gap-3.5">
+          <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
+            <Image 
+              src="/nimc.png" 
+              alt="NIMC Logo" 
+              width={40} 
+              height={40} 
+              className="object-contain" 
+              priority 
+            />
           </div>
           <div>
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
+              <ShieldCheck weight="bold" className="h-3 w-3" />
+              National Identity Management Commission
+            </div>
             <h1 className="text-2xl font-black text-foreground tracking-tight">NIN Personalization</h1>
             <p className="text-muted-foreground text-sm">
               Submit your enrollment tracking ID for personalization.
@@ -179,68 +192,18 @@ export default function NinPersonalizationPage() {
           </div>
         </div>
       ) : (
-        /* Standard 3-Column Layout */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Form (Left 2 cols) */}
-          <div className="lg:col-span-2">
-            <PersonalizationSubmissionForm
-              walletBalance={walletBalance}
-              servicePrice={servicePrice}
-              isServiceActive={isServiceActive}
-              onSuccess={handleSuccess}
-            />
-          </div>
-
-          {/* Guidelines Sidebar (Right 1 col) */}
-          <div className="space-y-6">
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24 space-y-5">
-              <h3 className="font-black text-sm uppercase tracking-wider text-muted-foreground">
-                Fulfillment Steps
-              </h3>
-              
-              <ul className="space-y-4">
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Tracking ID Submission</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Submit your enrollment tracking ID for personalization.
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Gateway Processing</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Processed within 1 to 24 hours (slight delay may occur on weekends).
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/20">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">NIN & Slip Generation</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Get your resolved National Identity Number (NIN) and download your identity slip.
-                    </p>
-                  </div>
-                </li>
-              </ul>
-
-              <div className="p-3.5 rounded-xl bg-secondary/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">No Refund Policy:</strong> Personalization requests are non-refundable once submitted.
-              </div>
-            </div>
-          </div>
+        <div className="max-w-3xl mx-auto">
+          <PersonalizationSubmissionForm
+            walletBalance={walletBalance}
+            servicePrice={servicePrice}
+            originalPrice={originalPrice}
+            hasDiscount={hasDiscount}
+            discountBadge={discountBadge}
+            savedAmount={savedAmount}
+            freePassCount={freePassCount}
+            isServiceActive={isServiceActive}
+            onSuccess={handleSuccess}
+          />
         </div>
       )}
     </div>

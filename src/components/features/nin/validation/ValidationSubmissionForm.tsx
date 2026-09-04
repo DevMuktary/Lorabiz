@@ -11,7 +11,8 @@ import {
   Circle,
   WarningCircle, 
   ShieldCheck,
-  IdentificationCard
+  IdentificationCard,
+  Gift
 } from "@phosphor-icons/react";
 import { ValidationConfirmationModal } from "./ValidationConfirmationModal";
 
@@ -28,6 +29,9 @@ export interface CategoryPricing {
 interface ValidationSubmissionFormProps {
   walletBalance: number;
   pricing: Record<string, CategoryPricing>;
+  availablePasses?: number;
+  useRewardCredit?: boolean;
+  onToggleRewardCredit?: (use: boolean) => void;
   onSuccess: (result: { reference: string; category: string; nin: string; amount: number }) => void;
 }
 
@@ -57,6 +61,9 @@ const CATEGORIES = [
 export function ValidationSubmissionForm({
   walletBalance,
   pricing,
+  availablePasses = 0,
+  useRewardCredit = false,
+  onToggleRewardCredit,
   onSuccess,
 }: ValidationSubmissionFormProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("NO_RECORD_FOUND");
@@ -74,6 +81,8 @@ export function ValidationSubmissionForm({
   const currentPrice = currentPricing.price;
   const isServiceActive = currentPricing.isActive;
 
+  const isPassApplied = Boolean(useRewardCredit && availablePasses > 0);
+  const effectivePrice = isPassApplied ? 0 : currentPrice;
   const canSubmit = isValidNin && attestationsAccepted && isServiceActive;
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -105,6 +114,7 @@ export function ValidationSubmissionForm({
           category: selectedCategory,
           nin: sanitizedNin,
           attestationsAccepted,
+          useRewardCredit: isPassApplied,
         }),
       });
 
@@ -121,7 +131,7 @@ export function ValidationSubmissionForm({
         reference: data.reference,
         category: currentCategoryConfig.label,
         nin: sanitizedNin,
-        amount: currentPrice,
+        amount: effectivePrice,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Network error. Please try again.";
@@ -145,7 +155,49 @@ export function ValidationSubmissionForm({
           </div>
         )}
 
-        {/* Step 1: Category Selection Cards (Clean, Simple, No Long Explanations) */}
+        {/* PalmPay / OPay Style Free Pass Voucher Card (Compact) */}
+        {availablePasses > 0 && (
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all">
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                  <Gift size={15} weight="fill" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-foreground">Free NIN Validation Pass</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.2 rounded">
+                      {availablePasses} Ready (100% Free)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {useRewardCredit
+                      ? "Pass applied · Fee slashed to ₦0.00"
+                      : "Pass available · Click toggle to apply"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                type="button"
+                onClick={() => onToggleRewardCredit?.(!useRewardCredit)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  useRewardCredit ? "bg-emerald-600" : "bg-muted-foreground/30"
+                }`}
+                title={useRewardCredit ? "Remove Free Pass" : "Apply Free Pass"}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    useRewardCredit ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1: Category Selection Cards with Live Price Slashes */}
         <div className="space-y-3">
           <label className="text-sm font-bold text-foreground block">
             1. Select Validation Category
@@ -179,25 +231,38 @@ export function ValidationSubmissionForm({
                       <IconComponent weight={isSelected ? "bold" : "regular"} className="h-5 w-5" />
                     </div>
 
-                    <span className="font-bold text-sm text-foreground">
-                      {cat.label}
-                    </span>
+                    <div>
+                      <span className="font-bold text-sm text-foreground block">
+                        {cat.label}
+                      </span>
+                      {isPassApplied && (
+                        <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 px-2 py-0.2 rounded-full inline-block mt-0.5">
+                          FREE WITH PASS
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center shrink-0 gap-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {pricing[cat.id]?.hasDiscount && pricing[cat.id]?.originalPrice && pricing[cat.id]!.originalPrice! > catPrice && (
-                        <span className="line-through text-muted-foreground opacity-70 text-[11px] font-normal">
-                          ₦{pricing[cat.id]!.originalPrice!.toLocaleString()}
-                        </span>
+                      {isPassApplied ? (
+                        <div className="flex flex-col items-end">
+                          <span className="line-through text-muted-foreground opacity-70 text-[11px] font-normal">
+                            ₦{catPrice.toLocaleString()}
+                          </span>
+                          <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
+                            ₦0.00 Free
+                          </span>
+                        </div>
+                      ) : (
+                        <div className={`px-2.5 py-1 rounded-lg text-xs font-black tracking-tight border ${
+                          isSelected 
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
+                            : "bg-secondary text-foreground border-border"
+                        }`}>
+                          ₦{catPrice.toLocaleString()}
+                        </div>
                       )}
-                      <div className={`px-2.5 py-1 rounded-lg text-xs font-black tracking-tight border ${
-                        isSelected 
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
-                          : "bg-secondary text-foreground border-border"
-                      }`}>
-                        ₦{catPrice.toLocaleString()}
-                      </div>
                     </div>
 
                     {isSelected ? (
@@ -267,14 +332,18 @@ export function ValidationSubmissionForm({
             </span>
           </label>
 
-          {/* Action Button */}
+          {/* Action Button with Live Price Slash */}
           <button
             type="submit"
             disabled={!canSubmit || isSubmitting}
             className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md cursor-pointer text-sm"
           >
             <ShieldCheck weight="bold" className="h-4 w-4" />
-            <span>Submit NIN Validation · ₦{currentPrice.toLocaleString()}</span>
+            {isPassApplied ? (
+              <span>Submit Validation (₦0.00 Free)</span>
+            ) : (
+              <span>Submit Validation · ₦{currentPrice.toLocaleString()}</span>
+            )}
           </button>
         </div>
 
@@ -290,6 +359,7 @@ export function ValidationSubmissionForm({
         nin={sanitizedNin}
         price={currentPrice}
         walletBalance={walletBalance}
+        isUsingCredit={isPassApplied}
       />
     </div>
   );

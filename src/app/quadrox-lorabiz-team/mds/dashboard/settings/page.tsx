@@ -20,7 +20,7 @@ export default function SettingsDashboard() {
   }>({
     ipeProvider: "DATAVERIFY",
     personalizationProvider: "DATAVERIFY",
-    ninValidationProvider: "ABJIKTECH",
+    ninValidationProvider: "DATAVERIFY",
     ninSlipProviderNin: "AUTO",
     ninSlipProviderPhone: "AUTO",
     ninPhoneSearchActive: true,
@@ -47,7 +47,7 @@ export default function SettingsDashboard() {
         setProviders({
           ipeProvider: pResult.ipeProvider || "DATAVERIFY",
           personalizationProvider: pResult.personalizationProvider || "DATAVERIFY",
-          ninValidationProvider: pResult.ninValidationProvider || "ABJIKTECH",
+          ninValidationProvider: pResult.ninValidationProvider || "DATAVERIFY",
           ninSlipProviderNin: pResult.ninSlipProviderNin || pResult.ninSlipProvider || "AUTO",
           ninSlipProviderPhone: pResult.ninSlipProviderPhone || "AUTO",
           ninPhoneSearchActive: pResult.ninPhoneSearchActive !== undefined ? pResult.ninPhoneSearchActive : true,
@@ -403,10 +403,10 @@ export default function SettingsDashboard() {
                     </p>
 
                     <div className="space-y-2.5">
-                      {/* Option 1: Abjiktech */}
+                      {/* Option 1: DataVerify */}
                       <label
                         className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                          providers.ninValidationProvider === "ABJIKTECH"
+                          providers.ninValidationProvider === "DATAVERIFY"
                             ? "bg-indigo-600/15 border-indigo-500 text-white"
                             : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                         }`}
@@ -415,20 +415,20 @@ export default function SettingsDashboard() {
                           <input
                             type="radio"
                             name="ninValidationProvider"
-                            value="ABJIKTECH"
-                            checked={providers.ninValidationProvider === "ABJIKTECH"}
+                            value="DATAVERIFY"
+                            checked={providers.ninValidationProvider === "DATAVERIFY"}
                             onChange={(e) => setProviders({ ...providers, ninValidationProvider: e.target.value })}
                             className="text-indigo-600 focus:ring-indigo-500"
                           />
                           <div>
                             <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
-                              Abjiktech API
+                              DataVerify API
                               <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono">AUTOMATED</span>
                             </div>
-                            <div className="text-xs text-zinc-400">abjiktech.com.ng gateway with background sync & admin push</div>
+                            <div className="text-xs text-zinc-400">dataverify.com.ng gateway with background sync & admin push (No Record Found)</div>
                           </div>
                         </div>
-                        <Server size={18} className={providers.ninValidationProvider === "ABJIKTECH" ? "text-indigo-400" : "text-zinc-600"} />
+                        <Server size={18} className={providers.ninValidationProvider === "DATAVERIFY" ? "text-indigo-400" : "text-zinc-600"} />
                       </label>
 
                       {/* Option 2: Manual Staff Operations */}

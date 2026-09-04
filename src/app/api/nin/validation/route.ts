@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { logUserActivity } from "@/lib/activity-logger";
 import { NinValidationCategory } from "@prisma/client";
 import { getEffectiveServicePrice, recordPromoUsageInTx } from "@/lib/discounts";
+import { redeemServiceRewardCredit, getUserRewardPassCount } from "@/lib/rewards";
 
 // Category to ServicePricing key mapping
 export const CATEGORY_PRICE_KEYS: Record<NinValidationCategory, { key: string; defaultPrice: number; label: string }> = {
@@ -31,7 +32,7 @@ export const CATEGORY_PRICE_KEYS: Record<NinValidationCategory, { key: string; d
   },
 };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) {
@@ -77,21 +78,28 @@ export async function GET() {
       };
     }
 
-    // Fetch user validation requests
-    const history = await prisma.ninValidationRequest.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-    });
+    // Fetch user validation requests and free pass count
+    const [history, freePassCount] = await Promise.all([
+      prisma.ninValidationRequest.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+      }),
+      getUserRewardPassCount(user.id, "NIN_VALIDATION"),
+    ]);
 
     return NextResponse.json({
       success: true,
       walletBalance: user.wallet ? Number(user.wallet.balance) : 0,
       pricing: categoryPricing,
       history,
+      freePassCount,
     });
-  } catch (error) {
-    console.error("NIN Validation GET API Error:", error);
-    return NextResponse.json({ success: false, message: "Failed to fetch validation data." }, { status: 500 });
+  } catch (error: any) {
+    console.error("❌ NIN Validation Info GET Error:", error);
+    return NextResponse.json(
+      { success: false, message: error.message || "Failed to load validation details." },
+      { status: 500 }
+    );
   }
 }
 
@@ -106,7 +114,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { category, nin, attestationsAccepted } = body;
+    const { nin, category, attestationsAccepted, useRewardCredit } = body;
 
     // Validate Category
     if (!category || !(category in CATEGORY_PRICE_KEYS)) {
@@ -119,8 +127,8 @@ export async function POST(req: NextRequest) {
     const validCategory = category as NinValidationCategory;
 
     // Validate 11-digit NIN
-    const sanitizedNin = typeof nin === "string" ? nin.trim() : "";
-    if (!sanitizedNin || !/^\d{11}$/.test(sanitizedNin)) {
+    const sanitizedNin = typeof nin === "string" ? nin.trim().replace(/\D/g, "") : "";
+    if (sanitizedNin.length !== 11) {
       return NextResponse.json(
         { success: false, message: "Please provide a valid 11-digit National Identification Number (NIN)." },
         { status: 400 }
@@ -162,12 +170,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let isUsingCredit = false;
+    if (useRewardCredit) {
+      const availablePasses = await getUserRewardPassCount(user.id, "NIN_VALIDATION");
+      if (availablePasses > 0) {
+        isUsingCredit = true;
+      }
+    }
+
     const nominalPrice = servicePricing ? Number(servicePricing.price) : categoryConfig.defaultPrice;
     const discountInfo = await getEffectiveServicePrice(prisma, categoryConfig.key, nominalPrice, user.id);
-    const requiredAmount = discountInfo.finalPrice;
+    const requiredAmount = isUsingCredit ? 0 : discountInfo.finalPrice;
     const currentBalance = Number(user.wallet.balance);
 
-    if (currentBalance < requiredAmount) {
+    if (!isUsingCredit && currentBalance < requiredAmount) {
       return NextResponse.json(
         {
           success: false,
@@ -191,25 +207,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: `You already have an active validation request in processing for this NIN under "${categoryConfig.label}" (Ref: ${existingActiveRequest.transactionRef}).`,
+          message: `You already have an active validation request in progress for this NIN (${existingActiveRequest.transactionRef}). Please wait for it to complete.`,
         },
         { status: 409 }
       );
     }
 
     // Unique Transaction Reference
-    const transactionRef = `NINVAL_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const transactionRef = `VAL_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Atomic Transaction: Debit Wallet + Log Transaction + Create Validation Request
     const result = await prisma.$transaction(async (tx) => {
-      const balanceBefore = Number(user.wallet!.balance);
-      const balanceAfter = balanceBefore - requiredAmount;
+      let balanceBefore = Number(user.wallet!.balance);
+      let balanceAfter = balanceBefore;
 
-      // 1. Debit Wallet
-      await tx.wallet.update({
-        where: { id: user.wallet!.id },
-        data: { balance: { decrement: requiredAmount } },
-      });
+      if (isUsingCredit) {
+        const redeemed = await redeemServiceRewardCredit(tx, user.id, "NIN_VALIDATION", transactionRef);
+        if (!redeemed) {
+          throw new Error("REWARD_PASS_UNAVAILABLE");
+        }
+      } else {
+        const currentWallet = await tx.wallet.findUnique({ where: { id: user.wallet!.id } });
+        if (!currentWallet || Number(currentWallet.balance) < requiredAmount) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
+
+        balanceBefore = Number(currentWallet.balance);
+        const updatedWallet = await tx.wallet.update({
+          where: { id: user.wallet!.id },
+          data: { balance: { decrement: requiredAmount } },
+        });
+        balanceAfter = Number(updatedWallet.balance);
+      }
 
       // 2. Log Debit in Master Ledger
       await tx.transaction.create({
@@ -222,7 +251,9 @@ export async function POST(req: NextRequest) {
           status: "SUCCESS",
           reference: transactionRef,
           serviceCategory: "NIN",
-          description: `Payment for NIN Validation [${categoryConfig.label}] - NIN: *******${sanitizedNin.slice(-4)}`,
+          description: isUsingCredit 
+            ? `Payment for NIN Validation [${categoryConfig.label}] - Free Pass Redeemed - NIN: *******${sanitizedNin.slice(-4)}`
+            : `Payment for NIN Validation [${categoryConfig.label}] - NIN: *******${sanitizedNin.slice(-4)}`,
         },
       });
 
@@ -232,7 +263,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           category: validCategory,
           nin: sanitizedNin,
-          provider: "ABJIKTECH",
+          provider: "DATAVERIFY",
           status: "PROCESSING",
           amountCharged: requiredAmount,
           transactionRef,

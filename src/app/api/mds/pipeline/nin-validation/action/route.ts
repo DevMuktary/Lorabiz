@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { notificationQueue } from "@/lib/queue";
 import { NotificationEvent, dispatchNotification } from "@/services/notifications";
 import { getReferrerRewardAmount } from "@/lib/loyalty";
-import { submitAbjiktechNinValidation, checkAbjiktechNinValidationStatus } from "@/lib/abjiktech";
+import { submitDataVerifyNinValidation, checkDataVerifyNinValidationStatus } from "@/lib/dataverify-validation";
 
 const CATEGORY_LABELS: Record<string, string> = {
   NO_RECORD_FOUND: "No Record Found",
@@ -54,19 +54,49 @@ export async function POST(req: Request) {
     const categoryLabel = CATEGORY_LABELS[ticket.category] || ticket.category;
 
     // =========================================================================
-    // ACTION: PUSH_TO_PROVIDER (Admin manually pushes ticket to Abjiktech API)
+    // ACTION: PUSH_TO_PROVIDER (Admin manually pushes ticket to DataVerify API)
     // =========================================================================
     if (actionType === "PUSH_TO_PROVIDER") {
-      const submitRes = await submitAbjiktechNinValidation(ticket.nin, ticket.category);
+      // 1. Guard against completed/failed tickets to prevent double-charging or financial loss
+      if (ticket.status === "COMPLETED") {
+        return NextResponse.json(
+          { error: "This request has already been marked as COMPLETED. Transmitting completed tickets is locked to prevent double-charging." },
+          { status: 400 }
+        );
+      }
+      if (ticket.status === "FAILED") {
+        return NextResponse.json(
+          { error: "This request is marked as FAILED. Please reopen the request or process manually." },
+          { status: 400 }
+        );
+      }
+
+      // 2. Guard: DataVerify ONLY supports 'no_record_found'
+      if (ticket.category !== "NO_RECORD_FOUND") {
+        return NextResponse.json(
+          { error: `DataVerify automated validation only supports 'No Record Found' requests. '${categoryLabel}' tickets must be processed manually.` },
+          { status: 400 }
+        );
+      }
+
+      // 3. Guard: Prevent accidental double-push if already active on DataVerify
+      if (ticket.externalTxId && (ticket.externalStatus === "pending" || ticket.externalStatus === "processing")) {
+        return NextResponse.json(
+          { error: `This ticket has already been transmitted to DataVerify (Tx ID: ${ticket.externalTxId}). Please use 'Check Live Status' instead of pushing again.` },
+          { status: 400 }
+        );
+      }
+
+      const submitRes = await submitDataVerifyNinValidation(ticket.nin, ticket.category);
 
       // Always persist the raw gateway response for auditability and debugging
       const updatedTicket = await prisma.ninValidationRequest.update({
         where: { id: ticketId },
         data: {
-          provider: "ABJIKTECH",
-          externalTicketId: submitRes.data?.ticket_id || ticket.externalTicketId || undefined,
-          externalTxId: submitRes.data?.transaction_id || ticket.externalTxId || undefined,
-          externalStatus: submitRes.data?.status || (submitRes.success ? "pending" : "submission_error"),
+          provider: "DATAVERIFY",
+          externalTicketId: submitRes.transactionId || ticket.externalTicketId || undefined,
+          externalTxId: submitRes.transactionId || ticket.externalTxId || undefined,
+          externalStatus: submitRes.requestStatus || (submitRes.success ? "pending" : "submission_error"),
           apiMessage: submitRes.message,
           apiResponse: (submitRes.rawResponse || submitRes) as any,
           lastSyncedAt: new Date(),
@@ -74,10 +104,10 @@ export async function POST(req: Request) {
         },
       });
 
-      if (!submitRes.success && !submitRes.data?.ticket_id && !submitRes.data?.transaction_id) {
+      if (!submitRes.success && !submitRes.transactionId) {
         return NextResponse.json(
           {
-            error: submitRes.message || "Failed to transmit request to Abjiktech gateway.",
+            error: submitRes.message || "Failed to transmit request to DataVerify gateway.",
             details: submitRes.rawResponse,
             data: updatedTicket,
           },
@@ -88,85 +118,84 @@ export async function POST(req: Request) {
       await prisma.staffActionLog.create({
         data: {
           userId: admin.id,
-          action: "NINVAL_PUSH_ABJIKTECH",
+          action: "NINVAL_PUSH_DATAVERIFY",
           targetId: ticketId,
-          details: `Admin pushed ticket ${ticket.transactionRef} (NIN: ${ticket.nin}) to Abjiktech. Received Ticket ID: ${submitRes.data?.ticket_id || "N/A"}`,
+          details: `Admin pushed ticket ${ticket.transactionRef} (NIN: ${ticket.nin}) to DataVerify. Received Tx ID: ${submitRes.transactionId || "N/A"}`,
         },
       });
 
       return NextResponse.json({
         success: true,
-        message: submitRes.message || `Successfully transmitted to Abjiktech! Ticket ID: ${submitRes.data?.ticket_id || "Recorded"}`,
+        message: submitRes.message || `Successfully transmitted to DataVerify! Transaction ID: ${submitRes.transactionId || "Recorded"}`,
         data: updatedTicket,
       });
     }
 
     // =========================================================================
-    // ACTION: SET_EXTERNAL_TICKET (Admin manually inputs/links Abjiktech Transaction ID)
+    // ACTION: SET_EXTERNAL_TICKET (Admin manually inputs/links DataVerify Transaction ID)
     // =========================================================================
     if (actionType === "SET_EXTERNAL_TICKET") {
       const rawInput = (body.manualId || body.manualTxId || body.manualTicketId || "").toString().trim();
       if (!rawInput) {
-        return NextResponse.json({ error: "Please provide a valid Transaction ID." }, { status: 400 });
+        return NextResponse.json({ error: "Please provide a valid DataVerify Transaction ID." }, { status: 400 });
       }
-
-      const isTicketPrefix = rawInput.toUpperCase().startsWith("TKT");
-      const externalTicketId = isTicketPrefix ? rawInput : (body.manualTicketId?.trim() || ticket.externalTicketId || undefined);
-      const externalTxId = !isTicketPrefix ? rawInput : (body.manualTxId?.trim() || ticket.externalTxId || rawInput);
 
       const updatedTicket = await prisma.ninValidationRequest.update({
         where: { id: ticketId },
         data: {
-          provider: "ABJIKTECH",
-          externalTxId,
-          externalTicketId,
+          provider: "DATAVERIFY",
+          externalTxId: rawInput,
+          externalTicketId: rawInput,
           externalStatus: ticket.externalStatus || "pending",
+          apiMessage: `Manually linked DataVerify Transaction ID: ${rawInput}`,
           lastSyncedAt: new Date(),
+          adminNotes: adminNotes ? `${ticket.adminNotes ? ticket.adminNotes + "\n" : ""}${adminNotes}` : undefined,
         },
       });
 
       await prisma.staffActionLog.create({
         data: {
           userId: admin.id,
-          action: "NINVAL_LINK_TICKET",
+          action: "NINVAL_LINK_DATAVERIFY_TX",
           targetId: ticketId,
-          details: `Admin manually linked Abjiktech Transaction ID (${rawInput}) to Ref ${ticket.transactionRef}`,
+          details: `Admin manually linked DataVerify Transaction ID (${rawInput}) to Ref ${ticket.transactionRef}`,
         },
       });
 
       return NextResponse.json({
         success: true,
-        message: `Successfully linked Transaction ID: ${rawInput}`,
+        message: `Successfully linked DataVerify Transaction ID: ${rawInput}`,
         data: updatedTicket,
       });
     }
 
     // =========================================================================
-    // ACTION: SYNC_PROVIDER (Admin checks live status from Abjiktech on demand)
+    // ACTION: SYNC_PROVIDER (Admin checks live status from DataVerify on demand)
     // =========================================================================
     if (actionType === "SYNC_PROVIDER") {
+      const wasAlreadyCompleted = ticket.status === "COMPLETED";
+      const wasAlreadyFailed = ticket.status === "FAILED";
+
       if (!ticket.externalTicketId && !ticket.externalTxId) {
         return NextResponse.json(
-          { error: "This ticket has not been pushed to Abjiktech yet. Please push it first." },
+          { error: "This ticket has not been pushed to DataVerify yet. Please push it first." },
           { status: 400 }
         );
       }
 
-      const statusRes = await checkAbjiktechNinValidationStatus({
-        ticketId: ticket.externalTicketId || undefined,
-        transactionId: ticket.externalTxId || undefined,
+      const statusRes = await checkDataVerifyNinValidationStatus({
+        transactionId: ticket.externalTxId || ticket.externalTicketId || undefined,
+        nin: ticket.nin,
       });
 
-      if (!statusRes.success || !statusRes.result) {
+      if (!statusRes.success && statusRes.normalizedStatus !== "FAILED" && statusRes.normalizedStatus !== "COMPLETED") {
         return NextResponse.json(
-          { error: statusRes.message || "Failed to fetch live status from Abjiktech." },
+          { error: statusRes.message || "Failed to fetch live status from DataVerify." },
           { status: 422 }
         );
       }
 
-      const { normalizedStatus, rawStatus, message: apiMessage } = statusRes.result;
-      const wasAlreadyCompleted = ticket.status === "COMPLETED";
-      const wasAlreadyFailed = ticket.status === "FAILED";
+      const { normalizedStatus, rawStatus, message: apiMessage } = statusRes;
 
       if (normalizedStatus === "COMPLETED") {
         await prisma.$transaction(async (tx) => {
@@ -175,7 +204,7 @@ export async function POST(req: Request) {
             data: {
               status: "COMPLETED",
               externalStatus: rawStatus,
-              apiMessage: apiMessage || "Completed on Abjiktech.",
+              apiMessage: apiMessage || "Completed on DataVerify.",
               apiResponse: statusRes.rawResponse as any,
               lastSyncedAt: new Date(),
               completedAt: ticket.completedAt || new Date(),
@@ -223,33 +252,46 @@ export async function POST(req: Request) {
           }
         });
 
-        // Dispatch completion notification ONLY IF it was NOT already completed before!
-        if (!wasAlreadyCompleted) {
-          try {
-            await dispatchNotification({
-              type: "NIN_VALIDATION_COMPLETED",
-              userId: ticket.userId,
-              email: ticket.user.email,
-              name: `${ticket.user.firstName} ${ticket.user.lastName}`.trim() || "Valued Client",
-              category: categoryLabel,
-              nin: ticket.nin,
-              transactionRef: ticket.transactionRef,
-            });
-          } catch (notifErr) {
-            console.error("Notification dispatch error:", notifErr);
-          }
+        // Dispatch User Completion Notification
+        const userEmail = ticket.user?.email || "";
+        const userName = `${ticket.user?.firstName || ""} ${ticket.user?.lastName || ""}`.trim() || "Valued Customer";
+        const notifPayload: NotificationEvent = {
+          type: "NIN_VALIDATION_COMPLETED",
+          userId: ticket.userId,
+          email: userEmail,
+          name: userName,
+          category: categoryLabel,
+          nin: ticket.nin,
+          transactionRef: ticket.transactionRef,
+        };
+
+        try {
+          await notificationQueue.add("send-nin-validation-notification", notifPayload, {
+            attempts: 3,
+            backoff: { type: "exponential", delay: 5000 },
+            removeOnComplete: true,
+          });
+        } catch (queueErr) {
+          await dispatchNotification(notifPayload);
         }
+
+        await prisma.staffActionLog.create({
+          data: {
+            userId: admin.id,
+            action: "NINVAL_SYNC_DATAVERIFY_COMPLETED",
+            targetId: ticketId,
+            details: `Synced status from DataVerify for ${ticket.transactionRef}: COMPLETED (${rawStatus})`,
+          },
+        });
 
         return NextResponse.json({
           success: true,
-          message: wasAlreadyCompleted
-            ? `Status verified: Still COMPLETED on Abjiktech (no duplicate email sent).`
-            : `Live status synced: COMPLETED! Client notified.`,
+          message: `Live status synced from DataVerify: COMPLETED (${rawStatus}). Client notified.`,
           status: "COMPLETED",
           rawStatus,
         });
       } else if (normalizedStatus === "FAILED") {
-        const recordedReason = apiMessage || "Validation failed verification requirements on Abjiktech.";
+        const recordedReason = statusRes.errorDetail || apiMessage || "Validation failed verification requirements on DataVerify.";
 
         await prisma.ninValidationRequest.update({
           where: { id: ticketId },
@@ -284,9 +326,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
           success: true,
-          message: wasAlreadyFailed
-            ? `Status verified: Still FAILED on Abjiktech (no duplicate email sent).`
-            : `Live status synced: FAILED (${rawStatus}). Client notified.`,
+          message: `Live status synced from DataVerify: FAILED (${rawStatus}). Reason: ${recordedReason}`,
           status: "FAILED",
           rawStatus,
         });
@@ -296,7 +336,7 @@ export async function POST(req: Request) {
           where: { id: ticketId },
           data: {
             externalStatus: rawStatus,
-            apiMessage: apiMessage || "Validation in progress at Abjiktech.",
+            apiMessage: apiMessage || "Validation in progress at DataVerify.",
             apiResponse: statusRes.rawResponse as any,
             lastSyncedAt: new Date(),
           },
@@ -304,7 +344,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
           success: true,
-          message: `Live status synced from Abjiktech: ${rawStatus.toUpperCase()} (${apiMessage || "In progress"})`,
+          message: `Live status synced from DataVerify: ${rawStatus.toUpperCase()} (${apiMessage || "In progress"})`,
           status: "PROCESSING",
           rawStatus,
         });

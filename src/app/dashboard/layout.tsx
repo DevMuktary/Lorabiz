@@ -17,7 +17,8 @@ import {
   Handshake, IdentificationCard, IdentificationBadge, DeviceMobile, Wallet,
   UserCircle, SignOut, List, X, Info, Receipt, Cards, Tag, Users,
   FileText, Globe, Flask, Shield, Certificate, AirplaneTilt, Suitcase, Calculator,
-  ClockCounterClockwise, Code, CaretDown, CaretRight, Crown, Sparkle, Gavel
+  ClockCounterClockwise, Code, CaretDown, CaretRight, Crown, Sparkle, Gavel,
+  Gift, Ticket
 } from "@phosphor-icons/react";
 
 type SubLink = {
@@ -44,6 +45,8 @@ const NAVIGATION: NavCategory[] = [
     category: "Main",
     links: [
       { name: "Service Hub", href: "/dashboard", icon: SquaresFour },
+      { name: "Spin & Win", href: "/dashboard/rewards", icon: Gift },
+      { name: "My Rewards", href: "/dashboard/vouchers", icon: Ticket },
       { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
       { name: "Wallet", href: "/dashboard/wallet", icon: Wallet },
       { name: "Partner Program", href: "/dashboard/referrals", icon: Users },

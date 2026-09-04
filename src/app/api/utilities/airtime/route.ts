@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Parse and Validate Payload
-    const { network, phone, amount } = await req.json();
+    const { network, phone, amount, useRewardCredit } = await req.json();
     const numAmount = Number(amount);
 
     if (!network || !phone || !numAmount || numAmount < 50) {
@@ -39,16 +39,41 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Phone number must be exactly 11 digits." }, { status: 400 });
     }
 
-    // 4. Verify Initial Wallet Balance
-    if (Number(user.wallet.balance) < numAmount) {
-      return NextResponse.json({ success: false, message: "Insufficient wallet balance. Please fund your wallet." }, { status: 400 });
+    // 4. Check for and apply user's active Airtime Reward Discount
+    let discountAmount = 0;
+    let appliedCreditId: string | null = null;
+
+    if (useRewardCredit) {
+      const rewardCredit = await prisma.userRewardCredit.findFirst({
+        where: {
+          userId: user.id,
+          rewardType: "AIRTIME",
+          status: "ACTIVE",
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } }
+          ]
+        },
+        orderBy: { createdAt: "asc" }
+      });
+
+      if (rewardCredit && numAmount >= Number(rewardCredit.value)) {
+        discountAmount = Number(rewardCredit.value);
+        appliedCreditId = rewardCredit.id;
+      }
     }
 
-    // 5. Map Network to CheapDataSales Product Codes based on their Plan ID documentation:
-    // 1: MTN Custom -> mtn_custom (Plan ID 6)
-    // 2: Glo Custom -> glo_custom (Plan ID 84)
-    // 3: Airtel Custom -> airtel_custom (Plan ID 85)
-    // 4: 9Mobile Custom -> 9mobile_custom (Plan ID 86)
+    const payableAmount = Math.max(0, numAmount - discountAmount);
+
+    // 5. Verify Wallet Balance for the payable amount
+    if (Number(user.wallet.balance) < payableAmount) {
+      return NextResponse.json({ 
+        success: false, 
+        message: `Insufficient wallet balance. You need ₦${payableAmount.toLocaleString()} to complete this purchase.` 
+      }, { status: 400 });
+    }
+
+    // 6. Map Network to CheapDataSales Product Codes
     const productCodes: Record<string, string> = {
       "MTN": "mtn_custom",
       "GLO": "glo_custom",
@@ -62,33 +87,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Invalid network provider." }, { status: 400 });
     }
 
-    // 6. Generate Clean Generic Idempotency Reference
+    // 7. Generate Clean Generic Idempotency Reference
     const reference = `ref_${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
 
-    // 7. Atomic Wallet Debit (Guards against double-spend)
+    // 8. Atomic Wallet Debit (Guards against double-spend)
     const debitResult = await prisma.$transaction(async (tx) => {
       const currentWallet = await tx.wallet.findUnique({ where: { id: user.wallet!.id } });
-      if (!currentWallet || Number(currentWallet.balance) < numAmount) {
+      if (!currentWallet || Number(currentWallet.balance) < payableAmount) {
         throw new Error("INSUFFICIENT_BALANCE");
       }
 
       const balanceBefore = Number(currentWallet.balance);
-      const updatedWallet = await tx.wallet.update({
-        where: { id: user.wallet!.id },
-        data: { balance: { decrement: numAmount } }
-      });
-      const balanceAfter = Number(updatedWallet.balance);
+      let balanceAfter = balanceBefore;
+
+      if (payableAmount > 0) {
+        const updatedWallet = await tx.wallet.update({
+          where: { id: user.wallet!.id },
+          data: { balance: { decrement: payableAmount } }
+        });
+        balanceAfter = Number(updatedWallet.balance);
+      }
+
+      // Mark the Airtime reward credit as REDEEMED if applied
+      if (appliedCreditId) {
+        await tx.userRewardCredit.update({
+          where: { id: appliedCreditId },
+          data: {
+            status: "REDEEMED",
+            redeemedAt: new Date(),
+            usedForServiceRef: reference
+          }
+        });
+      }
 
       const txRecord = await tx.transaction.create({
         data: {
           walletId: user.wallet!.id,
-          amount: numAmount,
+          amount: payableAmount,
           balanceBefore,
           balanceAfter,
           type: "DEBIT",
           status: "SUCCESS",
           reference,
-          description: `Airtime Recharge - ${cleanPhone} (${network.toUpperCase()})`,
+          description: discountAmount > 0 
+            ? `Airtime Recharge - ${cleanPhone} (${network.toUpperCase()}) [₦${discountAmount} Reward Applied]`
+            : `Airtime Recharge - ${cleanPhone} (${network.toUpperCase()})`,
           serviceCategory: "AIRTIME"
         }
       });
@@ -96,7 +139,7 @@ export async function POST(req: Request) {
       return { balanceAfter, txRecord };
     });
 
-    // 8. Call Telecom Upstream Provider API (Matches exact CheapData format)
+    // 9. Call Telecom Upstream Provider API with the FULL requested amount
     const apiKey = process.env.CHEAPDATA_API_KEY || process.env.CHEAPDATASALES_API_KEY || "";
     if (!apiKey) {
       console.error("CRITICAL: CHEAPDATA_API_KEY / CHEAPDATASALES_API_KEY is missing in environment.");
@@ -111,25 +154,26 @@ export async function POST(req: Request) {
       bypass_network: "yes",
     };
 
-    console.log("[CheapData Airtime Request Payload]:", JSON.stringify(payload));
-
     try {
       const externalRes = await fetch("https://cheapdatasales.com/autobiz_vending_index.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`,
-          "Bearer": apiKey,
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(45000),
       });
 
-      const externalData = await externalRes.json().catch(() => ({}));
-      console.log("[CheapData Airtime Response Data]:", JSON.stringify(externalData));
+      const rawText = await externalRes.text();
+      let externalData: any = {};
+      try {
+        externalData = JSON.parse(rawText);
+      } catch (e) {
+        console.error("Provider returned non-JSON payload:", rawText);
+        externalData = { status: "failed", message: rawText };
+      }
+
       const isSuccess = 
-        externalData.status === true || 
-        externalData.text_status === "COMPLETED" ||
         externalData.status === "success" || 
         externalData.status === 1 || 
         externalData.status === "1" || 
@@ -142,11 +186,13 @@ export async function POST(req: Request) {
           userId: user.id,
           action: "AIRTIME_VENDED",
           category: "SERVICES",
-          description: `Purchased ₦${numAmount.toLocaleString()} ${network.toUpperCase()} airtime for ${cleanPhone}`,
+          description: `Purchased ₦${numAmount.toLocaleString()} ${network.toUpperCase()} airtime for ${cleanPhone}${discountAmount > 0 ? ` (₦${discountAmount} discount applied)` : ""}`,
           status: "SUCCESS",
           referenceId: reference,
           metadata: {
             amount: numAmount,
+            paid: payableAmount,
+            discount: discountAmount,
             phone: cleanPhone,
             network: network.toUpperCase(),
           },
@@ -157,32 +203,46 @@ export async function POST(req: Request) {
           message: externalData.server_message || "Airtime Sent Successfully",
           reference,
           amount: numAmount,
+          paid: payableAmount,
+          discount: discountAmount,
           phone: cleanPhone,
           network: network.toUpperCase(),
           newBalance: debitResult.balanceAfter,
           data: {
             network: network.toUpperCase(),
-            amount: externalData.data?.amount_charged || numAmount,
+            amount: numAmount,
             phone: cleanPhone,
             provider_ref: externalData.data?.recharge_id,
             balance_after: externalData.data?.after_balance,
           }
         });
       } else {
-        // Upstream failed -> Refund wallet and mark the original transaction as FAILED
-        await prisma.$transaction(async (tx) => {
-          await tx.wallet.update({
+        // Upstream failed -> Refund payableAmount to wallet and restore reward voucher
+        if (payableAmount > 0) {
+          await prisma.wallet.update({
             where: { id: user.wallet!.id },
-            data: { balance: { increment: numAmount } }
-          });
-          await tx.transaction.update({
-            where: { id: debitResult.txRecord.id },
+            data: { balance: { increment: payableAmount } }
+          }).catch(() => {});
+        }
+
+        await prisma.transaction.update({
+          where: { id: debitResult.txRecord.id },
+          data: {
+            status: "FAILED",
+            description: `Airtime Recharge Failed (Refunded) - ${cleanPhone} (${network.toUpperCase()})`
+          }
+        }).catch(() => {});
+
+        if (appliedCreditId) {
+          await prisma.userRewardCredit.update({
+            where: { id: appliedCreditId },
             data: {
-              status: "FAILED",
-              description: `Airtime Recharge Failed (Refunded) - ${cleanPhone} (${network.toUpperCase()})`
+              status: "ACTIVE",
+              redeemedAt: null,
+              usedForServiceRef: null
             }
-          });
-        });
+          }).catch(() => {});
+        }
 
         const rawMsg = externalData.server_message || externalData.data?.true_response || externalData.message || externalData.error || externalData.msg;
         const serverMessage = rawMsg 
@@ -198,37 +258,46 @@ export async function POST(req: Request) {
       }
     } catch (providerErr) {
       console.error("Provider Network Failure, reversing debit:", providerErr);
-      // Reverse debit on network blip & mark transaction as FAILED
-      await prisma.$transaction(async (tx) => {
-        await tx.wallet.update({
+
+      if (payableAmount > 0) {
+        await prisma.wallet.update({
           where: { id: user.wallet!.id },
-          data: { balance: { increment: numAmount } }
-        });
-        await tx.transaction.update({
-          where: { id: debitResult.txRecord.id },
+          data: { balance: { increment: payableAmount } }
+        }).catch(() => {});
+      }
+
+      await prisma.transaction.update({
+        where: { id: debitResult.txRecord.id },
+        data: {
+          status: "FAILED",
+          description: `Airtime Recharge Timed Out (Refunded) - ${cleanPhone} (${network.toUpperCase()})`
+        }
+      }).catch(() => {});
+
+      if (appliedCreditId) {
+        await prisma.userRewardCredit.update({
+          where: { id: appliedCreditId },
           data: {
-            status: "FAILED",
-            description: `Airtime Recharge Failed (Timeout Refunded) - ${cleanPhone}`
+            status: "ACTIVE",
+            redeemedAt: null,
+            usedForServiceRef: null
           }
-        });
-      });
+        }).catch(() => {});
+      }
 
       return NextResponse.json({
         success: false,
-        message: "Provider network timeout. Your wallet has been refunded. Please try again.",
+        message: "Network issue contacting telecommunication carrier. Your wallet has been refunded.",
         refunded: true,
         newBalance: Number(user.wallet.balance)
-      }, { status: 502 });
+      }, { status: 500 });
     }
 
   } catch (error: any) {
-    if (error.message === "INSUFFICIENT_BALANCE") {
-      return NextResponse.json({ success: false, message: "Insufficient wallet balance. Please fund your wallet." }, { status: 400 });
-    }
-    console.error("Airtime Vending Error:", error);
-    return NextResponse.json({
-      success: false,
-      message: error.message || "An unexpected error occurred. Please try again."
+    console.error("Airtime Purchase Exception:", error);
+    return NextResponse.json({ 
+      success: false, 
+      message: error.message || "Failed to process airtime recharge" 
     }, { status: 500 });
   }
 }
