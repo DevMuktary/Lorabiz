@@ -138,6 +138,7 @@ model User {
   scumlRequests    ScumlRegistration[]
   taxIdRequests    TaxIdRequest[]
   affidavits       CourtAffidavitRequest[]
+  cacAnnualReturns CacAnnualReturnRequest[]
   notifications    InAppNotification[]
   wallet           Wallet?
   waitlists        Waitlist[]
@@ -1324,5 +1325,62 @@ model UserRewardCredit {
   @@index([createdAt])
 }
 
+// ==========================================
+// CAC POST-INCORPORATION: ANNUAL RETURNS
+// ==========================================
 
+enum CacAnnualReturnType {
+  BUSINESS_NAME
+  LLC
+}
 
+enum CacAnnualReturnStatus {
+  PENDING
+  PROCESSING
+  APPROVED
+  QUERIED
+  REJECTED
+}
+
+model CacAnnualReturnRequest {
+  id                       String                @id @default(cuid())
+  trackingId               String                @unique // e.g. "AR-849201"
+  userId                   String
+  companyType              CacAnnualReturnType
+  companyName              String
+  registrationNumber       String                // BN Number or RC Number
+  filingYears              String?               // Financial year(s) to file, e.g. "2023, 2024"
+  
+  // Document Uploads (Certificate or Status Report)
+  documentType             String                // "CERTIFICATE" | "STATUS_REPORT"
+  documentUrl              String                // Uploaded PDF/Image URL from Cloudinary
+  
+  // Designee / Authorizing Officer
+  designeeFullName         String                // Full legal name of director/proprietor authorizing filing
+  designeeRole             String                // Position: "Director", "Company Secretary", "Proprietor", etc.
+  designeeSignatureUrl     String                // Signature Image or Canvas URL
+  
+  // Status & Lifecycle
+  status                   CacAnnualReturnStatus @default(PENDING)
+  queryReason              String?               @db.Text
+  rejectionReason          String?               @db.Text
+  adminNotes               String?               @db.Text
+  
+  // Completion / Acknowledgement
+  acknowledgementLetterUrl String?               // Official CAC Acknowledgement Letter / Receipt PDF/Image
+  approvedAt               DateTime?
+  
+  // Financial Tracking
+  amountPaid               Decimal               @db.Decimal(10, 2)
+  transactionRef           String                @unique
+  
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  
+  user                     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([trackingId])
+  @@index([registrationNumber])
+  @@index([createdAt])
+}

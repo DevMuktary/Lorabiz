@@ -2197,3 +2197,67 @@ export async function sendCourtAffidavitCompletedEmail({
   return sendEmail({ to, subject, htmlBody, attachments });
 }
 
+export async function sendAnnualReturnsApprovedEmail({
+  to,
+  firstName,
+  companyName,
+  trackingId,
+  registrationNumber,
+  acknowledgementLetterUrl,
+  filingYears,
+}: {
+  to: string;
+  firstName?: string;
+  companyName: string;
+  trackingId: string;
+  registrationNumber: string;
+  acknowledgementLetterUrl: string;
+  filingYears?: string;
+}) {
+  const cleanName = firstName || "Valued Client";
+  const subject = `CAC Annual Returns Completed: ${companyName} – [${trackingId}]`;
+  const previewText = `Your official CAC Annual Returns Acknowledgement Letter for ${companyName} (${registrationNumber}) is ready for download.`;
+
+  const content = `
+    <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">CAC Annual Returns Completed &#127881;</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Great news! Your statutory <strong>CAC Annual Returns Filing</strong> for <strong>${companyName}</strong> (Reg No: <strong>${registrationNumber}</strong>) has been successfully approved and filed with the Corporate Affairs Commission.</p>
+    
+    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #166534; font-weight: 700;">
+        &#10004; Official CAC Acknowledgement Letter Ready
+      </p>
+      <p style="margin: 0; font-size: 13px; color: #15803d; line-height: 1.5;">
+        ${filingYears ? `Annual return records for financial year(s) <strong>${filingYears}</strong> are now regularized. ` : ""}Your official sealed acknowledgement letter from the CAC is attached below and permanently available in your dashboard.
+      </p>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${acknowledgementLetterUrl}" style="background-color: #059669; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Download CAC Acknowledgement Letter</a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Your business status on the CAC public registry is maintained in good standing, safeguarding your registered entity against administrative delisting or penalties.</p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">Thank you for trusting LoraBiz.<br/><strong>The LoraBiz Corporate Services Team</strong></p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+
+  const attachments: { name: string; mime_type: string; content: string }[] = [];
+  if (acknowledgementLetterUrl) {
+    try {
+      const base64Pdf = await fetchPdfAsBase64(acknowledgementLetterUrl);
+      if (base64Pdf) {
+        attachments.push({
+          name: `${trackingId}_CAC_Acknowledgement.pdf`,
+          mime_type: "application/pdf",
+          content: base64Pdf,
+        });
+      }
+    } catch (attErr) {
+      console.warn("Could not attach PDF directly to annual returns email:", attErr);
+    }
+  }
+
+  return sendEmail({ to, subject, htmlBody, attachments });
+}
+

@@ -119,6 +119,15 @@ export async function GET() {
       safeCount(() => prisma.courtAffidavitRequest.count({ where: { status: "REJECTED" } })),
     ]);
 
+    // 6. Fetch counts for CAC Annual Returns
+    const [arPending, arProcessing, arApproved, arQueried, arRejected] = await Promise.all([
+      safeCount(() => prisma.cacAnnualReturnRequest.count({ where: { status: "PENDING" } })),
+      safeCount(() => prisma.cacAnnualReturnRequest.count({ where: { status: "PROCESSING" } })),
+      safeCount(() => prisma.cacAnnualReturnRequest.count({ where: { status: "APPROVED" } })),
+      safeCount(() => prisma.cacAnnualReturnRequest.count({ where: { status: "QUERIED" } })),
+      safeCount(() => prisma.cacAnnualReturnRequest.count({ where: { status: "REJECTED" } })),
+    ]);
+
     const airtimeCompleted = await safeCount(() => prisma.transaction.count({
       where: { 
         serviceCategory: { in: ["UTILITIES", "AIRTIME", "MOBILE_DATA"] }, 
@@ -212,6 +221,13 @@ export async function GET() {
       failed: affRejected,
     };
 
+    const annualReturnMetrics = {
+      pending: arPending + arProcessing,
+      completed: arApproved,
+      queried: arQueried,
+      failed: arRejected,
+    };
+
     const utilityMetrics = {
       pending: 0, // Instant automated API
       completed: airtimeCompleted,
@@ -221,16 +237,25 @@ export async function GET() {
 
     // Calculate Global Totals
     const globalMetrics = {
-      pending: cacMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending + modificationMetrics.pending + bvnRetrievalMetrics.pending + bvnModificationMetrics.pending + affidavitMetrics.pending,
-      completed: cacMetrics.completed + ninMetrics.completed + bvnMetrics.completed + bvnRetrievalMetrics.completed + bvnModificationMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + modificationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed + affidavitMetrics.completed,
-      queried: cacMetrics.queried + affidavitMetrics.queried, 
-      failed: cacMetrics.failed + ninMetrics.failed + bvnMetrics.failed + bvnRetrievalMetrics.failed + bvnModificationMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed + modificationMetrics.failed + affidavitMetrics.failed,
+      pending: cacMetrics.pending + annualReturnMetrics.pending + scumlMetrics.pending + taxIdMetrics.pending + ipeMetrics.pending + ninValidationMetrics.pending + personalizationMetrics.pending + modificationMetrics.pending + bvnRetrievalMetrics.pending + bvnModificationMetrics.pending + affidavitMetrics.pending,
+      completed: cacMetrics.completed + annualReturnMetrics.completed + ninMetrics.completed + bvnMetrics.completed + bvnRetrievalMetrics.completed + bvnModificationMetrics.completed + ipeMetrics.completed + ninValidationMetrics.completed + personalizationMetrics.completed + modificationMetrics.completed + scumlMetrics.completed + taxIdMetrics.completed + utilityMetrics.completed + affidavitMetrics.completed,
+      queried: cacMetrics.queried + annualReturnMetrics.queried + affidavitMetrics.queried, 
+      failed: cacMetrics.failed + annualReturnMetrics.failed + ninMetrics.failed + bvnMetrics.failed + bvnRetrievalMetrics.failed + bvnModificationMetrics.failed + ipeMetrics.failed + ninValidationMetrics.failed + personalizationMetrics.failed + modificationMetrics.failed + affidavitMetrics.failed,
     };
 
     // Construct the structured response
     const payload = {
       global: globalMetrics,
       services: [
+        {
+          id: "annual-returns",
+          name: "CAC Annual Returns Filing",
+          description: "Statutory annual returns compliance for Business Names and LLCs with CAC Acknowledgement Letter delivery.",
+          metrics: annualReturnMetrics,
+          subCategories: ["Business Names", "LLCs", "Statutory Returns"],
+          href: "/quadrox-lorabiz-team/mds/dashboard/orders/annual-returns",
+          isAutomated: false
+        },
         {
           id: "affidavit",
           name: "Court Affidavit Processing",

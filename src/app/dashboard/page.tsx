@@ -51,16 +51,16 @@ interface ServiceItem {
 
 const LIVE_SERVICES: ServiceItem[] = [
   {
-    title: "CAC Company Registration",
+    title: "CAC Services",
     category: "Corporate Affairs Commission",
-    description: "Register Business Names, Private Limited Companies (LLC), Incorporated Trustees & NGOs.",
+    description: "New business name & LLC registrations, annual returns filing, and post-incorporation compliance.",
     logo: "/cac.png",
     href: "/dashboard/cac",
-    turnaround: "30 Mins (BN) • 24–72 Hrs (LLC)",
-    actionText: "Start Registration",
+    turnaround: "30 Mins (BN) • 24–72 Hrs (LLC / Returns)",
+    actionText: "Open CAC Services",
     active: true,
-    subservicesCount: "2 Sub-Services",
-    subservicesHighlights: "Business Name • LLC Company Registration",
+    subservicesCount: "3 Services",
+    subservicesHighlights: "Business Name • LLC • Annual Returns",
   },
   {
     title: "SCUML Certificate",

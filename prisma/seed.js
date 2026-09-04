@@ -56,7 +56,10 @@ async function runSeed() {
     { serviceKey: "AFFIDAVIT_CAC_CORPORATE", title: "Court Affidavit - CAC Corporate Matters", price: 2500.00 },
     { serviceKey: "AFFIDAVIT_LOSS_OF_ITEM", title: "Court Affidavit - Loss of Document / SIM Card", price: 2500.00 },
     { serviceKey: "AFFIDAVIT_PROOF_OF_OWNERSHIP", title: "Court Affidavit - Proof of Ownership & Status", price: 2500.00 },
-    { serviceKey: "AFFIDAVIT_GENERAL_PURPOSE", title: "Court Affidavit - General Purpose Statement", price: 2500.00 }
+    { serviceKey: "AFFIDAVIT_GENERAL_PURPOSE", title: "Court Affidavit - General Purpose Statement", price: 2500.00 },
+    // CAC Post-Incorporation (Annual Returns)
+    { serviceKey: "CAC_ANNUAL_RETURNS_BN", title: "CAC Annual Returns - Business Name", price: 12000.00 },
+    { serviceKey: "CAC_ANNUAL_RETURNS_LLC", title: "CAC Annual Returns - Limited Liability Company", price: 18000.00 }
   ];
 
   let count = 0;
