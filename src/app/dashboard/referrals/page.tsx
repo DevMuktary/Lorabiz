@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { 
   Users, Wallet, CheckCircle, WarningCircle,
@@ -15,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function ReferralsPage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
+  const router = useRouter();
   
   const [loadingInit, setLoadingInit] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -157,6 +159,10 @@ export default function ReferralsPage() {
         showToast(data.message, "success");
         setIsEditingBank(false);
         await fetchStats(); 
+        if (typeof update === "function") {
+          await update();
+        }
+        router.refresh();
       } else {
         showToast(data.message, "error");
       }
@@ -446,9 +452,21 @@ export default function ReferralsPage() {
                   <p className="text-base font-black text-foreground tracking-tight">
                     {resolvedAccountName}
                   </p>
-                  {isNameMatch === false && registeredName && (
-                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
-                      <strong>Name Notice:</strong> Your registered LoraBiz name is <strong>{registeredName}</strong>. Payouts require matching legal names.
+                  {isNameMatch === false && (
+                    <div className="p-3 rounded-lg bg-sky-500/10 border border-sky-500/25 text-xs text-sky-900 dark:text-sky-200 leading-relaxed flex items-start gap-2.5">
+                      <Info className="h-4 w-4 shrink-0 mt-0.5 text-sky-500" weight="bold" />
+                      <div>
+                        <p className="font-semibold text-foreground text-xs">Profile Name Synchronization</p>
+                        <p className="text-[11px] mt-0.5 text-muted-foreground leading-normal">
+                          Your system profile name {registeredName ? <>(currently &ldquo;<span className="font-semibold text-foreground">{registeredName}</span>&rdquo;)</> : null} will automatically be updated to <strong className="text-foreground">{resolvedAccountName}</strong> to match your verified bank account.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {isNameMatch === true && (
+                    <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                      <CheckCircle weight="fill" className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                      <span>Account name matches your registered LoraBiz profile ({registeredName}).</span>
                     </div>
                   )}
                 </div>
@@ -471,7 +489,13 @@ export default function ReferralsPage() {
               <div className="flex gap-3 pt-2">
                 {isEditingBank && <Button type="button" variant="outline" onClick={() => setIsEditingBank(false)} className="h-12 px-6 border-border">Cancel</Button>}
                 <Button type="submit" disabled={settingUp || isResolvingAccount || !setupData.bankCode || setupData.accountNumber.length !== 10 || !setupData.acceptTerms || Boolean(resolveError)} className="flex-1 h-12 font-semibold bg-[#ff3f7a] hover:bg-[#e02b62] text-white cursor-pointer disabled:opacity-50">
-                  {settingUp ? <Spinner className="animate-spin h-5 w-5" /> : "Verify & Save Details"}
+                  {settingUp ? (
+                    <Spinner className="animate-spin h-5 w-5" />
+                  ) : isNameMatch === false ? (
+                    "Save Details & Sync Name"
+                  ) : (
+                    "Verify & Save Details"
+                  )}
                 </Button>
               </div>
             </form>

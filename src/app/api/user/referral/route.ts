@@ -242,22 +242,32 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // 2. Strict Name Matching Validation
-    const resolvedName = paystackData.data.account_name.toLowerCase();
-    const userFirstName = (user.firstName || "").toLowerCase().trim();
-    const userLastName = (user.lastName || "").toLowerCase().trim();
+    // 2. Resolve and Override User Profile Name from Verified Bank Account
+    const verifiedAccountName = (paystackData.data?.account_name || "").trim();
+    const nameTokens = verifiedAccountName.split(/\s+/).filter(Boolean);
 
-    if (!resolvedName.includes(userFirstName) || !resolvedName.includes(userLastName)) {
-      return NextResponse.json({ 
-        success: false, 
-        message: `Verification Failed: The bank account name (${paystackData.data.account_name}) must match your registered LoraBiz name (${user.firstName?.trim()} ${user.lastName?.trim()}).` 
-      }, { status: 400 });
+    const formatPart = (str: string) => {
+      if (!str) return "";
+      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    };
+
+    let updatedFirstName = user.firstName;
+    let updatedLastName = user.lastName;
+
+    if (nameTokens.length >= 2) {
+      // In Nigeria (NIBSS), names are typically: [SURNAME] [FIRSTNAME] [OTHERNAME] or [FIRSTNAME] [LASTNAME]
+      // First token becomes firstName, remaining tokens form lastName
+      updatedFirstName = formatPart(nameTokens[0]);
+      updatedLastName = nameTokens.slice(1).map(formatPart).join(" ");
+    } else if (nameTokens.length === 1) {
+      updatedFirstName = formatPart(nameTokens[0]);
+      updatedLastName = formatPart(nameTokens[0]);
     }
 
     // 3. Generate Code (Only if they don't already have one)
     let newReferralCode = user.referralCode;
     if (!newReferralCode) {
-      const cleanFirstName = (userFirstName.replace(/[^a-z0-9]/g, '') || "partner").slice(0, 10);
+      const cleanFirstName = (updatedFirstName.toLowerCase().replace(/[^a-z0-9]/g, '') || "partner").slice(0, 10);
       let isUnique = false;
       let generatedCode = "";
       let attempts = 0;
@@ -279,15 +289,17 @@ export async function POST(req: Request) {
       newReferralCode = isUnique ? generatedCode : `lora-${cleanFirstName}-${Date.now().toString().slice(-6)}`;
     }
 
-    // 4. Update User Profile
+    // 4. Update User Profile (Synchronizing verified bank account name into LoraBiz profile)
     await prisma.user.update({
       where: { id: user.id },
       data: {
+        firstName: updatedFirstName,
+        lastName: updatedLastName,
         referralCode: newReferralCode,
         payoutBankCode: bankCode,
         payoutBankName: bankName,
         payoutAccountNo: accountNumber,
-        payoutAccountName: paystackData.data.account_name
+        payoutAccountName: verifiedAccountName
       }
     });
 
@@ -326,9 +338,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: "Bank details verified and referral account activated!",
+      message: "Bank details verified and profile name synchronized!",
       referralCode: newReferralCode,
-      accountName: paystackData.data.account_name
+      accountName: verifiedAccountName,
+      updatedName: `${updatedFirstName} ${updatedLastName}`.trim()
     });
 
   } catch (error) {
