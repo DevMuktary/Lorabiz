@@ -1,62 +1,67 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { 
-  ShieldCheck, 
   ArrowLeft, 
-  CheckCircle,
-  FileText,
-  UploadSimple,
-  Trash,
-  Eye,
+  ArrowRight,
+  ShieldCheck, 
+  CheckCircle, 
+  ListDashes, 
+  Spinner,
+  Buildings,
+  CursorClick,
+  ArrowsClockwise,
   WarningCircle,
   X,
   Wallet,
-  PenNib,
-  FilePdf,
   Check,
-  Buildings,
-  ListDashes,
-  Info,
-  Spinner
+  FilePdf,
+  Eye,
+  Trash,
+  UploadSimple,
+  PenNib,
+  FileText,
+  Info
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
-type CompanyType = "BUSINESS_NAME" | "LLC";
+export type CompanyType = "BUSINESS_NAME" | "LLC";
 
-interface PricingMap {
-  BUSINESS_NAME: number;
-  LLC: number;
+interface PricingConfig {
+  price: number;
+  label: string;
 }
 
 export default function AnnualReturnsPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [isLoadingPricing, setIsLoadingPricing] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [pricing, setPricing] = useState<PricingMap>({
-    BUSINESS_NAME: 12000,
-    LLC: 18000,
+  const [pricing, setPricing] = useState<Record<CompanyType, PricingConfig>>({
+    BUSINESS_NAME: { price: 12000, label: "Business Name / Enterprise" },
+    LLC: { price: 18000, label: "Company (LLC / LTD)" },
   });
 
-  // Form State
-  const [companyType, setCompanyType] = useState<CompanyType>("BUSINESS_NAME");
+  // Category Selection State (matches NIN Modification)
+  const [selectedType, setSelectedType] = useState<CompanyType | null>(null);
+
+  // Form Fields
   const [companyName, setCompanyName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [filingYears, setFilingYears] = useState("2026");
 
-  // Document Upload State (Only 1 document required: Certificate OR Status Report)
+  // Document Upload (Only 1 document required: Certificate OR Status Report)
   const [documentType, setDocumentType] = useState<"CERTIFICATE" | "STATUS_REPORT">("CERTIFICATE");
   const [documentUrl, setDocumentUrl] = useState("");
   const [documentName, setDocumentName] = useState("");
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [docUploadProgress, setDocUploadProgress] = useState(0);
 
-  // Designee State
+  // Authorizing Officer & Signature
   const [designeeFullName, setDesigneeFullName] = useState("");
   const [designeeRole, setDesigneeRole] = useState("Proprietor");
   const [otherDesigneeRole, setOtherDesigneeRole] = useState("");
@@ -74,40 +79,37 @@ export default function AnnualReturnsPage() {
   const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
   const [previewModalTitle, setPreviewModalTitle] = useState("");
 
-  // Slide-in Toast / Error State
-  const [slideNotification, setSlideNotification] = useState<{
-    type: "error" | "success" | "info";
-    message: string;
-  } | null>(null);
+  // Slide-in Toast / Error Banner
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Confirmation / Checkout Modal State
+  // Checkout / Confirmation Modal
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    fetchPricingAndWallet();
+    fetchInitialData();
   }, []);
 
   // Update default role when company type changes
   useEffect(() => {
-    if (companyType === "BUSINESS_NAME") {
+    if (selectedType === "BUSINESS_NAME") {
       setDesigneeRole("Proprietor");
-    } else {
+    } else if (selectedType === "LLC") {
       setDesigneeRole("Director");
     }
-  }, [companyType]);
+  }, [selectedType]);
 
-  // Dismiss notification automatically after 7s
+  // Dismiss error automatically
   useEffect(() => {
-    if (slideNotification) {
-      const timer = setTimeout(() => setSlideNotification(null), 7000);
+    if (errorMessage) {
+      const timer = setTimeout(() => setErrorMessage(null), 6000);
       return () => clearTimeout(timer);
     }
-  }, [slideNotification]);
+  }, [errorMessage]);
 
-  const fetchPricingAndWallet = async () => {
-    setIsLoadingPricing(true);
+  const fetchInitialData = async () => {
+    setIsLoading(true);
     try {
       const [pricingRes, walletRes] = await Promise.all([
         fetch("/api/cac/annual-returns"),
@@ -116,7 +118,18 @@ export default function AnnualReturnsPage() {
 
       if (pricingRes.ok) {
         const data = await pricingRes.json();
-        if (data.pricing) setPricing(data.pricing);
+        if (data.pricing) {
+          setPricing({
+            BUSINESS_NAME: {
+              price: Number(data.pricing.BUSINESS_NAME) || 12000,
+              label: "Business Name / Enterprise",
+            },
+            LLC: {
+              price: Number(data.pricing.LLC) || 18000,
+              label: "Company (LLC / LTD)",
+            },
+          });
+        }
       }
 
       if (walletRes.ok) {
@@ -124,27 +137,22 @@ export default function AnnualReturnsPage() {
         if (wData.balance !== undefined) setWalletBalance(Number(wData.balance));
       }
     } catch (err) {
-      console.error("Failed to load pricing or wallet info:", err);
+      console.error("Failed to load CAC Annual Returns data:", err);
     } finally {
-      setIsLoadingPricing(false);
+      setIsLoading(false);
     }
   };
 
-  const currentPrice = pricing[companyType] || (companyType === "LLC" ? 18000 : 12000);
+  const currentPrice = selectedType ? pricing[selectedType].price : 0;
   const isBalanceSufficient = walletBalance >= currentPrice;
   const shortfall = Math.max(0, currentPrice - walletBalance);
   const remainingBalance = Math.max(0, walletBalance - currentPrice);
-
-  // Effective role considering "Other"
   const effectiveRole = designeeRole === "Other" ? otherDesigneeRole.trim() : designeeRole;
 
-  // Upload with real percentage progress via XMLHttpRequest
+  // File Upload with accurate Progress Percentage
   const uploadFileWithProgress = (file: File, type: "DOC" | "SIG") => {
     if (file.size > 5 * 1024 * 1024) {
-      setSlideNotification({
-        type: "error",
-        message: "File exceeds 5MB limit. Please compress your document before uploading.",
-      });
+      setErrorMessage("File exceeds 5MB limit. Please compress your document before uploading.");
       return;
     }
 
@@ -180,45 +188,25 @@ export default function AnnualReturnsPage() {
             if (type === "DOC") {
               setDocumentUrl(res.url);
               setDocumentName(file.name);
-              setSlideNotification({
-                type: "success",
-                message: `Uploaded "${file.name}" successfully!`,
-              });
             } else {
               setDesigneeSignatureUrl(res.url);
               setSignatureFileName(file.name);
-              setSlideNotification({
-                type: "success",
-                message: "Signature image uploaded successfully!",
-              });
             }
           } else {
-            setSlideNotification({
-              type: "error",
-              message: res.error || "Upload failed. Please try again.",
-            });
+            setErrorMessage(res.error || "Upload failed. Please try again.");
           }
         } catch {
-          setSlideNotification({
-            type: "error",
-            message: "Failed to parse upload server response.",
-          });
+          setErrorMessage("Failed to parse upload server response.");
         }
       } else {
-        setSlideNotification({
-          type: "error",
-          message: "Upload failed with HTTP error: " + xhr.statusText,
-        });
+        setErrorMessage("Upload failed with error: " + xhr.statusText);
       }
     };
 
     xhr.onerror = () => {
       if (type === "DOC") setIsUploadingDoc(false);
       else setIsUploadingSig(false);
-      setSlideNotification({
-        type: "error",
-        message: "Network error during upload. Please check your internet connection.",
-      });
+      setErrorMessage("Network error during upload. Please check your internet connection.");
     };
 
     xhr.open("POST", "/api/upload", true);
@@ -284,49 +272,55 @@ export default function AnnualReturnsPage() {
     }, "image/png");
   };
 
-  // Form Validation & Checkout Trigger
-  const handleOpenConfirmation = () => {
+  // Validate fields and open confirmation modal
+  const handleProceedToReview = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    if (!selectedType) {
+      setErrorMessage("Please select a company structure first.");
+      return;
+    }
     if (!companyName.trim()) {
-      setSlideNotification({ type: "error", message: "Please provide the official registered company or business name." });
+      setErrorMessage("Please enter the registered company or business name.");
       return;
     }
     if (!registrationNumber.trim()) {
-      setSlideNotification({ type: "error", message: "Please provide the CAC Registration Number (RC or BN number)." });
+      setErrorMessage("Please enter the CAC Registration Number (RC/BN).");
       return;
     }
     if (!documentUrl.trim()) {
-      setSlideNotification({
-        type: "error",
-        message: `Please upload your ${documentType === "CERTIFICATE" ? "CAC Registration Certificate" : "CAC Status Report"}.`,
-      });
+      setErrorMessage(`Please upload your ${documentType === "CERTIFICATE" ? "CAC Registration Certificate" : "CAC Status Report"}.`);
       return;
     }
     if (!designeeFullName.trim()) {
-      setSlideNotification({ type: "error", message: "Please provide the authorizing officer's full legal name." });
+      setErrorMessage("Please provide the authorizing officer's full legal name.");
       return;
     }
     if (designeeRole === "Other" && !otherDesigneeRole.trim()) {
-      setSlideNotification({ type: "error", message: "Please specify the officer's exact designation/role in the company." });
+      setErrorMessage("Please specify the officer's exact designation/role in the company.");
       return;
     }
     if (!designeeSignatureUrl.trim()) {
-      setSlideNotification({ type: "error", message: "Please provide the authorizing officer's signature (upload or draw)." });
+      setErrorMessage("Please provide the authorizing officer's signature (upload or draw).");
       return;
     }
 
-    // Open checkout confirmation modal
     setIsConfirmModalOpen(true);
   };
 
   // Submit Final Application
   const handleConfirmSubmission = async () => {
+    if (!selectedType) return;
     setIsSubmitting(true);
+    setErrorMessage(null);
+
     try {
       const res = await fetch("/api/cac/annual-returns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyType,
+          companyType: selectedType,
           companyName: companyName.trim(),
           registrationNumber: registrationNumber.trim().toUpperCase(),
           filingYears: filingYears.trim() || "2026",
@@ -341,593 +335,603 @@ export default function AnnualReturnsPage() {
       const data = await res.json();
       if (!res.ok || !data.success) {
         setIsConfirmModalOpen(false);
-        setSlideNotification({
-          type: "error",
-          message: data.error || "Failed to process application. Please try again.",
-        });
+        setErrorMessage(data.error || "Failed to process filing. Please try again.");
         return;
       }
 
       setIsConfirmModalOpen(false);
-      // Navigate to dedicated history page
       router.push("/dashboard/cac/post-incorporation/annual-returns/history?submitted=true");
     } catch (err: any) {
       setIsConfirmModalOpen(false);
-      setSlideNotification({
-        type: "error",
-        message: err?.message || "An unexpected error occurred. Please try again.",
-      });
+      setErrorMessage(err?.message || "An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto relative pb-16 font-sans">
+    <div className="space-y-6 max-w-5xl mx-auto relative pb-16 animate-in fade-in duration-200 font-sans">
       
-      {/* SLIDE-IN NOTIFICATION / ERROR BANNER (FIXED TOP/FLOAT) */}
-      {slideNotification && (
-        <div 
-          className={`fixed top-4 right-4 z-[150] max-w-md w-[calc(100%-2rem)] p-4 rounded-2xl shadow-2xl border backdrop-blur-md animate-in slide-in-from-top-4 duration-300 flex items-start gap-3 ${
-            slideNotification.type === "error"
-              ? "bg-destructive/95 text-destructive-foreground border-destructive/50"
-              : slideNotification.type === "success"
-              ? "bg-emerald-600/95 text-white border-emerald-500/50"
-              : "bg-card/95 text-foreground border-border"
-          }`}
-        >
-          <div className="mt-0.5 shrink-0">
-            {slideNotification.type === "error" ? (
-              <WarningCircle size={22} weight="bold" />
-            ) : slideNotification.type === "success" ? (
-              <CheckCircle size={22} weight="bold" />
-            ) : (
-              <Info size={22} weight="bold" />
-            )}
-          </div>
+      {/* SLIDE-IN ERROR BANNER (FIXED TOP-RIGHT) */}
+      {errorMessage && (
+        <div className="fixed top-5 right-5 z-[250] max-w-md p-4 rounded-2xl bg-destructive text-destructive-foreground shadow-2xl border border-destructive/50 flex items-start gap-3 animate-in slide-in-from-top-4 duration-200">
+          <WarningCircle size={22} weight="bold" className="shrink-0 mt-0.5" />
           <div className="flex-1 text-xs sm:text-sm font-semibold leading-snug">
-            {slideNotification.message}
+            {errorMessage}
           </div>
           <button
             type="button"
-            onClick={() => setSlideNotification(null)}
-            className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors shrink-0"
+            onClick={() => setErrorMessage(null)}
+            className="p-1 rounded-lg hover:bg-black/10 transition-colors shrink-0 cursor-pointer"
           >
             <X size={16} weight="bold" />
           </button>
         </div>
       )}
 
-      {/* Top Breadcrumb Navigation */}
-      <div className="flex items-center justify-between gap-4">
-        <Link 
-          href="/dashboard/cac/post-incorporation" 
-          className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl"
-        >
-          <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Post-Incorporation
-        </Link>
+      {/* Back Breadcrumb (Exact NIN Modification Layout) */}
+      <Link 
+        href="/dashboard/cac/post-incorporation" 
+        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-fit bg-secondary/40 hover:bg-secondary px-3 py-1.5 rounded-xl"
+      >
+        <ArrowLeft weight="bold" className="h-4 w-4" /> Back to Post-Incorporation
+      </Link>
 
-        {/* Link to Dedicated History Page */}
-        <Link
-          href="/dashboard/cac/post-incorporation/annual-returns/history"
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-primary hover:text-primary/80 transition-colors bg-primary/10 hover:bg-primary/15 border border-primary/20 px-3.5 py-1.5 rounded-xl cursor-pointer"
-        >
-          <ListDashes size={16} weight="bold" />
-          <span>View Filing History</span>
-        </Link>
-      </div>
-
-      {/* Hero Header */}
-      <div className="bg-gradient-to-br from-card via-card to-secondary/30 border border-border rounded-3xl p-6 sm:p-8 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <ShieldCheck weight="bold" className="h-3.5 w-3.5" />
-              Corporate Affairs Commission (CAC) Authorized Desk
+      {/* Page Header (Exact Standard IPE Layout matching NIN Modification) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
+        <div className="flex items-center gap-3.5">
+          <div className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center p-2 border border-border shrink-0 shadow-sm">
+            <Image 
+              src="/cac-logo.png" 
+              alt="CAC Logo" 
+              width={40} 
+              height={40} 
+              className="object-contain" 
+              priority 
+            />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-0.5">
+              <ShieldCheck weight="bold" className="h-3 w-3" />
+              Corporate Affairs Commission
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-              File CAC Annual Returns
-            </h1>
-            <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
-              Maintain statutory corporate compliance, protect your entity from CAMA penalties, and obtain an official CAC Acknowledgement Letter.
+            <h1 className="text-2xl font-black text-foreground tracking-tight">CAC Annual Returns</h1>
+            <p className="text-muted-foreground text-xs sm:text-sm">
+              Official statutory compliance filing for Business Names and Limited Liability Companies.
             </p>
           </div>
-
-          <div className="shrink-0 flex items-center justify-center">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-secondary/60 border border-border flex items-center justify-center p-3 shadow-inner">
-              <Image 
-                src="/cac-logo.png" 
-                alt="CAC Nigeria" 
-                width={64} 
-                height={64} 
-                className="object-contain" 
-                priority
-              />
-            </div>
-          </div>
         </div>
+
+        {/* Action Button: Filing History */}
+        <Link 
+          href="/dashboard/cac/post-incorporation/annual-returns/history" 
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground text-sm font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all group shrink-0 shadow-sm cursor-pointer"
+        >
+          <ListDashes weight="bold" className="h-4 w-4" />
+          <span>Filing History</span>
+          <ArrowRight weight="bold" className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+        </Link>
       </div>
 
-      {/* Main Filing Form */}
-      <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-sm space-y-8">
-        
-        {/* Step 1: Corporate Entity Type */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-black flex items-center justify-center">1</span>
-            <h2 className="text-base font-extrabold text-foreground">Select Company Structure</h2>
-          </div>
-          <p className="text-xs text-muted-foreground ml-8">
-            Choose whether the entity is registered as an Enterprise/Business Name or a Limited Liability Company.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            {/* Business Name Option */}
-            <div 
-              onClick={() => setCompanyType("BUSINESS_NAME")}
-              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative ${
-                companyType === "BUSINESS_NAME"
-                  ? "border-primary bg-primary/5 shadow-md shadow-primary/5"
-                  : "border-border bg-secondary/20 hover:border-border/80"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-sm text-foreground">Business Name / Enterprise</span>
-                    {companyType === "BUSINESS_NAME" && (
-                      <CheckCircle weight="fill" className="text-primary w-4 h-4" />
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Sole proprietorships, ventures, and general trading partnerships (BN Series).
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 pt-3 border-t border-border/50 flex items-baseline justify-between">
-                <span className="text-[10px] font-bold uppercase text-muted-foreground">Filing Fee:</span>
-                <span className="text-base font-black text-foreground">
-                  ₦{pricing.BUSINESS_NAME.toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            {/* LLC Option */}
-            <div 
-              onClick={() => setCompanyType("LLC")}
-              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative ${
-                companyType === "LLC"
-                  ? "border-primary bg-primary/5 shadow-md shadow-primary/5"
-                  : "border-border bg-secondary/20 hover:border-border/80"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-sm text-foreground">Company (LLC / LTD)</span>
-                    {companyType === "LLC" && (
-                      <CheckCircle weight="fill" className="text-primary w-4 h-4" />
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Private Limited Liability Companies, Ltd by Guarantee (RC Series).
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 pt-3 border-t border-border/50 flex items-baseline justify-between">
-                <span className="text-[10px] font-bold uppercase text-muted-foreground">Filing Fee:</span>
-                <span className="text-base font-black text-foreground">
-                  ₦{pricing.LLC.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
+      {/* Loading Indicator */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Spinner className="h-8 w-8 animate-spin text-primary" weight="bold" />
+          <p className="text-sm font-bold text-muted-foreground">Loading annual returns service...</p>
         </div>
-
-        {/* Step 2: Entity Identification & Year */}
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-black flex items-center justify-center">2</span>
-            <h2 className="text-base font-extrabold text-foreground">Entity Details</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 ml-0 sm:ml-8">
-            {/* Company Name */}
-            <div className="space-y-1.5 sm:col-span-2">
-              <label className="text-xs font-bold text-foreground">
-                Registered {companyType === "LLC" ? "Company" : "Business"} Name *
-              </label>
-              <input 
-                type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder={
-                  companyType === "LLC" 
-                    ? "e.g. ACME COMMERCIAL ENTERPRISES LTD" 
-                    : "e.g. ACME GLOBAL VENTURES & LOGISTICS"
-                }
-                className="w-full h-11 px-4 rounded-xl bg-secondary/30 border border-border text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Enter the exact legal name as it appears on your official CAC Certificate.
-              </p>
-            </div>
-
-            {/* Registration Number */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">
-                CAC Registration Number ({companyType === "LLC" ? "RC Number" : "BN Number"}) *
-              </label>
-              <input 
-                type="text"
-                value={registrationNumber}
-                onChange={(e) => setRegistrationNumber(e.target.value)}
-                placeholder={companyType === "LLC" ? "e.g. RC 1984250" : "e.g. BN 3829104"}
-                className="w-full h-11 px-4 rounded-xl bg-secondary/30 border border-border text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
-              />
-            </div>
-
-            {/* Filing Year (Defaulted to 2026, Single Year) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-foreground">
-                  Filing Year *
+      ) : (
+        <div className="space-y-6 sm:space-y-8">
+          
+          {/* 1. Structure Selection State (matches NIN Modification Selection Cards) */}
+          {!selectedType ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-muted-foreground">
+                  Select Company Structure
                 </label>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  Statutory Filing
-                </span>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Choose the corporate structure you want to file statutory annual returns for.
+                </p>
               </div>
-              <input 
-                type="text"
-                value={filingYears}
-                onChange={(e) => setFilingYears(e.target.value)}
-                placeholder="2026"
-                className="w-full h-11 px-4 rounded-xl bg-secondary/30 border border-border text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                Currently defaulted to current year statutory return. (Multi-year penalty settlement coming soon).
-              </p>
-            </div>
-          </div>
-        </div>
 
-        {/* Step 3: Required Supporting Document */}
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-black flex items-center justify-center">3</span>
-            <h2 className="text-base font-extrabold text-foreground">Verification Document</h2>
-          </div>
-
-          {/* Critical Clarification Notice: ONLY ONE DOCUMENT NEEDED */}
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 ml-0 sm:ml-8 flex items-start gap-3">
-            <Info size={20} weight="bold" className="shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div className="text-xs space-y-1">
-              <p className="font-extrabold text-foreground">
-                Upload ONLY ONE Document (Not Both)
-              </p>
-              <p className="leading-relaxed">
-                You only need to provide <strong>either</strong> your <strong>CAC Certificate of Registration</strong> OR your <strong>CAC Status Report / Extract</strong>. Uploading one is sufficient for filing.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4 ml-0 sm:ml-8">
-            {/* Document Type Selector */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <label className="text-xs font-bold text-foreground">
-                Choose Document to Upload:
-              </label>
-              <div className="flex items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-xs font-bold cursor-pointer text-foreground">
-                  <input 
-                    type="radio"
-                    name="docType"
-                    checked={documentType === "CERTIFICATE"}
-                    onChange={() => setDocumentType("CERTIFICATE")}
-                    className="accent-primary w-4 h-4 cursor-pointer"
-                  />
-                  <span>CAC Registration Certificate</span>
-                </label>
-
-                <label className="inline-flex items-center gap-2 text-xs font-bold cursor-pointer text-foreground">
-                  <input 
-                    type="radio"
-                    name="docType"
-                    checked={documentType === "STATUS_REPORT"}
-                    onChange={() => setDocumentType("STATUS_REPORT")}
-                    className="accent-primary w-4 h-4 cursor-pointer"
-                  />
-                  <span>CAC Status Report</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Document Upload Area */}
-            {!documentUrl ? (
-              <div className="relative border-2 border-dashed border-border rounded-2xl p-6 sm:p-8 text-center bg-secondary/10 hover:bg-secondary/20 transition-all flex flex-col items-center justify-center gap-3">
-                <input 
-                  type="file"
-                  accept="image/png,image/jpeg,application/pdf"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) uploadFileWithProgress(file, "DOC");
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                
+                {/* Business Name Card */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedType("BUSINESS_NAME");
+                    setErrorMessage(null);
                   }}
-                  disabled={isUploadingDoc}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                />
+                  className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                      <Buildings weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      ₦{pricing.BUSINESS_NAME.price.toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                      Business Name / Enterprise
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      Sole proprietorships, ventures, and general trading partnerships (BN Series).
+                    </p>
+                  </div>
+                </button>
 
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-inner">
-                  {isUploadingDoc ? (
-                    <Spinner size={24} className="animate-spin" weight="bold" />
-                  ) : (
-                    <UploadSimple size={24} weight="bold" />
-                  )}
+                {/* Company (LLC / LTD) Card */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedType("LLC");
+                    setErrorMessage(null);
+                  }}
+                  className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:bg-secondary/40 hover:border-primary/50 text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary group-hover:bg-primary group-hover:text-primary-foreground text-foreground flex items-center justify-center font-bold transition-colors">
+                      <Buildings weight="duotone" className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      ₦{pricing.LLC.price.toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                      Company (LLC / LTD)
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      Private Limited Liability Companies and Ltd by Guarantee (RC Series).
+                    </p>
+                  </div>
+                </button>
+
+              </div>
+
+              {/* Prompt Placeholder when no structure is selected */}
+              <div className="p-8 sm:p-12 rounded-3xl bg-card border border-dashed border-border text-center space-y-3">
+                <div className="h-14 w-14 rounded-2xl bg-secondary/80 text-muted-foreground flex items-center justify-center mx-auto">
+                  <CursorClick weight="duotone" className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-foreground">
+                  Please Select Company Structure Above
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+                  Click on <strong>Business Name</strong> or <strong>Company (LLC)</strong> above to open the statutory filing form.
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Selected Structure Active Banner (Exact Active Service Banner in NIN Modification) */
+            <div className="p-4 sm:p-5 rounded-3xl bg-card border border-primary/30 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-200">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0 shadow-sm">
+                  <Buildings weight="duotone" className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
+                      Active Structure
+                    </span>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                      ₦{currentPrice.toLocaleString()}
+                    </span>
+                  </div>
+                  <h2 className="text-base sm:text-lg font-black text-foreground mt-0.5">
+                    {pricing[selectedType].label} Annual Returns
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedType === "LLC" 
+                      ? "Statutory CAMA annual returns filing for Private Limited Liability Companies."
+                      : "Statutory annual returns compliance for Registered Business Names."}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedType(null);
+                  setErrorMessage(null);
+                }}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground font-bold text-xs transition-all shrink-0 cursor-pointer shadow-sm"
+              >
+                <ArrowsClockwise weight="bold" className="h-4 w-4 text-primary" />
+                <span>Change Structure</span>
+              </button>
+            </div>
+          )}
+
+          {/* Dynamic Application Form: Rendered when a structure is active */}
+          {selectedType && (
+            <form 
+              onSubmit={handleProceedToReview}
+              className="p-5 sm:p-8 rounded-3xl bg-card border border-border shadow-sm space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-200"
+            >
+              {/* Form Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 gap-2">
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+                    {pricing[selectedType].label} Application Form
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Provide exact registered details as recorded on the CAC Portal.
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-muted-foreground">Fee:</span>
+                  <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                    ₦{currentPrice.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Entity Name */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5">
+                  Official Registered {selectedType === "LLC" ? "Company" : "Business"} Name <span className="text-rose-500">*</span>
+                </label>
+                <input 
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder={
+                    selectedType === "LLC" 
+                      ? "e.g. ACME COMMERCIAL ENTERPRISES LTD" 
+                      : "e.g. ACME GLOBAL VENTURES & LOGISTICS"
+                  }
+                  className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background uppercase"
+                  required
+                />
+              </div>
+
+              {/* Reg Number and Filing Year Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    CAC Registration Number ({selectedType === "LLC" ? "RC Number" : "BN Number"}) <span className="text-rose-500">*</span>
+                  </label>
+                  <input 
+                    type="text"
+                    value={registrationNumber}
+                    onChange={(e) => setRegistrationNumber(e.target.value)}
+                    placeholder={selectedType === "LLC" ? "e.g. RC 1984250" : "e.g. BN 3829104"}
+                    className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground font-mono font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background uppercase"
+                    required
+                  />
                 </div>
 
                 <div>
-                  <p className="text-xs sm:text-sm font-bold text-foreground">
-                    {isUploadingDoc ? (
-                      <span>Uploading document... <strong className="text-primary">{docUploadProgress}%</strong></span>
-                    ) : (
-                      <>Click or drag & drop your {documentType === "CERTIFICATE" ? "CAC Certificate" : "Status Report"}</>
-                    )}
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Filing Year <span className="text-rose-500">*</span>
+                  </label>
+                  <input 
+                    type="text"
+                    value={filingYears}
+                    onChange={(e) => setFilingYears(e.target.value)}
+                    placeholder="2026"
+                    className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Document Notice: ONLY ONE NEEDED */}
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-200 flex items-start gap-3">
+                <Info size={18} weight="bold" className="shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <p className="font-bold text-foreground">
+                    Upload Only One Document (Certificate OR Status Report)
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Accepts PDF, JPG, or PNG (Max 5MB)
+                  <p className="leading-relaxed opacity-90">
+                    You only need to upload either your <strong>CAC Certificate</strong> or your <strong>CAC Status Report</strong>. Both are not required.
                   </p>
                 </div>
+              </div>
 
-                {/* Progress Bar */}
-                {isUploadingDoc && (
-                  <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden mt-1 border border-border">
-                    <div 
-                      className="bg-primary h-full transition-all duration-150"
-                      style={{ width: `${docUploadProgress}%` }}
+              {/* Document Type Selector & Upload Zone */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <label className="text-xs font-bold text-foreground">
+                    Document Type:
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className="inline-flex items-center gap-2 text-xs font-bold cursor-pointer text-foreground">
+                      <input 
+                        type="radio"
+                        name="docType"
+                        checked={documentType === "CERTIFICATE"}
+                        onChange={() => setDocumentType("CERTIFICATE")}
+                        className="accent-primary w-4 h-4 cursor-pointer"
+                      />
+                      <span>CAC Certificate</span>
+                    </label>
+
+                    <label className="inline-flex items-center gap-2 text-xs font-bold cursor-pointer text-foreground">
+                      <input 
+                        type="radio"
+                        name="docType"
+                        checked={documentType === "STATUS_REPORT"}
+                        onChange={() => setDocumentType("STATUS_REPORT")}
+                        className="accent-primary w-4 h-4 cursor-pointer"
+                      />
+                      <span>CAC Status Report</span>
+                    </label>
+                  </div>
+                </div>
+
+                {!documentUrl ? (
+                  <div className="relative border-2 border-dashed border-border rounded-2xl p-6 sm:p-8 text-center bg-secondary/20 hover:bg-secondary/30 transition-all flex flex-col items-center justify-center gap-3">
+                    <input 
+                      type="file"
+                      accept="image/png,image/jpeg,application/pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadFileWithProgress(file, "DOC");
+                      }}
+                      disabled={isUploadingDoc}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    />
+
+                    <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      {isUploadingDoc ? (
+                        <Spinner size={22} className="animate-spin" weight="bold" />
+                      ) : (
+                        <UploadSimple size={22} weight="bold" />
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-xs sm:text-sm font-bold text-foreground">
+                        {isUploadingDoc ? (
+                          <span>Uploading document... <strong className="text-primary font-mono">{docUploadProgress}%</strong></span>
+                        ) : (
+                          <>Click or drag & drop {documentType === "CERTIFICATE" ? "CAC Certificate" : "Status Report"}</>
+                        )}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Accepts PDF, JPG, or PNG (Max 5MB)
+                      </p>
+                    </div>
+
+                    {isUploadingDoc && (
+                      <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden border border-border mt-1">
+                        <div 
+                          className="bg-primary h-full transition-all duration-150"
+                          style={{ width: `${docUploadProgress}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-secondary/40 border border-border flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                        <FilePdf size={20} weight="bold" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-foreground truncate max-w-[200px] sm:max-w-md">
+                          {documentName || "Uploaded CAC Document"}
+                        </p>
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1">
+                          <Check size={12} weight="bold" /> Ready for Filing
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewModalUrl(documentUrl);
+                          setPreviewModalTitle(documentName || "CAC Verification Document");
+                        }}
+                        className="p-2 rounded-xl bg-card hover:bg-secondary border border-border text-foreground transition-colors cursor-pointer"
+                        title="Preview Document"
+                      >
+                        <Eye size={15} weight="bold" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocumentUrl("");
+                          setDocumentName("");
+                        }}
+                        className="p-2 rounded-xl bg-card hover:bg-destructive/10 border border-border text-destructive transition-colors cursor-pointer"
+                        title="Remove Document"
+                      >
+                        <Trash size={15} weight="bold" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Authorizing Officer & Designation with "Other" */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border">
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Authorizing Officer Full Legal Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input 
+                    type="text"
+                    value={designeeFullName}
+                    onChange={(e) => setDesigneeFullName(e.target.value)}
+                    placeholder="e.g. Babatunde Adeyemi"
+                    className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Official Designation / Role <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={designeeRole}
+                    onChange={(e) => setDesigneeRole(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background cursor-pointer"
+                  >
+                    {selectedType === "BUSINESS_NAME" ? (
+                      <>
+                        <option value="Proprietor">Proprietor / Business Owner</option>
+                        <option value="Partner">General Partner</option>
+                        <option value="Accredited Agent / Solicitor">Accredited Agent / Solicitor</option>
+                        <option value="Other">Other (Specify Below)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Director">Managing Director / Director</option>
+                        <option value="Company Secretary">Company Secretary</option>
+                        <option value="Authorized Representative">Authorized Representative</option>
+                        <option value="Other">Other (Specify Below)</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {designeeRole === "Other" && (
+                  <div className="sm:col-span-2 animate-in fade-in duration-200">
+                    <label className="block text-xs font-bold text-foreground mb-1.5">
+                      Specify Officer Designation / Role <span className="text-rose-500">*</span>
+                    </label>
+                    <input 
+                      type="text"
+                      value={otherDesigneeRole}
+                      onChange={(e) => setOtherDesigneeRole(e.target.value)}
+                      placeholder="e.g. Managing Partner, Trustee, Administrator"
+                      className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background"
+                      required
                     />
                   </div>
                 )}
               </div>
-            ) : (
-              /* Uploaded Document Card with IN-APP PREVIEW MODAL */
-              <div className="p-4 rounded-2xl bg-secondary/40 border border-border flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                    <FilePdf size={22} weight="bold" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate max-w-[220px] sm:max-w-md">
-                      {documentName || "Uploaded CAC Document"}
-                    </p>
-                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1">
-                      <Check size={12} weight="bold" /> Ready for Filing
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* In-App Preview Modal Trigger */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPreviewModalUrl(documentUrl);
-                      setPreviewModalTitle(documentName || "CAC Verification Document");
-                    }}
-                    className="p-2 rounded-xl bg-card hover:bg-secondary border border-border text-foreground transition-colors cursor-pointer"
-                    title="Preview Document in App"
-                  >
-                    <Eye size={16} weight="bold" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDocumentUrl("");
-                      setDocumentName("");
-                    }}
-                    className="p-2 rounded-xl bg-card hover:bg-destructive/10 border border-border text-destructive transition-colors cursor-pointer"
-                    title="Remove Document"
-                  >
-                    <Trash size={16} weight="bold" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Step 4: Authorizing Officer & Designation */}
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-black flex items-center justify-center">4</span>
-            <h2 className="text-base font-extrabold text-foreground">Authorizing Officer & Signature</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 ml-0 sm:ml-8">
-            {/* Full Name */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">
-                Authorizing Officer Full Legal Name *
-              </label>
-              <input 
-                type="text"
-                value={designeeFullName}
-                onChange={(e) => setDesigneeFullName(e.target.value)}
-                placeholder="e.g. Babatunde Adeyemi"
-                className="w-full h-11 px-4 rounded-xl bg-secondary/30 border border-border text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-            </div>
-
-            {/* Designation / Role with "Other" */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">
-                Official Designation / Role *
-              </label>
-              <select
-                value={designeeRole}
-                onChange={(e) => setDesigneeRole(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl bg-secondary/30 border border-border text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
-              >
-                {companyType === "BUSINESS_NAME" ? (
-                  <>
-                    <option value="Proprietor">Proprietor / Business Owner</option>
-                    <option value="Partner">General Partner</option>
-                    <option value="Accredited Agent / Solicitor">Accredited Agent / Solicitor</option>
-                    <option value="Other">Other (Specify Below)</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="Director">Managing Director / Director</option>
-                    <option value="Company Secretary">Company Secretary</option>
-                    <option value="Authorized Representative">Authorized Representative</option>
-                    <option value="Other">Other (Specify Below)</option>
-                  </>
-                )}
-              </select>
-            </div>
-
-            {/* If "Other" is selected, show custom role input */}
-            {designeeRole === "Other" && (
-              <div className="space-y-1.5 sm:col-span-2 animate-in fade-in duration-200">
-                <label className="text-xs font-bold text-foreground">
-                  Specify Officer Designation / Role *
+              {/* Authorizing Signature (Upload OR Draw) */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-foreground">
+                  Authorizing Officer Signature <span className="text-rose-500">*</span>
                 </label>
-                <input 
-                  type="text"
-                  value={otherDesigneeRole}
-                  onChange={(e) => setOtherDesigneeRole(e.target.value)}
-                  placeholder="e.g. Managing Partner, Trustee, Legal Counsel, or Administrator"
-                  className="w-full h-11 px-4 rounded-xl bg-secondary/30 border border-border text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-              </div>
-            )}
 
-            {/* Officer Signature (Upload OR Draw) */}
-            <div className="space-y-3 sm:col-span-2">
-              <label className="text-xs font-bold text-foreground">
-                Authorizing Officer Signature *
-              </label>
+                {!designeeSignatureUrl ? (
+                  <div className="p-4 rounded-2xl bg-secondary/20 border border-border space-y-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-secondary text-foreground text-xs font-bold rounded-xl border border-border shadow-sm cursor-pointer transition-colors">
+                        <UploadSimple size={15} weight="bold" />
+                        <span>{isUploadingSig ? `Uploading (${sigUploadProgress}%)...` : "Upload Signature Image"}</span>
+                        <input 
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) uploadFileWithProgress(file, "SIG");
+                          }}
+                          disabled={isUploadingSig}
+                          className="hidden"
+                        />
+                      </label>
 
-              {!designeeSignatureUrl ? (
-                <div className="p-5 rounded-2xl bg-secondary/20 border border-border space-y-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* Upload button */}
-                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-card hover:bg-secondary text-foreground text-xs font-bold rounded-xl border border-border shadow-sm cursor-pointer transition-colors">
-                      <UploadSimple size={16} weight="bold" />
-                      <span>{isUploadingSig ? `Uploading (${sigUploadProgress}%)...` : "Upload Signature Image"}</span>
-                      <input 
-                        type="file"
-                        accept="image/png,image/jpeg"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) uploadFileWithProgress(file, "SIG");
+                      <button
+                        type="button"
+                        onClick={() => setIsSignatureCanvasOpen(true)}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-secondary text-foreground text-xs font-bold rounded-xl border border-border shadow-sm cursor-pointer transition-colors"
+                      >
+                        <PenNib size={15} weight="bold" />
+                        <span>Draw Signature</span>
+                      </button>
+                    </div>
+
+                    {isUploadingSig && (
+                      <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden border border-border">
+                        <div 
+                          className="bg-primary h-full transition-all duration-150"
+                          style={{ width: `${sigUploadProgress}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-2xl bg-secondary/40 border border-border flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-14 h-9 rounded-lg bg-white p-1 border border-border flex items-center justify-center overflow-hidden shrink-0">
+                        <img 
+                          src={designeeSignatureUrl} 
+                          alt="Signature" 
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-foreground truncate">
+                          {signatureFileName || "Officer Digital Signature"}
+                        </p>
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1">
+                          <Check size={12} weight="bold" /> Attached to Attestation
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewModalUrl(designeeSignatureUrl);
+                          setPreviewModalTitle("Officer Signature Preview");
                         }}
-                        disabled={isUploadingSig}
-                        className="hidden"
-                      />
-                    </label>
+                        className="p-2 rounded-xl bg-card hover:bg-secondary border border-border text-foreground transition-colors cursor-pointer"
+                        title="Preview Signature"
+                      >
+                        <Eye size={15} weight="bold" />
+                      </button>
 
-                    {/* Draw button */}
-                    <button
-                      type="button"
-                      onClick={() => setIsSignatureCanvasOpen(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-card hover:bg-secondary text-foreground text-xs font-bold rounded-xl border border-border shadow-sm cursor-pointer transition-colors"
-                    >
-                      <PenNib size={16} weight="bold" />
-                      <span>Draw Digital Signature</span>
-                    </button>
-                  </div>
-
-                  {isUploadingSig && (
-                    <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden border border-border">
-                      <div 
-                        className="bg-primary h-full transition-all duration-150"
-                        style={{ width: `${sigUploadProgress}%` }}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDesigneeSignatureUrl("");
+                          setSignatureFileName("");
+                        }}
+                        className="p-2 rounded-xl bg-card hover:bg-destructive/10 border border-border text-destructive transition-colors cursor-pointer"
+                        title="Remove Signature"
+                      >
+                        <Trash size={15} weight="bold" />
+                      </button>
                     </div>
-                  )}
+                  </div>
+                )}
+              </div>
 
-                  <p className="text-[11px] text-muted-foreground">
-                    Required for CAMA statutory compliance and filing attestation on CAC portal.
-                  </p>
+              {/* Submit Action */}
+              <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                    Total Filing Fee:
+                  </span>
+                  <span className="text-xl font-black text-foreground">
+                    ₦{currentPrice.toLocaleString()}
+                  </span>
                 </div>
-              ) : (
-                /* Uploaded Signature Card with In-App Preview */
-                <div className="p-4 rounded-2xl bg-secondary/40 border border-border flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-16 h-10 rounded-lg bg-white p-1 border border-border flex items-center justify-center overflow-hidden shrink-0">
-                      <img 
-                        src={designeeSignatureUrl} 
-                        alt="Signature" 
-                        className="max-h-full max-w-full object-contain"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-foreground truncate">
-                        {signatureFileName || "Officer Digital Signature"}
-                      </p>
-                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1">
-                        <Check size={12} weight="bold" /> Attached to Attestation
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPreviewModalUrl(designeeSignatureUrl);
-                        setPreviewModalTitle("Officer Signature Preview");
-                      }}
-                      className="p-2 rounded-xl bg-card hover:bg-secondary border border-border text-foreground transition-colors cursor-pointer"
-                      title="Preview Signature"
-                    >
-                      <Eye size={16} weight="bold" />
-                    </button>
+                <Button
+                  type="submit"
+                  className="h-11 px-7 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs sm:text-sm rounded-xl shadow-md shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <span>Proceed to Confirmation</span>
+                  <ArrowRight size={15} weight="bold" />
+                </Button>
+              </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDesigneeSignatureUrl("");
-                        setSignatureFileName("");
-                      }}
-                      className="p-2 rounded-xl bg-card hover:bg-destructive/10 border border-border text-destructive transition-colors cursor-pointer"
-                      title="Remove Signature"
-                    >
-                      <Trash size={16} weight="bold" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+            </form>
+          )}
+
         </div>
+      )}
 
-        {/* Submit Action Button */}
-        <div className="pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold block">
-              Total Statutory Filing Cost:
-            </span>
-            <div className="text-2xl font-black text-foreground">
-              ₦{currentPrice.toLocaleString()}
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            onClick={handleOpenConfirmation}
-            className="h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-sm rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
-          >
-            <span>Proceed to Confirmation</span>
-            <Check size={16} weight="bold" />
-          </Button>
-        </div>
-
-      </div>
-
-      {/* ========================================================================= */}
-      {/* DIGITAL SIGNATURE CANVAS MODAL */}
-      {/* ========================================================================= */}
+      {/* ---------------- DRAW DIGITAL SIGNATURE MODAL ---------------- */}
       {isSignatureCanvasOpen && (
         <div 
           className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
@@ -950,10 +954,6 @@ export default function AnnualReturnsPage() {
               </button>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Draw your clean signature inside the white box below.
-            </p>
-
             <div className="bg-white rounded-2xl border-2 border-dashed border-border p-2 flex justify-center">
               <canvas 
                 ref={canvasRef}
@@ -970,7 +970,7 @@ export default function AnnualReturnsPage() {
               />
             </div>
 
-            <div className="flex gap-2.5 pt-2">
+            <div className="flex gap-2.5 pt-1">
               <Button
                 type="button"
                 variant="outline"
@@ -991,9 +991,7 @@ export default function AnnualReturnsPage() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* IN-APP DOCUMENT PREVIEW MODAL (NO EXTERNAL TAB) */}
-      {/* ========================================================================= */}
+      {/* ---------------- IN-APP PREVIEW MODAL ---------------- */}
       {previewModalUrl && (
         <div 
           className="fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
@@ -1003,10 +1001,9 @@ export default function AnnualReturnsPage() {
             className="relative w-full max-w-3xl bg-card border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
               <div className="flex items-center gap-2 min-w-0">
-                <FileText size={20} weight="bold" className="text-primary shrink-0" />
+                <FileText size={18} weight="bold" className="text-primary shrink-0" />
                 <h3 className="font-extrabold text-sm text-foreground truncate">
                   {previewModalTitle || "Document Preview"}
                 </h3>
@@ -1016,11 +1013,10 @@ export default function AnnualReturnsPage() {
                 onClick={() => setPreviewModalUrl(null)}
                 className="w-8 h-8 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0"
               >
-                <X size={16} weight="bold" />
+                <X size={15} weight="bold" />
               </button>
             </div>
 
-            {/* Modal Content - Auto switches between image and PDF iframe */}
             <div className="p-4 flex-1 overflow-y-auto bg-black/5 dark:bg-black/20 flex items-center justify-center min-h-[300px]">
               {previewModalUrl.toLowerCase().endsWith(".pdf") ? (
                 <iframe
@@ -1037,7 +1033,6 @@ export default function AnnualReturnsPage() {
               )}
             </div>
 
-            {/* Modal Footer */}
             <div className="px-6 py-3 border-t border-border bg-secondary/20 flex justify-end">
               <Button
                 type="button"
@@ -1051,9 +1046,7 @@ export default function AnnualReturnsPage() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* CHECKOUT CONFIRMATION MODAL (MATCHES BVN RETRIEVAL PATTERN) */}
-      {/* ========================================================================= */}
+      {/* ---------------- CONFIRMATION / INSUFFICIENT BALANCE MODAL ---------------- */}
       {isConfirmModalOpen && mounted && typeof document !== "undefined" && createPortal(
         <div 
           className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
@@ -1074,7 +1067,7 @@ export default function AnnualReturnsPage() {
                     {!isBalanceSufficient ? "Insufficient Balance" : "Confirm Annual Returns"}
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Corporate Affairs Commission Statutory Portal
+                    Corporate Affairs Commission Filing Portal
                   </p>
                 </div>
               </div>
@@ -1088,7 +1081,7 @@ export default function AnnualReturnsPage() {
               </button>
             </div>
 
-            {/* IF INSUFFICIENT WALLET BALANCE (CRYING EMOJI & FUND WALLET) */}
+            {/* INSUFFICIENT BALANCE (CRYING EMOJI & FUND WALLET) */}
             {!isBalanceSufficient ? (
               <div className="space-y-4">
                 <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 space-y-3">
@@ -1106,7 +1099,7 @@ export default function AnnualReturnsPage() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Service:</span>
                       <span className="font-bold text-foreground">
-                        CAC Annual Returns ({companyType === "LLC" ? "LLC" : "Business Name"})
+                        CAC Annual Returns ({selectedType === "LLC" ? "LLC" : "Business Name"})
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -1142,7 +1135,7 @@ export default function AnnualReturnsPage() {
                 </div>
               </div>
             ) : (
-              /* IF SUFFICIENT WALLET BALANCE */
+              /* SUFFICIENT BALANCE */
               <div className="space-y-4">
                 <div className="bg-secondary/40 border border-border rounded-2xl p-4 space-y-2.5 text-xs">
                   <div className="flex justify-between">
@@ -1155,7 +1148,7 @@ export default function AnnualReturnsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Structure / Type:</span>
-                    <span className="font-bold text-foreground">{companyType === "LLC" ? "LLC / LTD" : "Business Name"}</span>
+                    <span className="font-bold text-foreground">{selectedType === "LLC" ? "LLC / LTD" : "Business Name"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Filing Year:</span>
@@ -1176,7 +1169,7 @@ export default function AnnualReturnsPage() {
                 </div>
 
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Upon confirmation, <strong>₦{currentPrice.toLocaleString()}</strong> will be debited from your wallet and your filing will be submitted to our compliance desk.
+                  Upon confirmation, <strong>₦{currentPrice.toLocaleString()}</strong> will be debited from your wallet and your filing will be queued for compliance processing.
                 </p>
 
                 <div className="flex gap-3 pt-2">
