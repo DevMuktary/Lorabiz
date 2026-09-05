@@ -176,14 +176,28 @@ function DraggableSupportBubble({ isVisible }: { isVisible: boolean }) {
 export function SupportWidgetBootstrapper() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const isDashboardRoute = Boolean(pathname?.startsWith("/dashboard"));
+
   const [supportConfig, setSupportConfig] = useState<{
     enabled: boolean;
     websiteToken: string;
     baseUrl: string;
   } | null>(null);
 
-  // 1. Fetch runtime support configuration
+  // If outside the dashboard/portal, hide chatwoot if already loaded
   useEffect(() => {
+    if (!isDashboardRoute && typeof window !== "undefined" && window.$chatwoot) {
+      try {
+        window.$chatwoot.toggle("close");
+        window.$chatwoot.toggleBubbleVisibility("hide");
+      } catch (e) {}
+    }
+  }, [isDashboardRoute]);
+
+  // 1. Fetch runtime support configuration only for dashboard routes
+  useEffect(() => {
+    if (!isDashboardRoute) return;
+
     fetch("/api/config/support")
       .then((res) => res.json())
       .then((data) => {
@@ -196,11 +210,11 @@ export function SupportWidgetBootstrapper() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [isDashboardRoute]);
 
   // 2. Initialize Chatwoot SDK with hideMessageBubble: true (so our custom draggable bubble controls it)
   useEffect(() => {
-    if (!supportConfig?.enabled || typeof window === "undefined") return;
+    if (!isDashboardRoute || !supportConfig?.enabled || typeof window === "undefined") return;
 
     if (document.getElementById("chatwoot-sdk-script")) return;
 
@@ -229,11 +243,11 @@ export function SupportWidgetBootstrapper() {
     };
 
     document.head.appendChild(script);
-  }, [supportConfig]);
+  }, [isDashboardRoute, supportConfig]);
 
   // 3. Identify Logged-in User
   useEffect(() => {
-    if (!supportConfig?.enabled || typeof window === "undefined") return;
+    if (!isDashboardRoute || !supportConfig?.enabled || typeof window === "undefined") return;
 
     const syncUser = () => {
       try {
@@ -264,14 +278,9 @@ export function SupportWidgetBootstrapper() {
     return () => {
       window.removeEventListener("chatwoot:ready", syncUser);
     };
-  }, [session, supportConfig]);
+  }, [isDashboardRoute, session, supportConfig]);
 
-  // Determine visibility per route (Hide on register and complete profile)
-  const isRegisterRoute =
-    pathname === "/auth/register" ||
-    pathname === "/auth/complete-profile";
+  if (!isDashboardRoute) return null;
 
-  const isVisible = Boolean(supportConfig?.enabled) && !isRegisterRoute;
-
-  return <DraggableSupportBubble isVisible={isVisible} />;
+  return <DraggableSupportBubble isVisible={Boolean(supportConfig?.enabled)} />;
 }
