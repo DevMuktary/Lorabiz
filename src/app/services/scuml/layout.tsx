@@ -62,6 +62,45 @@ export default function ScumlLayout({ children }: { children: React.ReactNode })
       'Assisted EFCC SCUML compliance and certification for Designated Non-Financial Businesses and Professions (DNFBP) in Nigeria.',
   };
 
+  const faqLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Who is required by law to get a SCUML certificate in Nigeria?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Under Nigerian Anti-Money Laundering regulations, all Designated Non-Financial Businesses and Professions (DNFBPs) must obtain SCUML certification. This includes Real Estate developers and agents, NGOs and Foundations, Law Firms, Accounting and Audit firms, Car Dealers, Jewelers, Hospitality businesses, and Construction companies.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I open a corporate bank account without SCUML?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'No. The Central Bank of Nigeria (CBN) strictly prohibits commercial banks from opening or operating corporate bank accounts for designated businesses without an official SCUML certificate issued by the EFCC.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What documents are needed for SCUML registration?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'You will need your CAC Registration Certificate, CAC Status Report, Tax Identification Number (TIN), Constitution/Bylaws (for NGOs), and valid IDs of directors or trustees.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How long does SCUML processing take on Lorabiz?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Our compliance desk reviews and submits your documentation directly into the EFCC SCUML processing pipeline, typically completing compliance certification within 2 to 5 business days.',
+        },
+      },
+    ],
+  };
+
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -92,6 +131,10 @@ export default function ScumlLayout({ children }: { children: React.ReactNode })
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
       <script
         type="application/ld+json"

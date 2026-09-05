@@ -5,10 +5,12 @@ import Image from "next/image";
 
 export default function Footer() {
   return (
-    <footer className="bg-[#0a0f1e] text-white pt-24 pb-12 border-t border-white/5 relative overflow-hidden">
+    <footer className="bg-[#0a0f1e] text-white pt-24 pb-12 border-t border-white/5 relative w-full max-w-[100vw] overflow-x-clip">
       
       {/* Subtle Background Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#c7365f]/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#c7365f]/5 rounded-full blur-[120px]" />
+      </div>
 
       <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative z-10">
         
@@ -45,6 +47,7 @@ export default function Footer() {
             <h3 className="text-[15px] font-semibold text-white tracking-wide">Services</h3>
             <div className="flex flex-col gap-4">
               <Link href="/services/cac" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">CAC Registration</Link>
+              <Link href="/services/cac/annual-returns" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">CAC Annual Returns</Link>
               <Link href="/services/scuml" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">SCUML Certificate</Link>
               <Link href="/services/tax-id" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Tax ID (TIN)</Link>
               <Link href="/services/nin" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">NIN Verification</Link>
@@ -56,9 +59,10 @@ export default function Footer() {
           <div className="flex flex-col gap-6">
             <h3 className="text-[15px] font-semibold text-white tracking-wide">Company</h3>
             <div className="flex flex-col gap-4">
-              <Link href="/about" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">About us</Link>
-              <Link href="/careers" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Careers</Link>
-              <Link href="/contact" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Contact us</Link>
+              <Link href="/contact" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Contact Us</Link>
+              <Link href="/faq" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">FAQs</Link>
+              <Link href="/compliance" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">NDPC Compliance</Link>
+              <Link href="/blog" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Blog &amp; Insights</Link>
             </div>
           </div>
 
@@ -66,10 +70,10 @@ export default function Footer() {
           <div className="flex flex-col gap-6">
             <h3 className="text-[15px] font-semibold text-white tracking-wide">Resources</h3>
             <div className="flex flex-col gap-4">
-              <Link href="/blog" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Blog</Link>
-              <Link href="/guides" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Guides</Link>
-              <Link href="/faq" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">FAQs</Link>
-              <Link href="/contact" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Help Center</Link>
+              <Link href="/blog" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Blog Articles</Link>
+              <Link href="/blog/how-to-file-cac-annual-returns-nigeria" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">CAC Filing Guide</Link>
+              <Link href="/faq" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Knowledge Base</Link>
+              <Link href="/contact" className="text-[15px] text-[#7a7a7a] hover:text-white transition-colors">Help Desk</Link>
             </div>
           </div>
 
@@ -104,7 +108,7 @@ export default function Footer() {
                 <input 
                   type="email" 
                   placeholder="Enter your email" 
-                  className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-4 pr-24 text-[14px] text-white placeholder-white/40 focus:outline-none focus:border-[#c7365f] transition-colors"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-4 pr-24 text-[16px] sm:text-[14px] text-white placeholder-white/40 focus:outline-none focus:border-[#c7365f] transition-colors"
                   required
                 />
                 <button 

@@ -3,12 +3,32 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import Image from "next/image"; // <-- Added Image import
+import Image from "next/image";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 
 export default function NINVerificationPage() {
   const [activeTab, setActiveTab] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const ninFaqs = [
+    {
+      question: "Which NIN slip format is accepted for CAC registration?",
+      answer: "The Corporate Affairs Commission (CAC) accepts the Regular Slip (with complete demographic details) and the Standard KYC Slip for registering Business Names, Limited Liability Companies, and NGOs.",
+    },
+    {
+      question: "Can I generate my NIN slip if I don't remember my 11-digit number?",
+      answer: "Yes. You can verify and retrieve your verified slip using the mobile phone number linked to your NIMC registration during your initial biometric enrollment.",
+    },
+    {
+      question: "What is the difference between Regular, Standard, and Premium NIN slips?",
+      answer: "The Regular Slip is a full-page format showing comprehensive demographic and tracking details; the Standard Slip is a compact format optimized for everyday bank KYC and telecom verification; the Premium Card format is a color card layout designed for wallets and corporate presentations.",
+    },
+    {
+      question: "How fast is NIN slip generation and download on Lorabiz?",
+      answer: "Generation is instantaneous. Once you enter your details, our direct verification infrastructure generates your downloadable, print-ready high-resolution PDF within seconds.",
+    },
+  ];
 
   const slipTypes = [
     {
@@ -30,7 +50,7 @@ export default function NINVerificationPage() {
       id: "standard-slip",
       title: "Standard Slip",
       subtitle: "Standard KYC Format",
-      desc: "A widely accepted format by both the Corporate Affairs Commission and commercial banks. It serves as a reliable, official alternative to the premium slip for everyday business setups and account openings.",
+      desc: "A widely accepted format by both the Corporate Affairs Commission and commercial banks. It serves as a reliable, verified alternative to the premium slip for everyday business setups and account openings.",
       bestFor: ["CAC Registrations", "Bank Accounts", "Telecom KYC"],
       delivery: "Instant Generation",
       icon: (
@@ -46,8 +66,8 @@ export default function NINVerificationPage() {
       id: "premium-slip",
       title: "Premium Slip",
       subtitle: "Colored Card Format",
-      desc: "The fully colored, premium card-like format. It is universally accepted across all major Nigerian institutions, government agencies, and corporate banks for advanced KYC checks and official verifications.",
-      bestFor: ["Corporate Bank Accounts", "International Verification", "Official Registrations"],
+      desc: "The fully colored, premium card-like format. It is universally accepted across all major Nigerian institutions, government agencies, and corporate banks for advanced KYC checks and identity verifications.",
+      bestFor: ["Corporate Bank Accounts", "International Verification", "Regulatory Registrations"],
       delivery: "Instant Generation",
       icon: (
         <svg viewBox="0 0 100 100" fill="none" className="w-full h-full opacity-80">
@@ -73,7 +93,7 @@ export default function NINVerificationPage() {
     },
     {
       title: "Instant Access",
-      desc: "Skip the long queues at NIMC centers. Simply enter your Phone Number or NIN on our platform to generate your official slip instantly.",
+      desc: "Skip the long queues at NIMC centers. Simply enter your Phone Number or NIN on our platform to generate your verified slip instantly.",
       icon: "M13 10V3L4 14h7v7l9-11h-7z"
     },
     {
@@ -84,15 +104,17 @@ export default function NINVerificationPage() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300">
+    <div className="relative min-h-screen w-full max-w-[100vw] overflow-x-clip bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300">
       <Navbar />
 
       <main className="pt-24 pb-20">
         
         {/* ───── HERO SECTION ───── */}
         <section className="relative pt-20 pb-16 px-6 overflow-hidden">
-          {/* BRAND PINK/RED GLOW */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
+          {/* BRAND PINK/RED GLOW - contained to avoid mobile viewport drag */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
+          </div>
           
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <div className="w-full lg:w-[55%] z-10">
@@ -102,13 +124,13 @@ export default function NINVerificationPage() {
               </div>
               <h1 
                 className="font-normal tracking-tight text-[#1a1a1a] dark:text-white mb-6"
-                style={{ fontSize: 'clamp(40px, 5vw, 64px)', lineHeight: '1.05', fontFamily: 'system-ui, sans-serif' }}
+                style={{ fontSize: 'clamp(34px, 4.5vw, 58px)', lineHeight: '1.08', fontFamily: 'system-ui, sans-serif' }}
               >
-                Generate your NIN <br />
-                Slip instantly.
+                NIN Slip Verification &amp; <br className="hidden sm:inline" />
+                Printing Online in Nigeria
               </h1>
-              <p className="text-[18px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
-                We integrated this feature directly into LoraBiz because it is a strict requirement for CAC applications and bank setups. Simply enter your Phone Number or NIN to generate your slip.
+              <p className="text-[17px] sm:text-[18px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
+                Instant online retrieval and verification of Regular, Standard, and Premium card layouts for CAC business registrations and commercial banking KYC. Simply enter your Phone Number or NIN.
               </p>
               {/* BRAND PINK/RED BUTTON */}
               <Link
@@ -128,7 +150,7 @@ export default function NINVerificationPage() {
               
               <div className="bg-white dark:bg-[#111827] border border-black/5 dark:border-white/10 rounded-[32px] p-8 sm:p-10 shadow-2xl relative z-10 w-full max-w-md">
                 
-                {/* OFFICIAL NIMC LOGO */}
+                {/* NIMC LOGO */}
                 <div className="h-20 w-auto inline-flex bg-white rounded-xl p-3 mb-8 items-center justify-center border border-black/5 shadow-sm">
                   <Image 
                     src="/nimc.png" 
@@ -155,7 +177,7 @@ export default function NINVerificationPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[14px] font-bold tracking-wide text-[#1a1a1a] dark:text-white leading-tight mb-1">For Official Use Only</p>
+                    <p className="text-[14px] font-bold tracking-wide text-[#1a1a1a] dark:text-white leading-tight mb-1">For Verified Use Only</p>
                     <p className="text-[13px] text-[#767676] dark:text-white/50 leading-snug">To ensure platform integrity, slip generation must be for legal purposes. Logs are maintained in accordance with our terms of service.</p>
                   </div>
                 </div>
@@ -291,6 +313,49 @@ export default function NINVerificationPage() {
               </AnimatePresence>
             </div>
 
+          </div>
+        </section>
+
+        {/* ───── ON-PAGE FAQ SECTION FOR DISCOVERY SEARCH ───── */}
+        <section className="py-16 px-4 sm:px-6 bg-zinc-50 dark:bg-[#0c1222] border-t border-black/5 dark:border-white/5">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-10">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#c7365f] mb-2 block">
+                Common Questions
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white mb-2">
+                Frequently Asked Questions About NIN Verification &amp; Slips
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                Key questions regarding NIN slip retrieval, verification formats, and CAC/bank compliance in Nigeria.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {ninFaqs.map((faq, idx) => {
+                const isOpen = openFaq === idx;
+                return (
+                  <div
+                    key={idx}
+                    className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900/40"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? null : idx)}
+                      className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 font-bold text-sm text-zinc-900 dark:text-white hover:text-[#c7365f] transition-colors cursor-pointer"
+                    >
+                      <span>{faq.question}</span>
+                      <span className="text-sm font-mono text-zinc-400">{isOpen ? "−" : "+"}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 pb-4 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed border-t border-zinc-100 dark:border-zinc-800/60 pt-3">
+                        {faq.answer}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 

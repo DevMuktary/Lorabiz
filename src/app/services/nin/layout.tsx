@@ -62,6 +62,45 @@ export default function NinLayout({ children }: { children: React.ReactNode }) {
       'Secure retrieval and formatting of National Identification Number (NIN) slips: Regular demographic format, Standard KYC slip, and Premium card layout.',
   };
 
+  const faqLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Which NIN slip format is accepted for CAC registration?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'The Corporate Affairs Commission (CAC) accepts the Regular Slip (with complete demographic details) and the Standard KYC Slip for registering Business Names, Limited Liability Companies, and NGOs.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I generate my NIN slip if I do not remember my 11-digit number?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. You can verify and retrieve your verified slip using the mobile phone number linked to your NIMC registration during your initial biometric enrollment.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What is the difference between Regular, Standard, and Premium NIN slips?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'The Regular Slip is a full-page format showing comprehensive demographic and tracking details; the Standard Slip is a compact format optimized for everyday bank KYC and telecom verification; the Premium Card format is a color card layout designed for wallets and corporate presentations.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How fast is NIN slip generation and download on Lorabiz?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Generation is instantaneous. Once you enter your details, our direct verification infrastructure generates your downloadable, print-ready high-resolution PDF within seconds.',
+        },
+      },
+    ],
+  };
+
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -92,6 +131,10 @@ export default function NinLayout({ children }: { children: React.ReactNode }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
       <script
         type="application/ld+json"

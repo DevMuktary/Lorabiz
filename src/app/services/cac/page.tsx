@@ -9,6 +9,26 @@ import Footer from "@/components/landing/Footer";
 
 export default function CACRegistrationPage() {
   const [activeTab, setActiveTab] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const cacFaqs = [
+    {
+      question: "How long does CAC registration take on Lorabiz?",
+      answer: "Business Names take just 1 to 2 working hours once submitted. Limited Liability Companies (LLC / LTD) take 3 to 7 business days, and NGOs / Incorporated Trustees take 1 to 2 months due to statutory newspaper publication requirements.",
+    },
+    {
+      question: "What is the difference between a Business Name and an LLC?",
+      answer: "A Business Name (Sole Proprietorship or Partnership) is suitable for small businesses, retail shops, and freelancers. An LLC is a separate legal entity offering limited liability protection, making your personal assets safe and enabling investment from outside partners.",
+    },
+    {
+      question: "What documents do I need to register a business with CAC?",
+      answer: "You only need valid Government-issued ID (e.g. your NIN Regular Slip or National ID), your signature on plain paper, passport photograph, and basic business details (name, address, business nature).",
+    },
+    {
+      question: "Does CAC registration include a Tax ID (TIN)?",
+      answer: "Yes! Every business registered through LoraBiz automatically gets an official Tax Identification Number (TIN) generated through our direct integration with the Joint Tax Board (JTB) / Nigeria Revenue Service.",
+    },
+  ];
 
   const entityTypes = [
     {
@@ -85,15 +105,17 @@ export default function CACRegistrationPage() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300">
+    <div className="relative min-h-screen bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300 w-full max-w-[100vw] overflow-x-clip">
       <Navbar />
 
-      <main className="pt-24 pb-20">
+      <main className="pt-24 pb-20 w-full max-w-full overflow-x-clip">
         
         {/* ───── HERO SECTION ───── */}
-        <section className="relative pt-20 pb-16 px-6 overflow-hidden">
-          {/* BRAND PINK/RED GLOW */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
+        <section className="relative pt-20 pb-16 px-4 sm:px-6">
+          {/* BRAND PINK/RED GLOW SAFELY CONTAINED */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 right-0 w-[400px] sm:w-[500px] h-[500px] bg-[#c7365f]/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
+          </div>
           
           <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <div className="w-full lg:w-[55%] z-10">
@@ -103,13 +125,13 @@ export default function CACRegistrationPage() {
               </div>
               <h1 
                 className="font-normal tracking-tight text-[#1a1a1a] dark:text-white mb-6"
-                style={{ fontSize: 'clamp(40px, 5vw, 64px)', lineHeight: '1.05', fontFamily: 'system-ui, sans-serif' }}
+                style={{ fontSize: 'clamp(34px, 4.5vw, 54px)', lineHeight: '1.1', fontFamily: 'system-ui, sans-serif' }}
               >
-                Legitimize your <br />
-                business instantly.
+                CAC Online Registration <br />
+                <span className="font-semibold text-[#c7365f]">in Nigeria</span>
               </h1>
-              <p className="text-[18px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
-                Skip the endless paperwork and long queues. LoraBiz completely automates your CAC registration so you can get your official certificate and start operating globally.
+              <p className="text-[17px] text-[#767676] dark:text-white/70 mb-8 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
+                Fast, accredited CAC business registration in Nigeria. Register your Business Name in 1–2 hours, incorporate an LLC, or register an NGO. Download your official certificate, status report, and Tax ID online.
               </p>
               {/* BRAND PINK/RED BUTTON */}
               <Link
@@ -284,6 +306,49 @@ export default function CACRegistrationPage() {
               </AnimatePresence>
             </div>
 
+          </div>
+        </section>
+
+        {/* ───── ON-PAGE FAQ SECTION FOR DISCOVERY SEARCH ───── */}
+        <section className="py-16 px-4 sm:px-6 bg-zinc-50 dark:bg-[#0c1222] border-t border-black/5 dark:border-white/5">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-10">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#c7365f] mb-2 block">
+                Common Questions
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white mb-2">
+                Frequently Asked Questions About CAC Registration
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                Everything you need to know about registering a company or business name in Nigeria.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {cacFaqs.map((faq, idx) => {
+                const isOpen = openFaq === idx;
+                return (
+                  <div
+                    key={idx}
+                    className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900/40"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? null : idx)}
+                      className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 font-bold text-sm text-zinc-900 dark:text-white hover:text-[#c7365f] transition-colors cursor-pointer"
+                    >
+                      <span>{faq.question}</span>
+                      <span className="text-sm font-mono text-zinc-400">{isOpen ? "−" : "+"}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 pb-4 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed border-t border-zinc-100 dark:border-zinc-800/60 pt-3">
+                        {faq.answer}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 

@@ -9,6 +9,26 @@ import Footer from "@/components/landing/Footer";
 
 export default function SCUMLRegistrationPage() {
   const [activeTab, setActiveTab] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const scumlFaqs = [
+    {
+      question: "Who is required by law to get a SCUML certificate in Nigeria?",
+      answer: "Under Nigerian Anti-Money Laundering regulations, all Designated Non-Financial Businesses and Professions (DNFBPs) must obtain SCUML certification. This includes Real Estate developers and agents, NGOs and Foundations, Law Firms, Accounting and Audit firms, Car Dealers, Jewelers, Hospitality businesses, and Construction companies.",
+    },
+    {
+      question: "Can I open a corporate bank account without SCUML?",
+      answer: "No. The Central Bank of Nigeria (CBN) strictly prohibits commercial banks from opening or operating corporate bank accounts for designated businesses without an official SCUML certificate issued by the EFCC.",
+    },
+    {
+      question: "What documents are needed for SCUML registration?",
+      answer: "You will need your CAC Registration Certificate, CAC Status Report, Tax Identification Number (TIN), Constitution/Bylaws (for NGOs), and valid IDs of directors or trustees.",
+    },
+    {
+      question: "How long does SCUML processing take on Lorabiz?",
+      answer: "Our compliance desk reviews and submits your documentation directly into the EFCC SCUML processing pipeline, typically completing compliance certification within 2 to 5 business days.",
+    },
+  ];
 
   const scumlCategories = [
     {
@@ -119,13 +139,13 @@ export default function SCUMLRegistrationPage() {
               </div>
               <h1 
                 className="font-normal tracking-tight text-[#1a1a1a] dark:text-white mb-6"
-                style={{ fontSize: 'clamp(40px, 5vw, 64px)', lineHeight: '1.05', fontFamily: 'system-ui, sans-serif' }}
+                style={{ fontSize: 'clamp(34px, 4.5vw, 54px)', lineHeight: '1.1', fontFamily: 'system-ui, sans-serif' }}
               >
-                Secure your SCUML <br />
-                Certificate effortlessly.
+                SCUML Certificate Registration <br />
+                <span className="font-semibold text-[#c7365f]">Online in Nigeria</span>
               </h1>
-              <p className="text-[18px] text-[#767676] dark:text-white/60 mb-10 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
-                Required by the EFCC for Designated Non-Financial Businesses and Professions (DNFBPs). We handle the bureaucratic bottlenecks so you don't have to.
+              <p className="text-[17px] text-[#767676] dark:text-white/70 mb-8 leading-relaxed max-w-lg" style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}>
+                Fast-track your EFCC Special Control Unit Against Money Laundering (SCUML) certificate. Mandatory for Real Estate, NGOs, Law Firms, Consulting, and opening corporate bank accounts in Nigeria.
               </p>
               {/* BRAND PINK/RED BUTTON */}
               <Link
@@ -301,6 +321,49 @@ export default function SCUMLRegistrationPage() {
               </AnimatePresence>
             </div>
 
+          </div>
+        </section>
+
+        {/* ───── ON-PAGE FAQ SECTION FOR DISCOVERY SEARCH ───── */}
+        <section className="py-16 px-4 sm:px-6 bg-zinc-50 dark:bg-[#0c1222] border-t border-black/5 dark:border-white/5">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-10">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#c7365f] mb-2 block">
+                Common Questions
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white mb-2">
+                Frequently Asked Questions About SCUML Registration
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                Key compliance details regarding the EFCC Special Control Unit Against Money Laundering.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {scumlFaqs.map((faq, idx) => {
+                const isOpen = openFaq === idx;
+                return (
+                  <div
+                    key={idx}
+                    className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900/40"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? null : idx)}
+                      className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 font-bold text-sm text-zinc-900 dark:text-white hover:text-[#c7365f] transition-colors cursor-pointer"
+                    >
+                      <span>{faq.question}</span>
+                      <span className="text-sm font-mono text-zinc-400">{isOpen ? "−" : "+"}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 pb-4 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed border-t border-zinc-100 dark:border-zinc-800/60 pt-3">
+                        {faq.answer}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 
