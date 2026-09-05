@@ -18,12 +18,14 @@ export default function BlogIndexPage() {
       : allPosts.filter((p) => p.category === selectedCategory);
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300">
+    <div className="relative min-h-screen bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300 w-full max-w-[100vw] overflow-x-clip">
       <Navbar />
 
-      <main className="pt-32 pb-24 px-6 overflow-hidden">
-        {/* Glow ambient background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
+      <main className="pt-32 pb-24 px-4 sm:px-6 w-full max-w-full overflow-x-clip">
+        {/* Glow ambient background safely contained */}
+        <div className="absolute top-0 left-0 right-0 h-[350px] overflow-hidden pointer-events-none">
+          <div className="w-[400px] sm:w-[600px] h-[300px] mx-auto bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-[100px]" />
+        </div>
 
         <div className="max-w-5xl mx-auto relative z-10">
           {/* HEADER */}
@@ -109,15 +111,15 @@ export default function BlogIndexPage() {
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">
               Get the latest CAC, tax, and corporate compliance updates delivered to your inbox.
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
               <input
                 type="email"
                 placeholder="Enter your business email"
-                className="flex-1 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-emerald-500"
+                className="flex-1 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-base sm:text-sm outline-none focus:border-emerald-500"
               />
               <button
                 type="button"
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-colors shrink-0"
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors shrink-0 cursor-pointer"
               >
                 Subscribe
               </button>

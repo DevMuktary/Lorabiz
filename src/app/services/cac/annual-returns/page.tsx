@@ -91,12 +91,14 @@ export default function AnnualReturnsLandingPage() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300">
+    <div className="relative min-h-screen bg-white dark:bg-[#0a0f1e] text-zinc-900 dark:text-white transition-colors duration-300 w-full max-w-[100vw] overflow-x-clip">
       <Navbar />
 
-      <main className="pt-32 pb-24 px-6 overflow-hidden">
-        {/* Glow ambient background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[450px] bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
+      <main className="pt-32 pb-24 px-4 sm:px-6 w-full max-w-full overflow-x-clip">
+        {/* Glow ambient background safely contained */}
+        <div className="absolute top-0 left-0 right-0 h-[350px] overflow-hidden pointer-events-none">
+          <div className="w-[400px] sm:w-[600px] h-[300px] mx-auto bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-[100px]" />
+        </div>
 
         <div className="max-w-5xl mx-auto relative z-10">
           
