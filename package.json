@@ -10,8 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:seed": "prisma db seed",
-    "seed": "node prisma/seed.js",
-    "index:fast": "node scripts/fast-index.mjs"
+    "seed": "node prisma/seed.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
