@@ -38,8 +38,19 @@ export async function DELETE(
       return NextResponse.json({ success: false, message: "API key not found" }, { status: 404 });
     }
 
-    if (existingKey.status === ApiKeyStatus.REVOKED) {
-      return NextResponse.json({ success: true, message: "Key is already revoked" });
+    const { searchParams } = new URL(req.url);
+    const isPermanent = searchParams.get("permanent") === "true";
+
+    // If key is already revoked OR permanent deletion is requested: delete permanently
+    if (existingKey.status === ApiKeyStatus.REVOKED || isPermanent) {
+      await invalidateKeyCache(existingKey.keyHash);
+      await prisma.apiKey.delete({
+        where: { id: existingKey.id },
+      });
+      return NextResponse.json({
+        success: true,
+        message: "API key permanently deleted",
+      });
     }
 
     // Update status to REVOKED

@@ -124,7 +124,7 @@ export const WebhookConfigCard: React.FC = () => {
         <div>
           <h2 className="text-lg font-bold text-foreground">Webhook Notifications</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Receive automated real-time status updates for asynchronous tasks (IPE clearance, verification status, and batch jobs).
+            Receive automated real-time status updates for asynchronous tasks (IPE clearance, NIN validation, record modifications, CAC filings, and personalization).
           </p>
         </div>
       </div>

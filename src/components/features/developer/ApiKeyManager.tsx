@@ -52,6 +52,11 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
   const [isRevoking, setIsRevoking] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
 
+  // Custom In-App Delete Modal state (permanently delete revoked keys)
+  const [keyToDelete, setKeyToDelete] = useState<ApiKeyItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const handleOpenCreateModal = () => {
     if (isLive && !isLiveApproved) {
       onRequestLiveAccess();
@@ -117,6 +122,30 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
       setRevokeError("Error revoking key: " + err.message);
     } finally {
       setIsRevoking(false);
+    }
+  };
+
+  const confirmDeleteKey = async () => {
+    if (!keyToDelete) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const res = await fetch(`/api/developer/keys/${keyToDelete.id}?permanent=true`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setKeyToDelete(null);
+        onRefreshKeys();
+      } else {
+        setDeleteError(data.message || "Failed to permanently delete key.");
+      }
+    } catch (err: any) {
+      setDeleteError("Error deleting key: " + err.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -230,7 +259,7 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
                     {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Never"}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {k.status === "ACTIVE" && (
+                    {k.status === "ACTIVE" ? (
                       <button
                         onClick={() => {
                           setKeyToRevoke(k);
@@ -240,6 +269,18 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
                       >
                         <XCircle className="h-3.5 w-3.5" />
                         <span>Revoke</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setKeyToDelete(k);
+                          setDeleteError(null);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                        title="Permanently Delete Key"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Delete</span>
                       </button>
                     )}
                   </td>
@@ -343,6 +384,52 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
               >
                 <XCircle className="h-3.5 w-3.5" />
                 <span>{isRevoking ? "Revoking..." : "Revoke Key"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM IN-APP CONFIRMATION MODAL FOR PERMANENT KEY DELETION */}
+      {keyToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-center gap-2.5 text-red-500">
+              <Trash2 className="h-6 w-6" />
+              <h3 className="text-lg font-bold text-foreground">Permanently Delete Key</h3>
+            </div>
+
+            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to permanently remove <strong>&quot;{keyToDelete.name}&quot;</strong> (<code>{keyToDelete.keyPrefix}</code>) from your dashboard?
+            </p>
+
+            <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground leading-relaxed">
+              <strong className="text-foreground">Safe Cleanup:</strong> This key has already been revoked. Deleting it cleans up your key list. All historical usage and billing logs associated with this key will remain preserved for your audit trail.
+            </div>
+
+            {deleteError && (
+              <div className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-600 dark:text-red-400">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setKeyToDelete(null)}
+                disabled={isDeleting}
+                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteKey}
+                disabled={isDeleting}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-red-500 transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{isDeleting ? "Deleting..." : "Permanently Delete"}</span>
               </button>
             </div>
           </div>
