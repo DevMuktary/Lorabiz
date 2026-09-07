@@ -1,29 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { DeveloperConsoleHeader } from "@/components/features/developer/DeveloperConsoleHeader";
 import { DeveloperMetricCards } from "@/components/features/developer/DeveloperMetricCards";
 import { ApiKeyManager, ApiKeyItem } from "@/components/features/developer/ApiKeyManager";
 import { WebhookConfigCard } from "@/components/features/developer/WebhookConfigCard";
 import { RequestStreamTable } from "@/components/features/developer/RequestStreamTable";
-import { ApiServiceHistoryTable } from "@/components/features/developer/ApiServiceHistoryTable";
 import { LiveActivationModal } from "@/components/features/developer/LiveActivationModal";
-import { Key, History, Activity, Webhook, ShieldCheck } from "lucide-react";
 
-type DeveloperTab = "keys" | "history" | "debugger";
-
-function DeveloperDashboardContent() {
+export default function DeveloperDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Active Tab: keys | history | debugger
-  const urlTab = searchParams.get("tab") as DeveloperTab | null;
-  const [activeTab, setActiveTab] = useState<DeveloperTab>(
-    urlTab === "history" || urlTab === "debugger" ? urlTab : "keys"
-  );
 
   const [environment, setEnvironment] = useState<"LIVE" | "TEST">("TEST");
   const [stats, setStats] = useState({
@@ -44,14 +33,6 @@ function DeveloperDashboardContent() {
 
   const [developerProfile, setDeveloperProfile] = useState<any | null>(null);
   const [isLiveActivationOpen, setIsLiveActivationOpen] = useState(false);
-
-  // Sync tab with URL search parameter
-  const handleTabChange = (tab: DeveloperTab) => {
-    setActiveTab(tab);
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", tab);
-    window.history.replaceState({}, "", url.toString());
-  };
 
   // Authentication gate
   useEffect(() => {
@@ -77,7 +58,7 @@ function DeveloperDashboardContent() {
           totalCallsToday: data.data.totalCallsToday,
           successfulCallsToday: data.data.successfulCallsToday || 0,
           failedCallsToday: data.data.failedCallsToday || 0,
-          successRate: data.data.successRate,
+          successRate: data.data.successRate, // null when no calls
           liveKeysCount: data.data.liveKeysCount,
           testKeysCount: data.data.testKeysCount,
         });
@@ -160,15 +141,15 @@ function DeveloperDashboardContent() {
   }
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* 1. Fluid Console Header */}
+    <div className="space-y-8 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* 1. Header with Switch Toggle & Hub Links */}
       <DeveloperConsoleHeader
         environment={environment}
         onToggleEnvironment={handleToggleEnvironment}
         liveApprovalStatus={developerProfile?.status}
       />
 
-      {/* 2. Fluid Executive Command Deck (Stretches smoothly) */}
+      {/* 2. Real-Time Metric Stat Cards (Balance, Total Spent, Calls Today) */}
       <DeveloperMetricCards
         environment={environment}
         walletBalance={stats.walletBalance}
@@ -180,96 +161,26 @@ function DeveloperDashboardContent() {
         successRate={stats.successRate}
       />
 
-      {/* 3. Sleek Workspace Tabs (Stripe / Vercel style) */}
-      <div className="border-b border-border/80">
-        <div className="flex space-x-1 sm:space-x-3 overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => handleTabChange("keys")}
-            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
-              activeTab === "keys"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-            }`}
-          >
-            <Key className="h-4 w-4" />
-            <span>API Keys &amp; Webhooks</span>
-          </button>
+      {/* 3. API Keys Management Section */}
+      <ApiKeyManager
+        environment={environment}
+        keys={keys}
+        isLoading={isKeysLoading}
+        onRefreshKeys={() => {
+          loadKeys();
+          loadOverview();
+        }}
+        onRequestLiveAccess={() => setIsLiveActivationOpen(true)}
+        liveApprovalStatus={developerProfile?.status}
+      />
 
-          <button
-            type="button"
-            onClick={() => handleTabChange("history")}
-            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
-              activeTab === "history"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-            }`}
-          >
-            <History className="h-4 w-4" />
-            <span>Unified Service History</span>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-              All Orders
-            </span>
-          </button>
+      {/* 4. Webhook Configuration Section */}
+      <WebhookConfigCard />
 
-          <button
-            type="button"
-            onClick={() => handleTabChange("debugger")}
-            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
-              activeTab === "debugger"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-            }`}
-          >
-            <Activity className="h-4 w-4" />
-            <span>HTTP Request Debugger</span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              Live Stream
-            </span>
-          </button>
-        </div>
-      </div>
+      {/* 5. Real-Time HTTP Request Stream Logs Table (API Debugger) */}
+      <RequestStreamTable environment={environment} />
 
-      {/* 4. Tab Panels */}
-      <div className="w-full pt-1">
-        {/* TAB 1: API Keys & Webhooks */}
-        {activeTab === "keys" && (
-          <div className="w-full space-y-6 animate-in fade-in duration-200">
-            <ApiKeyManager
-              environment={environment}
-              keys={keys}
-              isLoading={isKeysLoading}
-              onRefreshKeys={() => {
-                loadKeys();
-                loadOverview();
-              }}
-              onRequestLiveAccess={() => setIsLiveActivationOpen(true)}
-              liveApprovalStatus={developerProfile?.status}
-            />
-
-            <WebhookConfigCard />
-          </div>
-        )}
-
-        {/* TAB 2: ONE DEDICATED API Service History Hub */}
-        {activeTab === "history" && (
-          <div className="w-full animate-in fade-in duration-200">
-            <ApiServiceHistoryTable />
-          </div>
-        )}
-
-        {/* TAB 3: HTTP Request Debugger & Live Traffic Stream */}
-        {activeTab === "debugger" && (
-          <div className="w-full animate-in fade-in duration-200">
-            <RequestStreamTable
-              environment={environment}
-              onViewServiceHistory={() => handleTabChange("history")}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* 5. Live Mode 1-Minute Compliance Modal */}
+      {/* 6. Live Mode 1-Minute Compliance Modal */}
       <LiveActivationModal
         isOpen={isLiveActivationOpen}
         onClose={() => setIsLiveActivationOpen(false)}
@@ -280,19 +191,5 @@ function DeveloperDashboardContent() {
         currentProfile={developerProfile}
       />
     </div>
-  );
-}
-
-export default function DeveloperDashboardPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="text-xs text-muted-foreground animate-pulse">Loading Developer Console...</div>
-        </div>
-      }
-    >
-      <DeveloperDashboardContent />
-    </Suspense>
   );
 }
