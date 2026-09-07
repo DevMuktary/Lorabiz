@@ -38,6 +38,15 @@ export const LiveActivationModal: React.FC<LiveActivationModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const normalizeUrl = (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    if (!/^https?:\/\//i.test(trimmed)) {
+      return `https://${trimmed}`;
+    }
+    return trimmed;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!attestationAccepted) {
@@ -50,6 +59,9 @@ export const LiveActivationModal: React.FC<LiveActivationModalProps> = ({
       return;
     }
 
+    const cleanWebsite = normalizeUrl(websiteUrl);
+    setWebsiteUrl(cleanWebsite);
+
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -59,7 +71,7 @@ export const LiveActivationModal: React.FC<LiveActivationModalProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           businessName: businessName.trim(),
-          websiteUrl: websiteUrl.trim() || undefined,
+          websiteUrl: cleanWebsite || undefined,
           ownerNin: ownerNin.trim(),
           useCase,
           customUseCase: useCase === "Other" ? customUseCase.trim() : undefined,
@@ -152,7 +164,7 @@ export const LiveActivationModal: React.FC<LiveActivationModalProps> = ({
                 required
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="e.g. QuickLoan Fintech or Kano Logistics"
+                placeholder="e.g. Apex Corporate Services or Kano Logistics"
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -162,10 +174,15 @@ export const LiveActivationModal: React.FC<LiveActivationModalProps> = ({
                 Website or Application URL <span className="text-muted-foreground font-normal">(Optional)</span>
               </label>
               <input
-                type="url"
+                type="text"
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://yourwebsite.com or App Store link"
+                onBlur={() => {
+                  if (websiteUrl) {
+                    setWebsiteUrl(normalizeUrl(websiteUrl));
+                  }
+                }}
+                placeholder="https://yourwebsite.com or company.com"
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -201,7 +218,7 @@ export const LiveActivationModal: React.FC<LiveActivationModalProps> = ({
                 <option value="Corporate Services & Company Registration">Corporate Services &amp; Company Registration</option>
                 <option value="Customer KYC & Identity Verification">Customer KYC &amp; Identity Verification</option>
                 <option value="Staff & Employee Onboarding">Staff &amp; Employee Onboarding</option>
-                <option value="Fintech, Banking & Lending Platform">Fintech, Banking &amp; Lending Platform</option>
+                <option value="Fintech & Digital Payments">Fintech &amp; Digital Payments</option>
                 <option value="Agent Banking & POS Operations">Agent Banking &amp; POS Operations</option>
                 <option value="E-Commerce & Logistics">E-Commerce &amp; Logistics</option>
                 <option value="Other">Other (Specify below)</option>

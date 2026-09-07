@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { History, ArrowRight } from "lucide-react";
+import { SpinnerGap } from "@phosphor-icons/react";
 import { DeveloperConsoleHeader } from "@/components/features/developer/DeveloperConsoleHeader";
 import { DeveloperMetricCards } from "@/components/features/developer/DeveloperMetricCards";
 import { ApiKeyManager, ApiKeyItem } from "@/components/features/developer/ApiKeyManager";
 import { WebhookConfigCard } from "@/components/features/developer/WebhookConfigCard";
+import { RequestStreamTable } from "@/components/features/developer/RequestStreamTable";
 import { LiveActivationModal } from "@/components/features/developer/LiveActivationModal";
 
 export default function DeveloperDashboardPage() {
@@ -135,8 +135,11 @@ export default function DeveloperDashboardPage() {
 
   if (status === "loading") {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="text-xs text-muted-foreground animate-pulse">Loading Developer Hub...</div>
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3">
+        <SpinnerGap weight="bold" className="h-9 w-9 animate-spin text-primary" />
+        <p className="text-xs font-semibold text-muted-foreground animate-pulse">
+          Loading Developer Hub...
+        </p>
       </div>
     );
   }
@@ -178,29 +181,8 @@ export default function DeveloperDashboardPage() {
       {/* 4. Webhook Configuration Section */}
       <WebhookConfigCard />
 
-      {/* 5. Dedicated API Service History Navigation Card */}
-      <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm hover:border-border hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-start sm:items-center gap-3.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <History className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground sm:text-base">
-              API Service History &amp; Request Traces
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 max-w-xl">
-              Inspect historical endpoint logs, delivery payloads, response status codes, and latency traces across all identity services.
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/dashboard/developer/history"
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border px-4 py-2.5 text-xs font-bold text-foreground transition-all hover:scale-[1.02] active:scale-[0.98] shrink-0"
-        >
-          <span>Open Service History</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
+      {/* 5. Real-Time API Request History (Payloads Sent & Responses Returned) */}
+      <RequestStreamTable environment={environment} />
 
       {/* 6. Live Mode 1-Minute Compliance Modal */}
       <LiveActivationModal
