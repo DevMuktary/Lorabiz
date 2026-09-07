@@ -25,6 +25,7 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [newlyArrivedIds, setNewlyArrivedIds] = useState<Set<string>>(new Set());
 
   // Filters
   const [serviceFilter, setServiceFilter] = useState("ALL");
@@ -35,6 +36,65 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
 
   useEffect(() => {
     fetchLogs(true);
+  }, [environment, serviceFilter, statusFilter]);
+
+  // Real-Time Live Log Ingestion: poll every 2.5 seconds for latest logs without flickering
+  useEffect(() => {
+    let isCancelled = false;
+
+    const pollLatestLogs = async () => {
+      // Only poll when window/tab is visible
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+
+      try {
+        const url = new URL("/api/developer/logs", window.location.origin);
+        url.searchParams.set("environment", environment);
+        url.searchParams.set("service", serviceFilter);
+        url.searchParams.set("statusCode", statusFilter);
+        url.searchParams.set("limit", "10");
+
+        const res = await fetch(url.toString(), { cache: "no-store" });
+        const data = await res.json();
+
+        if (data.success && Array.isArray(data.data?.logs) && !isCancelled) {
+          const freshLogs: LogItem[] = data.data.logs;
+          setLogs((prevLogs) => {
+            if (!prevLogs.length) return freshLogs;
+            const existingIds = new Set(prevLogs.map((l) => l.id));
+            const newItems = freshLogs.filter((l) => !existingIds.has(l.id));
+            if (newItems.length > 0) {
+              setNewlyArrivedIds((prev) => {
+                const nextSet = new Set(prev);
+                newItems.forEach((item) => nextSet.add(item.id));
+                return nextSet;
+              });
+
+              // Clear row highlight after 2.5s
+              setTimeout(() => {
+                setNewlyArrivedIds((prev) => {
+                  const updated = new Set(prev);
+                  newItems.forEach((item) => updated.delete(item.id));
+                  return updated;
+                });
+              }, 2500);
+
+              return [...newItems, ...prevLogs];
+            }
+            return prevLogs;
+          });
+        }
+      } catch (err) {
+        // silent fail during background poll
+      }
+    };
+
+    const interval = setInterval(pollLatestLogs, 2500);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
   }, [environment, serviceFilter, statusFilter]);
 
   const fetchLogs = async (reset = false) => {
@@ -101,14 +161,21 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
       {/* Header & Filter Controls */}
       <div className="flex flex-col gap-4 border-b border-border/60 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Activity className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-bold text-foreground">
               API Request History
             </h2>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span>Live Ingestion</span>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time HTTP requests, payloads sent, and response status codes. Click any row to inspect.
+            Real-time HTTP requests, payloads sent, and response status codes. Updates automatically without manual refresh.
           </p>
         </div>
 
@@ -181,12 +248,18 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {logs.map((log) => (
-                <tr
-                  key={log.id}
-                  onClick={() => setInspectLogId(log.id)}
-                  className="cursor-pointer transition-colors hover:bg-muted/40"
-                >
+              {logs.map((log) => {
+                const isNew = newlyArrivedIds.has(log.id);
+                return (
+                  <tr
+                    key={log.id}
+                    onClick={() => setInspectLogId(log.id)}
+                    className={`cursor-pointer transition-all duration-500 ${
+                      isNew
+                        ? "bg-emerald-500/15 dark:bg-emerald-500/20 ring-1 ring-emerald-500/30 animate-in fade-in slide-in-from-top-2"
+                        : "hover:bg-muted/40"
+                    }`}
+                  >
                   <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleTimeString([], {
                       hour: "2-digit",
@@ -214,8 +287,9 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
                     </span>
                   </td>
                 </tr>
-              ))}
-            </tbody>
+              );
+            })}
+          </tbody>
           </table>
         )}
       </div>
