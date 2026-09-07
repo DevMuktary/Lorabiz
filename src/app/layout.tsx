@@ -73,12 +73,34 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-    { media: '(prefers-color-scheme: dark)', color: '#020817' },
-  ],
+  // `themeColor` is deliberately not declared here. Next would key it on
+  // `prefers-color-scheme`, but this app themes itself with a `.dark` class, so the
+  // two desync. ThemeColorUpdater owns the tag below instead.
+  // `viewportFit: 'cover'` is also intentionally absent: nothing in the app reads
+  // `env(safe-area-inset-*)`, so cover only let the page paint under the iOS status
+  // bar and Safari toolbar with nothing compensating for it.
 };
+
+/**
+ * First-paint fallback for the theme-color tag, mirroring `--background` in
+ * globals.css. ThemeColorUpdater takes over on hydration and reads the CSS variable
+ * directly, so these two values only cover the frame before it mounts.
+ */
+const THEME_COLOR_LIGHT = '#f8fafc';
+const THEME_COLOR_DARK = '#020817';
+
+// next-themes applies its class from inside <body>, so it hasn't run yet at this
+// point — read its stored preference directly to avoid a light bar flashing on a
+// dark-mode load.
+const themeColorBootstrap = `
+try {
+  var stored = localStorage.getItem('theme');
+  var isDark = stored === 'dark' || ((!stored || stored === 'system') &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches);
+  var meta = document.getElementById('app-theme-color');
+  if (meta) meta.setAttribute('content', isDark ? '${THEME_COLOR_DARK}' : '${THEME_COLOR_LIGHT}');
+} catch (e) {}
+`;
 
 export default function RootLayout({
   children,
@@ -116,6 +138,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Owned at runtime by ThemeColorUpdater; this is only the first-paint value. */}
+        <meta name="theme-color" id="app-theme-color" content={THEME_COLOR_LIGHT} />
+        <script dangerouslySetInnerHTML={{ __html: themeColorBootstrap }} />
+
         {/* Injecting the SEO Schema globally */}
         <script
           type="application/ld+json"

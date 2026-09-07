@@ -66,8 +66,19 @@
   }
 }
 
-/* Ensure html background extends behind iOS safe areas (status bar + toolbar) */
+/* Ensure html background extends behind iOS safe areas (status bar + toolbar).
+   ThemeColorUpdater also reads this computed value as the base for the browser
+   chrome tint, so it must stay an opaque color. */
 html {
+  background-color: hsl(var(--background));
+
+  /* Stops iOS rubber-band scrolling from exposing a mismatched band behind
+     Safari's toolbar. */
+  overscroll-behavior-y: none;
+}
+
+/* Keeps Safari's own edge sampling in agreement with the theme-color tag. */
+body {
   background-color: hsl(var(--background));
 }
 
