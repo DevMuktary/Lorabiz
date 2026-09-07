@@ -98,6 +98,7 @@ const NAVIGATION: NavCategory[] = [
     category: "Developer",
     links: [
       { name: "Developer Hub", href: "/dashboard/developer", icon: Code },
+      { name: "API Service History", href: "/dashboard/developer/history", icon: ClockCounterClockwise },
     ]
   },
   {

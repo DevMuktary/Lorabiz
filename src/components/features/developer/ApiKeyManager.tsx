@@ -132,9 +132,9 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-sm">
+    <div className="w-full rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-border/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-border/60 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Key className="h-5 w-5 text-primary" />
@@ -161,7 +161,7 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
       </div>
 
       {/* Keys Table */}
-      <div className="overflow-x-auto">
+      <div className="w-full overflow-x-auto">
         {isLoading ? (
           <div className="p-8 text-center text-xs text-muted-foreground">Loading API keys...</div>
         ) : keys.length === 0 ? (
@@ -175,30 +175,30 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
             </p>
           </div>
         ) : (
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[700px] text-left text-xs">
             <thead className="border-b border-border/40 bg-muted/40 text-muted-foreground">
               <tr>
-                <th className="px-5 py-3 font-medium">Name</th>
-                <th className="px-5 py-3 font-medium">Token Prefix</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium">Created</th>
-                <th className="px-5 py-3 font-medium">Last Used</th>
-                <th className="px-5 py-3 text-right font-medium">Action</th>
+                <th className="px-6 py-3.5 font-medium">Name</th>
+                <th className="px-6 py-3.5 font-medium">Token Prefix</th>
+                <th className="px-6 py-3.5 font-medium">Status</th>
+                <th className="px-6 py-3.5 font-medium">Created</th>
+                <th className="px-6 py-3.5 font-medium">Last Used</th>
+                <th className="px-6 py-3.5 text-right font-medium">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
               {keys.map((k) => (
                 <tr key={k.id} className="transition-colors hover:bg-muted/20">
-                  <td className="px-5 py-3.5 font-semibold text-foreground">{k.name}</td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-6 py-4 font-semibold text-foreground">{k.name}</td>
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <code className="rounded bg-muted px-2 py-0.5 font-mono text-[11px] text-foreground">
+                      <code className="rounded-lg bg-muted px-2.5 py-1 font-mono text-[11px] text-foreground">
                         {k.keyPrefix}
                       </code>
                       <button
                         onClick={() => copyToClipboard(k.keyPrefix, false, k.id)}
                         title="Copy Prefix"
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
                       >
                         {copiedPrefixId === k.id ? (
                           <Check className="h-3.5 w-3.5 text-emerald-500" />
@@ -208,9 +208,9 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
                       </button>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-6 py-4">
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
                         k.status === "ACTIVE"
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                           : "bg-muted text-muted-foreground line-through"
@@ -219,17 +219,17 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
                       {k.status}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-muted-foreground">
+                  <td className="px-6 py-4 text-muted-foreground">
                     {new Date(k.createdAt).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
                     })}
                   </td>
-                  <td className="px-5 py-3.5 text-muted-foreground">
+                  <td className="px-6 py-4 text-muted-foreground">
                     {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Never"}
                   </td>
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="px-6 py-4 text-right">
                     {k.status === "ACTIVE" && (
                       <button
                         onClick={() => {
