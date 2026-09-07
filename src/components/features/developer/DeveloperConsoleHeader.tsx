@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { BookOpen, Activity, Sparkles, Tag } from "lucide-react";
+import { BookOpen, Activity, Terminal, Tag } from "lucide-react";
 
 interface DeveloperConsoleHeaderProps {
   environment: "LIVE" | "TEST";
@@ -26,7 +26,7 @@ export const DeveloperConsoleHeader: React.FC<DeveloperConsoleHeaderProps> = ({
       <div>
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary shadow-xs">
-            <Sparkles className="h-6 w-6" />
+            <Terminal className="h-6 w-6" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">

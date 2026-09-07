@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { ShieldCheck, Clock, AlertCircle, X, Check } from "lucide-react";
+import { Zap, Clock, AlertCircle, X, Check } from "lucide-react";
 
 interface LiveActivationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (toastData?: { type: "success" | "error"; title: string; message: string }) => void;
   currentProfile: {
     status: string;
     businessName?: string;
@@ -84,7 +84,11 @@ export const LiveActivationModal: React.FC<LiveActivationModalProps> = ({
         return;
       }
 
-      onSuccess();
+      onSuccess({
+        type: "success",
+        title: "Application Submitted Successfully",
+        message: "Your live mode API access request has been submitted for review. Verification status is now Pending Review.",
+      });
       onClose();
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred.");
@@ -103,8 +107,8 @@ export const LiveActivationModal: React.FC<LiveActivationModalProps> = ({
           <X className="h-4 w-4" />
         </button>
 
-        <div className="flex items-center gap-2.5 text-primary">
-          <ShieldCheck className="h-6 w-6" />
+        <div className="flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400">
+          <Zap className="h-6 w-6" />
           <h2 className="text-lg font-bold text-foreground">Live Mode API Activation</h2>
         </div>
 
