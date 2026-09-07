@@ -161,21 +161,14 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
       {/* Header & Filter Controls */}
       <div className="flex flex-col gap-4 border-b border-border/60 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-bold text-foreground">
               API Request History
             </h2>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span>Live Ingestion</span>
-            </div>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time HTTP requests, payloads sent, and response status codes. Updates automatically without manual refresh.
+            Real-time HTTP requests, payloads sent, and response status codes. Click any row to inspect.
           </p>
         </div>
 

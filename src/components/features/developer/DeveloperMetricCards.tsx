@@ -28,37 +28,15 @@ export const DeveloperMetricCards: React.FC<DeveloperMetricCardsProps> = ({
   const isLive = environment === "LIVE";
   const displayBalance = isLive ? walletBalance : sandboxBalance;
 
-  // Track balance changes to provide immediate visual feedback
-  const prevBalanceRef = useRef<number>(displayBalance);
-  const [isBalanceUpdated, setIsBalanceUpdated] = useState(false);
-
-  useEffect(() => {
-    if (prevBalanceRef.current !== displayBalance) {
-      prevBalanceRef.current = displayBalance;
-      setIsBalanceUpdated(true);
-      const timer = setTimeout(() => setIsBalanceUpdated(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [displayBalance]);
-
   return (
     <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-3">
       {/* Card 1: Wallet Balance */}
-      <div className={`rounded-2xl border bg-card p-5 sm:p-6 shadow-sm transition-all duration-300 flex flex-col justify-between ${
-        isBalanceUpdated ? "border-primary ring-2 ring-primary/20 bg-primary/[0.02]" : "border-border/80 hover:border-border hover:shadow-md"
-      }`}>
+      <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm hover:border-border hover:shadow-md transition-all flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {isLive ? "Live Wallet Balance" : "Sandbox Test Credits"}
-              </span>
-              {isBalanceUpdated && (
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary animate-pulse">
-                  Updated
-                </span>
-              )}
-            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {isLive ? "Live Wallet Balance" : "Sandbox Test Credits"}
+            </span>
             <div
               className={`flex h-9 w-9 items-center justify-center rounded-xl ${
                 isLive ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
@@ -69,9 +47,7 @@ export const DeveloperMetricCards: React.FC<DeveloperMetricCardsProps> = ({
           </div>
 
           <div className="mt-4 flex items-baseline justify-between gap-2">
-            <div className={`text-2xl font-bold tracking-tight text-foreground sm:text-3xl transition-all duration-300 ${
-              isBalanceUpdated ? "scale-[1.03] text-primary" : ""
-            }`}>
+            <div className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               ₦{displayBalance.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             {isLive ? (
