@@ -23,9 +23,6 @@ Every request requires an API key in one of the following HTTP headers:
 
 ### Key Environments
 - Test Mode: Starts with \`lora_test_\` (Uses virtual ₦1,000,000 sandbox credit. Real funds are never deducted. Returns deterministic mock responses).
-  - Test Success (Female): NIN \`61904909560\` / Phone \`09047073004\`
-  - Test Success (Male): NIN \`12345678901\` / Phone \`08012345678\`
-  - Test Record Not Found (422): NIN \`00000000000\` or \`99999999999\` / Phone \`00000000000\` (Charged ₦0.00)
 - Live Mode: Starts with \`lora_live_\` (Deducts real balance per successful 2xx verification. 4xx errors are billed ₦0.00).
 
 ## Endpoints
@@ -34,6 +31,11 @@ Every request requires an API key in one of the following HTTP headers:
 - **Method**: \`POST\`
 - **Path**: \`/api/v1/nin/by-nin\`
 - **Content-Type**: \`application/json\`
+
+#### Sandbox Test Numbers:
+- Success (Female Record): \`61904909560\` (Returns 200 OK)
+- Success (Male Record): \`12345678901\` (Returns 200 OK)
+- Record Not Found (422): \`00000000000\` or \`99999999999\` (Billed ₦0.00)
 
 #### Request Body
 \`\`\`json
@@ -91,6 +93,11 @@ Every request requires an API key in one of the following HTTP headers:
 - **Method**: \`POST\`
 - **Path**: \`/api/v1/nin/by-phone\`
 - **Content-Type**: \`application/json\`
+
+#### Sandbox Test Numbers:
+- Success (Female Record): \`09047073004\` (Returns 200 OK)
+- Success (Male Record): \`08012345678\` (Returns 200 OK)
+- Record Not Found (422): \`00000000000\` or \`07000000000\` (Billed ₦0.00)
 
 #### Request Body
 \`\`\`json

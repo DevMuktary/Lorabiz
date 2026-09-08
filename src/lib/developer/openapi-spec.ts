@@ -10,11 +10,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
         "- **Dual Environment Support**: Test Mode (`lora_test_...`) with a virtual ₦1,000,000 sandbox balance, and Live Mode (`lora_live_...`) with atomic wallet deductions.\n" +
         "- **Zero-Risk Billing**: Failed validation calls (400) or unfound records (422) are charged **₦0.00**.\n" +
         "- **Direct Base64 PDF**: Instant, low-latency slip delivery directly in the response payload.\n" +
-        "- **Normalized Schema**: Clean, predictable lowercase fields across all queries.\n\n" +
-        "### Sandbox Test Identifiers:\n" +
-        "- **Success (Female Record)**: NIN `61904909560` / Phone `09047073004` (Returns 200 OK)\n" +
-        "- **Success (Male Record)**: NIN `12345678901` / Phone `08012345678` (Returns 200 OK)\n" +
-        "- **Record Not Found (422)**: NIN `00000000000` or `99999999999` / Phone `00000000000` (Returns 422, billed ₦0.00)",
+        "- **Normalized Schema**: Clean, predictable lowercase fields across all queries.",
       contact: {
         name: "Lorabiz Developer Support",
         url: "https://lorabiz.com/contact",
@@ -118,12 +114,26 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           summary: "Verify Identity & Print Slip by NIN",
           description:
             "Resolves a Nigerian citizen's 11-digit National Identification Number (NIN), returns normalized demographic records, and generates a NIMC verification slip in Base64 PDF format.\n\n" +
-            "### Supported Slip Tiers (5 Types):\n" +
-            "- `nin_basic`: Basic demographic slip\n" +
-            "- `nin_vnin`: Virtual NIN (vNIN) verification slip format\n" +
-            "- `nin_regular`: Standard NIMC regular slip layout\n" +
-            "- `nin_standard`: Standard biometric slip with photo\n" +
-            "- `nin_premium`: Premium credit-card sized slip layout",
+            "### Supported Slip Formats & Visual Previews:\n\n" +
+            "1. **`nin_basic`** — *Basic Demographic Slip*\n" +
+            "   Applicant personal bio-data and contact details.\n\n" +
+            "   ![Basic Slip](/examples/nin_basic.png)\n\n" +
+            "2. **`nin_vnin`** — *Virtual NIN (vNIN) Slip*\n" +
+            "   Features 16-digit Virtual NIN and verification QR code.\n\n" +
+            "   ![vNIN Slip](/examples/nin_vnin.png)\n\n" +
+            "3. **`nin_regular`** — *Standard NIMC Regular Slip*\n" +
+            "   Full-page standard document with applicant portrait.\n\n" +
+            "   ![Regular Slip](/examples/nin_regular_example.png)\n\n" +
+            "4. **`nin_standard`** — *Standard Biometric KYC Slip*\n" +
+            "   High-definition identity layout with detailed applicant information.\n\n" +
+            "   ![Standard Slip](/examples/nin_standard_example.png)\n\n" +
+            "5. **`nin_premium`** — *Premium Card Slip*\n" +
+            "   Front and back wallet-sized layout optimized for plastic PVC card printing.\n\n" +
+            "   ![Premium Slip](/examples/nin_premium_example.png)\n\n" +
+            "### Sandbox Test Identifiers:\n" +
+            "- **Success (Female Record)**: `61904909560` (Returns 200 OK)\n" +
+            "- **Success (Male Record)**: `12345678901` (Returns 200 OK)\n" +
+            "- **Record Not Found (422)**: `00000000000` or `99999999999` (Returns 422, billed ₦0.00)",
           requestBody: {
             required: true,
             content: {
@@ -219,10 +229,20 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           summary: "Verify Identity & Print Slip by Phone Number",
           description:
             "Resolves an 11-digit Nigerian registered mobile phone number to its linked National Identification Number (NIN) profile and generates a NIMC verification slip.\n\n" +
-            "### Supported Slip Tiers (3 Types):\n" +
-            "- `nin_regular`: Regular slip layout\n" +
-            "- `nin_standard`: Standard biometric slip with photo\n" +
-            "- `nin_premium`: Premium card layout",
+            "### Supported Slip Formats & Visual Previews:\n\n" +
+            "1. **`nin_regular`** — *Standard NIMC Regular Slip*\n" +
+            "   Full-page standard document with resolved applicant portrait.\n\n" +
+            "   ![Regular Slip](/examples/nin_regular_example.png)\n\n" +
+            "2. **`nin_standard`** — *Standard Biometric KYC Slip*\n" +
+            "   Comprehensive identity layout with detailed applicant information.\n\n" +
+            "   ![Standard Slip](/examples/nin_standard_example.png)\n\n" +
+            "3. **`nin_premium`** — *Premium Card Slip*\n" +
+            "   Front and back wallet-sized layout optimized for plastic PVC card printing.\n\n" +
+            "   ![Premium Slip](/examples/nin_premium_example.png)\n\n" +
+            "### Sandbox Test Identifiers:\n" +
+            "- **Success (Female Record)**: `09047073004` (Returns 200 OK)\n" +
+            "- **Success (Male Record)**: `08012345678` (Returns 200 OK)\n" +
+            "- **Record Not Found (422)**: `00000000000` or `07000000000` (Returns 422, billed ₦0.00)",
           requestBody: {
             required: true,
             content: {
