@@ -12,16 +12,14 @@ export const ApiPricingModal: React.FC<ApiPricingModalProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   const rates = [
-    { service: "NIN Verification by NIN", endpoint: "/v1/nin/by-nin", slip: "Basic Demographic", price: "₦100" },
-    { service: "NIN Verification by NIN", endpoint: "/v1/nin/by-nin", slip: "Virtual NIN (vNIN)", price: "₦120" },
-    { service: "NIN Verification by NIN", endpoint: "/v1/nin/by-nin", slip: "Regular Slip (PDF)", price: "₦150" },
-    { service: "NIN Verification by NIN", endpoint: "/v1/nin/by-nin", slip: "Standard KYC Slip (PDF)", price: "₦200" },
-    { service: "NIN Verification by NIN", endpoint: "/v1/nin/by-nin", slip: "Premium Card Slip (PDF)", price: "₦250" },
-    { service: "NIN Verification by Phone", endpoint: "/v1/nin/by-phone", slip: "Regular / Standard / Premium", price: "₦300" },
-    { service: "BVN KYC Verification", endpoint: "/v1/bvn/verify", slip: "Demographics & Match", price: "₦150" },
-    { service: "NIN IPE Clearance", endpoint: "/v1/nin/ipe", slip: "Exception Resolution", price: "₦2,500" },
-    { service: "NIN Validation", endpoint: "/v1/nin/validation", slip: "Modification Sync", price: "₦1,500" },
-    { service: "NIN Personalization", endpoint: "/v1/nin/personalization", slip: "Interrupted Enrollment", price: "₦1,500" },
+    { service: "NIN Verification by NIN", endpoint: "/api/v1/nin/by-nin", slip: "Basic Demographic (nin_basic)", price: "₦150" },
+    { service: "NIN Verification by NIN", endpoint: "/api/v1/nin/by-nin", slip: "Virtual NIN (nin_vnin)", price: "₦150" },
+    { service: "NIN Verification by NIN", endpoint: "/api/v1/nin/by-nin", slip: "Regular Slip (nin_regular)", price: "₦150" },
+    { service: "NIN Verification by NIN", endpoint: "/api/v1/nin/by-nin", slip: "Standard KYC Slip (nin_standard)", price: "₦150" },
+    { service: "NIN Verification by NIN", endpoint: "/api/v1/nin/by-nin", slip: "Premium Card Slip (nin_premium)", price: "₦150" },
+    { service: "NIN Verification by Phone", endpoint: "/api/v1/nin/by-phone", slip: "Regular Slip (nin_regular)", price: "₦150" },
+    { service: "NIN Verification by Phone", endpoint: "/api/v1/nin/by-phone", slip: "Standard KYC Slip (nin_standard)", price: "₦150" },
+    { service: "NIN Verification by Phone", endpoint: "/api/v1/nin/by-phone", slip: "Premium Card Slip (nin_premium)", price: "₦150" },
   ];
 
   return (

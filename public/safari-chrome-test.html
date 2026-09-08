@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+<!-- Deliberately a colour nothing else in the app uses. If Safari's status bar and
+     toolbar do NOT turn lime on load, this device is ignoring theme-color outright
+     and no amount of work on ThemeColorUpdater can ever fix the bars. -->
+<meta name="theme-color" content="#00e05a">
+
+<title>Safari chrome test</title>
+<style>
+  html {
+    background: #f8fafc;      /* same as the app's light --background */
+    color-scheme: light;
+    overscroll-behavior-y: none;
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #f8fafc;
+    color: #0f172a;
+    font: 15px/1.45 -apple-system, system-ui, sans-serif;
+    padding: 20px 16px 40px;
+  }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 18px; color: #64748b; font-size: 13px; }
+
+  button {
+    display: block;
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 15px 16px;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    color: #0f172a;
+    background: #fff;
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button small { display: block; font-weight: 400; color: #64748b; }
+  button[aria-pressed="true"] { border-color: #c0246d; background: #fdf2f8; }
+
+  /* Every variant is the same box the app's modals use: position fixed, pinned to
+     all four edges, inside <body>. Only the paint properties differ between them,
+     so whichever one makes the bars go black names the culprit. */
+  .scrim { position: fixed; inset: 0; z-index: 100; }
+  .scrim.colour { background: rgba(0, 0, 0, .5); }
+  .scrim.blur   { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+
+  .panel {
+    position: fixed;
+    z-index: 101;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(320px, calc(100% - 40px));
+    padding: 22px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .3);
+    text-align: center;
+  }
+  .panel b { display: block; margin-bottom: 10px; }
+  .panel button { margin: 14px 0 0; text-align: center; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<h1>Safari chrome test</h1>
+<p class="sub">
+  Read the bars <em>above</em> and <em>below</em> this page after each tap.
+  Tap the same button again to close.
+</p>
+
+<button id="t1" aria-pressed="false" data-mode="bare">
+  1 · Overlay, no paint
+  <small>fixed inset-0, fully transparent — the control</small>
+</button>
+
+<button id="t2" aria-pressed="false" data-mode="colour">
+  2 · Overlay + colour
+  <small>background: rgba(0,0,0,.5), no blur</small>
+</button>
+
+<button id="t3" aria-pressed="false" data-mode="blur">
+  3 · Overlay + blur
+  <small>backdrop-filter: blur(4px), no background</small>
+</button>
+
+<button id="t4" aria-pressed="false" data-mode="colour blur">
+  4 · Overlay + colour + blur
+  <small>exactly what the real modals render</small>
+</button>
+
+<button id="t5" aria-pressed="false" data-mode="lock">
+  5 · Scroll lock only
+  <small>body.style.overflow = hidden, no overlay at all</small>
+</button>
+
+<button id="cover" aria-pressed="false" style="margin-top:18px;border-style:dashed">
+  viewport-fit: <span id="cover-state">auto</span>
+  <small>
+    Independent switch — leave it on <b>auto</b> for the five tests above, then turn
+    it to <b>cover</b> and repeat any test that showed bars. This decides whether
+    Safari or the page paints the strips behind the bars.
+  </small>
+</button>
+
+<p class="sub" style="margin-top:18px">
+  Filler so the page can scroll, which is what lets Safari's toolbar collapse and
+  expand. Scroll down, then run the tests again — Safari repaints its chrome when
+  the toolbar changes size, and that is a separate case worth checking.
+</p>
+<div style="height:130vh"></div>
+<p class="sub">Bottom of page.</p>
+
+<div id="scrim" class="scrim hidden"></div>
+<div id="panel" class="panel hidden">
+  <b id="panel-label">Overlay open</b>
+  Look at the top and bottom bars now.
+  <button type="button" id="close">Close</button>
+</div>
+
+<script>
+  var scrim = document.getElementById('scrim');
+  var panel = document.getElementById('panel');
+  var label = document.getElementById('panel-label');
+  var buttons = [].slice.call(document.querySelectorAll('button[data-mode]'));
+  var active = null;
+
+  function close() {
+    active = null;
+    scrim.className = 'scrim hidden';
+    panel.className = 'panel hidden';
+    document.body.style.overflow = '';
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+  }
+
+  function open(button) {
+    var mode = button.dataset.mode;
+    close();
+    active = mode;
+    button.setAttribute('aria-pressed', 'true');
+    label.textContent = button.textContent.trim().split('\n')[0];
+
+    // Test 5 is the scroll lock on its own: no overlay is mounted, so if the bars
+    // still go black here the cause is the lock, not the overlay's paint.
+    if (mode === 'lock') {
+      document.body.style.overflow = 'hidden';
+    } else {
+      scrim.className = 'scrim ' + (mode === 'bare' ? '' : mode);
+      document.body.style.overflow = 'hidden';
+    }
+    panel.className = 'panel';
+  }
+
+  buttons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      if (active === button.dataset.mode) close();
+      else open(button);
+    });
+  });
+
+  document.getElementById('close').addEventListener('click', close);
+
+  // Rewriting the viewport meta live is enough for iOS Safari to re-lay-out, so the
+  // two viewport-fit values can be compared without reloading and losing the state.
+  var coverBtn = document.getElementById('cover');
+  var coverState = document.getElementById('cover-state');
+  var viewport = document.querySelector('meta[name="viewport"]');
+  var base = viewport.getAttribute('content');
+  var covering = false;
+
+  coverBtn.addEventListener('click', function () {
+    covering = !covering;
+    viewport.setAttribute('content', covering ? base + ', viewport-fit=cover' : base);
+    coverBtn.setAttribute('aria-pressed', String(covering));
+    coverState.textContent = covering ? 'cover' : 'auto';
+  });
+</script>
+</body>
+</html>
