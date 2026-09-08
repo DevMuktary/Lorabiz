@@ -5,27 +5,22 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       title: "Lorabiz Developer API",
       version: "1.0.0",
       description:
-        "Welcome to the **Lorabiz Developer Platform API Reference**. Lorabiz provides mission-critical enterprise APIs for identity verification, regulatory compliance, business registrations, and government documentation in Nigeria.\n\n" +
-        "### 🌐 Base URLs\n" +
+        "Welcome to the Lorabiz Developer Platform API Reference. Lorabiz provides enterprise API infrastructure for identity verification, regulatory registrations, and government documentation in Nigeria.\n\n" +
+        "### Base URLs\n" +
         "All API requests are served over secure HTTPS:\n" +
         "- **Production Gateway**: `" + baseUrl + "`\n" +
         "- **Local Development**: `http://localhost:3000`\n\n" +
-        "### 🔑 Authentication\n" +
-        "Every request must include your secret API key using one of three standard formats:\n" +
-        "- `Authorization: Bearer <your_api_key>`\n" +
-        "- `Authorization: <your_api_key>`\n" +
-        "- `x-api-key: <your_api_key>`\n\n" +
-        "API keys can be generated and managed directly in your [Lorabiz Developer Dashboard](https://lorabiz.com/dashboard/developer).\n\n" +
-        "### 🧪 Environments: Test Sandbox vs Live Production\n" +
-        "Lorabiz provides two completely isolated runtime environments:\n" +
-        "- **Test Mode (`lora_test_...`)**: Preloaded with virtual ₦1,000,000.00 sandbox balance. Zero real funds are touched. Returns deterministic test scenarios (Success and Record Not Found) for seamless testing.\n" +
-        "- **Live Mode (`lora_live_...`)**: Connects directly to production national databases. Charges wholesale fees atomically from your wallet on successful 2xx verifications.\n\n" +
-        "### 🛡️ Zero-Risk Billing Guarantee\n" +
-        "- You are **ONLY billed when an identity or regulatory record is successfully resolved (HTTP 200)**.\n" +
-        "- Client validation errors (**HTTP 400**) and records not found (**HTTP 422**) are charged strictly **₦0.00**.\n\n" +
-        "### 📦 Service Domains\n" +
-        "- **Identity Services**: National Identification Number (NIN) resolution by 11-digit NIN or 11-digit registered phone number with high-speed Base64 PDF slip generation.\n" +
-        "- **Corporate & Regulatory Services (Upcoming)**: CAC corporate searches, SCUML compliance status, and Tax ID (TIN) resolutions.",
+        "### Authentication\n" +
+        "Authenticate all requests using your API key via either:\n" +
+        "- `Authorization: Bearer <api_key>`\n" +
+        "- `Authorization: <api_key>`\n" +
+        "- `x-api-key: <api_key>`\n\n" +
+        "Manage your keys in the [Lorabiz Developer Dashboard](https://lorabiz.com/dashboard/developer).\n\n" +
+        "### Environments: Test Sandbox vs Live\n" +
+        "- **Test Mode (`lora_test_...`)**: Preloaded with virtual ₦1,000,000.00 sandbox balance. Real funds are never deducted. Deterministic test numbers are provided per endpoint to simulate both success and error paths.\n" +
+        "- **Live Mode (`lora_live_...`)**: Connects directly to production national databases. Charges wholesale fees atomically on successful 2xx verifications.\n\n" +
+        "### Zero-Risk Billing Policy\n" +
+        "You are only billed when a record is successfully resolved (HTTP 200). Client errors (HTTP 400), unlinked records (HTTP 422), or system issues are charged ₦0.00.",
       contact: {
         name: "Lorabiz Developer Support",
         url: "https://lorabiz.com/contact",
@@ -53,8 +48,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           type: "http",
           scheme: "bearer",
           bearerFormat: "lora_live_... / lora_test_...",
-          description:
-            "Provide your Lorabiz API key prefixed with 'Bearer '. Both Live (`lora_live_...`) and Test (`lora_test_...`) keys are supported.",
+          description: "Provide your Lorabiz API key prefixed with 'Bearer '. Supports both Live and Test keys.",
         },
       },
       schemas: {
@@ -104,12 +98,36 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
           },
         },
-        ErrorResponse: {
+        ValidationErrorResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "error" },
+            code: { type: "string", example: "VALIDATION_ERROR" },
+            message: { type: "string", example: "Please provide a valid 11-digit National Identification Number (NIN)." },
+          },
+        },
+        UnauthorizedErrorResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "error" },
+            code: { type: "string", example: "INVALID_API_KEY" },
+            message: { type: "string", example: "Invalid or missing API key provided in authorization headers." },
+          },
+        },
+        InsufficientBalanceResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "error" },
+            code: { type: "string", example: "INSUFFICIENT_BALANCE" },
+            message: { type: "string", example: "Insufficient wallet balance. Service costs ₦150.00, but current balance is ₦0.00." },
+          },
+        },
+        RecordNotFoundResponse: {
           type: "object",
           properties: {
             status: { type: "string", example: "error" },
             code: { type: "string", example: "RECORD_NOT_FOUND" },
-            message: { type: "string", example: "No identity record was found matching the provided NIN." },
+            message: { type: "string", example: "No identity record was found matching the provided identifier." },
             environment: { type: "string", enum: ["live", "test"], example: "live" },
             transaction: {
               type: "object",
@@ -120,38 +138,46 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
           },
         },
+        RateLimitErrorResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "error" },
+            code: { type: "string", example: "RATE_LIMIT_EXCEEDED" },
+            message: { type: "string", example: "Rate limit exceeded. You have exceeded your 60 requests per minute limit." },
+          },
+        },
+        ServiceUnavailableResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "error" },
+            code: { type: "string", example: "SERVICE_UNAVAILABLE" },
+            message: { type: "string", example: "The identity gateway is temporarily undergoing maintenance. Please retry shortly." },
+          },
+        },
       },
     },
     paths: {
       "/api/v1/nin/by-nin": {
         post: {
           tags: ["NIN Identity & Slips"],
-          summary: "Verify Identity & Print Slip by NIN",
+          summary: "Verify Identity & Generate Slip by NIN",
           description:
-            "Resolves an 11-digit National Identification Number (NIN) against the national citizen identity registry, returning clean, normalized demographic bio-data and generating a printable biometric slip in Base64 PDF format.\n\n" +
-            "### When to Use:\n" +
-            "Use this endpoint when you have collected the citizen's 11-digit NIN directly (e.g., during KYC onboarding, fintech tier-up, or identity verification forms).\n\n" +
-            "### Supported Slip Formats & Visual Previews:\n\n" +
-            "1. **`nin_basic`** — *Basic Demographic Slip*\n" +
-            "   Returns core demographic bio-data and contact details without extended address/tracking. Suitable for quick text-based KYC validations.\n\n" +
-            "   ![Basic Slip](/examples/nin_basic.png)\n\n" +
-            "2. **`nin_vnin`** — *Virtual NIN (vNIN) Slip*\n" +
-            "   Features the citizen's 16-digit Virtual National Identification Number alongside a scannable verification QR code.\n\n" +
-            "   ![vNIN Slip](/examples/nin_vnin.png)\n\n" +
-            "3. **`nin_regular`** — *Standard NIMC Regular Slip*\n" +
-            "   The full-page standard slip layout featuring applicant portrait, full bio-data, and verification stamp.\n\n" +
-            "   ![Regular Slip](/examples/nin_regular_example.png)\n\n" +
-            "4. **`nin_standard`** — *Standard Biometric KYC Slip*\n" +
-            "   High-definition identity layout with detailed applicant information and verification credentials.\n\n" +
-            "   ![Standard Slip](/examples/nin_standard_example.png)\n\n" +
-            "5. **`nin_premium`** — *Premium Card Slip*\n" +
-            "   Front and back wallet-sized ID card format designed specifically for plastic PVC card printing machines.\n\n" +
-            "   ![Premium Slip](/examples/nin_premium_example.png)\n\n" +
-            "### Sandbox Test Identifiers:\n" +
-            "In Test Mode (`lora_test_...`), use these deterministic numbers:\n" +
-            "- **Success (Female Record)**: `61904909560` (Returns 200 OK with full demographic profile)\n" +
-            "- **Success (Male Record)**: `12345678901` (Returns 200 OK with full demographic profile)\n" +
-            "- **Record Not Found (422)**: `00000000000` or `99999999999` (Returns 422 RECORD_NOT_FOUND, billed ₦0.00)",
+            "Verifies an 11-digit NIN against the national identity registry and generates a biometric slip in Base64 PDF format.\n\n" +
+            "#### Slip Formats & Examples:\n" +
+            "- **`nin_basic`**: Basic Demographic Slip\n" +
+            "  ![Basic Slip](/examples/nin_basic.png)\n" +
+            "- **`nin_vnin`**: Virtual NIN (vNIN) Slip\n" +
+            "  ![vNIN Slip](/examples/nin_vnin.png)\n" +
+            "- **`nin_regular`**: Standard Regular Slip\n" +
+            "  ![Regular Slip](/examples/nin_regular_example.png)\n" +
+            "- **`nin_standard`**: Standard Biometric Slip\n" +
+            "  ![Standard Slip](/examples/nin_standard_example.png)\n" +
+            "- **`nin_premium`**: Premium Card Slip\n" +
+            "  ![Premium Slip](/examples/nin_premium_example.png)\n\n" +
+            "#### Sandbox Test Identifiers:\n" +
+            "- **Success (Female)**: `61904909560` (Returns 200 OK)\n" +
+            "- **Success (Male)**: `12345678901` (Returns 200 OK)\n" +
+            "- **Record Not Found**: `00000000000` or `99999999999` (Returns 422 RECORD_NOT_FOUND, billed ₦0.00)",
           requestBody: {
             required: true,
             content: {
@@ -173,8 +199,14 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     },
                     client_reference: {
                       type: "string",
-                      description: "Optional custom transaction/order reference for idempotency and external tracking",
+                      description: "Optional custom transaction reference",
                       example: "TXN_ORD_9812401",
+                    },
+                    include_slip: {
+                      type: "boolean",
+                      description: "Whether to return the base64 PDF slip binary. Set to false for data-only response.",
+                      default: true,
+                      example: true,
                     },
                   },
                 },
@@ -191,10 +223,10 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               },
             },
             "400": {
-              description: "Validation Error (invalid NIN length or unsupported slip type)",
+              description: "Validation Error (invalid input or parameters)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
                 },
               },
             },
@@ -202,15 +234,15 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               description: "Unauthorized (missing or invalid API key)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
                 },
               },
             },
             "402": {
-              description: "Insufficient Balance (wallet or test sandbox balance too low)",
+              description: "Insufficient Balance (wallet or test balance too low)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/InsufficientBalanceResponse" },
                 },
               },
             },
@@ -218,7 +250,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               description: "Record Not Found (NIN does not exist in national registry)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/RecordNotFoundResponse" },
                 },
               },
             },
@@ -226,15 +258,15 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               description: "Too Many Requests (rate limit exceeded)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
                 },
               },
             },
             "503": {
-              description: "Service Unavailable (gateway undergoing scheduled maintenance)",
+              description: "Service Unavailable (gateway temporary maintenance)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/ServiceUnavailableResponse" },
                 },
               },
             },
@@ -244,26 +276,20 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       "/api/v1/nin/by-phone": {
         post: {
           tags: ["NIN Identity & Slips"],
-          summary: "Verify Identity & Print Slip by Phone Number",
+          summary: "Verify Identity & Generate Slip by Phone Number",
           description:
-            "Performs a reverse telecommunications lookup using an 11-digit Nigerian registered mobile phone number (MSISDN) to resolve the subscriber's linked National Identification Number (NIN) and generate a printable verification slip in Base64 PDF format.\n\n" +
-            "### When to Use:\n" +
-            "Use this endpoint when a user does not have their 11-digit NIN handy (e.g., lost physical slip or forgotten number), but has their SIM card phone number that was used during national identity enrollment. The system queries the linked MSISDN registry to retrieve the citizen's complete profile.\n\n" +
-            "### Supported Slip Formats & Visual Previews:\n\n" +
-            "1. **`nin_regular`** — *Standard NIMC Regular Slip*\n" +
-            "   Full-page standard document featuring the resolved citizen's portrait, bio-data, and verification stamp.\n\n" +
-            "   ![Regular Slip](/examples/nin_regular_example.png)\n\n" +
-            "2. **`nin_standard`** — *Standard Biometric KYC Slip*\n" +
-            "   Comprehensive identity layout with detailed applicant information and verification credentials.\n\n" +
-            "   ![Standard Slip](/examples/nin_standard_example.png)\n\n" +
-            "3. **`nin_premium`** — *Premium Card Slip*\n" +
-            "   Front and back wallet-sized ID card format designed specifically for plastic PVC card printing machines.\n\n" +
-            "   ![Premium Slip](/examples/nin_premium_example.png)\n\n" +
-            "### Sandbox Test Identifiers:\n" +
-            "In Test Mode (`lora_test_...`), use these deterministic numbers:\n" +
-            "- **Success (Female Record)**: `09047073004` (Returns 200 OK with resolved linked NIN profile)\n" +
-            "- **Success (Male Record)**: `08012345678` (Returns 200 OK with resolved linked NIN profile)\n" +
-            "- **Record Not Found (422)**: `00000000000` or `07000000000` (Returns 422 RECORD_NOT_FOUND, billed ₦0.00)",
+            "Resolves a linked NIN profile using an 11-digit registered phone number and generates a biometric slip in Base64 PDF format.\n\n" +
+            "#### Slip Formats & Examples:\n" +
+            "- **`nin_regular`**: Standard Regular Slip\n" +
+            "  ![Regular Slip](/examples/nin_regular_example.png)\n" +
+            "- **`nin_standard`**: Standard Biometric Slip\n" +
+            "  ![Standard Slip](/examples/nin_standard_example.png)\n" +
+            "- **`nin_premium`**: Premium Card Slip\n" +
+            "  ![Premium Slip](/examples/nin_premium_example.png)\n\n" +
+            "#### Sandbox Test Identifiers:\n" +
+            "- **Success (Female)**: `09047073004` (Returns 200 OK)\n" +
+            "- **Success (Male)**: `08012345678` (Returns 200 OK)\n" +
+            "- **Record Not Found**: `00000000000` or `07000000000` (Returns 422 RECORD_NOT_FOUND, billed ₦0.00)",
           requestBody: {
             required: true,
             content: {
@@ -274,7 +300,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   properties: {
                     phone: {
                       type: "string",
-                      description: "11-digit Nigerian mobile phone number",
+                      description: "11-digit registered Nigerian mobile phone number",
                       example: "09047073004",
                     },
                     slip_type: {
@@ -287,6 +313,12 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                       type: "string",
                       description: "Optional custom transaction reference",
                       example: "TXN_PHONE_9812402",
+                    },
+                    include_slip: {
+                      type: "boolean",
+                      description: "Whether to return the base64 PDF slip binary. Set to false for data-only response.",
+                      default: true,
+                      example: true,
                     },
                   },
                 },
@@ -303,26 +335,26 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               },
             },
             "400": {
-              description: "Validation Error",
+              description: "Validation Error (invalid input or parameters)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
                 },
               },
             },
             "401": {
-              description: "Unauthorized",
+              description: "Unauthorized (missing or invalid API key)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
                 },
               },
             },
             "402": {
-              description: "Insufficient Balance",
+              description: "Insufficient Balance (wallet or test balance too low)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/InsufficientBalanceResponse" },
                 },
               },
             },
@@ -330,23 +362,23 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               description: "Record Not Found (phone number not linked to any NIN profile)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/RecordNotFoundResponse" },
                 },
               },
             },
             "429": {
-              description: "Too Many Requests",
+              description: "Too Many Requests (rate limit exceeded)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
                 },
               },
             },
             "503": {
-              description: "Service Unavailable",
+              description: "Service Unavailable (gateway temporary maintenance)",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: "#/components/schemas/ServiceUnavailableResponse" },
                 },
               },
             },

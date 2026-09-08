@@ -50,15 +50,7 @@ export default function DocsPage() {
           layout: "modern",
           darkMode: true,
           showSidebar: true,
-          searchHotKey: "k",
           customCss: `
-            /* Mobile & iOS Safari Stability Rules */
-            * {
-              -webkit-tap-highlight-color: transparent;
-            }
-            .scalar-api-reference {
-              -webkit-overflow-scrolling: touch;
-            }
             /* Slip Preview Card Styling */
             .scalar-api-reference img[src*="/examples/"] {
               display: block;
@@ -66,25 +58,11 @@ export default function DocsPage() {
               width: 100%;
               height: auto;
               margin: 10px 0 18px 0;
-              border-radius: 10px;
+              border-radius: 8px;
               border: 1px solid rgba(255, 255, 255, 0.12);
-              box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5);
-              background: #1e293b;
-              transition: transform 0.2s ease, box-shadow 0.2s ease;
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
             }
-            .scalar-api-reference img[src*="/examples/"]:hover {
-              transform: translateY(-2px);
-              box-shadow: 0 12px 28px -4px rgba(16, 185, 129, 0.2);
-              border-color: rgba(16, 185, 129, 0.4);
-            }
-            @media (max-width: 768px) {
-              .scalar-api-reference {
-                padding: 0 !important;
-              }
-              .sidebar {
-                width: 85vw !important;
-                max-width: 320px !important;
-              }
+            @media (max-width: 640px) {
               .scalar-api-reference img[src*="/examples/"] {
                 max-width: 100%;
               }
