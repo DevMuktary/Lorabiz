@@ -44,7 +44,7 @@ export default function DocsPage() {
         containerRef.current.innerHTML = "";
         window.Scalar.createApiReference(containerRef.current, {
           spec: {
-            url: "/api/openapi.json",
+            url: `/api/openapi.json?t=${Date.now()}`,
           },
           theme: "purple",
           layout: "modern",

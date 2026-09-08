@@ -13,12 +13,14 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=3600, s-maxage=3600",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
         "Access-Control-Allow-Origin": "*",
       },
     });
   } catch (err: any) {
-    console.error("❌ [OpenAPI Route Error]:", err);
+    console.error("[OpenAPI Route Error]:", err);
     return NextResponse.json({ error: "Failed to generate OpenAPI specification" }, { status: 500 });
   }
 }

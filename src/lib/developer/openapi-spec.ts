@@ -103,7 +103,12 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           properties: {
             status: { type: "string", example: "error" },
             code: { type: "string", example: "VALIDATION_ERROR" },
-            message: { type: "string", example: "Please provide a valid 11-digit National Identification Number (NIN)." },
+            message: { type: "string", example: "Please provide a valid 11-digit identifier." },
+          },
+          example: {
+            status: "error",
+            code: "VALIDATION_ERROR",
+            message: "Please provide a valid 11-digit identifier.",
           },
         },
         UnauthorizedErrorResponse: {
@@ -113,6 +118,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             code: { type: "string", example: "INVALID_API_KEY" },
             message: { type: "string", example: "Invalid or missing API key provided in authorization headers." },
           },
+          example: {
+            status: "error",
+            code: "INVALID_API_KEY",
+            message: "Invalid or missing API key provided in authorization headers.",
+          },
         },
         InsufficientBalanceResponse: {
           type: "object",
@@ -120,6 +130,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             status: { type: "string", example: "error" },
             code: { type: "string", example: "INSUFFICIENT_BALANCE" },
             message: { type: "string", example: "Insufficient wallet balance. Service costs ₦150.00, but current balance is ₦0.00." },
+          },
+          example: {
+            status: "error",
+            code: "INSUFFICIENT_BALANCE",
+            message: "Insufficient wallet balance. Service costs ₦150.00, but current balance is ₦0.00.",
           },
         },
         RecordNotFoundResponse: {
@@ -137,6 +152,16 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               },
             },
           },
+          example: {
+            status: "error",
+            code: "RECORD_NOT_FOUND",
+            message: "No identity record was found matching the provided identifier.",
+            environment: "live",
+            transaction: {
+              amount_charged: 0.0,
+              currency: "NGN",
+            },
+          },
         },
         RateLimitErrorResponse: {
           type: "object",
@@ -145,6 +170,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             code: { type: "string", example: "RATE_LIMIT_EXCEEDED" },
             message: { type: "string", example: "Rate limit exceeded. You have exceeded your 60 requests per minute limit." },
           },
+          example: {
+            status: "error",
+            code: "RATE_LIMIT_EXCEEDED",
+            message: "Rate limit exceeded. You have exceeded your 60 requests per minute limit.",
+          },
         },
         ServiceUnavailableResponse: {
           type: "object",
@@ -152,6 +182,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             status: { type: "string", example: "error" },
             code: { type: "string", example: "SERVICE_UNAVAILABLE" },
             message: { type: "string", example: "The identity gateway is temporarily undergoing maintenance. Please retry shortly." },
+          },
+          example: {
+            status: "error",
+            code: "SERVICE_UNAVAILABLE",
+            message: "The identity gateway is temporarily undergoing maintenance. Please retry shortly.",
           },
         },
       },
@@ -219,6 +254,40 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/SuccessResponse" },
+                  example: {
+                    status: "success",
+                    message: "NIN verification slip generated successfully.",
+                    data: {
+                      nin: "61904909560",
+                      firstname: "MMESOMA",
+                      middlename: "CELESTINA",
+                      surname: "AGU",
+                      fullname: "MMESOMA CELESTINA AGU",
+                      gender: "Female",
+                      birthdate: "1997-06-26",
+                      telephoneno: "09047073004",
+                      photo: "/9j/4AAQSkZJRgABAQ...",
+                      address: "12 Awolowo Road",
+                      residence_lga: "Ikeja",
+                      residence_state: "Lagos",
+                      self_origin_lga: "Aguata",
+                      self_origin_state: "Anambra",
+                      tracking_id: "12345ABC",
+                    },
+                    slip: {
+                      slip_type: "nin_premium",
+                      display_name: "Premium Card Slip",
+                      pdf_base64: "JVBERi0xLjQKJ...",
+                    },
+                    transaction: {
+                      reference: "NIN_PREMIUM_1725732104912",
+                      client_reference: "TXN_ORD_9812401",
+                      amount_charged: 150.0,
+                      currency: "NGN",
+                      environment: "live",
+                      balance_after: 45850.0,
+                    },
+                  },
                 },
               },
             },
@@ -227,6 +296,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                  example: {
+                    status: "error",
+                    code: "VALIDATION_ERROR",
+                    message: "Please provide a valid 11-digit National Identification Number (NIN).",
+                  },
                 },
               },
             },
@@ -235,6 +309,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
+                  example: {
+                    status: "error",
+                    code: "INVALID_API_KEY",
+                    message: "Invalid or missing API key provided in authorization headers.",
+                  },
                 },
               },
             },
@@ -243,6 +322,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/InsufficientBalanceResponse" },
+                  example: {
+                    status: "error",
+                    code: "INSUFFICIENT_BALANCE",
+                    message: "Insufficient wallet balance. Service costs ₦150.00, but current balance is ₦0.00.",
+                  },
                 },
               },
             },
@@ -251,6 +335,16 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RecordNotFoundResponse" },
+                  example: {
+                    status: "error",
+                    code: "RECORD_NOT_FOUND",
+                    message: "No identity record was found matching the provided identifier.",
+                    environment: "live",
+                    transaction: {
+                      amount_charged: 0.0,
+                      currency: "NGN",
+                    },
+                  },
                 },
               },
             },
@@ -259,6 +353,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
+                  example: {
+                    status: "error",
+                    code: "RATE_LIMIT_EXCEEDED",
+                    message: "Rate limit exceeded. You have exceeded your 60 requests per minute limit.",
+                  },
                 },
               },
             },
@@ -267,6 +366,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ServiceUnavailableResponse" },
+                  example: {
+                    status: "error",
+                    code: "SERVICE_UNAVAILABLE",
+                    message: "The identity gateway is temporarily undergoing maintenance. Please retry shortly.",
+                  },
                 },
               },
             },
@@ -331,6 +435,40 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/SuccessResponse" },
+                  example: {
+                    status: "success",
+                    message: "NIN verification slip generated successfully.",
+                    data: {
+                      nin: "61904909560",
+                      firstname: "MMESOMA",
+                      middlename: "CELESTINA",
+                      surname: "AGU",
+                      fullname: "MMESOMA CELESTINA AGU",
+                      gender: "Female",
+                      birthdate: "1997-06-26",
+                      telephoneno: "09047073004",
+                      photo: "/9j/4AAQSkZJRgABAQ...",
+                      address: "12 Awolowo Road",
+                      residence_lga: "Ikeja",
+                      residence_state: "Lagos",
+                      self_origin_lga: "Aguata",
+                      self_origin_state: "Anambra",
+                      tracking_id: "12345ABC",
+                    },
+                    slip: {
+                      slip_type: "nin_premium",
+                      display_name: "Premium Card Slip",
+                      pdf_base64: "JVBERi0xLjQKJ...",
+                    },
+                    transaction: {
+                      reference: "NIN_PHONE_PREMIUM_1725732104912",
+                      client_reference: "TXN_PHONE_9812402",
+                      amount_charged: 150.0,
+                      currency: "NGN",
+                      environment: "live",
+                      balance_after: 45850.0,
+                    },
+                  },
                 },
               },
             },
@@ -339,6 +477,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                  example: {
+                    status: "error",
+                    code: "VALIDATION_ERROR",
+                    message: "Please provide a valid 11-digit registered Nigerian mobile phone number.",
+                  },
                 },
               },
             },
@@ -347,6 +490,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
+                  example: {
+                    status: "error",
+                    code: "INVALID_API_KEY",
+                    message: "Invalid or missing API key provided in authorization headers.",
+                  },
                 },
               },
             },
@@ -355,6 +503,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/InsufficientBalanceResponse" },
+                  example: {
+                    status: "error",
+                    code: "INSUFFICIENT_BALANCE",
+                    message: "Insufficient wallet balance. Service costs ₦150.00, but current balance is ₦0.00.",
+                  },
                 },
               },
             },
@@ -363,6 +516,16 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RecordNotFoundResponse" },
+                  example: {
+                    status: "error",
+                    code: "RECORD_NOT_FOUND",
+                    message: "No identity record was found matching the provided phone number.",
+                    environment: "live",
+                    transaction: {
+                      amount_charged: 0.0,
+                      currency: "NGN",
+                    },
+                  },
                 },
               },
             },
@@ -371,6 +534,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
+                  example: {
+                    status: "error",
+                    code: "RATE_LIMIT_EXCEEDED",
+                    message: "Rate limit exceeded. You have exceeded your 60 requests per minute limit.",
+                  },
                 },
               },
             },
@@ -379,6 +547,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ServiceUnavailableResponse" },
+                  example: {
+                    status: "error",
+                    code: "SERVICE_UNAVAILABLE",
+                    message: "The identity gateway is temporarily undergoing maintenance. Please retry shortly.",
+                  },
                 },
               },
             },
