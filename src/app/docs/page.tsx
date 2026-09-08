@@ -51,19 +51,65 @@ export default function DocsPage() {
           darkMode: true,
           showSidebar: true,
           customCss: `
-            /* Slip Preview Card Styling */
-            .scalar-api-reference img[src*="/examples/"] {
+            /* Interactive Collapsible Slip Previews */
+            .scalar-api-reference details {
+              margin: 10px 0;
+              border: 1px solid rgba(255, 255, 255, 0.14);
+              border-radius: 8px;
+              background: rgba(255, 255, 255, 0.03);
+              overflow: hidden;
+              transition: border-color 0.2s ease, background-color 0.2s ease;
+            }
+            .scalar-api-reference details:hover {
+              border-color: rgba(16, 185, 129, 0.35);
+              background: rgba(255, 255, 255, 0.05);
+            }
+            .scalar-api-reference details[open] {
+              border-color: rgba(16, 185, 129, 0.5);
+              background: rgba(16, 185, 129, 0.03);
+            }
+            .scalar-api-reference summary {
+              padding: 9px 14px;
+              font-size: 13px;
+              font-weight: 500;
+              color: #f1f5f9;
+              cursor: pointer;
+              user-select: none;
+              outline: none;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              transition: color 0.15s ease;
+            }
+            .scalar-api-reference summary:hover {
+              color: #34d399;
+            }
+            .scalar-api-reference details img[src*="/examples/"] {
               display: block;
               max-width: 320px;
               width: 100%;
               height: auto;
-              margin: 10px 0 18px 0;
+              margin: 10px auto 16px auto;
               border-radius: 8px;
               border: 1px solid rgba(255, 255, 255, 0.12);
-              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+              box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
             }
+
+            /* Visible Section Dividers & Endpoint Separation */
+            .scalar-api-reference .section,
+            .scalar-api-reference .tag-section,
+            .scalar-api-reference .endpoint-section {
+              border-bottom: 2px solid rgba(255, 255, 255, 0.12) !important;
+              padding-bottom: 28px !important;
+              margin-bottom: 28px !important;
+            }
+            .scalar-api-reference hr {
+              border-color: rgba(255, 255, 255, 0.18) !important;
+              border-width: 1.5px !important;
+            }
+
             @media (max-width: 640px) {
-              .scalar-api-reference img[src*="/examples/"] {
+              .scalar-api-reference details img[src*="/examples/"] {
                 max-width: 100%;
               }
             }

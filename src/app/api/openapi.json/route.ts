@@ -3,10 +3,7 @@ import { getOpenApiSpec } from "@/lib/developer/openapi-spec";
 
 export async function GET(req: NextRequest) {
   try {
-    const host = req.headers.get("host") || "api.lorabiz.com";
-    const protocol = req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
-    const baseUrl = `${protocol}://${host}`;
-
+    const baseUrl = "https://api.lorabiz.com";
     const spec = getOpenApiSpec(baseUrl);
 
     return NextResponse.json(spec, {

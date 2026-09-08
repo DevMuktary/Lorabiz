@@ -6,10 +6,9 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       version: "1.0.0",
       description:
         "Welcome to the Lorabiz Developer Platform API Reference. Lorabiz provides enterprise API infrastructure for identity verification, regulatory registrations, and government documentation in Nigeria.\n\n" +
-        "### Base URLs\n" +
+        "### Base URL\n" +
         "All API requests are served over secure HTTPS:\n" +
-        "- **Production Gateway**: `" + baseUrl + "`\n" +
-        "- **Local Development**: `http://localhost:3000`\n\n" +
+        "- **Production Gateway**: `" + baseUrl + "`\n\n" +
         "### Authentication\n" +
         "Authenticate all requests using your API key via either:\n" +
         "- `Authorization: Bearer <api_key>`\n" +
@@ -18,9 +17,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
         "Manage your keys in the [Lorabiz Developer Dashboard](https://lorabiz.com/dashboard/developer).\n\n" +
         "### Environments: Test Sandbox vs Live\n" +
         "- **Test Mode (`lora_test_...`)**: Preloaded with virtual ₦1,000,000.00 sandbox balance. Real funds are never deducted. Deterministic test numbers are provided per endpoint to simulate both success and error paths.\n" +
-        "- **Live Mode (`lora_live_...`)**: Connects directly to production national databases. Charges wholesale fees atomically on successful 2xx verifications.\n\n" +
-        "### Zero-Risk Billing Policy\n" +
-        "You are only billed when a record is successfully resolved (HTTP 200). Client errors (HTTP 400), unlinked records (HTTP 422), or system issues are charged ₦0.00.",
+        "- **Live Mode (`lora_live_...`)**: Connects directly to production national databases. Charges wholesale fees atomically on successful 2xx verifications.",
       contact: {
         name: "Lorabiz Developer Support",
         url: "https://lorabiz.com/contact",
@@ -32,9 +29,15 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
         url: baseUrl,
         description: "Lorabiz Production Gateway",
       },
+    ],
+    tags: [
       {
-        url: "http://localhost:3000",
-        description: "Localhost Development Server",
+        name: "NIN Slip Generation",
+        description:
+          "Generate biometric verification slips (Regular, Standard, Premium, Basic, and vNIN layouts) by National Identification Number (NIN) or registered phone number.\n\n" +
+          "**Billing Policy for NIN Slips**:\n" +
+          "Accounts are only billed when a verification slip is successfully resolved and generated (HTTP 200). " +
+          "If no record exists in the national database (HTTP 422 RECORD_NOT_FOUND) or if the request contains validation errors (HTTP 400), the transaction is billed ₦0.00.",
       },
     ],
     security: [
@@ -211,21 +214,31 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
     paths: {
       "/api/v1/nin/by-nin": {
         post: {
-          tags: ["NIN Identity & Slips"],
+          tags: ["NIN Slip Generation"],
           summary: "Verify Identity & Generate Slip by NIN",
           description:
             "Verifies an 11-digit NIN against the national identity registry and generates a biometric slip in Base64 PDF format.\n\n" +
-            "#### Slip Formats & Examples:\n" +
-            "- **`nin_basic`**: Basic Demographic Slip\n" +
-            "  ![Basic Slip](/examples/nin_basic.png)\n" +
-            "- **`nin_vnin`**: Virtual NIN (vNIN) Slip\n" +
-            "  ![vNIN Slip](/examples/nin_vnin.png)\n" +
-            "- **`nin_regular`**: Standard Regular Slip\n" +
-            "  ![Regular Slip](/examples/nin_regular_example.png)\n" +
-            "- **`nin_standard`**: Standard Biometric Slip\n" +
-            "  ![Standard Slip](/examples/nin_standard_example.png)\n" +
-            "- **`nin_premium`**: Premium Card Slip\n" +
-            "  ![Premium Slip](/examples/nin_premium_example.png)\n\n" +
+            "#### Supported Slip Formats (Click to preview):\n\n" +
+            "<details>\n" +
+            "  <summary><strong>nin_basic</strong> — Basic Demographic Slip</summary>\n" +
+            "  <img src=\"/examples/nin_basic.png\" alt=\"Basic Slip Preview\" />\n" +
+            "</details>\n\n" +
+            "<details>\n" +
+            "  <summary><strong>nin_vnin</strong> — Virtual NIN (vNIN) Slip</summary>\n" +
+            "  <img src=\"/examples/nin_vnin.png\" alt=\"vNIN Slip Preview\" />\n" +
+            "</details>\n\n" +
+            "<details>\n" +
+            "  <summary><strong>nin_regular</strong> — Standard Regular Slip</summary>\n" +
+            "  <img src=\"/examples/nin_regular_example.png\" alt=\"Regular Slip Preview\" />\n" +
+            "</details>\n\n" +
+            "<details>\n" +
+            "  <summary><strong>nin_standard</strong> — Standard Biometric Slip</summary>\n" +
+            "  <img src=\"/examples/nin_standard_example.png\" alt=\"Standard Slip Preview\" />\n" +
+            "</details>\n\n" +
+            "<details>\n" +
+            "  <summary><strong>nin_premium</strong> — Premium Card Slip</summary>\n" +
+            "  <img src=\"/examples/nin_premium_example.png\" alt=\"Premium Slip Preview\" />\n" +
+            "</details>\n\n" +
             "#### Sandbox Test Identifiers:\n" +
             "- **Success (Female)**: `61904909560` (Returns 200 OK)\n" +
             "- **Success (Male)**: `12345678901` (Returns 200 OK)\n" +
@@ -397,17 +410,23 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       },
       "/api/v1/nin/by-phone": {
         post: {
-          tags: ["NIN Identity & Slips"],
+          tags: ["NIN Slip Generation"],
           summary: "Verify Identity & Generate Slip by Phone Number",
           description:
             "Resolves a linked NIN profile using an 11-digit registered phone number and generates a biometric slip in Base64 PDF format.\n\n" +
-            "#### Slip Formats & Examples:\n" +
-            "- **`nin_regular`**: Standard Regular Slip\n" +
-            "  ![Regular Slip](/examples/nin_regular_example.png)\n" +
-            "- **`nin_standard`**: Standard Biometric Slip\n" +
-            "  ![Standard Slip](/examples/nin_standard_example.png)\n" +
-            "- **`nin_premium`**: Premium Card Slip\n" +
-            "  ![Premium Slip](/examples/nin_premium_example.png)\n\n" +
+            "#### Supported Slip Formats (Click to preview):\n\n" +
+            "<details>\n" +
+            "  <summary><strong>nin_regular</strong> — Standard Regular Slip</summary>\n" +
+            "  <img src=\"/examples/nin_regular_example.png\" alt=\"Regular Slip Preview\" />\n" +
+            "</details>\n\n" +
+            "<details>\n" +
+            "  <summary><strong>nin_standard</strong> — Standard Biometric Slip</summary>\n" +
+            "  <img src=\"/examples/nin_standard_example.png\" alt=\"Standard Slip Preview\" />\n" +
+            "</details>\n\n" +
+            "<details>\n" +
+            "  <summary><strong>nin_premium</strong> — Premium Card Slip</summary>\n" +
+            "  <img src=\"/examples/nin_premium_example.png\" alt=\"Premium Slip Preview\" />\n" +
+            "</details>\n\n" +
             "#### Sandbox Test Identifiers:\n" +
             "- **Success (Female)**: `09047073004` (Returns 200 OK)\n" +
             "- **Success (Male)**: `08012345678` (Returns 200 OK)\n" +

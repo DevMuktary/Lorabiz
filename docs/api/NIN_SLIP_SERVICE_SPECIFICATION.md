@@ -67,7 +67,7 @@ The Lorabiz API standardizes all demographic fields into a single, clean, straig
 ```http
 POST /api/v1/nin/by-nin HTTP/1.1
 Host: api.lorabiz.com
-Authorization: Bearer lora_live_9b4a8e2f1c3d7056a29f81d4b0e5c9a17382f6e4a9b2d0e1
+Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 
 {
@@ -164,7 +164,7 @@ Content-Type: application/json
 ```http
 POST /api/v1/nin/by-phone HTTP/1.1
 Host: api.lorabiz.com
-Authorization: Bearer lora_live_9b4a8e2f1c3d7056a29f81d4b0e5c9a17382f6e4a9b2d0e1
+Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 
 {
