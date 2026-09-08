@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { nin, slip_type, client_reference, include_slip } = requestBody || {};
+  const { nin, slip_type, client_reference } = requestBody || {};
 
   // 2. Validate NIN format (Must be exactly 11 digits)
   if (!nin || !/^\d{11}$/.test(String(nin).trim())) {
@@ -233,7 +233,6 @@ export async function POST(req: NextRequest) {
       clientReference: client_reference || null,
       amountCharged: requiredAmount,
       balanceAfter: billingResult.balanceAfter,
-      includeSlip: include_slip !== false,
     });
 
     recordApiRequestLog({
@@ -328,7 +327,6 @@ export async function POST(req: NextRequest) {
       amountCharged: requiredAmount,
       environment,
       balanceAfter: billingResult.balanceAfter,
-      includeSlip: include_slip !== false,
     });
 
     recordApiRequestLog({

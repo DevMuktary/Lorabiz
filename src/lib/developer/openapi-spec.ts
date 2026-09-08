@@ -115,13 +115,13 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           type: "object",
           properties: {
             status: { type: "string", example: "error" },
-            code: { type: "string", example: "INVALID_API_KEY" },
-            message: { type: "string", example: "Invalid or missing API key provided in authorization headers." },
+            code: { type: "string", example: "UNAUTHORIZED" },
+            message: { type: "string", example: "Invalid, revoked, or expired API key. Please check your key in the Developer Console." },
           },
           example: {
             status: "error",
-            code: "INVALID_API_KEY",
-            message: "Invalid or missing API key provided in authorization headers.",
+            code: "UNAUTHORIZED",
+            message: "Invalid, revoked, or expired API key. Please check your key in the Developer Console.",
           },
         },
         InsufficientBalanceResponse: {
@@ -129,12 +129,29 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           properties: {
             status: { type: "string", example: "error" },
             code: { type: "string", example: "INSUFFICIENT_BALANCE" },
-            message: { type: "string", example: "Insufficient wallet balance. Service costs ₦150.00, but current balance is ₦0.00." },
+            message: { type: "string", example: "Insufficient live balance. Service costs ₦150.00, but current balance is ₦0.00." },
+            environment: { type: "string", enum: ["live", "test"], example: "live" },
+            transaction: {
+              type: "object",
+              properties: {
+                required_amount: { type: "number", example: 150.0 },
+                current_balance: { type: "number", example: 0.0 },
+                amount_charged: { type: "number", example: 0.0 },
+                currency: { type: "string", example: "NGN" },
+              },
+            },
           },
           example: {
             status: "error",
             code: "INSUFFICIENT_BALANCE",
-            message: "Insufficient wallet balance. Service costs ₦150.00, but current balance is ₦0.00.",
+            message: "Insufficient live balance. Service costs ₦150.00, but current balance is ₦0.00.",
+            environment: "live",
+            transaction: {
+              required_amount: 150.0,
+              current_balance: 0.0,
+              amount_charged: 0.0,
+              currency: "NGN",
+            },
           },
         },
         RecordNotFoundResponse: {
@@ -167,13 +184,13 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           type: "object",
           properties: {
             status: { type: "string", example: "error" },
-            code: { type: "string", example: "RATE_LIMIT_EXCEEDED" },
-            message: { type: "string", example: "Rate limit exceeded. You have exceeded your 60 requests per minute limit." },
+            code: { type: "string", example: "RATE_LIMITED" },
+            message: { type: "string", example: "Too many requests. Limit is 60 requests per minute in live mode." },
           },
           example: {
             status: "error",
-            code: "RATE_LIMIT_EXCEEDED",
-            message: "Rate limit exceeded. You have exceeded your 60 requests per minute limit.",
+            code: "RATE_LIMITED",
+            message: "Too many requests. Limit is 60 requests per minute in live mode.",
           },
         },
         ServiceUnavailableResponse: {
@@ -236,12 +253,6 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                       type: "string",
                       description: "Optional custom transaction reference",
                       example: "TXN_ORD_9812401",
-                    },
-                    include_slip: {
-                      type: "boolean",
-                      description: "Whether to return the base64 PDF slip binary. Set to false for data-only response.",
-                      default: true,
-                      example: true,
                     },
                   },
                 },
@@ -311,8 +322,8 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
                   example: {
                     status: "error",
-                    code: "INVALID_API_KEY",
-                    message: "Invalid or missing API key provided in authorization headers.",
+                    code: "UNAUTHORIZED",
+                    message: "Invalid, revoked, or expired API key. Please check your key in the Developer Console.",
                   },
                 },
               },
@@ -325,7 +336,14 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   example: {
                     status: "error",
                     code: "INSUFFICIENT_BALANCE",
-                    message: "Insufficient wallet balance. Service costs ₦150.00, but current balance is ₦0.00.",
+                    message: "Insufficient live balance. Service costs ₦150.00, but current balance is ₦0.00.",
+                    environment: "live",
+                    transaction: {
+                      required_amount: 150.0,
+                      current_balance: 0.0,
+                      amount_charged: 0.0,
+                      currency: "NGN",
+                    },
                   },
                 },
               },
@@ -338,7 +356,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   example: {
                     status: "error",
                     code: "RECORD_NOT_FOUND",
-                    message: "No identity record was found matching the provided identifier.",
+                    message: "No identity record was found matching the provided National Identification Number (NIN).",
                     environment: "live",
                     transaction: {
                       amount_charged: 0.0,
@@ -355,8 +373,8 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
                   example: {
                     status: "error",
-                    code: "RATE_LIMIT_EXCEEDED",
-                    message: "Rate limit exceeded. You have exceeded your 60 requests per minute limit.",
+                    code: "RATE_LIMITED",
+                    message: "Too many requests. Limit is 60 requests per minute in live mode.",
                   },
                 },
               },
@@ -417,12 +435,6 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                       type: "string",
                       description: "Optional custom transaction reference",
                       example: "TXN_PHONE_9812402",
-                    },
-                    include_slip: {
-                      type: "boolean",
-                      description: "Whether to return the base64 PDF slip binary. Set to false for data-only response.",
-                      default: true,
-                      example: true,
                     },
                   },
                 },
@@ -492,8 +504,8 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
                   example: {
                     status: "error",
-                    code: "INVALID_API_KEY",
-                    message: "Invalid or missing API key provided in authorization headers.",
+                    code: "UNAUTHORIZED",
+                    message: "Invalid, revoked, or expired API key. Please check your key in the Developer Console.",
                   },
                 },
               },
@@ -506,7 +518,14 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   example: {
                     status: "error",
                     code: "INSUFFICIENT_BALANCE",
-                    message: "Insufficient wallet balance. Service costs ₦150.00, but current balance is ₦0.00.",
+                    message: "Insufficient live balance. Service costs ₦150.00, but current balance is ₦0.00.",
+                    environment: "live",
+                    transaction: {
+                      required_amount: 150.0,
+                      current_balance: 0.0,
+                      amount_charged: 0.0,
+                      currency: "NGN",
+                    },
                   },
                 },
               },
@@ -536,8 +555,8 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
                   example: {
                     status: "error",
-                    code: "RATE_LIMIT_EXCEEDED",
-                    message: "Rate limit exceeded. You have exceeded your 60 requests per minute limit.",
+                    code: "RATE_LIMITED",
+                    message: "Too many requests. Limit is 60 requests per minute in live mode.",
                   },
                 },
               },

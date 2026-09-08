@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { phone, slip_type, client_reference, include_slip } = requestBody || {};
+  const { phone, slip_type, client_reference } = requestBody || {};
 
   // 2. Validate Phone Number format (Must be exactly 11 digits)
   if (!phone || !/^\d{11}$/.test(String(phone).trim())) {
@@ -268,7 +268,6 @@ export async function POST(req: NextRequest) {
       clientReference: client_reference || null,
       amountCharged: requiredAmount,
       balanceAfter: billingResult.balanceAfter,
-      includeSlip: include_slip !== false,
     });
 
     recordApiRequestLog({
@@ -363,7 +362,6 @@ export async function POST(req: NextRequest) {
       amountCharged: requiredAmount,
       environment,
       balanceAfter: billingResult.balanceAfter,
-      includeSlip: include_slip !== false,
     });
 
     recordApiRequestLog({

@@ -120,7 +120,7 @@ export function normalizeNinSlipResponse(params: {
 
   const nin = (u.nin || u.vnin || rawResult.nin || "").toString().trim();
 
-  const rawPdf = includeSlip ? (rawResult.pdfBase64 || rawResult.pdf_base64 || "") : "";
+  const rawPdf = rawResult.pdfBase64 || rawResult.pdf_base64 || "";
 
   return {
     status: "success",
@@ -179,13 +179,12 @@ export function generateMockNinResponse(params: {
   const { identifier, searchType, slipType, reference, clientReference, amountCharged, balanceAfter, includeSlip = true } = params;
 
   // Minimal standard valid 1-page PDF binary in Base64 (starts with %PDF-1.4)
-  const mockPdfBase64 = includeSlip ? (
+  const mockPdfBase64 =
     "JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDM0Ny9GaWx0ZXIvRmxhdGVEZWNvZGU+PnN0cmVhbQp4nH2Q" +
     "wW6DMBBE7/4Kj3toZde7A1Uq9VS1SkqVqnupgAM0YmFsh37+vjZq6yGHnWY1b7QeaE/bL2c7i8vB1/7kWw6m0g8+u6F7dG2/" +
     "9wG3H+7wUe1cR1d07Xh0kY9m7G2f8/u4Z+u1b7r766t5sMvY+vM+eR/k7cvrf76+5c8g2gMbhFhFkQvPqEQmQ/8R0W4FkI0P" +
     "G1n4wzT8V3v43xX7+b96+Pz5/v3663/7+vv/7/9+/v//+P7//f3///b//9///37//v//+/f/77///3///v3//f/9///37//7" +
-    "///3//f/9///37//7///37//f/9///37//7///37//f/9///37//7///37//f/9///37//7///37//f/9///37//7///37//"
-  ) : "";
+    "///3//f/9///37//7///37//f/9///37//7///37//f/9///37//7///37//f/9///37//7///37//f/9///37//7///37//";
 
   const mockNin = searchType === "NIN" ? identifier : "61904909560";
   const mockPhone = searchType === "PHONE" ? identifier : "09047073004";
