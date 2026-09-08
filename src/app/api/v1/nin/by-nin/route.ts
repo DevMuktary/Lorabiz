@@ -6,6 +6,7 @@ import { executeNinSlipGeneration } from "@/lib/nin-slips-provider";
 import {
   VALID_NIN_SLIP_TYPES,
   API_PRICING_KEYS_NIN,
+  SANDBOX_NOT_FOUND_NINS,
   normalizeNinSlipResponse,
   generateMockNinResponse,
 } from "@/lib/developer/nin-normalizer";
@@ -173,6 +174,37 @@ export async function POST(req: NextRequest) {
 
   // 6. TEST Mode: High-fidelity simulation (No real DataVerify credits burned)
   if (environment === ApiKeyType.TEST) {
+    // 6a. Explicit Sandbox Test Case: Record Not Found (422) simulation
+    if (SANDBOX_NOT_FOUND_NINS.includes(cleanNin)) {
+      const errorMsg = "No identity record was found matching the provided National Identification Number (NIN).";
+      recordApiRequestLog({
+        userId: keyPayload.userId,
+        apiKeyId: keyPayload.id,
+        environment,
+        method: "POST",
+        endpoint,
+        statusCode: 422,
+        latencyMs: Date.now() - startTime,
+        amountCharged: 0,
+        clientReference: client_reference || null,
+        requestBody,
+        errorMessage: errorMsg,
+      });
+
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "RECORD_NOT_FOUND",
+          message: errorMsg,
+          environment: "test",
+          transaction: {
+            amount_charged: 0.0,
+            currency: "NGN",
+          },
+        },
+        { status: 422 }
+      );
+    }
     const billingResult = await executeDeveloperBilling({
       userId: keyPayload.userId,
       environment,

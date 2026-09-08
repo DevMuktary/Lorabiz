@@ -5,7 +5,7 @@ export const revalidate = 86400; // Cache for 24 hours
 
 const LLMS_TEXT_CONTENT = `# Lorabiz Developer API
 
-> High-performance, low-latency identity verification and official biometric slip generation API for Nigerian identity systems. Built for modern fintechs, developers, and autonomous AI agents.
+> High-performance, low-latency identity verification and biometric slip generation API for Nigerian identity systems. Built for modern fintechs, developers, and autonomous AI agents.
 
 ## Quick Links
 - Interactive Documentation: https://lorabiz.com/docs
@@ -22,7 +22,10 @@ Every request requires an API key in one of the following HTTP headers:
 - \`x-api-key: <api_key>\`
 
 ### Key Environments
-- Test Mode: Starts with \`lora_test_\` (Uses virtual ₦1,000,000 sandbox credit. Real funds are never deducted. Returns deterministic mock verification responses).
+- Test Mode: Starts with \`lora_test_\` (Uses virtual ₦1,000,000 sandbox credit. Real funds are never deducted. Returns deterministic mock responses).
+  - Test Success (Female): NIN \`61904909560\` / Phone \`09047073004\`
+  - Test Success (Male): NIN \`12345678901\` / Phone \`08012345678\`
+  - Test Record Not Found (422): NIN \`00000000000\` or \`99999999999\` / Phone \`00000000000\` (Charged ₦0.00)
 - Live Mode: Starts with \`lora_live_\` (Deducts real balance per successful 2xx verification. 4xx errors are billed ₦0.00).
 
 ## Endpoints

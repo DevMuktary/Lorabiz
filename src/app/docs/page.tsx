@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, KeyRound, Sparkles, FileCode2, ExternalLink } from "lucide-react";
+import { ArrowLeft, KeyRound, Sparkles, FileCode2 } from "lucide-react";
 
 declare global {
   interface Window {
@@ -12,9 +12,11 @@ declare global {
         configuration: {
           spec: { url?: string; content?: any };
           theme?: string;
+          layout?: "modern" | "classic";
           darkMode?: boolean;
           showSidebar?: boolean;
           searchHotKey?: string;
+          customCss?: string;
           metaData?: {
             title?: string;
             description?: string;
@@ -45,9 +47,30 @@ export default function DocsPage() {
             url: "/api/openapi.json",
           },
           theme: "purple",
+          layout: "modern",
           darkMode: true,
           showSidebar: true,
           searchHotKey: "k",
+          customCss: `
+            /* Mobile & iOS Safari Stability Rules */
+            * {
+              -webkit-tap-highlight-color: transparent;
+            }
+            .scalar-api-reference {
+              -webkit-overflow-scrolling: touch;
+              max-width: 100vw;
+              overflow-x: hidden;
+            }
+            @media (max-width: 768px) {
+              .scalar-api-reference {
+                padding: 0 !important;
+              }
+              .sidebar {
+                width: 85vw !important;
+                max-width: 320px !important;
+              }
+            }
+          `,
           metaData: {
             title: "Lorabiz Developer API Reference",
             description: "Interactive REST API Reference for Lorabiz Identity & NIN Verification Services",
@@ -84,68 +107,74 @@ export default function DocsPage() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#090d16] text-slate-100 font-sans">
-      {/* Brand Header */}
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-800/80 bg-[#090d16]/95 px-4 py-2.5 backdrop-blur-md">
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col w-full h-[100dvh] max-h-[100dvh] bg-[#090d16] text-slate-100 font-sans overflow-hidden">
+      {/* Mobile-Optimized Top Navbar */}
+      <header className="sticky top-0 z-50 flex h-12 w-full shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#090d16]/95 px-3 sm:px-4 backdrop-blur-md">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Link
             href="/dashboard/developer"
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-white transition-colors"
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-white transition-colors shrink-0"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Developer Portal</span>
+            <span className="hidden sm:inline">Developer Portal</span>
+            <span className="sm:hidden">Portal</span>
           </Link>
-          <div className="h-3.5 w-px bg-slate-800" />
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-white tracking-tight">Lorabiz Developer API</span>
-            <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-500/20">
+          <div className="h-3.5 w-px bg-slate-800 shrink-0" />
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="font-bold text-xs sm:text-sm text-white tracking-tight truncate">
+              Lorabiz API Docs
+            </span>
+            <span className="hidden md:inline rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-500/20 shrink-0">
               v1.0 (OpenAPI 3.1)
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <Link
             href="/api/openapi.json"
             target="_blank"
-            className="hidden sm:flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-white transition-colors"
+            className="hidden sm:flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-white transition-colors"
             title="Raw OpenAPI 3.1 JSON"
           >
             <FileCode2 className="h-3.5 w-3.5 text-blue-400" />
-            <span>OpenAPI Spec</span>
+            <span>OpenAPI</span>
           </Link>
 
           <Link
             href="/llms.txt"
             target="_blank"
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-emerald-400 transition-colors"
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-emerald-400 transition-colors"
             title="AI & LLM Markdown Discovery Endpoint"
           >
             <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-            <span>llms.txt</span>
+            <span className="hidden xs:inline">llms.txt</span>
           </Link>
 
           <Link
             href="/dashboard/developer"
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 transition-colors"
           >
             <KeyRound className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Get API Keys</span>
-            <span className="sm:hidden">Keys</span>
+            <span>Keys</span>
           </Link>
         </div>
       </header>
 
-      {/* Scalar Container */}
-      <main className="flex-1 w-full relative">
+      {/* Scalar Container with Touch Momentum Scrolling */}
+      <main className="flex-1 w-full max-w-full overflow-hidden relative min-h-0">
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#090d16] text-slate-400 text-sm gap-3 z-10">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#090d16] text-slate-400 text-sm gap-3 z-10 px-4 text-center">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
             <p className="font-medium text-slate-300">Loading interactive Scalar documentation...</p>
             <p className="text-xs text-slate-500">Parsing OpenAPI 3.1 specification at /api/openapi.json</p>
           </div>
         )}
-        <div ref={containerRef} className="w-full min-h-[calc(100vh-50px)]" />
+        <div 
+          ref={containerRef} 
+          className="w-full h-full overflow-y-auto overflow-x-hidden"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        />
       </main>
     </div>
   );

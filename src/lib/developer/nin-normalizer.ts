@@ -158,6 +158,9 @@ export function normalizeNinSlipResponse(params: {
   };
 }
 
+export const SANDBOX_NOT_FOUND_NINS = ["00000000000", "00000000001", "99999999999"];
+export const SANDBOX_NOT_FOUND_PHONES = ["00000000000", "07000000000", "08000000000"];
+
 /**
  * Generates high-fidelity simulated response for TEST environment queries.
  * Allows developers to test their integration, decode base64 PDF, and parse JSON
@@ -187,26 +190,48 @@ export function generateMockNinResponse(params: {
   const mockNin = searchType === "NIN" ? identifier : "61904909560";
   const mockPhone = searchType === "PHONE" ? identifier : "09047073004";
 
+  const isMaleProfile = identifier === "12345678901" || identifier === "08012345678";
+
+  const profileData: NormalizedDemographicData = isMaleProfile
+    ? {
+        nin: mockNin,
+        firstname: "MUSA",
+        middlename: "IBRAHIM",
+        surname: "BELLO",
+        fullname: "MUSA IBRAHIM BELLO",
+        gender: "Male",
+        birthdate: "1994-05-18",
+        telephoneno: mockPhone,
+        photo: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/",
+        address: "14 Adeola Odeku Street, Victoria Island",
+        residence_lga: "Eti-Osa",
+        residence_state: "Lagos",
+        self_origin_lga: "Kano Municipal",
+        self_origin_state: "Kano",
+        tracking_id: "TRK-984210",
+      }
+    : {
+        nin: mockNin,
+        firstname: "MMESOMA",
+        middlename: "CELESTINA",
+        surname: "AGU",
+        fullname: "MMESOMA CELESTINA AGU",
+        gender: "Female",
+        birthdate: "1997-06-26",
+        telephoneno: mockPhone,
+        photo: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/",
+        address: "12 Example Boulevard, Victoria Island",
+        residence_lga: "Ikeja",
+        residence_state: "Lagos",
+        self_origin_lga: "Aguata",
+        self_origin_state: "Anambra",
+        tracking_id: "12345ABC",
+      };
+
   return {
     status: "success",
     message: `[TEST SANDBOX] NIN verification slip generated successfully.`,
-    data: {
-      nin: mockNin,
-      firstname: "MMESOMA",
-      middlename: "CELESTINA",
-      surname: "AGU",
-      fullname: "MMESOMA CELESTINA AGU",
-      gender: "Female",
-      birthdate: "1997-06-26",
-      telephoneno: mockPhone,
-      photo: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/",
-      address: "12 Example Boulevard, Victoria Island",
-      residence_lga: "Ikeja",
-      residence_state: "Lagos",
-      self_origin_lga: "Aguata",
-      self_origin_state: "Anambra",
-      tracking_id: "12345ABC",
-    },
+    data: profileData,
     slip: {
       slip_type: slipType,
       display_name: SLIP_DISPLAY_NAMES[slipType] || "Standard Biometric Slip",

@@ -12,8 +12,8 @@ This document defines the technical specification for the **NIN Verification and
 - **Supported Slip Types (5 Formats)**:
   1. `nin_basic`: Basic demographic slip. Contains core personal details without extended address/tracking.
   2. `nin_vnin`: Virtual NIN (vNIN) verification slip format.
-     > **Note**: **VNIN is NOT a separate service**; it is an official slip layout format.
-  3. `nin_regular`: Official NIMC Regular slip layout.
+     > **Note**: **VNIN is NOT a separate service**; it is a slip layout format.
+  3. `nin_regular`: Standard NIMC Regular slip layout.
   4. `nin_standard`: Standard Biometric KYC slip featuring applicant photo and full demographics.
   5. `nin_premium`: Premium ID card layout (wallet-sized front & back).
 
@@ -21,7 +21,7 @@ This document defines the technical specification for the **NIN Verification and
 - **Canonical Endpoint**: `POST /api/v1/nin/by-phone`
 - **Identifier**: 11-digit Nigerian registered mobile phone number (e.g., `08012345678`, `09047073004`).
 - **Supported Slip Types (3 Formats)**:
-  1. `nin_regular`: Official NIMC Regular slip layout.
+  1. `nin_regular`: Standard NIMC Regular slip layout.
   2. `nin_standard`: Standard Biometric KYC slip.
   3. `nin_premium`: Premium ID card layout.
 

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import {
   VALID_PHONE_SLIP_TYPES,
   API_PRICING_KEYS_PHONE,
+  SANDBOX_NOT_FOUND_PHONES,
   normalizeNinSlipResponse,
   generateMockNinResponse,
 } from "@/lib/developer/nin-normalizer";
@@ -208,6 +209,37 @@ export async function POST(req: NextRequest) {
 
   // 7. TEST Mode: High-fidelity simulation (No real DataVerify credits burned)
   if (environment === ApiKeyType.TEST) {
+    // 7a. Explicit Sandbox Test Case: Record Not Found (422) simulation
+    if (SANDBOX_NOT_FOUND_PHONES.includes(cleanPhone)) {
+      const errorMsg = "No linked National Identification Number (NIN) record was found matching the provided phone number.";
+      recordApiRequestLog({
+        userId: keyPayload.userId,
+        apiKeyId: keyPayload.id,
+        environment,
+        method: "POST",
+        endpoint,
+        statusCode: 422,
+        latencyMs: Date.now() - startTime,
+        amountCharged: 0,
+        clientReference: client_reference || null,
+        requestBody,
+        errorMessage: errorMsg,
+      });
+
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "RECORD_NOT_FOUND",
+          message: errorMsg,
+          environment: "test",
+          transaction: {
+            amount_charged: 0.0,
+            currency: "NGN",
+          },
+        },
+        { status: 422 }
+      );
+    }
     const billingResult = await executeDeveloperBilling({
       userId: keyPayload.userId,
       environment,

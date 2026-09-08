@@ -5,12 +5,16 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       title: "Lorabiz Developer API",
       version: "1.0.0",
       description:
-        "High-performance REST API platform for verified National Identity Management Commission (NIMC) NIN verification, demographic resolution, and official PDF slip printing.\n\n" +
-        "### Key Highlights:\n" +
+        "High-performance REST API platform for verified National Identity Management Commission (NIMC) NIN verification, demographic resolution, and PDF slip printing.\n\n" +
+        "### Key Features:\n" +
         "- **Dual Environment Support**: Test Mode (`lora_test_...`) with a virtual ₦1,000,000 sandbox balance, and Live Mode (`lora_live_...`) with atomic wallet deductions.\n" +
         "- **Zero-Risk Billing**: Failed validation calls (400) or unfound records (422) are charged **₦0.00**.\n" +
         "- **Direct Base64 PDF**: Instant, low-latency slip delivery directly in the response payload.\n" +
-        "- **Normalized Schema**: Clean, predictable lowercase fields across all queries.",
+        "- **Normalized Schema**: Clean, predictable lowercase fields across all queries.\n\n" +
+        "### Sandbox Test Identifiers:\n" +
+        "- **Success (Female Record)**: NIN `61904909560` / Phone `09047073004` (Returns 200 OK)\n" +
+        "- **Success (Male Record)**: NIN `12345678901` / Phone `08012345678` (Returns 200 OK)\n" +
+        "- **Record Not Found (422)**: NIN `00000000000` or `99999999999` / Phone `00000000000` (Returns 422, billed ₦0.00)",
       contact: {
         name: "Lorabiz Developer Support",
         url: "https://lorabiz.com/contact",
@@ -113,7 +117,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIN Identity & Slips"],
           summary: "Verify Identity & Print Slip by NIN",
           description:
-            "Resolves a Nigerian citizen's 11-digit National Identification Number (NIN), returns normalized demographic records, and generates an official NIMC verification slip in Base64 PDF format.\n\n" +
+            "Resolves a Nigerian citizen's 11-digit National Identification Number (NIN), returns normalized demographic records, and generates a NIMC verification slip in Base64 PDF format.\n\n" +
             "### Supported Slip Tiers (5 Types):\n" +
             "- `nin_basic`: Basic demographic slip\n" +
             "- `nin_vnin`: Virtual NIN (vNIN) verification slip format\n" +
@@ -214,7 +218,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIN Identity & Slips"],
           summary: "Verify Identity & Print Slip by Phone Number",
           description:
-            "Resolves an 11-digit Nigerian registered mobile phone number to its linked National Identification Number (NIN) profile and generates an official NIMC verification slip.\n\n" +
+            "Resolves an 11-digit Nigerian registered mobile phone number to its linked National Identification Number (NIN) profile and generates a NIMC verification slip.\n\n" +
             "### Supported Slip Tiers (3 Types):\n" +
             "- `nin_regular`: Regular slip layout\n" +
             "- `nin_standard`: Standard biometric slip with photo\n" +
