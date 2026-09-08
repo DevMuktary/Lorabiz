@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-static";
 export const revalidate = 86400; // Cache for 24 hours
 
-const LLMS_TEXT_CONTENT = `# Lorabiz Developer API
+const LLMS_TEXT_CONTENT = `# Lorabiz Developer Platform API
 
-> High-performance, low-latency identity verification and biometric slip generation API for Nigerian identity systems. Built for modern fintechs, developers, and autonomous AI agents.
+> Enterprise developer API gateway for Nigerian identity verification, regulatory compliance, business registrations, and government documentation. Built for modern fintechs, developers, and autonomous AI agents.
 
 ## Quick Links
 - Interactive Documentation: https://lorabiz.com/docs

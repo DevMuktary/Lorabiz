@@ -58,8 +58,6 @@ export default function DocsPage() {
             }
             .scalar-api-reference {
               -webkit-overflow-scrolling: touch;
-              max-width: 100vw;
-              overflow-x: hidden;
             }
             /* Slip Preview Card Styling */
             .scalar-api-reference img[src*="/examples/"] {
@@ -128,7 +126,7 @@ export default function DocsPage() {
   }, []);
 
   return (
-    <div className="flex flex-col w-full h-[100dvh] max-h-[100dvh] bg-[#090d16] text-slate-100 font-sans overflow-hidden">
+    <div className="min-h-screen bg-[#090d16] text-slate-100 font-sans">
       {/* Mobile-Optimized Top Navbar */}
       <header className="sticky top-0 z-50 flex h-12 w-full shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#090d16]/95 px-3 sm:px-4 backdrop-blur-md">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -182,20 +180,16 @@ export default function DocsPage() {
         </div>
       </header>
 
-      {/* Scalar Container with Touch Momentum Scrolling */}
-      <main className="flex-1 w-full max-w-full overflow-hidden relative min-h-0">
+      {/* Scalar Container with Natural Browser Flow */}
+      <main className="w-full relative min-h-[calc(100vh-48px)]">
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#090d16] text-slate-400 text-sm gap-3 z-10 px-4 text-center">
+          <div className="flex flex-col items-center justify-center py-32 text-slate-400 text-sm gap-3 px-4 text-center">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
             <p className="font-medium text-slate-300">Loading interactive Scalar documentation...</p>
             <p className="text-xs text-slate-500">Parsing OpenAPI 3.1 specification at /api/openapi.json</p>
           </div>
         )}
-        <div 
-          ref={containerRef} 
-          className="w-full h-full overflow-y-auto overflow-x-hidden"
-          style={{ WebkitOverflowScrolling: "touch" }}
-        />
+        <div ref={containerRef} className="w-full" />
       </main>
     </div>
   );
