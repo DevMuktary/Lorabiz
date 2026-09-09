@@ -4,6 +4,7 @@ import { authenticateApiKey } from "@/lib/developer/api-auth";
 import { recordApiRequestLog } from "@/lib/developer/logger";
 import { ApiKeyType, NinValidationCategory } from "@prisma/client";
 import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
+import { executeDeveloperBilling } from "@/lib/developer/api-pricing";
 import crypto from "crypto";
 
 const VALIDATION_TYPE_MAP: Record<string, { category: NinValidationCategory; serviceKey: string; defaultPrice: number; label: string }> = {
@@ -245,9 +246,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // D. Create Test Ticket in Isolated Table (Never touches live NinValidationRequest or MDS queue)
+    // D. Virtual Sandbox Billing Check & Balance Deduction
     const testTrackingId = `nin_val_test_${crypto.randomBytes(8).toString("hex")}`;
 
+    const billingResult = await executeDeveloperBilling({
+      userId: keyPayload.userId,
+      environment: ApiKeyType.TEST,
+      requiredAmount: price,
+      reference: testTrackingId,
+      serviceTitle: typeConfig.label,
+      description: `Test NIN Validation (${typeConfig.label})`,
+    });
+
+    if (!billingResult.success) {
+      return NextResponse.json(
+        {
+          status: "error",
+          code: billingResult.code || "INSUFFICIENT_BALANCE",
+          message: billingResult.message || `Insufficient sandbox balance. Service costs ₦${price.toFixed(2)}.`,
+          environment: "test",
+          transaction: {
+            required_amount: price,
+            amount_charged: 0.0,
+            currency: "NGN",
+          },
+        },
+        { status: 402 }
+      );
+    }
+
+    // Create Test Ticket in Isolated Table (Never touches live NinValidationRequest or MDS queue)
     await prisma.testNinValidationTicket.create({
       data: {
         userId: keyPayload.userId,
@@ -270,10 +298,10 @@ export async function POST(req: NextRequest) {
       endpoint,
       statusCode: 201,
       latencyMs: Date.now() - startTime,
-      amountCharged: 0,
+      amountCharged: price,
       clientReference: cleanClientRef,
       requestBody: body,
-      responseBody: { status: "success", tracking_id: testTrackingId, simulated: true },
+      responseBody: { status: "success", tracking_id: testTrackingId, simulated: true, amount_charged: price },
     });
 
     // E. 5-Second Automated Background Transition & Test Webhook Dispatch
@@ -313,6 +341,12 @@ export async function POST(req: NextRequest) {
               refunded: true,
               failureReason: "Validation failed due to bypass NIN, suspended, invalidated or wrong NIN.",
             },
+          });
+
+          // Refund virtual sandbox balance
+          await prisma.user.update({
+            where: { id: keyPayload.userId },
+            data: { sandboxBalance: { increment: price } },
           });
 
           dispatchDeveloperWebhook(

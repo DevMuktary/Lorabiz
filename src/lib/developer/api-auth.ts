@@ -36,14 +36,14 @@ export async function authenticateApiKey(req: NextRequest): Promise<ApiAuthResul
     rawKey = xApiKeyHeader;
   }
 
-  if (!rawKey) {
+  if (!rawKey || rawKey === "null" || rawKey === "undefined" || rawKey.toLowerCase() === "bearer") {
     return {
       authenticated: false,
       errorResponse: NextResponse.json(
         {
           status: "error",
           code: "UNAUTHORIZED",
-          message: "Missing API key. Please provide an active API key via 'Authorization: Bearer <key>' or 'x-api-key: <key>'.",
+          message: "API key is required. Please provide an active API key via 'Authorization: Bearer <key>' or 'x-api-key: <key>'.",
         },
         { status: 401 }
       ),
