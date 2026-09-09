@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { generateSlipApiSlip, NormalizedSlipResult } from "@/lib/slipapi";
+import { generateSlipApiSlip, NormalizedSlipResult, SlipFailureReason } from "@/lib/slipapi";
 
 export interface ProviderHealthState {
   dataVerifyFailures: number;
@@ -69,10 +69,14 @@ async function generateDataVerifySlip(
   try {
     const apiKey = process.env.DATAVERIFY_API_KEY?.trim() || "";
     if (!apiKey) {
+      const err = "Identity verification gateway is temporarily offline for maintenance.";
       return {
         success: false,
-        error: "Identity verification gateway is temporarily offline for maintenance.",
+        error: err,
+        message: err,
+        cleanMessage: err,
         provider: "DATAVERIFY",
+        failureReason: "SERVICE_UNAVAILABLE",
         isInfraError: true,
       };
     }
@@ -108,10 +112,15 @@ async function generateDataVerifySlip(
     } catch (fetchErr: any) {
       clearTimeout(timeoutId);
       const isTimeout = fetchErr.name === "AbortError";
+      const err = isTimeout ? "Verification request timed out. Please try again in a few moments." : "Network connection to verification gateway failed. Please try again.";
       return {
         success: false,
-        error: isTimeout ? "Verification request timed out. Please try again in a few moments." : "Network connection to verification gateway failed. Please try again.",
+        error: err,
+        message: err,
+        cleanMessage: err,
+        rawError: fetchErr?.message,
         provider: "DATAVERIFY",
+        failureReason: "SERVICE_UNAVAILABLE",
         isInfraError: true,
       };
     } finally {
@@ -119,10 +128,15 @@ async function generateDataVerifySlip(
     }
 
     if (response.status >= 500) {
+      const err = "Verification gateway is temporarily experiencing high traffic. Please try again shortly.";
       return {
         success: false,
-        error: "Verification gateway is temporarily experiencing high traffic. Please try again shortly.",
+        error: err,
+        message: err,
+        cleanMessage: err,
+        rawError: `HTTP_${response.status}`,
         provider: "DATAVERIFY",
+        failureReason: "SERVICE_UNAVAILABLE",
         isInfraError: true,
       };
     }
@@ -134,10 +148,15 @@ async function generateDataVerifySlip(
       data = JSON.parse(rawText);
     } catch {
       console.error("❌ [DataVerify] Non-JSON response received:", rawText.slice(0, 400));
+      const err = "Verification gateway returned an invalid response. Please try again.";
       return {
         success: false,
-        error: "Verification gateway returned an invalid response. Please try again.",
+        error: err,
+        message: err,
+        cleanMessage: err,
+        rawError: rawText.slice(0, 300),
         provider: "DATAVERIFY",
+        failureReason: "SERVICE_UNAVAILABLE",
         isInfraError: true,
       };
     }
@@ -162,27 +181,66 @@ async function generateDataVerifySlip(
     if (!isSuccess) {
       const rawErrMsg = data.message || data.error || data.detail || "Could not generate verification slip with the provided details.";
       const lower = rawErrMsg.toLowerCase();
-      const isInfra =
-        lower.includes("insufficient balance") ||
-        lower.includes("wallet low") ||
-        lower.includes("service down") ||
-        lower.includes("maintenance") ||
-        lower.includes("internal error") ||
-        lower.includes("database") ||
-        lower.includes("503") ||
-        lower.includes("500") ||
-        lower.includes("dataverify") ||
-        lower.includes("slipapi");
 
-      let cleanError = rawErrMsg;
-      if (isInfra) {
-        cleanError = "Verification service is temporarily undergoing scheduled maintenance. Please try again shortly.";
+      // Provider-agnostic missing record detection
+      const isNotFound =
+        lower.includes("not exist") ||
+        lower.includes("not exists") ||
+        lower.includes("does not exist") ||
+        lower.includes("no record") ||
+        lower.includes("not found") ||
+        lower.includes("record not found") ||
+        lower.includes("unregistered") ||
+        lower.includes("not registered") ||
+        lower.includes("no match") ||
+        lower.includes("invalid nin") ||
+        lower.includes("invalid phone") ||
+        data.response_code === "01" ||
+        data.response_code === "404" ||
+        data.response_code === "422";
+
+      const isInfra =
+        !isNotFound && (
+          lower.includes("insufficient balance") ||
+          lower.includes("wallet low") ||
+          lower.includes("service down") ||
+          lower.includes("maintenance") ||
+          lower.includes("internal error") ||
+          lower.includes("database") ||
+          lower.includes("503") ||
+          lower.includes("500") ||
+          lower.includes("502") ||
+          lower.includes("504") ||
+          lower.includes("dataverify") ||
+          lower.includes("slipapi") ||
+          lower.includes("gateway") ||
+          lower.includes("timeout") ||
+          lower.includes("timed out")
+        );
+
+      let cleanError: string;
+      let failureReason: SlipFailureReason;
+
+      if (isNotFound) {
+        failureReason = "RECORD_NOT_FOUND";
+        cleanError = searchType === "PHONE"
+          ? "No identity record was found matching the provided phone number."
+          : "No identity record was found matching the provided NIN.";
+      } else if (isInfra) {
+        failureReason = "SERVICE_UNAVAILABLE";
+        cleanError = "Identity verification service is temporarily undergoing scheduled maintenance. Please try again shortly.";
+      } else {
+        failureReason = "GATEWAY_ERROR";
+        cleanError = rawErrMsg;
       }
 
       return {
         success: false,
         error: cleanError,
         message: cleanError,
+        cleanMessage: cleanError,
+        rawError: rawErrMsg,
+        failureReason,
         provider: "DATAVERIFY",
         isInfraError: isInfra,
       };
@@ -243,10 +301,15 @@ async function generateDataVerifySlip(
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Unexpected error during slip execution";
     console.error("❌ [Identity Router Error]:", errorMsg);
+    const cleanErr = "An unexpected error occurred while processing your verification slip. Please try again.";
     return {
       success: false,
-      error: "An unexpected error occurred while processing your verification slip. Please try again.",
+      error: cleanErr,
+      message: cleanErr,
+      cleanMessage: cleanErr,
+      rawError: errorMsg,
       provider: "DATAVERIFY",
+      failureReason: "SERVICE_UNAVAILABLE",
       isInfraError: true,
     };
   }
@@ -294,10 +357,15 @@ export async function executeNinSlipGeneration(
   // 2. Forced SLIPAPI routing
   if (providerSetting === "SLIPAPI") {
     if (!isSlipApiSupported) {
+      const cleanErr = "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip.";
       return {
         success: false,
-        error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip.",
+        error: cleanErr,
+        message: cleanErr,
+        cleanMessage: cleanErr,
         provider: "SLIPAPI",
+        failureReason: "SERVICE_UNAVAILABLE",
+        isInfraError: true,
       };
     }
     return await generateSlipApiSlip(slipType, identifier, searchType);
@@ -331,16 +399,28 @@ export async function executeNinSlipGeneration(
         if (fallbackResult.success) {
           return fallbackResult;
         }
+        const fallbackMsg = fallbackResult.error || "Identity verification is temporarily unavailable. Please try again shortly.";
         return {
           success: false,
-          error: fallbackResult.error || "Identity verification is temporarily unavailable. Please try again shortly.",
+          error: fallbackMsg,
+          message: fallbackMsg,
+          cleanMessage: fallbackResult.cleanMessage || fallbackMsg,
+          rawError: fallbackResult.rawError || primaryResult.rawError,
+          failureReason: fallbackResult.failureReason || "SERVICE_UNAVAILABLE",
           provider: "SLIPAPI",
+          isInfraError: true,
         };
       } else {
+        const maintMsg = "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip, or check back shortly.";
         return {
           success: false,
-          error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip, or check back shortly.",
+          error: maintMsg,
+          message: maintMsg,
+          cleanMessage: maintMsg,
+          rawError: primaryResult.rawError,
+          failureReason: "SERVICE_UNAVAILABLE",
           provider: "DATAVERIFY",
+          isInfraError: true,
         };
       }
     }
@@ -360,16 +440,27 @@ export async function executeNinSlipGeneration(
         recordDataVerifySuccess(searchType);
         return probeResult;
       }
+      const busyMsg = "Verification service is temporarily experiencing high traffic. Please try again in a few moments.";
       return {
         success: false,
-        error: "Verification service is temporarily experiencing high traffic. Please try again in a few moments.",
+        error: busyMsg,
+        message: busyMsg,
+        cleanMessage: busyMsg,
+        rawError: probeResult.rawError,
+        failureReason: "SERVICE_UNAVAILABLE",
         provider: "DATAVERIFY",
+        isInfraError: true,
       };
     } else {
+      const maintMsg = "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip, or check back shortly.";
       return {
         success: false,
-        error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip, or check back shortly.",
+        error: maintMsg,
+        message: maintMsg,
+        cleanMessage: maintMsg,
+        failureReason: "SERVICE_UNAVAILABLE",
         provider: "DATAVERIFY",
+        isInfraError: true,
       };
     }
   }

@@ -30,6 +30,12 @@ export interface SlipApiResponse {
   pdf_base64?: string;
 }
 
+export type SlipFailureReason =
+  | "RECORD_NOT_FOUND"
+  | "INVALID_IDENTIFIER"
+  | "SERVICE_UNAVAILABLE"
+  | "GATEWAY_ERROR";
+
 export interface NormalizedSlipResult {
   success: boolean;
   pdfBase64?: string;
@@ -48,6 +54,10 @@ export interface NormalizedSlipResult {
   message?: string;
   error?: string;
   provider: "SLIPAPI" | "DATAVERIFY";
+  failureReason?: SlipFailureReason;
+  cleanMessage?: string;
+  rawError?: string;
+  isInfraError?: boolean;
 }
 
 function getSlipApiConfig() {
@@ -72,10 +82,15 @@ export async function generateSlipApiSlip(
     const { apiKey, baseUrl } = getSlipApiConfig();
 
     if (!apiKey) {
+      const err = "Identity verification gateway is temporarily offline for maintenance.";
       return {
         success: false,
-        error: "Identity verification gateway is temporarily offline for maintenance.",
+        error: err,
+        message: err,
+        cleanMessage: err,
         provider: "SLIPAPI",
+        failureReason: "SERVICE_UNAVAILABLE",
+        isInfraError: true,
       };
     }
 
@@ -96,10 +111,15 @@ export async function generateSlipApiSlip(
       } else if (slipType === "nin_standard") {
         endpointUrl = `${baseUrl}/nin_standard.php`;
       } else {
+        const err = "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip.";
         return {
           success: false,
-          error: "This slip format is temporarily undergoing system maintenance. Please select Standard or Premium Slip.",
+          error: err,
+          message: err,
+          cleanMessage: err,
           provider: "SLIPAPI",
+          failureReason: "SERVICE_UNAVAILABLE",
+          isInfraError: true,
         };
       }
     }
@@ -130,20 +150,32 @@ export async function generateSlipApiSlip(
     } catch (fetchErr: any) {
       clearTimeout(timeoutId);
       const isTimeout = fetchErr.name === "AbortError";
+      const err = isTimeout ? "Verification request timed out. Please try again shortly." : "Network connection to verification gateway failed. Please try again.";
       return {
         success: false,
-        error: isTimeout ? "Verification request timed out. Please try again shortly." : "Network connection to verification gateway failed. Please try again.",
+        error: err,
+        message: err,
+        cleanMessage: err,
+        rawError: fetchErr?.message,
         provider: "SLIPAPI",
+        failureReason: "SERVICE_UNAVAILABLE",
+        isInfraError: true,
       };
     } finally {
       clearTimeout(timeoutId);
     }
 
     if (response.status >= 500) {
+      const err = "Verification service is temporarily experiencing high traffic. Please try again shortly.";
       return {
         success: false,
-        error: "Verification service is temporarily experiencing high traffic. Please try again shortly.",
+        error: err,
+        message: err,
+        cleanMessage: err,
+        rawError: `HTTP_${response.status}`,
         provider: "SLIPAPI",
+        failureReason: "SERVICE_UNAVAILABLE",
+        isInfraError: true,
       };
     }
 
@@ -154,10 +186,16 @@ export async function generateSlipApiSlip(
       data = JSON.parse(rawText);
     } catch {
       console.error("❌ [SlipAPI] Non-JSON response received:", rawText.slice(0, 400));
+      const err = "Verification gateway returned an invalid response. Please try again.";
       return {
         success: false,
-        error: "Verification gateway returned an invalid response. Please try again.",
+        error: err,
+        message: err,
+        cleanMessage: err,
+        rawError: rawText.slice(0, 300),
         provider: "SLIPAPI",
+        failureReason: "SERVICE_UNAVAILABLE",
+        isInfraError: true,
       };
     }
 
@@ -182,16 +220,70 @@ export async function generateSlipApiSlip(
       Boolean(data.pdf_base64 || (Array.isArray(data.response) && data.response[0]));
 
     if (!isSuccess) {
-      let rawMsg = data.error || data.message || data.detail || "Could not generate verification slip with the provided details.";
-      const lower = rawMsg.toLowerCase();
-      if (lower.includes("slipapi") || lower.includes("dataverify") || lower.includes("http") || lower.includes("server error")) {
-        rawMsg = "Verification gateway is temporarily busy. Please check your details or try again shortly.";
+      const rawErrMsg = data.error || data.message || data.detail || "Could not generate verification slip with the provided details.";
+      const lower = rawErrMsg.toLowerCase();
+
+      // Provider-agnostic missing record detection
+      const isNotFound =
+        lower.includes("not exist") ||
+        lower.includes("not exists") ||
+        lower.includes("does not exist") ||
+        lower.includes("no record") ||
+        lower.includes("not found") ||
+        lower.includes("record not found") ||
+        lower.includes("unregistered") ||
+        lower.includes("not registered") ||
+        lower.includes("no match") ||
+        lower.includes("invalid nin") ||
+        lower.includes("invalid phone") ||
+        data.response_code === "01" ||
+        data.response_code === "404" ||
+        data.response_code === "422";
+
+      const isInfra =
+        !isNotFound && (
+          lower.includes("insufficient balance") ||
+          lower.includes("wallet low") ||
+          lower.includes("service down") ||
+          lower.includes("maintenance") ||
+          lower.includes("internal error") ||
+          lower.includes("database") ||
+          lower.includes("503") ||
+          lower.includes("500") ||
+          lower.includes("502") ||
+          lower.includes("504") ||
+          lower.includes("slipapi") ||
+          lower.includes("dataverify") ||
+          lower.includes("gateway") ||
+          lower.includes("timeout") ||
+          lower.includes("server error")
+        );
+
+      let cleanError: string;
+      let failureReason: SlipFailureReason;
+
+      if (isNotFound) {
+        failureReason = "RECORD_NOT_FOUND";
+        cleanError = searchType === "PHONE"
+          ? "No identity record was found matching the provided phone number."
+          : "No identity record was found matching the provided NIN.";
+      } else if (isInfra) {
+        failureReason = "SERVICE_UNAVAILABLE";
+        cleanError = "Identity verification service is temporarily undergoing scheduled maintenance. Please try again shortly.";
+      } else {
+        failureReason = "GATEWAY_ERROR";
+        cleanError = rawErrMsg;
       }
+
       return {
         success: false,
-        error: rawMsg,
-        message: rawMsg,
+        error: cleanError,
+        message: cleanError,
+        cleanMessage: cleanError,
+        rawError: rawErrMsg,
+        failureReason,
         provider: "SLIPAPI",
+        isInfraError: isInfra,
       };
     }
 
@@ -247,10 +339,16 @@ export async function generateSlipApiSlip(
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Unexpected error during slip processing";
     console.error("❌ [Slip Gateway Error]:", errorMsg);
+    const cleanErr = "An unexpected error occurred while processing your verification slip. Please try again.";
     return {
       success: false,
-      error: "An unexpected error occurred while processing your verification slip. Please try again.",
+      error: cleanErr,
+      message: cleanErr,
+      cleanMessage: cleanErr,
+      rawError: errorMsg,
       provider: "SLIPAPI",
+      failureReason: "SERVICE_UNAVAILABLE",
+      isInfraError: true,
     };
   }
 }

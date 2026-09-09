@@ -292,15 +292,18 @@ export async function POST(req: NextRequest) {
     const result = await executeNinSlipGeneration(slip_type, cleanPhone, "PHONE");
 
     if (!result.success || !result.pdfBase64) {
-      const rawError = result.error || result.message || "Could not resolve identity with the provided phone number.";
+      const rawText = (result.error || result.message || "").toLowerCase();
       const isNotFound =
-        rawError.toLowerCase().includes("not found") ||
-        rawError.toLowerCase().includes("no record") ||
-        rawError.toLowerCase().includes("does not exist") ||
-        rawError.toLowerCase().includes("invalid phone");
+        result.failureReason === "RECORD_NOT_FOUND" ||
+        rawText.includes("not exist") ||
+        rawText.includes("no record") ||
+        rawText.includes("not found");
 
       const statusCode = isNotFound ? 422 : 503;
-      const errorCode = isNotFound ? "RECORD_NOT_FOUND" : "PROVIDER_ERROR";
+      const errorCode = isNotFound ? "RECORD_NOT_FOUND" : "SERVICE_UNAVAILABLE";
+      const cleanMessage = isNotFound
+        ? "No identity record was found matching the provided phone number."
+        : (result.cleanMessage || "Identity verification service is temporarily unavailable. Please try again shortly.");
 
       recordApiRequestLog({
         userId: keyPayload.userId,
@@ -313,14 +316,14 @@ export async function POST(req: NextRequest) {
         amountCharged: 0,
         clientReference: client_reference || null,
         requestBody,
-        errorMessage: rawError,
+        errorMessage: result.rawError || result.error || cleanMessage,
       });
 
       return NextResponse.json(
         {
           status: "error",
           code: errorCode,
-          message: rawError,
+          message: cleanMessage,
           environment: "live",
           transaction: {
             amount_charged: 0.0,
