@@ -63,21 +63,21 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             data: {
               type: "object",
               properties: {
-                nin: { type: "string", example: "61904909560" },
-                firstname: { type: "string", example: "MMESOMA" },
-                middlename: { type: "string", nullable: true, example: "CELESTINA" },
-                surname: { type: "string", example: "AGU" },
-                fullname: { type: "string", example: "MMESOMA CELESTINA AGU" },
+                nin: { type: "string", example: "23456789012" },
+                firstname: { type: "string", example: "FATIMA" },
+                middlename: { type: "string", nullable: true, example: "ZAHRA" },
+                surname: { type: "string", example: "ABUBAKAR" },
+                fullname: { type: "string", example: "FATIMA ZAHRA ABUBAKAR" },
                 gender: { type: "string", example: "Female" },
-                birthdate: { type: "string", example: "1997-06-26" },
-                telephoneno: { type: "string", nullable: true, example: "09047073004" },
+                birthdate: { type: "string", example: "1996-08-14" },
+                telephoneno: { type: "string", nullable: true, example: "08023456789" },
                 photo: { type: "string", description: "Base64 encoded JPEG image string" },
-                address: { type: "string", nullable: true, example: "12 Awolowo Road" },
-                residence_lga: { type: "string", nullable: true, example: "Ikeja" },
-                residence_state: { type: "string", nullable: true, example: "Lagos" },
-                self_origin_lga: { type: "string", nullable: true, example: "Aguata" },
-                self_origin_state: { type: "string", nullable: true, example: "Anambra" },
-                tracking_id: { type: "string", nullable: true, example: "12345ABC" },
+                address: { type: "string", nullable: true, example: "Plot 42 Ahmadu Bello Way" },
+                residence_lga: { type: "string", nullable: true, example: "Abuja Municipal" },
+                residence_state: { type: "string", nullable: true, example: "FCT" },
+                self_origin_lga: { type: "string", nullable: true, example: "Kano Municipal" },
+                self_origin_state: { type: "string", nullable: true, example: "Kano" },
+                tracking_id: { type: "string", nullable: true, example: "TRK-881920" },
               },
             },
             slip: {
@@ -240,7 +240,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             "  <img src=\"/examples/nin_premium_example.png\" alt=\"Premium Slip Preview\" />\n" +
             "</details>\n\n" +
             "#### Sandbox Test Identifiers:\n" +
-            "- **Success (Female)**: `61904909560` (Returns 200 OK)\n" +
+            "- **Success (Female)**: `23456789012` (Returns 200 OK)\n" +
             "- **Success (Male)**: `12345678901` (Returns 200 OK)\n" +
             "- **Record Not Found**: `00000000000` or `99999999999` (Returns 422 RECORD_NOT_FOUND, billed ₦0.00)",
           requestBody: {
@@ -254,7 +254,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     nin: {
                       type: "string",
                       description: "11-digit National Identification Number",
-                      example: "61904909560",
+                      example: "23456789012",
                     },
                     slip_type: {
                       type: "string",
@@ -282,21 +282,21 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     status: "success",
                     message: "NIN verification slip generated successfully.",
                     data: {
-                      nin: "61904909560",
-                      firstname: "MMESOMA",
-                      middlename: "CELESTINA",
-                      surname: "AGU",
-                      fullname: "MMESOMA CELESTINA AGU",
+                      nin: "23456789012",
+                      firstname: "FATIMA",
+                      middlename: "ZAHRA",
+                      surname: "ABUBAKAR",
+                      fullname: "FATIMA ZAHRA ABUBAKAR",
                       gender: "Female",
-                      birthdate: "1997-06-26",
-                      telephoneno: "09047073004",
+                      birthdate: "1996-08-14",
+                      telephoneno: "08023456789",
                       photo: "/9j/4AAQSkZJRgABAQ...",
-                      address: "12 Awolowo Road",
-                      residence_lga: "Ikeja",
-                      residence_state: "Lagos",
-                      self_origin_lga: "Aguata",
-                      self_origin_state: "Anambra",
-                      tracking_id: "12345ABC",
+                      address: "Plot 42 Ahmadu Bello Way",
+                      residence_lga: "Abuja Municipal",
+                      residence_state: "FCT",
+                      self_origin_lga: "Kano Municipal",
+                      self_origin_state: "Kano",
+                      tracking_id: "TRK-881920",
                     },
                     slip: {
                       slip_type: "nin_premium",
@@ -428,7 +428,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             "  <img src=\"/examples/nin_premium_example.png\" alt=\"Premium Slip Preview\" />\n" +
             "</details>\n\n" +
             "#### Sandbox Test Identifiers:\n" +
-            "- **Success (Female)**: `09047073004` (Returns 200 OK)\n" +
+            "- **Success (Female)**: `08023456789` (Returns 200 OK)\n" +
             "- **Success (Male)**: `08012345678` (Returns 200 OK)\n" +
             "- **Record Not Found**: `00000000000` or `07000000000` (Returns 422 RECORD_NOT_FOUND, billed ₦0.00)",
           requestBody: {
@@ -442,7 +442,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     phone: {
                       type: "string",
                       description: "11-digit registered Nigerian mobile phone number",
-                      example: "09047073004",
+                      example: "08023456789",
                     },
                     slip_type: {
                       type: "string",
@@ -470,21 +470,21 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     status: "success",
                     message: "NIN verification slip generated successfully.",
                     data: {
-                      nin: "61904909560",
-                      firstname: "MMESOMA",
-                      middlename: "CELESTINA",
-                      surname: "AGU",
-                      fullname: "MMESOMA CELESTINA AGU",
+                      nin: "23456789012",
+                      firstname: "FATIMA",
+                      middlename: "ZAHRA",
+                      surname: "ABUBAKAR",
+                      fullname: "FATIMA ZAHRA ABUBAKAR",
                       gender: "Female",
-                      birthdate: "1997-06-26",
-                      telephoneno: "09047073004",
+                      birthdate: "1996-08-14",
+                      telephoneno: "08023456789",
                       photo: "/9j/4AAQSkZJRgABAQ...",
-                      address: "12 Awolowo Road",
-                      residence_lga: "Ikeja",
-                      residence_state: "Lagos",
-                      self_origin_lga: "Aguata",
-                      self_origin_state: "Anambra",
-                      tracking_id: "12345ABC",
+                      address: "Plot 42 Ahmadu Bello Way",
+                      residence_lga: "Abuja Municipal",
+                      residence_state: "FCT",
+                      self_origin_lga: "Kano Municipal",
+                      self_origin_state: "Kano",
+                      tracking_id: "TRK-881920",
                     },
                     slip: {
                       slip_type: "nin_premium",

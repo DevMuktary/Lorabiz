@@ -33,7 +33,7 @@ Every request requires an API key in one of the following HTTP headers:
 - **Content-Type**: \`application/json\`
 
 #### Sandbox Test Numbers:
-- Success (Female Record): \`61904909560\` (Returns 200 OK)
+- Success (Female Record): \`23456789012\` (Returns 200 OK)
 - Success (Male Record): \`12345678901\` (Returns 200 OK)
 - Record Not Found (422): \`00000000000\` or \`99999999999\` (Billed ₦0.00)
 
@@ -90,7 +90,7 @@ Every request requires an API key in one of the following HTTP headers:
 - **Content-Type**: \`application/json\`
 
 #### Sandbox Test Numbers:
-- Success (Female Record): \`09047073004\` (Returns 200 OK)
+- Success (Female Record): \`08023456789\` (Returns 200 OK)
 - Success (Male Record): \`08012345678\` (Returns 200 OK)
 - Record Not Found (422): \`00000000000\` or \`08000000000\` (Billed ₦0.00)
 

@@ -41,21 +41,21 @@ The Lorabiz API standardizes all demographic fields into a single, clean, straig
 
 | Standard Field Key | Type | Description | Example |
 | :--- | :--- | :--- | :--- |
-| `nin` | string | 11-digit National Identification Number | `"61904909560"` |
-| `firstname` | string | First Name | `"MMESOMA"` |
-| `middlename` | string \| null | Middle Name | `"CELESTINA"` |
-| `surname` | string | Surname / Family Name | `"AGU"` |
-| `fullname` | string | Full Concatenated Name | `"MMESOMA CELESTINA AGU"` |
+| `nin` | string | 11-digit National Identification Number | `"23456789012"` |
+| `firstname` | string | First Name | `"FATIMA"` |
+| `middlename` | string \| null | Middle Name | `"ZAHRA"` |
+| `surname` | string | Surname / Family Name | `"ABUBAKAR"` |
+| `fullname` | string | Full Concatenated Name | `"FATIMA ZAHRA ABUBAKAR"` |
 | `gender` | string | Gender ("Male" / "Female") | `"Female"` |
-| `birthdate` | string | Date of Birth (YYYY-MM-DD) | `"1997-06-26"` |
-| `telephoneno` | string \| null | Verified Mobile Phone Number | `"09047073004"` |
+| `birthdate` | string | Date of Birth (YYYY-MM-DD) | `"1996-08-14"` |
+| `telephoneno` | string \| null | Verified Mobile Phone Number | `"08023456789"` |
 | `photo` | string | Base64 encoded JPEG photo | `"/9j/4AAQSkZJRg..."` |
-| `address` | string \| null | Residential Street Address | `"12 Awolowo Road"` |
-| `residence_lga` | string \| null | Local Government Area of residence | `"Ikeja"` |
-| `residence_state` | string \| null | State of residence | `"Lagos"` |
-| `self_origin_lga` | string \| null | Local Government Area of origin | `"Aguata"` |
-| `self_origin_state`| string \| null | State of origin | `"Anambra"` |
-| `tracking_id` | string \| null | NIMC Enrollment Tracking Reference | `"12345ABC"` |
+| `address` | string \| null | Residential Street Address | `"Plot 42 Ahmadu Bello Way"` |
+| `residence_lga` | string \| null | Local Government Area of residence | `"Abuja Municipal"` |
+| `residence_state` | string \| null | State of residence | `"FCT"` |
+| `self_origin_lga` | string \| null | Local Government Area of origin | `"Kano Municipal"` |
+| `self_origin_state`| string \| null | State of origin | `"Kano"` |
+| `tracking_id` | string \| null | NIMC Enrollment Tracking Reference | `"TRK-881920"` |
 
 ---
 
@@ -71,7 +71,7 @@ Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 
 {
-  "nin": "61904909560",
+  "nin": "23456789012",
   "slip_type": "nin_premium",
   "client_reference": "TXN_ORD_9812401"
 }
@@ -83,21 +83,21 @@ Content-Type: application/json
   "status": "success",
   "message": "NIN verification slip generated successfully.",
   "data": {
-    "nin": "61904909560",
-    "firstname": "MMESOMA",
-    "middlename": "CELESTINA",
-    "surname": "AGU",
-    "fullname": "MMESOMA CELESTINA AGU",
+    "nin": "23456789012",
+    "firstname": "FATIMA",
+    "middlename": "ZAHRA",
+    "surname": "ABUBAKAR",
+    "fullname": "FATIMA ZAHRA ABUBAKAR",
     "gender": "Female",
-    "birthdate": "1997-06-26",
-    "telephoneno": "09047073004",
+    "birthdate": "1996-08-14",
+    "telephoneno": "08023456789",
     "photo": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEB...",
-    "address": "12 Awolowo Road",
-    "residence_lga": "Ikeja",
-    "residence_state": "Lagos",
-    "self_origin_lga": "Aguata",
-    "self_origin_state": "Anambra",
-    "tracking_id": "12345ABC"
+    "address": "Plot 42 Ahmadu Bello Way",
+    "residence_lga": "Abuja Municipal",
+    "residence_state": "FCT",
+    "self_origin_lga": "Kano Municipal",
+    "self_origin_state": "Kano",
+    "tracking_id": "TRK-881920"
   },
   "slip": {
     "slip_type": "nin_premium",
@@ -121,7 +121,7 @@ Content-Type: application/json
 {
   "status": "error",
   "code": "RECORD_NOT_FOUND",
-  "message": "No identity record was found matching the provided NIN (61904909560). Please check the digits and try again.",
+  "message": "No identity record was found matching the provided NIN (00000000000). Please check the digits and try again.",
   "environment": "live",
   "transaction": {
     "amount_charged": 0.00,
@@ -168,7 +168,7 @@ Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 
 {
-  "phone": "09047073004",
+  "phone": "08023456789",
   "slip_type": "nin_premium",
   "client_reference": "TXN_PHONE_9812402"
 }
@@ -180,21 +180,21 @@ Content-Type: application/json
   "status": "success",
   "message": "NIN verification slip generated successfully via phone lookup.",
   "data": {
-    "nin": "61904909560",
-    "firstname": "MMESOMA",
-    "middlename": "CELESTINA",
-    "surname": "AGU",
-    "fullname": "MMESOMA CELESTINA AGU",
+    "nin": "23456789012",
+    "firstname": "FATIMA",
+    "middlename": "ZAHRA",
+    "surname": "ABUBAKAR",
+    "fullname": "FATIMA ZAHRA ABUBAKAR",
     "gender": "Female",
-    "birthdate": "1997-06-26",
-    "telephoneno": "09047073004",
+    "birthdate": "1996-08-14",
+    "telephoneno": "08023456789",
     "photo": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEB...",
-    "address": "12 Awolowo Road",
-    "residence_lga": "Ikeja",
-    "residence_state": "Lagos",
-    "self_origin_lga": "Aguata",
-    "self_origin_state": "Anambra",
-    "tracking_id": "12345ABC"
+    "address": "Plot 42 Ahmadu Bello Way",
+    "residence_lga": "Abuja Municipal",
+    "residence_state": "FCT",
+    "self_origin_lga": "Kano Municipal",
+    "self_origin_state": "Kano",
+    "tracking_id": "TRK-881920"
   },
   "slip": {
     "slip_type": "nin_premium",
@@ -218,7 +218,7 @@ Content-Type: application/json
 {
   "status": "error",
   "code": "RECORD_NOT_FOUND",
-  "message": "No NIN profile was found linked to this phone number (09047073004). Please verify that the SIM registration is linked to a valid NIN.",
+  "message": "No NIN profile was found linked to this phone number (08000000000). Please verify that the SIM registration is linked to a valid NIN.",
   "environment": "live",
   "transaction": {
     "amount_charged": 0.00,

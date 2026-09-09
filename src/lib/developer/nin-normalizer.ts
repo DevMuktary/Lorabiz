@@ -186,8 +186,8 @@ export function generateMockNinResponse(params: {
     "G1n4wzT8V3v43xX7+b96+Pz5/v3663/7+vv/7/9+/v//+P7//f3///b//9///37//v//+/f/77///3///v3//f/9///37//7" +
     "///3//f/9///37//7///37//f/9///37//7///37//f/9///37//7///37//f/9///37//7///37//f/9///37//7///37//";
 
-  const mockNin = searchType === "NIN" ? identifier : "61904909560";
-  const mockPhone = searchType === "PHONE" ? identifier : "09047073004";
+  const mockNin = searchType === "NIN" ? identifier : "23456789012";
+  const mockPhone = searchType === "PHONE" ? identifier : "08023456789";
 
   const isMaleProfile = identifier === "12345678901" || identifier === "08012345678";
 
@@ -211,20 +211,20 @@ export function generateMockNinResponse(params: {
       }
     : {
         nin: mockNin,
-        firstname: "MMESOMA",
-        middlename: "CELESTINA",
-        surname: "AGU",
-        fullname: "MMESOMA CELESTINA AGU",
+        firstname: "FATIMA",
+        middlename: "ZAHRA",
+        surname: "ABUBAKAR",
+        fullname: "FATIMA ZAHRA ABUBAKAR",
         gender: "Female",
-        birthdate: "1997-06-26",
+        birthdate: "1996-08-14",
         telephoneno: mockPhone,
         photo: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/",
-        address: "12 Example Boulevard, Victoria Island",
-        residence_lga: "Ikeja",
-        residence_state: "Lagos",
-        self_origin_lga: "Aguata",
-        self_origin_state: "Anambra",
-        tracking_id: "12345ABC",
+        address: "Plot 42 Ahmadu Bello Way, Central Business District",
+        residence_lga: "Abuja Municipal",
+        residence_state: "FCT",
+        self_origin_lga: "Kano Municipal",
+        self_origin_state: "Kano",
+        tracking_id: "TRK-881920",
       };
 
   return {

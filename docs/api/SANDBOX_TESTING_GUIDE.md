@@ -22,33 +22,33 @@ To allow developers to test error handling on their frontends and backends, Lora
 ### 2.1 Scenario: Record Found (200 OK — Success)
 | Identifier | Search Type | Gender | Simulated Full Name | Origin / Residence |
 | :--- | :--- | :--- | :--- | :--- |
-| **`61904909560`** | NIN | Female | `MMESOMA CELESTINA AGU` | Anambra / Lagos |
+| **`23456789012`** | NIN | Female | `FATIMA ZAHRA ABUBAKAR` | Kano / FCT |
 | **`12345678901`** | NIN | Male | `MUSA IBRAHIM BELLO` | Kano / Lagos |
-| **`09047073004`** | Phone | Female | `MMESOMA CELESTINA AGU` | Anambra / Lagos |
+| **`08023456789`** | Phone | Female | `FATIMA ZAHRA ABUBAKAR` | Kano / FCT |
 | **`08012345678`** | Phone | Male | `MUSA IBRAHIM BELLO` | Kano / Lagos |
 | *Any other valid 11-digit number* | NIN / Phone | Either | Standard simulated citizen record | — |
 
-#### Success Response (\`200 OK\`)
+#### Success Response (`200 OK`)
 ```json
 {
   "status": "success",
   "message": "[TEST SANDBOX] NIN verification slip generated successfully.",
   "data": {
-    "nin": "61904909560",
-    "firstname": "MMESOMA",
-    "middlename": "CELESTINA",
-    "surname": "AGU",
-    "fullname": "MMESOMA CELESTINA AGU",
+    "nin": "23456789012",
+    "firstname": "FATIMA",
+    "middlename": "ZAHRA",
+    "surname": "ABUBAKAR",
+    "fullname": "FATIMA ZAHRA ABUBAKAR",
     "gender": "Female",
-    "birthdate": "1997-06-26",
-    "telephoneno": "09047073004",
+    "birthdate": "1996-08-14",
+    "telephoneno": "08023456789",
     "photo": "/9j/4AAQSkZJRgABAQ...",
-    "address": "12 Example Boulevard, Victoria Island",
-    "residence_lga": "Ikeja",
-    "residence_state": "Lagos",
-    "self_origin_lga": "Aguata",
-    "self_origin_state": "Anambra",
-    "tracking_id": "12345ABC"
+    "address": "Plot 42 Ahmadu Bello Way, Central Business District",
+    "residence_lga": "Abuja Municipal",
+    "residence_state": "FCT",
+    "self_origin_lga": "Kano Municipal",
+    "self_origin_state": "Kano",
+    "tracking_id": "TRK-881920"
   },
   "slip": {
     "slip_type": "nin_standard",
@@ -118,13 +118,12 @@ If your virtual sandbox balance falls below the required fee (₦150.00):
 
 ### Test Happy Path
 ```bash
-curl -X POST https://lorabiz.com/api/v1/nin/by-nin \
+curl -X POST https://api.lorabiz.com/v1/nin/by-nin \
   -H "Authorization: Bearer lora_test_your_key_here" \
   -H "Content-Type: application/json" \
   -d '{
-    "nin": "61904909560",
-    "slip_type": "nin_standard",
-    "include_slip": true
+    "nin": "23456789012",
+    "slip_type": "nin_standard"
   }'
 ```
 
