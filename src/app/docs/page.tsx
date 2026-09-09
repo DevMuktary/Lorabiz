@@ -15,6 +15,7 @@ declare global {
           layout?: "modern" | "classic";
           darkMode?: boolean;
           showSidebar?: boolean;
+          defaultOpenAllTags?: boolean;
           searchHotKey?: string;
           customCss?: string;
           metaData?: {
@@ -24,6 +25,7 @@ declare global {
           authentication?: {
             preferredSecurityScheme?: string;
           };
+          [key: string]: any;
         }
       ) => void;
     };
@@ -50,6 +52,7 @@ export default function DocsPage() {
           layout: "modern",
           darkMode: true,
           showSidebar: true,
+          defaultOpenAllTags: true,
           customCss: `
             /* Interactive Collapsible Slip Previews (Adaptive Light & Dark Mode) */
             .scalar-api-reference details {

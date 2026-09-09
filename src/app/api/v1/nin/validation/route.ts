@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
 
   // 7. SANDBOX / TEST Mode Simulation
   if (keyPayload.type === ApiKeyType.TEST) {
-    const testTrackingId = `nin_val_test_${crypto.randomBytes(10).toString("hex")}`;
+    const testTrackingId = `nin_val_test_${sanitizedNin.slice(-4)}_${crypto.randomBytes(6).toString("hex")}`;
 
     recordApiRequestLog({
       userId: keyPayload.userId,
@@ -221,12 +221,78 @@ export async function POST(req: NextRequest) {
       responseBody: { status: "success", tracking_id: testTrackingId, simulated: true },
     });
 
+    // Asynchronous simulated webhook dispatch to Developer's TEST Webhook URL (3s delay)
+    if (sanitizedNin === "22222222222") {
+      // Failure WITH Refund
+      setTimeout(() => {
+        dispatchDeveloperWebhook(
+          keyPayload.userId,
+          "nin_validation.failed",
+          {
+            tracking_id: testTrackingId,
+            client_reference: cleanClientRef,
+            nin: sanitizedNin,
+            validation_type: normalizedTypeKey,
+            request_status: "failed",
+            message: "Your NIN Validation request has failed.",
+            error_detail: "Validation failed due to bypass NIN, suspended, invalidated or wrong NIN.",
+            refunded: true,
+            amount_charged: 0,
+            currency: "NGN",
+          },
+          "TEST"
+        );
+      }, 3000);
+    } else if (sanitizedNin === "44444444444") {
+      // Failure WITHOUT Refund
+      setTimeout(() => {
+        dispatchDeveloperWebhook(
+          keyPayload.userId,
+          "nin_validation.failed",
+          {
+            tracking_id: testTrackingId,
+            client_reference: cleanClientRef,
+            nin: sanitizedNin,
+            validation_type: normalizedTypeKey,
+            request_status: "failed",
+            message: "Your NIN Validation request has failed.",
+            error_detail: "Validation rejected due to severe record mismatch. Fee retained per validation guidelines.",
+            refunded: false,
+            amount_charged: price,
+            currency: "NGN",
+          },
+          "TEST"
+        );
+      }, 3000);
+    } else if (sanitizedNin !== "33333333333") {
+      // Success (11111111111 or standard test numbers)
+      setTimeout(() => {
+        dispatchDeveloperWebhook(
+          keyPayload.userId,
+          "nin_validation.completed",
+          {
+            tracking_id: testTrackingId,
+            client_reference: cleanClientRef,
+            nin: sanitizedNin,
+            validation_type: normalizedTypeKey,
+            request_status: "validated",
+            message: "NIN Validation completed successfully.",
+            completed_at: new Date().toISOString(),
+            refunded: false,
+            amount_charged: price,
+            currency: "NGN",
+          },
+          "TEST"
+        );
+      }, 3000);
+    }
+
     return NextResponse.json(
       {
         status: "success",
         message: "NIN validation request submitted successfully (Sandbox Simulation).",
         tracking_id: testTrackingId,
-        client_reference: cleanClientRef,
+        client_reference: cleanClientRef || null,
         nin: sanitizedNin,
         validation_type: normalizedTypeKey,
         request_status: "submitted",
@@ -353,17 +419,22 @@ export async function POST(req: NextRequest) {
     });
 
     // Dispatch webhook event to developer if configured
-    dispatchDeveloperWebhook(keyPayload.userId, "nin_validation.submitted", {
-      tracking_id: trackingId,
-      client_reference: cleanClientRef,
-      nin: sanitizedNin,
-      validation_type: normalizedTypeKey,
-      request_status: "submitted",
-      message: "NIN validation request submitted successfully.",
-      amount_charged: price,
-      currency: "NGN",
-      refunded: false,
-    });
+    dispatchDeveloperWebhook(
+      keyPayload.userId,
+      "nin_validation.submitted",
+      {
+        tracking_id: trackingId,
+        client_reference: cleanClientRef,
+        nin: sanitizedNin,
+        validation_type: normalizedTypeKey,
+        request_status: "submitted",
+        message: "NIN validation request submitted successfully.",
+        amount_charged: price,
+        currency: "NGN",
+        refunded: false,
+      },
+      "LIVE"
+    );
 
     return NextResponse.json(
       {

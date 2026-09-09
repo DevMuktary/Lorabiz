@@ -55,8 +55,9 @@ export function generateApiKey(type: ApiKeyType, name: string): GeneratedKeyData
 /**
  * Generates a webhook HMAC signing secret
  */
-export function generateWebhookSecret(): string {
-  return `whsec_${crypto.randomBytes(24).toString("hex")}`;
+export function generateWebhookSecret(environment: "LIVE" | "TEST" = "LIVE"): string {
+  const envPrefix = environment === "LIVE" ? "whsec_live_" : "whsec_test_";
+  return `${envPrefix}${crypto.randomBytes(24).toString("hex")}`;
 }
 
 /**

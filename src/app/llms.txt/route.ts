@@ -117,15 +117,16 @@ Every request requires an API key in one of the following HTTP headers:
 - **Content-Type**: \`application/json\`
 
 #### Validation Categories (\`validation_type\`):
-- \`no_record_found\`: Clear 'no record found' issues on NIN registries.
-- \`vnin_validation\`: Bank, SIM card, or vNIN synchronization.
-- \`modification\`: Data modification or amendment validation.
-- \`photo_error\`: Photographic or biometric mismatch.
+- \`no_record_found\`
+- \`vnin_validation\`
+- \`modification\`
+- \`photo_error\`
 
 #### Sandbox Test Numbers:
-- Simulated Success: \`18867568313\` or any valid 11-digit NIN
-- Insufficient Balance: Any NIN when sandbox balance is depleted
-- Duplicate Check: Re-submitting an active validation returns 409 DUPLICATE_REQUEST (₦0.00 charged)
+- \`11111111111\`: Success (\`validated\`, dispatches \`nin_validation.completed\`)
+- \`22222222222\`: Failed with refund (\`failed\`, \`refunded: true\`, dispatches \`nin_validation.failed\`)
+- \`44444444444\`: Failed without refund (\`failed\`, \`refunded: false\`, dispatches \`nin_validation.failed\`)
+- \`33333333333\`: In-flight pending state (\`processing\`)
 
 #### Request Body
 \`\`\`json

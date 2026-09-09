@@ -42,10 +42,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       {
         name: "NIN Validation",
         description:
-          "Submit and poll NIN validation requests for unvalidated records, VNIN synchronization, data modification, and photographic errors.\n\n" +
-          "**Validation Processing Policy**:\n" +
-          "Validation requests are processed through national validation gateways. Track progress via polling (`GET /api/v1/nin/validation/status`) or receive instantaneous HMAC-SHA256 webhooks (`nin_validation.completed`, `nin_validation.failed`). " +
-          "Duplicate active requests are rejected immediately with HTTP 409 (₦0.00 charged).",
+          "Submit and poll NIN validation requests for no_record_found, vnin_validation, modification, and photo_error.",
       },
     ],
     security: [
@@ -693,16 +690,17 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIN Validation"],
           summary: "Submit NIN Validation Request",
           description:
-            "Submits an 11-digit NIN for asynchronous validation across national identity databases.\n\n" +
-            "#### Validation Categories:\n" +
-            "- `no_record_found`: Resolve records where the NIN does not exist or displays 'no record' errors on verifiers.\n" +
-            "- `vnin_validation`: Bank, SIM, or VNIN synchronisation errors.\n" +
-            "- `modification`: Update or modification validation after data amendment.\n" +
-            "- `photo_error`: Photographic or biometric mismatch validation.\n\n" +
-            "#### Centralized Webhooks:\n" +
-            "When validation finishes, an HMAC-SHA256 signed webhook (`nin_validation.completed` or `nin_validation.failed`) is automatically dispatched to your webhook URL configured in the Developer Portal.\n\n" +
-            "#### Duplicate Protection:\n" +
-            "If an active validation request is already in progress for the specified NIN and category, the API returns `409 DUPLICATE_REQUEST` with zero charge (₦0.00).",
+            "Submits an 11-digit NIN for validation.\n\n" +
+            "#### Validation Categories (`validation_type`):\n" +
+            "- `no_record_found`\n" +
+            "- `vnin_validation`\n" +
+            "- `modification`\n" +
+            "- `photo_error`\n\n" +
+            "#### Sandbox Test Numbers:\n" +
+            "- `11111111111`: Success (`validated`, dispatches `nin_validation.completed`)\n" +
+            "- `22222222222`: Failed with refund (`failed`, `refunded: true`, dispatches `nin_validation.failed`)\n" +
+            "- `44444444444`: Failed without refund (`failed`, `refunded: false`, dispatches `nin_validation.failed`)\n" +
+            "- `33333333333`: In-flight pending state (`processing`)",
           requestBody: {
             required: true,
             content: {

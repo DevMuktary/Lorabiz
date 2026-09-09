@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { ApiKeyType } from "@prisma/client";
 import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
@@ -11,27 +12,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
+    let environment = "LIVE";
+    try {
+      const body = await req.json();
+      if (body?.environment) environment = body.environment;
+    } catch {
+      // Body may be empty
+    }
+
+    const envEnum = String(environment).toUpperCase() === "TEST" ? ApiKeyType.TEST : ApiKeyType.LIVE;
+
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      include: { webhookConfig: true },
     });
 
-    if (!user || !user.webhookConfig || !user.webhookConfig.url) {
+    if (!user) {
+      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+    }
+
+    const config = await prisma.webhookConfig.findUnique({
+      where: {
+        userId_environment: {
+          userId: user.id,
+          environment: envEnum,
+        },
+      },
+    });
+
+    if (!config || !config.url) {
       return NextResponse.json(
-        { success: false, message: "No active webhook URL configured. Please save a webhook URL first." },
+        { success: false, message: `No active ${envEnum} webhook URL configured. Please save a ${envEnum} webhook URL first.` },
         { status: 400 }
       );
     }
 
-    const { url, secretKey } = user.webhookConfig;
+    const { url, secretKey } = config;
     const testPayload = {
       event: "webhook.test_ping",
+      environment: envEnum.toLowerCase(),
       timestamp: new Date().toISOString(),
       developer: {
         userId: user.id,
         email: user.email,
       },
-      message: "Hello from Lorabiz Developer Platform! Webhook connection verified successfully.",
+      message: `Hello from Lorabiz Developer Platform! ${envEnum} webhook connection verified successfully.`,
     };
 
     const payloadString = JSON.stringify(testPayload);

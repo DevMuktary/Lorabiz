@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       include: {
         wallet: true,
         developerProfile: true,
-        webhookConfig: true,
+        webhookConfigs: true,
       },
     });
 
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
               approvedAt: user.developerProfile.approvedAt,
             }
           : null,
-        hasWebhook: !!user.webhookConfig?.isActive,
+        hasWebhook: user.webhookConfigs?.some((w) => w.isActive) ?? false,
       },
     });
   } catch (err) {

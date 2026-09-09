@@ -54,18 +54,33 @@ export async function GET(req: NextRequest) {
 
   // 4. Test Mode Simulation
   if (keyPayload.type === ApiKeyType.TEST) {
-    const isFailedSimulation = trackingId?.includes("fail") || clientReference?.includes("fail");
-    const isCompletedSimulation = trackingId?.includes("val") || clientReference?.includes("val");
+    const isFailedWithRefund =
+      trackingId?.includes("2222") ||
+      clientReference?.includes("2222") ||
+      trackingId?.includes("fail_refund") ||
+      clientReference?.includes("fail_refund");
 
-    if (isFailedSimulation) {
+    const isFailedWithoutRefund =
+      trackingId?.includes("4444") ||
+      clientReference?.includes("4444") ||
+      trackingId?.includes("norefund") ||
+      clientReference?.includes("norefund");
+
+    const isProcessingPending =
+      trackingId?.includes("3333") ||
+      clientReference?.includes("3333") ||
+      trackingId?.includes("pending") ||
+      clientReference?.includes("pending");
+
+    if (isFailedWithRefund) {
       return NextResponse.json({
         status: "error",
-        tracking_id: trackingId || `nin_val_test_fail`,
+        tracking_id: trackingId || "nin_val_test_2222_mock",
         client_reference: clientReference,
-        nin: "18867568313",
+        nin: "22222222222",
         validation_type: "no_record_found",
         request_status: "failed",
-        message: "Your NIN Validation request has failed (Sandbox Simulation).",
+        message: "Your NIN Validation request has failed.",
         error_detail: "Validation failed due to bypass NIN, suspended, invalidated or wrong NIN.",
         refunded: true,
         amount_charged: 0.0,
@@ -74,17 +89,50 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    if (isFailedWithoutRefund) {
+      return NextResponse.json({
+        status: "error",
+        tracking_id: trackingId || "nin_val_test_4444_mock",
+        client_reference: clientReference,
+        nin: "44444444444",
+        validation_type: "no_record_found",
+        request_status: "failed",
+        message: "Your NIN Validation request has failed.",
+        error_detail: "Validation rejected due to severe record mismatch. Fee retained per validation guidelines.",
+        refunded: false,
+        amount_charged: 700.0,
+        currency: "NGN",
+        date: new Date().toISOString(),
+      });
+    }
+
+    if (isProcessingPending) {
+      return NextResponse.json({
+        status: "success",
+        tracking_id: trackingId || "nin_val_test_3333_mock",
+        client_reference: clientReference,
+        nin: "33333333333",
+        validation_type: "no_record_found",
+        request_status: "processing",
+        message: "Your NIN Validation request is currently processing. Please check back later.",
+        completed_at: null,
+        refunded: false,
+        amount_charged: 700.0,
+        currency: "NGN",
+        date: new Date().toISOString(),
+      });
+    }
+
+    // Default: Validated / Completed (11111111111 or standard test numbers)
     return NextResponse.json({
       status: "success",
-      tracking_id: trackingId || `nin_val_test_success`,
+      tracking_id: trackingId || "nin_val_test_1111_mock",
       client_reference: clientReference,
-      nin: "18867568313",
+      nin: "11111111111",
       validation_type: "no_record_found",
-      request_status: isCompletedSimulation ? "validated" : "processing",
-      message: isCompletedSimulation
-        ? "NIN Validation completed successfully (Sandbox Simulation)."
-        : "Your NIN Validation request is currently processing. Please check back later.",
-      completed_at: isCompletedSimulation ? new Date().toISOString() : null,
+      request_status: "validated",
+      message: "NIN Validation completed successfully.",
+      completed_at: new Date().toISOString(),
       refunded: false,
       amount_charged: 700.0,
       currency: "NGN",

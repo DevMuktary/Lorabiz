@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { generateWebhookSecret } from "@/lib/developer/keys";
+import { ApiKeyType } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,18 +14,28 @@ export async function GET(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      include: { webhookConfig: true },
     });
 
     if (!user) {
       return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
     }
 
-    if (!user.webhookConfig) {
-      return NextResponse.json({ success: true, data: null });
+    const { searchParams } = new URL(req.url);
+    const envParam = searchParams.get("environment")?.toUpperCase() === "TEST" ? ApiKeyType.TEST : ApiKeyType.LIVE;
+
+    const config = await prisma.webhookConfig.findUnique({
+      where: {
+        userId_environment: {
+          userId: user.id,
+          environment: envParam,
+        },
+      },
+    });
+
+    if (!config) {
+      return NextResponse.json({ success: true, data: null, environment: envParam });
     }
 
-    const config = user.webhookConfig;
     const maskedSecret =
       config.secretKey.length > 10
         ? `${config.secretKey.slice(0, 8)}••••••••${config.secretKey.slice(-4)}`
@@ -34,8 +45,9 @@ export async function GET(req: NextRequest) {
       success: true,
       data: {
         id: config.id,
+        environment: config.environment,
         url: config.url,
-        secretKey: config.secretKey, // Included for developer to copy into their backend
+        secretKey: config.secretKey,
         maskedSecret,
         isActive: config.isActive,
         updatedAt: config.updatedAt,
@@ -55,7 +67,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { url, isActive = true, rotateSecret = false } = body;
+    const { url, isActive = true, rotateSecret = false, environment = "LIVE" } = body;
+    const envEnum = String(environment).toUpperCase() === "TEST" ? ApiKeyType.TEST : ApiKeyType.LIVE;
 
     if (!url || typeof url !== "string" || (!url.startsWith("http://") && !url.startsWith("https://"))) {
       return NextResponse.json(
@@ -66,22 +79,36 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      include: { webhookConfig: true },
     });
 
     if (!user) {
       return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
     }
 
-    let secretKey = user.webhookConfig?.secretKey;
+    const existingConfig = await prisma.webhookConfig.findUnique({
+      where: {
+        userId_environment: {
+          userId: user.id,
+          environment: envEnum,
+        },
+      },
+    });
+
+    let secretKey = existingConfig?.secretKey;
     if (!secretKey || rotateSecret) {
-      secretKey = generateWebhookSecret();
+      secretKey = generateWebhookSecret(envEnum === ApiKeyType.TEST ? "TEST" : "LIVE");
     }
 
     const updatedConfig = await prisma.webhookConfig.upsert({
-      where: { userId: user.id },
+      where: {
+        userId_environment: {
+          userId: user.id,
+          environment: envEnum,
+        },
+      },
       create: {
         userId: user.id,
+        environment: envEnum,
         url: url.trim(),
         secretKey,
         isActive: Boolean(isActive),
@@ -95,8 +122,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Webhook configuration saved successfully.",
+      message: `${envEnum} webhook configuration saved successfully.`,
       data: {
+        environment: updatedConfig.environment,
         url: updatedConfig.url,
         secretKey: updatedConfig.secretKey,
         isActive: updatedConfig.isActive,

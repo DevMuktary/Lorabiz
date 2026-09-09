@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { ApiKeyType } from "@prisma/client";
 import crypto from "crypto";
 
 export interface WebhookDispatchPayload {
   event: "nin_validation.submitted" | "nin_validation.completed" | "nin_validation.failed";
+  environment?: "live" | "test";
   timestamp: string;
   data: {
     tracking_id: string;
@@ -21,26 +23,33 @@ export interface WebhookDispatchPayload {
 
 /**
  * Dispatches an HMAC-SHA256 signed webhook notification to a developer if they have an active WebhookConfig.
- * Executes asynchronously with a timeout; does not block the caller.
+ * Dispatches strictly to the respective LIVE or TEST webhook endpoint with the matching secret key.
  */
 export async function dispatchDeveloperWebhook(
   userId: string,
   event: "nin_validation.submitted" | "nin_validation.completed" | "nin_validation.failed",
-  data: WebhookDispatchPayload["data"]
+  data: WebhookDispatchPayload["data"],
+  environment: "LIVE" | "TEST" = "LIVE"
 ): Promise<void> {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { webhookConfig: true },
+    const envEnum = environment === "TEST" ? ApiKeyType.TEST : ApiKeyType.LIVE;
+    const config = await prisma.webhookConfig.findUnique({
+      where: {
+        userId_environment: {
+          userId,
+          environment: envEnum,
+        },
+      },
     });
 
-    if (!user?.webhookConfig || !user.webhookConfig.isActive || !user.webhookConfig.url) {
+    if (!config || !config.isActive || !config.url) {
       return;
     }
 
-    const { url, secretKey } = user.webhookConfig;
+    const { url, secretKey } = config;
     const payload: WebhookDispatchPayload = {
       event,
+      environment: envEnum.toLowerCase() as "live" | "test",
       timestamp: new Date().toISOString(),
       data,
     };

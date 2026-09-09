@@ -300,7 +300,7 @@ export default function DeveloperDashboardPage() {
       />
 
       {/* 4. Webhook Configuration Section */}
-      <WebhookConfigCard />
+      <WebhookConfigCard environment={environment} />
 
       {/* 5. Real-Time API Request History (Payloads Sent & Responses Returned) */}
       <RequestStreamTable environment={environment} />

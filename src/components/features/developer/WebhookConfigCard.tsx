@@ -1,9 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Webhook, Send, Check, Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Webhook, Send, Check, Copy, Eye, EyeOff, RefreshCw, ShieldAlert, Sparkles } from "lucide-react";
 
-export const WebhookConfigCard: React.FC = () => {
+interface WebhookConfigCardProps {
+  environment?: "LIVE" | "TEST";
+}
+
+export const WebhookConfigCard: React.FC<WebhookConfigCardProps> = ({ environment = "TEST" }) => {
   const [url, setUrl] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -26,20 +30,27 @@ export const WebhookConfigCard: React.FC = () => {
 
   useEffect(() => {
     fetchWebhookConfig();
-  }, []);
+  }, [environment]);
 
   const fetchWebhookConfig = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/developer/webhook");
+      setTestResult(null);
+      setSaveError(null);
+      setSaveSuccess(false);
+      const res = await fetch(`/api/developer/webhook?environment=${environment}`);
       const data = await res.json();
       if (data.success && data.data) {
         setUrl(data.data.url || "");
         setSecretKey(data.data.secretKey || "");
         setIsActive(data.data.isActive ?? true);
+      } else {
+        setUrl("");
+        setSecretKey("");
+        setIsActive(true);
       }
     } catch (err) {
-      console.error("Failed to load webhook config:", err);
+      console.error(`Failed to load ${environment} webhook config:`, err);
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +78,7 @@ export const WebhookConfigCard: React.FC = () => {
       const res = await fetch("/api/developer/webhook", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: cleanUrl, isActive }),
+        body: JSON.stringify({ url: cleanUrl, isActive, environment }),
       });
 
       const data = await res.json();
@@ -93,6 +104,8 @@ export const WebhookConfigCard: React.FC = () => {
     try {
       const res = await fetch("/api/developer/webhook/test", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ environment }),
       });
       const data = await res.json();
       setTestResult({
@@ -117,15 +130,32 @@ export const WebhookConfigCard: React.FC = () => {
     setTimeout(() => setCopiedSecret(false), 2000);
   };
 
+  const isLive = environment === "LIVE";
+
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center gap-2 border-b border-border/60 pb-4">
-        <Webhook className="h-5 w-5 text-primary" />
-        <div>
-          <h2 className="text-lg font-bold text-foreground">Webhook Notifications</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Receive automated real-time status updates for asynchronous tasks (IPE clearance, NIN validation, record modifications, CAC filings, and personalization).
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
+        <div className="flex items-start gap-3">
+          <div className={`p-2 rounded-xl border ${isLive ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-amber-500/10 border-amber-500/20 text-amber-500"}`}>
+            <Webhook className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-foreground">Webhook Notifications</h2>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                isLive 
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20" 
+                  : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+              }`}>
+                {isLive ? "Production Live" : "Sandbox Test"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {isLive
+                ? "Configures real-time event delivery for production keys (lora_live_...). Stored independently from your test webhook."
+                : "Configures test event delivery for sandbox testing (lora_test_...). Safe for localhost, ngrok, or webhook.site."}
+            </p>
+          </div>
         </div>
       </div>
 
