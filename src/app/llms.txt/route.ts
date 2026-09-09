@@ -171,11 +171,11 @@ Every request requires an API key in one of the following HTTP headers:
   - \`client_reference\` (optional): Your custom reference (e.g., \`?client_reference=REF_MY_APP_99182\`)
   *(Note: At least one of tracking_id or client_reference is required)*
 
-#### Status Transition Lifecycle:
-- \`submitted\`: Queued in system
-- \`processing\`: Transmitted to national validation gateway
-- \`validated\`: Successfully cleared on national database
-- \`failed\`: Validation rejected by upstream registry
+#### Status Transitions:
+- \`submitted\`
+- \`processing\`
+- \`validated\`
+- \`failed\`
 
 #### Success Response (\`200 OK\`)
 \`\`\`json

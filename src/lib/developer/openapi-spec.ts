@@ -42,7 +42,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       {
         name: "NIN Validation",
         description:
-          "Submit and poll NIN validation requests for no_record_found, vnin_validation, modification, and photo_error.",
+          "Submit and poll NIN validation requests for No Record Found, VNIN Validation, Modification, and Photo Error.",
       },
     ],
     security: [
@@ -815,9 +815,8 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIN Validation"],
           summary: "Check NIN Validation Status",
           description:
-            "Query the real-time processing status of a submitted NIN validation request using either `tracking_id` OR `client_reference`.\n\n" +
-            "Returns status transitions: `submitted` -> `processing` -> `validated` / `failed`.\n\n" +
-            "If failed and an administrator issued a refund, `transaction.refunded` is `true`.",
+            "Query the status of a submitted NIN validation request using either `tracking_id` or `client_reference`.\n\n" +
+            "Returns status: `submitted`, `processing`, `validated`, or `failed`.",
           parameters: [
             {
               name: "tracking_id",
