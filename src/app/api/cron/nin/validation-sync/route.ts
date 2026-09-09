@@ -162,7 +162,6 @@ async function handleSync(req: NextRequest) {
             request_status: "validated",
             message: "NIN Validation completed successfully.",
             completed_at: new Date().toISOString(),
-            refunded: false,
             amount_charged: Number(item.amountCharged),
             currency: "NGN",
           });

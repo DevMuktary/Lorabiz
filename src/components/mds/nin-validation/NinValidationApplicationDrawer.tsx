@@ -51,7 +51,7 @@ export default function NinValidationApplicationDrawer({
   const [refundAmount, setRefundAmount] = useState<number | string>(initialTicket?.amountCharged || 0);
   
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [isPushingToDataVerify, setIsPushingToDataVerify] = useState<boolean>(false);
+  const [isPushingToGateway, setIsPushingToGateway] = useState<boolean>(false);
   const [isSyncingStatus, setIsSyncingStatus] = useState<boolean>(false);
   const [isLinkingManual, setIsLinkingManual] = useState<boolean>(false);
   const [manualTicketInput, setManualTicketInput] = useState<string>("");
@@ -85,9 +85,9 @@ export default function NinValidationApplicationDrawer({
 
   const categoryLabel = CATEGORY_LABELS[ticket.category] || ticket.category;
 
-  // Handle Admin Manual Push to DataVerify
-  const handlePushToDataVerify = async () => {
-    setIsPushingToDataVerify(true);
+  // Handle Admin Manual Push to Automated Gateway
+  const handlePushToGateway = async () => {
+    setIsPushingToGateway(true);
     setError("");
     setSuccessMsg("");
 
@@ -98,7 +98,7 @@ export default function NinValidationApplicationDrawer({
         body: JSON.stringify({
           ticketId: ticket.id,
           actionType: "PUSH_TO_PROVIDER",
-          adminNotes: "Pushed to DataVerify API via MDS Drawer",
+          adminNotes: "Pushed to Automated Gateway via MDS Drawer",
         }),
       });
 
@@ -108,23 +108,23 @@ export default function NinValidationApplicationDrawer({
           setTicket(result.data);
           onUpdateSuccess?.(result.data);
         }
-        throw new Error(result.error || "Failed to push ticket to DataVerify.");
+        throw new Error(result.error || "Failed to push ticket to Gateway.");
       }
 
       if (result.data) {
         setTicket(result.data);
       }
-      setSuccessMsg(result.message || "Successfully transmitted to DataVerify!");
+      setSuccessMsg(result.message || "Successfully transmitted to Gateway!");
       onUpdateSuccess?.(result.data);
     } catch (err: any) {
-      setError(err.message || "Failed to transmit to DataVerify.");
+      setError(err.message || "Failed to transmit to Gateway.");
     } finally {
-      setIsPushingToDataVerify(false);
+      setIsPushingToGateway(false);
     }
   };
 
-  // Handle Admin Live Status Check from DataVerify
-  const handleSyncDataVerifyStatus = async () => {
+  // Handle Admin Live Status Check from Gateway
+  const handleSyncGatewayStatus = async () => {
     setIsSyncingStatus(true);
     setError("");
     setSuccessMsg("");
@@ -141,7 +141,7 @@ export default function NinValidationApplicationDrawer({
 
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to fetch status from DataVerify.");
+        throw new Error(result.error || "Failed to fetch status from Gateway.");
       }
 
       const updated = {
@@ -152,10 +152,10 @@ export default function NinValidationApplicationDrawer({
         apiResponse: result.rawStatus ? { status: result.rawStatus, message: result.message } : ticket.apiResponse,
       };
 
-      setSuccessMsg(result.message || "Live status synced from DataVerify!");
+      setSuccessMsg(result.message || "Live status synced from Gateway!");
       onUpdateSuccess?.(updated);
     } catch (err: any) {
-      setError(err.message || "Failed to sync status from DataVerify.");
+      setError(err.message || "Failed to sync status from Gateway.");
     } finally {
       setIsSyncingStatus(false);
     }
@@ -164,7 +164,7 @@ export default function NinValidationApplicationDrawer({
   // Handle Manual Transaction/Ticket ID Linking
   const handleLinkManualTicket = async () => {
     if (!manualTicketInput.trim()) {
-      setError("Please enter a valid DataVerify Transaction ID.");
+      setError("Please enter a valid Gateway Transaction ID / Reference.");
       return;
     }
     setIsProcessing(true);
@@ -184,18 +184,18 @@ export default function NinValidationApplicationDrawer({
 
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to link DataVerify Transaction ID.");
+        throw new Error(result.error || "Failed to link Gateway Transaction ID.");
       }
 
       if (result.data) {
         setTicket(result.data);
       }
-      setSuccessMsg(result.message || "Successfully linked DataVerify Transaction ID!");
+      setSuccessMsg(result.message || "Successfully linked Gateway Transaction ID!");
       setIsLinkingManual(false);
       setManualTicketInput("");
       onUpdateSuccess?.(result.data);
     } catch (err: any) {
-      setError(err.message || "Failed to link DataVerify Transaction ID.");
+      setError(err.message || "Failed to link Gateway Transaction ID.");
     } finally {
       setIsProcessing(false);
     }
@@ -364,12 +364,12 @@ export default function NinValidationApplicationDrawer({
             </div>
           </div>
 
-          {/* 2. DATAVERIFY GATEWAY & AUTOMATION PANEL */}
+          {/* 2. AUTOMATED GATEWAY PANEL */}
           <div className="p-5 rounded-2xl bg-emerald-950/20 border-2 border-emerald-500/30 dark:bg-emerald-950/30 space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                 <Zap size={15} className="text-emerald-500 fill-emerald-500" />
-                <span>DataVerify Automated Gateway</span>
+                <span>Provider Automated Gateway</span>
               </div>
               <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
                 isCompletedOrFailed
@@ -405,7 +405,9 @@ export default function NinValidationApplicationDrawer({
                     )}
                   </div>
                   <p className="text-[11px] text-zinc-500 leading-normal">
-                    This request has been finalized. Transmission to the provider is locked to protect against duplicate charges.
+                    {hasPushedToProvider 
+                      ? "This request has been finalized. Transmission to the provider is locked to protect against duplicate charges."
+                      : "This request was processed and finalized manually by staff operations."}
                   </p>
                 </div>
               </div>
@@ -417,14 +419,14 @@ export default function NinValidationApplicationDrawer({
                     <span>Manual Fulfillment Required</span>
                   </div>
                   <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-[11px]">
-                    DataVerify automated validation currently <strong>only supports &ldquo;No Record Found&rdquo;</strong>. Requests for <strong>{categoryLabel}</strong> must be handled manually by staff using the operator actions below.
+                    Automated validation gateway currently <strong>only supports &ldquo;No Record Found&rdquo;</strong>. Requests for <strong>{categoryLabel}</strong> must be handled manually by staff using the operator actions below.
                   </p>
                 </div>
               </div>
             ) : hasPushedToProvider ? (
               <div className="space-y-3">
                 <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-1 text-xs">
-                  <span className="text-[10px] uppercase font-bold text-zinc-400">DataVerify Transaction ID</span>
+                  <span className="text-[10px] uppercase font-bold text-zinc-400">Gateway Transaction ID / Reference</span>
                   <div className="flex items-center justify-between">
                     <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">
                       {ticket.externalTxId || ticket.externalTicketId || "N/A"}
@@ -464,7 +466,7 @@ export default function NinValidationApplicationDrawer({
 
                     <button
                       type="button"
-                      onClick={handleSyncDataVerifyStatus}
+                      onClick={handleSyncGatewayStatus}
                       disabled={isSyncingStatus}
                       className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
@@ -477,25 +479,25 @@ export default function NinValidationApplicationDrawer({
             ) : (
               <div className="space-y-3">
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  This request is queued in the manual ledger. Click the button below to transmit the 11-digit NIN to the <strong>DataVerify</strong> validation engine for automated clearance.
+                  This request is queued in the manual ledger. Click the button below to transmit the 11-digit NIN to the <strong>Automated Gateway</strong> for clearance.
                 </p>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handlePushToDataVerify}
-                    disabled={isPushingToDataVerify || ticket.status !== "PROCESSING"}
+                    onClick={handlePushToGateway}
+                    disabled={isPushingToGateway || ticket.status !== "PROCESSING"}
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    {isPushingToDataVerify ? (
+                    {isPushingToGateway ? (
                       <>
                         <Loader2 size={15} className="animate-spin" />
-                        <span>Transmitting to DataVerify...</span>
+                        <span>Transmitting to Gateway...</span>
                       </>
                     ) : (
                       <>
                         <Zap size={15} />
-                        <span>Push to DataVerify (DVR)</span>
+                        <span>Push to Gateway</span>
                       </>
                     )}
                   </button>
@@ -515,10 +517,10 @@ export default function NinValidationApplicationDrawer({
             {isLinkingManual && (
               <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2 animate-in fade-in">
                 <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                  Link DataVerify Transaction ID / Reference
+                  Link Gateway Transaction ID / Reference
                 </span>
                 <p className="text-[11px] text-zinc-500">
-                  Copy the Transaction ID from the DataVerify portal (or your transaction history) and paste it below to link and track this ticket.
+                  Copy the Transaction ID or Reference from your gateway dashboard and paste it below to link and track this ticket.
                 </p>
                 <div className="flex items-center gap-2">
                   <input

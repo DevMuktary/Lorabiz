@@ -88,13 +88,15 @@ export default function SettingsDashboard() {
     }
   };
 
-  // Visually group the Global Services
-  const affidavitGroup = allServices.filter(
+  // Visually group the Global Services (strictly retail portal services; API wholesale services belong in /api-services)
+  const retailServices = allServices.filter((s) => !s.serviceKey.startsWith("API_"));
+
+  const affidavitGroup = retailServices.filter(
     (s) =>
       s.serviceKey.startsWith("AFFIDAVIT") ||
       s.serviceKey.includes("COURT_AFFIDAVIT")
   );
-  const cacGroup = allServices.filter(
+  const cacGroup = retailServices.filter(
     (s) =>
       !s.serviceKey.includes("SCUML") &&
       !s.serviceKey.includes("TAX_ID") &&
@@ -103,14 +105,14 @@ export default function SettingsDashboard() {
       !s.serviceKey.startsWith("AFFIDAVIT") &&
       !s.serviceKey.includes("COURT_AFFIDAVIT")
   );
-  const bvnGroup = allServices.filter((s) => s.serviceKey.startsWith("BVN"));
-  const complianceGroup = allServices.filter(
+  const bvnGroup = retailServices.filter((s) => s.serviceKey.startsWith("BVN"));
+  const complianceGroup = retailServices.filter(
     (s) => s.serviceKey.includes("SCUML") || s.serviceKey.includes("TAX_ID")
   );
-  const ipeGroup = allServices.filter((s) => s.serviceKey.includes("IPE"));
-  const personalizationGroup = allServices.filter((s) => s.serviceKey.includes("PERSONALIZATION"));
-  const ninValidationGroup = allServices.filter((s) => s.serviceKey.includes("NIN_VALIDATION"));
-  const ninNumberSlipsGroup = allServices.filter(
+  const ipeGroup = retailServices.filter((s) => s.serviceKey.includes("IPE"));
+  const personalizationGroup = retailServices.filter((s) => s.serviceKey.includes("PERSONALIZATION"));
+  const ninValidationGroup = retailServices.filter((s) => s.serviceKey.includes("NIN_VALIDATION"));
+  const ninNumberSlipsGroup = retailServices.filter(
     (s) =>
       s.serviceKey.startsWith("NIN_") &&
       !s.serviceKey.includes("PHONE") &&
@@ -119,10 +121,10 @@ export default function SettingsDashboard() {
       !s.serviceKey.includes("VALIDATION") &&
       !s.serviceKey.startsWith("NIN_MOD_")
   );
-  const ninPhoneSlipsGroup = allServices.filter(
+  const ninPhoneSlipsGroup = retailServices.filter(
     (s) => s.serviceKey.startsWith("NIN_PHONE_")
   );
-  const ninModificationGroup = allServices.filter(
+  const ninModificationGroup = retailServices.filter(
     (s) => s.serviceKey.startsWith("NIN_MOD_")
   );
 

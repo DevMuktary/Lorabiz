@@ -327,7 +327,6 @@ export async function POST(req: NextRequest) {
               request_status: "validated",
               message: "NIN Validation completed successfully.",
               completed_at: new Date().toISOString(),
-              refunded: false,
               amount_charged: price,
               currency: "NGN",
             },
@@ -383,7 +382,6 @@ export async function POST(req: NextRequest) {
         request_status: "submitted",
         amount_charged: price,
         currency: "NGN",
-        refunded: false,
         environment: "test",
       },
       { status: 201 }
@@ -543,7 +541,6 @@ export async function POST(req: NextRequest) {
         message: "NIN validation request submitted successfully.",
         amount_charged: price,
         currency: "NGN",
-        refunded: false,
       },
       "LIVE"
     );
@@ -559,7 +556,6 @@ export async function POST(req: NextRequest) {
         request_status: "submitted",
         amount_charged: price,
         currency: "NGN",
-        refunded: false,
         environment: envString,
       },
       { status: 201 }

@@ -44,6 +44,8 @@ export async function GET() {
       status: req.status,
       amountCharged: Number(req.amountCharged),
       transactionRef: req.transactionRef,
+      clientReference: req.clientReference || null,
+      isApiRequest: Boolean(req.isApiRequest),
       failureReason: req.failureReason,
       adminNotes: req.adminNotes,
       lastSyncedAt: req.lastSyncedAt ? req.lastSyncedAt.toISOString() : null,

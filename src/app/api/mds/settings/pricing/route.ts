@@ -75,8 +75,13 @@ export async function GET() {
       }
     }
 
-    // 1. FETCH ALL SETTINGS DIRECTLY
+    // 1. FETCH RETAIL/PORTAL SETTINGS DIRECTLY (Excludes API wholesale keys which belong in /api-services)
     const cacPricing = await prisma.servicePricing.findMany({ 
+      where: {
+        NOT: {
+          serviceKey: { startsWith: "API_" }
+        }
+      },
       orderBy: { serviceKey: 'asc' } 
     });
     

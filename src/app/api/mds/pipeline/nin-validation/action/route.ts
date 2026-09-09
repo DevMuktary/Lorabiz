@@ -549,7 +549,6 @@ export async function POST(req: Request) {
         request_status: "validated",
         message: "NIN Validation completed successfully.",
         completed_at: new Date().toISOString(),
-        refunded: false,
         amount_charged: Number(ticket.amountCharged),
         currency: "NGN",
       });
