@@ -19,7 +19,7 @@ This document defines the technical specification for the **NIN Verification and
 
 ### 1.2 Search Mode: By Phone Number (MSISDN)
 - **Canonical Endpoint**: `POST /api/v1/nin/by-phone`
-- **Identifier**: 11-digit Nigerian registered mobile phone number (e.g., `08012345678`, `09047073004`).
+- **Identifier**: 11-digit Nigerian registered mobile phone number (e.g., `08012345678`, `08023456789`).
 - **Supported Slip Types (3 Formats)**:
   1. `nin_regular`: Standard NIMC Regular slip layout.
   2. `nin_standard`: Standard Biometric KYC slip.
