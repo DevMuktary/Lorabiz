@@ -51,28 +51,28 @@ export default function DocsPage() {
           darkMode: true,
           showSidebar: true,
           customCss: `
-            /* Interactive Collapsible Slip Previews */
+            /* Interactive Collapsible Slip Previews (Adaptive Light & Dark Mode) */
             .scalar-api-reference details {
-              margin: 10px 0;
-              border: 1px solid rgba(255, 255, 255, 0.14);
+              margin: 12px 0;
+              border: 1px solid var(--scalar-border-color, rgba(128, 128, 128, 0.25));
               border-radius: 8px;
-              background: rgba(255, 255, 255, 0.03);
+              background: var(--scalar-background-2, rgba(128, 128, 128, 0.04));
               overflow: hidden;
               transition: border-color 0.2s ease, background-color 0.2s ease;
             }
             .scalar-api-reference details:hover {
-              border-color: rgba(16, 185, 129, 0.35);
-              background: rgba(255, 255, 255, 0.05);
+              border-color: #10b981;
+              background: var(--scalar-background-3, rgba(128, 128, 128, 0.08));
             }
             .scalar-api-reference details[open] {
-              border-color: rgba(16, 185, 129, 0.5);
-              background: rgba(16, 185, 129, 0.03);
+              border-color: #10b981;
+              background: var(--scalar-background-2, rgba(128, 128, 128, 0.06));
             }
             .scalar-api-reference summary {
-              padding: 9px 14px;
+              padding: 10px 14px;
               font-size: 13px;
-              font-weight: 500;
-              color: #f1f5f9;
+              font-weight: 600;
+              color: var(--scalar-color-1, currentColor);
               cursor: pointer;
               user-select: none;
               outline: none;
@@ -82,30 +82,111 @@ export default function DocsPage() {
               transition: color 0.15s ease;
             }
             .scalar-api-reference summary:hover {
-              color: #34d399;
+              color: #10b981;
             }
             .scalar-api-reference details img[src*="/examples/"] {
               display: block;
               max-width: 320px;
               width: 100%;
               height: auto;
-              margin: 10px auto 16px auto;
+              margin: 12px auto 16px auto;
               border-radius: 8px;
-              border: 1px solid rgba(255, 255, 255, 0.12);
-              box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+              border: 1px solid var(--scalar-border-color, rgba(128, 128, 128, 0.25));
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
             }
 
-            /* Visible Section Dividers & Endpoint Separation */
+            /* Explicit Light Mode Rules (High Contrast & Legible) */
+            .light-mode details,
+            .scalar-api-reference.light-mode details {
+              border: 1px solid #cbd5e1 !important;
+              background: #f8fafc !important;
+            }
+            .light-mode details:hover,
+            .scalar-api-reference.light-mode details:hover {
+              border-color: #059669 !important;
+              background: #f1f5f9 !important;
+            }
+            .light-mode details[open],
+            .scalar-api-reference.light-mode details[open] {
+              border-color: #059669 !important;
+              background: #f0fdf4 !important;
+            }
+            .light-mode summary,
+            .scalar-api-reference.light-mode summary {
+              color: #0f172a !important;
+              font-weight: 600 !important;
+            }
+            .light-mode summary:hover,
+            .scalar-api-reference.light-mode summary:hover {
+              color: #059669 !important;
+            }
+            .light-mode details img[src*="/examples/"],
+            .scalar-api-reference.light-mode details img[src*="/examples/"] {
+              border-color: #cbd5e1 !important;
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+            }
+
+            /* Explicit Dark Mode Rules */
+            .dark-mode details,
+            .scalar-api-reference.dark-mode details {
+              border: 1px solid rgba(255, 255, 255, 0.15) !important;
+              background: rgba(255, 255, 255, 0.03) !important;
+            }
+            .dark-mode details:hover,
+            .scalar-api-reference.dark-mode details:hover {
+              border-color: #34d399 !important;
+              background: rgba(255, 255, 255, 0.06) !important;
+            }
+            .dark-mode details[open],
+            .scalar-api-reference.dark-mode details[open] {
+              border-color: #10b981 !important;
+              background: rgba(16, 185, 129, 0.05) !important;
+            }
+            .dark-mode summary,
+            .scalar-api-reference.dark-mode summary {
+              color: #f8fafc !important;
+            }
+            .dark-mode summary:hover,
+            .scalar-api-reference.dark-mode summary:hover {
+              color: #34d399 !important;
+            }
+
+            /* Visible Section Dividers Adaptive to Light & Dark */
             .scalar-api-reference .section,
             .scalar-api-reference .tag-section,
             .scalar-api-reference .endpoint-section {
-              border-bottom: 2px solid rgba(255, 255, 255, 0.12) !important;
+              border-bottom: 2px solid var(--scalar-border-color, rgba(128, 128, 128, 0.2)) !important;
               padding-bottom: 28px !important;
               margin-bottom: 28px !important;
             }
+            .light-mode .section,
+            .light-mode .tag-section,
+            .light-mode .endpoint-section,
+            .scalar-api-reference.light-mode .section,
+            .scalar-api-reference.light-mode .tag-section,
+            .scalar-api-reference.light-mode .endpoint-section {
+              border-bottom: 2px solid #e2e8f0 !important;
+            }
+            .dark-mode .section,
+            .dark-mode .tag-section,
+            .dark-mode .endpoint-section,
+            .scalar-api-reference.dark-mode .section,
+            .scalar-api-reference.dark-mode .tag-section,
+            .scalar-api-reference.dark-mode .endpoint-section {
+              border-bottom: 2px solid rgba(255, 255, 255, 0.14) !important;
+            }
+
             .scalar-api-reference hr {
-              border-color: rgba(255, 255, 255, 0.18) !important;
+              border-color: var(--scalar-border-color, rgba(128, 128, 128, 0.2)) !important;
               border-width: 1.5px !important;
+            }
+            .light-mode hr,
+            .scalar-api-reference.light-mode hr {
+              border-color: #cbd5e1 !important;
+            }
+            .dark-mode hr,
+            .scalar-api-reference.dark-mode hr {
+              border-color: rgba(255, 255, 255, 0.18) !important;
             }
 
             @media (max-width: 640px) {
@@ -152,8 +233,8 @@ export default function DocsPage() {
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 font-sans">
       {/* Mobile-Optimized Top Navbar */}
-      <header className="sticky top-0 z-50 flex h-12 w-full shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#090d16]/95 px-3 sm:px-4 backdrop-blur-md">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <header className="sticky top-0 z-50 flex h-12 w-full shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#090d16]/95 px-2.5 sm:px-4 backdrop-blur-md transition-colors">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <Link
             href="/dashboard/developer"
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-white transition-colors shrink-0"
@@ -173,7 +254,7 @@ export default function DocsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
           <Link
             href="/api/openapi.json"
             target="_blank"
@@ -209,8 +290,8 @@ export default function DocsPage() {
         {loading && (
           <div className="flex flex-col items-center justify-center py-32 text-slate-400 text-sm gap-3 px-4 text-center">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-            <p className="font-medium text-slate-300">Loading interactive Scalar documentation...</p>
-            <p className="text-xs text-slate-500">Parsing OpenAPI 3.1 specification at /api/openapi.json</p>
+            <p className="font-medium text-slate-200">Loading Lorabiz Developer Documentation...</p>
+            <p className="text-xs text-slate-500">Initializing REST API reference and endpoints...</p>
           </div>
         )}
         <div ref={containerRef} className="w-full" />

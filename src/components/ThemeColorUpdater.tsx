@@ -96,9 +96,15 @@ function resolveChromeColor(): string {
   ctx.clearRect(0, 0, 1, 1);
   ctx.globalAlpha = 1;
 
-  // globals.css sets `html { background-color: hsl(var(--background)) }`, so this
-  // tracks the live theme without duplicating the palette here.
-  ctx.fillStyle = getComputedStyle(document.documentElement).backgroundColor;
+  // On /docs, determine base color from active Scalar theme to prevent mismatched mobile browser chrome
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/docs")) {
+    const isLight = document.querySelector(".scalar-api-reference.light-mode, .light-mode");
+    ctx.fillStyle = isLight ? "#ffffff" : "#090d16";
+  } else {
+    // globals.css sets `html { background-color: hsl(var(--background)) }`, so this
+    // tracks the live theme without duplicating the palette here.
+    ctx.fillStyle = getComputedStyle(document.documentElement).backgroundColor;
+  }
   ctx.fillRect(0, 0, 1, 1);
 
   for (const { color, alpha } of collectScrims()) {

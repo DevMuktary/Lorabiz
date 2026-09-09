@@ -9,11 +9,11 @@ const LLMS_TEXT_CONTENT = `# Lorabiz Developer Platform API
 
 ## Quick Links
 - Interactive Documentation: https://lorabiz.com/docs
-- OpenAPI 3.1 Spec: https://lorabiz.com/api/openapi.json
+- OpenAPI 3.1 Spec: https://api.lorabiz.com/api/openapi.json
 - Developer Dashboard & API Keys: https://lorabiz.com/dashboard/developer
 
 ## Base URL
-https://lorabiz.com
+https://api.lorabiz.com
 
 ## Authentication
 Every request requires an API key in one of the following HTTP headers:
@@ -58,36 +58,26 @@ Every request requires an API key in one of the following HTTP headers:
 \`\`\`json
 {
   "status": "success",
-  "message": "NIN verification slip generated successfully.",
   "data": {
     "nin": "12345678901",
-    "firstname": "MUSA",
-    "middlename": "IBRAHIM",
-    "surname": "BELLO",
-    "fullname": "MUSA IBRAHIM BELLO",
-    "gender": "Male",
-    "birthdate": "1994-05-18",
-    "telephoneno": "08012345678",
-    "photo": "/9j/4AAQSkZJRgABAQ...",
-    "address": "14 Adeola Odeku Street, Victoria Island",
-    "residence_lga": "Eti-Osa",
-    "residence_state": "Lagos",
-    "self_origin_lga": "Kano Municipal",
-    "self_origin_state": "Kano",
-    "tracking_id": "TRK-984210"
-  },
-  "slip": {
     "slip_type": "nin_premium",
-    "display_name": "Premium Card Slip",
-    "pdf_base64": "JVBERi0xLjQKJ..."
+    "demographics": {
+      "firstname": "JOHN",
+      "surname": "DOE",
+      "birthdate": "1990-01-01",
+      "gender": "male",
+      "telephoneno": "08012345678"
+    },
+    "slip": {
+      "format": "pdf",
+      "mime_type": "application/pdf",
+      "pdf_base64": "<base64_encoded_pdf_string>"
+    }
   },
-  "transaction": {
-    "reference": "NIN_PREMIUM_1725732104912",
-    "client_reference": "TXN_ORD_9812401",
-    "amount_charged": 150.0,
-    "currency": "NGN",
-    "environment": "live",
-    "balance_after": 45850.0
+  "billing": {
+    "charged": true,
+    "amount": 150.00,
+    "currency": "NGN"
   }
 }
 \`\`\`
@@ -102,14 +92,14 @@ Every request requires an API key in one of the following HTTP headers:
 #### Sandbox Test Numbers:
 - Success (Female Record): \`09047073004\` (Returns 200 OK)
 - Success (Male Record): \`08012345678\` (Returns 200 OK)
-- Record Not Found (422): \`00000000000\` or \`07000000000\` (Billed ₦0.00)
+- Record Not Found (422): \`00000000000\` or \`08000000000\` (Billed ₦0.00)
 
 #### Request Body
 \`\`\`json
 {
   "phone": "08012345678",
-  "slip_type": "nin_premium",
-  "client_reference": "TXN_PHONE_9812402"
+  "slip_type": "nin_standard",
+  "client_reference": "TXN_ORD_9812402"
 }
 \`\`\`
 - \`phone\` (string, required): Exactly 11 numeric digits (e.g., "08012345678").
