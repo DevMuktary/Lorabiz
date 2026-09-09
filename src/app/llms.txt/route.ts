@@ -122,10 +122,13 @@ Every request requires an API key in one of the following HTTP headers:
 - \`modification\` (Record Modification)
 - \`photo_error\` (Photo Error Correction)
 
-#### Sandbox Submission Testing:
-- Standard Submission: Any valid 11-digit NIN returns \`201 Created\` with \`request_status: submitted\`.
-- Duplicate Rejection: Submit NIN \`99999999999\` or reference containing \`duplicate\` to simulate \`409 DUPLICATE_REQUEST\`.
-- Webhook Simulation: If a test webhook is configured, a simulated webhook event is automatically dispatched after 3 seconds.
+#### Sandbox Test NINs:
+In test mode (\`lora_test_...\`), use the following designated test NINs to simulate validation outcomes:
+- \`11111111111\`: Success simulation (transitions to \`validated\`)
+- \`22222222222\`: Failure simulation (transitions to \`failed\`, \`refunded: true\`)
+- \`99999999999\`: Duplicate Conflict simulation (returns \`409 DUPLICATE_REQUEST\`)
+
+You can supply any random \`client_reference\` of your choice (e.g., \`REF_MY_APP_99182\`).
 
 #### Request Body
 \`\`\`json
@@ -163,12 +166,7 @@ Every request requires an API key in one of the following HTTP headers:
   - \`client_reference\` (optional): Your custom reference
   *(Provide either tracking_id or client_reference to look up status)*
 
-#### Sandbox Test References:
-In test mode (\`lora_test_...\`), provide any of the following query values in \`tracking_id\` or \`client_reference\` to test response states:
-- \`1111\` or \`test_success\`: Validated successfully (\`request_status: validated\`, \`refunded: false\`)
-- \`2222\` or \`fail_refund\`: Failed with full refund (\`request_status: failed\`, \`refunded: true\`, \`amount_charged: 0.00\`)
-- \`4444\` or \`norefund\`: Failed without refund (\`request_status: failed\`, \`refunded: false\`, \`amount_charged: 700.00\`)
-- \`3333\` or \`pending\`: In-flight / pending validation (\`request_status: processing\`)
+In both live and test modes, look up requests using the \`tracking_id\` returned upon submission or your custom \`client_reference\`.
 
 #### Status Transitions:
 - \`submitted\`
@@ -191,6 +189,7 @@ In test mode (\`lora_test_...\`), provide any of the following query values in \
   "refunded": false,
   "amount_charged": 700.00,
   "currency": "NGN",
+  "environment": "live",
   "date": "2026-09-09T08:15:00.000Z"
 }
 \`\`\`
@@ -200,7 +199,7 @@ In test mode (\`lora_test_...\`), provide any of the following query values in \
 ## Centralized Webhooks & HMAC Signatures
 Configure your centralized webhook URL in the [Developer Console](https://lorabiz.com/dashboard/developer). All events are dispatched with:
 - \`x-lorabiz-signature\`: HMAC-SHA256 hex digest computed with your webhook secret.
-- \`x-lorabiz-event\`: Event name (\`nin_validation.completed\`, \`nin_validation.failed\`).
+- \`x-lorabiz-event\`: Event name (\`nin_validation.submitted\`, \`nin_validation.completed\`, \`nin_validation.failed\`).
 
 ### Event: \`nin_validation.completed\`
 \`\`\`json

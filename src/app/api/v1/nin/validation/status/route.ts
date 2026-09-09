@@ -52,90 +52,63 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // 4. Test Mode Simulation
+  // 4. Test Mode: Lookup in Isolated Test Table (Never touches live NinValidationRequest)
   if (keyPayload.type === ApiKeyType.TEST) {
-    const queryTerm = `${trackingId || ""} ${clientReference || ""}`.toLowerCase();
+    const testTicket = await prisma.testNinValidationTicket.findFirst({
+      where: {
+        userId: keyPayload.userId,
+        OR: [
+          ...(trackingId ? [{ trackingId }] : []),
+          ...(clientReference ? [{ clientReference }] : []),
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
-    const isFailedWithRefund =
-      queryTerm.includes("2222") ||
-      queryTerm.includes("fail_refund") ||
-      queryTerm.includes("refunded");
-
-    const isFailedWithoutRefund =
-      queryTerm.includes("4444") ||
-      queryTerm.includes("norefund") ||
-      queryTerm.includes("no_refund");
-
-    const isProcessingPending =
-      queryTerm.includes("3333") ||
-      queryTerm.includes("pending") ||
-      queryTerm.includes("processing");
-
-    if (isFailedWithRefund) {
-      return NextResponse.json({
-        status: "error",
-        tracking_id: trackingId || "nin_val_test_2222_mock",
-        client_reference: clientReference,
-        nin: "22222222222",
-        validation_type: "no_record_found",
-        request_status: "failed",
-        message: "Your NIN Validation request has failed.",
-        error_detail: "Validation failed due to bypass NIN, suspended, invalidated or wrong NIN.",
-        refunded: true,
-        amount_charged: 0.0,
-        currency: "NGN",
-        date: new Date().toISOString(),
-      });
+    if (!testTicket) {
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "RECORD_NOT_FOUND",
+          message: "No validation ticket was found matching the provided reference under your account.",
+        },
+        { status: 404 }
+      );
     }
 
-    if (isFailedWithoutRefund) {
-      return NextResponse.json({
-        status: "error",
-        tracking_id: trackingId || "nin_val_test_4444_mock",
-        client_reference: clientReference,
-        nin: "44444444444",
-        validation_type: "no_record_found",
-        request_status: "failed",
-        message: "Your NIN Validation request has failed.",
-        error_detail: "Validation rejected due to severe record mismatch. Fee retained per validation guidelines.",
-        refunded: false,
-        amount_charged: 700.0,
-        currency: "NGN",
-        date: new Date().toISOString(),
-      });
-    }
+    const isFailed = testTicket.status === "FAILED";
+    const isCompleted = testTicket.status === "COMPLETED";
 
-    if (isProcessingPending) {
-      return NextResponse.json({
-        status: "success",
-        tracking_id: trackingId || "nin_val_test_3333_mock",
-        client_reference: clientReference,
-        nin: "33333333333",
-        validation_type: "no_record_found",
-        request_status: "processing",
-        message: "Your NIN Validation request is currently processing. Please check back later.",
-        completed_at: null,
-        refunded: false,
-        amount_charged: 700.0,
-        currency: "NGN",
-        date: new Date().toISOString(),
-      });
-    }
+    const requestStatus = isCompleted
+      ? "validated"
+      : isFailed
+      ? "failed"
+      : "processing";
 
-    // Default: Validated / Completed (11111111111 or standard test numbers)
+    const message = isCompleted
+      ? "NIN Validation completed successfully."
+      : isFailed
+      ? "Your NIN Validation request has failed."
+      : "Your NIN Validation request is currently processing. Please check back later.";
+
+    const isRefunded = Boolean(testTicket.refunded);
+    const amountCharged = isRefunded ? 0.0 : Number(testTicket.amountCharged);
+
     return NextResponse.json({
-      status: "success",
-      tracking_id: trackingId || "nin_val_test_1111_mock",
-      client_reference: clientReference,
-      nin: "11111111111",
-      validation_type: "no_record_found",
-      request_status: "validated",
-      message: "NIN Validation completed successfully.",
-      completed_at: new Date().toISOString(),
-      refunded: false,
-      amount_charged: 700.0,
+      status: isFailed ? "error" : "success",
+      tracking_id: testTicket.trackingId,
+      client_reference: testTicket.clientReference || null,
+      nin: testTicket.nin,
+      validation_type: testTicket.validationType,
+      request_status: requestStatus,
+      message,
+      error_detail: isFailed ? (testTicket.failureReason || "Validation failed verification requirements.") : undefined,
+      completed_at: testTicket.completedAt ? testTicket.completedAt.toISOString() : null,
+      refunded: isRefunded,
+      amount_charged: amountCharged,
       currency: "NGN",
-      date: new Date().toISOString(),
+      environment: "test",
+      date: testTicket.createdAt.toISOString(),
     });
   }
 
@@ -197,6 +170,7 @@ export async function GET(req: NextRequest) {
     refunded: isRefunded,
     amount_charged: amountCharged,
     currency: "NGN",
+    environment: "live",
     date: ticket.createdAt.toISOString(),
   });
 }

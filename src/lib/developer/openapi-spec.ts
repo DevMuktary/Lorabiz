@@ -245,6 +245,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             refunded: { type: "boolean", example: false },
             amount_charged: { type: "number", example: 700.0 },
             currency: { type: "string", example: "NGN" },
+            environment: { type: "string", enum: ["live", "test"], example: "live" },
             date: { type: "string", format: "date-time", example: "2026-09-09T08:15:00.000Z" },
           },
         },
@@ -671,10 +672,12 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             "- `vnin_validation` (VNIN / SIM / Bank Validation)\n" +
             "- `modification` (Record Modification)\n" +
             "- `photo_error` (Photo Error Correction)\n\n" +
-            "#### Sandbox Submission Testing:\n" +
-            "- Standard submission: Any valid 11-digit NIN returns `201 Created` with `request_status: submitted`.\n" +
-            "- Duplicate Rejection: Submit NIN `99999999999` or reference containing `duplicate` to simulate `409 DUPLICATE_REQUEST`.\n" +
-            "- Webhook Simulation: If a test webhook is configured, a simulated webhook event is automatically dispatched after 3 seconds.",
+            "#### Sandbox Test NINs:\n" +
+            "In test mode (`lora_test_...`), use the following designated test NINs to simulate validation outcomes:\n" +
+            "- `11111111111`: Success simulation (transitions to `validated`)\n" +
+            "- `22222222222`: Failure simulation (transitions to `failed`, `refunded: true`)\n" +
+            "- `99999999999`: Duplicate Conflict simulation (returns `409 DUPLICATE_REQUEST`)\n\n" +
+            "You can supply any random `client_reference` of your choice (e.g., `order_12345`).",
           requestBody: {
             required: true,
             content: {
@@ -783,12 +786,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           summary: "Check NIN Validation Status",
           description:
             "Query the current processing status of a submitted NIN validation request using either `tracking_id` or `client_reference`.\n\n" +
-            "#### Sandbox Test References:\n" +
-            "In test mode (`lora_test_...`), provide any of the following query values in `tracking_id` or `client_reference` to test response states:\n" +
-            "- `1111` or `test_success`: Validated successfully (`request_status: validated`, `refunded: false`)\n" +
-            "- `2222` or `fail_refund`: Failed with full refund (`request_status: failed`, `refunded: true`, `amount_charged: 0.0`)\n" +
-            "- `4444` or `norefund`: Failed without refund (`request_status: failed`, `refunded: false`, `amount_charged: 700.0`)\n" +
-            "- `3333` or `pending`: In-flight / pending validation (`request_status: processing`)",
+            "In both live and test modes, look up requests using the `tracking_id` returned upon submission or your custom `client_reference`.",
           parameters: [
             {
               name: "tracking_id",
@@ -826,6 +824,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     refunded: false,
                     amount_charged: 700.0,
                     currency: "NGN",
+                    environment: "live",
                     date: "2026-09-09T08:15:00.000Z",
                   },
                 },

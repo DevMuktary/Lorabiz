@@ -176,27 +176,187 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 6. Fast Duplicate Active Request Check (409 Conflict)
-  if (
-    keyPayload.type === ApiKeyType.TEST &&
-    (sanitizedNin === "99999999999" || cleanClientRef?.toLowerCase().includes("duplicate"))
-  ) {
+  // 5. SANDBOX / TEST MODE ISOLATED PIPELINE
+  if (keyPayload.type === ApiKeyType.TEST) {
+    // A. Strict 3-NIN Enforcement
+    if (sanitizedNin !== "11111111111" && sanitizedNin !== "22222222222" && sanitizedNin !== "99999999999") {
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "INVALID_INPUT",
+          message:
+            "In Sandbox/Test Mode, please use one of the designated test NINs: 11111111111 (Success), 22222222222 (Failed), or 99999999999 (Duplicate Conflict).",
+        },
+        { status: 400 }
+      );
+    }
+
+    // B. Duplicate Request Conflict Simulation (99999999999)
+    if (sanitizedNin === "99999999999") {
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "DUPLICATE_REQUEST",
+          message:
+            "An active validation request is already in progress for NIN 99999999999. Duplicate submission rejected to prevent double debits.",
+          tracking_id: "nin_val_test_dup_active",
+          client_reference: cleanClientRef || null,
+          transaction: {
+            amount_charged: 0.0,
+            currency: "NGN",
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    // C. Idempotency Check via client_reference in Test DB
+    if (cleanClientRef) {
+      const existingTestByRef = await prisma.testNinValidationTicket.findFirst({
+        where: {
+          userId: keyPayload.userId,
+          clientReference: cleanClientRef,
+        },
+      });
+
+      if (existingTestByRef) {
+        const existingStatus = existingTestByRef.status === "COMPLETED"
+          ? "validated"
+          : existingTestByRef.status === "FAILED"
+          ? "failed"
+          : "processing";
+
+        return NextResponse.json(
+          {
+            status: "success",
+            message: "Existing NIN validation request retrieved via client_reference.",
+            tracking_id: existingTestByRef.trackingId,
+            client_reference: existingTestByRef.clientReference,
+            nin: existingTestByRef.nin,
+            validation_type: existingTestByRef.validationType,
+            request_status: existingStatus,
+            amount_charged: Number(existingTestByRef.amountCharged),
+            currency: "NGN",
+            refunded: existingTestByRef.refunded,
+            environment: "test",
+          },
+          { status: 200 }
+        );
+      }
+    }
+
+    // D. Create Test Ticket in Isolated Table (Never touches live NinValidationRequest or MDS queue)
+    const testTrackingId = `nin_val_test_${crypto.randomBytes(8).toString("hex")}`;
+
+    await prisma.testNinValidationTicket.create({
+      data: {
+        userId: keyPayload.userId,
+        category: typeConfig.category,
+        validationType: normalizedTypeKey,
+        nin: sanitizedNin,
+        status: "PROCESSING",
+        amountCharged: price,
+        trackingId: testTrackingId,
+        clientReference: cleanClientRef || null,
+        refunded: false,
+      },
+    });
+
+    recordApiRequestLog({
+      userId: keyPayload.userId,
+      apiKeyId: keyPayload.id,
+      environment,
+      method: "POST",
+      endpoint,
+      statusCode: 201,
+      latencyMs: Date.now() - startTime,
+      amountCharged: 0,
+      clientReference: cleanClientRef,
+      requestBody: body,
+      responseBody: { status: "success", tracking_id: testTrackingId, simulated: true },
+    });
+
+    // E. 5-Second Automated Background Transition & Test Webhook Dispatch
+    setTimeout(async () => {
+      try {
+        if (sanitizedNin === "11111111111") {
+          await prisma.testNinValidationTicket.update({
+            where: { trackingId: testTrackingId },
+            data: {
+              status: "COMPLETED",
+              completedAt: new Date(),
+            },
+          });
+
+          dispatchDeveloperWebhook(
+            keyPayload.userId,
+            "nin_validation.completed",
+            {
+              tracking_id: testTrackingId,
+              client_reference: cleanClientRef || null,
+              nin: sanitizedNin,
+              validation_type: normalizedTypeKey,
+              request_status: "validated",
+              message: "NIN Validation completed successfully.",
+              completed_at: new Date().toISOString(),
+              refunded: false,
+              amount_charged: price,
+              currency: "NGN",
+            },
+            "TEST"
+          );
+        } else if (sanitizedNin === "22222222222") {
+          await prisma.testNinValidationTicket.update({
+            where: { trackingId: testTrackingId },
+            data: {
+              status: "FAILED",
+              refunded: true,
+              failureReason: "Validation failed due to bypass NIN, suspended, invalidated or wrong NIN.",
+            },
+          });
+
+          dispatchDeveloperWebhook(
+            keyPayload.userId,
+            "nin_validation.failed",
+            {
+              tracking_id: testTrackingId,
+              client_reference: cleanClientRef || null,
+              nin: sanitizedNin,
+              validation_type: normalizedTypeKey,
+              request_status: "failed",
+              message: "Your NIN Validation request has failed.",
+              error_detail: "Validation failed due to bypass NIN, suspended, invalidated or wrong NIN.",
+              refunded: true,
+              amount_charged: 0,
+              currency: "NGN",
+            },
+            "TEST"
+          );
+        }
+      } catch (asyncErr) {
+        console.error("❌ [Test Sandbox Async Update Error]:", asyncErr);
+      }
+    }, 5000);
+
     return NextResponse.json(
       {
-        status: "error",
-        code: "DUPLICATE_REQUEST",
-        message: `An active validation request is already in progress for NIN ${sanitizedNin}. Please check its status.`,
-        tracking_id: "nin_val_test_dup_active",
+        status: "success",
+        message: "NIN validation request submitted successfully (Sandbox Simulation).",
+        tracking_id: testTrackingId,
         client_reference: cleanClientRef || null,
-        transaction: {
-          amount_charged: 0.0,
-          currency: "NGN",
-        },
+        nin: sanitizedNin,
+        validation_type: normalizedTypeKey,
+        request_status: "submitted",
+        amount_charged: price,
+        currency: "NGN",
+        refunded: false,
+        environment: "test",
       },
-      { status: 409 }
+      { status: 201 }
     );
   }
 
+  // 6. LIVE MODE: Fast Duplicate Active Request Check (409 Conflict)
   const existingActive = await prisma.ninValidationRequest.findFirst({
     where: {
       userId: keyPayload.userId,
@@ -220,108 +380,6 @@ export async function POST(req: NextRequest) {
         },
       },
       { status: 409 }
-    );
-  }
-
-  // 7. SANDBOX / TEST Mode Simulation
-  if (keyPayload.type === ApiKeyType.TEST) {
-    const testTrackingId = `nin_val_test_${sanitizedNin.slice(-4)}_${crypto.randomBytes(6).toString("hex")}`;
-
-    recordApiRequestLog({
-      userId: keyPayload.userId,
-      apiKeyId: keyPayload.id,
-      environment,
-      method: "POST",
-      endpoint,
-      statusCode: 201,
-      latencyMs: Date.now() - startTime,
-      amountCharged: 0,
-      clientReference: cleanClientRef,
-      requestBody: body,
-      responseBody: { status: "success", tracking_id: testTrackingId, simulated: true },
-    });
-
-    // Asynchronous simulated webhook dispatch to Developer's TEST Webhook URL (3s delay)
-    if (sanitizedNin === "22222222222") {
-      // Failure WITH Refund
-      setTimeout(() => {
-        dispatchDeveloperWebhook(
-          keyPayload.userId,
-          "nin_validation.failed",
-          {
-            tracking_id: testTrackingId,
-            client_reference: cleanClientRef,
-            nin: sanitizedNin,
-            validation_type: normalizedTypeKey,
-            request_status: "failed",
-            message: "Your NIN Validation request has failed.",
-            error_detail: "Validation failed due to bypass NIN, suspended, invalidated or wrong NIN.",
-            refunded: true,
-            amount_charged: 0,
-            currency: "NGN",
-          },
-          "TEST"
-        );
-      }, 3000);
-    } else if (sanitizedNin === "44444444444") {
-      // Failure WITHOUT Refund
-      setTimeout(() => {
-        dispatchDeveloperWebhook(
-          keyPayload.userId,
-          "nin_validation.failed",
-          {
-            tracking_id: testTrackingId,
-            client_reference: cleanClientRef,
-            nin: sanitizedNin,
-            validation_type: normalizedTypeKey,
-            request_status: "failed",
-            message: "Your NIN Validation request has failed.",
-            error_detail: "Validation rejected due to severe record mismatch. Fee retained per validation guidelines.",
-            refunded: false,
-            amount_charged: price,
-            currency: "NGN",
-          },
-          "TEST"
-        );
-      }, 3000);
-    } else if (sanitizedNin !== "33333333333") {
-      // Success (11111111111 or standard test numbers)
-      setTimeout(() => {
-        dispatchDeveloperWebhook(
-          keyPayload.userId,
-          "nin_validation.completed",
-          {
-            tracking_id: testTrackingId,
-            client_reference: cleanClientRef,
-            nin: sanitizedNin,
-            validation_type: normalizedTypeKey,
-            request_status: "validated",
-            message: "NIN Validation completed successfully.",
-            completed_at: new Date().toISOString(),
-            refunded: false,
-            amount_charged: price,
-            currency: "NGN",
-          },
-          "TEST"
-        );
-      }, 3000);
-    }
-
-    return NextResponse.json(
-      {
-        status: "success",
-        message: "NIN validation request submitted successfully (Sandbox Simulation).",
-        tracking_id: testTrackingId,
-        client_reference: cleanClientRef || null,
-        nin: sanitizedNin,
-        validation_type: normalizedTypeKey,
-        request_status: "submitted",
-        amount_charged: price,
-        currency: "NGN",
-        refunded: false,
-        environment: "test",
-      },
-      { status: 201 }
     );
   }
 
