@@ -1,17 +1,33 @@
 "use client";
 
 import React, { useState } from "react";
-import { Key, Plus, Copy, Check, ShieldAlert, AlertTriangle, XCircle, Trash2 } from "lucide-react";
+import {
+  Key,
+  Plus,
+  Copy,
+  Check,
+  ShieldAlert,
+  AlertTriangle,
+  XCircle,
+  Trash2,
+  Eye,
+  EyeOff,
+  RotateCw,
+  Lock,
+  Info,
+} from "lucide-react";
 
 export interface ApiKeyItem {
   id: string;
   name: string;
   keyPrefix: string;
+  rawKey?: string | null;
   type: "LIVE" | "TEST";
   status: "ACTIVE" | "REVOKED";
   ipWhitelist: string[];
   lastUsedAt: string | null;
   createdAt: string;
+  revokedAt?: string | null;
 }
 
 interface ApiKeyManagerProps {
@@ -40,19 +56,28 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Key Reveal Modal state
+  // Key Reveal Modal state (shown after initial creation or after rolling a key)
   const [revealedKey, setRevealedKey] = useState<{ name: string; rawKey: string } | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
 
-  // Copied prefix helper
-  const [copiedPrefixId, setCopiedPrefixId] = useState<string | null>(null);
+  // Copied state per row
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
 
-  // Custom In-App Revoke Modal state (replaces browser window.confirm)
+  // Revealed keys toggle map (for test keys that have decrypted rawKey)
+  const [revealedRowKeys, setRevealedRowKeys] = useState<Record<string, boolean>>({});
+
+  // Roll Key Modal state
+  const [keyToRoll, setKeyToRoll] = useState<ApiKeyItem | null>(null);
+  const [isRolling, setIsRolling] = useState(false);
+  const [rollError, setRollError] = useState<string | null>(null);
+
+  // In-App Revoke Modal state
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKeyItem | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
 
-  // Custom In-App Delete Modal state (permanently delete revoked keys)
+  // In-App Delete Modal state (permanently delete revoked keys)
   const [keyToDelete, setKeyToDelete] = useState<ApiKeyItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -98,6 +123,42 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
       setCreateError(err.message || "An unexpected error occurred.");
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const confirmRollKey = async () => {
+    if (!keyToRoll) return;
+
+    setIsRolling(true);
+    setRollError(null);
+
+    try {
+      const res = await fetch(`/api/developer/keys/${keyToRoll.id}/roll`, {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        setRollError(data.message || "Failed to roll API key.");
+        return;
+      }
+
+      const rolledKeyName = data.data?.name || keyToRoll.name;
+      const rawSecret = data.data?.rawKey;
+
+      setKeyToRoll(null);
+      onRefreshKeys();
+
+      if (rawSecret) {
+        setRevealedKey({
+          name: `${rolledKeyName} (Newly Rolled)`,
+          rawKey: rawSecret,
+        });
+      }
+    } catch (err: any) {
+      setRollError("Error rolling key: " + err.message);
+    } finally {
+      setIsRolling(false);
     }
   };
 
@@ -149,20 +210,31 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
     }
   };
 
-  const copyToClipboard = (text: string, isFullKey = false, id?: string) => {
+  const toggleRevealRowKey = (id: string) => {
+    setRevealedRowKeys((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const copyToClipboard = (text: string, isModalKey = false, id?: string, msg?: string) => {
     navigator.clipboard.writeText(text);
-    if (isFullKey) {
+    if (isModalKey) {
       setCopiedKey(true);
       setTimeout(() => setCopiedKey(false), 2500);
     } else if (id) {
-      setCopiedPrefixId(id);
-      setTimeout(() => setCopiedPrefixId(null), 2000);
+      setCopiedId(id);
+      setCopiedMessage(msg || "Copied to clipboard!");
+      setTimeout(() => {
+        setCopiedId(null);
+        setCopiedMessage(null);
+      }, 2500);
     }
   };
 
   return (
     <div className="w-full rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden">
-      {/* Header */}
+      {/* 1. Header */}
       <div className="flex flex-col gap-3 border-b border-border/60 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -189,7 +261,49 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
         </div>
       </div>
 
-      {/* Keys Table */}
+      {/* 2. PROMINENT CONFIDENTIALITY & SECURITY WARNING BANNER */}
+      {isLive ? (
+        <div className="border-b border-amber-500/20 bg-amber-500/[0.08] px-5 py-4 sm:px-6">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
+              <ShieldAlert className="h-4 w-4" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                Security & Confidentiality Advisory — Never Share Your Keys
+              </h4>
+              <p className="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed">
+                Treat your API keys like passwords. <strong className="font-semibold text-amber-950 dark:text-amber-100">Never share your secret keys with anyone</strong> or publish them in public GitHub repositories, client-side code, browser scripts, or mobile apps. Anyone possessing your Live API key can execute billable queries that directly debit your production wallet balance. Keep them securely stored in server-side environment variables (<code className="rounded bg-amber-500/20 px-1 py-0.5 font-mono text-[11px] text-amber-950 dark:text-amber-100">.env</code>).
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="border-b border-primary/20 bg-primary/[0.05] px-5 py-4 sm:px-6">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary">
+              <ShieldAlert className="h-4 w-4" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                Developer Notice — Keep Your Secret Keys Confidential
+              </h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong className="font-semibold text-foreground">Do not share your API keys.</strong> For your development convenience, Test keys are stored in an encrypted vault and can be copied or revealed at any time. They interact safely with our simulated sandbox pipelines without debiting real funds.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating feedback toast for copied key actions */}
+      {copiedMessage && (
+        <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-5 py-2 text-center text-xs font-medium text-emerald-600 dark:text-emerald-400 animate-in fade-in duration-150">
+          ✓ {copiedMessage}
+        </div>
+      )}
+
+      {/* 3. Keys Table */}
       <div className="w-full overflow-x-auto">
         {isLoading ? (
           <div className="p-8 text-center text-xs text-muted-foreground">Loading API keys...</div>
@@ -204,94 +318,194 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
             </p>
           </div>
         ) : (
-          <table className="w-full min-w-[700px] text-left text-xs">
+          <table className="w-full min-w-[760px] text-left text-xs">
             <thead className="border-b border-border/40 bg-muted/40 text-muted-foreground">
               <tr>
                 <th className="px-6 py-3.5 font-medium">Name</th>
-                <th className="px-6 py-3.5 font-medium">Token Prefix</th>
+                <th className="px-6 py-3.5 font-medium">Secret Key / Token</th>
                 <th className="px-6 py-3.5 font-medium">Status</th>
                 <th className="px-6 py-3.5 font-medium">Created</th>
                 <th className="px-6 py-3.5 font-medium">Last Used</th>
-                <th className="px-6 py-3.5 text-right font-medium">Action</th>
+                <th className="px-6 py-3.5 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {keys.map((k) => (
-                <tr key={k.id} className="transition-colors hover:bg-muted/20">
-                  <td className="px-6 py-4 font-semibold text-foreground">{k.name}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <code className="rounded-lg bg-muted px-2.5 py-1 font-mono text-[11px] text-foreground">
-                        {k.keyPrefix}
-                      </code>
-                      <button
-                        onClick={() => copyToClipboard(k.keyPrefix, false, k.id)}
-                        title="Copy Prefix"
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        {copiedPrefixId === k.id ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-500" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
+              {keys.map((k) => {
+                const isRevealed = Boolean(revealedRowKeys[k.id]);
+                const canReveal = Boolean(k.rawKey && k.type === "TEST");
+
+                return (
+                  <tr key={k.id} className="transition-colors hover:bg-muted/20">
+                    <td className="px-6 py-4 font-semibold text-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <span>{k.name}</span>
+                        {isLive && k.status === "ACTIVE" && (
+                          <span
+                            title="Live secret keys are write-only for your financial safety"
+                            className="inline-flex items-center text-muted-foreground/80 hover:text-foreground"
+                          >
+                            <Lock className="h-3 w-3 text-amber-500/90" />
+                          </span>
                         )}
-                      </button>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                        k.status === "ACTIVE"
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                          : "bg-muted text-muted-foreground line-through"
-                      }`}
-                    >
-                      {k.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-muted-foreground">
-                    {new Date(k.createdAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </td>
-                  <td className="px-6 py-4 text-muted-foreground">
-                    {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Never"}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    {k.status === "ACTIVE" ? (
-                      <button
-                        onClick={() => {
-                          setKeyToRevoke(k);
-                          setRevokeError(null);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {/* Token Value Display */}
+                        <code className="rounded-lg bg-muted px-2.5 py-1 font-mono text-[11px] text-foreground max-w-[280px] overflow-hidden text-ellipsis whitespace-nowrap">
+                          {isRevealed && k.rawKey ? k.rawKey : k.keyPrefix}
+                        </code>
+
+                        {/* Toggle Reveal (Only available for TEST keys with decrypted vault) */}
+                        {canReveal && (
+                          <button
+                            type="button"
+                            onClick={() => toggleRevealRowKey(k.id)}
+                            title={isRevealed ? "Hide Secret Key" : "Reveal Secret Key"}
+                            className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                          >
+                            {isRevealed ? (
+                              <EyeOff className="h-3.5 w-3.5 text-primary" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        )}
+
+                        {/* Copy Button */}
+                        {k.type === "TEST" ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (k.rawKey) {
+                                copyToClipboard(k.rawKey, false, k.id, "Copied Test Secret Key!");
+                              } else {
+                                copyToClipboard(
+                                  k.keyPrefix,
+                                  false,
+                                  k.id,
+                                  "Legacy test key — Roll key to enable 1-click copy."
+                                );
+                              }
+                            }}
+                            title={k.rawKey ? "Copy Secret Key" : "Legacy key — click Roll to copy anytime"}
+                            className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                          >
+                            {copiedId === k.id ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              copyToClipboard(
+                                k.keyPrefix,
+                                false,
+                                k.id,
+                                "Copied token reference. For security, Live raw keys are not stored. Roll key to generate a new secret."
+                              );
+                            }}
+                            title="Live keys are write-only. Click to copy token reference or Roll Key for a new secret."
+                            className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                          >
+                            {copiedId === k.id ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
+                          k.status === "ACTIVE"
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground line-through"
+                        }`}
                       >
-                        <XCircle className="h-3.5 w-3.5" />
-                        <span>Revoke</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setKeyToDelete(k);
-                          setDeleteError(null);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-red-600 hover:bg-red-500/10 transition-colors"
-                        title="Permanently Delete Key"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span>Delete</span>
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                        {k.status}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {new Date(k.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </td>
+
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {k.lastUsedAt
+                        ? new Date(k.lastUsedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        : "Never"}
+                    </td>
+
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {k.status === "ACTIVE" ? (
+                          <>
+                            {/* Roll Key Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setKeyToRoll(k);
+                                setRollError(null);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+                              title="Roll / Rotate this key (invalidates old key and creates replacement)"
+                            >
+                              <RotateCw className="h-3.5 w-3.5" />
+                              <span>Roll Key</span>
+                            </button>
+
+                            {/* Revoke Key Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setKeyToRevoke(k);
+                                setRevokeError(null);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+                              title="Revoke key permanently"
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                              <span>Revoke</span>
+                            </button>
+                          </>
+                        ) : (
+                          /* Permanent Delete for Revoked Keys */
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setKeyToDelete(k);
+                              setDeleteError(null);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                            title="Permanently Delete Key"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
 
-      {/* CREATE KEY MODAL */}
+      {/* 4. CREATE KEY MODAL */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
@@ -299,8 +513,16 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
               Generate {isLive ? "Live" : "Test"} Secret Key
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Give your secret key a descriptive name so you can track where it is deployed.
+              Give your secret key a descriptive name to easily track where it is integrated.
             </p>
+
+            {/* In-Modal Warning */}
+            <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>
+                <strong>Confidentiality rule:</strong> Never share this key or expose it in client-side code or public code repositories.
+              </span>
+            </div>
 
             <form onSubmit={handleCreateKey} className="mt-4 space-y-4">
               <div>
@@ -312,7 +534,7 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
                   required
                   value={keyName}
                   onChange={(e) => setKeyName(e.target.value)}
-                  placeholder="e.g. Production Mobile App"
+                  placeholder="e.g. Backend Production Server"
                   className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
@@ -344,7 +566,68 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
         </div>
       )}
 
-      {/* CUSTOM IN-APP CONFIRMATION MODAL FOR KEY REVOCATION (NO BROWSER WINDOW.CONFIRM) */}
+      {/* 5. ROLL KEY MODAL (SAFELY ROTATE / REGENERATE KEY) */}
+      {keyToRoll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-center gap-2.5 text-primary">
+              <RotateCw className="h-6 w-6" />
+              <h3 className="text-lg font-bold text-foreground">Roll API Key</h3>
+            </div>
+
+            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to roll <strong>&quot;{keyToRoll.name}&quot;</strong> (
+              <code className="font-mono text-foreground">{keyToRoll.keyPrefix}</code>)?
+            </p>
+
+            <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-800 dark:text-amber-300 space-y-1.5">
+              <p className="font-semibold flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>How key rolling works:</span>
+              </p>
+              <ul className="list-disc pl-4 space-y-1 text-muted-foreground dark:text-amber-200/80">
+                <li>
+                  The existing key will be <strong className="text-foreground">immediately revoked</strong>.
+                </li>
+                <li>
+                  Any servers or apps using the old key will instantly receive 401 Unauthorized errors until updated.
+                </li>
+                <li>
+                  A brand-new active secret key will be generated and displayed to you immediately.
+                </li>
+              </ul>
+            </div>
+
+            {rollError && (
+              <div className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-600 dark:text-red-400">
+                {rollError}
+              </div>
+            )}
+
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setKeyToRoll(null)}
+                disabled={isRolling}
+                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRollKey}
+                disabled={isRolling}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                <RotateCw className={`h-3.5 w-3.5 ${isRolling ? "animate-spin" : ""}`} />
+                <span>{isRolling ? "Rolling Key..." : "Confirm & Roll Key"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. REVOKE KEY MODAL */}
       {keyToRevoke && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
@@ -354,7 +637,8 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
             </div>
 
             <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-              Are you sure you want to revoke the key <strong>&quot;{keyToRevoke.name}&quot;</strong> (<code>{keyToRevoke.keyPrefix}</code>)?
+              Are you sure you want to revoke the key <strong>&quot;{keyToRevoke.name}&quot;</strong> (
+              <code>{keyToRevoke.keyPrefix}</code>)?
             </p>
 
             <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-700 dark:text-red-300">
@@ -390,7 +674,7 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
         </div>
       )}
 
-      {/* CUSTOM IN-APP CONFIRMATION MODAL FOR PERMANENT KEY DELETION */}
+      {/* 7. PERMANENT DELETE MODAL (FOR REVOKED KEYS) */}
       {keyToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
@@ -400,11 +684,12 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
             </div>
 
             <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-              Are you sure you want to permanently remove <strong>&quot;{keyToDelete.name}&quot;</strong> (<code>{keyToDelete.keyPrefix}</code>) from your dashboard?
+              Are you sure you want to permanently remove <strong>&quot;{keyToDelete.name}&quot;</strong> (
+              <code>{keyToDelete.keyPrefix}</code>) from your dashboard?
             </p>
 
             <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground leading-relaxed">
-              <strong className="text-foreground">Safe Cleanup:</strong> This key has already been revoked. Deleting it cleans up your key list. All historical usage and billing logs associated with this key will remain preserved for your audit trail.
+              <strong className="text-foreground">Safe Cleanup:</strong> This key has already been revoked. Deleting it cleans up your key list. All historical usage and billing logs associated with this key remain preserved for your audit trail.
             </div>
 
             {deleteError && (
@@ -436,7 +721,7 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
         </div>
       )}
 
-      {/* REVEAL KEY MODAL (SHOWN ONCE UPON CREATION) */}
+      {/* 8. REVEAL KEY MODAL (SHOWN ONCE UPON CREATION OR ROLLING) */}
       {revealedKey && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-in fade-in duration-200">
           <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl">
@@ -448,12 +733,16 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
               Key: <span className="font-semibold text-foreground">{revealedKey.name}</span>
             </p>
 
-            <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5">
+            {/* STRICT WARNING IN MODAL */}
+            <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 space-y-1.5">
               <div className="flex items-start gap-2.5">
                 <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  <strong>Important:</strong> Store this key securely now. For your security, you will never be able to view this raw key again once this dialog is closed.
-                </p>
+                <div className="text-xs text-amber-800 dark:text-amber-300">
+                  <p className="font-semibold">Confidentiality Warning — Do Not Share:</p>
+                  <p className="mt-0.5 text-muted-foreground dark:text-amber-200/90 leading-relaxed">
+                    Store this key securely in your server environment (<code className="rounded bg-muted px-1 font-mono text-[10px] text-foreground">.env</code>). Never commit it to GitHub or share it with third parties. {isLive ? "For your security, Live keys cannot be retrieved again after closing this window." : "You can copy or reveal test keys again from your dashboard at any time."}
+                  </p>
+                </div>
               </div>
             </div>
 

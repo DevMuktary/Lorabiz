@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { generateApiKey } from "@/lib/developer/keys";
+import { generateApiKey, decryptApiKey } from "@/lib/developer/keys";
 import { ApiKeyType } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
         id: true,
         name: true,
         keyPrefix: true,
+        encryptedKey: true,
         type: true,
         status: true,
         ipWhitelist: true,
@@ -44,7 +45,26 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ success: true, data: keys });
+    const formattedKeys = keys.map((k) => {
+      let rawKey: string | null = null;
+      if (k.type === "TEST" && k.encryptedKey) {
+        rawKey = decryptApiKey(k.encryptedKey);
+      }
+      return {
+        id: k.id,
+        name: k.name,
+        keyPrefix: k.keyPrefix,
+        rawKey, // Available for TEST keys; strictly null for LIVE keys
+        type: k.type,
+        status: k.status,
+        ipWhitelist: k.ipWhitelist,
+        lastUsedAt: k.lastUsedAt,
+        createdAt: k.createdAt,
+        revokedAt: k.revokedAt,
+      };
+    });
+
+    return NextResponse.json({ success: true, data: formattedKeys });
   } catch (err) {
     console.error("❌ [Developer Keys GET] Error:", err);
     return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
@@ -118,6 +138,7 @@ export async function POST(req: NextRequest) {
         name: trimmedName,
         keyPrefix: generated.keyPrefix,
         keyHash: generated.keyHash,
+        encryptedKey: generated.encryptedKey,
         type: keyType,
         status: "ACTIVE",
         ipWhitelist: Array.isArray(ipWhitelist) ? ipWhitelist.filter((ip) => typeof ip === "string") : [],

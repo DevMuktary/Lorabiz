@@ -1448,6 +1448,7 @@ model ApiKey {
   name         String       // Label (e.g. "Default Live Key", "Localhost Test")
   keyPrefix    String       // e.g. "lora_live_a81f" (shows first few chars + last few)
   keyHash      String       @unique // SHA-256 hash of the full raw key
+  encryptedKey String?      @db.Text // AES-256-GCM encrypted raw key (stored ONLY for TEST keys to enable persistent copy/reveal, NULL for LIVE keys for zero-trust security)
   type         ApiKeyType   @default(TEST)
   status       ApiKeyStatus @default(ACTIVE)
   ipWhitelist  String[]     @default([])

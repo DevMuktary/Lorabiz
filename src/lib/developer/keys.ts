@@ -7,6 +7,7 @@ export interface GeneratedKeyData {
   rawKey: string;
   keyPrefix: string;
   keyHash: string;
+  encryptedKey: string | null;
   type: ApiKeyType;
 }
 
@@ -28,6 +29,53 @@ export interface VerifiedKeyPayload {
 }
 
 /**
+ * Derives a 32-byte AES-256 key from server environment secrets
+ */
+function getEncryptionKey(): Buffer {
+  const secret =
+    process.env.DEVELOPER_API_ENCRYPTION_KEY ||
+    process.env.NEXTAUTH_SECRET ||
+    "lorabiz-developer-api-salt-key-2026-vault-secure";
+  return crypto.createHash("sha256").update(secret).digest();
+}
+
+/**
+ * Encrypts an API key using AES-256-GCM.
+ * Format: ivHex:authTagHex:encryptedHex
+ */
+export function encryptApiKey(rawKey: string): string {
+  const iv = crypto.randomBytes(12); // 96-bit IV recommended for GCM
+  const cipher = crypto.createCipheriv("aes-256-gcm", getEncryptionKey(), iv);
+  let encrypted = cipher.update(rawKey.trim(), "utf8", "hex");
+  encrypted += cipher.final("hex");
+  const authTag = cipher.getAuthTag();
+  return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
+}
+
+/**
+ * Decrypts an AES-256-GCM encrypted API key.
+ * Returns null if tampering or corrupted format.
+ */
+export function decryptApiKey(encryptedData: string | null | undefined): string | null {
+  if (!encryptedData || typeof encryptedData !== "string") return null;
+  try {
+    const parts = encryptedData.split(":");
+    if (parts.length !== 3) return null;
+    const [ivHex, authTagHex, encryptedHex] = parts;
+    const iv = Buffer.from(ivHex, "hex");
+    const authTag = Buffer.from(authTagHex, "hex");
+    const decipher = crypto.createDecipheriv("aes-256-gcm", getEncryptionKey(), iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encryptedHex, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch (err) {
+    console.error("❌ [API Key Decryption] Failed to decrypt key:", err);
+    return null;
+  }
+}
+
+/**
  * Computes SHA-256 hash of an API key
  */
 export function hashApiKey(rawKey: string): string {
@@ -35,7 +83,9 @@ export function hashApiKey(rawKey: string): string {
 }
 
 /**
- * Generates a cryptographically secure API key
+ * Generates a cryptographically secure API key.
+ * For TEST keys, stores encryptedKey for persistent retrieval.
+ * For LIVE keys, leaves encryptedKey null (zero-trust storage).
  */
 export function generateApiKey(type: ApiKeyType, name: string): GeneratedKeyData {
   const prefix = type === "LIVE" ? "lora_live_" : "lora_test_";
@@ -43,11 +93,13 @@ export function generateApiKey(type: ApiKeyType, name: string): GeneratedKeyData
   const rawKey = `${prefix}${randomEntropy}`;
   const keyHash = hashApiKey(rawKey);
   const keyPrefix = `${prefix}${randomEntropy.slice(0, 6)}••••••••${randomEntropy.slice(-4)}`;
+  const encryptedKey = type === "TEST" ? encryptApiKey(rawKey) : null;
 
   return {
     rawKey,
     keyPrefix,
     keyHash,
+    encryptedKey,
     type,
   };
 }
