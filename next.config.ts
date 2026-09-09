@@ -22,6 +22,27 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: "/v1/:path*",
+        destination: "/api/v1/:path*",
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/api/v1/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET, POST, OPTIONS" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization, x-api-key, X-Requested-With" },
+          { key: "Access-Control-Max-Age", value: "86400" },
+        ],
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {
