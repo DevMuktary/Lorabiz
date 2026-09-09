@@ -6,6 +6,7 @@ import { notificationQueue } from "@/lib/queue";
 import { NotificationEvent, dispatchNotification } from "@/services/notifications";
 import { getReferrerRewardAmount } from "@/lib/loyalty";
 import { submitDataVerifyNinValidation, checkDataVerifyNinValidationStatus } from "@/lib/dataverify-validation";
+import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
 
 const CATEGORY_LABELS: Record<string, string> = {
   NO_RECORD_FOUND: "No Record Found",
@@ -13,6 +14,15 @@ const CATEGORY_LABELS: Record<string, string> = {
   UPDATE_RECORD_MOD: "Update Record (Mod Validation)",
   PHOTO_ERROR: "Photographic Error",
 };
+
+function sanitizeProviderMessage(msg: string | null | undefined): string {
+  if (!msg) return "";
+  return msg
+    .replace(/ambverify/gi, "National Database")
+    .replace(/dataverify/gi, "Verification Gateway")
+    .replace(/abjiktech/gi, "Processing Gateway")
+    .trim();
+}
 
 export async function POST(req: Request) {
   try {
@@ -198,13 +208,15 @@ export async function POST(req: Request) {
       const { normalizedStatus, rawStatus, message: apiMessage } = statusRes;
 
       if (normalizedStatus === "COMPLETED") {
+        const cleanApiMessage = sanitizeProviderMessage(apiMessage || "Completed on National Database.");
+
         await prisma.$transaction(async (tx) => {
           await tx.ninValidationRequest.update({
             where: { id: ticketId },
             data: {
               status: "COMPLETED",
               externalStatus: rawStatus,
-              apiMessage: apiMessage || "Completed on DataVerify.",
+              apiMessage: cleanApiMessage,
               apiResponse: statusRes.rawResponse as any,
               lastSyncedAt: new Date(),
               completedAt: ticket.completedAt || new Date(),
@@ -275,6 +287,20 @@ export async function POST(req: Request) {
           await dispatchNotification(notifPayload);
         }
 
+        // Webhook dispatch for API request
+        dispatchDeveloperWebhook(ticket.userId, "nin_validation.completed", {
+          tracking_id: ticket.transactionRef,
+          client_reference: ticket.clientReference,
+          nin: ticket.nin,
+          validation_type: ticket.category.toLowerCase(),
+          request_status: "validated",
+          message: "NIN Validation completed successfully.",
+          completed_at: new Date().toISOString(),
+          refunded: false,
+          amount_charged: Number(ticket.amountCharged),
+          currency: "NGN",
+        });
+
         await prisma.staffActionLog.create({
           data: {
             userId: admin.id,
@@ -291,7 +317,9 @@ export async function POST(req: Request) {
           rawStatus,
         });
       } else if (normalizedStatus === "FAILED") {
-        const recordedReason = statusRes.errorDetail || apiMessage || "Validation failed verification requirements on DataVerify.";
+        const recordedReason = sanitizeProviderMessage(
+          statusRes.errorDetail || apiMessage || "Validation failed verification requirements on DataVerify."
+        );
 
         await prisma.ninValidationRequest.update({
           where: { id: ticketId },
@@ -324,9 +352,23 @@ export async function POST(req: Request) {
           }
         }
 
+        // Webhook dispatch for API request
+        dispatchDeveloperWebhook(ticket.userId, "nin_validation.failed", {
+          tracking_id: ticket.transactionRef,
+          client_reference: ticket.clientReference,
+          nin: ticket.nin,
+          validation_type: ticket.category.toLowerCase(),
+          request_status: "failed",
+          message: "Your NIN Validation request has failed.",
+          error_detail: recordedReason,
+          refunded: ticket.refunded,
+          amount_charged: ticket.refunded ? 0 : Number(ticket.amountCharged),
+          currency: "NGN",
+        });
+
         return NextResponse.json({
           success: true,
-          message: `Live status synced from DataVerify: FAILED (${rawStatus}). Reason: ${recordedReason}`,
+          message: `Live status synced: FAILED (${rawStatus}). Reason: ${recordedReason}`,
           status: "FAILED",
           rawStatus,
         });
@@ -414,12 +456,17 @@ export async function POST(req: Request) {
       }
 
       if (actionType === "FAIL") {
+        const cleanReason = sanitizeProviderMessage(failureReason || "Validation failed verification requirements.");
+        const isRefunding = Boolean(issueRefund && refundAmount > 0);
+
         await tx.ninValidationRequest.update({
           where: { id: ticketId },
           data: {
             status: "FAILED",
-            failureReason: failureReason || "Validation failed verification requirements.",
+            failureReason: cleanReason,
             adminNotes: adminNotes || undefined,
+            refunded: isRefunding,
+            refundAmount: isRefunding ? Number(refundAmount) : 0,
           },
         });
 
@@ -491,6 +538,36 @@ export async function POST(req: Request) {
         };
       }
     });
+
+    // Developer Webhook dispatch
+    if (actionType === "COMPLETE") {
+      dispatchDeveloperWebhook(ticket.userId, "nin_validation.completed", {
+        tracking_id: ticket.transactionRef,
+        client_reference: ticket.clientReference,
+        nin: ticket.nin,
+        validation_type: ticket.category.toLowerCase(),
+        request_status: "validated",
+        message: "NIN Validation completed successfully.",
+        completed_at: new Date().toISOString(),
+        refunded: false,
+        amount_charged: Number(ticket.amountCharged),
+        currency: "NGN",
+      });
+    } else if (actionType === "FAIL") {
+      const isRefunding = Boolean(issueRefund && refundAmount > 0);
+      dispatchDeveloperWebhook(ticket.userId, "nin_validation.failed", {
+        tracking_id: ticket.transactionRef,
+        client_reference: ticket.clientReference,
+        nin: ticket.nin,
+        validation_type: ticket.category.toLowerCase(),
+        request_status: "failed",
+        message: "Your NIN Validation request has failed.",
+        error_detail: failureReason || "Validation failed verification checks.",
+        refunded: isRefunding,
+        amount_charged: isRefunding ? 0 : Number(ticket.amountCharged),
+        currency: "NGN",
+      });
+    }
 
     if (notificationPayload) {
       try {

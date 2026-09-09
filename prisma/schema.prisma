@@ -564,6 +564,10 @@ model NinValidationRequest {
   status           NinValidationStatus   @default(PROCESSING)
   amountCharged    Decimal               @db.Decimal(10, 2)
   transactionRef   String                @unique
+  clientReference  String?
+  isApiRequest     Boolean               @default(false)
+  refunded         Boolean               @default(false)
+  refundAmount     Decimal?              @db.Decimal(10, 2)
   failureReason    String?               @db.Text
   adminNotes       String?               @db.Text
   lastSyncedAt     DateTime?
@@ -578,6 +582,8 @@ model NinValidationRequest {
   @@index([category])
   @@index([externalTicketId])
   @@index([externalTxId])
+  @@index([clientReference])
+  @@index([isApiRequest])
 }
 
 // ==========================================

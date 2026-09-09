@@ -241,6 +241,8 @@ export default function NinValidationApplicationDrawer({
         ...ticket,
         status: activeAction === "COMPLETE" ? "COMPLETED" : activeAction === "FAIL" ? "FAILED" : "PROCESSING",
         failureReason: activeAction === "FAIL" ? failureReason : ticket.failureReason,
+        refunded: activeAction === "FAIL" ? issueRefund : ticket.refunded,
+        refundAmount: activeAction === "FAIL" && issueRefund ? Number(refundAmount) : ticket.refundAmount,
         completedAt: activeAction === "COMPLETE" ? new Date().toISOString() : ticket.completedAt,
       };
 
@@ -276,6 +278,22 @@ export default function NinValidationApplicationDrawer({
               <span className={`px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest rounded-md ${statusColor}`}>
                 {ticket.status}
               </span>
+              {ticket.isApiRequest && (
+                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30 flex items-center gap-1">
+                  <Code2 size={11} />
+                  API DEVELOPER
+                </span>
+              )}
+              {ticket.clientReference && (
+                <span className="font-mono text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/30 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800" title="Client Reference">
+                  Ref: {ticket.clientReference}
+                </span>
+              )}
+              {ticket.refunded && (
+                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30">
+                  REFUNDED (₦{Number(ticket.refundAmount || ticket.amountCharged).toLocaleString()})
+                </span>
+              )}
               <span className="font-mono text-xs font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
                 {ticket.transactionRef}
               </span>
@@ -578,6 +596,20 @@ export default function NinValidationApplicationDrawer({
               </span>
               <div className="text-xs space-y-1 text-zinc-700 dark:text-zinc-300">
                 <div className="flex justify-between">
+                  <span className="text-zinc-500">Source:</span>
+                  <span className={`font-bold ${ticket.isApiRequest ? "text-purple-600 dark:text-purple-400" : "text-zinc-800 dark:text-zinc-200"}`}>
+                    {ticket.isApiRequest ? "Developer REST API" : "Web Portal"}
+                  </span>
+                </div>
+                {ticket.clientReference && (
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Client Ref:</span>
+                    <span className="font-mono text-xs font-bold text-purple-600 dark:text-purple-400">
+                      {ticket.clientReference}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between">
                   <span className="text-zinc-500">Amount Paid:</span>
                   <span className="font-black text-zinc-900 dark:text-zinc-100">
                     ₦{Number(ticket.amountCharged).toLocaleString()}
@@ -587,6 +619,12 @@ export default function NinValidationApplicationDrawer({
                   <span className="text-zinc-500">Status:</span>
                   <span className="font-bold">{ticket.status}</span>
                 </div>
+                {ticket.refunded && (
+                  <div className="flex justify-between text-rose-600 dark:text-rose-400 font-bold">
+                    <span>Refund Issued:</span>
+                    <span>₦{Number(ticket.refundAmount || ticket.amountCharged).toLocaleString()}</span>
+                  </div>
+                )}
                 {ticket.completedAt && (
                   <div className="flex justify-between text-[11px] text-zinc-500">
                     <span>Completed:</span>
@@ -670,10 +708,37 @@ export default function NinValidationApplicationDrawer({
                       onChange={(e) => setIssueRefund(e.target.checked)}
                       className="rounded border-zinc-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
                     />
-                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                      Issue Refund to Client Wallet (₦{Number(ticket.amountCharged).toLocaleString()})
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                      Issue Refund to {ticket.isApiRequest ? "Developer" : "Client"} Wallet (₦{Number(ticket.amountCharged).toLocaleString()})
                     </span>
                   </label>
+
+                  {issueRefund && (
+                    <div className="pl-6 pt-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-semibold text-zinc-500">Refund Amount: ₦</span>
+                        <input
+                          type="number"
+                          value={refundAmount}
+                          onChange={(e) => setRefundAmount(e.target.value)}
+                          min="0"
+                          max={ticket.amountCharged}
+                          className="w-28 p-1.5 text-xs bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded text-zinc-900 dark:text-zinc-100 font-mono font-bold"
+                        />
+                      </div>
+                      {ticket.isApiRequest && (
+                        <p className="text-[11px] text-zinc-500 leading-normal">
+                          Developer will receive webhook event <code className="text-[10px] font-mono bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded">nin_validation.failed</code> with <code className="text-[10px] font-mono bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded">refunded: true</code> and <code className="text-[10px] font-mono bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded">amount_charged: 0</code>.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {!issueRefund && ticket.isApiRequest && (
+                    <p className="text-[11px] text-zinc-500 pl-6 leading-normal">
+                      Developer will receive webhook event <code className="text-[10px] font-mono bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded">nin_validation.failed</code> with <code className="text-[10px] font-mono bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded">refunded: false</code>.
+                    </p>
+                  )}
                 </div>
               </div>
             )}

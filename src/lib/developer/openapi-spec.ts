@@ -39,6 +39,14 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           "Accounts are only billed when a verification slip is successfully resolved and generated (HTTP 200). " +
           "If no record exists in the national database (HTTP 422 RECORD_NOT_FOUND) or if the request contains validation errors (HTTP 400), the transaction is billed ₦0.00.",
       },
+      {
+        name: "NIN Validation",
+        description:
+          "Submit and poll NIN validation requests for unvalidated records, VNIN synchronization, data modification, and photographic errors.\n\n" +
+          "**Validation Processing Policy**:\n" +
+          "Validation requests are processed through national validation gateways. Track progress via polling (`GET /api/v1/nin/validation/status`) or receive instantaneous HMAC-SHA256 webhooks (`nin_validation.completed`, `nin_validation.failed`). " +
+          "Duplicate active requests are rejected immediately with HTTP 409 (₦0.00 charged).",
+      },
     ],
     security: [
       {
@@ -207,6 +215,90 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             status: "error",
             code: "SERVICE_UNAVAILABLE",
             message: "The identity gateway is temporarily undergoing maintenance. Please retry shortly.",
+          },
+        },
+        ValidationSubmitResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "success" },
+            message: { type: "string", example: "NIN validation request submitted successfully." },
+            data: {
+              type: "object",
+              properties: {
+                tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
+                client_reference: { type: "string", nullable: true, example: "REF_MY_APP_99182" },
+                nin: { type: "string", example: "18867568313" },
+                validation_type: { type: "string", example: "no_record_found" },
+                request_status: { type: "string", enum: ["submitted", "processing", "validated", "failed"], example: "submitted" },
+                refunded: { type: "boolean", example: false },
+                created_at: { type: "string", format: "date-time" },
+              },
+            },
+            transaction: {
+              type: "object",
+              properties: {
+                reference: { type: "string", example: "NIN_VAL_SUBMIT_1725732104912" },
+                amount_charged: { type: "number", example: 500.0 },
+                currency: { type: "string", example: "NGN" },
+                environment: { type: "string", enum: ["live", "test"], example: "live" },
+                balance_after: { type: "number", example: 45350.0 },
+              },
+            },
+          },
+        },
+        ValidationStatusResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "success" },
+            data: {
+              type: "object",
+              properties: {
+                tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
+                client_reference: { type: "string", nullable: true, example: "REF_MY_APP_99182" },
+                nin: { type: "string", example: "18867568313" },
+                validation_type: { type: "string", example: "no_record_found" },
+                request_status: { type: "string", enum: ["submitted", "processing", "validated", "failed"], example: "validated" },
+                message: { type: "string", example: "NIN Validation completed successfully." },
+                error_detail: { type: "string", nullable: true },
+                completed_at: { type: "string", format: "date-time", nullable: true },
+                created_at: { type: "string", format: "date-time" },
+              },
+            },
+            transaction: {
+              type: "object",
+              properties: {
+                amount_charged: { type: "number", example: 500.0 },
+                currency: { type: "string", example: "NGN" },
+                refunded: { type: "boolean", example: false },
+                refund_amount: { type: "number", example: 0.0 },
+                environment: { type: "string", enum: ["live", "test"], example: "live" },
+              },
+            },
+          },
+        },
+        DuplicateRequestResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "error" },
+            code: { type: "string", example: "DUPLICATE_REQUEST" },
+            message: { type: "string", example: "An active validation request for this NIN and validation type is already currently in progress. Duplicate submission rejected to prevent double debits." },
+            environment: { type: "string", enum: ["live", "test"], example: "live" },
+            existing_request: {
+              type: "object",
+              properties: {
+                tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
+                client_reference: { type: "string", nullable: true },
+                request_status: { type: "string", example: "processing" },
+                created_at: { type: "string", format: "date-time" },
+              },
+            },
+            transaction: {
+              type: "object",
+              properties: {
+                amount_charged: { type: "number", example: 0.0 },
+                currency: { type: "string", example: "NGN" },
+              },
+            },
           },
         },
       },
@@ -590,6 +682,231 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     code: "SERVICE_UNAVAILABLE",
                     message: "The identity gateway is temporarily undergoing maintenance. Please retry shortly.",
                   },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/v1/nin/validation": {
+        post: {
+          tags: ["NIN Validation"],
+          summary: "Submit NIN Validation Request",
+          description:
+            "Submits an 11-digit NIN for asynchronous validation across national identity databases.\n\n" +
+            "#### Validation Categories:\n" +
+            "- `no_record_found`: Resolve records where the NIN does not exist or displays 'no record' errors on verifiers.\n" +
+            "- `vnin_validation`: Bank, SIM, or VNIN synchronisation errors.\n" +
+            "- `modification`: Update or modification validation after data amendment.\n" +
+            "- `photo_error`: Photographic or biometric mismatch validation.\n\n" +
+            "#### Centralized Webhooks:\n" +
+            "When validation finishes, an HMAC-SHA256 signed webhook (`nin_validation.completed` or `nin_validation.failed`) is automatically dispatched to your webhook URL configured in the Developer Portal.\n\n" +
+            "#### Duplicate Protection:\n" +
+            "If an active validation request is already in progress for the specified NIN and category, the API returns `409 DUPLICATE_REQUEST` with zero charge (₦0.00).",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["nin", "validation_type"],
+                  properties: {
+                    nin: {
+                      type: "string",
+                      description: "11-digit National Identification Number to validate",
+                      example: "18867568313",
+                    },
+                    validation_type: {
+                      type: "string",
+                      enum: ["no_record_found", "vnin_validation", "modification", "photo_error"],
+                      description: "Category of NIN validation requested",
+                      example: "no_record_found",
+                    },
+                    client_reference: {
+                      type: "string",
+                      description: "Optional developer reference for idempotent tracking and status queries",
+                      example: "REF_MY_APP_99182",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "Validation request queued successfully",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ValidationSubmitResponse" },
+                  example: {
+                    status: "success",
+                    message: "NIN validation request submitted successfully.",
+                    data: {
+                      tracking_id: "nin_val_da7c1d16cd69891a7a9044",
+                      client_reference: "REF_MY_APP_99182",
+                      nin: "18867568313",
+                      validation_type: "no_record_found",
+                      request_status: "submitted",
+                      refunded: false,
+                      created_at: "2026-09-09T08:15:00.000Z",
+                    },
+                    transaction: {
+                      reference: "NIN_VAL_SUBMIT_1725732104912",
+                      amount_charged: 500.0,
+                      currency: "NGN",
+                      environment: "live",
+                      balance_after: 45350.0,
+                    },
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Validation Error",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                },
+              },
+            },
+            "401": {
+              description: "Unauthorized",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
+                },
+              },
+            },
+            "402": {
+              description: "Insufficient Balance",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/InsufficientBalanceResponse" },
+                },
+              },
+            },
+            "409": {
+              description: "Duplicate Active Request",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/DuplicateRequestResponse" },
+                },
+              },
+            },
+            "429": {
+              description: "Too Many Requests",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
+                },
+              },
+            },
+            "503": {
+              description: "Service Unavailable",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ServiceUnavailableResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/v1/nin/validation/status": {
+        get: {
+          tags: ["NIN Validation"],
+          summary: "Check NIN Validation Status",
+          description:
+            "Query the real-time processing status of a submitted NIN validation request using either `tracking_id` OR `client_reference`.\n\n" +
+            "Returns status transitions: `submitted` -> `processing` -> `validated` / `failed`.\n\n" +
+            "If failed and an administrator issued a refund, `transaction.refunded` is `true`.",
+          parameters: [
+            {
+              name: "tracking_id",
+              in: "query",
+              required: false,
+              description: "The Lorabiz tracking identifier returned upon submission (e.g., `nin_val_da7c1...`)",
+              schema: { type: "string" },
+              example: "nin_val_da7c1d16cd69891a7a9044",
+            },
+            {
+              name: "client_reference",
+              in: "query",
+              required: false,
+              description: "The custom reference you supplied when submitting the request",
+              schema: { type: "string" },
+              example: "REF_MY_APP_99182",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Status query successful",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ValidationStatusResponse" },
+                  example: {
+                    status: "success",
+                    data: {
+                      tracking_id: "nin_val_da7c1d16cd69891a7a9044",
+                      client_reference: "REF_MY_APP_99182",
+                      nin: "18867568313",
+                      validation_type: "no_record_found",
+                      request_status: "validated",
+                      message: "NIN Validation completed successfully.",
+                      error_detail: null,
+                      completed_at: "2026-09-09T08:35:12.000Z",
+                      created_at: "2026-09-09T08:15:00.000Z",
+                    },
+                    transaction: {
+                      amount_charged: 500.0,
+                      currency: "NGN",
+                      refunded: false,
+                      refund_amount: 0.0,
+                      environment: "live",
+                    },
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Missing required parameter",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                  example: {
+                    status: "error",
+                    code: "VALIDATION_ERROR",
+                    message: "Please provide either 'tracking_id' or 'client_reference' as a query parameter.",
+                  },
+                },
+              },
+            },
+            "401": {
+              description: "Unauthorized",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
+                },
+              },
+            },
+            "404": {
+              description: "Validation Request Not Found",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/RecordNotFoundResponse" },
+                  example: {
+                    status: "error",
+                    code: "NOT_FOUND",
+                    message: "No validation request found matching the specified identifier.",
+                  },
+                },
+              },
+            },
+            "429": {
+              description: "Too Many Requests",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
                 },
               },
             },

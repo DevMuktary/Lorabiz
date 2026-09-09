@@ -349,7 +349,14 @@ export default function NinValidationAdminPipelinePage() {
                       
                       {/* Client */}
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-zinc-900 dark:text-zinc-100">{ticket.clientName}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">{ticket.clientName}</span>
+                          {ticket.isApiRequest && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              API
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-zinc-500">{ticket.clientEmail}</div>
                       </td>
 
@@ -379,7 +386,10 @@ export default function NinValidationAdminPipelinePage() {
                             )}
                           </button>
                         </div>
-                        <span className="font-mono text-[10px] text-zinc-400 block">{ticket.transactionRef}</span>
+                        <span className="font-mono text-[10px] text-zinc-400 block truncate max-w-[150px]" title={ticket.clientReference ? `Ref: ${ticket.clientReference}` : undefined}>
+                          {ticket.transactionRef}
+                          {ticket.clientReference && ` • ${ticket.clientReference}`}
+                        </span>
                       </td>
 
                       {/* Gateway / Push Status Column */}
