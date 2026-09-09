@@ -219,58 +219,33 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           properties: {
             status: { type: "string", example: "success" },
             message: { type: "string", example: "NIN validation request submitted successfully." },
-            data: {
-              type: "object",
-              properties: {
-                tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
-                client_reference: { type: "string", nullable: true, example: "REF_MY_APP_99182" },
-                nin: { type: "string", example: "18867568313" },
-                validation_type: { type: "string", example: "no_record_found" },
-                request_status: { type: "string", enum: ["submitted", "processing", "validated", "failed"], example: "submitted" },
-                refunded: { type: "boolean", example: false },
-                created_at: { type: "string", format: "date-time" },
-              },
-            },
-            transaction: {
-              type: "object",
-              properties: {
-                reference: { type: "string", example: "NIN_VAL_SUBMIT_1725732104912" },
-                amount_charged: { type: "number", example: 500.0 },
-                currency: { type: "string", example: "NGN" },
-                environment: { type: "string", enum: ["live", "test"], example: "live" },
-                balance_after: { type: "number", example: 45350.0 },
-              },
-            },
+            tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
+            client_reference: { type: "string", nullable: true, example: "REF_MY_APP_99182" },
+            nin: { type: "string", example: "18867568313" },
+            validation_type: { type: "string", example: "no_record_found" },
+            request_status: { type: "string", enum: ["submitted", "processing", "validated", "failed"], example: "submitted" },
+            amount_charged: { type: "number", example: 700.0 },
+            currency: { type: "string", example: "NGN" },
+            refunded: { type: "boolean", example: false },
+            environment: { type: "string", enum: ["live", "test"], example: "live" },
           },
         },
         ValidationStatusResponse: {
           type: "object",
           properties: {
             status: { type: "string", example: "success" },
-            data: {
-              type: "object",
-              properties: {
-                tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
-                client_reference: { type: "string", nullable: true, example: "REF_MY_APP_99182" },
-                nin: { type: "string", example: "18867568313" },
-                validation_type: { type: "string", example: "no_record_found" },
-                request_status: { type: "string", enum: ["submitted", "processing", "validated", "failed"], example: "validated" },
-                message: { type: "string", example: "NIN Validation completed successfully." },
-                error_detail: { type: "string", nullable: true },
-                completed_at: { type: "string", format: "date-time", nullable: true },
-                created_at: { type: "string", format: "date-time" },
-              },
-            },
-            transaction: {
-              type: "object",
-              properties: {
-                amount_charged: { type: "number", example: 500.0 },
-                currency: { type: "string", example: "NGN" },
-                refunded: { type: "boolean", example: false },
-                refund_amount: { type: "number", example: 0.0 },
-                environment: { type: "string", enum: ["live", "test"], example: "live" },
-              },
-            },
+            tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
+            client_reference: { type: "string", nullable: true, example: "REF_MY_APP_99182" },
+            nin: { type: "string", example: "18867568313" },
+            validation_type: { type: "string", example: "no_record_found" },
+            request_status: { type: "string", enum: ["submitted", "processing", "validated", "failed"], example: "validated" },
+            message: { type: "string", example: "NIN Validation completed successfully." },
+            error_detail: { type: "string", nullable: true, example: null },
+            completed_at: { type: "string", format: "date-time", nullable: true, example: "2026-09-09T08:35:12.000Z" },
+            refunded: { type: "boolean", example: false },
+            amount_charged: { type: "number", example: 700.0 },
+            currency: { type: "string", example: "NGN" },
+            date: { type: "string", format: "date-time", example: "2026-09-09T08:15:00.000Z" },
           },
         },
         DuplicateRequestResponse: {
@@ -690,17 +665,16 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIN Validation"],
           summary: "Submit NIN Validation Request",
           description:
-            "Submits an 11-digit NIN for validation.\n\n" +
+            "Submits an 11-digit NIN for validation processing.\n\n" +
             "#### Validation Categories (`validation_type`):\n" +
-            "- `no_record_found`\n" +
-            "- `vnin_validation`\n" +
-            "- `modification`\n" +
-            "- `photo_error`\n\n" +
-            "#### Sandbox Test Numbers:\n" +
-            "- `11111111111`: Success (`validated`, dispatches `nin_validation.completed`)\n" +
-            "- `22222222222`: Failed with refund (`failed`, `refunded: true`, dispatches `nin_validation.failed`)\n" +
-            "- `44444444444`: Failed without refund (`failed`, `refunded: false`, dispatches `nin_validation.failed`)\n" +
-            "- `33333333333`: In-flight pending state (`processing`)",
+            "- `no_record_found` (No Record Found)\n" +
+            "- `vnin_validation` (VNIN / SIM / Bank Validation)\n" +
+            "- `modification` (Record Modification)\n" +
+            "- `photo_error` (Photo Error Correction)\n\n" +
+            "#### Sandbox Submission Testing:\n" +
+            "- Standard submission: Any valid 11-digit NIN returns `201 Created` with `request_status: submitted`.\n" +
+            "- Duplicate Rejection: Submit NIN `99999999999` or reference containing `duplicate` to simulate `409 DUPLICATE_REQUEST`.\n" +
+            "- Webhook Simulation: If a test webhook is configured, a simulated webhook event is automatically dispatched after 3 seconds.",
           requestBody: {
             required: true,
             content: {
@@ -739,22 +713,15 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   example: {
                     status: "success",
                     message: "NIN validation request submitted successfully.",
-                    data: {
-                      tracking_id: "nin_val_da7c1d16cd69891a7a9044",
-                      client_reference: "REF_MY_APP_99182",
-                      nin: "18867568313",
-                      validation_type: "no_record_found",
-                      request_status: "submitted",
-                      refunded: false,
-                      created_at: "2026-09-09T08:15:00.000Z",
-                    },
-                    transaction: {
-                      reference: "NIN_VAL_SUBMIT_1725732104912",
-                      amount_charged: 500.0,
-                      currency: "NGN",
-                      environment: "live",
-                      balance_after: 45350.0,
-                    },
+                    tracking_id: "nin_val_da7c1d16cd69891a7a9044",
+                    client_reference: "REF_MY_APP_99182",
+                    nin: "18867568313",
+                    validation_type: "no_record_found",
+                    request_status: "submitted",
+                    amount_charged: 700.0,
+                    currency: "NGN",
+                    refunded: false,
+                    environment: "live",
                   },
                 },
               },
@@ -815,8 +782,13 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIN Validation"],
           summary: "Check NIN Validation Status",
           description:
-            "Query the status of a submitted NIN validation request using either `tracking_id` or `client_reference`.\n\n" +
-            "Returns status: `submitted`, `processing`, `validated`, or `failed`.",
+            "Query the current processing status of a submitted NIN validation request using either `tracking_id` or `client_reference`.\n\n" +
+            "#### Sandbox Test References:\n" +
+            "In test mode (`lora_test_...`), provide any of the following query values in `tracking_id` or `client_reference` to test response states:\n" +
+            "- `1111` or `test_success`: Validated successfully (`request_status: validated`, `refunded: false`)\n" +
+            "- `2222` or `fail_refund`: Failed with full refund (`request_status: failed`, `refunded: true`, `amount_charged: 0.0`)\n" +
+            "- `4444` or `norefund`: Failed without refund (`request_status: failed`, `refunded: false`, `amount_charged: 700.0`)\n" +
+            "- `3333` or `pending`: In-flight / pending validation (`request_status: processing`)",
           parameters: [
             {
               name: "tracking_id",
@@ -843,24 +815,18 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   schema: { $ref: "#/components/schemas/ValidationStatusResponse" },
                   example: {
                     status: "success",
-                    data: {
-                      tracking_id: "nin_val_da7c1d16cd69891a7a9044",
-                      client_reference: "REF_MY_APP_99182",
-                      nin: "18867568313",
-                      validation_type: "no_record_found",
-                      request_status: "validated",
-                      message: "NIN Validation completed successfully.",
-                      error_detail: null,
-                      completed_at: "2026-09-09T08:35:12.000Z",
-                      created_at: "2026-09-09T08:15:00.000Z",
-                    },
-                    transaction: {
-                      amount_charged: 500.0,
-                      currency: "NGN",
-                      refunded: false,
-                      refund_amount: 0.0,
-                      environment: "live",
-                    },
+                    tracking_id: "nin_val_da7c1d16cd69891a7a9044",
+                    client_reference: "REF_MY_APP_99182",
+                    nin: "18867568313",
+                    validation_type: "no_record_found",
+                    request_status: "validated",
+                    message: "NIN Validation completed successfully.",
+                    error_detail: null,
+                    completed_at: "2026-09-09T08:35:12.000Z",
+                    refunded: false,
+                    amount_charged: 700.0,
+                    currency: "NGN",
+                    date: "2026-09-09T08:15:00.000Z",
                   },
                 },
               },
@@ -872,8 +838,8 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
                   example: {
                     status: "error",
-                    code: "VALIDATION_ERROR",
-                    message: "Please provide either 'tracking_id' or 'client_reference' as a query parameter.",
+                    code: "INVALID_QUERY",
+                    message: "Provide either tracking_id or client_reference to look up status.",
                   },
                 },
               },

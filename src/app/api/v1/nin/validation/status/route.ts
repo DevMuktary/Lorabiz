@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       {
         status: "error",
         code: "INVALID_QUERY",
-        message: "Provide either '?tracking_id=...' or '?client_reference=...' query parameter to look up status.",
+        message: "Provide either tracking_id or client_reference to look up status.",
       },
       { status: 400 }
     );
@@ -54,23 +54,22 @@ export async function GET(req: NextRequest) {
 
   // 4. Test Mode Simulation
   if (keyPayload.type === ApiKeyType.TEST) {
+    const queryTerm = `${trackingId || ""} ${clientReference || ""}`.toLowerCase();
+
     const isFailedWithRefund =
-      trackingId?.includes("2222") ||
-      clientReference?.includes("2222") ||
-      trackingId?.includes("fail_refund") ||
-      clientReference?.includes("fail_refund");
+      queryTerm.includes("2222") ||
+      queryTerm.includes("fail_refund") ||
+      queryTerm.includes("refunded");
 
     const isFailedWithoutRefund =
-      trackingId?.includes("4444") ||
-      clientReference?.includes("4444") ||
-      trackingId?.includes("norefund") ||
-      clientReference?.includes("norefund");
+      queryTerm.includes("4444") ||
+      queryTerm.includes("norefund") ||
+      queryTerm.includes("no_refund");
 
     const isProcessingPending =
-      trackingId?.includes("3333") ||
-      clientReference?.includes("3333") ||
-      trackingId?.includes("pending") ||
-      clientReference?.includes("pending");
+      queryTerm.includes("3333") ||
+      queryTerm.includes("pending") ||
+      queryTerm.includes("processing");
 
     if (isFailedWithRefund) {
       return NextResponse.json({

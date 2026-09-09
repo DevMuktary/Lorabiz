@@ -177,6 +177,26 @@ export async function POST(req: NextRequest) {
   }
 
   // 6. Fast Duplicate Active Request Check (409 Conflict)
+  if (
+    keyPayload.type === ApiKeyType.TEST &&
+    (sanitizedNin === "99999999999" || cleanClientRef?.toLowerCase().includes("duplicate"))
+  ) {
+    return NextResponse.json(
+      {
+        status: "error",
+        code: "DUPLICATE_REQUEST",
+        message: `An active validation request is already in progress for NIN ${sanitizedNin}. Please check its status.`,
+        tracking_id: "nin_val_test_dup_active",
+        client_reference: cleanClientRef || null,
+        transaction: {
+          amount_charged: 0.0,
+          currency: "NGN",
+        },
+      },
+      { status: 409 }
+    );
+  }
+
   const existingActive = await prisma.ninValidationRequest.findFirst({
     where: {
       userId: keyPayload.userId,

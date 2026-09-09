@@ -117,16 +117,15 @@ Every request requires an API key in one of the following HTTP headers:
 - **Content-Type**: \`application/json\`
 
 #### Validation Categories (\`validation_type\`):
-- \`no_record_found\`
-- \`vnin_validation\`
-- \`modification\`
-- \`photo_error\`
+- \`no_record_found\` (No Record Found)
+- \`vnin_validation\` (VNIN / SIM / Bank Validation)
+- \`modification\` (Record Modification)
+- \`photo_error\` (Photo Error Correction)
 
-#### Sandbox Test Numbers:
-- \`11111111111\`: Success (\`validated\`, dispatches \`nin_validation.completed\`)
-- \`22222222222\`: Failed with refund (\`failed\`, \`refunded: true\`, dispatches \`nin_validation.failed\`)
-- \`44444444444\`: Failed without refund (\`failed\`, \`refunded: false\`, dispatches \`nin_validation.failed\`)
-- \`33333333333\`: In-flight pending state (\`processing\`)
+#### Sandbox Submission Testing:
+- Standard Submission: Any valid 11-digit NIN returns \`201 Created\` with \`request_status: submitted\`.
+- Duplicate Rejection: Submit NIN \`99999999999\` or reference containing \`duplicate\` to simulate \`409 DUPLICATE_REQUEST\`.
+- Webhook Simulation: If a test webhook is configured, a simulated webhook event is automatically dispatched after 3 seconds.
 
 #### Request Body
 \`\`\`json
@@ -142,22 +141,15 @@ Every request requires an API key in one of the following HTTP headers:
 {
   "status": "success",
   "message": "NIN validation request submitted successfully.",
-  "data": {
-    "tracking_id": "nin_val_da7c1d16cd69891a7a9044",
-    "client_reference": "REF_MY_APP_99182",
-    "nin": "18867568313",
-    "validation_type": "no_record_found",
-    "request_status": "submitted",
-    "refunded": false,
-    "created_at": "2026-09-09T08:15:00.000Z"
-  },
-  "transaction": {
-    "reference": "NIN_VAL_SUBMIT_1725732104912",
-    "amount_charged": 500.00,
-    "currency": "NGN",
-    "environment": "live",
-    "balance_after": 45350.00
-  }
+  "tracking_id": "nin_val_da7c1d16cd69891a7a9044",
+  "client_reference": "REF_MY_APP_99182",
+  "nin": "18867568313",
+  "validation_type": "no_record_found",
+  "request_status": "submitted",
+  "amount_charged": 700.00,
+  "currency": "NGN",
+  "refunded": false,
+  "environment": "live"
 }
 \`\`\`
 
@@ -167,9 +159,16 @@ Every request requires an API key in one of the following HTTP headers:
 - **Method**: \`GET\`
 - **Path**: \`/api/v1/nin/validation/status\`
 - **Query Parameters**:
-  - \`tracking_id\` (optional): Lorabiz tracking identifier (e.g., \`?tracking_id=nin_val_da7c1...\`)
-  - \`client_reference\` (optional): Your custom reference (e.g., \`?client_reference=REF_MY_APP_99182\`)
-  *(Note: At least one of tracking_id or client_reference is required)*
+  - \`tracking_id\` (optional): Lorabiz tracking identifier
+  - \`client_reference\` (optional): Your custom reference
+  *(Provide either tracking_id or client_reference to look up status)*
+
+#### Sandbox Test References:
+In test mode (\`lora_test_...\`), provide any of the following query values in \`tracking_id\` or \`client_reference\` to test response states:
+- \`1111\` or \`test_success\`: Validated successfully (\`request_status: validated\`, \`refunded: false\`)
+- \`2222\` or \`fail_refund\`: Failed with full refund (\`request_status: failed\`, \`refunded: true\`, \`amount_charged: 0.00\`)
+- \`4444\` or \`norefund\`: Failed without refund (\`request_status: failed\`, \`refunded: false\`, \`amount_charged: 700.00\`)
+- \`3333\` or \`pending\`: In-flight / pending validation (\`request_status: processing\`)
 
 #### Status Transitions:
 - \`submitted\`
@@ -181,24 +180,18 @@ Every request requires an API key in one of the following HTTP headers:
 \`\`\`json
 {
   "status": "success",
-  "data": {
-    "tracking_id": "nin_val_da7c1d16cd69891a7a9044",
-    "client_reference": "REF_MY_APP_99182",
-    "nin": "18867568313",
-    "validation_type": "no_record_found",
-    "request_status": "validated",
-    "message": "NIN Validation completed successfully.",
-    "error_detail": null,
-    "completed_at": "2026-09-09T08:35:12.000Z",
-    "created_at": "2026-09-09T08:15:00.000Z"
-  },
-  "transaction": {
-    "amount_charged": 500.00,
-    "currency": "NGN",
-    "refunded": false,
-    "refund_amount": 0.00,
-    "environment": "live"
-  }
+  "tracking_id": "nin_val_da7c1d16cd69891a7a9044",
+  "client_reference": "REF_MY_APP_99182",
+  "nin": "18867568313",
+  "validation_type": "no_record_found",
+  "request_status": "validated",
+  "message": "NIN Validation completed successfully.",
+  "error_detail": null,
+  "completed_at": "2026-09-09T08:35:12.000Z",
+  "refunded": false,
+  "amount_charged": 700.00,
+  "currency": "NGN",
+  "date": "2026-09-09T08:15:00.000Z"
 }
 \`\`\`
 
