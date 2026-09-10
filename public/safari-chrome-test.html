@@ -57,6 +57,16 @@
      Same trick the dashboard sidebar already uses to kill its own box. */
   .scrim.tall { top: -200px; bottom: -200px; }
 
+  /* Fully opaque, no alpha and no blur. This is the discriminator: if the bars go
+     black even under a solid lime sheet, the strips are genuinely never painted and
+     no colour choice can ever reach them. If they go lime, Safari is sampling the
+     top layer and only transparency breaks it. */
+  .scrim.solid { background: #00e05a; }
+
+  /* Candidate fix: give the overlay its own GPU layer, in case the black is a
+     compositing fallback rather than a missing paint. */
+  .scrim.promote { will-change: transform; transform: translateZ(0); }
+
   .panel {
     position: fixed;
     z-index: 101;
@@ -112,6 +122,21 @@
   <small>candidate fix — same colour and blur as 4, only taller</small>
 </button>
 
+<button id="t7" aria-pressed="false" data-mode="solid" style="border-style:dashed">
+  7 · Fully opaque overlay
+  <small>solid lime, no alpha, no blur — the discriminator</small>
+</button>
+
+<button id="t8" aria-pressed="false" data-mode="colour blur promote" style="border-style:dashed">
+  8 · Test 4 + own GPU layer
+  <small>candidate fix — translateZ(0) on the overlay</small>
+</button>
+
+<button id="t9" aria-pressed="false" data-mode="colour blur" data-isolate="1" style="border-style:dashed">
+  9 · Test 4 + isolation on body
+  <small>candidate fix — confines the blur's backdrop to the page</small>
+</button>
+
 <button id="cover" aria-pressed="false" style="margin-top:18px;border-style:dashed">
   viewport-fit: <span id="cover-state">auto</span>
   <small>
@@ -148,13 +173,14 @@
     scrim.className = 'scrim hidden';
     panel.className = 'panel hidden';
     document.body.style.overflow = '';
+    document.body.style.isolation = '';
     buttons.forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
   }
 
   function open(button) {
     var mode = button.dataset.mode;
     close();
-    active = mode;
+    active = button;
     button.setAttribute('aria-pressed', 'true');
     label.textContent = button.textContent.trim().split('\n')[0];
 
@@ -165,13 +191,14 @@
     } else {
       scrim.className = 'scrim ' + (mode === 'bare' ? '' : mode);
       document.body.style.overflow = 'hidden';
+      if (button.dataset.isolate) document.body.style.isolation = 'isolate';
     }
     panel.className = 'panel';
   }
 
   buttons.forEach(function (button) {
     button.addEventListener('click', function () {
-      if (active === button.dataset.mode) close();
+      if (active === button) close();
       else open(button);
     });
   });
