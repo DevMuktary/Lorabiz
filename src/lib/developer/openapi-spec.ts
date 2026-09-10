@@ -44,6 +44,11 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
         description:
           "Submit and poll NIN validation requests for No Record Found, VNIN Validation, Modification, and Photo Error.",
       },
+      {
+        name: "NIMC IPE Clearance",
+        description:
+          "Submit and poll NIMC IPE Clearance (Exception Resolution) requests to resolve enrollment biometric anomalies and release cleared NINs.",
+      },
     ],
     security: [
       {
@@ -219,7 +224,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           properties: {
             status: { type: "string", example: "success" },
             message: { type: "string", example: "NIN validation request submitted successfully." },
-            tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
+            reference: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
             client_reference: { type: "string", nullable: true, example: "REF_MY_APP_99182" },
             nin: { type: "string", example: "18867568313" },
             validation_type: { type: "string", example: "no_record_found" },
@@ -233,7 +238,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           type: "object",
           properties: {
             status: { type: "string", example: "success" },
-            tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
+            reference: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
             client_reference: { type: "string", nullable: true, example: "REF_MY_APP_99182" },
             nin: { type: "string", example: "18867568313" },
             validation_type: { type: "string", example: "no_record_found" },
@@ -248,22 +253,48 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             date: { type: "string", format: "date-time", example: "2026-09-09T08:15:00.000Z" },
           },
         },
+        IpeSubmitResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "success" },
+            message: { type: "string", example: "NIMC IPE Clearance request submitted successfully." },
+            reference: { type: "string", example: "lora_ipe_1725934820123_xyz89" },
+            tracking_id: { type: "string", example: "0TEB51VS5RES4ZZ" },
+            client_reference: { type: "string", nullable: true, example: "kyc_ipe_order_10029" },
+            request_status: { type: "string", enum: ["submitted", "processing", "completed", "failed"], example: "submitted" },
+            amount_charged: { type: "number", example: 2500.0 },
+            currency: { type: "string", example: "NGN" },
+            environment: { type: "string", enum: ["live", "test"], example: "live" },
+          },
+        },
+        IpeStatusResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "success" },
+            reference: { type: "string", example: "lora_ipe_1725934820123_xyz89" },
+            tracking_id: { type: "string", example: "0TEB51VS5RES4ZZ" },
+            client_reference: { type: "string", nullable: true, example: "kyc_ipe_order_10029" },
+            request_status: { type: "string", enum: ["submitted", "processing", "completed", "failed"], example: "completed" },
+            message: { type: "string", example: "IPE Clearance completed successfully." },
+            new_tracking_id: { type: "string", nullable: true, example: "0T448N2SR7OFAZC" },
+            resolved_nin: { type: "string", nullable: true, example: "44297896804" },
+            error_detail: { type: "string", nullable: true, example: null },
+            completed_at: { type: "string", format: "date-time", nullable: true, example: "2026-09-05T21:47:56.000Z" },
+            refunded: { type: "boolean", description: "Indicates whether the debited amount was refunded (only present when request_status is 'failed')", example: true },
+            amount_charged: { type: "number", example: 2500.0 },
+            currency: { type: "string", example: "NGN" },
+            environment: { type: "string", enum: ["live", "test"], example: "live" },
+            date: { type: "string", format: "date-time", example: "2026-09-05T20:30:12.000Z" },
+          },
+        },
         DuplicateRequestResponse: {
           type: "object",
           properties: {
             status: { type: "string", example: "error" },
             code: { type: "string", example: "DUPLICATE_REQUEST" },
-            message: { type: "string", example: "An active validation request for this NIN and validation type is already currently in progress. Duplicate submission rejected to prevent double debits." },
-            environment: { type: "string", enum: ["live", "test"], example: "live" },
-            existing_request: {
-              type: "object",
-              properties: {
-                tracking_id: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
-                client_reference: { type: "string", nullable: true },
-                request_status: { type: "string", example: "processing" },
-                created_at: { type: "string", format: "date-time" },
-              },
-            },
+            message: { type: "string", example: "An active validation request is already in progress for this NIN. Duplicate submission rejected to prevent double debits." },
+            reference: { type: "string", example: "nin_val_da7c1d16cd69891a7a9044" },
+            client_reference: { type: "string", nullable: true, example: "REF_MY_APP_99182" },
             transaction: {
               type: "object",
               properties: {
@@ -715,7 +746,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   example: {
                     status: "success",
                     message: "NIN validation request submitted successfully.",
-                    tracking_id: "nin_val_da7c1d16cd69891a7a9044",
+                    reference: "nin_val_da7c1d16cd69891a7a9044",
                     client_reference: "REF_MY_APP_99182",
                     nin: "18867568313",
                     validation_type: "no_record_found",
@@ -783,14 +814,14 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIN Validation"],
           summary: "Check NIN Validation Status",
           description:
-            "Query the current processing status of a submitted NIN validation request using either `tracking_id` or `client_reference`.\n\n" +
-            "In both live and test modes, look up requests using the `tracking_id` returned upon submission or your custom `client_reference`.",
+            "Query the current processing status of a submitted NIN validation request using either `reference` or `client_reference`.\n\n" +
+            "In both live and test modes, look up requests using the `reference` returned upon submission or your custom `client_reference`.",
           parameters: [
             {
-              name: "tracking_id",
+              name: "reference",
               in: "query",
               required: false,
-              description: "The Lorabiz tracking identifier returned upon submission (e.g., `nin_val_da7c1...`)",
+              description: "The primary Lorabiz platform reference returned upon submission (e.g., `nin_val_da7c1...`)",
               schema: { type: "string" },
               example: "nin_val_da7c1d16cd69891a7a9044",
             },
@@ -811,13 +842,12 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   schema: { $ref: "#/components/schemas/ValidationStatusResponse" },
                   example: {
                     status: "success",
-                    tracking_id: "nin_val_da7c1d16cd69891a7a9044",
+                    reference: "nin_val_da7c1d16cd69891a7a9044",
                     client_reference: "REF_MY_APP_99182",
                     nin: "18867568313",
                     validation_type: "no_record_found",
                     request_status: "validated",
                     message: "NIN Validation completed successfully.",
-                    error_detail: null,
                     completed_at: "2026-09-09T08:35:12.000Z",
                     amount_charged: 700.0,
                     currency: "NGN",
@@ -835,7 +865,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   example: {
                     status: "error",
                     code: "INVALID_QUERY",
-                    message: "Provide either tracking_id or client_reference to look up status.",
+                    message: "Provide reference or client_reference to look up status.",
                   },
                 },
               },
@@ -857,6 +887,234 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     status: "error",
                     code: "NOT_FOUND",
                     message: "No validation request found matching the specified identifier.",
+                  },
+                },
+              },
+            },
+            "429": {
+              description: "Too Many Requests",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/v1/nin/ipe": {
+        post: {
+          tags: ["NIMC IPE Clearance"],
+          summary: "Submit NIMC IPE Clearance Request",
+          description:
+            "Submit an applicant's official NIMC Tracking ID for Exception Resolution (IPE clearance).\n\n" +
+            "#### Sandbox Testing:\n" +
+            "- `0TEB51VS5RES4ZZ`: Simulates success (transitions to `completed`, releasing `new_tracking_id` and `resolved_nin`).\n" +
+            "- `0TBH26SQHQCR9F`: Simulates failure (transitions to `failed`, `refunded: true`).\n" +
+            "- `0TDUPCONFLICT01`: Simulates duplicate conflict (HTTP 409).",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["tracking_id"],
+                  properties: {
+                    tracking_id: {
+                      type: "string",
+                      description: "Official NIMC Tracking ID (8 to 32 alphanumeric characters)",
+                      example: "0TEB51VS5RES4ZZ",
+                    },
+                    client_reference: {
+                      type: "string",
+                      description: "Optional custom reference for idempotency and status queries",
+                      example: "kyc_ipe_order_10029",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "IPE clearance request submitted successfully",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/IpeSubmitResponse" },
+                  example: {
+                    status: "success",
+                    message: "NIMC IPE Clearance request submitted successfully.",
+                    reference: "lora_ipe_1725934820123_xyz89",
+                    tracking_id: "0TEB51VS5RES4ZZ",
+                    client_reference: "kyc_ipe_order_10029",
+                    request_status: "submitted",
+                    amount_charged: 2500.0,
+                    currency: "NGN",
+                    environment: "live",
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Validation Error",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                },
+              },
+            },
+            "401": {
+              description: "Unauthorized",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
+                },
+              },
+            },
+            "402": {
+              description: "Insufficient Balance",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/InsufficientBalanceResponse" },
+                },
+              },
+            },
+            "409": {
+              description: "Duplicate Active Request",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/DuplicateRequestResponse" },
+                },
+              },
+            },
+            "429": {
+              description: "Too Many Requests",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
+                },
+              },
+            },
+            "503": {
+              description: "Service Unavailable",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ServiceUnavailableResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/v1/nin/ipe/status": {
+        get: {
+          tags: ["NIMC IPE Clearance"],
+          summary: "Check NIMC IPE Clearance Status",
+          description:
+            "Query the status of an IPE clearance application using `reference`, `tracking_id`, or `client_reference`.",
+          parameters: [
+            {
+              name: "reference",
+              in: "query",
+              required: false,
+              description: "The primary Lorabiz platform reference returned upon submission",
+              schema: { type: "string" },
+              example: "lora_ipe_1725934820123_xyz89",
+            },
+            {
+              name: "tracking_id",
+              in: "query",
+              required: false,
+              description: "The applicant's official NIMC Tracking ID",
+              schema: { type: "string" },
+              example: "0TEB51VS5RES4ZZ",
+            },
+            {
+              name: "client_reference",
+              in: "query",
+              required: false,
+              description: "The custom reference you supplied when submitting the request",
+              schema: { type: "string" },
+              example: "kyc_ipe_order_10029",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Status query successful",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/IpeStatusResponse" },
+                  examples: {
+                    completed: {
+                      summary: "Clearance Completed",
+                      value: {
+                        status: "success",
+                        reference: "lora_ipe_1725934820123_xyz89",
+                        tracking_id: "0TEB51VS5RES4ZZ",
+                        client_reference: "kyc_ipe_order_10029",
+                        request_status: "completed",
+                        message: "IPE Clearance completed successfully.",
+                        new_tracking_id: "0T448N2SR7OFAZC",
+                        resolved_nin: "44297896804",
+                        completed_at: "2026-09-05T21:47:56.000Z",
+                        amount_charged: 2500.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-05T20:30:12.000Z",
+                      },
+                    },
+                    failed: {
+                      summary: "Clearance Failed (Refunded)",
+                      value: {
+                        status: "error",
+                        reference: "lora_ipe_1725934820123_xyz89",
+                        tracking_id: "0TBH26SQHQCR9F",
+                        client_reference: "kyc_ipe_order_10029",
+                        request_status: "failed",
+                        message: "Your IPE Clearance request has failed.",
+                        error_detail: "Your IPE clearance request has failed. Please contact support for more details.",
+                        refunded: true,
+                        completed_at: null,
+                        amount_charged: 0.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-05T20:30:12.000Z",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Missing required parameter",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                  example: {
+                    status: "error",
+                    code: "INVALID_QUERY",
+                    message: "Provide reference, tracking_id, or client_reference to look up status.",
+                  },
+                },
+              },
+            },
+            "401": {
+              description: "Unauthorized",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
+                },
+              },
+            },
+            "404": {
+              description: "IPE Ticket Not Found",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/RecordNotFoundResponse" },
+                  example: {
+                    status: "error",
+                    code: "RECORD_NOT_FOUND",
+                    message: "No IPE clearance ticket was found matching the provided reference under your account.",
                   },
                 },
               },

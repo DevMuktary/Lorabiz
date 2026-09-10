@@ -289,14 +289,13 @@ export async function POST(req: Request) {
 
         // Webhook dispatch for API request
         dispatchDeveloperWebhook(ticket.userId, "nin_validation.completed", {
-          tracking_id: ticket.transactionRef,
+          reference: ticket.transactionRef,
           client_reference: ticket.clientReference,
           nin: ticket.nin,
           validation_type: ticket.category.toLowerCase(),
           request_status: "validated",
           message: "NIN Validation completed successfully.",
           completed_at: new Date().toISOString(),
-          refunded: false,
           amount_charged: Number(ticket.amountCharged),
           currency: "NGN",
         });
@@ -354,7 +353,7 @@ export async function POST(req: Request) {
 
         // Webhook dispatch for API request
         dispatchDeveloperWebhook(ticket.userId, "nin_validation.failed", {
-          tracking_id: ticket.transactionRef,
+          reference: ticket.transactionRef,
           client_reference: ticket.clientReference,
           nin: ticket.nin,
           validation_type: ticket.category.toLowerCase(),
@@ -542,7 +541,7 @@ export async function POST(req: Request) {
     // Developer Webhook dispatch
     if (actionType === "COMPLETE") {
       dispatchDeveloperWebhook(ticket.userId, "nin_validation.completed", {
-        tracking_id: ticket.transactionRef,
+        reference: ticket.transactionRef,
         client_reference: ticket.clientReference,
         nin: ticket.nin,
         validation_type: ticket.category.toLowerCase(),
@@ -555,7 +554,7 @@ export async function POST(req: Request) {
     } else if (actionType === "FAIL") {
       const isRefunding = Boolean(issueRefund && refundAmount > 0);
       dispatchDeveloperWebhook(ticket.userId, "nin_validation.failed", {
-        tracking_id: ticket.transactionRef,
+        reference: ticket.transactionRef,
         client_reference: ticket.clientReference,
         nin: ticket.nin,
         validation_type: ticket.category.toLowerCase(),

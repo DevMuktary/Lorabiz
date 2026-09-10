@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
         {
           status: "success",
           message: "Existing NIN validation request retrieved via client_reference.",
-          tracking_id: existingByRef.transactionRef,
+          reference: existingByRef.transactionRef,
           client_reference: existingByRef.clientReference,
           nin: existingByRef.nin,
           validation_type: normalizedTypeKey,
@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
           code: "DUPLICATE_REQUEST",
           message:
             "An active validation request is already in progress for NIN 99999999999. Duplicate submission rejected to prevent double debits.",
-          tracking_id: "nin_val_test_dup_active",
+          reference: "nin_val_test_dup_active",
           client_reference: cleanClientRef || null,
           transaction: {
             amount_charged: 0.0,
@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
           {
             status: "success",
             message: "Existing NIN validation request retrieved via client_reference.",
-            tracking_id: existingTestByRef.trackingId,
+            reference: existingTestByRef.trackingId,
             client_reference: existingTestByRef.clientReference,
             nin: existingTestByRef.nin,
             validation_type: existingTestByRef.validationType,
@@ -301,7 +301,7 @@ export async function POST(req: NextRequest) {
       amountCharged: price,
       clientReference: cleanClientRef,
       requestBody: body,
-      responseBody: { status: "success", tracking_id: testTrackingId, simulated: true, amount_charged: price },
+      responseBody: { status: "success", reference: testTrackingId, simulated: true, amount_charged: price },
     });
 
     // E. 5-Second Automated Background Transition & Test Webhook Dispatch
@@ -320,7 +320,7 @@ export async function POST(req: NextRequest) {
             keyPayload.userId,
             "nin_validation.completed",
             {
-              tracking_id: testTrackingId,
+              reference: testTrackingId,
               client_reference: cleanClientRef || null,
               nin: sanitizedNin,
               validation_type: normalizedTypeKey,
@@ -352,7 +352,7 @@ export async function POST(req: NextRequest) {
             keyPayload.userId,
             "nin_validation.failed",
             {
-              tracking_id: testTrackingId,
+              reference: testTrackingId,
               client_reference: cleanClientRef || null,
               nin: sanitizedNin,
               validation_type: normalizedTypeKey,
@@ -375,7 +375,7 @@ export async function POST(req: NextRequest) {
       {
         status: "success",
         message: "NIN validation request submitted successfully (Sandbox Simulation).",
-        tracking_id: testTrackingId,
+        reference: testTrackingId,
         client_reference: cleanClientRef || null,
         nin: sanitizedNin,
         validation_type: normalizedTypeKey,
@@ -404,7 +404,7 @@ export async function POST(req: NextRequest) {
         status: "error",
         code: "DUPLICATE_REQUEST",
         message: `An active validation request is already in progress for NIN ${sanitizedNin}. Please check its status.`,
-        tracking_id: existingActive.transactionRef,
+        reference: existingActive.transactionRef,
         client_reference: existingActive.clientReference || null,
         transaction: {
           amount_charged: 0.0,
@@ -525,7 +525,7 @@ export async function POST(req: NextRequest) {
       amountCharged: price,
       clientReference: cleanClientRef,
       requestBody: body,
-      responseBody: { status: "success", tracking_id: trackingId, amount_charged: price },
+      responseBody: { status: "success", reference: trackingId, amount_charged: price },
     });
 
     // Dispatch webhook event to developer if configured
@@ -533,7 +533,7 @@ export async function POST(req: NextRequest) {
       keyPayload.userId,
       "nin_validation.submitted",
       {
-        tracking_id: trackingId,
+        reference: trackingId,
         client_reference: cleanClientRef,
         nin: sanitizedNin,
         validation_type: normalizedTypeKey,
@@ -549,7 +549,7 @@ export async function POST(req: NextRequest) {
       {
         status: "success",
         message: "NIN validation request submitted successfully.",
-        tracking_id: trackingId,
+        reference: trackingId,
         client_reference: cleanClientRef,
         nin: sanitizedNin,
         validation_type: normalizedTypeKey,

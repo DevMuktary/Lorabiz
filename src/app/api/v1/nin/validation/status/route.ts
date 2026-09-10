@@ -25,7 +25,7 @@ function sanitizePublicMessage(msg: string | null | undefined): string {
 
 /**
  * GET /api/v1/nin/validation/status
- * Queries real-time validation status via ?tracking_id=... or ?client_reference=...
+ * Queries real-time validation status via ?reference=... or ?client_reference=...
  */
 export async function GET(req: NextRequest) {
   // 1. Authenticate Developer API Key & Enforce Rate Limiting
@@ -36,17 +36,17 @@ export async function GET(req: NextRequest) {
 
   const { keyPayload } = authResult;
 
-  // 3. Parse Query Parameters (tracking_id OR client_reference)
+  // 3. Parse Query Parameters (reference OR client_reference)
   const { searchParams } = new URL(req.url);
-  const trackingId = searchParams.get("tracking_id")?.trim() || searchParams.get("trackingId")?.trim() || null;
-  const clientReference = searchParams.get("client_reference")?.trim() || searchParams.get("reference")?.trim() || null;
+  const reference = searchParams.get("reference")?.trim() || searchParams.get("tracking_id")?.trim() || searchParams.get("trackingId")?.trim() || null;
+  const clientReference = searchParams.get("client_reference")?.trim() || null;
 
-  if (!trackingId && !clientReference) {
+  if (!reference && !clientReference) {
     return NextResponse.json(
       {
         status: "error",
         code: "INVALID_QUERY",
-        message: "Provide either tracking_id or client_reference to look up status.",
+        message: "Provide reference or client_reference to look up status.",
       },
       { status: 400 }
     );
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       where: {
         userId: keyPayload.userId,
         OR: [
-          ...(trackingId ? [{ trackingId }] : []),
+          ...(reference ? [{ trackingId: reference }] : []),
           ...(clientReference ? [{ clientReference }] : []),
         ],
       },
@@ -96,13 +96,13 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       status: isFailed ? "error" : "success",
-      tracking_id: testTicket.trackingId,
+      reference: testTicket.trackingId,
       client_reference: testTicket.clientReference || null,
       nin: testTicket.nin,
       validation_type: testTicket.validationType,
       request_status: requestStatus,
       message,
-      error_detail: isFailed ? (testTicket.failureReason || "Validation failed verification requirements.") : undefined,
+      ...(isFailed ? { error_detail: testTicket.failureReason || "Validation failed verification requirements." } : {}),
       completed_at: testTicket.completedAt ? testTicket.completedAt.toISOString() : null,
       ...(isFailed ? { refunded: isRefunded } : {}),
       amount_charged: amountCharged,
@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
     where: {
       userId: keyPayload.userId,
       OR: [
-        ...(trackingId ? [{ transactionRef: trackingId }] : []),
+        ...(reference ? [{ transactionRef: reference }] : []),
         ...(clientReference ? [{ clientReference }] : []),
       ],
     },
@@ -159,13 +159,13 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     status: isFailed ? "error" : "success",
-    tracking_id: ticket.transactionRef,
+    reference: ticket.transactionRef,
     client_reference: ticket.clientReference || null,
     nin: ticket.nin,
     validation_type: validationType,
     request_status: requestStatus,
     message,
-    error_detail: cleanErrorDetail,
+    ...(isFailed ? { error_detail: cleanErrorDetail } : {}),
     completed_at: ticket.completedAt ? ticket.completedAt.toISOString() : null,
     ...(isFailed ? { refunded: isRefunded } : {}),
     amount_charged: amountCharged,

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { checkIpeClearanceStatus, parseIpeStatusResponse } from "@/lib/agenthub";
 import { checkDataVerifyIpeStatus, parseDataVerifyIpeResult } from "@/lib/dataverify";
 import { sendNinIpeCompletedEmail, sendNinIpeFailedEmail } from "@/lib/email";
+import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
 
 export async function GET(req: NextRequest) {
   return handleSync(req);
@@ -159,6 +160,22 @@ async function handleSync(req: NextRequest) {
             console.error(`❌ [Cron IPE] Notif error for ${item.reference}:`, notifErr);
           }
 
+          // Dispatch Developer Webhook if API request
+          if (item.isApiRequest) {
+            dispatchDeveloperWebhook(item.userId, "nin_ipe.completed", {
+              reference: item.reference,
+              tracking_id: item.trackingId,
+              client_reference: item.clientReference,
+              new_tracking_id: newTrackingId || item.newTrackingId,
+              resolved_nin: resolvedNin || item.resolvedNin,
+              request_status: "completed",
+              message: "IPE Clearance completed successfully.",
+              completed_at: new Date().toISOString(),
+              amount_charged: Number(item.amountCharged),
+              currency: "NGN",
+            });
+          }
+
           completedCount++;
         } else if (isFailed) {
           const refundAmount = Number(item.amountCharged);
@@ -190,11 +207,30 @@ async function handleSync(req: NextRequest) {
               data: {
                 status: "FAILED",
                 failureReason: finalReason,
+                refunded: true,
+                refundAmount: refundAmount,
                 apiMessage: apiMsg || "Clearance Failed",
                 apiResponse: rawResponse as any,
+                lastSyncedAt: new Date(),
               },
             });
           });
+
+          // Dispatch Developer Webhook if API request
+          if (item.isApiRequest) {
+            dispatchDeveloperWebhook(item.userId, "nin_ipe.failed", {
+              reference: item.reference,
+              tracking_id: item.trackingId,
+              client_reference: item.clientReference,
+              request_status: "failed",
+              message: "Your IPE Clearance request has failed.",
+              error_detail: finalReason,
+              refunded: true,
+              refund_amount: refundAmount,
+              amount_charged: 0,
+              currency: "NGN",
+            });
+          }
 
           try {
             await sendNinIpeFailedEmail({

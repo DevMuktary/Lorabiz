@@ -35,6 +35,8 @@ async function runSeed() {
     { serviceKey: "API_NIN_PHONE_REGULAR", title: "API - Phone Query Regular Slip", price: 150.00 },
     { serviceKey: "API_NIN_PHONE_STANDARD", title: "API - Phone Query Standard Slip", price: 150.00 },
     { serviceKey: "API_NIN_PHONE_PREMIUM", title: "API - Phone Query Premium Slip", price: 150.00 },
+    // Developer API Wholesale IPE Clearance Rate
+    { serviceKey: "API_NIN_IPE_CLEARANCE", title: "API - NIMC IPE Clearance", price: 2500.00 },
     { serviceKey: "NIN_PERSONALIZATION", title: "NIN Personalization", price: 1500.00 },
     { serviceKey: "NIN_IPE_CLEARANCE", title: "IPE Clearance (Exception Resolution)", price: 2500.00 },
     { serviceKey: "NIN_VALIDATION_NO_RECORD", title: "NIN Validation (No Record Found)", price: 2000.00 },

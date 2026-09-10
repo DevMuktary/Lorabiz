@@ -155,7 +155,7 @@ async function handleSync(req: NextRequest) {
 
           // Dispatch developer webhook
           dispatchDeveloperWebhook(item.userId, "nin_validation.completed", {
-            tracking_id: item.transactionRef,
+            reference: item.transactionRef,
             client_reference: item.clientReference,
             nin: item.nin,
             validation_type: item.category.toLowerCase(),
@@ -184,7 +184,7 @@ async function handleSync(req: NextRequest) {
 
           // Dispatch developer webhook
           dispatchDeveloperWebhook(item.userId, "nin_validation.failed", {
-            tracking_id: item.transactionRef,
+            reference: item.transactionRef,
             client_reference: item.clientReference,
             nin: item.nin,
             validation_type: item.category.toLowerCase(),

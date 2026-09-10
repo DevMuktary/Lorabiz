@@ -144,14 +144,13 @@ You can supply any random \`client_reference\` of your choice (e.g., \`REF_MY_AP
 {
   "status": "success",
   "message": "NIN validation request submitted successfully.",
-  "tracking_id": "nin_val_da7c1d16cd69891a7a9044",
+  "reference": "nin_val_da7c1d16cd69891a7a9044",
   "client_reference": "REF_MY_APP_99182",
   "nin": "18867568313",
   "validation_type": "no_record_found",
   "request_status": "submitted",
   "amount_charged": 700.00,
   "currency": "NGN",
-  "refunded": false,
   "environment": "live"
 }
 \`\`\`
@@ -162,11 +161,11 @@ You can supply any random \`client_reference\` of your choice (e.g., \`REF_MY_AP
 - **Method**: \`GET\`
 - **Path**: \`/api/v1/nin/validation/status\`
 - **Query Parameters**:
-  - \`tracking_id\` (optional): Lorabiz tracking identifier
+  - \`reference\` (optional): Lorabiz platform transaction reference
   - \`client_reference\` (optional): Your custom reference
-  *(Provide either tracking_id or client_reference to look up status)*
+  *(Provide reference or client_reference to look up status)*
 
-In both live and test modes, look up requests using the \`tracking_id\` returned upon submission or your custom \`client_reference\`.
+In both live and test modes, look up requests using the \`reference\` returned upon submission or your custom \`client_reference\`.
 
 #### Status Transitions:
 - \`submitted\`
@@ -178,15 +177,13 @@ In both live and test modes, look up requests using the \`tracking_id\` returned
 \`\`\`json
 {
   "status": "success",
-  "tracking_id": "nin_val_da7c1d16cd69891a7a9044",
+  "reference": "nin_val_da7c1d16cd69891a7a9044",
   "client_reference": "REF_MY_APP_99182",
   "nin": "18867568313",
   "validation_type": "no_record_found",
   "request_status": "validated",
   "message": "NIN Validation completed successfully.",
-  "error_detail": null,
   "completed_at": "2026-09-09T08:35:12.000Z",
-  "refunded": false,
   "amount_charged": 700.00,
   "currency": "NGN",
   "environment": "live",
@@ -196,44 +193,133 @@ In both live and test modes, look up requests using the \`tracking_id\` returned
 
 ---
 
+### 5. Submit NIMC IPE Clearance Request
+- **Method**: \`POST\`
+- **Path**: \`/api/v1/nin/ipe\`
+- **Content-Type**: \`application/json\`
+
+Resolves biometric enrollment exceptions on the NIMC database. Once cleared, NIMC releases an updated tracking ID (\`new_tracking_id\`) and the 11-digit NIN (\`resolved_nin\`).
+
+#### Sandbox Test Numbers:
+- Success: \`0TEB51VS5RES4ZZ\` (transitions to \`completed\` in 5 seconds)
+- Failed (Refunded): \`0TBH26SQHQCR9F\` (transitions to \`failed\`, \`refunded: true\`)
+- Duplicate Conflict (409): \`0TDUPCONFLICT01\`
+
+#### Request Body
+\`\`\`json
+{
+  "tracking_id": "0TEB51VS5RES4ZZ",
+  "client_reference": "kyc_ipe_order_10029"
+}
+\`\`\`
+
+#### Success Response (\`201 Created\`)
+\`\`\`json
+{
+  "status": "success",
+  "message": "NIMC IPE Clearance request submitted successfully.",
+  "reference": "lora_ipe_1725934820123_xyz89",
+  "tracking_id": "0TEB51VS5RES4ZZ",
+  "client_reference": "kyc_ipe_order_10029",
+  "request_status": "submitted",
+  "amount_charged": 2500.0,
+  "currency": "NGN",
+  "environment": "live"
+}
+\`\`\`
+
+---
+
+### 6. Check NIMC IPE Clearance Status
+- **Method**: \`GET\`
+- **Path**: \`/api/v1/nin/ipe/status\`
+- **Query Parameters**:
+  - \`reference\` (optional): Lorabiz platform reference (e.g. \`lora_ipe_...\`)
+  - \`tracking_id\` (optional): Applicant's official NIMC Tracking ID
+  - \`client_reference\` (optional): Custom client reference
+
+#### Completed Response (\`200 OK\`)
+\`\`\`json
+{
+  "status": "success",
+  "reference": "lora_ipe_1725934820123_xyz89",
+  "tracking_id": "0TEB51VS5RES4ZZ",
+  "client_reference": "kyc_ipe_order_10029",
+  "request_status": "completed",
+  "message": "IPE Clearance completed successfully.",
+  "new_tracking_id": "0T448N2SR7OFAZC",
+  "resolved_nin": "44297896804",
+  "completed_at": "2026-09-05T21:47:56.000Z",
+  "amount_charged": 2500.0,
+  "currency": "NGN",
+  "environment": "live",
+  "date": "2026-09-05T20:30:12.000Z"
+}
+\`\`\`
+
+#### Failed Response (\`200 OK with Refund\`)
+\`\`\`json
+{
+  "status": "error",
+  "reference": "lora_ipe_1725934820123_xyz89",
+  "tracking_id": "0TBH26SQHQCR9F",
+  "client_reference": "kyc_ipe_order_10029",
+  "request_status": "failed",
+  "message": "Your IPE Clearance request has failed.",
+  "error_detail": "Your IPE clearance request has failed. Please contact support for more details.",
+  "refunded": true,
+  "completed_at": null,
+  "amount_charged": 0.0,
+  "currency": "NGN",
+  "environment": "live",
+  "date": "2026-09-05T20:30:12.000Z"
+}
+\`\`\`
+
+---
+
 ## Centralized Webhooks & HMAC Signatures
 Configure your centralized webhook URL in the [Developer Console](https://lorabiz.com/dashboard/developer). All events are dispatched with:
 - \`x-lorabiz-signature\`: HMAC-SHA256 hex digest computed with your webhook secret.
-- \`x-lorabiz-event\`: Event name (\`nin_validation.submitted\`, \`nin_validation.completed\`, \`nin_validation.failed\`).
+- \`x-lorabiz-event\`: Event name (\`nin_validation.submitted\`, \`nin_validation.completed\`, \`nin_validation.failed\`, \`nin_ipe.submitted\`, \`nin_ipe.completed\`, \`nin_ipe.failed\`).
 
-### Event: \`nin_validation.completed\`
+### Event: \`nin_ipe.completed\`
 \`\`\`json
 {
-  "event": "nin_validation.completed",
+  "event": "nin_ipe.completed",
+  "environment": "live",
+  "timestamp": "2026-09-05T21:47:56.240Z",
   "data": {
-    "tracking_id": "nin_val_da7c1d16cd69891a7a9044",
-    "client_reference": "REF_MY_APP_99182",
-    "nin": "18867568313",
-    "validation_type": "no_record_found",
-    "request_status": "validated",
-    "message": "NIN Validation completed successfully.",
-    "completed_at": "2026-09-09T08:35:12.000Z",
-    "refunded": false,
-    "amount_charged": 500.00,
+    "reference": "lora_ipe_1725934820123_xyz89",
+    "tracking_id": "0TEB51VS5RES4ZZ",
+    "client_reference": "kyc_ipe_order_10029",
+    "new_tracking_id": "0T448N2SR7OFAZC",
+    "resolved_nin": "44297896804",
+    "request_status": "completed",
+    "message": "IPE Clearance completed successfully.",
+    "completed_at": "2026-09-05T21:47:56.000Z",
+    "amount_charged": 2500.0,
     "currency": "NGN"
   }
 }
 \`\`\`
 
-### Event: \`nin_validation.failed\`
+### Event: \`nin_ipe.failed\`
 \`\`\`json
 {
-  "event": "nin_validation.failed",
+  "event": "nin_ipe.failed",
+  "environment": "live",
+  "timestamp": "2026-09-05T21:47:56.240Z",
   "data": {
-    "tracking_id": "nin_val_da7c1d16cd69891a7a9044",
-    "client_reference": "REF_MY_APP_99182",
-    "nin": "18867568313",
-    "validation_type": "no_record_found",
+    "reference": "lora_ipe_1725934820123_xyz89",
+    "tracking_id": "0TBH26SQHQCR9F",
+    "client_reference": "kyc_ipe_order_10029",
     "request_status": "failed",
-    "message": "Your NIN Validation request has failed.",
-    "error_detail": "Validation failed due to suspended or unverified record.",
+    "message": "Your IPE Clearance request has failed.",
+    "error_detail": "Your IPE clearance request has failed. Please contact support for more details.",
     "refunded": true,
-    "amount_charged": 0.00,
+    "refund_amount": 2500.0,
+    "amount_charged": 0.0,
     "currency": "NGN"
   }
 }
