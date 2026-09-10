@@ -47,12 +47,12 @@ export async function POST(req: NextRequest) {
 
   // 3. Validate Tracking ID
   const sanitizedTrackingId = typeof tracking_id === "string" ? tracking_id.trim().toUpperCase() : "";
-  if (!sanitizedTrackingId || sanitizedTrackingId.length < 8 || sanitizedTrackingId.length > 32) {
+  if (!sanitizedTrackingId) {
     return NextResponse.json(
       {
         status: "error",
         code: "VALIDATION_ERROR",
-        message: "Please provide a valid official NIMC Tracking ID (8 to 32 alphanumeric characters).",
+        message: "Please provide a valid NIMC Tracking ID.",
       },
       { status: 400 }
     );
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     orderBy: { serviceKey: "asc" }, // Prefers API_NIN_PERSONALIZATION if configured
   });
 
-  const price = pricingSetting ? Number(pricingSetting.price) : 1500.0;
+  const price = pricingSetting ? Number(pricingSetting.price) : 0;
 
   // 5. Idempotency Check via client_reference
   const cleanClientRef =

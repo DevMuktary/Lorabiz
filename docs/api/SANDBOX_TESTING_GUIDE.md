@@ -114,7 +114,73 @@ If your virtual sandbox balance falls below the required fee (₦150.00):
 
 ---
 
-## 3. Quick cURL Test Examples
+## 3. NIMC IPE Clearance Sandbox Test Scenarios
+
+Test asynchronous IPE clearance lifecycle transitions using test API keys (`lora_test_...`).
+
+### 3.1 Designated Test Tracking IDs
+
+| Test Tracking ID | Simulated Outcome | Simulation Behavior |
+| :--- | :--- | :--- |
+| **`0TEB51VS5RES4ZZ`** | **Success** | Starts in `submitted` (201 Created), transitions to `completed` in 5 seconds with `new_tracking_id: "0T448N2SR7OFAZC"` and `resolved_nin: "44297896804"`. Dispatches `nin_ipe.completed` webhook. |
+| **`0TBH26SQHQCR9F`** | **Failure + Refund** | Starts in `submitted`, transitions to `failed` in 5 seconds with `refunded: true`. Sandbox balance is refunded. Dispatches `nin_ipe.failed` webhook. |
+| **`0TDUPCONFLICT01`** | **Duplicate Conflict** | Immediately rejects with HTTP 409 `DUPLICATE_REQUEST`. |
+
+### 3.2 Quick cURL Test Examples
+
+#### Submit IPE Clearance (Success Simulation)
+```bash
+curl -X POST https://api.lorabiz.com/api/v1/nin/ipe \
+  -H "Authorization: Bearer lora_test_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tracking_id": "0TEB51VS5RES4ZZ",
+    "client_reference": "kyc_ipe_order_1001"
+  }'
+```
+
+#### Poll Status
+```bash
+curl -X GET "https://api.lorabiz.com/api/v1/nin/ipe/status?client_reference=kyc_ipe_order_1001" \
+  -H "Authorization: Bearer lora_test_your_key_here"
+```
+
+---
+
+## 4. NIMC NIN Personalization Sandbox Test Scenarios
+
+Test asynchronous NIN Personalization resolution using test API keys (`lora_test_...`).
+
+### 4.1 Designated Test Tracking IDs
+
+| Test Tracking ID | Simulated Outcome | Simulation Behavior |
+| :--- | :--- | :--- |
+| **`0TEB51VS5RES4ZZ`** | **Success** | Starts in `submitted` (201 Created), transitions to `completed` in 5 seconds with `resolved_nin: "44297896804"`, raw `pdf_base64`, and demographics. Dispatches `nin_personalization.completed` webhook. |
+| **`0TBH26SQHQCR9F`** | **Failure (Non-Refundable)** | Starts in `submitted`, transitions to `failed` in 5 seconds with `error_detail`. Debited fee remains charged (`refunded: false`). Dispatches `nin_personalization.failed` webhook. |
+| **`0TDUPCONFLICT01`** | **Duplicate Conflict** | Immediately rejects with HTTP 409 `DUPLICATE_REQUEST`. |
+
+### 4.2 Quick cURL Test Examples
+
+#### Submit Personalization Request (Success Simulation)
+```bash
+curl -X POST https://api.lorabiz.com/api/v1/nin/personalization \
+  -H "Authorization: Bearer lora_test_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tracking_id": "0TEB51VS5RES4ZZ",
+    "client_reference": "kyc_pzn_order_1001"
+  }'
+```
+
+#### Poll Status (Wait 5s for Completed)
+```bash
+curl -X GET "https://api.lorabiz.com/api/v1/nin/personalization/status?client_reference=kyc_pzn_order_1001" \
+  -H "Authorization: Bearer lora_test_your_key_here"
+```
+
+---
+
+## 5. Quick cURL Test Examples (NIN Verification)
 
 ### Test Happy Path
 ```bash
@@ -137,3 +203,4 @@ curl -X POST https://lorabiz.com/api/v1/nin/by-nin \
     "slip_type": "nin_standard"
   }'
 ```
+

@@ -278,20 +278,20 @@ Clears NIMC In-Processing Errors (IPE). Once cleared, NIMC releases an updated t
 
 ---
 
-### 7. Submit NIMC NIN Personalization Request
+### 7. Submit NIMC Tracking ID for Personalization Request
 - **Method**: \`POST\`
 - **Path**: \`/api/v1/nin/personalization\`
 - **Content-Type**: \`application/json\`
 
 Resolves official NIMC enrollment Tracking ID to retrieve the citizen's official 11-digit NIN, verified demographic details, and official National Identification Slip in raw base64 PDF format (\`pdf_base64\`).
 
-**Strict Zero-Refund Policy**:
-NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests retain the charged fee (₦1,500.00).
-
-#### Sandbox Test Numbers:
+#### Sandbox Test Tracking IDs:
 - Success: \`0TEB51VS5RES4ZZ\` (transitions to \`completed\` in 5 seconds with \`resolved_nin: "44297896804"\`, raw \`pdf_base64\`, and demographics)
-- Failed (Zero Refund): \`0TBH26SQHQCR9F\` (transitions to \`failed\`, debited fee ₦1,500 retained)
+- Failed: \`0TBH26SQHQCR9F\` (transitions to \`failed\` in 5 seconds, debited fee retained)
 - Duplicate Conflict (409): \`0TDUPCONFLICT01\`
+
+**Zero-Refund Policy**:
+NIMC NIN Personalization is strictly non-refundable once submitted. Failed or rejected requests retain the charged fee.
 
 #### Request Body
 \`\`\`json
@@ -326,23 +326,6 @@ NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests
   - \`client_reference\` (optional): Custom client reference
   *(Provide reference or client_reference to look up status. Polling by tracking_id is strictly prohibited)*
 
-#### Processing Response (\`200 OK — Explicit Fee Display\`)
-\`\`\`json
-{
-  "status": "success",
-  "reference": "lora_pzn_1725934820123_abc45",
-  "tracking_id": "0TEB51VS5RES4ZZ",
-  "client_reference": "kyc_pzn_1001",
-  "request_status": "processing",
-  "message": "Your NIN Personalization request is currently processing. Please check back later.",
-  "completed_at": null,
-  "amount_charged": 1500.0,
-  "currency": "NGN",
-  "environment": "live",
-  "date": "2026-09-10T14:45:00.000Z"
-}
-\`\`\`
-
 #### Completed Response (\`200 OK — Direct pdf_base64 Delivery\`)
 \`\`\`json
 {
@@ -373,7 +356,7 @@ NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests
 }
 \`\`\`
 
-#### Failed Response (\`200 OK — Strict Zero Refund\`)
+#### Failed Response (\`200 OK — Non-Refundable\`)
 \`\`\`json
 {
   "status": "error",
@@ -383,6 +366,23 @@ NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests
   "request_status": "failed",
   "message": "Your NIN Personalization request has failed.",
   "error_detail": "Tracking ID could not be resolved or was rejected by identity authority.",
+  "completed_at": null,
+  "amount_charged": 1500.0,
+  "currency": "NGN",
+  "environment": "live",
+  "date": "2026-09-10T14:45:00.000Z"
+}
+\`\`\`
+
+#### Processing Response (\`200 OK\`)
+\`\`\`json
+{
+  "status": "success",
+  "reference": "lora_pzn_1725934820123_abc45",
+  "tracking_id": "0TEB51VS5RES4ZZ",
+  "client_reference": "kyc_pzn_1001",
+  "request_status": "processing",
+  "message": "Your NIN Personalization request is currently processing. Please check back later.",
   "completed_at": null,
   "amount_charged": 1500.0,
   "currency": "NGN",

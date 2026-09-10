@@ -54,7 +54,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
         description:
           "Submit and poll NIMC NIN Personalization requests by Tracking ID to retrieve the citizen's official 11-digit NIN and personalized National Identification Slip (raw base64 PDF).\n\n" +
           "**Strict Zero-Refund Policy**:\n" +
-          "NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests retain the debited fee (₦1,500.00) and are not refunded to the wallet ledger.",
+          "NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests retain the debited fee and are not refunded to the wallet ledger.",
       },
     ],
     security: [
@@ -1200,7 +1200,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   properties: {
                     tracking_id: {
                       type: "string",
-                      description: "Official NIMC enrollment Tracking ID (8 to 32 alphanumeric characters)",
+                      description: "Official NIMC enrollment Tracking ID (alphanumeric string)",
                       example: "0TEB51VS5RES4ZZ",
                     },
                     client_reference: {
@@ -1293,7 +1293,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             "**Tracking ID Rule**:\n" +
             "Querying status by `tracking_id` is strictly prohibited to prevent collisions across retried submissions. Status polling strictly accepts `reference` or `client_reference`.\n\n" +
             "**Fee Visibility & Slip Delivery**:\n" +
-            "- The debited fee (`amount_charged: 1500.0`, `currency: 'NGN'`) is explicitly present across ALL states, including processing.\n" +
+            "- The debited fee (`amount_charged`, `currency: 'NGN'`) is explicitly present across ALL states, including processing.\n" +
             "- Completed responses return the raw base64 PDF string directly under `pdf_base64`.",
           parameters: [
             {
@@ -1320,22 +1320,6 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/PersonalizationStatusResponse" },
                   examples: {
-                    processing: {
-                      summary: "Processing State (Explicit Fee Display)",
-                      value: {
-                        status: "success",
-                        reference: "lora_pzn_1725934820123_abc45",
-                        tracking_id: "0TEB51VS5RES4ZZ",
-                        client_reference: "kyc_pzn_1001",
-                        request_status: "processing",
-                        message: "Your NIN Personalization request is currently processing. Please check back later.",
-                        completed_at: null,
-                        amount_charged: 1500.0,
-                        currency: "NGN",
-                        environment: "live",
-                        date: "2026-09-10T14:45:00.000Z",
-                      },
-                    },
                     completed: {
                       summary: "Personalization Completed (Direct pdf_base64)",
                       value: {
@@ -1375,6 +1359,22 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                         request_status: "failed",
                         message: "Your NIN Personalization request has failed.",
                         error_detail: "Tracking ID could not be resolved or was rejected by identity authority.",
+                        completed_at: null,
+                        amount_charged: 1500.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-10T14:45:00.000Z",
+                      },
+                    },
+                    processing: {
+                      summary: "Processing State (Explicit Fee Display)",
+                      value: {
+                        status: "success",
+                        reference: "lora_pzn_1725934820123_abc45",
+                        tracking_id: "0TEB51VS5RES4ZZ",
+                        client_reference: "kyc_pzn_1001",
+                        request_status: "processing",
+                        message: "Your NIN Personalization request is currently processing. Please check back later.",
                         completed_at: null,
                         amount_charged: 1500.0,
                         currency: "NGN",

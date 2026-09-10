@@ -25,7 +25,6 @@ export const ApiPricingModal: React.FC<ApiPricingModalProps> = ({ isOpen, onClos
     { service: "NIN Validation (Modification)", endpoint: "/api/v1/nin/validation", slip: "modification", price: "₦1,500" },
     { service: "NIN Validation (Photo Error)", endpoint: "/api/v1/nin/validation", slip: "photo_error", price: "₦1,500" },
     { service: "NIMC IPE Clearance", endpoint: "/api/v1/nin/ipe", slip: "NIMC IPE Clearance", price: "₦2,500" },
-    { service: "NIMC NIN Personalization", endpoint: "/api/v1/nin/personalization", slip: "Official Slip (pdf_base64)", price: "₦1,500" },
   ];
 
   return (
