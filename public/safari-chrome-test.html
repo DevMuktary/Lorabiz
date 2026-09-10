@@ -51,6 +51,12 @@
   .scrim.colour { background: rgba(0, 0, 0, .5); }
   .scrim.blur   { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
 
+  /* Candidate fix: bleed past the top and bottom edges so the strips behind Safari's
+     chrome get real painted content. Equal on both sides, so anything centred inside
+     stays centred — that is what makes it safe to apply to every overlay at once.
+     Same trick the dashboard sidebar already uses to kill its own box. */
+  .scrim.tall { top: -200px; bottom: -200px; }
+
   .panel {
     position: fixed;
     z-index: 101;
@@ -101,10 +107,15 @@
   <small>body.style.overflow = hidden, no overlay at all</small>
 </button>
 
+<button id="t6" aria-pressed="false" data-mode="colour blur tall" style="border-style:dashed">
+  6 · Test 4, but bled 200px past top and bottom
+  <small>candidate fix — same colour and blur as 4, only taller</small>
+</button>
+
 <button id="cover" aria-pressed="false" style="margin-top:18px;border-style:dashed">
   viewport-fit: <span id="cover-state">auto</span>
   <small>
-    Independent switch — leave it on <b>auto</b> for the five tests above, then turn
+    Independent switch — leave it on <b>auto</b> for the tests above, then turn
     it to <b>cover</b> and repeat any test that showed bars. This decides whether
     Safari or the page paints the strips behind the bars.
   </small>
