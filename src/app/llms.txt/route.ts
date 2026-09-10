@@ -191,6 +191,26 @@ In both live and test modes, look up requests using the \`reference\` returned u
 }
 \`\`\`
 
+#### Failed Response (\`200 OK — Automatic Refund\`)
+\`\`\`json
+{
+  "status": "error",
+  "reference": "nin_val_da7c1d16cd69891a7a9044",
+  "client_reference": "REF_MY_APP_99182",
+  "nin": "18867568313",
+  "validation_type": "no_record_found",
+  "request_status": "failed",
+  "message": "Your NIN Validation request has failed.",
+  "error_detail": "Record could not be validated against national database.",
+  "completed_at": null,
+  "refunded": true,
+  "amount_charged": 0.00,
+  "currency": "NGN",
+  "environment": "live",
+  "date": "2026-09-09T08:15:00.000Z"
+}
+\`\`\`
+
 ---
 
 ### 5. Submit NIMC IPE Clearance Request

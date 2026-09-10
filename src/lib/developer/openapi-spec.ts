@@ -869,8 +869,45 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIN Validation"],
           summary: "Check NIN Validation Status",
           description:
-            "Query the current processing status of a submitted NIN validation request using either `reference` or `client_reference`.\n\n" +
-            "In both live and test modes, look up requests using the `reference` returned upon submission or your custom `client_reference`.",
+            "Query the real-time processing status of a submitted NIN validation request using either `reference` or `client_reference`.\n\n" +
+            "In both live and test modes, look up requests using the `reference` returned upon submission or your custom `client_reference`.\n\n" +
+            "#### Example Responses:\n\n" +
+            "**Status: Validated (200 OK)**\n" +
+            "```json\n" +
+            "{\n" +
+            '  "status": "success",\n' +
+            '  "reference": "nin_val_da7c1d16cd69891a7a9044",\n' +
+            '  "client_reference": "REF_MY_APP_99182",\n' +
+            '  "nin": "18867568313",\n' +
+            '  "validation_type": "no_record_found",\n' +
+            '  "request_status": "validated",\n' +
+            '  "message": "NIN Validation completed successfully.",\n' +
+            '  "completed_at": "2026-09-09T08:35:12.000Z",\n' +
+            '  "amount_charged": 700.0,\n' +
+            '  "currency": "NGN",\n' +
+            '  "environment": "live",\n' +
+            '  "date": "2026-09-09T08:15:00.000Z"\n' +
+            "}\n" +
+            "```\n\n" +
+            "**Status: Failed (200 OK with Automatic Refund)**\n" +
+            "```json\n" +
+            "{\n" +
+            '  "status": "error",\n' +
+            '  "reference": "nin_val_da7c1d16cd69891a7a9044",\n' +
+            '  "client_reference": "REF_MY_APP_99182",\n' +
+            '  "nin": "18867568313",\n' +
+            '  "validation_type": "no_record_found",\n' +
+            '  "request_status": "failed",\n' +
+            '  "message": "Your NIN Validation request has failed.",\n' +
+            '  "error_detail": "Record could not be validated against national database.",\n' +
+            '  "completed_at": null,\n' +
+            '  "refunded": true,\n' +
+            '  "amount_charged": 0.0,\n' +
+            '  "currency": "NGN",\n' +
+            '  "environment": "live",\n' +
+            '  "date": "2026-09-09T08:15:00.000Z"\n' +
+            "}\n" +
+            "```",
           parameters: [
             {
               name: "reference",
@@ -908,6 +945,44 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     currency: "NGN",
                     environment: "live",
                     date: "2026-09-09T08:15:00.000Z",
+                  },
+                  examples: {
+                    validated: {
+                      summary: "Validation Completed (Success)",
+                      value: {
+                        status: "success",
+                        reference: "nin_val_da7c1d16cd69891a7a9044",
+                        client_reference: "REF_MY_APP_99182",
+                        nin: "18867568313",
+                        validation_type: "no_record_found",
+                        request_status: "validated",
+                        message: "NIN Validation completed successfully.",
+                        completed_at: "2026-09-09T08:35:12.000Z",
+                        amount_charged: 700.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-09T08:15:00.000Z",
+                      },
+                    },
+                    failed: {
+                      summary: "Validation Failed (Automatic Refund)",
+                      value: {
+                        status: "error",
+                        reference: "nin_val_da7c1d16cd69891a7a9044",
+                        client_reference: "REF_MY_APP_99182",
+                        nin: "18867568313",
+                        validation_type: "no_record_found",
+                        request_status: "failed",
+                        message: "Your NIN Validation request has failed.",
+                        error_detail: "Record could not be validated against national database.",
+                        completed_at: null,
+                        refunded: true,
+                        amount_charged: 0.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-09T08:15:00.000Z",
+                      },
+                    },
                   },
                 },
               },
@@ -1066,8 +1141,45 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIMC IPE Clearance"],
           summary: "Check NIMC IPE Clearance Status",
           description:
-            "Query the status of an IPE clearance application using either `reference` or `client_reference`.\n\n" +
-            "Status polling strictly uses `reference` or `client_reference` rather than the candidate `tracking_id` to prevent collision across retried submissions.",
+            "Query the real-time status of an IPE clearance application using either `reference` or `client_reference`.\n\n" +
+            "Status polling strictly uses `reference` or `client_reference` rather than the candidate `tracking_id` to prevent collision across retried submissions.\n\n" +
+            "#### Example Responses:\n\n" +
+            "**Status: Completed (200 OK)**\n" +
+            "```json\n" +
+            "{\n" +
+            '  "status": "success",\n' +
+            '  "reference": "lora_ipe_1725934820123_xyz89",\n' +
+            '  "tracking_id": "0TEB51VS5RES4ZZ",\n' +
+            '  "client_reference": "kyc_ipe_order_10029",\n' +
+            '  "request_status": "completed",\n' +
+            '  "message": "IPE Clearance completed successfully.",\n' +
+            '  "new_tracking_id": "0T448N2SR7OFAZC",\n' +
+            '  "resolved_nin": "44297896804",\n' +
+            '  "completed_at": "2026-09-05T21:47:56.000Z",\n' +
+            '  "amount_charged": 2500.0,\n' +
+            '  "currency": "NGN",\n' +
+            '  "environment": "live",\n' +
+            '  "date": "2026-09-05T20:30:12.000Z"\n' +
+            "}\n" +
+            "```\n\n" +
+            "**Status: Failed (200 OK with Automatic Refund)**\n" +
+            "```json\n" +
+            "{\n" +
+            '  "status": "error",\n' +
+            '  "reference": "lora_ipe_1725934820123_xyz89",\n' +
+            '  "tracking_id": "0TBH26SQHQCR9F",\n' +
+            '  "client_reference": "kyc_ipe_order_10029",\n' +
+            '  "request_status": "failed",\n' +
+            '  "message": "Your IPE Clearance request has failed.",\n' +
+            '  "error_detail": "Your IPE clearance request has failed. Please contact support for more details.",\n' +
+            '  "refunded": true,\n' +
+            '  "completed_at": null,\n' +
+            '  "amount_charged": 0.0,\n' +
+            '  "currency": "NGN",\n' +
+            '  "environment": "live",\n' +
+            '  "date": "2026-09-05T20:30:12.000Z"\n' +
+            "}\n" +
+            "```",
           parameters: [
             {
               name: "reference",
@@ -1092,6 +1204,21 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/IpeStatusResponse" },
+                  example: {
+                    status: "success",
+                    reference: "lora_ipe_1725934820123_xyz89",
+                    tracking_id: "0TEB51VS5RES4ZZ",
+                    client_reference: "kyc_ipe_order_10029",
+                    request_status: "completed",
+                    message: "IPE Clearance completed successfully.",
+                    new_tracking_id: "0T448N2SR7OFAZC",
+                    resolved_nin: "44297896804",
+                    completed_at: "2026-09-05T21:47:56.000Z",
+                    amount_charged: 2500.0,
+                    currency: "NGN",
+                    environment: "live",
+                    date: "2026-09-05T20:30:12.000Z",
+                  },
                   examples: {
                     completed: {
                       summary: "Clearance Completed",
@@ -1233,14 +1360,6 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                 },
               },
             },
-            "200": {
-              description: "Existing personalization request retrieved via client_reference",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/PersonalizationSubmitResponse" },
-                },
-              },
-            },
             "400": {
               description: "Validation Error",
               content: {
@@ -1294,7 +1413,54 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             "Querying status by `tracking_id` is strictly prohibited to prevent collisions across retried submissions. Status polling strictly accepts `reference` or `client_reference`.\n\n" +
             "**Fee Visibility & Slip Delivery**:\n" +
             "- The debited fee (`amount_charged`, `currency: 'NGN'`) is explicitly present across ALL states, including processing.\n" +
-            "- Completed responses return the raw base64 PDF string directly under `pdf_base64`.",
+            "- Completed responses return the raw base64 PDF string directly under `pdf_base64`.\n\n" +
+            "#### Example Responses:\n\n" +
+            "**Status: Completed (200 OK)**\n" +
+            "```json\n" +
+            "{\n" +
+            '  "status": "success",\n' +
+            '  "reference": "lora_pzn_1725934820123_abc45",\n' +
+            '  "tracking_id": "0TEB51VS5RES4ZZ",\n' +
+            '  "client_reference": "kyc_pzn_1001",\n' +
+            '  "request_status": "completed",\n' +
+            '  "message": "NIN Personalization completed successfully.",\n' +
+            '  "resolved_nin": "44297896804",\n' +
+            '  "pdf_base64": "JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoK...",\n' +
+            '  "data": {\n' +
+            '    "nin": "44297896804",\n' +
+            '    "firstname": "IBRAHIM",\n' +
+            '    "surname": "MUSA",\n' +
+            '    "middlename": "BELLO",\n' +
+            '    "birthdate": "1995-04-12",\n' +
+            '    "gender": "Male",\n' +
+            '    "telephoneno": "08012345678",\n' +
+            '    "residence_state": "Kano",\n' +
+            '    "photo": "/9j/4AAQSkZJRg..."\n' +
+            "  },\n" +
+            '  "completed_at": "2026-09-10T14:50:00.000Z",\n' +
+            '  "amount_charged": 1500.0,\n' +
+            '  "currency": "NGN",\n' +
+            '  "environment": "live",\n' +
+            '  "date": "2026-09-10T14:45:00.000Z"\n' +
+            "}\n" +
+            "```\n\n" +
+            "**Status: Failed (200 OK — Non-Refundable)**\n" +
+            "```json\n" +
+            "{\n" +
+            '  "status": "error",\n' +
+            '  "reference": "lora_pzn_1725934820123_abc45",\n' +
+            '  "tracking_id": "0TBH26SQHQCR9F",\n' +
+            '  "client_reference": "kyc_pzn_1001",\n' +
+            '  "request_status": "failed",\n' +
+            '  "message": "Your NIN Personalization request has failed.",\n' +
+            '  "error_detail": "Tracking ID could not be resolved or was rejected by identity authority.",\n' +
+            '  "completed_at": null,\n' +
+            '  "amount_charged": 1500.0,\n' +
+            '  "currency": "NGN",\n' +
+            '  "environment": "live",\n' +
+            '  "date": "2026-09-10T14:45:00.000Z"\n' +
+            "}\n" +
+            "```",
           parameters: [
             {
               name: "reference",
@@ -1319,6 +1485,32 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/PersonalizationStatusResponse" },
+                  example: {
+                    status: "success",
+                    reference: "lora_pzn_1725934820123_abc45",
+                    tracking_id: "0TEB51VS5RES4ZZ",
+                    client_reference: "kyc_pzn_1001",
+                    request_status: "completed",
+                    message: "NIN Personalization completed successfully.",
+                    resolved_nin: "44297896804",
+                    pdf_base64: "JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoK...",
+                    data: {
+                      nin: "44297896804",
+                      firstname: "IBRAHIM",
+                      surname: "MUSA",
+                      middlename: "BELLO",
+                      birthdate: "1995-04-12",
+                      gender: "Male",
+                      telephoneno: "08012345678",
+                      residence_state: "Kano",
+                      photo: "/9j/4AAQSkZJRg...",
+                    },
+                    completed_at: "2026-09-10T14:50:00.000Z",
+                    amount_charged: 1500.0,
+                    currency: "NGN",
+                    environment: "live",
+                    date: "2026-09-10T14:45:00.000Z",
+                  },
                   examples: {
                     completed: {
                       summary: "Personalization Completed (Direct pdf_base64)",
