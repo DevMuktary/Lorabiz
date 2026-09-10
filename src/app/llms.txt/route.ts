@@ -198,7 +198,7 @@ In both live and test modes, look up requests using the \`reference\` returned u
 - **Path**: \`/api/v1/nin/ipe\`
 - **Content-Type**: \`application/json\`
 
-Resolves biometric enrollment exceptions on the NIMC database. Once cleared, NIMC releases an updated tracking ID (\`new_tracking_id\`) and the 11-digit NIN (\`resolved_nin\`).
+Clears NIMC In-Processing Errors (IPE). Once cleared, NIMC releases an updated tracking ID (\`new_tracking_id\`) and the 11-digit NIN (\`resolved_nin\`).
 
 #### Sandbox Test Numbers:
 - Success: \`0TEB51VS5RES4ZZ\` (transitions to \`completed\` in 5 seconds)

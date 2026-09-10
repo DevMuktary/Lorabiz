@@ -47,7 +47,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       {
         name: "NIMC IPE Clearance",
         description:
-          "Submit and poll NIMC IPE Clearance (Exception Resolution) requests to resolve enrollment biometric anomalies and release cleared NINs.",
+          "Submit and poll NIMC IPE Clearance requests to clear In-Processing Errors and release updated tracking IDs and cleared NINs.",
       },
     ],
     security: [
@@ -907,7 +907,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIMC IPE Clearance"],
           summary: "Submit NIMC IPE Clearance Request",
           description:
-            "Submit an applicant's official NIMC Tracking ID for Exception Resolution (IPE clearance).\n\n" +
+            "Submit an applicant's official NIMC Tracking ID for NIMC IPE Clearance (In-Processing Error clearance).\n\n" +
             "#### Sandbox Testing:\n" +
             "- `0TEB51VS5RES4ZZ`: Simulates success (transitions to `completed`, releasing `new_tracking_id` and `resolved_nin`).\n" +
             "- `0TBH26SQHQCR9F`: Simulates failure (transitions to `failed`, `refunded: true`).\n" +

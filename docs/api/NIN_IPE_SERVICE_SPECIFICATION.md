@@ -1,8 +1,8 @@
-# NIMC IPE Clearance (Exception Resolution) Service Specification
+# NIMC IPE Clearance Service Specification
 
-The **NIMC IPE Clearance API** resolves biometric enrollment exceptions (such as biometric mismatch, suspension, duplicate biometric records, or unreleased NIN) flagged in the National Identity Management Commission (NIMC) database.
+The **NIMC IPE Clearance API** clears **In-Processing Errors (IPE)** on enrollment records in the National Identity Management Commission (NIMC) database.
 
-Upon successful resolution, NIMC issues a **new official Tracking ID** (`new_tracking_id`) and releases the cleared 11-digit **National Identification Number** (`resolved_nin`).
+Upon successful clearance, NIMC issues a **new official Tracking ID** (`new_tracking_id`) and releases the cleared 11-digit **National Identification Number** (`resolved_nin`).
 
 ---
 
