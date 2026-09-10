@@ -278,10 +278,125 @@ Clears NIMC In-Processing Errors (IPE). Once cleared, NIMC releases an updated t
 
 ---
 
+### 7. Submit NIMC NIN Personalization Request
+- **Method**: \`POST\`
+- **Path**: \`/api/v1/nin/personalization\`
+- **Content-Type**: \`application/json\`
+
+Resolves official NIMC enrollment Tracking ID to retrieve the citizen's official 11-digit NIN, verified demographic details, and official National Identification Slip in raw base64 PDF format (\`pdf_base64\`).
+
+**Strict Zero-Refund Policy**:
+NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests retain the charged fee (₦1,500.00).
+
+#### Sandbox Test Numbers:
+- Success: \`0TEB51VS5RES4ZZ\` (transitions to \`completed\` in 5 seconds with \`resolved_nin: "44297896804"\`, raw \`pdf_base64\`, and demographics)
+- Failed (Zero Refund): \`0TBH26SQHQCR9F\` (transitions to \`failed\`, debited fee ₦1,500 retained)
+- Duplicate Conflict (409): \`0TDUPCONFLICT01\`
+
+#### Request Body
+\`\`\`json
+{
+  "tracking_id": "0TEB51VS5RES4ZZ",
+  "client_reference": "kyc_pzn_1001"
+}
+\`\`\`
+
+#### Success Response (\`201 Created\`)
+\`\`\`json
+{
+  "status": "success",
+  "message": "NIN Personalization request submitted successfully.",
+  "reference": "lora_pzn_1725934820123_abc45",
+  "tracking_id": "0TEB51VS5RES4ZZ",
+  "client_reference": "kyc_pzn_1001",
+  "request_status": "submitted",
+  "amount_charged": 1500.0,
+  "currency": "NGN",
+  "environment": "live"
+}
+\`\`\`
+
+---
+
+### 8. Check NIMC NIN Personalization Status
+- **Method**: \`GET\`
+- **Path**: \`/api/v1/nin/personalization/status\`
+- **Query Parameters**:
+  - \`reference\` (optional): Lorabiz platform reference (e.g. \`lora_pzn_...\`)
+  - \`client_reference\` (optional): Custom client reference
+  *(Provide reference or client_reference to look up status. Polling by tracking_id is strictly prohibited)*
+
+#### Processing Response (\`200 OK — Explicit Fee Display\`)
+\`\`\`json
+{
+  "status": "success",
+  "reference": "lora_pzn_1725934820123_abc45",
+  "tracking_id": "0TEB51VS5RES4ZZ",
+  "client_reference": "kyc_pzn_1001",
+  "request_status": "processing",
+  "message": "Your NIN Personalization request is currently processing. Please check back later.",
+  "completed_at": null,
+  "amount_charged": 1500.0,
+  "currency": "NGN",
+  "environment": "live",
+  "date": "2026-09-10T14:45:00.000Z"
+}
+\`\`\`
+
+#### Completed Response (\`200 OK — Direct pdf_base64 Delivery\`)
+\`\`\`json
+{
+  "status": "success",
+  "reference": "lora_pzn_1725934820123_abc45",
+  "tracking_id": "0TEB51VS5RES4ZZ",
+  "client_reference": "kyc_pzn_1001",
+  "request_status": "completed",
+  "message": "NIN Personalization completed successfully.",
+  "resolved_nin": "44297896804",
+  "pdf_base64": "JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoK...",
+  "data": {
+    "nin": "44297896804",
+    "firstname": "IBRAHIM",
+    "surname": "MUSA",
+    "middlename": "BELLO",
+    "birthdate": "1995-04-12",
+    "gender": "Male",
+    "telephoneno": "08012345678",
+    "residence_state": "Kano",
+    "photo": "/9j/4AAQSkZJRg..."
+  },
+  "completed_at": "2026-09-10T14:50:00.000Z",
+  "amount_charged": 1500.0,
+  "currency": "NGN",
+  "environment": "live",
+  "date": "2026-09-10T14:45:00.000Z"
+}
+\`\`\`
+
+#### Failed Response (\`200 OK — Strict Zero Refund\`)
+\`\`\`json
+{
+  "status": "error",
+  "reference": "lora_pzn_1725934820123_abc45",
+  "tracking_id": "0TBH26SQHQCR9F",
+  "client_reference": "kyc_pzn_1001",
+  "request_status": "failed",
+  "message": "Your NIN Personalization request has failed.",
+  "error_detail": "Tracking ID could not be resolved or was rejected by identity authority.",
+  "completed_at": null,
+  "amount_charged": 1500.0,
+  "currency": "NGN",
+  "environment": "live",
+  "date": "2026-09-10T14:45:00.000Z"
+}
+\`\`\`
+
+---
+
 ## Centralized Webhooks & HMAC Signatures
 Configure your centralized webhook URL in the [Developer Console](https://lorabiz.com/dashboard/developer). All events are dispatched with:
 - \`x-lorabiz-signature\`: HMAC-SHA256 hex digest computed with your webhook secret.
-- \`x-lorabiz-event\`: Event name (\`nin_validation.submitted\`, \`nin_validation.completed\`, \`nin_validation.failed\`, \`nin_ipe.submitted\`, \`nin_ipe.completed\`, \`nin_ipe.failed\`).
+- \`x-lorabiz-event\`: Event name (\`nin_validation.submitted\`, \`nin_validation.completed\`, \`nin_validation.failed\`, \`nin_ipe.submitted\`, \`nin_ipe.completed\`, \`nin_ipe.failed\`, \`nin_personalization.submitted\`, \`nin_personalization.completed\`, \`nin_personalization.failed\`).
 
 ### Event: \`nin_ipe.completed\`
 \`\`\`json
@@ -320,6 +435,58 @@ Configure your centralized webhook URL in the [Developer Console](https://lorabi
     "refunded": true,
     "refund_amount": 2500.0,
     "amount_charged": 0.0,
+    "currency": "NGN"
+  }
+}
+\`\`\`
+
+### Event: \`nin_personalization.completed\`
+\`\`\`json
+{
+  "event": "nin_personalization.completed",
+  "environment": "live",
+  "timestamp": "2026-09-10T14:50:00.000Z",
+  "data": {
+    "reference": "lora_pzn_1725934820123_abc45",
+    "tracking_id": "0TEB51VS5RES4ZZ",
+    "client_reference": "kyc_pzn_1001",
+    "resolved_nin": "44297896804",
+    "pdf_base64": "JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoK...",
+    "data": {
+      "nin": "44297896804",
+      "firstname": "IBRAHIM",
+      "surname": "MUSA",
+      "middlename": "BELLO",
+      "birthdate": "1995-04-12",
+      "gender": "Male",
+      "telephoneno": "08012345678",
+      "residence_state": "Kano",
+      "photo": "/9j/4AAQSkZJRg..."
+    },
+    "request_status": "completed",
+    "message": "NIN Personalization completed successfully.",
+    "completed_at": "2026-09-10T14:50:00.000Z",
+    "amount_charged": 1500.0,
+    "currency": "NGN"
+  }
+}
+\`\`\`
+
+### Event: \`nin_personalization.failed\`
+\`\`\`json
+{
+  "event": "nin_personalization.failed",
+  "environment": "live",
+  "timestamp": "2026-09-10T14:50:00.000Z",
+  "data": {
+    "reference": "lora_pzn_1725934820123_abc45",
+    "tracking_id": "0TBH26SQHQCR9F",
+    "client_reference": "kyc_pzn_1001",
+    "request_status": "failed",
+    "message": "Your NIN Personalization request has failed.",
+    "error_detail": "Tracking ID could not be resolved or was rejected by identity authority.",
+    "refunded": false,
+    "amount_charged": 1500.0,
     "currency": "NGN"
   }
 }

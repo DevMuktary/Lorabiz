@@ -272,7 +272,14 @@ export default function PersonalizationPipelinePage() {
                             {copiedKey === item.id ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                           </button>
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono">{item.reference}</div>
+                        <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5">
+                          <span>{item.reference}</span>
+                          {item.isApiRequest && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                              API
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4">

@@ -5,6 +5,7 @@ import {
   parseDataVerifyPersonalizationResult,
 } from "@/lib/dataverify";
 import { dispatchNotification } from "@/services/notifications";
+import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
 
 export async function GET(req: NextRequest) {
   return handleSync(req);
@@ -88,8 +89,31 @@ async function handleSync(req: NextRequest) {
               apiMessage: parsed.message || "Personalization Successful",
               apiResponse: statusResult.data as any,
               completedAt: new Date(),
+              lastSyncedAt: new Date(),
             },
           });
+
+          // Dispatch developer webhook if this is an API order
+          if (item.isApiRequest) {
+            dispatchDeveloperWebhook(
+              item.userId,
+              "nin_personalization.completed",
+              {
+                reference: item.reference,
+                tracking_id: item.trackingId,
+                client_reference: item.clientReference || null,
+                resolved_nin: parsed.resolvedNin || item.resolvedNin,
+                pdf_base64: parsed.pdfBase64 || item.pdfUrl,
+                data: ((parsed.userData || item.userData) as Record<string, unknown>) || null,
+                request_status: "completed",
+                message: "NIN Personalization completed successfully.",
+                completed_at: new Date().toISOString(),
+                amount_charged: Number(item.amountCharged),
+                currency: "NGN",
+              },
+              "LIVE"
+            );
+          }
 
           // Dispatch notification
           try {
@@ -117,10 +141,33 @@ async function handleSync(req: NextRequest) {
             data: {
               status: "FAILED",
               failureReason: failureReason,
+              refunded: false,
+              refundAmount: 0,
               apiMessage: parsed.message || "Personalization Failed",
               apiResponse: statusResult.data as any,
+              lastSyncedAt: new Date(),
             },
           });
+
+          // Dispatch developer webhook if this is an API order
+          if (item.isApiRequest) {
+            dispatchDeveloperWebhook(
+              item.userId,
+              "nin_personalization.failed",
+              {
+                reference: item.reference,
+                tracking_id: item.trackingId,
+                client_reference: item.clientReference || null,
+                request_status: "failed",
+                message: "Your NIN Personalization request has failed.",
+                error_detail: failureReason,
+                refunded: false,
+                amount_charged: Number(item.amountCharged),
+                currency: "NGN",
+              },
+              "LIVE"
+            );
+          }
 
           // Dispatch failed notification
           try {

@@ -49,6 +49,13 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
         description:
           "Submit and poll NIMC IPE Clearance requests to clear In-Processing Errors and release updated tracking IDs and cleared NINs.",
       },
+      {
+        name: "NIMC NIN Personalization",
+        description:
+          "Submit and poll NIMC NIN Personalization requests by Tracking ID to retrieve the citizen's official 11-digit NIN and personalized National Identification Slip (raw base64 PDF).\n\n" +
+          "**Strict Zero-Refund Policy**:\n" +
+          "NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests retain the debited fee (₦1,500.00) and are not refunded to the wallet ledger.",
+      },
     ],
     security: [
       {
@@ -285,6 +292,54 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             currency: { type: "string", example: "NGN" },
             environment: { type: "string", enum: ["live", "test"], example: "live" },
             date: { type: "string", format: "date-time", example: "2026-09-05T20:30:12.000Z" },
+          },
+        },
+        PersonalizationSubmitResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "success" },
+            message: { type: "string", example: "NIN Personalization request submitted successfully." },
+            reference: { type: "string", example: "lora_pzn_1725934820123_abc45" },
+            tracking_id: { type: "string", example: "0TEB51VS5RES4ZZ" },
+            client_reference: { type: "string", nullable: true, example: "kyc_pzn_1001" },
+            request_status: { type: "string", enum: ["submitted", "processing", "completed", "failed"], example: "submitted" },
+            amount_charged: { type: "number", example: 1500.0 },
+            currency: { type: "string", example: "NGN" },
+            environment: { type: "string", enum: ["live", "test"], example: "live" },
+          },
+        },
+        PersonalizationStatusResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "success" },
+            reference: { type: "string", example: "lora_pzn_1725934820123_abc45" },
+            tracking_id: { type: "string", example: "0TEB51VS5RES4ZZ" },
+            client_reference: { type: "string", nullable: true, example: "kyc_pzn_1001" },
+            request_status: { type: "string", enum: ["submitted", "processing", "completed", "failed"], example: "completed" },
+            message: { type: "string", example: "NIN Personalization completed successfully." },
+            resolved_nin: { type: "string", nullable: true, example: "44297896804" },
+            pdf_base64: { type: "string", nullable: true, description: "Raw base64-encoded PDF slip document" },
+            data: {
+              type: "object",
+              nullable: true,
+              properties: {
+                nin: { type: "string", example: "44297896804" },
+                firstname: { type: "string", example: "IBRAHIM" },
+                surname: { type: "string", example: "MUSA" },
+                middlename: { type: "string", example: "BELLO" },
+                birthdate: { type: "string", example: "1995-04-12" },
+                gender: { type: "string", example: "Male" },
+                telephoneno: { type: "string", example: "08012345678" },
+                residence_state: { type: "string", example: "Kano" },
+                photo: { type: "string", example: "/9j/4AAQSkZJRg..." },
+              },
+            },
+            error_detail: { type: "string", nullable: true, example: null },
+            completed_at: { type: "string", format: "date-time", nullable: true, example: "2026-09-10T14:50:00.000Z" },
+            amount_charged: { type: "number", description: "Debited processing fee (explicitly present across all states, including processing)", example: 1500.0 },
+            currency: { type: "string", example: "NGN" },
+            environment: { type: "string", enum: ["live", "test"], example: "live" },
+            date: { type: "string", format: "date-time", example: "2026-09-10T14:45:00.000Z" },
           },
         },
         DuplicateRequestResponse: {
@@ -1108,6 +1163,259 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                     status: "error",
                     code: "RECORD_NOT_FOUND",
                     message: "No IPE clearance ticket was found matching the provided reference under your account.",
+                  },
+                },
+              },
+            },
+            "429": {
+              description: "Too Many Requests",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/v1/nin/personalization": {
+        post: {
+          tags: ["NIMC NIN Personalization"],
+          summary: "Submit NIN Personalization Request",
+          description:
+            "Submit an applicant's official NIMC Tracking ID to resolve their official NIN and personalized National Identification Slip.\n\n" +
+            "**Strict Zero-Refund Policy**:\n" +
+            "NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests retain the charged fee (₦1,500.00).\n\n" +
+            "**Active Duplicate Prevention Lifecycle**:\n" +
+            "If an active request is in progress (`status: 'PROCESSING'`) for the same Tracking ID, duplicate submissions are rejected with **HTTP 409 (`DUPLICATE_REQUEST`)**. Resubmissions are allowed if a previous ticket reached a terminal state (`FAILED` or `COMPLETED`).\n\n" +
+            "**Idempotency**:\n" +
+            "Submitting with an existing `client_reference` returns the previously generated ticket (**HTTP 200**) without charging your balance again.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["tracking_id"],
+                  properties: {
+                    tracking_id: {
+                      type: "string",
+                      description: "Official NIMC enrollment Tracking ID (8 to 32 alphanumeric characters)",
+                      example: "0TEB51VS5RES4ZZ",
+                    },
+                    client_reference: {
+                      type: "string",
+                      description: "Custom idempotency tracking string (max 128 chars)",
+                      example: "kyc_pzn_1001",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "Personalization request submitted successfully",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/PersonalizationSubmitResponse" },
+                  example: {
+                    status: "success",
+                    message: "NIN Personalization request submitted successfully.",
+                    reference: "lora_pzn_1725934820123_abc45",
+                    tracking_id: "0TEB51VS5RES4ZZ",
+                    client_reference: "kyc_pzn_1001",
+                    request_status: "submitted",
+                    amount_charged: 1500.0,
+                    currency: "NGN",
+                    environment: "live",
+                  },
+                },
+              },
+            },
+            "200": {
+              description: "Existing personalization request retrieved via client_reference",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/PersonalizationSubmitResponse" },
+                },
+              },
+            },
+            "400": {
+              description: "Validation Error",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                },
+              },
+            },
+            "401": {
+              description: "Unauthorized",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
+                },
+              },
+            },
+            "402": {
+              description: "Insufficient Balance",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/InsufficientBalanceResponse" },
+                },
+              },
+            },
+            "409": {
+              description: "Duplicate Active Request",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/DuplicateRequestResponse" },
+                },
+              },
+            },
+            "429": {
+              description: "Too Many Requests",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/v1/nin/personalization/status": {
+        get: {
+          tags: ["NIMC NIN Personalization"],
+          summary: "Check NIN Personalization Status",
+          description:
+            "Query the real-time status of a NIN personalization request using `reference` or `client_reference`.\n\n" +
+            "**Tracking ID Rule**:\n" +
+            "Querying status by `tracking_id` is strictly prohibited to prevent collisions across retried submissions. Status polling strictly accepts `reference` or `client_reference`.\n\n" +
+            "**Fee Visibility & Slip Delivery**:\n" +
+            "- The debited fee (`amount_charged: 1500.0`, `currency: 'NGN'`) is explicitly present across ALL states, including processing.\n" +
+            "- Completed responses return the raw base64 PDF string directly under `pdf_base64`.",
+          parameters: [
+            {
+              name: "reference",
+              in: "query",
+              required: false,
+              description: "Primary Lorabiz platform reference returned upon submission",
+              schema: { type: "string" },
+              example: "lora_pzn_1725934820123_abc45",
+            },
+            {
+              name: "client_reference",
+              in: "query",
+              required: false,
+              description: "Custom idempotency tracking reference supplied upon submission",
+              schema: { type: "string" },
+              example: "kyc_pzn_1001",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Status query successful",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/PersonalizationStatusResponse" },
+                  examples: {
+                    processing: {
+                      summary: "Processing State (Explicit Fee Display)",
+                      value: {
+                        status: "success",
+                        reference: "lora_pzn_1725934820123_abc45",
+                        tracking_id: "0TEB51VS5RES4ZZ",
+                        client_reference: "kyc_pzn_1001",
+                        request_status: "processing",
+                        message: "Your NIN Personalization request is currently processing. Please check back later.",
+                        completed_at: null,
+                        amount_charged: 1500.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-10T14:45:00.000Z",
+                      },
+                    },
+                    completed: {
+                      summary: "Personalization Completed (Direct pdf_base64)",
+                      value: {
+                        status: "success",
+                        reference: "lora_pzn_1725934820123_abc45",
+                        tracking_id: "0TEB51VS5RES4ZZ",
+                        client_reference: "kyc_pzn_1001",
+                        request_status: "completed",
+                        message: "NIN Personalization completed successfully.",
+                        resolved_nin: "44297896804",
+                        pdf_base64: "JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoK...",
+                        data: {
+                          nin: "44297896804",
+                          firstname: "IBRAHIM",
+                          surname: "MUSA",
+                          middlename: "BELLO",
+                          birthdate: "1995-04-12",
+                          gender: "Male",
+                          telephoneno: "08012345678",
+                          residence_state: "Kano",
+                          photo: "/9j/4AAQSkZJRg...",
+                        },
+                        completed_at: "2026-09-10T14:50:00.000Z",
+                        amount_charged: 1500.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-10T14:45:00.000Z",
+                      },
+                    },
+                    failed: {
+                      summary: "Personalization Failed (Strict Zero Refund)",
+                      value: {
+                        status: "error",
+                        reference: "lora_pzn_1725934820123_abc45",
+                        tracking_id: "0TBH26SQHQCR9F",
+                        client_reference: "kyc_pzn_1001",
+                        request_status: "failed",
+                        message: "Your NIN Personalization request has failed.",
+                        error_detail: "Tracking ID could not be resolved or was rejected by identity authority.",
+                        completed_at: null,
+                        amount_charged: 1500.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-10T14:45:00.000Z",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Missing reference parameter or invalid query",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                  example: {
+                    status: "error",
+                    code: "INVALID_QUERY",
+                    message: "Provide reference or client_reference to look up status. Polling by tracking_id is not permitted.",
+                  },
+                },
+              },
+            },
+            "401": {
+              description: "Unauthorized",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/UnauthorizedErrorResponse" },
+                },
+              },
+            },
+            "404": {
+              description: "Personalization Ticket Not Found",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/RecordNotFoundResponse" },
+                  example: {
+                    status: "error",
+                    code: "RECORD_NOT_FOUND",
+                    message: "No NIN personalization ticket was found matching the provided reference under your account.",
                   },
                 },
               },

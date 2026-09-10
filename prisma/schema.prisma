@@ -132,6 +132,7 @@ model User {
   ninValidationRequests NinValidationRequest[]
   testNinValidationTickets TestNinValidationTicket[]
   ninPersonalizationRequests NinPersonalizationRequest[]
+  testNinPersonalizationTickets TestNinPersonalizationTicket[]
   ninModificationConsent NinModificationConsent?
   ninModificationRequests NinModificationRequest[]
   bvnRequests      BvnRequestLog[]
@@ -564,6 +565,13 @@ model NinPersonalizationRequest {
   amountCharged Decimal                  @db.Decimal(10, 2)
   apiResponse   Json?
   
+  // Developer API tracking fields
+  isApiRequest    Boolean                  @default(false)
+  clientReference String?
+  refunded        Boolean                  @default(false)
+  refundAmount    Decimal?                 @db.Decimal(10, 2)
+  lastSyncedAt    DateTime?
+
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
   completedAt   DateTime?
@@ -573,6 +581,38 @@ model NinPersonalizationRequest {
   @@index([userId, status])
   @@index([trackingId])
   @@index([reference])
+  @@index([isApiRequest])
+  @@index([userId, clientReference])
+}
+
+model TestNinPersonalizationTicket {
+  id              String                   @id @default(cuid())
+  userId          String
+  trackingId      String                   // The test NIMC tracking ID submitted
+  reference       String                   @unique // e.g. "lora_pzn_test_..."
+  clientReference String?
+  status          NinPersonalizationStatus @default(PROCESSING)
+  amountCharged   Decimal                  @default(1500.00) @db.Decimal(10, 2)
+  resolvedNin     String?                  // 11-digit mock resolved NIN
+  fullName        String?
+  dob             String?
+  gender          String?
+  phone           String?
+  residenceState  String?
+  photoUrl        String?                  @db.Text
+  pdfUrl          String?                  @db.Text // Base64 mock slip
+  userData        Json?
+  failureReason   String?                  @db.Text
+  refunded        Boolean                  @default(false)
+  completedAt     DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, reference])
+  @@index([userId, trackingId])
+  @@index([userId, clientReference])
 }
 
 enum NinValidationCategory {

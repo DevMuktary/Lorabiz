@@ -8,7 +8,10 @@ export type DeveloperWebhookEvent =
   | "nin_validation.failed"
   | "nin_ipe.submitted"
   | "nin_ipe.completed"
-  | "nin_ipe.failed";
+  | "nin_ipe.failed"
+  | "nin_personalization.submitted"
+  | "nin_personalization.completed"
+  | "nin_personalization.failed";
 
 export interface WebhookDispatchPayload {
   event: DeveloperWebhookEvent;
@@ -25,6 +28,8 @@ export interface WebhookDispatchPayload {
     request_status?: "submitted" | "processing" | "validated" | "completed" | "failed";
     status?: "submitted" | "processing" | "validated" | "completed" | "failed";
     message: string;
+    pdf_base64?: string | null;
+    data?: Record<string, unknown> | null;
     completed_at?: string | null;
     error_detail?: string | null;
     failure_reason?: string | null;
