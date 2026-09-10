@@ -1181,15 +1181,15 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       "/api/v1/nin/personalization": {
         post: {
           tags: ["NIMC NIN Personalization"],
-          summary: "Submit NIN Personalization Request",
+          summary: "Submit NIMC Tracking ID for Personalization Request",
           description:
-            "Submit an applicant's official NIMC Tracking ID to resolve their official NIN and personalized National Identification Slip.\n\n" +
-            "**Strict Zero-Refund Policy**:\n" +
-            "NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests retain the charged fee (₦1,500.00).\n\n" +
-            "**Active Duplicate Prevention Lifecycle**:\n" +
-            "If an active request is in progress (`status: 'PROCESSING'`) for the same Tracking ID, duplicate submissions are rejected with **HTTP 409 (`DUPLICATE_REQUEST`)**. Resubmissions are allowed if a previous ticket reached a terminal state (`FAILED` or `COMPLETED`).\n\n" +
-            "**Idempotency**:\n" +
-            "Submitting with an existing `client_reference` returns the previously generated ticket (**HTTP 200**) without charging your balance again.",
+            "Submit an applicant's official NIMC Tracking ID for NIN Personalization to resolve their official 11-digit NIN and personalized identification slip.\n\n" +
+            "#### Sandbox Testing:\n" +
+            "- `0TEB51VS5RES4ZZ`: Simulates success (transitions to `completed` in 5s with `resolved_nin`, raw `pdf_base64`, and demographics).\n" +
+            "- `0TBH26SQHQCR9F`: Simulates failure (transitions to `failed` in 5s with `error_detail`, non-refundable).\n" +
+            "- `0TDUPCONFLICT01`: Simulates duplicate conflict (HTTP 409 `DUPLICATE_REQUEST`).\n\n" +
+            "#### Zero-Refund Policy:\n" +
+            "NIMC NIN Personalization requests are non-refundable once initiated. If a personalization request fails upstream, the debited fee remains charged (`refunded: false`).",
           requestBody: {
             required: true,
             content: {
