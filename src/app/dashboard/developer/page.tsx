@@ -16,7 +16,30 @@ export default function DeveloperDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [environment, setEnvironment] = useState<"LIVE" | "TEST">("TEST");
+  // Read saved mode immediately from localStorage/cookie to eliminate initial TEST flash
+  const [environment, setEnvironment] = useState<"LIVE" | "TEST">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("lorabiz_dev_mode");
+        if (saved === "LIVE" || saved === "TEST") return saved;
+        const match = document.cookie.match(/lorabiz_dev_mode=(LIVE|TEST)/);
+        if (match && (match[1] === "LIVE" || match[1] === "TEST")) return match[1] as "LIVE" | "TEST";
+      } catch {}
+    }
+    return "TEST";
+  });
+
+  // Mode is ready if already cached in browser, or will wait for first overview fetch
+  const [isModeReady, setIsModeReady] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("lorabiz_dev_mode");
+        if (saved === "LIVE" || saved === "TEST") return true;
+      } catch {}
+    }
+    return false;
+  });
+
   const [stats, setStats] = useState({
     walletBalance: 0,
     sandboxBalance: 1000000,
@@ -65,7 +88,12 @@ export default function DeveloperDashboardPage() {
       if (data.success && data.data) {
         if (data.data.activeMode) {
           setEnvironment(data.data.activeMode);
+          try {
+            localStorage.setItem("lorabiz_dev_mode", data.data.activeMode);
+            document.cookie = `lorabiz_dev_mode=${data.data.activeMode}; path=/; max-age=31536000; SameSite=Lax`;
+          } catch {}
         }
+        setIsModeReady(true);
         setStats({
           walletBalance: data.data.walletBalance,
           sandboxBalance: data.data.sandboxBalance,
@@ -144,6 +172,10 @@ export default function DeveloperDashboardPage() {
     }
 
     setEnvironment(newEnv);
+    try {
+      localStorage.setItem("lorabiz_dev_mode", newEnv);
+      document.cookie = `lorabiz_dev_mode=${newEnv}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch {}
 
     // Persist preference to PostgreSQL
     try {
@@ -194,12 +226,12 @@ export default function DeveloperDashboardPage() {
   }, [status, loadOverview, loadProfile]);
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === "authenticated" && isModeReady) {
       loadKeys();
     }
-  }, [status, environment, loadKeys]);
+  }, [status, environment, isModeReady, loadKeys]);
 
-  if (status === "loading") {
+  if (status === "loading" || (!isModeReady && status === "authenticated")) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3">
         <SpinnerGap weight="bold" className="h-9 w-9 animate-spin text-primary" />

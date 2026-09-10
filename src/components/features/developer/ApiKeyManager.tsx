@@ -261,38 +261,20 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
         </div>
       </div>
 
-      {/* 2. PROMINENT CONFIDENTIALITY & SECURITY WARNING BANNER */}
+      {/* 2. COMPACT CONFIDENTIALITY & SECURITY NOTICE (Ultra-low profile, mobile optimized) */}
       {isLive ? (
-        <div className="border-b border-amber-500/20 bg-amber-500/[0.08] px-5 py-4 sm:px-6">
-          <div className="flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
-              <ShieldAlert className="h-4 w-4" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
-                Security & Confidentiality Advisory — Never Share Your Keys
-              </h4>
-              <p className="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed">
-                Treat your API keys like passwords. <strong className="font-semibold text-amber-950 dark:text-amber-100">Never share your secret keys with anyone</strong> or publish them in public GitHub repositories, client-side code, browser scripts, or mobile apps. Anyone possessing your Live API key can execute billable queries that directly debit your production wallet balance. Keep them securely stored in server-side environment variables (<code className="rounded bg-amber-500/20 px-1 py-0.5 font-mono text-[11px] text-amber-950 dark:text-amber-100">.env</code>).
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/[0.08] px-4 py-2 text-[11px] text-amber-900 dark:text-amber-200 sm:px-6">
+          <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="leading-tight">
+            <span className="font-semibold text-amber-950 dark:text-amber-100">Confidential:</span> Never share your secret keys or expose them in client code. Live keys debit your wallet.
+          </p>
         </div>
       ) : (
-        <div className="border-b border-primary/20 bg-primary/[0.05] px-5 py-4 sm:px-6">
-          <div className="flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary">
-              <ShieldAlert className="h-4 w-4" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                Developer Notice — Keep Your Secret Keys Confidential
-              </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                <strong className="font-semibold text-foreground">Do not share your API keys.</strong> For your development convenience, Test keys are stored in an encrypted vault and can be copied or revealed at any time. They interact safely with our simulated sandbox pipelines without debiting real funds.
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/[0.05] px-4 py-2 text-[11px] text-muted-foreground sm:px-6">
+          <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <p className="leading-tight">
+            <span className="font-semibold text-foreground">Security Notice:</span> Never share secret keys. Test keys can be copied or revealed anytime.
+          </p>
         </div>
       )}
 
@@ -517,10 +499,10 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
             </p>
 
             {/* In-Modal Warning */}
-            <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
-              <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="mt-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+              <ShieldAlert className="h-3.5 w-3.5 text-amber-600 shrink-0" />
               <span>
-                <strong>Confidentiality rule:</strong> Never share this key or expose it in client-side code or public code repositories.
+                <strong>Confidential:</strong> Never share this key or expose it in frontend apps.
               </span>
             </div>
 
@@ -734,16 +716,11 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
             </p>
 
             {/* STRICT WARNING IN MODAL */}
-            <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 space-y-1.5">
-              <div className="flex items-start gap-2.5">
-                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-800 dark:text-amber-300">
-                  <p className="font-semibold">Confidentiality Warning — Do Not Share:</p>
-                  <p className="mt-0.5 text-muted-foreground dark:text-amber-200/90 leading-relaxed">
-                    Store this key securely in your server environment (<code className="rounded bg-muted px-1 font-mono text-[10px] text-foreground">.env</code>). Never commit it to GitHub or share it with third parties. {isLive ? "For your security, Live keys cannot be retrieved again after closing this window." : "You can copy or reveal test keys again from your dashboard at any time."}
-                  </p>
-                </div>
-              </div>
+            <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+              <p className="leading-tight">
+                <strong>Confidential:</strong> Store in <code className="rounded bg-muted px-1 font-mono text-[11px] text-foreground">.env</code>. {isLive ? "Cannot be viewed again after closing." : "Can be copied anytime."}
+              </p>
             </div>
 
             <div className="mt-4">
