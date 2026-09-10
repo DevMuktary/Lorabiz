@@ -235,8 +235,8 @@ Resolves biometric enrollment exceptions on the NIMC database. Once cleared, NIM
 - **Path**: \`/api/v1/nin/ipe/status\`
 - **Query Parameters**:
   - \`reference\` (optional): Lorabiz platform reference (e.g. \`lora_ipe_...\`)
-  - \`tracking_id\` (optional): Applicant's official NIMC Tracking ID
   - \`client_reference\` (optional): Custom client reference
+  *(Provide reference or client_reference to look up status)*
 
 #### Completed Response (\`200 OK\`)
 \`\`\`json

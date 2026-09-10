@@ -1011,7 +1011,8 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           tags: ["NIMC IPE Clearance"],
           summary: "Check NIMC IPE Clearance Status",
           description:
-            "Query the status of an IPE clearance application using `reference`, `tracking_id`, or `client_reference`.",
+            "Query the status of an IPE clearance application using either `reference` or `client_reference`.\n\n" +
+            "Status polling strictly uses `reference` or `client_reference` rather than the candidate `tracking_id` to prevent collision across retried submissions.",
           parameters: [
             {
               name: "reference",
@@ -1020,14 +1021,6 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
               description: "The primary Lorabiz platform reference returned upon submission",
               schema: { type: "string" },
               example: "lora_ipe_1725934820123_xyz89",
-            },
-            {
-              name: "tracking_id",
-              in: "query",
-              required: false,
-              description: "The applicant's official NIMC Tracking ID",
-              schema: { type: "string" },
-              example: "0TEB51VS5RES4ZZ",
             },
             {
               name: "client_reference",
@@ -1093,7 +1086,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   example: {
                     status: "error",
                     code: "INVALID_QUERY",
-                    message: "Provide reference, tracking_id, or client_reference to look up status.",
+                    message: "Provide reference or client_reference to look up status.",
                   },
                 },
               },

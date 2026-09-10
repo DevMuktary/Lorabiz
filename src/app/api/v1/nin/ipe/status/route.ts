@@ -20,7 +20,7 @@ function sanitizePublicMessage(msg: string | null | undefined): string {
 
 /**
  * GET /api/v1/nin/ipe/status
- * Queries real-time IPE Clearance status via ?reference=..., ?tracking_id=..., or ?client_reference=...
+ * Queries real-time IPE Clearance status via ?reference=... or ?client_reference=...
  */
 export async function GET(req: NextRequest) {
   // 1. Authenticate Developer API Key & Enforce Rate Limiting
@@ -31,18 +31,17 @@ export async function GET(req: NextRequest) {
 
   const { keyPayload } = authResult;
 
-  // 2. Parse Query Parameters (reference, tracking_id, OR client_reference)
+  // 2. Parse Query Parameters (reference OR client_reference)
   const { searchParams } = new URL(req.url);
   const reference = searchParams.get("reference")?.trim() || null;
-  const trackingId = searchParams.get("tracking_id")?.trim() || searchParams.get("trackingId")?.trim() || null;
   const clientReference = searchParams.get("client_reference")?.trim() || null;
 
-  if (!reference && !trackingId && !clientReference) {
+  if (!reference && !clientReference) {
     return NextResponse.json(
       {
         status: "error",
         code: "INVALID_QUERY",
-        message: "Provide reference, tracking_id, or client_reference to look up status.",
+        message: "Provide reference or client_reference to look up status.",
       },
       { status: 400 }
     );
@@ -55,7 +54,6 @@ export async function GET(req: NextRequest) {
         userId: keyPayload.userId,
         OR: [
           ...(reference ? [{ reference }] : []),
-          ...(trackingId ? [{ trackingId }] : []),
           ...(clientReference ? [{ clientReference }] : []),
         ],
       },
@@ -126,7 +124,6 @@ export async function GET(req: NextRequest) {
       userId: keyPayload.userId,
       OR: [
         ...(reference ? [{ reference }] : []),
-        ...(trackingId ? [{ trackingId }] : []),
         ...(clientReference ? [{ clientReference }] : []),
       ],
     },

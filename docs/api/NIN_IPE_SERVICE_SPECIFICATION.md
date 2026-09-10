@@ -11,7 +11,7 @@ Upon successful resolution, NIMC issues a **new official Tracking ID** (`new_tra
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/api/v1/nin/ipe` | Submit an IPE clearance application by NIMC Tracking ID. |
-| `GET` | `/api/v1/nin/ipe/status` | Query real-time clearance status by `reference`, `tracking_id`, or `client_reference`. |
+| `GET` | `/api/v1/nin/ipe/status` | Query real-time clearance status by `reference` or `client_reference`. |
 
 ---
 
@@ -31,9 +31,9 @@ Accept: application/json
 
 To ensure absolute consistency across all APIs, webhooks, and ledger transactions:
 
-- **`reference`**: The authoritative Lorabiz transaction/order reference (e.g. `lora_ipe_1725934820123_xyz89`).
+- **`reference`**: The authoritative Lorabiz transaction/order reference (e.g. `lora_ipe_1725934820123_xyz89`). Status queries are strictly keyed by this reference.
 - **`client_reference`**: The developer's optional custom idempotency tracking string (max 128 characters).
-- **`tracking_id`**: **Strictly reserved for the official NIMC Tracking ID** (e.g. `0TEB51VS5RES4ZZ`).
+- **`tracking_id`**: **Strictly reserved for the official NIMC Tracking ID** (e.g. `0TEB51VS5RES4ZZ`). It is accepted in POST submission bodies and returned in response payloads, but **never used as a status query parameter**.
 - **`new_tracking_id`**: The updated NIMC Tracking ID returned upon clearance completion (e.g. `0T448N2SR7OFAZC`).
 - **`resolved_nin`**: The 11-digit cleared/extracted NIN released by NIMC (e.g. `44297896804`).
 - **`refunded`**: Returned with `true` **strictly and only when `request_status === "failed"`**.
@@ -42,7 +42,12 @@ To ensure absolute consistency across all APIs, webhooks, and ledger transaction
 
 ## 4. POST /api/v1/nin/ipe — Submit IPE Clearance
 
-Submits a new IPE exception clearance request. If an active request is already processing for the same tracking ID, the API rejects duplicate submissions (HTTP 409). If submitted with an identical `client_reference`, it returns the existing ticket idempotently (HTTP 200).
+Submits a new IPE exception clearance request.
+
+### Active Duplicate Prevention Lifecycle:
+- **Active In-Progress Rejection**: If an active request is currently in progress (`status: "PROCESSING"`) for the same tracking ID, the API immediately rejects duplicate submissions with **HTTP 409 (`DUPLICATE_REQUEST`)** to protect developer balances from double charges.
+- **Resubmission After Terminal State**: If a previous clearance request ended in a terminal state (**`FAILED`** with an automated refund, or **`COMPLETED`**), applicants can submit a new clearance request with that same tracking ID. Each submission receives a distinct, unique `reference`.
+- **Idempotency**: Submitting an identical `client_reference` returns the existing ticket idempotently (**HTTP 200**) without charging again.
 
 ### 4.1 Request Parameters
 
@@ -136,17 +141,20 @@ Returned if an active clearance request for this tracking ID is already in proce
 
 ## 5. GET /api/v1/nin/ipe/status — Check Clearance Status
 
-Polls real-time clearance status. You must provide at least one identifier query parameter: `?reference=...`, `?tracking_id=...`, or `?client_reference=...`.
+Polls real-time clearance status. You must provide either `?reference=...` or `?client_reference=...`.
+
+> [!IMPORTANT]
+> **Why `tracking_id` is NOT accepted as a status query parameter:**
+> If an initial submission fails (and is refunded), an applicant may resubmit the same NIMC Tracking ID later. Querying status by `tracking_id` would cause non-deterministic collisions across historical attempts. Status polling is therefore strictly tied to the unique submission `reference` or developer `client_reference`.
 
 ### Query Parameters
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `reference` | `string` | Optional* | The Lorabiz platform reference token (e.g. `lora_ipe_...`). |
-| `tracking_id` | `string` | Optional* | The applicant's official NIMC Tracking ID. |
+| `reference` | `string` | Optional* | The Lorabiz platform reference token returned upon submission (e.g. `lora_ipe_...`). |
 | `client_reference` | `string` | Optional* | The developer's custom idempotency tracking string. |
 
-*\*At least one parameter is required.*
+*\*Provide either `reference` or `client_reference` to look up status.*
 
 #### Example Request
 ```http
