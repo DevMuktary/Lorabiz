@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
     const envParam = searchParams.get("environment")?.toUpperCase();
     const serviceFilter = searchParams.get("service")?.toUpperCase() || "ALL";
     const statusFilter = searchParams.get("statusCode") || "ALL";
-    const cursor = searchParams.get("cursor");
-    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "15", 10)));
+    const skip = (page - 1) * limit;
 
     const environment = envParam === "LIVE" ? ApiKeyType.LIVE : ApiKeyType.TEST;
 
@@ -59,36 +60,40 @@ export async function GET(req: NextRequest) {
       where.statusCode = { gte: 500 };
     }
 
-    // Query lightweight columns only for high-speed page loads
-    const logs = await prisma.apiRequestLog.findMany({
-      where,
-      take: limit + 1,
-      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        method: true,
-        endpoint: true,
-        statusCode: true,
-        latencyMs: true,
-        amountCharged: true,
-        clientReference: true,
-        errorMessage: true,
-        createdAt: true,
-      },
-    });
+    // Parallel fetch: total count + page slice
+    const [totalLogs, logs] = await Promise.all([
+      prisma.apiRequestLog.count({ where }),
+      prisma.apiRequestLog.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          method: true,
+          endpoint: true,
+          statusCode: true,
+          latencyMs: true,
+          amountCharged: true,
+          clientReference: true,
+          errorMessage: true,
+          createdAt: true,
+        },
+      }),
+    ]);
 
-    let nextCursor: string | null = null;
-    if (logs.length > limit) {
-      const nextItem = logs.pop();
-      nextCursor = nextItem ? nextItem.id : null;
-    }
+    const totalPages = Math.max(1, Math.ceil(totalLogs / limit));
 
     return NextResponse.json({
       success: true,
       data: {
         logs,
-        nextCursor,
+        pagination: {
+          page,
+          limit,
+          totalLogs,
+          totalPages,
+        },
       },
     });
   } catch (err) {

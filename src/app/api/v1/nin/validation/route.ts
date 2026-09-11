@@ -290,6 +290,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const testResponseBody = {
+      status: "success",
+      message: "NIN validation request submitted successfully (Sandbox Simulation).",
+      reference: testTrackingId,
+      client_reference: cleanClientRef || null,
+      nin: sanitizedNin,
+      validation_type: normalizedTypeKey,
+      request_status: "submitted",
+      amount_charged: price,
+      currency: "NGN",
+      environment: "test",
+    };
+
     recordApiRequestLog({
       userId: keyPayload.userId,
       apiKeyId: keyPayload.id,
@@ -301,7 +314,7 @@ export async function POST(req: NextRequest) {
       amountCharged: price,
       clientReference: cleanClientRef,
       requestBody: body,
-      responseBody: { status: "success", reference: testTrackingId, simulated: true, amount_charged: price },
+      responseBody: testResponseBody,
     });
 
     // E. 5-Second Automated Background Transition & Test Webhook Dispatch
@@ -371,21 +384,7 @@ export async function POST(req: NextRequest) {
       }
     }, 5000);
 
-    return NextResponse.json(
-      {
-        status: "success",
-        message: "NIN validation request submitted successfully (Sandbox Simulation).",
-        reference: testTrackingId,
-        client_reference: cleanClientRef || null,
-        nin: sanitizedNin,
-        validation_type: normalizedTypeKey,
-        request_status: "submitted",
-        amount_charged: price,
-        currency: "NGN",
-        environment: "test",
-      },
-      { status: 201 }
-    );
+    return NextResponse.json(testResponseBody, { status: 201 });
   }
 
   // 6. LIVE MODE: Fast Duplicate Active Request Check (409 Conflict)
@@ -513,6 +512,19 @@ export async function POST(req: NextRequest) {
       return ticket;
     });
 
+    const liveResponseBody = {
+      status: "success",
+      message: "NIN validation request submitted successfully.",
+      reference: trackingId,
+      client_reference: cleanClientRef,
+      nin: sanitizedNin,
+      validation_type: normalizedTypeKey,
+      request_status: "submitted",
+      amount_charged: price,
+      currency: "NGN",
+      environment: envString,
+    };
+
     // 10. Audit Log & Async Webhook Dispatch
     recordApiRequestLog({
       userId: keyPayload.userId,
@@ -525,7 +537,7 @@ export async function POST(req: NextRequest) {
       amountCharged: price,
       clientReference: cleanClientRef,
       requestBody: body,
-      responseBody: { status: "success", reference: trackingId, amount_charged: price },
+      responseBody: liveResponseBody,
     });
 
     // Dispatch webhook event to developer if configured
@@ -545,21 +557,7 @@ export async function POST(req: NextRequest) {
       "LIVE"
     );
 
-    return NextResponse.json(
-      {
-        status: "success",
-        message: "NIN validation request submitted successfully.",
-        reference: trackingId,
-        client_reference: cleanClientRef,
-        nin: sanitizedNin,
-        validation_type: normalizedTypeKey,
-        request_status: "submitted",
-        amount_charged: price,
-        currency: "NGN",
-        environment: envString,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json(liveResponseBody, { status: 201 });
   } catch (txErr: any) {
     console.error("❌ [NIN Validation API Submission Error]:", txErr);
 

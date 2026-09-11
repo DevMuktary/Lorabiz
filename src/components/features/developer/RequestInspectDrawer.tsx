@@ -143,6 +143,22 @@ export const RequestInspectDrawer: React.FC<RequestInspectDrawerProps> = ({
                   {logDetails.environment}
                 </div>
               </div>
+
+              <div className="col-span-2 sm:col-span-4 rounded-xl border border-border bg-muted/20 p-2.5 flex items-center justify-between text-xs">
+                <span className="text-[11px] font-semibold text-muted-foreground">Recorded At (WAT):</span>
+                <span className="font-mono font-medium text-foreground">
+                  {new Date(logDetails.createdAt).toLocaleString("en-GB", {
+                    timeZone: "Africa/Lagos",
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: true,
+                  })}
+                </span>
+              </div>
             </div>
 
             {/* Error Message if Present */}

@@ -378,7 +378,7 @@ export async function POST(req: NextRequest) {
       amountCharged: requiredAmount,
       clientReference: client_reference || null,
       requestBody,
-      responseBody: { status: "success", reference, amount_charged: requiredAmount },
+      responseBody: normalizedResponse,
     });
 
     return NextResponse.json(normalizedResponse, { status: 200 });

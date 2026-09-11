@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Activity, Filter, RefreshCw, ChevronRight } from "lucide-react";
 import { RequestInspectDrawer } from "./RequestInspectDrawer";
+import { formatWATDateTime } from "@/lib/developer/format-wat";
 
 export interface LogItem {
   id: string;
@@ -22,9 +23,10 @@ interface RequestStreamTableProps {
 
 export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environment }) => {
   const [logs, setLogs] = useState<LogItem[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalLogs, setTotalLogs] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [newlyArrivedIds, setNewlyArrivedIds] = useState<Set<string>>(new Set());
 
   // Filters
@@ -34,16 +36,18 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
   // Inspect Drawer
   const [inspectLogId, setInspectLogId] = useState<string | null>(null);
 
+  // Reset to page 1 whenever filters or environment change
   useEffect(() => {
-    fetchLogs(true);
+    setCurrentPage(1);
+    fetchLogs(1);
   }, [environment, serviceFilter, statusFilter]);
 
-  // Real-Time Live Log Ingestion: poll every 2.5 seconds for latest logs without flickering
+  // Real-Time Live Log Ingestion on page 1 only
   useEffect(() => {
+    if (currentPage !== 1) return;
     let isCancelled = false;
 
     const pollLatestLogs = async () => {
-      // Only poll when window/tab is visible
       if (typeof document !== "undefined" && document.visibilityState !== "visible") {
         return;
       }
@@ -53,13 +57,17 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
         url.searchParams.set("environment", environment);
         url.searchParams.set("service", serviceFilter);
         url.searchParams.set("statusCode", statusFilter);
-        url.searchParams.set("limit", "10");
+        url.searchParams.set("page", "1");
+        url.searchParams.set("limit", "15");
 
         const res = await fetch(url.toString(), { cache: "no-store" });
         const data = await res.json();
 
         if (data.success && Array.isArray(data.data?.logs) && !isCancelled) {
           const freshLogs: LogItem[] = data.data.logs;
+          setTotalLogs(data.data.pagination?.totalLogs ?? freshLogs.length);
+          setTotalPages(data.data.pagination?.totalPages ?? 1);
+
           setLogs((prevLogs) => {
             if (!prevLogs.length) return freshLogs;
             const existingIds = new Set(prevLogs.map((l) => l.id));
@@ -71,7 +79,6 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
                 return nextSet;
               });
 
-              // Clear row highlight after 2.5s
               setTimeout(() => {
                 setNewlyArrivedIds((prev) => {
                   const updated = new Set(prev);
@@ -80,58 +87,59 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
                 });
               }, 2500);
 
-              return [...newItems, ...prevLogs];
+              return freshLogs;
             }
             return prevLogs;
           });
         }
-      } catch (err) {
-        // silent fail during background poll
+      } catch {
+        // silent fail
       }
     };
 
-    const interval = setInterval(pollLatestLogs, 2500);
+    const interval = setInterval(pollLatestLogs, 3000);
     return () => {
       isCancelled = true;
       clearInterval(interval);
     };
-  }, [environment, serviceFilter, statusFilter]);
+  }, [environment, serviceFilter, statusFilter, currentPage]);
 
-  const fetchLogs = async (reset = false) => {
-    if (reset) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
+  const fetchLogs = async (pageToFetch: number) => {
+    setIsLoading(true);
     try {
       const url = new URL("/api/developer/logs", window.location.origin);
       url.searchParams.set("environment", environment);
       url.searchParams.set("service", serviceFilter);
       url.searchParams.set("statusCode", statusFilter);
-      url.searchParams.set("limit", "20");
-
-      if (!reset && nextCursor) {
-        url.searchParams.set("cursor", nextCursor);
-      }
+      url.searchParams.set("page", pageToFetch.toString());
+      url.searchParams.set("limit", "15");
 
       const res = await fetch(url.toString());
       const data = await res.json();
 
       if (data.success) {
-        if (reset) {
-          setLogs(data.data.logs || []);
-        } else {
-          setLogs((prev) => [...prev, ...(data.data.logs || [])]);
+        setLogs(data.data.logs || []);
+        if (data.data.pagination) {
+          setTotalPages(data.data.pagination.totalPages || 1);
+          setTotalLogs(data.data.pagination.totalLogs || 0);
+          setCurrentPage(data.data.pagination.page || pageToFetch);
         }
-        setNextCursor(data.data.nextCursor);
       }
     } catch (err) {
       console.error("Failed to load logs:", err);
     } finally {
       setIsLoading(false);
-      setIsLoadingMore(false);
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+    setCurrentPage(newPage);
+    fetchLogs(newPage);
+  };
+
+  const formatWATTime = (dateStr: string) => {
+    return formatWATDateTime(dateStr);
   };
 
   const getStatusBadge = (code: number) => {
@@ -153,6 +161,63 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
       <span className="inline-flex items-center rounded-md bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400">
         {code} Fail
       </span>
+    );
+  };
+
+  const renderPaginationButtons = () => {
+    if (totalPages <= 1) return null;
+    const pages: (number | string)[] = [];
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("...");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+
+    return (
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary disabled:opacity-40 transition-colors"
+        >
+          Previous
+        </button>
+
+        {pages.map((p, idx) =>
+          typeof p === "number" ? (
+            <button
+              key={idx}
+              onClick={() => handlePageChange(p)}
+              className={`h-8 w-8 rounded-lg text-xs font-bold transition-colors ${
+                currentPage === p
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "border border-border bg-card text-foreground hover:bg-secondary"
+              }`}
+            >
+              {p}
+            </button>
+          ) : (
+            <span key={idx} className="px-1 text-xs text-muted-foreground">
+              ...
+            </span>
+          )
+        )}
+
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary disabled:opacity-40 transition-colors"
+        >
+          Next
+        </button>
+      </div>
     );
   };
 
@@ -207,7 +272,7 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
           </div>
 
           <button
-            onClick={() => fetchLogs(true)}
+            onClick={() => fetchLogs(currentPage)}
             title="Refresh stream"
             className="rounded-xl border border-border bg-card p-2.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
           >
@@ -219,7 +284,7 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
       {/* Logs Table */}
       <div className="w-full overflow-x-auto">
         {isLoading ? (
-          <div className="p-8 text-center text-xs text-muted-foreground">Streaming request logs...</div>
+          <div className="p-8 text-center text-xs text-muted-foreground">Loading request logs...</div>
         ) : logs.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-sm font-medium text-foreground">No API calls recorded yet</p>
@@ -231,7 +296,7 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
           <table className="w-full min-w-[700px] text-left text-xs">
             <thead className="border-b border-border/40 bg-muted/40 text-muted-foreground">
               <tr>
-                <th className="px-6 py-3.5 font-medium">Time (UTC)</th>
+                <th className="px-6 py-3.5 font-medium">Time (WAT)</th>
                 <th className="px-6 py-3.5 font-medium">Method</th>
                 <th className="px-6 py-3.5 font-medium">Endpoint</th>
                 <th className="px-6 py-3.5 font-medium">Status</th>
@@ -247,56 +312,54 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
                   <tr
                     key={log.id}
                     onClick={() => setInspectLogId(log.id)}
-                    className={`cursor-pointer transition-all duration-500 ${
+                    className={`cursor-pointer transition-all duration-300 ${
                       isNew
-                        ? "bg-emerald-500/15 dark:bg-emerald-500/20 ring-1 ring-emerald-500/30 animate-in fade-in slide-in-from-top-2"
+                        ? "bg-emerald-500/15 dark:bg-emerald-500/20 ring-1 ring-emerald-500/30 animate-in fade-in"
                         : "hover:bg-muted/40"
                     }`}
                   >
-                  <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
-                    {new Date(log.createdAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                      {log.method}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-semibold text-foreground whitespace-nowrap">
-                    {log.endpoint}
-                  </td>
-                  <td className="px-6 py-4">{getStatusBadge(log.statusCode)}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{log.latencyMs}ms</td>
-                  <td className="px-6 py-4 text-foreground font-semibold">
-                    ₦{Number(log.amountCharged || 0).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline">
-                      <span>Inspect</span>
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
+                    <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
+                      {formatWATTime(log.createdAt)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                        {log.method}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-semibold text-foreground whitespace-nowrap">
+                      {log.endpoint}
+                    </td>
+                    <td className="px-6 py-4">{getStatusBadge(log.statusCode)}</td>
+                    <td className="px-6 py-4 text-muted-foreground">{log.latencyMs}ms</td>
+                    <td className="px-6 py-4 text-foreground font-semibold">
+                      ₦{Number(log.amountCharged || 0).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline">
+                        <span>Inspect</span>
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
           </table>
         )}
       </div>
 
-      {/* Pagination Footer */}
-      {nextCursor && (
-        <div className="border-t border-border/40 p-3.5 text-center">
-          <button
-            onClick={() => fetchLogs(false)}
-            disabled={isLoadingMore}
-            className="rounded-xl border border-border bg-card px-4 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
-          >
-            {isLoadingMore ? "Loading more..." : "Load Older Logs"}
-          </button>
+      {/* Numbered Pagination Footer */}
+      {!isLoading && totalLogs > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-border/40 px-6 py-4">
+          <p className="text-xs text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{(currentPage - 1) * 15 + 1}</span> to{" "}
+            <span className="font-semibold text-foreground">
+              {Math.min(currentPage * 15, totalLogs)}
+            </span>{" "}
+            of <span className="font-semibold text-foreground">{totalLogs}</span> requests
+          </p>
+
+          {renderPaginationButtons()}
         </div>
       )}
 

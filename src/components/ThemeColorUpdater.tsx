@@ -199,7 +199,7 @@ export function ThemeColorUpdater() {
         meta.setAttribute("content", color);
       }
 
-      if (isIOS() || "__sealAlways" in window) sealTopScrim(scrims, color);
+      if (isIOS()) sealTopScrim(scrims, color);
     };
 
     // Leading + trailing throttle: the class/style observer below is noisy during

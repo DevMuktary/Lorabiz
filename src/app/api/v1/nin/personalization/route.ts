@@ -221,6 +221,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const testResponseBody = {
+      status: "success",
+      message: "NIN Personalization request submitted successfully (Sandbox Simulation).",
+      reference: testReference,
+      tracking_id: sanitizedTrackingId,
+      client_reference: cleanClientRef || null,
+      request_status: "submitted",
+      amount_charged: price,
+      currency: "NGN",
+      environment: "test",
+    };
+
     recordApiRequestLog({
       userId: keyPayload.userId,
       apiKeyId: keyPayload.id,
@@ -232,7 +244,7 @@ export async function POST(req: NextRequest) {
       amountCharged: price,
       clientReference: cleanClientRef,
       requestBody: body,
-      responseBody: { status: "success", reference: testReference, simulated: true },
+      responseBody: testResponseBody,
     });
 
     // 5-Second Automated Background Transition & Test Webhook Dispatch
@@ -320,20 +332,7 @@ export async function POST(req: NextRequest) {
       }
     }, 5000);
 
-    return NextResponse.json(
-      {
-        status: "success",
-        message: "NIN Personalization request submitted successfully (Sandbox Simulation).",
-        reference: testReference,
-        tracking_id: sanitizedTrackingId,
-        client_reference: cleanClientRef || null,
-        request_status: "submitted",
-        amount_charged: price,
-        currency: "NGN",
-        environment: "test",
-      },
-      { status: 201 }
-    );
+    return NextResponse.json(testResponseBody, { status: 201 });
   }
 
   // 7. LIVE MODE: Active Request Conflict Check (409 Conflict)
@@ -488,6 +487,18 @@ export async function POST(req: NextRequest) {
       });
     });
 
+    const liveResponseBody = {
+      status: "success",
+      message: "NIN Personalization request submitted successfully.",
+      reference,
+      tracking_id: sanitizedTrackingId,
+      client_reference: cleanClientRef,
+      request_status: "submitted",
+      amount_charged: price,
+      currency: "NGN",
+      environment: "live",
+    };
+
     // Asynchronous Audit Log
     recordApiRequestLog({
       userId: keyPayload.userId,
@@ -500,7 +511,7 @@ export async function POST(req: NextRequest) {
       amountCharged: price,
       clientReference: cleanClientRef,
       requestBody: body,
-      responseBody: { status: "success", reference, amount_charged: price },
+      responseBody: liveResponseBody,
     });
 
     // Developer Webhook Dispatch
@@ -519,20 +530,7 @@ export async function POST(req: NextRequest) {
       "LIVE"
     );
 
-    return NextResponse.json(
-      {
-        status: "success",
-        message: "NIN Personalization request submitted successfully.",
-        reference,
-        tracking_id: sanitizedTrackingId,
-        client_reference: cleanClientRef,
-        request_status: "submitted",
-        amount_charged: price,
-        currency: "NGN",
-        environment: "live",
-      },
-      { status: 201 }
-    );
+    return NextResponse.json(liveResponseBody, { status: 201 });
   } catch (txErr: any) {
     console.error("❌ [NIN Personalization Submission Error]:", txErr);
 

@@ -16,6 +16,7 @@ import {
   Lock,
   Info,
 } from "lucide-react";
+import { formatWATDate, formatWATDateTime } from "@/lib/developer/format-wat";
 
 export interface ApiKeyItem {
   id: string;
@@ -306,8 +307,8 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
                 <th className="px-6 py-3.5 font-medium">Name</th>
                 <th className="px-6 py-3.5 font-medium">Secret Key / Token</th>
                 <th className="px-6 py-3.5 font-medium">Status</th>
-                <th className="px-6 py-3.5 font-medium">Created</th>
-                <th className="px-6 py-3.5 font-medium">Last Used</th>
+                <th className="px-6 py-3.5 font-medium">Created (WAT)</th>
+                <th className="px-6 py-3.5 font-medium">Last Used (WAT)</th>
                 <th className="px-6 py-3.5 text-right font-medium">Actions</th>
               </tr>
             </thead>
@@ -416,18 +417,12 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
                       </span>
                     </td>
 
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {new Date(k.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                    <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
+                      {formatWATDate(k.createdAt)}
                     </td>
 
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {k.lastUsedAt
-                        ? new Date(k.lastUsedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                        : "Never"}
+                    <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
+                      {k.lastUsedAt ? formatWATDateTime(k.lastUsedAt) : "Never"}
                     </td>
 
                     <td className="px-6 py-4 text-right">

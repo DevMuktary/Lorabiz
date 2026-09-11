@@ -315,6 +315,18 @@ export async function POST(req: NextRequest) {
       }
     }, 5000);
 
+    const testResponseBody = {
+      status: "success",
+      message: "NIMC IPE Clearance request submitted successfully (Sandbox Simulation).",
+      reference: testReference,
+      tracking_id: sanitizedTrackingId,
+      client_reference: cleanClientRef || null,
+      request_status: "submitted",
+      amount_charged: price,
+      currency: "NGN",
+      environment: "test",
+    };
+
     // Log request
     recordApiRequestLog({
       userId: keyPayload.userId,
@@ -327,23 +339,10 @@ export async function POST(req: NextRequest) {
       amountCharged: price,
       clientReference: cleanClientRef,
       requestBody: body,
-      responseBody: { status: "success", reference: testReference, tracking_id: sanitizedTrackingId },
+      responseBody: testResponseBody,
     });
 
-    return NextResponse.json(
-      {
-        status: "success",
-        message: "NIMC IPE Clearance request submitted successfully (Sandbox Simulation).",
-        reference: testReference,
-        tracking_id: sanitizedTrackingId,
-        client_reference: cleanClientRef || null,
-        request_status: "submitted",
-        amount_charged: price,
-        currency: "NGN",
-        environment: "test",
-      },
-      { status: 201 }
-    );
+    return NextResponse.json(testResponseBody, { status: 201 });
   }
 
   // 7. LIVE MODE: Active Request Conflict Check (409 Conflict)
@@ -507,6 +506,18 @@ export async function POST(req: NextRequest) {
       });
     });
 
+    const liveResponseBody = {
+      status: "success",
+      message: "NIMC IPE Clearance request submitted successfully.",
+      reference: reference,
+      tracking_id: sanitizedTrackingId,
+      client_reference: cleanClientRef || null,
+      request_status: "submitted",
+      amount_charged: price,
+      currency: "NGN",
+      environment: "live",
+    };
+
     // 11. Async Audit Logging
     recordApiRequestLog({
       userId: keyPayload.userId,
@@ -519,7 +530,7 @@ export async function POST(req: NextRequest) {
       amountCharged: price,
       clientReference: cleanClientRef,
       requestBody: body,
-      responseBody: { status: "success", reference, tracking_id: sanitizedTrackingId, amount_charged: price },
+      responseBody: liveResponseBody,
     });
 
     // 12. Dispatch Webhook: nin_ipe.submitted
@@ -538,20 +549,7 @@ export async function POST(req: NextRequest) {
       "LIVE"
     );
 
-    return NextResponse.json(
-      {
-        status: "success",
-        message: "NIMC IPE Clearance request submitted successfully.",
-        reference: reference,
-        tracking_id: sanitizedTrackingId,
-        client_reference: cleanClientRef || null,
-        request_status: "submitted",
-        amount_charged: price,
-        currency: "NGN",
-        environment: "live",
-      },
-      { status: 201 }
-    );
+    return NextResponse.json(liveResponseBody, { status: 201 });
   } catch (txErr: any) {
     console.error("❌ [NIMC IPE API Submission Error]:", txErr);
 
