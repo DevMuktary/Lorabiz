@@ -174,7 +174,43 @@ export async function POST(req: NextRequest) {
 
   // 6. TEST Mode: High-fidelity simulation (No real DataVerify credits burned)
   if (environment === ApiKeyType.TEST) {
-    // 6a. Explicit Sandbox Test Case: Record Not Found (422) simulation
+    // 6a. Strict Sandbox Test NIN Enforcement
+    const ALLOWED_TEST_NINS = ["23456789012", "12345678901", ...SANDBOX_NOT_FOUND_NINS];
+    if (!ALLOWED_TEST_NINS.includes(cleanNin)) {
+      const errorMsg =
+        "In Sandbox/Test Mode (lora_test_...), you must strictly use designated test NINs: '23456789012' (Success - Female), '12345678901' (Success - Male), or '00000000000' / '99999999999' (Record Not Found simulation). To verify real Nigerian NINs, please switch to your Live API Key (lora_live_...).";
+
+      recordApiRequestLog({
+        userId: keyPayload.userId,
+        apiKeyId: keyPayload.id,
+        environment,
+        method: "POST",
+        endpoint,
+        statusCode: 400,
+        latencyMs: Date.now() - startTime,
+        amountCharged: 0,
+        clientReference: client_reference || null,
+        requestBody,
+        errorMessage: errorMsg,
+      });
+
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "INVALID_SANDBOX_INPUT",
+          message: errorMsg,
+          environment: "test",
+          allowed_test_inputs: {
+            success_female: "23456789012",
+            success_male: "12345678901",
+            record_not_found: ["00000000000", "99999999999"],
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 6b. Explicit Sandbox Test Case: Record Not Found (422) simulation
     if (SANDBOX_NOT_FOUND_NINS.includes(cleanNin)) {
       const errorMsg = "No identity record was found matching the provided National Identification Number (NIN).";
       recordApiRequestLog({

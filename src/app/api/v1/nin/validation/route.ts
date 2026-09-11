@@ -181,12 +181,34 @@ export async function POST(req: NextRequest) {
   if (keyPayload.type === ApiKeyType.TEST) {
     // A. Strict 3-NIN Enforcement
     if (sanitizedNin !== "11111111111" && sanitizedNin !== "22222222222" && sanitizedNin !== "99999999999") {
+      const errorMsg =
+        "In Sandbox/Test Mode (lora_test_...), you must strictly use designated test NINs: '11111111111' (Success simulation), '22222222222' (Failure simulation), or '99999999999' (Duplicate conflict simulation). To validate real Nigerian NINs, please switch to your Live API Key (lora_live_...).";
+
+      recordApiRequestLog({
+        userId: keyPayload.userId,
+        apiKeyId: keyPayload.id,
+        environment,
+        method: "POST",
+        endpoint,
+        statusCode: 400,
+        latencyMs: Date.now() - startTime,
+        amountCharged: 0,
+        clientReference: cleanClientRef || null,
+        requestBody: body,
+        errorMessage: errorMsg,
+      });
+
       return NextResponse.json(
         {
           status: "error",
-          code: "INVALID_INPUT",
-          message:
-            "In Sandbox/Test Mode, please use one of the designated test NINs: 11111111111 (Success), 22222222222 (Failed), or 99999999999 (Duplicate Conflict).",
+          code: "INVALID_SANDBOX_INPUT",
+          message: errorMsg,
+          environment: "test",
+          allowed_test_inputs: {
+            success: "11111111111",
+            failure: "22222222222",
+            duplicate_conflict: "99999999999",
+          },
         },
         { status: 400 }
       );
@@ -194,12 +216,28 @@ export async function POST(req: NextRequest) {
 
     // B. Duplicate Request Conflict Simulation (99999999999)
     if (sanitizedNin === "99999999999") {
+      const conflictMsg =
+        "An active validation request is already in progress for NIN 99999999999. Duplicate submission rejected to prevent double debits.";
+
+      recordApiRequestLog({
+        userId: keyPayload.userId,
+        apiKeyId: keyPayload.id,
+        environment,
+        method: "POST",
+        endpoint,
+        statusCode: 409,
+        latencyMs: Date.now() - startTime,
+        amountCharged: 0,
+        clientReference: cleanClientRef || null,
+        requestBody: body,
+        errorMessage: conflictMsg,
+      });
+
       return NextResponse.json(
         {
           status: "error",
           code: "DUPLICATE_REQUEST",
-          message:
-            "An active validation request is already in progress for NIN 99999999999. Duplicate submission rejected to prevent double debits.",
+          message: conflictMsg,
           reference: "nin_val_test_dup_active",
           client_reference: cleanClientRef || null,
           transaction: {

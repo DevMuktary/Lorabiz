@@ -11,7 +11,7 @@ export interface LogApiRequestParams {
   latencyMs: number;
   amountCharged?: number;
   ipAddress?: string;
-  clientReference?: string;
+  clientReference?: string | null;
   requestHeaders?: Record<string, unknown>;
   requestBody?: unknown;
   responseBody?: unknown;

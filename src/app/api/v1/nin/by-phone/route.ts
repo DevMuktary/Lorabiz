@@ -209,7 +209,43 @@ export async function POST(req: NextRequest) {
 
   // 7. TEST Mode: High-fidelity simulation (No real DataVerify credits burned)
   if (environment === ApiKeyType.TEST) {
-    // 7a. Explicit Sandbox Test Case: Record Not Found (422) simulation
+    // 7a. Strict Sandbox Test Phone Enforcement
+    const ALLOWED_TEST_PHONES = ["08023456789", "08012345678", ...SANDBOX_NOT_FOUND_PHONES];
+    if (!ALLOWED_TEST_PHONES.includes(cleanPhone)) {
+      const errorMsg =
+        "In Sandbox/Test Mode (lora_test_...), you must strictly use designated test phone numbers: '08023456789' (Success - Female), '08012345678' (Success - Male), or '00000000000' / '07000000000' / '08000000000' (Record Not Found simulation). To verify real phone numbers, please switch to your Live API Key (lora_live_...).";
+
+      recordApiRequestLog({
+        userId: keyPayload.userId,
+        apiKeyId: keyPayload.id,
+        environment,
+        method: "POST",
+        endpoint,
+        statusCode: 400,
+        latencyMs: Date.now() - startTime,
+        amountCharged: 0,
+        clientReference: client_reference || null,
+        requestBody,
+        errorMessage: errorMsg,
+      });
+
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "INVALID_SANDBOX_INPUT",
+          message: errorMsg,
+          environment: "test",
+          allowed_test_inputs: {
+            success_female: "08023456789",
+            success_male: "08012345678",
+            record_not_found: ["00000000000", "07000000000", "08000000000"],
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 7b. Explicit Sandbox Test Case: Record Not Found (422) simulation
     if (SANDBOX_NOT_FOUND_PHONES.includes(cleanPhone)) {
       const errorMsg = "No linked National Identification Number (NIN) record was found matching the provided phone number.";
       recordApiRequestLog({

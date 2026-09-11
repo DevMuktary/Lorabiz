@@ -33,6 +33,7 @@ Every request requires an API key in one of the following HTTP headers:
 - **Content-Type**: \`application/json\`
 
 #### Sandbox Test Numbers:
+In test mode (\`lora_test_...\`), only the designated test NINs below are accepted. Any other NIN will be rejected with HTTP 400 \`INVALID_SANDBOX_INPUT\`:
 - Success (Female Record): \`23456789012\` (Returns 200 OK)
 - Success (Male Record): \`12345678901\` (Returns 200 OK)
 - Record Not Found (422): \`00000000000\` or \`99999999999\` (Billed ₦0.00)
@@ -90,6 +91,7 @@ Every request requires an API key in one of the following HTTP headers:
 - **Content-Type**: \`application/json\`
 
 #### Sandbox Test Numbers:
+In test mode (\`lora_test_...\`), only the designated test phone numbers below are accepted. Any other phone number will be rejected with HTTP 400 \`INVALID_SANDBOX_INPUT\`:
 - Success (Female Record): \`08023456789\` (Returns 200 OK)
 - Success (Male Record): \`08012345678\` (Returns 200 OK)
 - Record Not Found (422): \`00000000000\` or \`08000000000\` (Billed ₦0.00)
@@ -123,7 +125,7 @@ Every request requires an API key in one of the following HTTP headers:
 - \`photo_error\` (Photo Error Correction)
 
 #### Sandbox Test NINs:
-In test mode (\`lora_test_...\`), use the following designated test NINs to simulate validation outcomes:
+In test mode (\`lora_test_...\`), only the designated test NINs below are accepted. Any other NIN will be rejected with HTTP 400 \`INVALID_SANDBOX_INPUT\`:
 - \`11111111111\`: Success simulation (transitions to \`validated\`)
 - \`22222222222\`: Failure simulation (transitions to \`failed\`, \`refunded: true\`)
 - \`99999999999\`: Duplicate Conflict simulation (returns \`409 DUPLICATE_REQUEST\`)
@@ -221,6 +223,7 @@ In both live and test modes, look up requests using the \`reference\` returned u
 Clears NIMC In-Processing Errors (IPE). Once cleared, NIMC releases an updated tracking ID (\`new_tracking_id\`) and the 11-digit NIN (\`resolved_nin\`).
 
 #### Sandbox Test Numbers:
+In test mode (\`lora_test_...\`), only the designated test tracking IDs below are accepted. Any other tracking ID will be rejected with HTTP 400 \`INVALID_SANDBOX_INPUT\`:
 - Success: \`0TEB51VS5RES4ZZ\` (transitions to \`completed\` in 5 seconds)
 - Failed (Refunded): \`0TBH26SQHQCR9F\` (transitions to \`failed\`, \`refunded: true\`)
 - Duplicate Conflict (409): \`0TDUPCONFLICT01\`
@@ -306,6 +309,7 @@ Clears NIMC In-Processing Errors (IPE). Once cleared, NIMC releases an updated t
 Resolves official NIMC enrollment Tracking ID to retrieve the citizen's official 11-digit NIN, verified demographic details, and official National Identification Slip in raw base64 PDF format (\`pdf_base64\`).
 
 #### Sandbox Test Tracking IDs:
+In test mode (\`lora_test_...\`), only the designated test tracking IDs below are accepted. Any other tracking ID will be rejected with HTTP 400 \`INVALID_SANDBOX_INPUT\`:
 - Success: \`0TEB51VS5RES4ZZ\` (transitions to \`completed\` in 5 seconds with \`resolved_nin: "44297896804"\`, raw \`pdf_base64\`, and demographics)
 - Failed: \`0TBH26SQHQCR9F\` (transitions to \`failed\` in 5 seconds, debited fee retained)
 - Duplicate Conflict (409): \`0TDUPCONFLICT01\`

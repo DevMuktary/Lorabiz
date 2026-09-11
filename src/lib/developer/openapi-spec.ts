@@ -389,6 +389,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             "  <img src=\"/examples/nin_premium_example.png\" alt=\"Premium Slip Preview\" />\n" +
             "</details>\n\n" +
             "#### Sandbox Test Identifiers:\n" +
+            "In test mode (`lora_test_...`), only the designated test NINs below are accepted. Any other NIN will be rejected with HTTP 400 `INVALID_SANDBOX_INPUT`:\n" +
             "- **Success (Female)**: `23456789012` (Returns 200 OK)\n" +
             "- **Success (Male)**: `12345678901` (Returns 200 OK)\n" +
             "- **Record Not Found**: `00000000000` or `99999999999` (Returns 422 RECORD_NOT_FOUND, billed ₦0.00)",
@@ -577,6 +578,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             "  <img src=\"/examples/nin_premium_example.png\" alt=\"Premium Slip Preview\" />\n" +
             "</details>\n\n" +
             "#### Sandbox Test Identifiers:\n" +
+            "In test mode (`lora_test_...`), only the designated test phone numbers below are accepted. Any other phone number will be rejected with HTTP 400 `INVALID_SANDBOX_INPUT`:\n" +
             "- **Success (Female)**: `08023456789` (Returns 200 OK)\n" +
             "- **Success (Male)**: `08012345678` (Returns 200 OK)\n" +
             "- **Record Not Found**: `00000000000` or `07000000000` (Returns 422 RECORD_NOT_FOUND, billed ₦0.00)",
@@ -757,7 +759,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             "- `modification` (Record Modification)\n" +
             "- `photo_error` (Photo Error Correction)\n\n" +
             "#### Sandbox Test NINs:\n" +
-            "In test mode (`lora_test_...`), use the following designated test NINs to simulate validation outcomes:\n" +
+            "In test mode (`lora_test_...`), only the designated test NINs below are accepted. Any other NIN will be rejected with HTTP 400 `INVALID_SANDBOX_INPUT`:\n" +
             "- `11111111111`: Success simulation (transitions to `validated`)\n" +
             "- `22222222222`: Failure simulation (transitions to `failed`, `refunded: true`)\n" +
             "- `99999999999`: Duplicate Conflict simulation (returns `409 DUPLICATE_REQUEST`)\n\n" +
@@ -1018,6 +1020,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           description:
             "Submit an applicant's official NIMC Tracking ID for NIMC IPE Clearance (In-Processing Error clearance).\n\n" +
             "#### Sandbox Testing:\n" +
+            "In test mode (`lora_test_...`), only the designated test tracking IDs below are accepted. Any other tracking ID will be rejected with HTTP 400 `INVALID_SANDBOX_INPUT`:\n" +
             "- `0TEB51VS5RES4ZZ`: Simulates success (transitions to `completed`, releasing `new_tracking_id` and `resolved_nin`).\n" +
             "- `0TBH26SQHQCR9F`: Simulates failure (transitions to `failed`, `refunded: true`).\n" +
             "- `0TDUPCONFLICT01`: Simulates duplicate conflict (HTTP 409).",
@@ -1272,6 +1275,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           description:
             "Submit an applicant's NIMC Tracking ID for NIN Personalization to resolve their 11-digit NIN and personalized identification slip.\n\n" +
             "#### Sandbox Testing:\n" +
+            "In test mode (`lora_test_...`), only the designated test tracking IDs below are accepted. Any other tracking ID will be rejected with HTTP 400 `INVALID_SANDBOX_INPUT`:\n" +
             "- `0TEB51VS5RES4ZZ`: Simulates success (transitions to `completed` in 5s with `resolved_nin`, `pdf_base64`, and demographics).\n" +
             "- `0TBH26SQHQCR9F`: Simulates failure (transitions to `failed` in 5s with `error_detail`).\n" +
             "- `0TDUPCONFLICT01`: Simulates duplicate conflict (HTTP 409 `DUPLICATE_REQUEST`).",

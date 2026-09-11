@@ -165,13 +165,64 @@ export async function POST(req: NextRequest) {
 
   // 6. SANDBOX / TEST MODE PIPELINE
   if (keyPayload.type === ApiKeyType.TEST) {
-    // Check simulation conflict trigger
-    if (sanitizedTrackingId === "0TDUPCONFLICT01" || sanitizedTrackingId.endsWith("CONFLICT")) {
+    // A. Strict Sandbox Test Tracking ID Enforcement
+    const ALLOWED_TEST_TRACKING_IDS = ["0TEB51VS5RES4ZZ", "0TBH26SQHQCR9F", "0TDUPCONFLICT01"];
+    if (!ALLOWED_TEST_TRACKING_IDS.includes(sanitizedTrackingId)) {
+      const errorMsg =
+        "In Sandbox/Test Mode (lora_test_...), you must strictly use designated test Tracking IDs: '0TEB51VS5RES4ZZ' (Success simulation), '0TBH26SQHQCR9F' (Failure simulation), or '0TDUPCONFLICT01' (Duplicate conflict simulation). To process real applicant tracking IDs, please switch to your Live API Key (lora_live_...).";
+
+      recordApiRequestLog({
+        userId: keyPayload.userId,
+        apiKeyId: keyPayload.id,
+        environment,
+        method: "POST",
+        endpoint,
+        statusCode: 400,
+        latencyMs: Date.now() - startTime,
+        amountCharged: 0,
+        clientReference: cleanClientRef || null,
+        requestBody: body,
+        errorMessage: errorMsg,
+      });
+
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "INVALID_SANDBOX_INPUT",
+          message: errorMsg,
+          environment: "test",
+          allowed_test_inputs: {
+            success: "0TEB51VS5RES4ZZ",
+            failure: "0TBH26SQHQCR9F",
+            duplicate_conflict: "0TDUPCONFLICT01",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // B. Check simulation conflict trigger (0TDUPCONFLICT01)
+    if (sanitizedTrackingId === "0TDUPCONFLICT01") {
+      const conflictMsg = `An active IPE clearance request is already in progress for Tracking ID ${sanitizedTrackingId}. Duplicate submission rejected to prevent double debits.`;
+      recordApiRequestLog({
+        userId: keyPayload.userId,
+        apiKeyId: keyPayload.id,
+        environment,
+        method: "POST",
+        endpoint,
+        statusCode: 409,
+        latencyMs: Date.now() - startTime,
+        amountCharged: 0,
+        clientReference: cleanClientRef || null,
+        requestBody: body,
+        errorMessage: conflictMsg,
+      });
+
       return NextResponse.json(
         {
           status: "error",
           code: "DUPLICATE_REQUEST",
-          message: `An active IPE clearance request is already in progress for Tracking ID ${sanitizedTrackingId}. Duplicate submission rejected to prevent double debits.`,
+          message: conflictMsg,
           reference: "lora_ipe_test_dup_active",
           tracking_id: sanitizedTrackingId,
           client_reference: cleanClientRef || null,
@@ -216,7 +267,7 @@ export async function POST(req: NextRequest) {
     });
 
     const testReference = `lora_ipe_test_${crypto.randomBytes(8).toString("hex")}`;
-    const willFail = sanitizedTrackingId === "0TBH26SQHQCR9F" || sanitizedTrackingId.endsWith("FAILED");
+    const willFail = sanitizedTrackingId === "0TBH26SQHQCR9F";
 
     await prisma.testNinIpeTicket.create({
       data: {
