@@ -298,7 +298,7 @@ Clears NIMC In-Processing Errors (IPE). Once cleared, NIMC releases an updated t
 
 ---
 
-### 7. Submit NIMC Tracking ID for Personalization Request
+### 7. Submit NIMC Tracking ID for NIN Personalization
 - **Method**: \`POST\`
 - **Path**: \`/api/v1/nin/personalization\`
 - **Content-Type**: \`application/json\`
@@ -387,6 +387,7 @@ NIMC NIN Personalization is strictly non-refundable once submitted. Failed or re
   "message": "Your NIN Personalization request has failed.",
   "error_detail": "Tracking ID could not be resolved or was rejected by identity authority.",
   "completed_at": null,
+  "refunded": false,
   "amount_charged": 1500.0,
   "currency": "NGN",
   "environment": "live",

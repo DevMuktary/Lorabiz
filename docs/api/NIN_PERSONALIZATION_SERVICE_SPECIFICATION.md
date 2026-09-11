@@ -225,6 +225,7 @@ Returned if the upstream identity authority rejects the Tracking ID or cannot re
   "message": "Your NIN Personalization request has failed.",
   "error_detail": "Tracking ID could not be resolved or was rejected by identity authority.",
   "completed_at": null,
+  "refunded": false,
   "amount_charged": 1500.0,
   "currency": "NGN",
   "environment": "live",

@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
             error_detail:
               testTicket.failureReason ||
               "Tracking ID could not be resolved or was rejected by identity authority.",
+            refunded: false,
           }
         : {}),
       completed_at: testTicket.completedAt ? testTicket.completedAt.toISOString() : null,
@@ -283,6 +284,7 @@ export async function GET(req: NextRequest) {
             ticket.failureReason ||
             "Tracking ID could not be resolved or was rejected by identity authority."
           ),
+          refunded: false,
         }
       : {}),
     completed_at: ticket.completedAt ? ticket.completedAt.toISOString() : null,

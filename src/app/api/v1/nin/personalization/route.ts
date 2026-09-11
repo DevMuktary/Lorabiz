@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
             ...(existingTest.status === "FAILED"
               ? {
                   error_detail: existingTest.failureReason || "Personalization request has failed.",
+                  refunded: false,
                 }
               : {}),
             amount_charged: Number(existingTest.amountCharged),
@@ -143,6 +144,7 @@ export async function POST(req: NextRequest) {
             ...(existingLive.status === "FAILED"
               ? {
                   error_detail: existingLive.failureReason || "Personalization request has failed.",
+                  refunded: false,
                 }
               : {}),
             amount_charged: Number(existingLive.amountCharged),
