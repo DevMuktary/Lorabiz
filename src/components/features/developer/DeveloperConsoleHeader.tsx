@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { BookOpen, Activity, Terminal, Tag, Layers, Receipt } from "lucide-react";
+import { BookOpen, Activity, Terminal, Tag, Layers, Receipt, ArrowLeft } from "lucide-react";
 
 interface DeveloperConsoleHeaderProps {
   environment: "LIVE" | "TEST";
@@ -20,22 +20,34 @@ export const DeveloperConsoleHeader: React.FC<DeveloperConsoleHeaderProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-5 border-b border-border/60 pb-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-4 border-b border-border/60 pb-6">
+      {/* Top back navigation */}
       <div>
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary shadow-xs">
-            <Terminal className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              Developer Hub
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              Self-serve B2B identity &amp; verification infrastructure, API keys, and real-time logs.
-            </p>
+        <Link
+          href="/dashboard"
+          className="group inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+          <span>Back to Dashboard</span>
+        </Link>
+      </div>
+
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary shadow-xs">
+              <Terminal className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                Developer Hub
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Self-serve B2B identity &amp; verification infrastructure, API keys, and real-time logs.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
       <div className="flex flex-wrap items-center gap-2.5">
         {/* Service Requests Badge */}
@@ -122,6 +134,7 @@ export const DeveloperConsoleHeader: React.FC<DeveloperConsoleHeaderProps> = ({
         </div>
       </div>
     </div>
+  </div>
   );
 };
 

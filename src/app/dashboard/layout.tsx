@@ -290,9 +290,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </h3>
               <div className="space-y-0.5">
                 {group.links.map((link) => {
-                  const isActive = link.href === "/dashboard"
-                    ? pathname === "/dashboard"
-                    : pathname.startsWith(link.href.split('?')[0]) && link.href !== "#";
+                  const linkBaseHref = link.href.split('?')[0];
+                  const isExactMatch = pathname === linkBaseHref;
+                  const isChildMatch =
+                    linkBaseHref !== "/dashboard" &&
+                    linkBaseHref !== "/dashboard/developer" &&
+                    pathname.startsWith(linkBaseHref + "/");
+                  const isActive = link.href !== "#" && (isExactMatch || isChildMatch);
 
                   const Icon = link.icon;
                   const hasSubLinks = Boolean(link.subLinks && link.subLinks.length > 0);

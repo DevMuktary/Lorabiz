@@ -142,12 +142,9 @@ export const WebhookConfigCard: React.FC<WebhookConfigCardProps> = ({ environmen
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-foreground">Webhook Notifications</h2>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                isLive 
-                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20" 
-                  : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
-              }`}>
-                {isLive ? "Production Live" : "Sandbox Test"}
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-secondary/60 px-2.5 py-0.5 text-xs font-medium text-foreground">
+                <span className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-emerald-500" : "bg-amber-500"}`} />
+                <span>{isLive ? "Live" : "Test"}</span>
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">

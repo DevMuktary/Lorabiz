@@ -4,6 +4,10 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { DeveloperProfileStatus } from "@prisma/client";
 import { logUserActivity } from "@/lib/activity-logger";
+import {
+  sendDeveloperLiveApprovedEmail,
+  sendDeveloperLiveRejectedEmail,
+} from "@/lib/email";
 
 export async function POST(
   req: NextRequest,
@@ -58,6 +62,18 @@ export async function POST(
         status: "SUCCESS",
       }).catch(() => {});
 
+      // Send approval notification email to developer
+      if (profile.user?.email) {
+        const developerName = [profile.user.firstName, profile.user.lastName].filter(Boolean).join(" ").trim() || undefined;
+        sendDeveloperLiveApprovedEmail({
+          to: profile.user.email,
+          name: developerName,
+          businessName: profile.businessName,
+        }).catch((err) => {
+          console.error("❌ Failed to send developer live approved email:", err);
+        });
+      }
+
       return NextResponse.json({
         success: true,
         message: `Developer profile for "${profile.businessName}" approved successfully. Live keys are now enabled.`,
@@ -84,6 +100,19 @@ export async function POST(
         description: `Live API access rejected: ${reason}`,
         status: "FAILED",
       }).catch(() => {});
+
+      // Send rejection notification email to developer
+      if (profile.user?.email) {
+        const developerName = [profile.user.firstName, profile.user.lastName].filter(Boolean).join(" ").trim() || undefined;
+        sendDeveloperLiveRejectedEmail({
+          to: profile.user.email,
+          name: developerName,
+          businessName: profile.businessName,
+          rejectionReason: reason,
+        }).catch((err) => {
+          console.error("❌ Failed to send developer live rejected email:", err);
+        });
+      }
 
       return NextResponse.json({
         success: true,
