@@ -52,9 +52,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       {
         name: "NIMC NIN Personalization",
         description:
-          "Submit and poll NIMC NIN Personalization requests by Tracking ID to retrieve the citizen's official 11-digit NIN and personalized National Identification Slip (raw base64 PDF).\n\n" +
-          "**Strict Zero-Refund Policy**:\n" +
-          "NIMC NIN Personalization is strictly non-refundable. Failed or rejected requests retain the debited fee and are not refunded to the wallet ledger.",
+          "Submit and poll NIMC NIN Personalization requests by Tracking ID.",
       },
     ],
     security: [
@@ -911,7 +909,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   },
                   examples: {
                     validated: {
-                      summary: "Validation Completed (Success)",
+                      summary: "Validated",
                       value: {
                         status: "success",
                         reference: "nin_val_da7c1d16cd69891a7a9044",
@@ -928,7 +926,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                       },
                     },
                     failed: {
-                      summary: "Validation Failed (Automatic Refund)",
+                      summary: "Failed",
                       value: {
                         status: "error",
                         reference: "nin_val_da7c1d16cd69891a7a9044",
@@ -941,6 +939,23 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                         completed_at: null,
                         refunded: true,
                         amount_charged: 0.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-09T08:15:00.000Z",
+                      },
+                    },
+                    processing: {
+                      summary: "Processing",
+                      value: {
+                        status: "success",
+                        reference: "nin_val_da7c1d16cd69891a7a9044",
+                        client_reference: "REF_MY_APP_99182",
+                        nin: "18867568313",
+                        validation_type: "no_record_found",
+                        request_status: "processing",
+                        message: "NIN Validation request is currently processing.",
+                        completed_at: null,
+                        amount_charged: 700.0,
                         currency: "NGN",
                         environment: "live",
                         date: "2026-09-09T08:15:00.000Z",
@@ -1147,7 +1162,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   },
                   examples: {
                     completed: {
-                      summary: "Clearance Completed",
+                      summary: "Completed",
                       value: {
                         status: "success",
                         reference: "lora_ipe_1725934820123_xyz89",
@@ -1165,7 +1180,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                       },
                     },
                     failed: {
-                      summary: "Clearance Failed (Refunded)",
+                      summary: "Failed",
                       value: {
                         status: "error",
                         reference: "lora_ipe_1725934820123_xyz89",
@@ -1177,6 +1192,24 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                         refunded: true,
                         completed_at: null,
                         amount_charged: 0.0,
+                        currency: "NGN",
+                        environment: "live",
+                        date: "2026-09-05T20:30:12.000Z",
+                      },
+                    },
+                    processing: {
+                      summary: "Processing",
+                      value: {
+                        status: "success",
+                        reference: "lora_ipe_1725934820123_xyz89",
+                        tracking_id: "0TEB51VS5RES4ZZ",
+                        client_reference: "kyc_ipe_order_10029",
+                        request_status: "processing",
+                        message: "IPE Clearance request is currently processing.",
+                        new_tracking_id: null,
+                        resolved_nin: null,
+                        completed_at: null,
+                        amount_charged: 2500.0,
                         currency: "NGN",
                         environment: "live",
                         date: "2026-09-05T20:30:12.000Z",
@@ -1234,15 +1267,13 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
       "/api/v1/nin/personalization": {
         post: {
           tags: ["NIMC NIN Personalization"],
-          summary: "Submit NIMC Tracking ID for Personalization Request",
+          summary: "Submit NIMC Tracking ID for NIN Personalization",
           description:
-            "Submit an applicant's official NIMC Tracking ID for NIN Personalization to resolve their official 11-digit NIN and personalized identification slip.\n\n" +
+            "Submit an applicant's NIMC Tracking ID for NIN Personalization to resolve their 11-digit NIN and personalized identification slip.\n\n" +
             "#### Sandbox Testing:\n" +
-            "- `0TEB51VS5RES4ZZ`: Simulates success (transitions to `completed` in 5s with `resolved_nin`, raw `pdf_base64`, and demographics).\n" +
-            "- `0TBH26SQHQCR9F`: Simulates failure (transitions to `failed` in 5s with `error_detail`, non-refundable).\n" +
-            "- `0TDUPCONFLICT01`: Simulates duplicate conflict (HTTP 409 `DUPLICATE_REQUEST`).\n\n" +
-            "#### Zero-Refund Policy:\n" +
-            "NIMC NIN Personalization requests are non-refundable once initiated. If a personalization request fails upstream, the debited fee remains charged (`refunded: false`).",
+            "- `0TEB51VS5RES4ZZ`: Simulates success (transitions to `completed` in 5s with `resolved_nin`, `pdf_base64`, and demographics).\n" +
+            "- `0TBH26SQHQCR9F`: Simulates failure (transitions to `failed` in 5s with `error_detail`).\n" +
+            "- `0TDUPCONFLICT01`: Simulates duplicate conflict (HTTP 409 `DUPLICATE_REQUEST`).",
           requestBody: {
             required: true,
             content: {
@@ -1336,10 +1367,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           description:
             "Query the real-time status of a NIN personalization request using `reference` or `client_reference`.\n\n" +
             "**Tracking ID Rule**:\n" +
-            "Querying status by `tracking_id` is strictly prohibited to prevent collisions across retried submissions. Status polling strictly accepts `reference` or `client_reference`.\n\n" +
-            "**Fee Visibility & Slip Delivery**:\n" +
-            "- The debited fee (`amount_charged`, `currency: 'NGN'`) is explicitly present across ALL states, including processing.\n" +
-            "- Completed responses return the raw base64 PDF string directly under `pdf_base64`.",
+            "Querying status by `tracking_id` is strictly prohibited to prevent collisions across retried submissions. Status polling strictly accepts `reference` or `client_reference`.",
           parameters: [
             {
               name: "reference",
@@ -1392,7 +1420,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                   },
                   examples: {
                     completed: {
-                      summary: "Personalization Completed (Direct pdf_base64)",
+                      summary: "Completed",
                       value: {
                         status: "success",
                         reference: "lora_pzn_1725934820123_abc45",
@@ -1421,7 +1449,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                       },
                     },
                     failed: {
-                      summary: "Personalization Failed (Strict Zero Refund)",
+                      summary: "Failed",
                       value: {
                         status: "error",
                         reference: "lora_pzn_1725934820123_abc45",
@@ -1438,7 +1466,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
                       },
                     },
                     processing: {
-                      summary: "Processing State (Explicit Fee Display)",
+                      summary: "Processing",
                       value: {
                         status: "success",
                         reference: "lora_pzn_1725934820123_abc45",

@@ -8,7 +8,7 @@ The **NIMC NIN Personalization API** resolves an applicant's official National I
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/v1/nin/personalization` | Submit NIMC Tracking ID for Personalization request. |
+| `POST` | `/api/v1/nin/personalization` | Submit NIMC Tracking ID for NIN Personalization. |
 | `GET` | `/api/v1/nin/personalization/status` | Query real-time personalization status by `reference` or `client_reference`. |
 
 ---
@@ -48,9 +48,9 @@ NIMC NIN Personalization is strictly non-refundable once submitted. Failed or re
 
 ---
 
-## 5. POST /api/v1/nin/personalization — Submit NIMC Tracking ID for Personalization Request
+## 5. POST /api/v1/nin/personalization — Submit NIMC Tracking ID for NIN Personalization
 
-Submits an official NIMC Tracking ID for personalization.
+Submits an applicant's NIMC Tracking ID for NIN Personalization.
 
 ### Sandbox Test Tracking IDs
 Use test API keys (`lora_test_...`) to test deterministic lifecycle flows without spending real funds:
