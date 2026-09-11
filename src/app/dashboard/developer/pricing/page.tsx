@@ -116,15 +116,29 @@ const API_PRICING_DATA: ApiPricingPlan[] = [
   },
 ];
 
-import { DeveloperConsoleHeader } from "@/components/features/developer/DeveloperConsoleHeader";
-
 export default function DeveloperPricingPage() {
   const [activeTab, setActiveTab] = useState<"standard" | "enterprise">("standard");
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-6 lg:p-8">
-      {/* Developer Console Header with Tabs */}
-      <DeveloperConsoleHeader environment="LIVE" />
+      {/* Top Breadcrumb & Return */}
+      <div className="flex items-center justify-between">
+        <Link
+          href="/dashboard/developer"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Developer Hub</span>
+        </Link>
+        <Link
+          href="/docs"
+          target="_blank"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+        >
+          <span>API Docs</span>
+          <ExternalLink className="h-3 w-3 text-muted-foreground" />
+        </Link>
+      </div>
 
       {/* Header Banner */}
       <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card to-primary/5 p-6 sm:p-8 shadow-sm">

@@ -296,7 +296,7 @@ export const RequestStreamTable: React.FC<RequestStreamTableProps> = ({ environm
           <table className="w-full min-w-[700px] text-left text-xs">
             <thead className="border-b border-border/40 bg-muted/40 text-muted-foreground">
               <tr>
-                <th className="px-6 py-3.5 font-medium">Time (WAT)</th>
+                <th className="px-6 py-3.5 font-medium">Time</th>
                 <th className="px-6 py-3.5 font-medium">Method</th>
                 <th className="px-6 py-3.5 font-medium">Endpoint</th>
                 <th className="px-6 py-3.5 font-medium">Status</th>

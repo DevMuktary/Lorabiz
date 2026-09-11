@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { SpinnerGap } from "@phosphor-icons/react";
-import { Clock, CheckCircle2, AlertCircle, X } from "lucide-react";
+import Link from "next/link";
+import { Clock, CheckCircle2, AlertCircle, X, Layers, Receipt, Tag, ArrowRight, ChevronRight } from "lucide-react";
 import { DeveloperConsoleHeader } from "@/components/features/developer/DeveloperConsoleHeader";
 import { DeveloperMetricCards } from "@/components/features/developer/DeveloperMetricCards";
 import { ApiKeyManager, ApiKeyItem } from "@/components/features/developer/ApiKeyManager";
@@ -317,6 +318,81 @@ export default function DeveloperDashboardPage() {
         failedCallsToday={stats.failedCallsToday}
         successRate={stats.successRate}
       />
+
+      {/* Dedicated Developer Pages Navigation */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Link
+          href="/dashboard/developer/requests"
+          className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-xs transition-all duration-200 hover:border-primary/50 hover:shadow-md"
+        >
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Layers className="h-5 w-5" />
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
+            </div>
+            <h3 className="mt-4 text-sm font-bold text-foreground">
+              API Service Requests
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+              Track live automated identity orders, resolved NINs, and inspection details across all services.
+            </p>
+          </div>
+          <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-primary">
+            <span>View Live Orders</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </div>
+        </Link>
+
+        <Link
+          href="/dashboard/developer/transactions"
+          className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-xs transition-all duration-200 hover:border-primary/50 hover:shadow-md"
+        >
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Receipt className="h-5 w-5" />
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
+            </div>
+            <h3 className="mt-4 text-sm font-bold text-foreground">
+              API Transactions Ledger
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+              Review financial wallet deductions, balance changes, and debit histories by service.
+            </p>
+          </div>
+          <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-primary">
+            <span>View Ledger</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </div>
+        </Link>
+
+        <Link
+          href="/dashboard/developer/pricing"
+          className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-xs transition-all duration-200 hover:border-primary/50 hover:shadow-md"
+        >
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Tag className="h-5 w-5" />
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
+            </div>
+            <h3 className="mt-4 text-sm font-bold text-foreground">
+              API Pricing &amp; Rates
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+              Explore transparent wholesale pricing across NIN verification, IPE clearance, and Validation.
+            </p>
+          </div>
+          <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-primary">
+            <span>View Rate Cards</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </div>
+        </Link>
+      </div>
 
       {/* 3. API Keys Management Section (Full-Width Stretched) */}
       <ApiKeyManager

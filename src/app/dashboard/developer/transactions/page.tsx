@@ -31,8 +31,6 @@ interface ApiTransactionItem {
   createdAt: string;
 }
 
-import { DeveloperConsoleHeader } from "@/components/features/developer/DeveloperConsoleHeader";
-
 export default function ApiTransactionsPage() {
   const [transactions, setTransactions] = useState<ApiTransactionItem[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -163,22 +161,47 @@ export default function ApiTransactionsPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Developer Console Header with Tabs */}
-      <DeveloperConsoleHeader environment="LIVE" />
-
-      {/* Page Title & Breadcrumb Info */}
+      {/* Top Breadcrumb & Return */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground">
-            API Transactions Ledger
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Financial ledger tracking wallet deductions and service fees debited by your API integrations.
-          </p>
+        <Link
+          href="/dashboard/developer"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Developer Hub</span>
+        </Link>
+      </div>
+
+      {/* Dedicated Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary shadow-xs">
+            <Receipt className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              API Transactions Ledger
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              Financial ledger tracking wallet deductions and service fees debited by your API integrations.
+            </p>
+          </div>
         </div>
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>LIVE WALLET LEDGER</span>
+
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/developer/requests"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+          >
+            <span>Service Requests</span>
+          </Link>
+          <Link
+            href="/docs"
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+          >
+            <span>API Docs</span>
+          </Link>
         </div>
       </div>
 
@@ -295,7 +318,7 @@ export default function ApiTransactionsPage() {
             <table className="w-full min-w-[850px] text-left text-xs">
               <thead className="border-b border-border/40 bg-muted/40 text-muted-foreground">
                 <tr>
-                  <th className="px-6 py-3.5 font-medium">Date &amp; Time (WAT)</th>
+                  <th className="px-6 py-3.5 font-medium">Date &amp; Time</th>
                   <th className="px-6 py-3.5 font-medium">Service Name</th>
                   <th className="px-6 py-3.5 font-medium">Reference</th>
                   <th className="px-6 py-3.5 font-medium">Type</th>

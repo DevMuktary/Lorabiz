@@ -145,7 +145,7 @@ export const RequestInspectDrawer: React.FC<RequestInspectDrawerProps> = ({
               </div>
 
               <div className="col-span-2 sm:col-span-4 rounded-xl border border-border bg-muted/20 p-2.5 flex items-center justify-between text-xs">
-                <span className="text-[11px] font-semibold text-muted-foreground">Recorded At (WAT):</span>
+                <span className="text-[11px] font-semibold text-muted-foreground">Recorded At:</span>
                 <span className="font-mono font-medium text-foreground">
                   {new Date(logDetails.createdAt).toLocaleString("en-GB", {
                     timeZone: "Africa/Lagos",

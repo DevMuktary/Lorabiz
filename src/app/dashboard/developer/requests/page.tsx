@@ -20,8 +20,6 @@ import { UnifiedApiRequestItem } from "@/app/api/developer/requests/route";
 import { ApiServiceOrderDrawer } from "@/components/features/developer/ApiServiceOrderDrawer";
 import { formatWATDateTime } from "@/lib/developer/format-wat";
 
-import { DeveloperConsoleHeader } from "@/components/features/developer/DeveloperConsoleHeader";
-
 export default function ApiRequestsHistoryPage() {
   const [requests, setRequests] = useState<UnifiedApiRequestItem[]>([]);
   const [summary, setSummary] = useState({
@@ -177,22 +175,48 @@ export default function ApiRequestsHistoryPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Developer Console Header with Tabs */}
-      <DeveloperConsoleHeader environment="LIVE" />
-
-      {/* Page Title & Breadcrumb Info */}
+      {/* Top Breadcrumb & Return */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground">
-            Live Service Requests
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Unified live history of identity verification and clearance requests submitted via Lorabiz API.
-          </p>
+        <Link
+          href="/dashboard/developer"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Developer Hub</span>
+        </Link>
+      </div>
+
+      {/* Dedicated Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary shadow-xs">
+            <Layers className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              API Service Requests
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              Live automated identity order history across NIN Personalization, IPE Clearance, Validation, and Verifications.
+            </p>
+          </div>
         </div>
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>STRICTLY LIVE REQUESTS</span>
+
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/developer/transactions"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+          >
+            <span>Transactions</span>
+          </Link>
+          <Link
+            href="/docs"
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+          >
+            <span>API Docs</span>
+            <ExternalLink className="h-3 w-3 text-muted-foreground" />
+          </Link>
         </div>
       </div>
 
@@ -297,7 +321,7 @@ export default function ApiRequestsHistoryPage() {
             <table className="w-full min-w-[850px] text-left text-xs">
               <thead className="border-b border-border/40 bg-muted/40 text-muted-foreground">
                 <tr>
-                  <th className="px-6 py-3.5 font-medium">Date &amp; Time (WAT)</th>
+                  <th className="px-6 py-3.5 font-medium">Date &amp; Time</th>
                   <th className="px-6 py-3.5 font-medium">Service</th>
                   <th className="px-6 py-3.5 font-medium">Input Identifier</th>
                   <th className="px-6 py-3.5 font-medium">Reference</th>

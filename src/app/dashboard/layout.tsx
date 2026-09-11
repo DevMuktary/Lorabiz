@@ -98,6 +98,9 @@ const NAVIGATION: NavCategory[] = [
     category: "Developer",
     links: [
       { name: "Developer Hub", href: "/dashboard/developer", icon: Code },
+      { name: "Service Requests", href: "/dashboard/developer/requests", icon: IdentificationBadge },
+      { name: "API Transactions", href: "/dashboard/developer/transactions", icon: Receipt },
+      { name: "API Pricing", href: "/dashboard/developer/pricing", icon: Tag },
     ]
   },
   {

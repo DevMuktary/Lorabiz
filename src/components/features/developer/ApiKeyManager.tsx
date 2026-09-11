@@ -307,8 +307,8 @@ export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
                 <th className="px-6 py-3.5 font-medium">Name</th>
                 <th className="px-6 py-3.5 font-medium">Secret Key / Token</th>
                 <th className="px-6 py-3.5 font-medium">Status</th>
-                <th className="px-6 py-3.5 font-medium">Created (WAT)</th>
-                <th className="px-6 py-3.5 font-medium">Last Used (WAT)</th>
+                <th className="px-6 py-3.5 font-medium">Created</th>
+                <th className="px-6 py-3.5 font-medium">Last Used</th>
                 <th className="px-6 py-3.5 text-right font-medium">Actions</th>
               </tr>
             </thead>

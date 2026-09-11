@@ -55,3 +55,9 @@ export function formatWATDate(dateInput: string | Date | number | null | undefin
     return String(dateInput);
   }
 }
+
+// Clean aliases
+export const formatDateTime = formatWATDateTime;
+export const formatTime = formatWATTime;
+export const formatDate = formatWATDate;
+

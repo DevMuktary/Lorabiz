@@ -195,7 +195,7 @@ export const ApiServiceOrderDrawer: React.FC<ApiServiceOrderDrawerProps> = ({
 
             <div className="rounded-xl border border-border bg-card p-3.5 shadow-xs">
               <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                Submitted (WAT)
+                Submitted
               </span>
               <div className="mt-1 text-xs font-medium text-foreground">
                 {formatWATDateTime(order.createdAt)}
@@ -205,7 +205,7 @@ export const ApiServiceOrderDrawer: React.FC<ApiServiceOrderDrawerProps> = ({
             {order.completedAt && (
               <div className="col-span-2 rounded-xl border border-border bg-card p-3 shadow-xs flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-muted-foreground">
-                  Completed At (WAT):
+                  Completed At:
                 </span>
                 <span className="font-mono text-xs font-semibold text-foreground">
                   {formatWATDateTime(order.completedAt)}
