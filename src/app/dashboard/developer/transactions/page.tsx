@@ -62,8 +62,10 @@ export default function ApiTransactionsPage() {
       const data = await res.json();
       if (data.success && data.data) {
         setTransactions(data.data.transactions || []);
-        setWalletBalance(data.data.walletBalance || 0);
-        setTotalDebited(data.data.totalDebited || 0);
+        const currentBal = data.data.summary?.currentWalletBalance ?? data.data.walletBalance ?? 0;
+        const totalDeb = data.data.summary?.totalDebited ?? data.data.totalDebited ?? 0;
+        setWalletBalance(currentBal);
+        setTotalDebited(totalDeb);
         if (data.data.pagination) {
           setTotalPages(data.data.pagination.totalPages || 1);
           setTotalCount(data.data.pagination.totalCount || 0);

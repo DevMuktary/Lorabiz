@@ -53,9 +53,14 @@ export async function GET(req: NextRequest) {
       walletId: user.wallet.id,
       OR: [
         { serviceCategory: "API_SERVICE" },
+        { serviceCategory: "IDENTITY_API" },
         { serviceCategory: "SERVICES" },
-        { description: { startsWith: "API" } },
-        { description: { contains: "API" } },
+        { description: { contains: "API", mode: "insensitive" } },
+        { description: { contains: "Personalization", mode: "insensitive" } },
+        { description: { contains: "IPE", mode: "insensitive" } },
+        { description: { contains: "Validation", mode: "insensitive" } },
+        { description: { contains: "Verification", mode: "insensitive" } },
+        { description: { contains: "Slip", mode: "insensitive" } },
       ],
     };
 
@@ -112,9 +117,14 @@ export async function GET(req: NextRequest) {
           status: "SUCCESS",
           OR: [
             { serviceCategory: "API_SERVICE" },
+            { serviceCategory: "IDENTITY_API" },
             { serviceCategory: "SERVICES" },
-            { description: { startsWith: "API" } },
-            { description: { contains: "API" } },
+            { description: { contains: "API", mode: "insensitive" } },
+            { description: { contains: "Personalization", mode: "insensitive" } },
+            { description: { contains: "IPE", mode: "insensitive" } },
+            { description: { contains: "Validation", mode: "insensitive" } },
+            { description: { contains: "Verification", mode: "insensitive" } },
+            { description: { contains: "Slip", mode: "insensitive" } },
           ],
         },
         _sum: { amount: true },
@@ -147,14 +157,18 @@ export async function GET(req: NextRequest) {
     }
 
     const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+    const walletBalance = Number(user.wallet.balance);
+    const totalDebited = Number(aggregateSpent._sum.amount || 0);
 
     return NextResponse.json({
       success: true,
       data: {
         transactions: finalTransactions,
+        walletBalance,
+        totalDebited,
         summary: {
-          currentWalletBalance: Number(user.wallet.balance),
-          totalDebited: Number(aggregateSpent._sum.amount || 0),
+          currentWalletBalance: walletBalance,
+          totalDebited,
           totalTransactions: totalCount,
         },
         pagination: {

@@ -45,6 +45,7 @@ const NAVIGATION: NavCategory[] = [
     category: "Main",
     links: [
       { name: "Service Hub", href: "/dashboard", icon: SquaresFour },
+      { name: "Developer Hub", href: "/dashboard/developer", icon: Code },
       { name: "Spin & Win", href: "/dashboard/rewards", icon: Gift },
       { name: "My Rewards", href: "/dashboard/vouchers", icon: Ticket },
       { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
@@ -85,6 +86,14 @@ const NAVIGATION: NavCategory[] = [
     ]
   },
   {
+    category: "Developer",
+    links: [
+      { name: "API Service Requests", href: "/dashboard/developer/requests", icon: IdentificationBadge },
+      { name: "API Transactions", href: "/dashboard/developer/transactions", icon: Receipt },
+      { name: "API Pricing", href: "/dashboard/developer/pricing", icon: Tag },
+    ]
+  },
+  {
     category: "Corporate Filings",
     links: [
       { name: "Trademark (IPO)", href: "#", icon: Copyright, isComingSoon: true },
@@ -92,15 +101,6 @@ const NAVIGATION: NavCategory[] = [
       { name: "Smart Legal Documents", href: "#", icon: FileText, isComingSoon: true },
       { name: "Build Online Presence", href: "#", icon: Globe, isComingSoon: true },
       { name: "NAFDAC Registration", href: "#", icon: Flask, isComingSoon: true },
-    ]
-  },
-  {
-    category: "Developer",
-    links: [
-      { name: "Developer Hub", href: "/dashboard/developer", icon: Code },
-      { name: "Service Requests", href: "/dashboard/developer/requests", icon: IdentificationBadge },
-      { name: "API Transactions", href: "/dashboard/developer/transactions", icon: Receipt },
-      { name: "API Pricing", href: "/dashboard/developer/pricing", icon: Tag },
     ]
   },
   {
@@ -145,10 +145,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const { profile: loyaltyProfile } = useLoyalty();
 
+  // Start with submenus collapsed so the sidebar is not overly long; auto-expand only when visiting that section
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
-    "/dashboard/nin": true,
-    "/dashboard/bvn": true,
-    "/dashboard/utilities": true,
+    "/dashboard/nin": false,
+    "/dashboard/bvn": false,
+    "/dashboard/utilities": false,
   });
 
   // Auto-expand active category based on current pathname

@@ -1,8 +1,6 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
-import { BookOpen, Activity, Terminal, Tag } from "lucide-react";
+import { BookOpen, Activity, Terminal, Tag, Layers, Receipt } from "lucide-react";
 
 interface DeveloperConsoleHeaderProps {
   environment: "LIVE" | "TEST";
@@ -39,24 +37,42 @@ export const DeveloperConsoleHeader: React.FC<DeveloperConsoleHeaderProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Prominent Documentation Button */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        {/* Service Requests Badge */}
         <Link
-          href="/docs"
-          target="_blank"
-          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98]"
+          href="/dashboard/developer/requests"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
-          <BookOpen className="h-4 w-4" />
-          <span>Documentation</span>
+          <Layers className="h-3.5 w-3.5 text-primary" />
+          <span>Service Requests</span>
+        </Link>
+
+        {/* API Transactions Badge */}
+        <Link
+          href="/dashboard/developer/transactions"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <Receipt className="h-3.5 w-3.5 text-emerald-500" />
+          <span>API Transactions</span>
         </Link>
 
         {/* Dedicated Developer API Pricing Link */}
         <Link
           href="/dashboard/developer/pricing"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
-          <Tag className="h-4 w-4 text-primary" />
+          <Tag className="h-3.5 w-3.5 text-amber-500" />
           <span>API Pricing</span>
+        </Link>
+
+        {/* Documentation Button */}
+        <Link
+          href="/docs"
+          target="_blank"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <BookOpen className="h-3.5 w-3.5" />
+          <span>Docs</span>
         </Link>
 
         {/* System Status */}
