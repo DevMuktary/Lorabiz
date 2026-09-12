@@ -1,3 +1,18 @@
+const rateLimitResponseHeaders = {
+  "X-RateLimit-Limit": {
+    description: "The maximum number of allowed requests in the 60-second sliding window (60 for Test mode, 600 for Live mode).",
+    schema: { type: "integer", example: 600 },
+  },
+  "X-RateLimit-Remaining": {
+    description: "The number of remaining requests allowed within the current 60-second window.",
+    schema: { type: "integer", example: 599 },
+  },
+  "X-RateLimit-Reset": {
+    description: "The Unix epoch timestamp (in seconds) when the current rate limit window resets.",
+    schema: { type: "integer", example: 1726102800 },
+  },
+};
+
 export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
   return {
     openapi: "3.1.0",
@@ -16,12 +31,23 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
         "- `x-api-key: <api_key>`\n\n" +
         "Manage your keys in the [Lorabiz Developer Dashboard](https://lorabiz.com/dashboard/developer).\n\n" +
         "### Environments: Test Sandbox vs Live\n" +
-        "- **Test Mode (`lora_test_...`)**: Preloaded with virtual ₦1,000,000.00 sandbox balance. Real funds are never deducted. Deterministic test numbers are provided per endpoint to simulate both success and error paths.\n" +
-        "- **Live Mode (`lora_live_...`)**: Connects directly to production national databases. Charges wholesale fees atomically on successful 2xx verifications.",
+        "- **Test Mode (`lora_test_...`)**: Preloaded with virtual ₦1,000,000.00 sandbox balance. Real funds are never deducted. Deterministic test numbers are provided per endpoint to simulate both success and error paths. You can reset your sandbox balance anytime directly from the [Developer Console](https://lorabiz.com/dashboard/developer).\n" +
+        "- **Live Mode (`lora_live_...`)**: Connects directly to production national databases. Charges wholesale fees atomically on successful 2xx verifications.\n\n" +
+        "### Rate Limiting & High-Volume Quotas\n" +
+        "All API requests are governed by a 60-second sliding-window rate limit to ensure gateway stability and fair access:\n" +
+        "- **Test Mode (`lora_test_...`)**: 60 requests per minute\n" +
+        "- **Live Mode (`lora_live_...`)**: 600 requests per minute\n\n" +
+        "Every response (success, error, and rate-limited) returns standard IETF HTTP rate limit headers:\n" +
+        "- `X-RateLimit-Limit`: Maximum requests allowed in the 60-second window\n" +
+        "- `X-RateLimit-Remaining`: Remaining request allowance in the current window\n" +
+        "- `X-RateLimit-Reset`: Unix epoch timestamp (in seconds) when the current window resets\n\n" +
+        "If you exceed your quota, the API responds with HTTP `429 Too Many Requests` (`code: \"RATE_LIMITED\"`).\n\n" +
+        "**Need Higher Rate Limits?**\n" +
+        "If your application, fintech platform, or high-volume enterprise integration requires throughput beyond the default 600 requests/minute, please reach out to our team at [devs-lorabiz@quadrox.dev](mailto:devs-lorabiz@quadrox.dev) or speak with your dedicated account manager to request a custom rate limit increase.",
       contact: {
         name: "Lorabiz Developer Support",
         url: "https://lorabiz.com/contact",
-        email: "support@lorabiz.com",
+        email: "devs-lorabiz@quadrox.dev",
       },
     },
     servers: [
@@ -67,6 +93,20 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           scheme: "bearer",
           bearerFormat: "lora_live_... / lora_test_...",
           description: "Provide your Lorabiz API key prefixed with 'Bearer '. Supports both Live and Test keys.",
+        },
+      },
+      headers: {
+        XRateLimitLimit: {
+          description: "The maximum number of allowed requests in the 60-second sliding window (60 for Test mode, 600 for Live mode).",
+          schema: { type: "integer", example: 600 },
+        },
+        XRateLimitRemaining: {
+          description: "The number of remaining requests allowed within the current 60-second window.",
+          schema: { type: "integer", example: 599 },
+        },
+        XRateLimitReset: {
+          description: "The Unix timestamp (in seconds) when the current rate limit window resets.",
+          schema: { type: "integer", example: 1726102800 },
         },
       },
       schemas: {
@@ -203,12 +243,12 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           properties: {
             status: { type: "string", example: "error" },
             code: { type: "string", example: "RATE_LIMITED" },
-            message: { type: "string", example: "Too many requests. Limit is 60 requests per minute in live mode." },
+            message: { type: "string", example: "Too many requests. Limit is 600 requests per minute in LIVE mode." },
           },
           example: {
             status: "error",
             code: "RATE_LIMITED",
-            message: "Too many requests. Limit is 60 requests per minute in live mode.",
+            message: "Too many requests. Limit is 600 requests per minute in LIVE mode.",
           },
         },
         ServiceUnavailableResponse: {
@@ -425,6 +465,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           responses: {
             "200": {
               description: "Verification successful and slip generated",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/SuccessResponse" },
@@ -531,13 +572,14 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
             "429": {
               description: "Too Many Requests (rate limit exceeded)",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
                   example: {
                     status: "error",
                     code: "RATE_LIMITED",
-                    message: "Too many requests. Limit is 60 requests per minute in live mode.",
+                    message: "Too many requests. Limit is 600 requests per minute in LIVE mode.",
                   },
                 },
               },
@@ -614,6 +656,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           responses: {
             "200": {
               description: "Phone verification successful and slip generated",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/SuccessResponse" },
@@ -720,13 +763,14 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
             "429": {
               description: "Too Many Requests (rate limit exceeded)",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
                   example: {
                     status: "error",
                     code: "RATE_LIMITED",
-                    message: "Too many requests. Limit is 60 requests per minute in live mode.",
+                    message: "Too many requests. Limit is 600 requests per minute in LIVE mode.",
                   },
                 },
               },
@@ -796,6 +840,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           responses: {
             "201": {
               description: "Validation request queued successfully",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ValidationSubmitResponse" },
@@ -848,6 +893,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
             "429": {
               description: "Too Many Requests",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
@@ -893,6 +939,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           responses: {
             "200": {
               description: "Status query successful",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ValidationStatusResponse" },
@@ -1004,6 +1051,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
             "429": {
               description: "Too Many Requests",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
@@ -1050,6 +1098,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           responses: {
             "201": {
               description: "IPE clearance request submitted successfully",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/IpeSubmitResponse" },
@@ -1101,6 +1150,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
             "429": {
               description: "Too Many Requests",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
@@ -1146,6 +1196,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           responses: {
             "200": {
               description: "Status query successful",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/IpeStatusResponse" },
@@ -1259,6 +1310,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
             "429": {
               description: "Too Many Requests",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
@@ -1305,6 +1357,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           responses: {
             "201": {
               description: "Personalization request submitted successfully",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/PersonalizationSubmitResponse" },
@@ -1356,6 +1409,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
             "429": {
               description: "Too Many Requests",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },
@@ -1394,6 +1448,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
           responses: {
             "200": {
               description: "Status query successful",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/PersonalizationStatusResponse" },
@@ -1527,6 +1582,7 @@ export function getOpenApiSpec(baseUrl: string = "https://api.lorabiz.com") {
             },
             "429": {
               description: "Too Many Requests",
+              headers: rateLimitResponseHeaders,
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/RateLimitErrorResponse" },

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { Wallet, Zap, TrendingUp, PlusCircle, CheckCircle2, AlertCircle } from "lucide-react";
+import { Wallet, Zap, TrendingUp, PlusCircle, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
 
 interface DeveloperMetricCardsProps {
   environment: "LIVE" | "TEST";
@@ -13,6 +13,7 @@ interface DeveloperMetricCardsProps {
   successfulCallsToday?: number;
   failedCallsToday?: number;
   successRate: number | null; // null when no calls made
+  onResetSandboxSuccess?: () => void;
 }
 
 export const DeveloperMetricCards: React.FC<DeveloperMetricCardsProps> = ({
@@ -24,9 +25,38 @@ export const DeveloperMetricCards: React.FC<DeveloperMetricCardsProps> = ({
   successfulCallsToday = 0,
   failedCallsToday = 0,
   successRate,
+  onResetSandboxSuccess,
 }) => {
   const isLive = environment === "LIVE";
   const displayBalance = isLive ? walletBalance : sandboxBalance;
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const handleResetSandbox = async () => {
+    if (isResetting) return;
+    setIsResetting(true);
+    setResetFeedback(null);
+    try {
+      const res = await fetch("/api/developer/sandbox/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResetFeedback({ type: "success", message: "Reset to ₦1,000,000" });
+        onResetSandboxSuccess?.();
+        setTimeout(() => setResetFeedback(null), 4000);
+      } else {
+        setResetFeedback({ type: "error", message: data.message || "Failed to reset" });
+        setTimeout(() => setResetFeedback(null), 4000);
+      }
+    } catch {
+      setResetFeedback({ type: "error", message: "Network error resetting balance" });
+      setTimeout(() => setResetFeedback(null), 4000);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-3">
@@ -59,18 +89,45 @@ export const DeveloperMetricCards: React.FC<DeveloperMetricCardsProps> = ({
                 Fund
               </Link>
             ) : (
-              <span className="rounded-xl bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                Virtual ₦1M
-              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleResetSandbox}
+                  disabled={isResetting}
+                  title="Reset Sandbox Balance to ₦1,000,000"
+                  className="inline-flex items-center gap-1 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <RotateCcw className={`h-3 w-3 ${isResetting ? "animate-spin" : ""}`} />
+                  {isResetting ? "Resetting..." : "Reset"}
+                </button>
+              </div>
             )}
           </div>
         </div>
 
-        <p className="mt-4 text-xs text-muted-foreground">
-          {isLive
-            ? "Debited per successful API request."
-            : "Virtual credits for safe staging integration."}
-        </p>
+        <div className="mt-4 flex items-center justify-between gap-2 text-xs">
+          <p className="text-muted-foreground">
+            {isLive
+              ? "Debited per successful API request."
+              : "Virtual credits for safe staging integration."}
+          </p>
+          {!isLive && resetFeedback && (
+            <span
+              className={`inline-flex items-center gap-1 font-medium text-[11px] shrink-0 ${
+                resetFeedback.type === "success"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-500"
+              }`}
+            >
+              {resetFeedback.type === "success" ? (
+                <CheckCircle2 className="h-3 w-3" />
+              ) : (
+                <AlertCircle className="h-3 w-3" />
+              )}
+              {resetFeedback.message}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Card 2: Total Spent */}

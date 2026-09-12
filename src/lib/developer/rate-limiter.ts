@@ -47,3 +47,15 @@ export async function checkRateLimit(
     };
   }
 }
+
+/**
+ * Standard HTTP Rate Limit headers conforming to IETF draft-ietf-httpapi-ratelimit-headers
+ */
+export function getRateLimitHeaders(rateLimit?: RateLimitResult): Record<string, string> {
+  if (!rateLimit) return {};
+  return {
+    "X-RateLimit-Limit": rateLimit.limit.toString(),
+    "X-RateLimit-Remaining": Math.max(0, rateLimit.remaining).toString(),
+    "X-RateLimit-Reset": rateLimit.reset.toString(),
+  };
+}

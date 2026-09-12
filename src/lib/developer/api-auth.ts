@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyApiKey, VerifiedKeyPayload } from "@/lib/developer/keys";
-import { checkRateLimit, RateLimitResult } from "@/lib/developer/rate-limiter";
+import { checkRateLimit, RateLimitResult, getRateLimitHeaders } from "@/lib/developer/rate-limiter";
+
+export { getRateLimitHeaders };
 
 export interface ApiAuthResult {
   authenticated: boolean;

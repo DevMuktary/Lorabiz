@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateApiKey } from "@/lib/developer/api-auth";
+import { authenticateApiKey, getRateLimitHeaders } from "@/lib/developer/api-auth";
 import { getStrictApiPrice, executeDeveloperBilling } from "@/lib/developer/api-pricing";
 import { recordApiRequestLog } from "@/lib/developer/logger";
 import { executeNinSlipGeneration } from "@/lib/nin-slips-provider";
@@ -22,8 +22,9 @@ export async function POST(req: NextRequest) {
     return authResult.errorResponse!;
   }
 
-  const { keyPayload } = authResult;
+  const { keyPayload, rateLimit } = authResult;
   const environment = keyPayload.type;
+  const rlHeaders = getRateLimitHeaders(rateLimit);
 
   let requestBody: any = null;
 
@@ -285,7 +286,7 @@ export async function POST(req: NextRequest) {
       responseBody: { status: "success", reference, amount_charged: requiredAmount },
     });
 
-    return NextResponse.json(responseData, { status: 200 });
+    return NextResponse.json(responseData, { status: 200, headers: rlHeaders });
   }
 
   // 7. LIVE Mode: Direct DataVerify Slip Generation
@@ -382,7 +383,7 @@ export async function POST(req: NextRequest) {
       responseBody: normalizedResponse,
     });
 
-    return NextResponse.json(normalizedResponse, { status: 200 });
+    return NextResponse.json(normalizedResponse, { status: 200, headers: rlHeaders });
   } catch (err: any) {
     console.error("❌ [API /api/v1/nin/by-nin] Internal Error:", err);
     recordApiRequestLog({

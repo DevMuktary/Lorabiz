@@ -316,6 +316,7 @@ export default function DeveloperDashboardPage() {
         successfulCallsToday={stats.successfulCallsToday}
         failedCallsToday={stats.failedCallsToday}
         successRate={stats.successRate}
+        onResetSandboxSuccess={loadOverview}
       />
 
       {/* 3. API Keys Management Section (Full-Width Stretched) */}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApiKey } from "@/lib/developer/api-auth";
+import { authenticateApiKey, getRateLimitHeaders } from "@/lib/developer/api-auth";
 import { recordApiRequestLog } from "@/lib/developer/logger";
 import { ApiKeyType, NinValidationCategory } from "@prisma/client";
 import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
@@ -66,9 +66,10 @@ export async function POST(req: NextRequest) {
     return authResult.errorResponse!;
   }
 
-  const { keyPayload } = authResult;
+  const { keyPayload, rateLimit } = authResult;
   const environment = keyPayload.type;
   const envString = environment === ApiKeyType.LIVE ? "live" : "test";
+  const rlHeaders = getRateLimitHeaders(rateLimit);
 
   // 3. Parse and Validate Request Payload
   let body: any;
@@ -172,7 +173,7 @@ export async function POST(req: NextRequest) {
           currency: "NGN",
           refunded: existingByRef.refunded,
         },
-        { status: 200 }
+        { status: 200, headers: rlHeaders }
       );
     }
   }
@@ -279,7 +280,7 @@ export async function POST(req: NextRequest) {
             refunded: existingTestByRef.refunded,
             environment: "test",
           },
-          { status: 200 }
+          { status: 200, headers: rlHeaders }
         );
       }
     }
@@ -422,7 +423,7 @@ export async function POST(req: NextRequest) {
       }
     }, 5000);
 
-    return NextResponse.json(testResponseBody, { status: 201 });
+    return NextResponse.json(testResponseBody, { status: 201, headers: rlHeaders });
   }
 
   // 6. LIVE MODE: Fast Duplicate Active Request Check (409 Conflict)
@@ -595,7 +596,7 @@ export async function POST(req: NextRequest) {
       "LIVE"
     );
 
-    return NextResponse.json(liveResponseBody, { status: 201 });
+    return NextResponse.json(liveResponseBody, { status: 201, headers: rlHeaders });
   } catch (txErr: any) {
     console.error("❌ [NIN Validation API Submission Error]:", txErr);
 

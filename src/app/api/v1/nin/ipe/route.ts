@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApiKey } from "@/lib/developer/api-auth";
+import { authenticateApiKey, getRateLimitHeaders } from "@/lib/developer/api-auth";
 import { recordApiRequestLog } from "@/lib/developer/logger";
 import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
 import { submitDataVerifyIpe } from "@/lib/dataverify";
@@ -20,9 +20,10 @@ export async function POST(req: NextRequest) {
     return authResult.errorResponse!;
   }
 
-  const { keyPayload } = authResult;
+  const { keyPayload, rateLimit } = authResult;
   const environment = keyPayload.type;
   const envString = environment === ApiKeyType.TEST ? "test" : "live";
+  const rlHeaders = getRateLimitHeaders(rateLimit);
 
   // 2. Parse Request Body
   let body: any;
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
             currency: "NGN",
             environment: "test",
           },
-          { status: 200 }
+          { status: 200, headers: rlHeaders }
         );
       }
     } else {
@@ -157,7 +158,7 @@ export async function POST(req: NextRequest) {
             currency: "NGN",
             environment: "live",
           },
-          { status: 200 }
+          { status: 200, headers: rlHeaders }
         );
       }
     }
@@ -393,7 +394,7 @@ export async function POST(req: NextRequest) {
       responseBody: testResponseBody,
     });
 
-    return NextResponse.json(testResponseBody, { status: 201 });
+    return NextResponse.json(testResponseBody, { status: 201, headers: rlHeaders });
   }
 
   // 7. LIVE MODE: Active Request Conflict Check (409 Conflict)
@@ -600,7 +601,7 @@ export async function POST(req: NextRequest) {
       "LIVE"
     );
 
-    return NextResponse.json(liveResponseBody, { status: 201 });
+    return NextResponse.json(liveResponseBody, { status: 201, headers: rlHeaders });
   } catch (txErr: any) {
     console.error("❌ [NIMC IPE API Submission Error]:", txErr);
 

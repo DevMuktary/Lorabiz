@@ -22,8 +22,21 @@ Every request requires an API key in one of the following HTTP headers:
 - \`x-api-key: <api_key>\`
 
 ### Key Environments
-- Test Mode: Starts with \`lora_test_\` (Uses virtual ₦1,000,000 sandbox credit. Real funds are never deducted. Returns deterministic mock responses).
+- Test Mode: Starts with \`lora_test_\` (Uses virtual ₦1,000,000 sandbox credit. Real funds are never deducted. Returns deterministic mock responses. Can be reset from Developer Console).
 - Live Mode: Starts with \`lora_live_\` (Deducts real balance per successful 2xx verification. 4xx errors are billed ₦0.00).
+
+### Rate Limiting & Quotas
+All API endpoints are rate-limited via a 60-second sliding window:
+- **Test Mode**: 60 requests per minute
+- **Live Mode**: 600 requests per minute
+
+Every response (success, error, and rate-limited) includes standard IETF HTTP rate limit headers:
+- \`X-RateLimit-Limit\`: Maximum requests allowed in the 60s window
+- \`X-RateLimit-Remaining\`: Remaining requests in current window
+- \`X-RateLimit-Reset\`: Unix timestamp (in seconds) when the current window resets
+
+**Custom Rate Limit Increases**:
+If your application or enterprise requires higher throughput beyond 600 requests/minute, please reach out to our team at devs-lorabiz@quadrox.dev to request a custom rate limit increase.
 
 ## Endpoints
 
@@ -535,7 +548,14 @@ Every error response adheres to standard envelope format:
 - \`INSUFFICIENT_BALANCE\` (402): Account balance is insufficient to process verification.
 - \`NOT_FOUND\` / \`RECORD_NOT_FOUND\` (404/422): Identification number or tracking ID not found. Zero charge applied (₦0.00).
 - \`DUPLICATE_REQUEST\` (409): An active validation request for this NIN and category is already currently in progress. Zero charge applied (₦0.00).
-- \`RATE_LIMITED\` (429): Exceeded sliding-window rate limit (Default: 60 req/min).
+- \`RATE_LIMITED\` (429): Exceeded sliding-window rate limit (60 req/min in Test mode, 600 req/min in Live mode). All responses include \`X-RateLimit-Limit\`, \`X-RateLimit-Remaining\`, and \`X-RateLimit-Reset\` headers.
+  \`\`\`json
+  {
+    "status": "error",
+    "code": "RATE_LIMITED",
+    "message": "Too many requests. Limit is 600 requests per minute in LIVE mode."
+  }
+  \`\`\`
 - \`SERVICE_UNAVAILABLE\` (503): National gateway temporary maintenance.
 `;
 

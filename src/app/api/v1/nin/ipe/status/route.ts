@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApiKey } from "@/lib/developer/api-auth";
+import { authenticateApiKey, getRateLimitHeaders } from "@/lib/developer/api-auth";
 import { checkDataVerifyIpeStatus, parseDataVerifyIpeResult } from "@/lib/dataverify";
 import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
 import { ApiKeyType } from "@prisma/client";
@@ -29,7 +29,8 @@ export async function GET(req: NextRequest) {
     return authResult.errorResponse!;
   }
 
-  const { keyPayload } = authResult;
+  const { keyPayload, rateLimit } = authResult;
+  const rlHeaders = getRateLimitHeaders(rateLimit);
 
   // 2. Parse Query Parameters (reference OR client_reference)
   const { searchParams } = new URL(req.url);
@@ -115,7 +116,7 @@ export async function GET(req: NextRequest) {
       currency: "NGN",
       environment: "test",
       date: testTicket.createdAt.toISOString(),
-    });
+    }, { headers: rlHeaders });
   }
 
   // 4. LIVE Mode: Lookup Ticket in Database
@@ -310,5 +311,5 @@ export async function GET(req: NextRequest) {
     currency: "NGN",
     environment: "live",
     date: ticket.createdAt.toISOString(),
-  });
+  }, { headers: rlHeaders });
 }
