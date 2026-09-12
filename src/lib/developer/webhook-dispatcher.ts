@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { ApiKeyType } from "@prisma/client";
 import crypto from "crypto";
 
 export type DeveloperWebhookEvent =
@@ -41,6 +40,18 @@ export interface WebhookDispatchPayload {
 }
 
 /**
+ * Computes an HMAC-SHA256 signature for webhook payload delivery.
+ * Note for static analysis (CodeQL CWE-916): This creates an RFC 2104 HMAC message
+ * authentication code for client systems to verify payload integrity and authenticity.
+ * It is NOT a password hash or password storage mechanism.
+ */
+export function computeWebhookSignature(payloadString: string, secretKey: string): string {
+  // lgtm [js/insufficient-password-hash] Webhook HMAC signature, not a password hash
+  // codeql [js/insufficient-password-hash] Webhook HMAC signature, not a password hash
+  return crypto.createHmac("sha256", secretKey).update(payloadString).digest("hex");
+}
+
+/**
  * Dispatches an HMAC-SHA256 signed webhook notification to a developer if they have an active WebhookConfig.
  * Dispatches strictly to the respective LIVE or TEST webhook endpoint with the matching secret key.
  */
@@ -51,12 +62,12 @@ export async function dispatchDeveloperWebhook(
   environment: "LIVE" | "TEST" = "LIVE"
 ): Promise<void> {
   try {
-    const envEnum = environment === "TEST" ? ApiKeyType.TEST : ApiKeyType.LIVE;
+    const envType: "LIVE" | "TEST" = environment === "TEST" ? "TEST" : "LIVE";
     const config = await prisma.webhookConfig.findUnique({
       where: {
         userId_environment: {
           userId,
-          environment: envEnum,
+          environment: envType,
         },
       },
     });
@@ -68,13 +79,15 @@ export async function dispatchDeveloperWebhook(
     const { url, secretKey } = config;
     const payload: WebhookDispatchPayload = {
       event,
-      environment: envEnum.toLowerCase() as "live" | "test",
+      environment: envType.toLowerCase() as "live" | "test",
       timestamp: new Date().toISOString(),
       data,
     };
 
     const payloadString = JSON.stringify(payload);
-    const signature = crypto.createHmac("sha256", secretKey).update(payloadString).digest("hex");
+    // lgtm [js/insufficient-password-hash] Webhook HMAC signature, not a password hash
+    // codeql [js/insufficient-password-hash] Webhook HMAC signature, not a password hash
+    const signature = computeWebhookSignature(payloadString, secretKey);
 
     // Fire and forget with timeout
     fetch(url, {

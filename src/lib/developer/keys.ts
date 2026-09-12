@@ -89,7 +89,8 @@ function getApiKeyHashPepper(): string {
 
 /**
  * Computes a deterministic PBKDF2 hash of an API key.
- * Using a computationally expensive KDF mitigates brute-force attacks if hashes leak.
+ * Using a computationally expensive KDF mitigates brute-force attacks if hashes leak,
+ * satisfying CodeQL CWE-916 (insufficient computational effort).
  */
 export function hashApiKey(rawKey: string): string {
   const normalizedKey = rawKey.trim();

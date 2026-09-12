@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { ApiKeyType } from "@prisma/client";
-import crypto from "crypto";
+import { computeWebhookSignature } from "@/lib/developer/webhook-dispatcher";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,7 +19,7 @@ export async function POST(req: NextRequest) {
       // Body may be empty
     }
 
-    const envEnum = String(environment).toUpperCase() === "TEST" ? ApiKeyType.TEST : ApiKeyType.LIVE;
+    const envType: "LIVE" | "TEST" = String(environment).toUpperCase() === "TEST" ? "TEST" : "LIVE";
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -34,14 +33,14 @@ export async function POST(req: NextRequest) {
       where: {
         userId_environment: {
           userId: user.id,
-          environment: envEnum,
+          environment: envType,
         },
       },
     });
 
     if (!config || !config.url) {
       return NextResponse.json(
-        { success: false, message: `No active ${envEnum} webhook URL configured. Please save a ${envEnum} webhook URL first.` },
+        { success: false, message: `No active ${envType} webhook URL configured. Please save a ${envType} webhook URL first.` },
         { status: 400 }
       );
     }
@@ -49,17 +48,19 @@ export async function POST(req: NextRequest) {
     const { url, secretKey } = config;
     const testPayload = {
       event: "webhook.test_ping",
-      environment: envEnum.toLowerCase(),
+      environment: envType.toLowerCase(),
       timestamp: new Date().toISOString(),
       developer: {
         userId: user.id,
         email: user.email,
       },
-      message: `Hello from Lorabiz Developer Platform! ${envEnum} webhook connection verified successfully.`,
+      message: `Hello from Lorabiz Developer Platform! ${envType} webhook connection verified successfully.`,
     };
 
     const payloadString = JSON.stringify(testPayload);
-    const signature = crypto.createHmac("sha256", secretKey).update(payloadString).digest("hex");
+    // lgtm [js/insufficient-password-hash] Webhook HMAC signature, not a password hash
+    // codeql [js/insufficient-password-hash] Webhook HMAC signature, not a password hash
+    const signature = computeWebhookSignature(payloadString, secretKey);
 
     const startTime = Date.now();
     let responseStatus = 0;
