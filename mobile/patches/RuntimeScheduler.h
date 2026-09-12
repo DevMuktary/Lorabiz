@@ -5,10 +5,6 @@
 #include <atomic>
 #include <swift/bridging>
 
-#ifndef SWIFT_RETURNS_RETAINED
-#define SWIFT_RETURNS_RETAINED
-#endif
-
 namespace expo {
 
 /**
@@ -54,10 +50,15 @@ public:
    `scheduleTask` dispatches through `fn`, which the host implements against
    the real react::RuntimeScheduler.
    */
-  RuntimeScheduler(void *scheduler, ScheduleFn fn) noexcept
+  SWIFT_RETURNS_RETAINED RuntimeScheduler(void *scheduler, ScheduleFn fn) noexcept
       : nativeScheduler(scheduler), scheduleFn(fn) {}
 
-  RuntimeScheduler() {}
+  /**
+   Constructs a no-op scheduler. Scheduled tasks run synchronously on the
+   caller's thread — intended for standalone runtimes (e.g. tests) that have
+   no React scheduler.
+   */
+  SWIFT_RETURNS_RETAINED RuntimeScheduler() {}
 
   RuntimeScheduler(const RuntimeScheduler &) = delete;
 
@@ -88,17 +89,16 @@ public:
   }
 } SWIFT_SHARED_REFERENCE(retainRuntimeScheduler, releaseRuntimeScheduler);
 
-__attribute__((visibility("default"))) RuntimeScheduler *createRuntimeScheduler();
-__attribute__((visibility("default"))) RuntimeScheduler *createRuntimeScheduler(void *scheduler, RuntimeScheduler::ScheduleFn fn);
-__attribute__((visibility("default"))) void retainRuntimeScheduler(expo::RuntimeScheduler *scheduler);
-__attribute__((visibility("default"))) void releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler);
-
 } // namespace expo
 
 /** Retains the RuntimeScheduler, called by Swift's ARC. */
-__attribute__((visibility("default"))) void retainRuntimeScheduler(expo::RuntimeScheduler *scheduler);
+inline void retainRuntimeScheduler(expo::RuntimeScheduler *scheduler) {
+  scheduler->retain();
+}
 
 /** Releases the RuntimeScheduler, called by Swift's ARC. Deallocates when the ref count reaches zero. */
-__attribute__((visibility("default"))) void releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler);
+inline void releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler) {
+  scheduler->release();
+}
 
 #endif // __cplusplus

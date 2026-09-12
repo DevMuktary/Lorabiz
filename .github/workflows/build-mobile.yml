@@ -45,11 +45,22 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
+      - name: Cache CocoaPods and React Native Artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cocoapods/repos
+            ~/Library/Caches/CocoaPods
+            ~/Library/Caches/ReactNative
+          key: ${{ runner.os }}-pods-${{ hashFiles('mobile/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
       - name: Install dependencies
         working-directory: ./mobile
         run: |
           npm ci --legacy-peer-deps
-          echo "=== Patching Expo Modules for Xcode 16.4 Swift 6.1 Compatibility ==="
+          echo "=== Patching Expo Modules for Xcode 26.3 Swift 6.2 Compatibility ==="
           node scripts/patch-expo-modules.js
           cp patches/RuntimeScheduler.h node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h
 
@@ -111,6 +122,9 @@ jobs:
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -derivedDataPath build \
+            -parallelizeTargets \
+            ARCHS="arm64" \
+            ONLY_ACTIVE_ARCH=YES \
             -skipPackagePluginValidation \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \

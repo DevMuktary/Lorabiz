@@ -17,25 +17,9 @@ function walk(dir) {
   return results;
 }
 
-// 1. Patch Package.swift to swift-tools-version: 6.0 and swiftLanguageModes: [.v5] for Xcode 16.4 compatibility
-const pkgPath = path.join(__dirname, '../node_modules/expo-modules-jsi/apple/Package.swift');
-if (fs.existsSync(pkgPath)) {
-  let c = fs.readFileSync(pkgPath, 'utf8');
-  c = c.replace(/swift-tools-version: 6\.[0-9]+/g, 'swift-tools-version: 6.0');
-  c = c.replace(/swiftLanguageModes:\s*\[\.v6\]/g, 'swiftLanguageModes: [.v5]');
-  if (!c.includes('"-enable-bare-slash-regex"')) {
-    c = c.replace(
-      '"-enable-library-evolution",',
-      '"-enable-library-evolution",\n          "-enable-bare-slash-regex",'
-    );
-  }
-  fs.writeFileSync(pkgPath, c);
-  console.log('[patch] Patched Package.swift to 6.0, swiftLanguageModes [.v5], and bare-slash-regex');
-}
-
 const sourcesDir = path.join(__dirname, '../node_modules/expo-modules-jsi/apple/Sources');
 
-// 2. Patch Swift files for Swift 6.1 strict concurrency & syntax
+// 1. Patch Swift files for Swift 6 Sendable concurrency & weak var
 if (fs.existsSync(sourcesDir)) {
   const files = walk(sourcesDir);
   let count = 0;
@@ -50,7 +34,7 @@ if (fs.existsSync(sourcesDir)) {
       modified = true;
     }
 
-    // Replace any remaining weak let with weak var (Swift 6.1 requirement)
+    // Replace any remaining weak let with weak var
     if (c.includes('weak let')) {
       c = c.replace(/weak let/g, 'weak var');
       modified = true;
@@ -75,92 +59,54 @@ if (fs.existsSync(sourcesDir)) {
       count++;
     }
   });
-  console.log(`[patch] Patched ${count} Swift files for Swift 6.1 Sendable concurrency`);
+  console.log(`[patch] Patched ${count} Swift files for Swift 6 Sendable concurrency`);
 
-  // 3. Patch Task+immediate.swift for Swift 6.1 (removes OS 26 Task.immediate check)
+  // 2. Patch Task+immediate.swift for compatibility
   const taskImmediate = path.join(sourcesDir, 'ExpoModulesJSI/Extensions/Task+immediate.swift');
   if (fs.existsSync(taskImmediate)) {
     let c = fs.readFileSync(taskImmediate, 'utf8');
     c = c.replace(/if #available[\s\S]*?else \{[\s\S]*?\n    \}/, 'return Task(priority: priority ?? .high, operation: operation)');
     fs.writeFileSync(taskImmediate, c);
-    console.log('[patch] Patched Task+immediate.swift for Swift 6.1');
+    console.log('[patch] Patched Task+immediate.swift');
   }
 
-  // 4. Patch HostFunctionClosure.h for Swift 6.1 interop
-  const hfcPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/include/HostFunctionClosure.h');
-  if (fs.existsSync(hfcPath)) {
-    let c = fs.readFileSync(hfcPath, 'utf8');
-    c = c.replace('explicit HostFunctionClosure(Context context, Closure closure, Deallocator deallocator)', 'explicit HostFunctionClosure(Context context, Closure *_Nonnull closure, Deallocator deallocator)');
-    c = c.replace('explicit HostFunctionClosure(Context context, Closure *closure, Deallocator deallocator)', 'explicit HostFunctionClosure(Context context, Closure *_Nonnull closure, Deallocator deallocator)');
-    if (!c.includes('createHostFunctionClosure')) {
-      c = c.replace(
-        '} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure',
-        `} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure\n\n__attribute__((visibility("default"))) HostFunctionClosure *_Nonnull createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *_Nonnull closure, RetainedSwiftPointer::Deallocator deallocator);`
-      );
-    } else {
-      c = c.replace(
-        /inline HostFunctionClosure \*_Nonnull createHostFunctionClosure[\s\S]*?\n\}/,
-        '__attribute__((visibility("default"))) HostFunctionClosure *_Nonnull createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *_Nonnull closure, RetainedSwiftPointer::Deallocator deallocator);'
-      );
-    }
-    fs.writeFileSync(hfcPath, c);
-    console.log('[patch] Patched HostFunctionClosure.h for Swift 6.1 interop');
-  }
-
-  // 4b. Patch HostObjectCallbacks.h with appendPropNameId declaration
+  // 3. Patch HostObjectCallbacks.h with inline static appendPropNameId
+  // (Prevents move-only PropNameID copy errors while keeping it 100% header-only and inlined)
   const hocPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/include/HostObjectCallbacks.h');
   if (fs.existsSync(hocPath)) {
     let c = fs.readFileSync(hocPath, 'utf8');
     if (!c.includes('appendPropNameId')) {
       c = c.replace(
         'using Deallocator = void(Context);',
-        'using Deallocator = void(Context);\n\n  __attribute__((visibility("default"))) static void appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const char *name);'
+        'using Deallocator = void(Context);\n\n  inline static void appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const char *name) {\n    vector.push_back(facebook::jsi::PropNameID::forUtf8(runtime, std::string(name)));\n  }'
       );
       fs.writeFileSync(hocPath, c);
-      console.log('[patch] Patched HostObjectCallbacks.h with appendPropNameId');
-    } else {
-      c = c.replace(
-        /inline static void appendPropNameId[\s\S]*?\n  \}/,
-        '__attribute__((visibility("default"))) static void appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const char *name);'
-      );
-      fs.writeFileSync(hocPath, c);
+      console.log('[patch] Patched HostObjectCallbacks.h with inline appendPropNameId');
     }
   }
 
-  // 5. Patch RuntimeScheduler.h for Swift 6.1 interop
+  // 4. Copy pristine RuntimeScheduler.h (with SWIFT_RETURNS_RETAINED)
   const rsPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/include/RuntimeScheduler.h');
   const patchRs = path.join(__dirname, '../patches/RuntimeScheduler.h');
   if (fs.existsSync(patchRs) && fs.existsSync(rsPath)) {
     fs.copyFileSync(patchRs, rsPath);
-    console.log('[patch] Copied patches/RuntimeScheduler.h into node_modules');
+    console.log('[patch] Copied patches/RuntimeScheduler.h (with SWIFT_RETURNS_RETAINED) into node_modules');
   }
 
-  // 5b. Inject exported bridge function implementations into JSIUtils.cpp so they are physically compiled into JSIUtils.o
-  const jsiUtilsPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/JSIUtils.cpp');
-  if (fs.existsSync(jsiUtilsPath)) {
-    let c = fs.readFileSync(jsiUtilsPath, 'utf8');
-    if (!c.includes('EXPO_BRIDGE_IMPLEMENTATIONS')) {
-      c += `\n\n// EXPO_BRIDGE_IMPLEMENTATIONS\n#include "RuntimeScheduler.h"\n#include "HostFunctionClosure.h"\n#include "HostObjectCallbacks.h"\n\nnamespace expo {\n__attribute__((visibility("default")))\nRuntimeScheduler *createRuntimeScheduler() { return new RuntimeScheduler(); }\n\n__attribute__((visibility("default")))\nRuntimeScheduler *createRuntimeScheduler(void *scheduler, RuntimeScheduler::ScheduleFn fn) { return new RuntimeScheduler(scheduler, fn); }\n\n__attribute__((visibility("default")))\nvoid retainRuntimeScheduler(expo::RuntimeScheduler *scheduler) { if (scheduler) scheduler->retain(); }\n\n__attribute__((visibility("default")))\nvoid releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler) { if (scheduler) scheduler->release(); }\n\n__attribute__((visibility("default")))\nHostFunctionClosure *createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *closure, RetainedSwiftPointer::Deallocator deallocator) { return new HostFunctionClosure(context, closure, deallocator); }\n\n__attribute__((visibility("default")))\nvoid HostObjectCallbacks::appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const char *name) { vector.push_back(facebook::jsi::PropNameID::forUtf8(runtime, std::string(name))); }\n} // namespace expo\n\n__attribute__((visibility("default")))\nvoid retainRuntimeScheduler(expo::RuntimeScheduler *scheduler) { if (scheduler) scheduler->retain(); }\n\n__attribute__((visibility("default")))\nvoid releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler) { if (scheduler) scheduler->release(); }\n`;
-      fs.writeFileSync(jsiUtilsPath, c);
-      console.log('[patch] Injected bridge implementations into JSIUtils.cpp');
-    }
-  }
-
-  // 6. Patch JavaScriptRuntime.swift (trailing comma, appendPropNameId, Sendable pointers, and factory calls)
+  // 5. Patch JavaScriptRuntime.swift:
+  // - appendPropNameId helper
+  // - JsiSendablePointer to eliminate Swift 6 raw pointer data-race errors across actor boundaries
+  // - pure Swift identifier validation
   const rt = path.join(sourcesDir, 'ExpoModulesJSI/Runtime/JavaScriptRuntime.swift');
   if (fs.existsSync(rt)) {
     let c = fs.readFileSync(rt, 'utf8');
     c = c.replace('_ arguments: consuming JavaScriptValuesBuffer,', '_ arguments: consuming JavaScriptValuesBuffer');
-    
+
     // Replace the manual push_back loop with native C++ appendPropNameId
     c = c.replace(
       /for propertyName in propertyNames \{[\s\S]*?vector\.push_back[\s\S]*?\}/,
       'for propertyName in propertyNames {\n        expo.HostObjectCallbacks.appendPropNameId(&vector, iRuntime, propertyName)\n      }'
     );
-
-    c = c.replace(/expo\.RuntimeScheduler\(\)/g, 'expo.createRuntimeScheduler()');
-    c = c.replace(/expo\.RuntimeScheduler\(scheduler, fn\)/g, 'expo.createRuntimeScheduler(scheduler, fn)');
-    c = c.replace(/expo\.HostFunctionClosure\(context, call, deallocate\)/g, 'expo.createHostFunctionClosure(context, call, deallocate)');
 
     c = c.replace(/\r\n/g, '\n');
 
@@ -270,10 +216,10 @@ if (fs.existsSync(sourcesDir)) {
     );
 
     fs.writeFileSync(rt, c);
-    console.log('[patch] Patched JavaScriptRuntime.swift syntax, Sendable pointers, and factory calls');
+    console.log('[patch] Patched JavaScriptRuntime.swift Sendable pointers and identifier check');
   }
 
-  // 7. Patch JavaScriptPromise.swift with nonisolated init() for LongLivedState
+  // 6. Patch JavaScriptPromise.swift with nonisolated init() for LongLivedState
   const promisePath = path.join(sourcesDir, 'ExpoModulesJSI/Runtime/Values/JavaScriptPromise.swift');
   if (fs.existsSync(promisePath)) {
     let c = fs.readFileSync(promisePath, 'utf8');
