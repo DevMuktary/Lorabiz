@@ -37,7 +37,8 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: ./mobile/ios
-        run: pod install
+        run: |
+          pod install --repo-update || npx pod-install
 
       - name: Build Xcode Release Binary (Unsigned)
         working-directory: ./mobile/ios
