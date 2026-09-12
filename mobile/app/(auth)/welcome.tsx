@@ -8,10 +8,11 @@ import {
   Dimensions,
   Animated,
   Easing,
+  StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ShieldCheck } from "lucide-react-native";
+import { ShieldCheck, CheckCircle2 } from "lucide-react-native";
 import { colors } from "../../constants/theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -19,21 +20,41 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 export default function WelcomeScreen() {
   const router = useRouter();
 
-  // Dynamic floating micro-animation so the 3D scene feels alive (non-static)
+  // Dynamic floating micro-animation for the interactive 3D elements
   const floatAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Smooth looping float
     Animated.loop(
       Animated.sequence([
         Animated.timing(floatAnim, {
           toValue: -8,
-          duration: 2400,
+          duration: 2200,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(floatAnim, {
           toValue: 0,
-          duration: 2400,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Subtle gentle tilt/rotation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 3000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 0,
+          duration: 3000,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
@@ -41,10 +62,24 @@ export default function WelcomeScreen() {
     ).start();
   }, []);
 
+  const badgeRotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["-2deg", "2deg"],
+  });
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-      <View style={styles.container}>
-        {/* Top Branding Header */}
+    <View style={styles.root}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+
+      {/* Full-bleed 3D Designed Architectural Scene */}
+      <Image
+        source={require("../../assets/welcome-hero.jpg")}
+        style={StyleSheet.absoluteFillObject}
+        resizeMode="cover"
+      />
+
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+        {/* Top Branding Header standing directly on the architectural grid wall */}
         <View style={styles.topHeader}>
           <Image
             source={require("../../assets/logo-pink.png")}
@@ -53,27 +88,27 @@ export default function WelcomeScreen() {
           />
         </View>
 
-        {/* Center 3D Digital Identity & Services Visual Scene with Floating Motion */}
-        <View style={styles.heroSection}>
+        {/* Center Zone with dynamic floating 3D badge pill */}
+        <View style={styles.centerSection}>
           <Animated.View
             style={[
-              styles.imageCardContainer,
+              styles.floatingPill,
               {
-                transform: [{ translateY: floatAnim }],
+                transform: [
+                  { translateY: floatAnim },
+                  { rotate: badgeRotation },
+                ],
               },
             ]}
           >
-            <Image
-              source={require("../../assets/welcome-hero.jpg")}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
+            <CheckCircle2 size={16} color="#059669" />
+            <Text style={styles.floatingPillText}>Official Verified Slips</Text>
           </Animated.View>
         </View>
 
-        {/* Bottom Call to Actions & Trust Info */}
-        <View style={styles.actionSection}>
-          {/* Primary CTA: Get Started (App-grade button, no web arrow) */}
+        {/* Bottom Call to Actions & Trust Info standing directly on the marble floor */}
+        <View style={styles.bottomSection}>
+          {/* Primary CTA: Get Started */}
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => router.push("/(auth)/register")}
@@ -94,7 +129,7 @@ export default function WelcomeScreen() {
           {/* Trust Footnote & App Version */}
           <View style={styles.footerInfo}>
             <View style={styles.trustBadgeRow}>
-              <ShieldCheck size={14} color={colors.textSecondary} />
+              <ShieldCheck size={14} color="#475569" />
               <Text style={styles.trustText}>
                 Business & Identity Infrastructure
               </Text>
@@ -102,61 +137,64 @@ export default function WelcomeScreen() {
             <Text style={styles.versionText}>v1.0.0</Text>
           </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
     justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 12,
   },
   topHeader: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   brandLogo: {
-    width: 140,
-    height: 60,
+    width: 150,
+    height: 58,
   },
-  heroSection: {
+  centerSection: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-end",
+    alignItems: "flex-start",
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  floatingPill: {
+    flexDirection: "row",
     alignItems: "center",
-    marginVertical: 6,
-  },
-  imageCardContainer: {
-    width: SCREEN_WIDTH - 44,
-    height: Math.min(SCREEN_HEIGHT * 0.47, 400),
-    borderRadius: 26,
-    overflow: "hidden",
-    backgroundColor: colors.surface,
-    position: "relative",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: "rgba(200, 45, 117, 0.2)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
+    marginBottom: 8,
   },
-  heroImage: {
-    width: "100%",
-    height: "100%",
+  floatingPillText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginLeft: 6,
+    letterSpacing: 0.2,
   },
-  actionSection: {
+  bottomSection: {
     width: "100%",
-    paddingTop: 8,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
   },
   primaryButton: {
     backgroundColor: colors.primary,
@@ -166,9 +204,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.32,
     shadowRadius: 12,
-    elevation: 5,
+    elevation: 6,
     marginBottom: 12,
   },
   primaryButtonText: {
@@ -178,18 +216,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   secondaryButton: {
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
     paddingVertical: 15,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: colors.surfaceBorder,
+    borderColor: "#E2E8F0",
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.06,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 3,
     marginBottom: 16,
   },
   secondaryButtonText: {
@@ -201,18 +239,18 @@ const styles = StyleSheet.create({
   footerInfo: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 4,
+    marginTop: 2,
   },
   trustBadgeRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   trustText: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: "#475569",
     marginLeft: 6,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   versionText: {
     fontSize: 13,
@@ -221,4 +259,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
 

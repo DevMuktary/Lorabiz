@@ -51,66 +51,52 @@ export default function IndexScreen() {
   };
 
   useEffect(() => {
-    // 1. Immediately starts coming out from the center (0 to 1.1s)
+    // Single continuous, fluid zoom reveal (no stops, no pauses)
+    // Starts small in center ("slow to open a little bit") and smoothly accelerates outward
     Animated.parallel([
       Animated.timing(circleOpacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(logoOpacity, {
         toValue: 1,
         duration: 350,
         useNativeDriver: true,
       }),
       Animated.timing(circleScale, {
-        toValue: 1,
-        duration: 1100,
-        easing: Easing.out(Easing.cubic),
+        toValue: 22, // Sweeps well beyond any screen diagonal (340 * 22 = 7,480px)
+        duration: 2200,
+        easing: Easing.bezier(0.35, 0.05, 0.2, 1),
         useNativeDriver: true,
       }),
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 450,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoScale, {
-        toValue: 1,
-        duration: 1100,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
+      Animated.sequence([
+        // Logo stays clearly visible while circle opens
+        Animated.timing(logoScale, {
+          toValue: 1.2,
+          duration: 1600,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        // Gently dissolves into pure white canvas as circle envelops screen
+        Animated.timing(logoOpacity, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.ease,
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start(() => {
-      // 2. Brand pause: Main logo displays prominently for ~700ms with subtle micro-scale
-      Animated.timing(logoScale, {
-        toValue: 1.04,
-        duration: 700,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }).start(() => {
-        // 3. Zoom-Out Reveal: White circle expands outward to completely envelop the viewport
-        Animated.parallel([
-          Animated.timing(circleScale, {
-            toValue: 18, // 340 * 18 = 6120px, fully envelops any iPhone display
-            duration: 850,
-            easing: Easing.bezier(0.35, 0, 0.15, 1),
-            useNativeDriver: true,
-          }),
-          Animated.timing(logoOpacity, {
-            toValue: 0,
-            duration: 350,
-            easing: Easing.ease,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          animationFinished.current = true;
-          // If auth initialization finished, navigate immediately
-          if (!isLoadingRef.current) {
-            triggerNavigation();
-          }
-        });
-      });
+      animationFinished.current = true;
+      if (!isLoadingRef.current) {
+        triggerNavigation();
+      }
     });
 
     // Failsafe timer: Ensure app never hangs on splash under any circumstance
     const failsafeTimeout = setTimeout(() => {
       triggerNavigation();
-    }, 3500);
+    }, 2800);
 
     return () => {
       clearTimeout(failsafeTimeout);
