@@ -18,7 +18,7 @@ export default function PersonalizationDrawer({
   onUpdateSuccess: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"INFO" | "ACTIONS" | "RAW">("INFO");
-  const [actionType, setActionType] = useState<"SYNC" | "COMPLETE" | "FAIL" | "">("");
+  const [actionType, setActionType] = useState<"SYNC" | "COMPLETE" | "FAIL" | "PUSH" | "">("");
   
   const [resolvedNin, setResolvedNin] = useState("");
   const [fullName, setFullName] = useState("");
@@ -73,6 +73,8 @@ export default function PersonalizationDrawer({
 
       if (actionType === "SYNC") {
         payload.action = "SYNC_STATUS";
+      } else if (actionType === "PUSH") {
+        payload.action = "PUSH_TO_GATEWAY";
       } else if (actionType === "COMPLETE") {
         if (!resolvedNin.trim() || resolvedNin.trim().length !== 11) {
           throw new Error("Please provide a valid 11-digit National Identification Number.");
@@ -142,11 +144,23 @@ export default function PersonalizationDrawer({
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>
                   {ticket.status === "PROCESSING" ? "Processing" : ticket.status}
                 </span>
+                {ticket.isApiRequest && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-500/20">
+                    API Request
+                  </span>
+                )}
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
                   {ticket.provider || "DATAVERIFY"}
                 </span>
               </div>
-              <p className="text-xs text-zinc-500 font-mono mt-0.5">Ref: {ticket.reference}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-xs text-zinc-500 font-mono">Ref: {ticket.reference}</p>
+                {ticket.clientReference && (
+                  <span className="text-xs text-indigo-600 dark:text-indigo-400 font-mono">
+                    • ClientRef: {ticket.clientReference}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -330,7 +344,7 @@ export default function PersonalizationDrawer({
                   Select Action
                 </label>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   <button
                     onClick={() => setActionType("SYNC")}
                     className={`p-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
@@ -340,7 +354,19 @@ export default function PersonalizationDrawer({
                     }`}
                   >
                     <RefreshCw size={14} className="mx-auto mb-1.5" />
-                    Live Gateway Sync
+                    Live Sync
+                  </button>
+
+                  <button
+                    onClick={() => setActionType("PUSH")}
+                    className={`p-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
+                      actionType === "PUSH"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                        : "bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400"
+                    }`}
+                  >
+                    <ArrowRight size={14} className="mx-auto mb-1.5" />
+                    Push Gateway
                   </button>
 
                   <button
@@ -352,7 +378,7 @@ export default function PersonalizationDrawer({
                     }`}
                   >
                     <CheckCircle2 size={14} className="mx-auto mb-1.5" />
-                    Manual Complete
+                    Manual Done
                   </button>
 
                   <button
@@ -370,6 +396,20 @@ export default function PersonalizationDrawer({
               </div>
 
               {/* Action Form Inputs */}
+              {actionType === "PUSH" && (
+                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-700 dark:text-blue-300 space-y-2">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <ArrowRight size={14} /> Submit to DataVerify Gateway
+                  </div>
+                  <p>
+                    This action will submit Tracking ID <span className="font-mono font-bold">{ticket.trackingId}</span> directly to the DataVerify upstream verification gateway.
+                  </p>
+                  <p className="text-[11px] text-blue-600 dark:text-blue-400">
+                    Once accepted, provider updates to DATAVERIFY and automated sync will poll for completion and deliver webhooks.
+                  </p>
+                </div>
+              )}
+
               {actionType === "SYNC" && (
                 <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-700 dark:text-indigo-300 space-y-2">
                   <div className="font-bold flex items-center gap-1.5">

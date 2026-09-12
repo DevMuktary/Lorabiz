@@ -24,6 +24,37 @@ export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const refCode = req.nextUrl.searchParams.get('ref');
 
+  const host = req.headers.get("host") || req.nextUrl.host || "";
+  const isApiHost = host.startsWith("api.");
+
+  // Handle api.* subdomain traffic cleanly
+  if (isApiHost) {
+    if (pathname === "/") {
+      const acceptHeader = req.headers.get("accept") || "";
+      if (acceptHeader.includes("application/json")) {
+        return NextResponse.json({
+          name: "Lorabiz Developer API Gateway",
+          status: "operational",
+          version: "1.0.0",
+          docs: "https://lorabiz.com/docs",
+          openapi: "https://api.lorabiz.com/api/openapi.json",
+        });
+      }
+      return NextResponse.redirect(new URL("https://lorabiz.com/docs"));
+    }
+
+    // Route dashboard or auth paths accidentally accessed on api.* back to primary domain
+    if (
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/auth") ||
+      pathname.startsWith("/quadrox-lorabiz-team")
+    ) {
+      return NextResponse.redirect(
+        new URL(`https://lorabiz.com${pathname}${req.nextUrl.search}`)
+      );
+    }
+  }
+
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,

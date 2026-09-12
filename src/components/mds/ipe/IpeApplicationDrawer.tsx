@@ -19,7 +19,7 @@ export default function IpeApplicationDrawer({
   onUpdateSuccess: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"INFO" | "ACTIONS" | "RAW">("INFO");
-  const [actionType, setActionType] = useState<"SYNC" | "COMPLETE" | "FAIL" | "">("");
+  const [actionType, setActionType] = useState<"SYNC" | "COMPLETE" | "FAIL" | "PUSH" | "">("");
   
   const [resolvedNin, setResolvedNin] = useState("");
   const [fullName, setFullName] = useState("");
@@ -55,6 +55,8 @@ export default function IpeApplicationDrawer({
 
       if (actionType === "SYNC") {
         payload.action = "SYNC_STATUS";
+      } else if (actionType === "PUSH") {
+        payload.action = "PUSH_TO_GATEWAY";
       } else if (actionType === "COMPLETE") {
         if (!resolvedNin.trim() || resolvedNin.trim().length !== 11) {
           throw new Error("Please provide a valid 11-digit National Identification Number.");
@@ -110,6 +112,11 @@ export default function IpeApplicationDrawer({
               <span className={`px-2.5 py-0.5 text-xs font-black uppercase tracking-wider rounded-md border ${statusColor}`}>
                 {ticket.status === "COMPLETED" ? "Completed" : ticket.status === "FAILED" ? "Failed" : "In Processing"}
               </span>
+              {ticket.isApiRequest && (
+                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md border bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-500/20">
+                  API Request
+                </span>
+              )}
               <span className="font-mono text-xs font-semibold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
                 Ref: {ticket.reference}
               </span>
@@ -273,15 +280,44 @@ export default function IpeApplicationDrawer({
           {activeTab === "ACTIONS" && (
             <div className="space-y-6">
               
-              {/* Option A: AgentHub Live Status Query */}
+              {/* Option A: Push to DataVerify Gateway (for manual/queued orders) */}
+              {ticket.status === "PROCESSING" && (
+                <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                        <ArrowRight size={16} className="text-blue-500" /> Push to Gateway (DataVerify)
+                      </h4>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                        Submit this tracking ID directly to DataVerify gateway for automated processing and real-time status sync.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActionType("PUSH");
+                      setTimeout(() => handleActionSubmit(), 50);
+                    }}
+                    disabled={isProcessing}
+                    className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <RotateCw size={14} className={isProcessing && actionType === "PUSH" ? "animate-spin" : ""} />
+                    {isProcessing && actionType === "PUSH" ? "Submitting to Gateway..." : "Push to Gateway Now"}
+                  </button>
+                </div>
+              )}
+
+              {/* Option B: Gateway Live Status Query */}
               <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                      <RefreshCw size={16} className="text-teal-500" /> Check AgentHub Status Now
+                      <RefreshCw size={16} className="text-teal-500" /> Check Gateway Status Now
                     </h4>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                      Directly query the AgentHub identity gateway for updated clearance status on this tracking ID.
+                      Directly query the identity gateway (DataVerify / AgentHub) for updated clearance status on this tracking ID.
                     </p>
                   </div>
                 </div>

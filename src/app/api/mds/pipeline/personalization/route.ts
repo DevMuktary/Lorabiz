@@ -54,6 +54,8 @@ export async function GET() {
       adminNotes: req.adminNotes,
       apiMessage: req.apiMessage,
       apiResponse: req.apiResponse,
+      isApiRequest: Boolean(req.isApiRequest),
+      clientReference: req.clientReference || null,
       createdAt: req.createdAt,
       completedAt: req.completedAt,
       clientName: `${req.user?.firstName || ""} ${req.user?.lastName || ""}`.trim() || "Unknown Client",

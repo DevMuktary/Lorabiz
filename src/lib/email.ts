@@ -2375,4 +2375,87 @@ export async function sendAnnualReturnsRejectedEmail({
   return sendEmail({ to, subject, htmlBody });
 }
 
+export async function sendDeveloperLiveApprovedEmail({
+  to,
+  name,
+  businessName,
+}: {
+  to: string;
+  name?: string;
+  businessName: string;
+}) {
+  const cleanName = name || "Developer";
+  const subject = `🎉 Live API Access Approved for ${businessName} — LoraBiz Developer Hub`;
+  const previewText = `Congratulations! Your Live API access application for ${businessName} has been approved.`;
+
+  const content = `
+    <h2 style="color: #059669; margin-top: 0; font-size: 20px; font-weight: 700;">Live API Access Approved! &#9989;</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">
+      Great news! Your application for <strong>Live API Access</strong> for <strong>${businessName}</strong> has been reviewed and approved by our compliance team.
+    </p>
+
+    <div style="background-color: #ecfdf5; border: 1px solid #d1fae5; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #065f46; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">What happens next?</p>
+      <ul style="margin: 0; padding-left: 20px; color: #047857; font-size: 14px; line-height: 1.6;">
+        <li>You can now generate and roll production API keys (<code>lora_live_...</code>).</li>
+        <li>Your live wallet balance is unlocked for automated identity verifications.</li>
+        <li>Configure your live webhook destination URL for real-time delivery.</li>
+      </ul>
+    </div>
+
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="https://lorabiz.com/dashboard/developer" style="background-color: #059669; color: #ffffff; padding: 13px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block;">Go to Developer Hub</a>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">
+      If you need any integration assistance, check our <a href="https://lorabiz.com/docs" style="color: #ff3f7a; font-weight: 600;">API Documentation</a> or reach out to our developer engineering support.
+    </p>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">The LoraBiz Developer Platform Team</p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+export async function sendDeveloperLiveRejectedEmail({
+  to,
+  name,
+  businessName,
+  rejectionReason,
+}: {
+  to: string;
+  name?: string;
+  businessName: string;
+  rejectionReason: string;
+}) {
+  const cleanName = name || "Developer";
+  const subject = `Update: Live API Access Application for ${businessName} – Action Required`;
+  const previewText = `Your live API access application for ${businessName} could not be approved at this time.`;
+
+  const content = `
+    <h2 style="color: #dc2626; margin-top: 0; font-size: 20px; font-weight: 700;">Live API Application Update &#10060;</h2>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">Hello ${cleanName},</p>
+    <p style="color: #334155; line-height: 1.6; font-size: 15px;">
+      Thank you for your interest in integrating with LoraBiz. After review by our compliance team, your application for <strong>Live API Access</strong> for <strong>${businessName}</strong> could not be approved at this time due to the following reason:
+    </p>
+
+    <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0; font-size: 14px; color: #991b1b; line-height: 1.5;">${rejectionReason}</p>
+    </div>
+
+    <p style="color: #334155; line-height: 1.6; font-size: 14px;">
+      You can continue using the Sandbox Test environment to test integrations. Once you address the feedback above, please visit the Developer Hub to resubmit your live activation request.
+    </p>
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="https://lorabiz.com/dashboard/developer" style="background-color: #dc2626; color: #ffffff; padding: 13px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block;">Update Application in Developer Hub</a>
+    </div>
+    <p style="color: #334155; font-size: 14px; margin-top: 24px;">The LoraBiz Developer Platform Team</p>
+  `;
+
+  const htmlBody = getBaseLayout(sanitizeEmailHtml(content), previewText);
+  return sendEmail({ to, subject, htmlBody });
+}
+
+
 

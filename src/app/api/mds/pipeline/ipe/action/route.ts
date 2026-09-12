@@ -4,6 +4,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { checkIpeClearanceStatus, parseIpeStatusResponse } from "@/lib/agenthub";
 import { sendNinIpeCompletedEmail, sendNinIpeFailedEmail } from "@/lib/email";
+import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
+import { submitDataVerifyIpe } from "@/lib/dataverify";
 
 export async function POST(req: Request) {
   try {
@@ -131,6 +133,21 @@ export async function POST(req: Request) {
           });
         } catch (e) {}
 
+        if (ipeItem.isApiRequest) {
+          dispatchDeveloperWebhook(ipeItem.userId, "nin_ipe.completed", {
+            reference: ipeItem.reference,
+            tracking_id: ipeItem.trackingId,
+            client_reference: ipeItem.clientReference,
+            new_tracking_id: newTrackingId || ipeItem.newTrackingId,
+            resolved_nin: resolvedNin || ipeItem.resolvedNin,
+            request_status: "completed",
+            message: "IPE Clearance completed successfully.",
+            completed_at: new Date().toISOString(),
+            amount_charged: Number(ipeItem.amountCharged),
+            currency: "NGN",
+          });
+        }
+
         return NextResponse.json({
           success: true,
           message: "IPE Clearance Completed and NIN released!",
@@ -170,8 +187,11 @@ export async function POST(req: Request) {
             data: {
               status: "FAILED",
               failureReason: finalFailureReason,
+              refunded: true,
+              refundAmount,
               apiMessage: apiMsg || "Clearance Failed",
               apiResponse: rawResponse,
+              lastSyncedAt: new Date(),
             },
           });
         });
@@ -200,6 +220,21 @@ export async function POST(req: Request) {
             },
           });
         } catch (e) {}
+
+        if (ipeItem.isApiRequest) {
+          dispatchDeveloperWebhook(ipeItem.userId, "nin_ipe.failed", {
+            reference: ipeItem.reference,
+            tracking_id: ipeItem.trackingId,
+            client_reference: ipeItem.clientReference,
+            request_status: "failed",
+            message: "Your IPE Clearance request has failed.",
+            error_detail: finalFailureReason,
+            refunded: true,
+            refund_amount: refundAmount,
+            amount_charged: 0,
+            currency: "NGN",
+          });
+        }
 
         return NextResponse.json({
           success: true,
@@ -248,6 +283,9 @@ export async function POST(req: Request) {
           data: {
             status: "FAILED",
             failureReason: failureReason,
+            refunded: true,
+            refundAmount,
+            lastSyncedAt: new Date(),
           },
         });
       });
@@ -261,6 +299,21 @@ export async function POST(req: Request) {
           details: `Admin refunded ₦${refundAmount} for Tracking ID ${ipeItem.trackingId}. Reason: ${failureReason}`,
         },
       });
+
+      if (ipeItem.isApiRequest) {
+        dispatchDeveloperWebhook(ipeItem.userId, "nin_ipe.failed", {
+          reference: ipeItem.reference,
+          tracking_id: ipeItem.trackingId,
+          client_reference: ipeItem.clientReference,
+          request_status: "failed",
+          message: "Your IPE Clearance request has failed.",
+          error_detail: failureReason,
+          refunded: true,
+          refund_amount: refundAmount,
+          amount_charged: 0,
+          currency: "NGN",
+        });
+      }
 
       return NextResponse.json({
         success: true,
@@ -304,9 +357,66 @@ export async function POST(req: Request) {
         });
       } catch (e) {}
 
+      if (ipeItem.isApiRequest) {
+        dispatchDeveloperWebhook(ipeItem.userId, "nin_ipe.completed", {
+          reference: ipeItem.reference,
+          tracking_id: ipeItem.trackingId,
+          client_reference: ipeItem.clientReference,
+          new_tracking_id: ipeItem.newTrackingId,
+          resolved_nin: resolvedNin.trim(),
+          request_status: "completed",
+          message: "IPE Clearance completed successfully.",
+          completed_at: new Date().toISOString(),
+          amount_charged: Number(ipeItem.amountCharged),
+          currency: "NGN",
+        });
+      }
+
       return NextResponse.json({
         success: true,
         message: "IPE Clearance marked as completed and client notified.",
+      });
+    }
+
+    // ACTION 4: Push Queued Ticket to DataVerify Gateway
+    if (action === "PUSH_TO_GATEWAY") {
+      const dvRes = await submitDataVerifyIpe(ipeItem.trackingId);
+
+      if (!dvRes.success || !dvRes.data?.status) {
+        return NextResponse.json({
+          success: false,
+          message:
+            dvRes.error ||
+            dvRes.data?.message ||
+            "Failed to push request to DataVerify. Gateway returned an error or insufficient balance.",
+        });
+      }
+
+      await prisma.ninIpeRequest.update({
+        where: { id: ipeItem.id },
+        data: {
+          provider: "DATAVERIFY",
+          externalReqId: dvRes.data.transaction_id || null,
+          apiMessage: dvRes.data.message || "Submitted to DataVerify gateway.",
+          apiResponse: dvRes.data as any,
+          adminNotes: ipeItem.adminNotes
+            ? `${ipeItem.adminNotes} | Pushed to DataVerify by Admin`
+            : "Pushed to DataVerify by Admin",
+        },
+      });
+
+      await prisma.staffActionLog.create({
+        data: {
+          userId: session.user.id,
+          action: "PUSHED_TO_GATEWAY",
+          targetId: ipeItem.reference,
+          details: `Admin pushed Tracking ID ${ipeItem.trackingId} to DataVerify gateway (TxID: ${dvRes.data.transaction_id || "N/A"}).`,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Successfully pushed to DataVerify gateway. Automated status tracking is now active.",
       });
     }
 

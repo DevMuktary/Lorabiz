@@ -101,7 +101,7 @@ export default function NinValidationAdminPipelinePage() {
           setSelectedTicket(data.data);
         }
       } else {
-        alert(data.error || "Failed to push to Abjiktech");
+        alert(data.error || "Failed to push to Automated Gateway");
       }
     } catch (err: any) {
       alert(err.message || "Network error");
@@ -201,7 +201,7 @@ export default function NinValidationAdminPipelinePage() {
               <span>NIN Validation Operations Ledger</span>
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-              Live gateway tracking, automated Abjiktech transmission, and JSON response diagnostics.
+              Live gateway tracking, automated provider transmission, and JSON response diagnostics.
             </p>
           </div>
           <button 
@@ -275,7 +275,7 @@ export default function NinValidationAdminPipelinePage() {
               className="px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
               <option value="ALL">All Gateway States</option>
-              <option value="PUSHED">✓ Pushed to Abjiktech</option>
+              <option value="PUSHED">✓ Pushed to Gateway</option>
               <option value="NOT_PUSHED">⚠️ Not Pushed (Queued)</option>
             </select>
 
@@ -349,7 +349,14 @@ export default function NinValidationAdminPipelinePage() {
                       
                       {/* Client */}
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-zinc-900 dark:text-zinc-100">{ticket.clientName}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">{ticket.clientName}</span>
+                          {ticket.isApiRequest && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              API
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-zinc-500">{ticket.clientEmail}</div>
                       </td>
 
@@ -379,7 +386,10 @@ export default function NinValidationAdminPipelinePage() {
                             )}
                           </button>
                         </div>
-                        <span className="font-mono text-[10px] text-zinc-400 block">{ticket.transactionRef}</span>
+                        <span className="font-mono text-[10px] text-zinc-400 block truncate max-w-[150px]" title={ticket.clientReference ? `Ref: ${ticket.clientReference}` : undefined}>
+                          {ticket.transactionRef}
+                          {ticket.clientReference && ` • ${ticket.clientReference}`}
+                        </span>
                       </td>
 
                       {/* Gateway / Push Status Column */}
@@ -392,6 +402,20 @@ export default function NinValidationAdminPipelinePage() {
                             </span>
                             <span className="font-mono text-[10px] text-zinc-500 block truncate max-w-[130px]" title={ticket.externalTxId || ticket.externalTicketId}>
                               ID: {ticket.externalTxId || ticket.externalTicketId}
+                            </span>
+                          </div>
+                        ) : ticket.status === "COMPLETED" ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle2 size={11} />
+                              <span>Completed Manually</span>
+                            </span>
+                          </div>
+                        ) : ticket.status === "FAILED" ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border border-zinc-500/20">
+                              <XCircle size={11} />
+                              <span>Resolved Manually</span>
                             </span>
                           </div>
                         ) : (
@@ -464,7 +488,7 @@ export default function NinValidationAdminPipelinePage() {
                               onClick={(e) => handleQuickSync(ticket, e)}
                               disabled={isQuickSyncing}
                               className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs transition-colors cursor-pointer"
-                              title="Sync Status with Abjiktech"
+                              title="Sync Status with Gateway"
                             >
                               <RefreshCw size={13} className={isQuickSyncing ? "animate-spin text-indigo-500" : ""} />
                             </button>

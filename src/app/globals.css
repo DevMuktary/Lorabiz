@@ -66,8 +66,30 @@
   }
 }
 
-/* Ensure html background extends behind iOS safe areas (status bar + toolbar) */
+/* Ensure html background extends behind iOS safe areas (status bar + toolbar).
+   ThemeColorUpdater also reads this computed value as the base for the browser
+   chrome tint, so it must stay an opaque color. */
 html {
+  background-color: hsl(var(--background));
+
+  /* Declares the appearance to the UA so form controls, scrollbars and the like
+     match the page. next-themes also sets this inline from its pre-paint script,
+     so this rule only covers SSR and the JS-disabled case. It must be a single
+     scheme, not `light dark`: the app picks the theme itself via the .dark class,
+     so letting the UA also react to the OS setting reintroduces a mismatch. */
+  color-scheme: light;
+
+  /* Stops iOS rubber-band scrolling from exposing a mismatched band behind
+     Safari's toolbar. */
+  overscroll-behavior-y: none;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Keeps Safari's own edge sampling in agreement with the theme-color tag. */
+body {
   background-color: hsl(var(--background));
 }
 

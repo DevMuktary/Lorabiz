@@ -5,8 +5,10 @@ import { prisma } from "@/lib/prisma";
 import {
   checkDataVerifyPersonalizationStatus,
   parseDataVerifyPersonalizationResult,
+  submitDataVerifyPersonalization,
 } from "@/lib/dataverify";
 import { dispatchNotification } from "@/services/notifications";
+import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
 
 export async function POST(req: Request) {
   try {
@@ -90,8 +92,31 @@ export async function POST(req: Request) {
             apiMessage: parsed.message || "Personalization Successful",
             apiResponse: statusResult.data as any,
             completedAt: new Date(),
+            lastSyncedAt: new Date(),
           },
         });
+
+        // Dispatch developer webhook if this is an API order
+        if (pznItem.isApiRequest) {
+          dispatchDeveloperWebhook(
+            pznItem.userId,
+            "nin_personalization.completed",
+            {
+              reference: pznItem.reference,
+              tracking_id: pznItem.trackingId,
+              client_reference: pznItem.clientReference,
+              resolved_nin: parsed.resolvedNin || pznItem.resolvedNin,
+              pdf_base64: parsed.pdfBase64 || pznItem.pdfUrl,
+              data: ((parsed.userData || pznItem.userData) as Record<string, unknown>) || null,
+              request_status: "completed",
+              message: "NIN Personalization completed successfully.",
+              completed_at: new Date().toISOString(),
+              amount_charged: Number(pznItem.amountCharged),
+              currency: "NGN",
+            },
+            "LIVE"
+          );
+        }
 
         // Notify client ONLY IF not already completed before
         if (pznItem.status !== "COMPLETED") {
@@ -124,10 +149,33 @@ export async function POST(req: Request) {
           data: {
             status: "FAILED",
             failureReason: failureReason,
+            refunded: false,
+            refundAmount: 0,
             apiMessage: parsed.message,
             apiResponse: statusResult.data as any,
+            lastSyncedAt: new Date(),
           },
         });
+
+        // Dispatch developer webhook if this is an API order
+        if (pznItem.isApiRequest) {
+          dispatchDeveloperWebhook(
+            pznItem.userId,
+            "nin_personalization.failed",
+            {
+              reference: pznItem.reference,
+              tracking_id: pznItem.trackingId,
+              client_reference: pznItem.clientReference,
+              request_status: "failed",
+              message: "Your NIN Personalization request has failed.",
+              error_detail: failureReason,
+              refunded: false,
+              amount_charged: Number(pznItem.amountCharged),
+              currency: "NGN",
+            },
+            "LIVE"
+          );
+        }
 
         // Notify client ONLY IF not already failed before
         if (pznItem.status !== "FAILED") {
@@ -193,10 +241,34 @@ export async function POST(req: Request) {
           data: {
             status: "FAILED",
             failureReason: failureReason,
+            refunded: shouldRefund,
+            refundAmount: refundAmount,
             adminNotes: adminNotes || undefined,
+            lastSyncedAt: new Date(),
           },
         });
       });
+
+      // Dispatch developer webhook if this is an API order
+      if (pznItem.isApiRequest) {
+        dispatchDeveloperWebhook(
+          pznItem.userId,
+          "nin_personalization.failed",
+          {
+            reference: pznItem.reference,
+            tracking_id: pznItem.trackingId,
+            client_reference: pznItem.clientReference,
+            request_status: "failed",
+            message: "Your NIN Personalization request has failed.",
+            error_detail: failureReason,
+            refunded: shouldRefund,
+            refund_amount: refundAmount,
+            amount_charged: shouldRefund ? 0 : Number(pznItem.amountCharged),
+            currency: "NGN",
+          },
+          "LIVE"
+        );
+      }
 
       // Staff Action Audit
       await prisma.staffActionLog.create({
@@ -250,8 +322,31 @@ export async function POST(req: Request) {
           pdfUrl: pdfUrl?.trim() || pznItem.pdfUrl,
           adminNotes: adminNotes || pznItem.adminNotes,
           completedAt: pznItem.completedAt || new Date(),
+          lastSyncedAt: new Date(),
         },
       });
+
+      // Dispatch developer webhook if this is an API order
+      if (pznItem.isApiRequest) {
+        dispatchDeveloperWebhook(
+          pznItem.userId,
+          "nin_personalization.completed",
+          {
+            reference: pznItem.reference,
+            tracking_id: pznItem.trackingId,
+            client_reference: pznItem.clientReference,
+            resolved_nin: resolvedNin.trim(),
+            pdf_base64: pdfUrl?.trim() || pznItem.pdfUrl || null,
+            data: ((pznItem.userData || {}) as Record<string, unknown>) || null,
+            request_status: "completed",
+            message: "NIN Personalization completed successfully.",
+            completed_at: new Date().toISOString(),
+            amount_charged: Number(pznItem.amountCharged),
+            currency: "NGN",
+          },
+          "LIVE"
+        );
+      }
 
       // Staff Action Audit
       await prisma.staffActionLog.create({
@@ -280,6 +375,50 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         message: "Personalization marked as completed and client notified.",
+        request: updated,
+      });
+    }
+
+    // ACTION 4: Push Queued Ticket to DataVerify Gateway
+    if (action === "PUSH_TO_GATEWAY") {
+      const dvRes = await submitDataVerifyPersonalization(pznItem.trackingId);
+
+      if (!dvRes.success || !dvRes.data?.status) {
+        return NextResponse.json({
+          success: false,
+          message:
+            dvRes.error ||
+            dvRes.data?.message ||
+            "Failed to push request to DataVerify. Gateway returned an error or insufficient balance.",
+        });
+      }
+
+      const updated = await prisma.ninPersonalizationRequest.update({
+        where: { id: pznItem.id },
+        data: {
+          provider: "DATAVERIFY",
+          externalTxId: dvRes.data.transaction_id || null,
+          apiMessage: dvRes.data.message || "Submitted to DataVerify gateway.",
+          apiResponse: dvRes.data as any,
+          adminNotes: pznItem.adminNotes
+            ? `${pznItem.adminNotes} | Pushed to DataVerify by Staff`
+            : "Pushed to DataVerify by Staff",
+          lastSyncedAt: new Date(),
+        },
+      });
+
+      await prisma.staffActionLog.create({
+        data: {
+          userId: session.user.id,
+          action: "PUSHED_PERSONALIZATION_TO_GATEWAY",
+          targetId: pznItem.reference,
+          details: `Staff pushed Tracking ID ${pznItem.trackingId} to DataVerify gateway (TxID: ${dvRes.data.transaction_id || "N/A"}).`,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Successfully pushed to DataVerify gateway. Automated status tracking is now active.",
         request: updated,
       });
     }

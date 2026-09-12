@@ -248,7 +248,12 @@ export default function IpePipelinePage() {
 
                     {/* Reference */}
                     <td className="px-5 py-3.5 font-mono text-[11px] text-zinc-500 whitespace-nowrap">
-                      {item.reference}
+                      <div>{item.reference}</div>
+                      {item.isApiRequest && (
+                        <span className="inline-block mt-0.5 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                          API
+                        </span>
+                      )}
                     </td>
 
                     {/* Status */}

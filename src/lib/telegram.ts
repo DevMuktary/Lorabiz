@@ -92,7 +92,7 @@ export async function notifyAdminTelegram(payload: TelegramAlertPayload): Promis
 
       const now = new Date().toLocaleString("en-NG", { timeZone: "Africa/Lagos" });
       lines.push(`━━━━━━━━━━━━━━━━━━`);
-      lines.push(`🕒 <i>${now} (WAT)</i>`);
+      lines.push(`🕒 <i>${now}</i>`);
 
       const message = lines.join("\n");
       await sendTelegramMessage(message);

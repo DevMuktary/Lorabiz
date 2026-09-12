@@ -20,7 +20,9 @@ import {
   UserPlus,
   Mail,
   Activity,
-  Gift
+  Gift,
+  Code,
+  Sliders
 } from "lucide-react";
 
 export default function ClientLayout({
@@ -62,6 +64,8 @@ export default function ClientLayout({
       links: [
         { href: "/quadrox-lorabiz-team/mds/dashboard/orders", icon: <Layers size={20} />, label: "Order Pipeline" },
         { href: "/quadrox-lorabiz-team/mds/dashboard/clients", icon: <UserSquare2 size={20} />, label: "Clients Directory" },
+        { href: "/quadrox-lorabiz-team/mds/dashboard/developers", icon: <Code size={20} />, label: "Developer Requests" },
+        { href: "/quadrox-lorabiz-team/mds/dashboard/api-services", icon: <Sliders size={20} />, label: "API Services & Pricing" },
         { href: "/quadrox-lorabiz-team/mds/dashboard/staff", icon: <Users size={20} />, label: "Staff Operations" },
         { href: "/quadrox-lorabiz-team/mds/dashboard/activity", icon: <Activity size={20} />, label: "User Activity" },
       ]

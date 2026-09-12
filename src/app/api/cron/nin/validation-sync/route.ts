@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { checkDataVerifyNinValidationStatus } from "@/lib/dataverify-validation";
 import { dispatchNotification } from "@/services/notifications";
 import { getReferrerRewardAmount } from "@/lib/loyalty";
+import { dispatchDeveloperWebhook } from "@/lib/developer/webhook-dispatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -152,6 +153,19 @@ async function handleSync(req: NextRequest) {
             console.error(`❌ [Cron NIN Validation] Notification error for ${item.transactionRef}:`, notifErr);
           }
 
+          // Dispatch developer webhook
+          dispatchDeveloperWebhook(item.userId, "nin_validation.completed", {
+            reference: item.transactionRef,
+            client_reference: item.clientReference,
+            nin: item.nin,
+            validation_type: item.category.toLowerCase(),
+            request_status: "validated",
+            message: "NIN Validation completed successfully.",
+            completed_at: new Date().toISOString(),
+            amount_charged: Number(item.amountCharged),
+            currency: "NGN",
+          });
+
           completedCount++;
         } else if (normalizedStatus === "FAILED") {
           const failureReason = statusRes.errorDetail || apiMessage || "NIN Validation request failed verification on DataVerify gateway.";
@@ -166,6 +180,20 @@ async function handleSync(req: NextRequest) {
               apiResponse: statusRes.rawResponse as any,
               lastSyncedAt: new Date(),
             },
+          });
+
+          // Dispatch developer webhook
+          dispatchDeveloperWebhook(item.userId, "nin_validation.failed", {
+            reference: item.transactionRef,
+            client_reference: item.clientReference,
+            nin: item.nin,
+            validation_type: item.category.toLowerCase(),
+            request_status: "failed",
+            message: "Your NIN Validation request has failed.",
+            error_detail: failureReason,
+            refunded: item.refunded,
+            amount_charged: item.refunded ? 0 : Number(item.amountCharged),
+            currency: "NGN",
           });
 
           // STRICT NO-REFUND POLICY PER USER INSTRUCTION

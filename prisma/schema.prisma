@@ -128,8 +128,11 @@ model User {
   llcRegistrations LlcRegistration[]
   ninRequests      NinRequestLog[]
   ninIpeRequests   NinIpeRequest[]
+  testNinIpeTickets TestNinIpeTicket[]
   ninValidationRequests NinValidationRequest[]
+  testNinValidationTickets TestNinValidationTicket[]
   ninPersonalizationRequests NinPersonalizationRequest[]
+  testNinPersonalizationTickets TestNinPersonalizationTicket[]
   ninModificationConsent NinModificationConsent?
   ninModificationRequests NinModificationRequest[]
   bvnRequests      BvnRequestLog[]
@@ -158,6 +161,14 @@ model User {
   // --- REWARDS & SPINS ---
   spinTokens         SpinToken[]
   rewardCredits      UserRewardCredit[]
+
+  // --- DEVELOPER PLATFORM ---
+  sandboxBalance     Decimal            @default(1000000.00) @db.Decimal(12, 2)
+  developerMode      ApiKeyType         @default(TEST)
+  apiKeys            ApiKey[]
+  developerProfile   DeveloperProfile?
+  webhookConfigs     WebhookConfig[]
+  apiRequestLogs     ApiRequestLog[]
 
   // --- STAFF ASSIGNMENTS ---
   assignedBiz      BusinessRegistration[] @relation("BizStaffAssignment")
@@ -454,36 +465,72 @@ enum NinIpeStatus {
 }
 
 model NinIpeRequest {
-  id            String       @id @default(cuid())
-  userId        String
-  trackingId    String
-  reference     String       @unique // Matches ledger transaction reference
-  provider      String       @default("DATAVERIFY") // "DATAVERIFY" | "AGENTHUB" | "MANUAL"
-  externalReqId String?      // requestId returned by AgentHub or transaction_id from DataVerify
-  status        NinIpeStatus @default(PROCESSING)
+  id              String       @id @default(cuid())
+  userId          String
+  trackingId      String
+  reference       String       @unique // Matches ledger transaction reference
+  provider        String       @default("DATAVERIFY") // "DATAVERIFY" | "AGENTHUB" | "MANUAL"
+  externalReqId   String?      // requestId returned by AgentHub or transaction_id from DataVerify
+  status          NinIpeStatus @default(PROCESSING)
   
   // Resolved details when completed
-  resolvedNin   String?      // 11-digit NIN
-  newTrackingId String?      // New tracking ID if updated
-  fullName      String?
-  dob           String?
-  gender        String?
-  photoUrl      String?
+  resolvedNin     String?      // 11-digit NIN
+  newTrackingId   String?      // New tracking ID if updated
+  fullName        String?
+  dob             String?
+  gender          String?
+  photoUrl        String?
   
-  apiMessage    String?
-  failureReason String?
-  adminNotes    String?      @db.Text
-  amountCharged Decimal      @db.Decimal(10, 2)
-  apiResponse   Json?
+  apiMessage      String?
+  failureReason   String?
+  adminNotes      String?      @db.Text
+  amountCharged   Decimal      @db.Decimal(10, 2)
+  apiResponse     Json?
   
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  completedAt   DateTime?
+  // Developer API tracking fields
+  isApiRequest    Boolean      @default(false)
+  clientReference String?
+  refunded        Boolean      @default(false)
+  refundAmount    Decimal?     @db.Decimal(10, 2)
+  lastSyncedAt    DateTime?
 
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  completedAt     DateTime?
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([trackingId])
+  @@index([reference])
+  @@index([isApiRequest])
+  @@index([clientReference])
+}
+
+model TestNinIpeTicket {
+  id              String       @id @default(cuid())
+  userId          String
+  trackingId      String       // The test NIMC tracking ID submitted
+  reference       String       @unique // e.g. "lora_ipe_test_..."
+  clientReference String?
+  status          NinIpeStatus @default(PROCESSING)
+  amountCharged   Decimal      @default(2500.00) @db.Decimal(10, 2)
+  resolvedNin     String?      // 11-digit mock resolved NIN
+  newTrackingId   String?      // Mock new tracking ID
+  fullName        String?
+  dob             String?
+  gender          String?
+  failureReason   String?      @db.Text
+  refunded        Boolean      @default(false)
+  completedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, reference])
+  @@index([userId, trackingId])
+  @@index([userId, clientReference])
 }
 
 enum NinPersonalizationStatus {
@@ -518,6 +565,13 @@ model NinPersonalizationRequest {
   amountCharged Decimal                  @db.Decimal(10, 2)
   apiResponse   Json?
   
+  // Developer API tracking fields
+  isApiRequest    Boolean                  @default(false)
+  clientReference String?
+  refunded        Boolean                  @default(false)
+  refundAmount    Decimal?                 @db.Decimal(10, 2)
+  lastSyncedAt    DateTime?
+
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
   completedAt   DateTime?
@@ -527,6 +581,38 @@ model NinPersonalizationRequest {
   @@index([userId, status])
   @@index([trackingId])
   @@index([reference])
+  @@index([isApiRequest])
+  @@index([userId, clientReference])
+}
+
+model TestNinPersonalizationTicket {
+  id              String                   @id @default(cuid())
+  userId          String
+  trackingId      String                   // The test NIMC tracking ID submitted
+  reference       String                   @unique // e.g. "lora_pzn_test_..."
+  clientReference String?
+  status          NinPersonalizationStatus @default(PROCESSING)
+  amountCharged   Decimal                  @default(1500.00) @db.Decimal(10, 2)
+  resolvedNin     String?                  // 11-digit mock resolved NIN
+  fullName        String?
+  dob             String?
+  gender          String?
+  phone           String?
+  residenceState  String?
+  photoUrl        String?                  @db.Text
+  pdfUrl          String?                  @db.Text // Base64 mock slip
+  userData        Json?
+  failureReason   String?                  @db.Text
+  refunded        Boolean                  @default(false)
+  completedAt     DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, reference])
+  @@index([userId, trackingId])
+  @@index([userId, clientReference])
 }
 
 enum NinValidationCategory {
@@ -556,6 +642,10 @@ model NinValidationRequest {
   status           NinValidationStatus   @default(PROCESSING)
   amountCharged    Decimal               @db.Decimal(10, 2)
   transactionRef   String                @unique
+  clientReference  String?
+  isApiRequest     Boolean               @default(false)
+  refunded         Boolean               @default(false)
+  refundAmount     Decimal?              @db.Decimal(10, 2)
   failureReason    String?               @db.Text
   adminNotes       String?               @db.Text
   lastSyncedAt     DateTime?
@@ -570,6 +660,30 @@ model NinValidationRequest {
   @@index([category])
   @@index([externalTicketId])
   @@index([externalTxId])
+  @@index([clientReference])
+  @@index([isApiRequest])
+}
+
+model TestNinValidationTicket {
+  id              String                @id @default(cuid())
+  userId          String
+  category        NinValidationCategory
+  validationType  String
+  nin             String
+  status          NinValidationStatus   @default(PROCESSING)
+  amountCharged   Decimal               @default(700.00) @db.Decimal(10, 2)
+  trackingId      String                @unique
+  clientReference String?
+  refunded        Boolean               @default(false)
+  failureReason   String?               @db.Text
+  completedAt     DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, trackingId])
+  @@index([userId, clientReference])
 }
 
 // ==========================================
@@ -1383,4 +1497,109 @@ model CacAnnualReturnRequest {
   @@index([trackingId])
   @@index([registrationNumber])
   @@index([createdAt])
+}
+
+// ==========================================
+// DEVELOPER PLATFORM & API INFRASTRUCTURE
+// ==========================================
+
+enum ApiKeyType {
+  LIVE
+  TEST
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum DeveloperProfileStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+model ApiKey {
+  id           String       @id @default(cuid())
+  userId       String
+  name         String       // Label (e.g. "Default Live Key", "Localhost Test")
+  keyPrefix    String       // e.g. "lora_live_a81f" (shows first few chars + last few)
+  keyHash      String       @unique // SHA-256 hash of the full raw key
+  encryptedKey String?      @db.Text // AES-256-GCM encrypted raw key (stored ONLY for TEST keys to enable persistent copy/reveal, NULL for LIVE keys for zero-trust security)
+  type         ApiKeyType   @default(TEST)
+  status       ApiKeyStatus @default(ACTIVE)
+  ipWhitelist  String[]     @default([])
+  lastUsedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  revokedAt    DateTime?
+  
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestLogs  ApiRequestLog[]
+
+  @@index([userId, status])
+  @@index([keyHash])
+  @@index([type, status])
+}
+
+model DeveloperProfile {
+  id              String                 @id @default(cuid())
+  userId          String                 @unique
+  businessName    String
+  websiteUrl      String?
+  ownerNin        String                 // 11 digits
+  useCase         String                 // e.g. "KYC & Onboarding", "Fintech", etc.
+  customUseCase   String?
+  status          DeveloperProfileStatus @default(PENDING_APPROVAL)
+  rejectionReason String?                @db.Text
+  approvedAt      DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WebhookConfig {
+  id          String      @id @default(cuid())
+  userId      String
+  environment ApiKeyType  @default(LIVE)
+  url         String
+  secretKey   String      // e.g. "whsec_live_..." or "whsec_test_..."
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, environment])
+  @@index([userId, environment])
+}
+
+model ApiRequestLog {
+  id              String      @id @default(cuid())
+  userId          String
+  apiKeyId        String?
+  environment     ApiKeyType  @default(TEST)
+  method          String      // "GET", "POST", etc.
+  endpoint        String      // e.g. "/v1/nin/by-nin"
+  statusCode      Int         // 200, 400, 402, 500
+  latencyMs       Int         // Duration in ms
+  amountCharged   Decimal     @default(0.00) @db.Decimal(10, 2)
+  ipAddress       String?
+  clientReference String?     // External developer transaction/order reference
+  requestHeaders  Json?
+  requestBody     Json?
+  responseBody    Json?
+  errorMessage    String?
+  createdAt       DateTime    @default(now())
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKey          ApiKey?     @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([environment, createdAt])
+  @@index([clientReference])
+  @@index([statusCode])
 }
