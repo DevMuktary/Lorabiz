@@ -47,7 +47,13 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./mobile
-        run: npm ci --legacy-peer-deps
+        run: |
+          npm ci --legacy-peer-deps
+          echo "=== Normalizing Swift tools versions for Xcode 16.4 compatibility ==="
+          find node_modules -name "Package.swift" -exec sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} + 2>/dev/null || true
+          find node_modules -name "Package.swift" -exec sed -i 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} + 2>/dev/null || true
+          echo "Verified Package.swift headers:"
+          head -n 2 node_modules/expo-modules-jsi/apple/Package.swift || true
 
       - name: Expo Prebuild (Generate Native iOS Project)
         working-directory: ./mobile
@@ -78,6 +84,10 @@ jobs:
         working-directory: ./mobile/ios
         run: |
           set -e -o pipefail
+          echo "=== Normalizing all Swift tools versions across workspace ==="
+          find .. -name "Package.swift" -exec sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} + 2>/dev/null || true
+          find .. -name "Package.swift" -exec sed -i 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} + 2>/dev/null || true
+
           echo "=== Configuring Git for Swift Package Manager ==="
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
