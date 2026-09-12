@@ -235,10 +235,16 @@ if (fs.existsSync(sourcesDir)) {
     }`;
     c = c.replace(call2Target, call2Replacement);
 
-    // Patch regex literal to string-based Regex to support Swift 5 language mode
+    // Patch regex literal to pure non-throwing Swift identifier validation
+    const validIdentifierCheck = `let isValidIdentifier = { guard let first = name.first, (first.isLetter || first == "_" || first == "$") else { return false }; return name.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "$" } }(); if !isValidIdentifier`;
+
     c = c.replace(
-      'name.wholeMatch(of: /^[a-zA-Z_$][a-zA-Z0-9_$]*$/) == nil',
-      '(try? Regex(#"^[a-zA-Z_$][a-zA-Z0-9_$]*$"#))?.wholeMatch(in: name) == nil'
+      'if name.wholeMatch(of: /^[a-zA-Z_$][a-zA-Z0-9_$]*$/) == nil',
+      validIdentifierCheck
+    );
+    c = c.replace(
+      'if (try? Regex(#"^[a-zA-Z_$][a-zA-Z0-9_$]*$"#))?.wholeMatch(in: name) == nil',
+      validIdentifierCheck
     );
 
     fs.writeFileSync(rt, c);
