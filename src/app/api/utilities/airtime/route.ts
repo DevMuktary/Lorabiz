@@ -4,8 +4,42 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { logUserActivity } from "@/lib/activity-logger";
 
+// GET: Check Airtime service availability / kill switch status
+export async function GET() {
+  try {
+    const pricing = await prisma.servicePricing.findUnique({
+      where: { serviceKey: "UTILITY_AIRTIME" }
+    });
+
+    return NextResponse.json({
+      success: true,
+      isActive: pricing ? pricing.isActive : true,
+      maintenanceMsg: pricing?.maintenanceMsg || null,
+    });
+  } catch (error: any) {
+    return NextResponse.json({
+      success: true,
+      isActive: true,
+      maintenanceMsg: null,
+    });
+  }
+}
+
 export async function POST(req: Request) {
   try {
+    // 0. Check Master Service Kill Switch
+    const airtimePricing = await prisma.servicePricing.findUnique({
+      where: { serviceKey: "UTILITY_AIRTIME" }
+    });
+
+    if (airtimePricing && !airtimePricing.isActive) {
+      return NextResponse.json({
+        success: false,
+        isMaintenance: true,
+        message: airtimePricing.maintenanceMsg || "Airtime vending is temporarily disabled for carrier maintenance. Please try again later."
+      }, { status: 503 });
+    }
+
     // 1. Authenticate the User Securely
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -166,20 +200,44 @@ export async function POST(req: Request) {
 
       const rawText = await externalRes.text();
       let externalData: any = {};
+      let isJsonPayload = true;
       try {
         externalData = JSON.parse(rawText);
       } catch (e) {
+        isJsonPayload = false;
         console.error("Provider returned non-JSON payload:", rawText);
-        externalData = { status: "failed", message: rawText };
+        externalData = { status: "pending", message: rawText };
       }
 
+      const statusStr = String(externalData.status ?? "").trim().toLowerCase();
+      const textStatusStr = String(externalData.text_status ?? "").trim().toLowerCase();
+      const code = externalData.status_code || externalData.code;
+
       const isSuccess = 
-        externalData.status === "success" || 
-        externalData.status === 1 || 
-        externalData.status === "1" || 
+        statusStr === "success" || 
+        statusStr === "1" || 
+        externalData.status === true || 
         externalData.success === true ||
-        externalData.status_code === 200 ||
-        externalData.code === 200;
+        textStatusStr === "completed" ||
+        code === 200;
+
+      const isPending =
+        statusStr === "pending" ||
+        statusStr === "processing" ||
+        statusStr === "queued" ||
+        statusStr === "order_received" ||
+        textStatusStr === "pending" ||
+        textStatusStr === "processing" ||
+        !isJsonPayload;
+
+      const isExplicitFailure =
+        !isPending &&
+        (statusStr === "failed" ||
+          statusStr === "fail" ||
+          statusStr === "0" ||
+          textStatusStr === "failed" ||
+          textStatusStr === "cancelled" ||
+          textStatusStr === "reversed");
 
       if (isSuccess) {
         logUserActivity({
@@ -200,7 +258,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
           success: true,
-          message: externalData.server_message || "Airtime Sent Successfully",
+          message: externalData.server_message || externalData.data?.true_response || "Airtime Sent Successfully",
           reference,
           amount: numAmount,
           paid: payableAmount,
@@ -216,8 +274,53 @@ export async function POST(req: Request) {
             balance_after: externalData.data?.after_balance,
           }
         });
-      } else {
-        // Upstream failed -> Refund payableAmount to wallet and restore reward voucher
+      } else if (isPending) {
+        // Carrier / Provider is actively processing or order is queued.
+        // DO NOT refund the wallet immediately to prevent unauthorized double-spending exploit!
+        await prisma.transaction.update({
+          where: { id: debitResult.txRecord.id },
+          data: {
+            status: "PENDING",
+            description: `Airtime Recharge Processing - ${cleanPhone} (${network.toUpperCase()})`
+          }
+        }).catch(() => {});
+
+        logUserActivity({
+          userId: user.id,
+          action: "AIRTIME_VEND_QUEUED",
+          category: "SERVICES",
+          description: `Airtime recharge queued for ${cleanPhone} (${network.toUpperCase()})`,
+          status: "PENDING",
+          referenceId: reference,
+          metadata: {
+            amount: numAmount,
+            paid: payableAmount,
+            phone: cleanPhone,
+            network: network.toUpperCase(),
+          },
+        });
+
+        return NextResponse.json({
+          success: true,
+          status: "PENDING",
+          message: externalData.server_message || externalData.data?.true_response || "Recharge request has been submitted to the carrier and is currently processing.",
+          reference,
+          amount: numAmount,
+          paid: payableAmount,
+          discount: discountAmount,
+          phone: cleanPhone,
+          network: network.toUpperCase(),
+          newBalance: debitResult.balanceAfter,
+          data: {
+            network: network.toUpperCase(),
+            amount: numAmount,
+            phone: cleanPhone,
+            provider_ref: externalData.data?.recharge_id,
+            status: "PENDING",
+          }
+        });
+      } else if (isExplicitFailure) {
+        // Upstream explicitly rejected transaction -> Safe to refund payableAmount to wallet
         if (payableAmount > 0) {
           await prisma.wallet.update({
             where: { id: user.wallet!.id },
@@ -247,7 +350,7 @@ export async function POST(req: Request) {
         const rawMsg = externalData.server_message || externalData.data?.true_response || externalData.message || externalData.error || externalData.msg;
         const serverMessage = rawMsg 
           ? `Provider error: ${rawMsg}. Your wallet has been refunded.`
-          : "Provider failed to process airtime recharge. Your wallet has been refunded.";
+          : "Provider confirmed airtime recharge could not be fulfilled. Your wallet has been refunded.";
 
         return NextResponse.json({
           success: false,
@@ -255,42 +358,55 @@ export async function POST(req: Request) {
           refunded: true,
           newBalance: Number(user.wallet.balance)
         }, { status: 400 });
+      } else {
+        // Ambiguous upstream response -> Retain funds in PENDING state awaiting reconciliation
+        await prisma.transaction.update({
+          where: { id: debitResult.txRecord.id },
+          data: {
+            status: "PENDING",
+            description: `Airtime Recharge In-Review - ${cleanPhone} (${network.toUpperCase()})`
+          }
+        }).catch(() => {});
+
+        return NextResponse.json({
+          success: false,
+          status: "PENDING",
+          message: "Transaction received and awaiting carrier confirmation. Funds have been held pending final status.",
+          reference,
+          newBalance: debitResult.balanceAfter
+        }, { status: 202 });
       }
     } catch (providerErr) {
-      console.error("Provider Network Failure, reversing debit:", providerErr);
+      console.error("Provider Network Failure during airtime vending:", providerErr);
 
-      if (payableAmount > 0) {
-        await prisma.wallet.update({
-          where: { id: user.wallet!.id },
-          data: { balance: { increment: payableAmount } }
-        }).catch(() => {});
-      }
-
+      // SECURITY CRITICAL: Do NOT automatically refund wallet on network timeouts.
+      // The upstream telco provider may have already processed or enqueued the transaction.
+      // Keep transaction as PENDING so funds are safely held until confirmed.
       await prisma.transaction.update({
         where: { id: debitResult.txRecord.id },
         data: {
-          status: "FAILED",
-          description: `Airtime Recharge Timed Out (Refunded) - ${cleanPhone} (${network.toUpperCase()})`
+          status: "PENDING",
+          description: `Airtime Recharge Awaiting Confirmation (Network Timeout) - ${cleanPhone} (${network.toUpperCase()})`
         }
       }).catch(() => {});
 
-      if (appliedCreditId) {
-        await prisma.userRewardCredit.update({
-          where: { id: appliedCreditId },
-          data: {
-            status: "ACTIVE",
-            redeemedAt: null,
-            usedForServiceRef: null
-          }
-        }).catch(() => {});
-      }
+      logUserActivity({
+        userId: user.id,
+        action: "AIRTIME_VEND_DELAYED",
+        category: "SERVICES",
+        description: `Airtime recharge timed out awaiting carrier response for ${cleanPhone} (${network.toUpperCase()})`,
+        status: "PENDING",
+        referenceId: reference,
+      });
 
       return NextResponse.json({
         success: false,
-        message: "Network issue contacting telecommunication carrier. Your wallet has been refunded.",
-        refunded: true,
-        newBalance: Number(user.wallet.balance)
-      }, { status: 500 });
+        status: "PENDING",
+        pendingVerification: true,
+        message: "Network delay contacting the telecom carrier. Your request is queued and funds have been reserved. If carrier fulfillment fails, your wallet will be refunded following reconciliation.",
+        reference,
+        newBalance: debitResult.balanceAfter
+      }, { status: 202 });
     }
 
   } catch (error: any) {

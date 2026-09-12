@@ -18,6 +18,36 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+
+    if (body.action === "TOGGLE_STATUS") {
+      const { isActive, maintenanceMsg } = body;
+      const updated = await prisma.servicePricing.upsert({
+        where: { serviceKey: "UTILITY_AIRTIME" },
+        create: {
+          serviceKey: "UTILITY_AIRTIME",
+          title: "Telecom Airtime Vending",
+          price: 0,
+          isActive: Boolean(isActive),
+          maintenanceMsg: maintenanceMsg || null,
+        },
+        update: {
+          isActive: Boolean(isActive),
+          maintenanceMsg: maintenanceMsg !== undefined ? maintenanceMsg : undefined,
+        },
+      });
+
+      await prisma.staffActionLog.create({
+        data: {
+          userId: admin.id,
+          action: "UPDATED_AIRTIME_STATUS",
+          targetId: updated.id,
+          details: `Admin changed Airtime Vending Status to ${isActive ? "ACTIVE" : "DISABLED"}${maintenanceMsg ? ` (${maintenanceMsg})` : ""}`,
+        },
+      });
+
+      return NextResponse.json({ success: true, airtimeStatus: updated });
+    }
+
     const { transactionId } = body;
 
     if (!transactionId) {

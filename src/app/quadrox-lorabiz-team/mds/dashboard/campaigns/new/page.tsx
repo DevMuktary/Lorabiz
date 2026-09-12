@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Mail,
@@ -72,9 +72,102 @@ const AUDIENCE_SEGMENTS = [
     description: "Users who joined within the past month.",
     icon: "📅",
   },
+  {
+    id: "SINGLE_USER",
+    title: "Specific Client / Direct Email",
+    description: "Send an official notice, dispute demand, or direct email to a single user.",
+    icon: "🎯",
+  },
 ];
 
 const STARTER_TEMPLATES = [
+  {
+    name: "Strict Legal Demand (Deficit & Unlawful Gain)",
+    subject: "LEGAL NOTICE: Demand for Immediate Restitution of Overdrawn Funds [REF: LB-SEC-01]",
+    previewText: "URGENT NOTICE: Failure to settle outstanding deficit within 1 hour will trigger criminal reporting.",
+    content: `<h2 style="color: #991b1b; margin: 0 0 16px; font-size: 20px; font-family: sans-serif; text-transform: uppercase;">
+  ⚠️ FORMAL LEGAL DEMAND FOR IMMEDIATE RESTITUTION
+</h2>
+<p style="color: #475569; font-size: 13px; font-family: sans-serif; margin: 0 0 16px;">
+  <strong>Notice Reference:</strong> LB-LEGAL/DISPUTE/2026<br />
+  <strong>Recipient:</strong> {{firstName}} {{lastName}} ({{email}})<br />
+  <strong>Status:</strong> Immediate Restitution Required<br />
+  <strong>Time Limit:</strong> Strictly One (1) Hour from Delivery of This Notice
+</p>
+
+<div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; border-radius: 4px; margin-bottom: 20px;">
+  <p style="color: #991b1b; font-size: 14px; font-weight: 700; margin: 0 0 8px; font-family: sans-serif;">
+    DEMAND TO REMIT UNLAWFULLY OBTAINED FUNDS
+  </p>
+  <p style="color: #7f1d1d; font-size: 13px; margin: 0; line-height: 1.6; font-family: sans-serif;">
+    Our automated fraud and compliance audit has confirmed that your user account knowingly exploited a gateway anomaly to execute telecom recharge purchases totaling <strong>₦5,000.00</strong> against an actual available deposit of only <strong>₦1,250.00</strong>.
+  </p>
+</div>
+
+<p style="color: #334155; font-size: 14px; line-height: 1.6; font-family: sans-serif; margin: 0 0 16px;">
+  This exploitation resulted in an unauthorized and unlawful deficit balance of <strong>₦3,750.00</strong> that was drawn against company liquidity without lawful consideration.
+</p>
+
+<div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; margin-bottom: 20px; font-family: sans-serif;">
+  <h3 style="margin: 0 0 12px; font-size: 14px; color: #0f172a; text-transform: uppercase;">Audit Summary & Breakdown</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0;">Registered Account Name:</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-weight: 700; text-align: right;">{{firstName}} {{lastName}}</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0;">Verified Identity / Trace:</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-weight: 700; text-align: right;">[ORIGINAL_NAME_FROM_FUNDING_TRACE]</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0;">Legitimate Deposit Amount:</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-weight: 700; text-align: right; color: #16a34a;">₦1,250.00</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0;">Airtime Delivered to Telecom:</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-weight: 700; text-align: right; color: #dc2626;">₦5,000.00</td>
+    </tr>
+    <tr style="font-weight: 800; font-size: 14px;">
+      <td style="padding: 8px 0; color: #991b1b;">TOTAL RESTITUTION DUE:</td>
+      <td style="padding: 8px 0; color: #991b1b; text-align: right;">₦3,750.00</td>
+    </tr>
+  </table>
+</div>
+
+<h3 style="color: #0f172a; font-size: 15px; margin: 0 0 10px; font-family: sans-serif;">PAYMENT INSTRUCTIONS (MANDATORY WITHIN 1 HOUR)</h3>
+<p style="color: #334155; font-size: 13px; line-height: 1.6; font-family: sans-serif; margin: 0 0 16px;">
+  You are hereby demanded to remit the deficit of <strong>₦3,750.00</strong> immediately via the secure payment link or designated account below:
+</p>
+
+<div style="text-align: center; margin: 24px 0;">
+  <a href="[INSERT_KORAPAY_PAYMENT_LINK_HERE]" style="display: inline-block; background-color: #dc2626; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 800; font-size: 15px; font-family: sans-serif; letter-spacing: 0.5px;">
+    PAY ₦3,750.00 RESTITUTION NOW
+  </a>
+</div>
+
+<p style="color: #64748b; font-size: 12px; font-family: sans-serif; margin: 0 0 20px; text-align: center;">
+  <strong>Direct Bank Transfer Alternative:</strong><br />
+  Account Details: [INSERT BANK NAME & ACCOUNT NUMBER]<br />
+  Payment Reference: <code>RESTITUTION-{{email}}</code>
+</p>
+
+<div style="border-top: 2px solid #e2e8f0; padding-top: 16px; margin-top: 24px;">
+  <h4 style="color: #991b1b; font-size: 13px; margin: 0 0 8px; font-family: sans-serif; text-transform: uppercase;">
+    LEGAL CONSEQUENCES OF NON-COMPLIANCE:
+  </h4>
+  <p style="color: #475569; font-size: 12px; line-height: 1.6; font-family: sans-serif; margin: 0 0 8px;">
+    Take note that retainment or conversion of funds and digital goods delivered through system anomaly constitutes an offense under <strong>Section 383 and 390 of the Criminal Code Act</strong> (Stealing and Fraudulent Conversion) and <strong>Section 14 & 18 of the Cybercrimes (Prohibition, Prevention, etc.) Act 2015</strong>.
+  </p>
+  <p style="color: #475569; font-size: 12px; line-height: 1.6; font-family: sans-serif; margin: 0;">
+    If full payment is not confirmed within <strong>1 hour</strong> of this notice, LoraBiz Legal and Security will initiate:
+  </p>
+  <ol style="color: #475569; font-size: 12px; line-height: 1.6; font-family: sans-serif; margin: 8px 0 0; padding-left: 20px;">
+    <li>Formal criminal petition to the Nigeria Police Force Cybercrime Directorate and EFCC.</li>
+    <li>Direct BVN / NIN fraud watchlist submission to NIBSS (flagging your identity across all Nigerian financial institutions).</li>
+    <li>Permanent account revocation and civil suit for recovery costs and exemplary damages.</li>
+  </ol>
+</div>`,
+  },
   {
     name: "Promotional Discount Blast",
     subject: "Special Offer: 30% Off Your Next Business Registration 🚀",
@@ -127,16 +220,30 @@ const STARTER_TEMPLATES = [
   },
 ];
 
-export default function NewCampaignPage() {
+function NewCampaignComposer() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const queryTargetEmail = searchParams.get("targetEmail") || "";
+  const queryTargetName = searchParams.get("targetName") || "";
+  const queryTemplate = searchParams.get("template") || "";
+
+  const isLegalDemand = queryTemplate === "LEGAL_DEMAND";
+  const defaultTemplate = isLegalDemand ? STARTER_TEMPLATES[0] : STARTER_TEMPLATES[1];
 
   // Form State
-  const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState("");
-  const [previewText, setPreviewText] = useState("");
-  const [senderName, setSenderName] = useState("LoraBiz");
-  const [selectedSegment, setSelectedSegment] = useState("ALL");
-  const [content, setContent] = useState(STARTER_TEMPLATES[0].content);
+  const [selectedSegment, setSelectedSegment] = useState(queryTargetEmail ? "SINGLE_USER" : "ALL");
+  const [targetEmail, setTargetEmail] = useState(queryTargetEmail);
+
+  const [title, setTitle] = useState(
+    isLegalDemand
+      ? `LEGAL DEMAND NOTICE: Deficit Restitution - ${queryTargetName || queryTargetEmail || "Incident"}`
+      : ""
+  );
+  const [subject, setSubject] = useState(isLegalDemand ? STARTER_TEMPLATES[0].subject : "");
+  const [previewText, setPreviewText] = useState(isLegalDemand ? STARTER_TEMPLATES[0].previewText : "");
+  const [senderName, setSenderName] = useState(isLegalDemand ? "LoraBiz Legal & Fraud Desk" : "LoraBiz");
+  const [content, setContent] = useState(defaultTemplate.content);
 
   // Audience Preview State
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
@@ -157,17 +264,28 @@ export default function NewCampaignPage() {
   // Confirmation Modal
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
-  // Fetch Audience Count when segment changes
+  // Fetch Audience Count when segment or targetEmail changes
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchAudience = async () => {
+      if (selectedSegment === "SINGLE_USER" && !targetEmail.trim()) {
+        setAudienceCount(0);
+        setSampleUsers([]);
+        return;
+      }
+
       setIsAudienceLoading(true);
       try {
         const res = await fetch("/api/mds/campaigns/audience-preview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ segment: selectedSegment }),
+          body: JSON.stringify({
+            segment: selectedSegment,
+            targetEmail: selectedSegment === "SINGLE_USER" ? targetEmail.trim() : undefined,
+          }),
         });
-        if (res.ok) {
+        if (res.ok && !isCancelled) {
           const data = await res.json();
           setAudienceCount(data.totalCount);
           setSampleUsers(data.sampleUsers || []);
@@ -175,12 +293,21 @@ export default function NewCampaignPage() {
       } catch (err) {
         console.error("Failed to load audience count:", err);
       } finally {
-        setIsAudienceLoading(false);
+        if (!isCancelled) {
+          setIsAudienceLoading(false);
+        }
       }
     };
 
-    fetchAudience();
-  }, [selectedSegment]);
+    const timer = setTimeout(() => {
+      fetchAudience();
+    }, selectedSegment === "SINGLE_USER" ? 350 : 0);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [selectedSegment, targetEmail]);
 
   const insertMergeTag = (tag: string) => {
     setContent((prev) => `${prev} {{${tag}}}`);
@@ -199,6 +326,11 @@ export default function NewCampaignPage() {
       return;
     }
 
+    if (selectedSegment === "SINGLE_USER" && !targetEmail.trim()) {
+      alert("Please enter the recipient email address for single-user delivery.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const res = await fetch("/api/mds/campaigns", {
@@ -209,7 +341,10 @@ export default function NewCampaignPage() {
           subject,
           previewText,
           senderName,
-          targetAudience: { segment: selectedSegment },
+          targetAudience: {
+            segment: selectedSegment,
+            ...(selectedSegment === "SINGLE_USER" ? { targetEmail: targetEmail.trim() } : {}),
+          },
           content,
         }),
       });
@@ -263,6 +398,12 @@ export default function NewCampaignPage() {
 
   // Dispatch Broadcast
   const handleDispatchBroadcast = async () => {
+    if (selectedSegment === "SINGLE_USER" && !targetEmail.trim()) {
+      alert("Please enter the recipient email address for single-user delivery.");
+      setIsConfirmModalOpen(false);
+      return;
+    }
+
     setIsSending(true);
     try {
       // 1. Create the campaign record first
@@ -274,7 +415,10 @@ export default function NewCampaignPage() {
           subject,
           previewText,
           senderName,
-          targetAudience: { segment: selectedSegment },
+          targetAudience: {
+            segment: selectedSegment,
+            ...(selectedSegment === "SINGLE_USER" ? { targetEmail: targetEmail.trim() } : {}),
+          },
           content,
         }),
       });
@@ -495,6 +639,30 @@ export default function NewCampaignPage() {
                 );
               })}
             </div>
+
+            {/* Direct Email Target Field when SINGLE_USER selected */}
+            {selectedSegment === "SINGLE_USER" && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                    <Mail size={13} /> Target Recipient Email Address <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold uppercase tracking-wider">
+                    Bypasses Marketing Opt-Out
+                  </span>
+                </div>
+                <input
+                  type="email"
+                  placeholder="e.g. client@example.com"
+                  value={targetEmail}
+                  onChange={(e) => setTargetEmail(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-white dark:bg-zinc-800 border border-amber-300 dark:border-amber-600/50 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
+                />
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  This direct legal or dispute notice will be delivered specifically to the client registered under this address, even if their account has been suspended or has opted out of marketing newsletters.
+                </p>
+              </div>
+            )}
 
             {/* Sample Users Preview Pill list */}
             {sampleUsers.length > 0 && (
@@ -736,6 +904,14 @@ export default function NewCampaignPage() {
                   {AUDIENCE_SEGMENTS.find((s) => s.id === selectedSegment)?.title}
                 </span>
               </div>
+              {selectedSegment === "SINGLE_USER" && (
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">Target Recipient:</span>
+                  <span className="font-semibold text-amber-600 dark:text-amber-400 font-mono text-[11px] truncate max-w-[220px]">
+                    {targetEmail || "No email entered"}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-zinc-400">Subject:</span>
                 <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[200px]">
@@ -765,5 +941,20 @@ export default function NewCampaignPage() {
       )}
 
     </div>
+  );
+}
+
+export default function NewCampaignPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-12 text-center text-xs text-zinc-500 flex flex-col items-center justify-center gap-2">
+          <RefreshCw size={20} className="animate-spin text-indigo-500" />
+          <span>Loading email campaign composer...</span>
+        </div>
+      }
+    >
+      <NewCampaignComposer />
+    </Suspense>
   );
 }

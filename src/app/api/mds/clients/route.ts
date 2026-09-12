@@ -43,7 +43,7 @@ export async function GET() {
         // FIX: Include transactions nested inside the wallet
         wallet: {
           include: {
-            transactions: { orderBy: { createdAt: 'desc' }, take: 10 }
+            transactions: { orderBy: { createdAt: 'desc' }, take: 100 }
           }
         },
         registrations: { orderBy: { createdAt: 'desc' } }, // Biz Names

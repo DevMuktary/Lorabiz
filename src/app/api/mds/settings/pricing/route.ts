@@ -57,6 +57,8 @@ export async function GET() {
       { serviceKey: "AFFIDAVIT_LOSS_OF_ITEM", title: "Court Affidavit - Loss of Document / SIM Card", price: 2500.0 },
       { serviceKey: "AFFIDAVIT_PROOF_OF_OWNERSHIP", title: "Court Affidavit - Proof of Ownership & Status", price: 2500.0 },
       { serviceKey: "AFFIDAVIT_GENERAL_PURPOSE", title: "Court Affidavit - General Purpose Statement", price: 2500.0 },
+      // Utility Services
+      { serviceKey: "UTILITY_AIRTIME", title: "Telecom Airtime Vending", price: 0.0 },
     ];
 
     for (const svc of defaultServices) {

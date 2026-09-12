@@ -57,7 +57,17 @@ export async function GET() {
       clientEmail: tx.wallet.user?.email || 'N/A'
     }));
 
-    return NextResponse.json({ success: true, pipeline });
+    const airtimePricing = await prisma.servicePricing.findUnique({
+      where: { serviceKey: "UTILITY_AIRTIME" }
+    });
+
+    const airtimeStatus = {
+      isActive: airtimePricing ? airtimePricing.isActive : true,
+      maintenanceMsg: airtimePricing?.maintenanceMsg || null,
+      id: airtimePricing?.id || null,
+    };
+
+    return NextResponse.json({ success: true, pipeline, airtimeStatus });
   } catch (error) {
     console.error("Fetch Airtime Pipeline Error:", error);
     return NextResponse.json({ error: "Failed to fetch pipeline." }, { status: 500 });

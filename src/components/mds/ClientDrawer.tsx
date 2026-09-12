@@ -1,22 +1,81 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { format } from 'date-fns';
-import { X, User, ShieldAlert, Wallet, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { 
+  X, 
+  User, 
+  ShieldAlert, 
+  Wallet, 
+  TrendingUp, 
+  TrendingDown, 
+  RefreshCw,
+  Mail,
+  Search,
+  ArrowUpRight,
+  ArrowDownRight,
+  ExternalLink
+} from 'lucide-react';
 
 export default function ClientDrawer({ client, onClose, onUpdateSuccess }: { client: any, onClose: () => void, onUpdateSuccess: () => void }) {
   const [activeTab, setActiveTab] = useState("BIO"); // BIO, LEDGER, ORDERS, ACTIONS
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
 
+  // Full Transactions State
+  const [transactions, setTransactions] = useState<any[]>(client?.transactions || []);
+  const [isLoadingTx, setIsLoadingTx] = useState(false);
+  const [txSearch, setTxSearch] = useState("");
+
   // Action State
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [suspendReason, setSuspendReason] = useState("");
 
+  useEffect(() => {
+    if (client) {
+      setTransactions(client.transactions || []);
+    }
+  }, [client]);
+
+  const fetchFullTransactions = async () => {
+    if (!client?.id) return;
+    setIsLoadingTx(true);
+    try {
+      const res = await fetch(`/api/mds/clients/${client.id}/transactions`);
+      if (!res.ok) throw new Error("Failed to fetch full transactions");
+      const data = await res.json();
+      if (data.transactions) {
+        setTransactions(data.transactions);
+      }
+    } catch (err: any) {
+      console.error("Error loading full transactions:", err);
+    } finally {
+      setIsLoadingTx(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "LEDGER" && client?.id) {
+      fetchFullTransactions();
+    }
+  }, [activeTab, client?.id]);
+
   if (!client) return null;
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
+
+  const filteredTransactions = transactions.filter((tx: any) => {
+    if (!txSearch.trim()) return true;
+    const q = txSearch.toLowerCase();
+    return (
+      (tx.description && tx.description.toLowerCase().includes(q)) ||
+      (tx.reference && tx.reference.toLowerCase().includes(q)) ||
+      (tx.serviceCategory && tx.serviceCategory.toLowerCase().includes(q)) ||
+      String(tx.amount).includes(q)
+    );
+  });
 
   const handleAction = async (actionType: string, payload: any) => {
     setIsProcessing(true);
@@ -54,7 +113,17 @@ export default function ClientDrawer({ client, onClose, onUpdateSuccess }: { cli
             <h3 className="text-lg font-semibold flex items-center text-zinc-900 dark:text-zinc-100">
               <User size={20} className="mr-2 text-indigo-500" /> Client Dossier
             </h3>
-            <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-900 bg-white dark:bg-zinc-800 rounded-full shadow-sm"><X size={18} /></button>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/quadrox-lorabiz-team/mds/dashboard/campaigns/new?targetEmail=${encodeURIComponent(client.email)}&targetName=${encodeURIComponent(`${client.firstName} ${client.lastName}`)}&template=LEGAL_DEMAND`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-lg text-xs font-bold transition-colors"
+                title="Send Legal Demand / Direct Email"
+              >
+                <Mail size={14} />
+                <span>Send Legal Notice</span>
+              </Link>
+              <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-900 bg-white dark:bg-zinc-800 rounded-full shadow-sm"><X size={18} /></button>
+            </div>
           </div>
           
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
@@ -73,7 +142,7 @@ export default function ClientDrawer({ client, onClose, onUpdateSuccess }: { cli
           {/* Pill Tabs - Wraps on mobile so nothing hides! */}
           <div className="flex flex-wrap gap-2 mt-6">
             <TabBtn label="Bio" active={activeTab === "BIO"} onClick={() => setActiveTab("BIO")} />
-            <TabBtn label="Financials" active={activeTab === "LEDGER"} onClick={() => setActiveTab("LEDGER")} />
+            <TabBtn label={`Financials (${transactions.length})`} active={activeTab === "LEDGER"} onClick={() => setActiveTab("LEDGER")} />
             <TabBtn label="Order History" active={activeTab === "ORDERS"} onClick={() => setActiveTab("ORDERS")} />
             <TabBtn label="MD Actions" active={activeTab === "ACTIONS"} onClick={() => setActiveTab("ACTIONS")} danger />
           </div>
@@ -90,39 +159,89 @@ export default function ClientDrawer({ client, onClose, onUpdateSuccess }: { cli
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-4 text-sm">
                   <Detail label="Joined Date" value={format(new Date(client.createdAt), 'MMM do, yyyy')} />
                   <Detail label="Gender" value={client.gender} />
-                  <Detail label="Location" value={`${client.city || client.lga}, ${client.state}`} />
+                  <Detail label="Location" value={`${client.city || client.lga || ''}, ${client.state || ''}`} />
                   <Detail label="Address" value={client.street} />
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 2: LEDGER */}
+          {/* TAB 2: LEDGER (Expanded Financial History) */}
           {activeTab === "LEDGER" && (
             <div className="space-y-4 animate-in fade-in">
-              {client.transactions?.length === 0 ? (
-                <p className="text-center text-sm text-zinc-500 py-10">No transactions recorded.</p>
+              {/* Financial Search & Quick Stats */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                <div className="relative w-full sm:flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={15} />
+                  <input
+                    type="text"
+                    placeholder="Search ledger by reference, airtime, funding, amount..."
+                    value={txSearch}
+                    onChange={(e) => setTxSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <button
+                  onClick={fetchFullTransactions}
+                  disabled={isLoadingTx}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-semibold rounded-lg hover:bg-zinc-50 transition-colors shrink-0"
+                >
+                  <RefreshCw size={13} className={isLoadingTx ? "animate-spin" : ""} />
+                  <span>Sync ({transactions.length})</span>
+                </button>
+              </div>
+
+              {isLoadingTx ? (
+                <div className="py-12 text-center text-zinc-500 text-xs space-y-2">
+                  <RefreshCw className="animate-spin mx-auto text-indigo-500" size={20} />
+                  <p>Loading complete financial audit trail...</p>
+                </div>
+              ) : filteredTransactions.length === 0 ? (
+                <p className="text-center text-sm text-zinc-500 py-10">No transactions matching filter.</p>
               ) : (
-                client.transactions?.map((tx: any) => (
-                  // Uses flex-col on mobile, flex-row on desktop to stop overlapping
-                  <div key={tx.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 shadow-sm">
-                    <div className="flex items-start sm:items-center">
-                      <div className={`p-2 rounded-lg mr-3 mt-1 sm:mt-0 shrink-0 ${tx.type === 'CREDIT' || tx.type === 'REFUND' || tx.type === 'ADJUSTMENT' ? 'bg-emerald-100 text-emerald-600' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800'}`}>
-                        {tx.type === 'CREDIT' || tx.type === 'REFUND' || tx.type === 'ADJUSTMENT' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                <div className="space-y-3">
+                  {filteredTransactions.map((tx: any) => {
+                    const isCredit = tx.type === 'CREDIT' || tx.type === 'REFUND' || tx.type === 'ADJUSTMENT';
+                    return (
+                      <div key={tx.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 shadow-xs hover:border-zinc-300 transition-colors">
+                        <div className="flex items-start sm:items-center flex-1 min-w-0">
+                          <div className={`p-2 rounded-lg mr-3 mt-0.5 sm:mt-0 shrink-0 ${isCredit ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'}`}>
+                            {isCredit ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">{tx.description}</p>
+                              {tx.serviceCategory && (
+                                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                  {tx.serviceCategory}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-500 flex-wrap">
+                              <span>{format(new Date(tx.createdAt), 'MMM d, yyyy • h:mm:ss a')}</span>
+                              <span>•</span>
+                              <span className="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800/60 px-1 py-0.5 rounded select-all">{tx.reference}</span>
+                            </div>
+                            {(tx.balanceBefore !== undefined && tx.balanceAfter !== undefined) && (
+                              <p className="text-[10px] text-zinc-400 mt-1 font-mono">
+                                Balance: {formatCurrency(Number(tx.balanceBefore))} → {formatCurrency(Number(tx.balanceAfter))}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="sm:text-right shrink-0 border-t sm:border-0 border-zinc-100 dark:border-zinc-800 pt-2 sm:pt-0 flex items-center justify-between sm:block">
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded inline-block sm:mb-1 ${tx.status === 'SUCCESS' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : tx.status === 'PENDING' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400'}`}>
+                            {tx.status}
+                          </span>
+                          <p className={`font-bold tabular-nums text-sm ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
+                            {isCredit ? '+' : '-'}{formatCurrency(Number(tx.amount))}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">{tx.description}</p>
-                        <p className="text-xs text-zinc-500 mt-0.5">{format(new Date(tx.createdAt), 'MMM d, h:mm a')} • <span className="font-mono">{tx.reference}</span></p>
-                      </div>
-                    </div>
-                    <div className="sm:text-right self-start sm:self-auto w-full sm:w-auto flex justify-between sm:block border-t sm:border-0 border-zinc-100 dark:border-zinc-800 pt-2 sm:pt-0 mt-2 sm:mt-0">
-                      <span className="text-[10px] uppercase font-bold text-zinc-400 sm:block">{tx.status}</span>
-                      <p className={`font-bold tabular-nums ${tx.type === 'CREDIT' || tx.type === 'REFUND' || tx.type === 'ADJUSTMENT' ? 'text-emerald-600' : 'text-zinc-900 dark:text-white'}`}>
-                        {tx.type === 'CREDIT' || tx.type === 'REFUND' || tx.type === 'ADJUSTMENT' ? '+' : '-'}{formatCurrency(tx.amount)}
-                      </p>
-                    </div>
-                  </div>
-                ))
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}

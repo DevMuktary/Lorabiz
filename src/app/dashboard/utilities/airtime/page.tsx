@@ -25,6 +25,10 @@ export default function AirtimeDashboardPage() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [history, setHistory] = useState<Transaction[]>([]);
   
+  // Master Service Status & Maintenance
+  const [isAirtimeActive, setIsAirtimeActive] = useState<boolean>(true);
+  const [maintenanceNotice, setMaintenanceNotice] = useState<string | null>(null);
+
   // App States
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentReceipt, setCurrentReceipt] = useState<Transaction | null>(null);
@@ -113,6 +117,18 @@ export default function AirtimeDashboardPage() {
       } catch (vErr) {
         console.error("Failed to check airtime reward credits:", vErr);
       }
+
+      // Check Master Airtime Service Availability
+      try {
+        const sRes = await fetch("/api/utilities/airtime", { cache: "no-store" });
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          setIsAirtimeActive(sData.isActive !== false);
+          setMaintenanceNotice(sData.maintenanceMsg || null);
+        }
+      } catch (sErr) {
+        console.error("Failed to check airtime service availability:", sErr);
+      }
     } catch (error) {
       console.error("Failed to load airtime data:", error);
     }
@@ -124,6 +140,16 @@ export default function AirtimeDashboardPage() {
 
   const initiatePurchase = (data: { network: string; phone: string; amount: number }) => {
     setToastNotification(null);
+
+    // 0. Check Master Kill Switch
+    if (!isAirtimeActive) {
+      setToastNotification({
+        type: "error",
+        title: "Airtime Vending Paused",
+        message: maintenanceNotice || "Airtime recharge is temporarily paused for carrier maintenance. Please check back shortly."
+      });
+      return;
+    }
 
     // 1. Check for Duplicate within 10 minutes (Anti-mistake guard)
     const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
@@ -274,6 +300,19 @@ export default function AirtimeDashboardPage() {
         </div>
       </div>
 
+      {/* DOWNTIME / MAINTENANCE NOTICE BANNER */}
+      {!isAirtimeActive && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 flex items-start gap-3.5 text-amber-900 dark:text-amber-200 animate-in fade-in">
+          <WarningCircle size={22} weight="fill" className="shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold">Airtime Vending Currently Paused</h3>
+            <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+              {maintenanceNotice || "Airtime recharge is temporarily disabled for carrier maintenance. Please check back shortly."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main Grid: Form + History */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
@@ -281,7 +320,8 @@ export default function AirtimeDashboardPage() {
         <div className="lg:col-span-6">
           <AirtimeForm 
             onSubmit={initiatePurchase} 
-            disabled={isProcessing} 
+            disabled={isProcessing || !isAirtimeActive}
+            isMaintenance={!isAirtimeActive}
             availableAirtimeDiscount={availableAirtimeDiscount}
             useRewardDiscount={useRewardDiscount}
             onToggleRewardDiscount={setUseRewardDiscount}

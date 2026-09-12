@@ -168,16 +168,36 @@ export async function POST(req: Request) {
       const externalData = await externalRes.json().catch(() => ({}));
       console.log("[CheapData Data Response Data]:", JSON.stringify(externalData));
       
+      const statusStr = String(externalData.status ?? "").trim().toLowerCase();
+      const textStatusStr = String(externalData.text_status ?? "").trim().toLowerCase();
+      const code = externalData.status_code || externalData.code;
+
       // Check for success (Matches exact working provider logic)
       const isSuccess = 
         externalData.status === true || 
-        externalData.text_status === "COMPLETED" ||
-        externalData.status === "success" || 
-        externalData.status === 1 || 
-        externalData.status === "1" || 
+        statusStr === "success" || 
+        statusStr === "1" || 
         externalData.success === true ||
-        externalData.status_code === 200 ||
-        externalData.code === 200;
+        textStatusStr === "completed" ||
+        code === 200;
+
+      const isPending =
+        statusStr === "pending" ||
+        statusStr === "processing" ||
+        statusStr === "queued" ||
+        statusStr === "order_received" ||
+        textStatusStr === "pending" ||
+        textStatusStr === "processing" ||
+        Object.keys(externalData).length === 0;
+
+      const isExplicitFailure =
+        !isPending &&
+        (statusStr === "failed" ||
+          statusStr === "fail" ||
+          statusStr === "0" ||
+          textStatusStr === "failed" ||
+          textStatusStr === "cancelled" ||
+          textStatusStr === "reversed");
 
       if (isSuccess) {
         logUserActivity({
@@ -214,8 +234,44 @@ export async function POST(req: Request) {
             description: externalData.data?.true_response || externalData.server_message,
           },
         });
-      } else {
-        // Upstream failed -> Refund wallet and mark the original transaction as FAILED
+      } else if (isPending) {
+        // Upstream carrier is processing or order is queued -> DO NOT refund immediately
+        await prisma.transaction.update({
+          where: { id: debitResult.txRecord.id },
+          data: {
+            status: "PENDING",
+            description: `Mobile Data Processing - ${plan.name} (${cleanPhone})`
+          }
+        }).catch(() => {});
+
+        logUserActivity({
+          userId: user.id,
+          action: "MOBILE_DATA_QUEUED",
+          category: "SERVICES",
+          description: `Mobile data order queued for ${cleanPhone} (${plan.name})`,
+          status: "PENDING",
+          referenceId: reference,
+        });
+
+        return NextResponse.json({
+          success: true,
+          status: "PENDING",
+          message: externalData.server_message || externalData.data?.true_response || "Data order submitted and currently processing with the carrier.",
+          reference,
+          planName: plan.name,
+          amount: planPrice,
+          phone: cleanPhone,
+          network: plan.network,
+          newBalance: debitResult.balanceAfter,
+          data: {
+            product_code: plan.productCode,
+            phone: cleanPhone,
+            provider_ref: externalData.data?.recharge_id,
+            status: "PENDING",
+          },
+        });
+      } else if (isExplicitFailure) {
+        // Upstream explicitly failed -> Refund wallet and mark the original transaction as FAILED
         await prisma.$transaction(async (tx) => {
           await tx.wallet.update({
             where: { id: user.wallet!.id },
@@ -241,30 +297,44 @@ export async function POST(req: Request) {
           refunded: true,
           newBalance: Number(user.wallet.balance)
         }, { status: 400 });
-      }
-    } catch (providerErr) {
-      console.error("Provider Network Failure, reversing debit:", providerErr);
-      // Reverse debit on network blip & mark transaction as FAILED
-      await prisma.$transaction(async (tx) => {
-        await tx.wallet.update({
-          where: { id: user.wallet!.id },
-          data: { balance: { increment: planPrice } }
-        });
-        await tx.transaction.update({
+      } else {
+        // Ambiguous upstream response -> Hold funds in PENDING state awaiting reconciliation
+        await prisma.transaction.update({
           where: { id: debitResult.txRecord.id },
           data: {
-            status: "FAILED",
-            description: `Mobile Data Failed (Timeout Refunded) - ${plan.name} (${cleanPhone})`
+            status: "PENDING",
+            description: `Mobile Data In-Review - ${plan.name} (${cleanPhone})`
           }
-        });
-      });
+        }).catch(() => {});
+
+        return NextResponse.json({
+          success: false,
+          status: "PENDING",
+          message: "Data request queued and awaiting carrier confirmation. Funds have been held pending final settlement.",
+          reference,
+          newBalance: debitResult.balanceAfter,
+        }, { status: 202 });
+      }
+    } catch (providerErr) {
+      console.error("Provider Network Failure during mobile data vending:", providerErr);
+
+      // SECURITY CRITICAL: Do NOT automatically refund wallet on network timeouts.
+      await prisma.transaction.update({
+        where: { id: debitResult.txRecord.id },
+        data: {
+          status: "PENDING",
+          description: `Mobile Data Processing (Network Timeout) - ${plan.name} (${cleanPhone})`
+        }
+      }).catch(() => {});
 
       return NextResponse.json({
         success: false,
-        message: "Provider network timeout. Your wallet has been refunded. Please try again.",
-        refunded: true,
-        newBalance: Number(user.wallet.balance)
-      }, { status: 502 });
+        status: "PENDING",
+        pendingVerification: true,
+        message: "Carrier network timeout. Your data order has been queued and funds reserved. If delivery fails, your wallet will be refunded following reconciliation.",
+        reference,
+        newBalance: debitResult.balanceAfter,
+      }, { status: 202 });
     }
 
   } catch (error: any) {

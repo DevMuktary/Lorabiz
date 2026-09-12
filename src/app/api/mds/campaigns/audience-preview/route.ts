@@ -68,6 +68,19 @@ export function buildAudienceWhereClause(filters: any) {
         createdAt: { gte: subDays(new Date(), 30) },
       };
 
+    case "SINGLE_USER": {
+      const targetEmail = (filters?.targetEmail || filters?.email || "").trim().toLowerCase();
+      const targetUserId = filters?.targetUserId || filters?.userId;
+      if (!targetEmail && !targetUserId) {
+        return { id: "no_matching_target_recipient" };
+      }
+      return {
+        role: "USER",
+        ...(targetEmail ? { email: { equals: targetEmail, mode: "insensitive" } } : {}),
+        ...(targetUserId ? { id: targetUserId } : {}),
+      };
+    }
+
     case "ALL":
     default:
       return baseWhere;
