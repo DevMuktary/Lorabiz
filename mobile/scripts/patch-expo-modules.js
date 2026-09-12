@@ -95,24 +95,35 @@ if (fs.existsSync(sourcesDir)) {
     if (!c.includes('createHostFunctionClosure')) {
       c = c.replace(
         '} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure',
-        `} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure\n\ninline HostFunctionClosure *_Nonnull createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *_Nonnull closure, RetainedSwiftPointer::Deallocator deallocator) {\n  return new HostFunctionClosure(context, closure, deallocator);\n}`
+        `} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure\n\n__attribute__((visibility("default"))) HostFunctionClosure *_Nonnull createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *_Nonnull closure, RetainedSwiftPointer::Deallocator deallocator);`
+      );
+    } else {
+      c = c.replace(
+        /inline HostFunctionClosure \*_Nonnull createHostFunctionClosure[\s\S]*?\n\}/,
+        '__attribute__((visibility("default"))) HostFunctionClosure *_Nonnull createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *_Nonnull closure, RetainedSwiftPointer::Deallocator deallocator);'
       );
     }
     fs.writeFileSync(hfcPath, c);
     console.log('[patch] Patched HostFunctionClosure.h for Swift 6.1 interop');
   }
 
-  // 4b. Patch HostObjectCallbacks.h with appendPropNameId (native C++ move into vector)
+  // 4b. Patch HostObjectCallbacks.h with appendPropNameId declaration
   const hocPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/include/HostObjectCallbacks.h');
   if (fs.existsSync(hocPath)) {
     let c = fs.readFileSync(hocPath, 'utf8');
     if (!c.includes('appendPropNameId')) {
       c = c.replace(
         'using Deallocator = void(Context);',
-        'using Deallocator = void(Context);\n\n  inline static void appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const char *name) {\n    vector.push_back(facebook::jsi::PropNameID::forUtf8(runtime, std::string(name)));\n  }'
+        'using Deallocator = void(Context);\n\n  __attribute__((visibility("default"))) static void appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const char *name);'
       );
       fs.writeFileSync(hocPath, c);
       console.log('[patch] Patched HostObjectCallbacks.h with appendPropNameId');
+    } else {
+      c = c.replace(
+        /inline static void appendPropNameId[\s\S]*?\n  \}/,
+        '__attribute__((visibility("default"))) static void appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const char *name);'
+      );
+      fs.writeFileSync(hocPath, c);
     }
   }
 
@@ -122,6 +133,17 @@ if (fs.existsSync(sourcesDir)) {
   if (fs.existsSync(patchRs) && fs.existsSync(rsPath)) {
     fs.copyFileSync(patchRs, rsPath);
     console.log('[patch] Copied patches/RuntimeScheduler.h into node_modules');
+  }
+
+  // 5b. Inject exported bridge function implementations into JSIUtils.cpp so they are physically compiled into JSIUtils.o
+  const jsiUtilsPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/JSIUtils.cpp');
+  if (fs.existsSync(jsiUtilsPath)) {
+    let c = fs.readFileSync(jsiUtilsPath, 'utf8');
+    if (!c.includes('EXPO_BRIDGE_IMPLEMENTATIONS')) {
+      c += `\n\n// EXPO_BRIDGE_IMPLEMENTATIONS\n#include "RuntimeScheduler.h"\n#include "HostFunctionClosure.h"\n#include "HostObjectCallbacks.h"\n\nnamespace expo {\n__attribute__((visibility("default")))\nRuntimeScheduler *createRuntimeScheduler() { return new RuntimeScheduler(); }\n\n__attribute__((visibility("default")))\nRuntimeScheduler *createRuntimeScheduler(void *scheduler, RuntimeScheduler::ScheduleFn fn) { return new RuntimeScheduler(scheduler, fn); }\n\n__attribute__((visibility("default")))\nvoid retainRuntimeScheduler(expo::RuntimeScheduler *scheduler) { if (scheduler) scheduler->retain(); }\n\n__attribute__((visibility("default")))\nvoid releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler) { if (scheduler) scheduler->release(); }\n\n__attribute__((visibility("default")))\nHostFunctionClosure *createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *closure, RetainedSwiftPointer::Deallocator deallocator) { return new HostFunctionClosure(context, closure, deallocator); }\n\n__attribute__((visibility("default")))\nvoid HostObjectCallbacks::appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const char *name) { vector.push_back(facebook::jsi::PropNameID::forUtf8(runtime, std::string(name))); }\n} // namespace expo\n\n__attribute__((visibility("default")))\nvoid retainRuntimeScheduler(expo::RuntimeScheduler *scheduler) { if (scheduler) scheduler->retain(); }\n\n__attribute__((visibility("default")))\nvoid releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler) { if (scheduler) scheduler->release(); }\n`;
+      fs.writeFileSync(jsiUtilsPath, c);
+      console.log('[patch] Injected bridge implementations into JSIUtils.cpp');
+    }
   }
 
   // 6. Patch JavaScriptRuntime.swift (trailing comma, appendPropNameId, Sendable pointers, and factory calls)

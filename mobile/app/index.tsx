@@ -39,6 +39,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 24,
   },
+  logoImage: {
+    width: 200,
+    height: 60,
+    marginBottom: 16,
+  },
   logoBadge: {
     width: 72,
     height: 72,

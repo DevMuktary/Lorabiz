@@ -88,24 +88,17 @@ public:
   }
 } SWIFT_SHARED_REFERENCE(retainRuntimeScheduler, releaseRuntimeScheduler);
 
-inline RuntimeScheduler *createRuntimeScheduler() {
-  return new RuntimeScheduler();
-}
-
-inline RuntimeScheduler *createRuntimeScheduler(void *scheduler, RuntimeScheduler::ScheduleFn fn) {
-  return new RuntimeScheduler(scheduler, fn);
-}
+__attribute__((visibility("default"))) RuntimeScheduler *createRuntimeScheduler();
+__attribute__((visibility("default"))) RuntimeScheduler *createRuntimeScheduler(void *scheduler, RuntimeScheduler::ScheduleFn fn);
+__attribute__((visibility("default"))) void retainRuntimeScheduler(expo::RuntimeScheduler *scheduler);
+__attribute__((visibility("default"))) void releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler);
 
 } // namespace expo
 
 /** Retains the RuntimeScheduler, called by Swift's ARC. */
-inline void retainRuntimeScheduler(expo::RuntimeScheduler *scheduler) {
-  scheduler->retain();
-}
+__attribute__((visibility("default"))) void retainRuntimeScheduler(expo::RuntimeScheduler *scheduler);
 
 /** Releases the RuntimeScheduler, called by Swift's ARC. Deallocates when the ref count reaches zero. */
-inline void releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler) {
-  scheduler->release();
-}
+__attribute__((visibility("default"))) void releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler);
 
 #endif // __cplusplus
