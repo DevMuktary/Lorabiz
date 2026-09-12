@@ -20,12 +20,43 @@ if (fs.existsSync(jsiFile)) {
   content = content.replace(/path: "Tests",/g, 'path: "Tests"');
   content = content.replace(/path: "Benchmarks",/g, 'path: "Benchmarks"');
 
+  // Remove comma after last argument in .target(...) call before closing parenthesis
+  content = content.replace(/dynamic_lookup"\s*\n\s*\]\)\s*\n\s*\],(\s*\n\s*\),)/g, 'dynamic_lookup"\n        ])\n      ]$1');
+  content = content.replace(/cxxIncludeFlags\)\s*\n\s*\],(\s*\n\s*\),)/g, 'cxxIncludeFlags)\n      ]$1');
+  content = content.replace(/Benchmarks"\s*\n\s*\),(\s*\n\s*\] \+ testFrameworks)/g, 'Benchmarks"\n    )$1');
+  content = content.replace(/DoubleConversion",(\s*\n\s*\])/g, 'DoubleConversion"$1');
+  content = content.replace(/swiftIncludeFlags\),(\s*\n\s*\],)/g, 'swiftIncludeFlags)$1');
+
+  // Universal cleanup: Any line ending with comma followed by a line starting with )
+  // Example: "      ]," followed by "    ),"
+  const lines = content.split('\n');
+  for (let i = 0; i < lines.length - 1; i++) {
+    const trimmedNext = lines[i + 1].trim();
+    if (trimmedNext.startsWith(')') && lines[i].trim().endsWith(',')) {
+      const idx = lines[i].lastIndexOf(',');
+      lines[i] = lines[i].substring(0, idx) + lines[i].substring(idx + 1);
+    }
+  }
+  content = lines.join('\n');
+
   // Remove upcoming features that require Swift 6.1+
   content = content.replace(/\s*\.enableUpcomingFeature\("NonisolatedNonsendingByDefault"\),?/g, '');
   content = content.replace(/\s*\.enableUpcomingFeature\("InferIsolatedConformances"\),?/g, '');
 
   fs.writeFileSync(jsiFile, content, 'utf8');
   console.log('Successfully patched ExpoModulesJSI Package.swift');
+
+  // Verification
+  const checkLines = content.split('\n');
+  let invalidCommas = 0;
+  for (let i = 0; i < checkLines.length - 1; i++) {
+    const next = checkLines[i + 1].trim();
+    if (next.startsWith(')') && checkLines[i].trim().endsWith(',')) {
+      console.log('WARNING: Still trailing comma before ) at line', (i + 1), checkLines[i]);
+      invalidCommas++;
+    }
+  }
+  console.log('Invalid trailing commas remaining before ):', invalidCommas);
 } else {
   console.log('expo-modules-jsi Package.swift not found at', jsiFile);
 }
