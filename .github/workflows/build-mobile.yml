@@ -30,27 +30,34 @@ jobs:
 
       - name: Expo Prebuild (Generate Native iOS Project)
         working-directory: ./mobile
-        run: npx expo prebuild --platform ios --clean
+        run: |
+          npx expo prebuild --platform ios --clean
+          cd ios
+          pod install
 
-      - name: Build Xcode Archive (Unsigned)
+      - name: Build Xcode Release Binary (Unsigned)
         working-directory: ./mobile/ios
         run: |
           xcodebuild -workspace Lorabiz.xcworkspace \
             -scheme Lorabiz \
             -configuration Release \
             -sdk iphoneos \
-            -destination "generic/platform=iOS" \
-            -archivePath build/Lorabiz.xcarchive \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            archive
+            build
 
       - name: Package IPA for Sideloadly / AltStore
         working-directory: ./mobile/ios
         run: |
           mkdir -p Payload
-          cp -r build/Lorabiz.xcarchive/Products/Applications/Lorabiz.app Payload/
+          APP_PATH=$(find build -name "*.app" -type d | grep Release-iphoneos | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH=$(find build -name "*.app" -type d | head -n 1)
+          fi
+          echo "Found app bundle at: $APP_PATH"
+          cp -r "$APP_PATH" Payload/
           zip -r Lorabiz.ipa Payload/
 
       - name: Upload iOS IPA Artifact
