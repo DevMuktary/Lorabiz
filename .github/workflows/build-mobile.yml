@@ -75,6 +75,17 @@ jobs:
         working-directory: ./mobile/ios
         run: |
           set -e -o pipefail
+          echo "=== Configuring Git for Swift Package Manager ==="
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+          git config --global url."https://".insteadOf "git://"
+
+          echo "=== Resolving Swift Package Dependencies ==="
+          xcodebuild -workspace Lorabiz.xcworkspace \
+            -scheme Lorabiz \
+            -resolvePackageDependencies \
+            -scmProvider system || true
+
           echo "=== Compiling Release Build ==="
           xcodebuild -workspace Lorabiz.xcworkspace \
             -scheme Lorabiz \
@@ -82,6 +93,8 @@ jobs:
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -derivedDataPath build \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -141,16 +154,17 @@ jobs:
         run: |
           if [ -f xcodebuild.log ]; then
             echo "=== EXTRACTING ERRORS FOR ANNOTATIONS ==="
-            grep -i -E "(error:|fatal error:)" xcodebuild.log | head -n 20 | while IFS= read -r line; do
+            grep -i -E "(error:|fatal error:|package|resolve)" xcodebuild.log | head -n 25 | while IFS= read -r line; do
               echo "::error title=XcodeBuildError::$line"
             done
-            tail -n 20 xcodebuild.log | while IFS= read -r line; do
+            tail -n 25 xcodebuild.log | while IFS= read -r line; do
               echo "::warning title=XcodeBuildLogTail::$line"
             done
           fi
 
 # Android build disabled per user request to save time and focus 100% on iOS IPA build.
 # - build-android-apk
+
 
 
 
