@@ -23,8 +23,14 @@ if (fs.existsSync(pkgPath)) {
   let c = fs.readFileSync(pkgPath, 'utf8');
   c = c.replace(/swift-tools-version: 6\.[0-9]+/g, 'swift-tools-version: 6.0');
   c = c.replace(/swiftLanguageModes:\s*\[\.v6\]/g, 'swiftLanguageModes: [.v5]');
+  if (!c.includes('"-enable-bare-slash-regex"')) {
+    c = c.replace(
+      '"-enable-library-evolution",',
+      '"-enable-library-evolution",\n          "-enable-bare-slash-regex",'
+    );
+  }
   fs.writeFileSync(pkgPath, c);
-  console.log('[patch] Patched Package.swift to 6.0 and swiftLanguageModes [.v5]');
+  console.log('[patch] Patched Package.swift to 6.0, swiftLanguageModes [.v5], and bare-slash-regex');
 }
 
 const sourcesDir = path.join(__dirname, '../node_modules/expo-modules-jsi/apple/Sources');
@@ -229,7 +235,28 @@ if (fs.existsSync(sourcesDir)) {
     }`;
     c = c.replace(call2Target, call2Replacement);
 
+    // Patch regex literal to string-based Regex to support Swift 5 language mode
+    c = c.replace(
+      'name.wholeMatch(of: /^[a-zA-Z_$][a-zA-Z0-9_$]*$/) == nil',
+      '(try? Regex(#"^[a-zA-Z_$][a-zA-Z0-9_$]*$"#))?.wholeMatch(in: name) == nil'
+    );
+
     fs.writeFileSync(rt, c);
     console.log('[patch] Patched JavaScriptRuntime.swift syntax, Sendable pointers, and factory calls');
+  }
+
+  // 7. Patch JavaScriptPromise.swift with nonisolated init() for LongLivedState
+  const promisePath = path.join(sourcesDir, 'ExpoModulesJSI/Runtime/Values/JavaScriptPromise.swift');
+  if (fs.existsSync(promisePath)) {
+    let c = fs.readFileSync(promisePath, 'utf8');
+    c = c.replace(/\r\n/g, '\n');
+    if (!c.includes('nonisolated init() {}')) {
+      c = c.replace(
+        'let rejectFunction = JavaScriptValue.Ref()\n\n    func allowRelease() {',
+        'let rejectFunction = JavaScriptValue.Ref()\n\n    nonisolated init() {}\n\n    func allowRelease() {'
+      );
+      fs.writeFileSync(promisePath, c);
+      console.log('[patch] Patched JavaScriptPromise.swift with nonisolated init()');
+    }
   }
 }
