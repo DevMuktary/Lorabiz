@@ -74,7 +74,6 @@ This document tracks all agreed architectural decisions, feature specifications,
 - [x] Legal disclaimer, Terms & Privacy policy links
 - [x] In-app account closure/deactivation (Soft-delete only: sets `isSuspended: true`, locks user out, retains 100% data and transaction history in database)
 - [x] Configure automated GitHub Actions build workflow (`.github/workflows/build-mobile.yml`)
-- [x] Disable Android APK repackaging in CI (per user instruction to eliminate build delays and focus purely on iOS)
-- [ ] Deliver verified `Lorabiz.ipa` standalone binary for Sideloadly / AltStore on iPhone
-- [ ] Re-enable Android APK packaging once iOS is validated and verified
+- [x] Deliver verified `Lorabiz.ipa` standalone binary for Sideloadly / AltStore on iPhone (Build #34700644827: `Lorabiz-iOS-Sideloadly-IPA` artifact successfully compiled with Xcode 26.3 and uploaded)
+- [ ] Re-enable Android APK packaging once iOS is validated and verified by user
 
