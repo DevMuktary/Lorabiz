@@ -13,6 +13,9 @@ jobs:
   build-ios-ipa:
     name: Build iOS IPA (Sideloadly Ready)
     runs-on: macos-14
+    env:
+      CI: 1
+      EXPO_NON_INTERACTIVE: 1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,10 +33,11 @@ jobs:
 
       - name: Expo Prebuild (Generate Native iOS Project)
         working-directory: ./mobile
-        run: |
-          npx expo prebuild --platform ios --clean
-          cd ios
-          pod install
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        working-directory: ./mobile/ios
+        run: pod install
 
       - name: Build Xcode Release Binary (Unsigned)
         working-directory: ./mobile/ios
@@ -70,6 +74,9 @@ jobs:
   build-android-apk:
     name: Build Android APK
     runs-on: ubuntu-latest
+    env:
+      CI: 1
+      EXPO_NON_INTERACTIVE: 1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -93,7 +100,7 @@ jobs:
 
       - name: Expo Prebuild (Generate Native Android Project)
         working-directory: ./mobile
-        run: npx expo prebuild --platform android --clean
+        run: npx expo prebuild --platform android --no-install
 
       - name: Build Android Release APK
         working-directory: ./mobile/android
