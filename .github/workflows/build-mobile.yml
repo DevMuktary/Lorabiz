@@ -50,19 +50,9 @@ jobs:
         run: |
           npm ci --legacy-peer-deps
           echo "=== Applying Swift 6.2 Clang compatibility patch to RuntimeScheduler.h ==="
-          cat << 'EOF' > patch_runtime.js
-          const fs = require('fs');
-          const p = 'node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h';
-          if (fs.existsSync(p)) {
-            let c = fs.readFileSync(p, 'utf8');
-            c = c.replace('RuntimeScheduler(void *scheduler, ScheduleFn fn)', '#if !defined(__swift__)\n  RuntimeScheduler(void *scheduler, ScheduleFn fn)');
-            c = c.replace('RuntimeScheduler() {}', 'RuntimeScheduler() {}\n#endif');
-            fs.writeFileSync(p, c);
-            console.log('Patched RuntimeScheduler.h successfully');
-          }
-          EOF
-          node patch_runtime.js
-          rm -f patch_runtime.js
+          cp patches/RuntimeScheduler.h node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h
+          echo "Verified patched header:"
+          head -n 65 node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h | tail -n 15
 
       - name: Expo Prebuild (Generate Native iOS Project)
         working-directory: ./mobile
