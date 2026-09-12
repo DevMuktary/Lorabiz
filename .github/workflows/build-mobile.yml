@@ -137,16 +137,20 @@ jobs:
 
       - name: Report Build Summary to GitHub
         if: always()
+        working-directory: ./mobile/ios
         run: |
-          if [ -f mobile/ios/xcodebuild.log ]; then
-            echo "### Xcode Build Log Summary" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            grep -i -C 2 "error:" mobile/ios/xcodebuild.log | head -n 50 >> $GITHUB_STEP_SUMMARY || true
-            tail -n 40 mobile/ios/xcodebuild.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f xcodebuild.log ]; then
+            echo "=== EXTRACTING ERRORS FOR ANNOTATIONS ==="
+            grep -i -E "(error:|fatal error:)" xcodebuild.log | head -n 20 | while IFS= read -r line; do
+              echo "::error title=XcodeBuildError::$line"
+            done
+            tail -n 20 xcodebuild.log | while IFS= read -r line; do
+              echo "::warning title=XcodeBuildLogTail::$line"
+            done
           fi
 
 # Android build disabled per user request to save time and focus 100% on iOS IPA build.
 # - build-android-apk
+
 
 
