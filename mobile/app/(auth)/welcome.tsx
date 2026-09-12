@@ -105,8 +105,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   brandLogo: {
-    width: 160,
-    height: 48,
+    width: 140,
+    height: 60,
   },
   heroSection: {
     flex: 1,

@@ -12,74 +12,127 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../context/AuthContext";
 import { brandColors } from "../constants/theme";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Prominent circle matching ALAT by Wema (~82% of screen width)
+const CIRCLE_SIZE = Math.min(Math.round(SCREEN_WIDTH * 0.82), 340);
+const LOGO_WIDTH = 170;
+const LOGO_HEIGHT = 154;
 
 export default function IndexScreen() {
   const { token, isLoading } = useAuth();
   const router = useRouter();
 
   // Animation values (all running on GPU native driver for 60/120fps)
-  const circleScale = useRef(new Animated.Value(0.4)).current;
-  const contentOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const circleScale = useRef(new Animated.Value(0.85)).current;
+  const circleOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.72)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+
+  // State refs to prevent stale closure bugs
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
+
   const animationFinished = useRef(false);
+  const hasNavigated = useRef(false);
 
-  useEffect(() => {
-    // 1. Initial fade-in of the white circle and logo
-    Animated.parallel([
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver: true,
-      }),
-      Animated.spring(logoScale, {
-        toValue: 1,
-        tension: 40,
-        friction: 6,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // 2. Brief pause, then smooth circular zoom-out reveal (matching ALAT by Wema)
-      setTimeout(() => {
-        Animated.timing(circleScale, {
-          toValue: 24, // Expands well beyond any screen diagonal
-          duration: 750,
-          easing: Easing.bezier(0.4, 0, 0.2, 1),
-          useNativeDriver: true,
-        }).start(() => {
-          animationFinished.current = true;
-          navigateNext();
-        });
-      }, 400);
-    });
-  }, []);
+  const triggerNavigation = () => {
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
 
-  // When auth state is ready AND animation completes, transition smoothly
-  useEffect(() => {
-    if (!isLoading && animationFinished.current) {
-      navigateNext();
-    }
-  }, [isLoading, token]);
-
-  function navigateNext() {
-    if (isLoading) return;
-    if (token) {
+    if (tokenRef.current) {
       router.replace("/(tabs)");
     } else {
       router.replace("/(auth)/welcome");
     }
-  }
+  };
+
+  useEffect(() => {
+    // 1. Initial enlarge & fade-in of the white circle and brand mark
+    Animated.parallel([
+      Animated.timing(circleOpacity, {
+        toValue: 1,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+      Animated.timing(circleScale, {
+        toValue: 1,
+        duration: 550,
+        easing: Easing.out(Easing.back(1.2)),
+        useNativeDriver: true,
+      }),
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+      Animated.timing(logoScale, {
+        toValue: 1,
+        duration: 550,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // 2. Brand pause: Main logo displays prominently for ~850ms with subtle micro-scale
+      Animated.timing(logoScale, {
+        toValue: 1.05,
+        duration: 850,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }).start(() => {
+        // 3. Circular Zoom Reveal: White circle expands outward to envelop viewport
+        Animated.parallel([
+          Animated.timing(circleScale, {
+            toValue: 18, // 340 * 18 = 6120px, fully envelops any iPhone display
+            duration: 750,
+            easing: Easing.bezier(0.35, 0, 0.15, 1),
+            useNativeDriver: true,
+          }),
+          Animated.timing(logoOpacity, {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.ease,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          animationFinished.current = true;
+          // If auth initialization finished, navigate immediately
+          if (!isLoadingRef.current) {
+            triggerNavigation();
+          }
+        });
+      });
+    });
+
+    // Failsafe timer: Ensure app never hangs on splash under any circumstance
+    const failsafeTimeout = setTimeout(() => {
+      triggerNavigation();
+    }, 3200);
+
+    return () => {
+      clearTimeout(failsafeTimeout);
+    };
+  }, []);
+
+  // When auth state finishes initializing after animation has completed
+  useEffect(() => {
+    if (!isLoading && animationFinished.current) {
+      triggerNavigation();
+    }
+  }, [isLoading]);
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={brandColors.primary} />
+      <StatusBar barStyle="light-content" backgroundColor="#C82D75" />
 
       {/* The Expanding White Circle Mask (ALAT by Wema Style) */}
       <Animated.View
         style={[
           styles.whiteCircle,
           {
-            opacity: contentOpacity,
+            opacity: circleOpacity,
             transform: [{ scale: circleScale }],
           },
         ]}
@@ -90,7 +143,7 @@ export default function IndexScreen() {
         style={[
           styles.logoContainer,
           {
-            opacity: contentOpacity,
+            opacity: logoOpacity,
             transform: [{ scale: logoScale }],
           },
         ]}
@@ -104,8 +157,6 @@ export default function IndexScreen() {
     </View>
   );
 }
-
-const CIRCLE_SIZE = 150;
 
 const styles = StyleSheet.create({
   container: {
@@ -121,10 +172,10 @@ const styles = StyleSheet.create({
     borderRadius: CIRCLE_SIZE / 2,
     backgroundColor: "#FFFFFF",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 10,
   },
   logoContainer: {
     width: CIRCLE_SIZE,
@@ -134,7 +185,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   logoImage: {
-    width: 110,
-    height: 38,
+    width: LOGO_WIDTH,
+    height: LOGO_HEIGHT,
   },
 });
+
