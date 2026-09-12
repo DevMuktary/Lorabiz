@@ -11,74 +11,37 @@ import {
   StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ShieldCheck, CheckCircle2 } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ShieldCheck } from "lucide-react-native";
 import { colors } from "../../constants/theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function WelcomeScreen() {
   const router = useRouter();
-
-  // Dynamic floating micro-animation for the interactive 3D elements
-  const floatAnim = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // Smooth looping float
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: -8,
-          duration: 2200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 2200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Subtle gentle tilt/rotation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 3000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 3000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
-  const badgeRotation = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["-2deg", "2deg"],
-  });
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Full-bleed 3D Designed Architectural Scene */}
+      {/* Full-bleed 3D Designed Architectural Scene with Lorabiz Dashboard & Terrazzo Floor */}
       <Image
         source={require("../../assets/welcome-hero.jpg")}
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
       />
 
-      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+      {/* Foreground Container with deterministic Safe Area Inset positioning */}
+      <View
+        style={[
+          styles.contentOverlay,
+          {
+            paddingTop: Math.max(insets.top, 24) + 8,
+            paddingBottom: Math.max(insets.bottom, 20) + 12,
+          },
+        ]}
+      >
         {/* Top Branding Header standing directly on the architectural grid wall */}
         <View style={styles.topHeader}>
           <Image
@@ -88,25 +51,10 @@ export default function WelcomeScreen() {
           />
         </View>
 
-        {/* Center Zone with dynamic floating 3D badge pill */}
-        <View style={styles.centerSection}>
-          <Animated.View
-            style={[
-              styles.floatingPill,
-              {
-                transform: [
-                  { translateY: floatAnim },
-                  { rotate: badgeRotation },
-                ],
-              },
-            ]}
-          >
-            <CheckCircle2 size={16} color="#059669" />
-            <Text style={styles.floatingPillText}>Official Verified Slips</Text>
-          </Animated.View>
-        </View>
+        {/* Center Space allowing full view of the complete 3D phone mockup & podiums */}
+        <View style={styles.centerSpace} />
 
-        {/* Bottom Call to Actions & Trust Info standing directly on the marble floor */}
+        {/* Bottom Call to Actions & Trust Info standing directly on the marble terrazzo floor */}
         <View style={styles.bottomSection}>
           {/* Primary CTA: Get Started */}
           <TouchableOpacity
@@ -137,7 +85,7 @@ export default function WelcomeScreen() {
             <Text style={styles.versionText}>v1.0.0</Text>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -145,56 +93,27 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FAF8F5",
   },
-  safeArea: {
-    flex: 1,
+  contentOverlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "space-between",
+    paddingHorizontal: 24,
   },
   topHeader: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingVertical: 6,
   },
   brandLogo: {
-    width: 150,
-    height: 58,
+    width: 140,
+    height: 52,
   },
-  centerSection: {
+  centerSpace: {
     flex: 1,
-    justifyContent: "flex-end",
-    alignItems: "flex-start",
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  floatingPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.94)",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(200, 45, 117, 0.2)",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
-    marginBottom: 8,
-  },
-  floatingPillText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginLeft: 6,
-    letterSpacing: 0.2,
   },
   bottomSection: {
     width: "100%",
-    paddingHorizontal: 24,
-    paddingBottom: 16,
   },
   primaryButton: {
     backgroundColor: colors.primary,
@@ -216,7 +135,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   secondaryButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     paddingVertical: 15,
     alignItems: "center",
@@ -225,10 +144,10 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   secondaryButtonText: {
     color: colors.primary,
@@ -259,5 +178,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
 
 

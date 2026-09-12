@@ -52,36 +52,36 @@ export default function IndexScreen() {
 
   useEffect(() => {
     // Single continuous, fluid zoom reveal (no stops, no pauses)
-    // Starts small in center ("slow to open a little bit") and smoothly accelerates outward
+    // Starts small in center ("slow to open a little bit") and smoothly accelerates outward at a gentle, luxurious pace
     Animated.parallel([
       Animated.timing(circleOpacity, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoOpacity, {
         toValue: 1,
         duration: 350,
         useNativeDriver: true,
       }),
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 450,
+        useNativeDriver: true,
+      }),
       Animated.timing(circleScale, {
         toValue: 22, // Sweeps well beyond any screen diagonal (340 * 22 = 7,480px)
-        duration: 2200,
-        easing: Easing.bezier(0.35, 0.05, 0.2, 1),
+        duration: 3400, // Gently slowed down as requested by the user
+        easing: Easing.bezier(0.3, 0.05, 0.25, 1),
         useNativeDriver: true,
       }),
       Animated.sequence([
         // Logo stays clearly visible while circle opens
         Animated.timing(logoScale, {
-          toValue: 1.2,
-          duration: 1600,
+          toValue: 1.15,
+          duration: 2500,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         // Gently dissolves into pure white canvas as circle envelops screen
         Animated.timing(logoOpacity, {
           toValue: 0,
-          duration: 400,
+          duration: 700,
           easing: Easing.ease,
           useNativeDriver: true,
         }),
@@ -96,7 +96,7 @@ export default function IndexScreen() {
     // Failsafe timer: Ensure app never hangs on splash under any circumstance
     const failsafeTimeout = setTimeout(() => {
       triggerNavigation();
-    }, 2800);
+    }, 4200);
 
     return () => {
       clearTimeout(failsafeTimeout);
