@@ -24,9 +24,10 @@ export default function IndexScreen() {
   const router = useRouter();
 
   // Animation values (all running on GPU native driver for 60/120fps)
-  const circleScale = useRef(new Animated.Value(0.85)).current;
+  // Starts compact ("more in") as requested by the user
+  const circleScale = useRef(new Animated.Value(0.12)).current;
   const circleOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.72)).current;
+  const logoScale = useRef(new Animated.Value(0.2)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
 
   // State refs to prevent stale closure bugs
@@ -50,17 +51,17 @@ export default function IndexScreen() {
   };
 
   useEffect(() => {
-    // 1. Initial enlarge & fade-in of the white circle and brand mark
+    // 1. Immediately starts coming out from the center (0 to 1.1s)
     Animated.parallel([
       Animated.timing(circleOpacity, {
         toValue: 1,
-        duration: 450,
+        duration: 350,
         useNativeDriver: true,
       }),
       Animated.timing(circleScale, {
         toValue: 1,
-        duration: 550,
-        easing: Easing.out(Easing.back(1.2)),
+        duration: 1100,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(logoOpacity, {
@@ -70,23 +71,23 @@ export default function IndexScreen() {
       }),
       Animated.timing(logoScale, {
         toValue: 1,
-        duration: 550,
+        duration: 1100,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // 2. Brand pause: Main logo displays prominently for ~850ms with subtle micro-scale
+      // 2. Brand pause: Main logo displays prominently for ~700ms with subtle micro-scale
       Animated.timing(logoScale, {
-        toValue: 1.05,
-        duration: 850,
+        toValue: 1.04,
+        duration: 700,
         easing: Easing.inOut(Easing.ease),
         useNativeDriver: true,
       }).start(() => {
-        // 3. Circular Zoom Reveal: White circle expands outward to envelop viewport
+        // 3. Zoom-Out Reveal: White circle expands outward to completely envelop the viewport
         Animated.parallel([
           Animated.timing(circleScale, {
             toValue: 18, // 340 * 18 = 6120px, fully envelops any iPhone display
-            duration: 750,
+            duration: 850,
             easing: Easing.bezier(0.35, 0, 0.15, 1),
             useNativeDriver: true,
           }),
@@ -109,7 +110,7 @@ export default function IndexScreen() {
     // Failsafe timer: Ensure app never hangs on splash under any circumstance
     const failsafeTimeout = setTimeout(() => {
       triggerNavigation();
-    }, 3200);
+    }, 3500);
 
     return () => {
       clearTimeout(failsafeTimeout);

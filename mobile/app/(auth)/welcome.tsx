@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,22 +6,45 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
-  Platform,
+  Animated,
+  Easing,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ShieldCheck, Sparkles, ArrowRight } from "lucide-react-native";
-import { colors, spacing } from "../../constants/theme";
+import { ShieldCheck } from "lucide-react-native";
+import { colors } from "../../constants/theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function WelcomeScreen() {
   const router = useRouter();
 
+  // Dynamic floating micro-animation so the 3D scene feels alive (non-static)
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -8,
+          duration: 2400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 2400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <View style={styles.container}>
-        {/* Top Branding */}
+        {/* Top Branding Header */}
         <View style={styles.topHeader}>
           <Image
             source={require("../../assets/logo-pink.png")}
@@ -30,35 +53,33 @@ export default function WelcomeScreen() {
           />
         </View>
 
-        {/* Center 3D Fintech Visual Scene */}
+        {/* Center 3D Digital Identity & Services Visual Scene with Floating Motion */}
         <View style={styles.heroSection}>
-          <View style={styles.imageCardContainer}>
+          <Animated.View
+            style={[
+              styles.imageCardContainer,
+              {
+                transform: [{ translateY: floatAnim }],
+              },
+            ]}
+          >
             <Image
               source={require("../../assets/welcome-hero.jpg")}
               style={styles.heroImage}
               resizeMode="cover"
             />
-
-            {/* Floating Contactless/Instant Slips Badge (ALAT Style) */}
-            <View style={styles.floatingBadge}>
-              <View style={styles.badgeIconCircle}>
-                <Sparkles size={16} color="#FFFFFF" />
-              </View>
-              <Text style={styles.badgeText}>Instant Slips & Bills</Text>
-            </View>
-          </View>
+          </Animated.View>
         </View>
 
-        {/* Bottom Call to Actions & Version */}
+        {/* Bottom Call to Actions & Trust Info */}
         <View style={styles.actionSection}>
-          {/* Primary CTA: Get Started */}
+          {/* Primary CTA: Get Started (App-grade button, no web arrow) */}
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => router.push("/(auth)/register")}
             activeOpacity={0.88}
           >
             <Text style={styles.primaryButtonText}>Get Started</Text>
-            <ArrowRight size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
           </TouchableOpacity>
 
           {/* Secondary CTA: Log in */}
@@ -75,7 +96,7 @@ export default function WelcomeScreen() {
             <View style={styles.trustBadgeRow}>
               <ShieldCheck size={14} color={colors.textSecondary} />
               <Text style={styles.trustText}>
-                Licensed Business & Identity Infrastructure
+                Business & Identity Infrastructure
               </Text>
             </View>
             <Text style={styles.versionText}>v1.0.0</Text>
@@ -89,11 +110,11 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.background,
     justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingTop: 8,
@@ -102,7 +123,7 @@ const styles = StyleSheet.create({
   topHeader: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   brandLogo: {
     width: 140,
@@ -112,59 +133,26 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginVertical: 8,
+    marginVertical: 6,
   },
   imageCardContainer: {
-    width: SCREEN_WIDTH - 48,
-    height: Math.min(SCREEN_HEIGHT * 0.46, 380),
-    borderRadius: 28,
+    width: SCREEN_WIDTH - 44,
+    height: Math.min(SCREEN_HEIGHT * 0.47, 400),
+    borderRadius: 26,
     overflow: "hidden",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surface,
     position: "relative",
-    shadowColor: "#C82D75",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 6,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: colors.surfaceBorder,
   },
   heroImage: {
     width: "100%",
     height: "100%",
-  },
-  floatingBadge: {
-    position: "absolute",
-    left: 16,
-    bottom: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.94)",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: "rgba(200, 45, 117, 0.15)",
-  },
-  badgeIconCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.text,
-    letterSpacing: 0.2,
   },
   actionSection: {
     width: "100%",
@@ -174,7 +162,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 16,
     paddingVertical: 16,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: colors.primary,
@@ -191,7 +178,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   secondaryButton: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderRadius: 16,
     paddingVertical: 15,
     alignItems: "center",
@@ -234,3 +221,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
