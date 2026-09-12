@@ -107,7 +107,7 @@ if (fs.existsSync(sourcesDir)) {
   if (fs.existsSync(rt)) {
     let c = fs.readFileSync(rt, 'utf8');
     c = c.replace('_ arguments: consuming JavaScriptValuesBuffer,', '_ arguments: consuming JavaScriptValuesBuffer');
-    c = c.replace('vector.push_back(consuming: propNameId)', 'vector.push_back(propNameId)');
+    c = c.replace(/vector\.push_back\((?:consuming:\s*)?propNameId\)/g, 'vector.push_back(consume propNameId)');
     c = c.replace(/expo\.RuntimeScheduler\(\)/g, 'expo.createRuntimeScheduler()');
     c = c.replace(/expo\.RuntimeScheduler\(scheduler, fn\)/g, 'expo.createRuntimeScheduler(scheduler, fn)');
     c = c.replace(/expo\.HostFunctionClosure\(context, call, deallocate\)/g, 'expo.createHostFunctionClosure(context, call, deallocate)');
