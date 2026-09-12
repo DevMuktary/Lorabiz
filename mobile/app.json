@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Lorabiz",
+    "slug": "lorabiz",
+    "scheme": "lorabiz",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#090D16",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lorabiz.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Lorabiz requires camera access to capture registration documents and passport photographs.",
+        "NSFaceIDUsageDescription": "Lorabiz uses Face ID for fast and secure authentication into your wallet and account."
+      }
+    },
+    "android": {
+      "package": "com.lorabiz.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#090D16",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "permissions": [
+        "CAMERA",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-sharing",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Lorabiz to use Face ID for fast and secure authentication."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Lorabiz needs access to your gallery to upload document slips and certificates."
+        }
+      ]
+    ]
+  }
+}
