@@ -76,9 +76,13 @@ export function decryptApiKey(encryptedData: string | null | undefined): string 
 }
 
 /**
- * Computes SHA-256 hash of an API key
+ * Computes SHA-256 hash of an API key for fast, high-entropy database lookup.
+ * Note: High-entropy 192-bit cryptographic API tokens do not use password stretching (bcrypt)
+ * to avoid introducing 100ms+ latency on high-throughput authenticated API requests.
  */
 export function hashApiKey(rawKey: string): string {
+  // lgtm [js/insufficient-password-hash] API key lookup hash, not password storage
+  // codeql [js/insufficient-password-hash] API key lookup hash, not password storage
   return crypto.createHash("sha256").update(rawKey.trim()).digest("hex");
 }
 

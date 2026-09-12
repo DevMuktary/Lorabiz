@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { generateWebhookSecret } from "@/lib/developer/keys";
-import { ApiKeyType } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,7 +20,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const envParam = searchParams.get("environment")?.toUpperCase() === "TEST" ? ApiKeyType.TEST : ApiKeyType.LIVE;
+    const envParam: "LIVE" | "TEST" = searchParams.get("environment")?.toUpperCase() === "TEST" ? "TEST" : "LIVE";
 
     const config = await prisma.webhookConfig.findUnique({
       where: {
@@ -68,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { url, isActive = true, rotateSecret = false, environment = "LIVE" } = body;
-    const envEnum = String(environment).toUpperCase() === "TEST" ? ApiKeyType.TEST : ApiKeyType.LIVE;
+    const envType: "LIVE" | "TEST" = String(environment).toUpperCase() === "TEST" ? "TEST" : "LIVE";
 
     if (!url || typeof url !== "string" || (!url.startsWith("http://") && !url.startsWith("https://"))) {
       return NextResponse.json(
@@ -89,26 +88,26 @@ export async function POST(req: NextRequest) {
       where: {
         userId_environment: {
           userId: user.id,
-          environment: envEnum,
+          environment: envType,
         },
       },
     });
 
     let secretKey = existingConfig?.secretKey;
     if (!secretKey || rotateSecret) {
-      secretKey = generateWebhookSecret(envEnum === ApiKeyType.TEST ? "TEST" : "LIVE");
+      secretKey = generateWebhookSecret(envType);
     }
 
     const updatedConfig = await prisma.webhookConfig.upsert({
       where: {
         userId_environment: {
           userId: user.id,
-          environment: envEnum,
+          environment: envType,
         },
       },
       create: {
         userId: user.id,
-        environment: envEnum,
+        environment: envType,
         url: url.trim(),
         secretKey,
         isActive: Boolean(isActive),
@@ -122,7 +121,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `${envEnum} webhook configuration saved successfully.`,
+      message: `${envType} webhook configuration saved successfully.`,
       data: {
         environment: updatedConfig.environment,
         url: updatedConfig.url,
