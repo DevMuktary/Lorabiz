@@ -17,13 +17,14 @@ function walk(dir) {
   return results;
 }
 
-// 1. Patch Package.swift to swift-tools-version: 6.0 for Xcode 16.4 compatibility
+// 1. Patch Package.swift to swift-tools-version: 6.0 and swiftLanguageModes: [.v5] for Xcode 16.4 compatibility
 const pkgPath = path.join(__dirname, '../node_modules/expo-modules-jsi/apple/Package.swift');
 if (fs.existsSync(pkgPath)) {
   let c = fs.readFileSync(pkgPath, 'utf8');
   c = c.replace(/swift-tools-version: 6\.[0-9]+/g, 'swift-tools-version: 6.0');
+  c = c.replace(/swiftLanguageModes:\s*\[\.v6\]/g, 'swiftLanguageModes: [.v5]');
   fs.writeFileSync(pkgPath, c);
-  console.log('[patch] Patched Package.swift to 6.0');
+  console.log('[patch] Patched Package.swift to 6.0 and swiftLanguageModes [.v5]');
 }
 
 const sourcesDir = path.join(__dirname, '../node_modules/expo-modules-jsi/apple/Sources');
@@ -117,7 +118,7 @@ if (fs.existsSync(sourcesDir)) {
     console.log('[patch] Copied patches/RuntimeScheduler.h into node_modules');
   }
 
-  // 6. Patch JavaScriptRuntime.swift (trailing comma, appendPropNameId, and factory calls)
+  // 6. Patch JavaScriptRuntime.swift (trailing comma, appendPropNameId, Sendable pointers, and factory calls)
   const rt = path.join(sourcesDir, 'ExpoModulesJSI/Runtime/JavaScriptRuntime.swift');
   if (fs.existsSync(rt)) {
     let c = fs.readFileSync(rt, 'utf8');
@@ -132,7 +133,103 @@ if (fs.existsSync(sourcesDir)) {
     c = c.replace(/expo\.RuntimeScheduler\(\)/g, 'expo.createRuntimeScheduler()');
     c = c.replace(/expo\.RuntimeScheduler\(scheduler, fn\)/g, 'expo.createRuntimeScheduler(scheduler, fn)');
     c = c.replace(/expo\.HostFunctionClosure\(context, call, deallocate\)/g, 'expo.createHostFunctionClosure(context, call, deallocate)');
+
+    c = c.replace(/\r\n/g, '\n');
+
+    // Add JsiSendablePointer wrapper to eliminate Swift 6 raw pointer data-race errors across closures
+    if (!c.includes('struct JsiSendablePointer')) {
+      c = 'private struct JsiSendablePointer<T>: @unchecked Sendable {\n  let pointer: T\n  init(_ pointer: T) { self.pointer = pointer }\n}\n\n' + c;
+    }
+
+    const getterTarget = `      let propertyName = String(cString: propertyName)
+      nonisolated(unsafe) let resultPtr = resultPtr
+
+      return withGuaranteedContext(context) { (context: HostObjectContext, runtime) in
+        return JavaScriptActor.assumeIsolated {
+          return forwardingSwiftErrorsToJS(runtime: runtime) {
+            try context.get(propertyName).writeJSIValue(to: resultPtr)
+          }
+        }
+      }`;
+    const getterReplacement = `      let propertyName = String(cString: propertyName)
+      let sendableResultPtr = JsiSendablePointer(resultPtr)
+
+      return withGuaranteedContext(context) { (context: HostObjectContext, runtime) in
+        return JavaScriptActor.assumeIsolated {
+          return forwardingSwiftErrorsToJS(runtime: runtime) {
+            try context.get(propertyName).writeJSIValue(to: sendableResultPtr.pointer)
+          }
+        }
+      }`;
+    c = c.replace(getterTarget, getterReplacement);
+
+    const call1Target = `    nonisolated(unsafe) let thisPtr = thisPtr
+    nonisolated(unsafe) let argumentsPtr = argumentsPtr
+    nonisolated(unsafe) let resultPtr = resultPtr
+
+    // See \`withGuaranteedContext\` for why neither the context nor the runtime is retained here, and
+    // why the result is written to the caller's slot instead of being returned.
+    return withGuaranteedContext(context) { (context: HostFunctionContext, runtime) in
+      return JavaScriptActor.assumeIsolated {
+        return forwardingSwiftErrorsToJS(runtime: runtime) {
+          let this = UnsafeMutablePointer(mutating: thisPtr).move()
+          let arguments = JavaScriptValuesBuffer(runtime, start: argumentsPtr, count: argumentsCount)
+          let thisValue = JavaScriptValue(runtime, this)
+          try context.call(thisValue, consume arguments).writeJSIValue(to: resultPtr)
+        }
+      }
+    }`;
+    const call1Replacement = `    let sendableThisPtr = JsiSendablePointer(thisPtr)
+    let sendableArgumentsPtr = JsiSendablePointer(argumentsPtr)
+    let sendableResultPtr = JsiSendablePointer(resultPtr)
+
+    // See \`withGuaranteedContext\` for why neither the context nor the runtime is retained here, and
+    // why the result is written to the caller's slot instead of being returned.
+    return withGuaranteedContext(context) { (context: HostFunctionContext, runtime) in
+      return JavaScriptActor.assumeIsolated {
+        return forwardingSwiftErrorsToJS(runtime: runtime) {
+          let this = UnsafeMutablePointer(mutating: sendableThisPtr.pointer).move()
+          let arguments = JavaScriptValuesBuffer(runtime, start: sendableArgumentsPtr.pointer, count: argumentsCount)
+          let thisValue = JavaScriptValue(runtime, this)
+          try context.call(thisValue, consume arguments).writeJSIValue(to: sendableResultPtr.pointer)
+        }
+      }
+    }`;
+    c = c.replace(call1Target, call1Replacement);
+
+    const call2Target = `    nonisolated(unsafe) let thisPtr = thisPtr
+    nonisolated(unsafe) let argumentsPtr = argumentsPtr
+    nonisolated(unsafe) let resultPtr = resultPtr
+
+    // See \`withGuaranteedContext\` for why neither the context nor the runtime is retained here, and
+    // why the result is written to the caller's slot instead of being returned.
+    return withGuaranteedContext(context) { (context: UnownedThisHostFunctionContext, runtime) in
+      return JavaScriptActor.assumeIsolated {
+        return forwardingSwiftErrorsToJS(runtime: runtime) {
+          let arguments = JavaScriptValuesBuffer(runtime, start: argumentsPtr, count: argumentsCount)
+          let thisValue = JavaScriptUnownedValue(runtime.pointee, thisPtr)
+          try context.call(thisValue, consume arguments).writeJSIValue(to: resultPtr)
+        }
+      }
+    }`;
+    const call2Replacement = `    let sendableThisPtr = JsiSendablePointer(thisPtr)
+    let sendableArgumentsPtr = JsiSendablePointer(argumentsPtr)
+    let sendableResultPtr = JsiSendablePointer(resultPtr)
+
+    // See \`withGuaranteedContext\` for why neither the context nor the runtime is retained here, and
+    // why the result is written to the caller's slot instead of being returned.
+    return withGuaranteedContext(context) { (context: UnownedThisHostFunctionContext, runtime) in
+      return JavaScriptActor.assumeIsolated {
+        return forwardingSwiftErrorsToJS(runtime: runtime) {
+          let arguments = JavaScriptValuesBuffer(runtime, start: sendableArgumentsPtr.pointer, count: argumentsCount)
+          let thisValue = JavaScriptUnownedValue(runtime.pointee, sendableThisPtr.pointer)
+          try context.call(thisValue, consume arguments).writeJSIValue(to: sendableResultPtr.pointer)
+        }
+      }
+    }`;
+    c = c.replace(call2Target, call2Replacement);
+
     fs.writeFileSync(rt, c);
-    console.log('[patch] Patched JavaScriptRuntime.swift syntax and factory calls');
+    console.log('[patch] Patched JavaScriptRuntime.swift syntax, Sendable pointers, and factory calls');
   }
 }
