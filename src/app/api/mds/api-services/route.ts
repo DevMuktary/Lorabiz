@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 export interface ApiServiceDefinition {
   serviceKey: string;
   title: string;
-  category: "NIN_VERIFICATION" | "PHONE_VERIFICATION" | "NIN_VALIDATION";
+  category: "NIN_VERIFICATION" | "PHONE_VERIFICATION" | "NIN_VALIDATION" | "NIMC_SPECIAL_SERVICES";
   categoryLabel: string;
   defaultPrice: number;
   description: string;
@@ -113,6 +113,24 @@ export const KNOWN_API_SERVICES: ApiServiceDefinition[] = [
     categoryLabel: "NIN Validation Pipeline",
     defaultPrice: 1600.0,
     description: "Validation correcting corrupted biometric images or photo capture mismatches.",
+  },
+
+  // NIMC Special Operations
+  {
+    serviceKey: "API_NIN_IPE_CLEARANCE",
+    title: "NIMC IPE Clearance",
+    category: "NIMC_SPECIAL_SERVICES",
+    categoryLabel: "NIMC Special Operations",
+    defaultPrice: 2500.0,
+    description: "Submits tracking ID to resolve In-Processing Error and release cleared NIN.",
+  },
+  {
+    serviceKey: "API_NIN_PERSONALIZATION",
+    title: "NIMC NIN Personalization",
+    category: "NIMC_SPECIAL_SERVICES",
+    categoryLabel: "NIMC Special Operations",
+    defaultPrice: 1500.0,
+    description: "Submits tracking ID to retrieve personalized NIN profile and official digital slip.",
   },
 ];
 

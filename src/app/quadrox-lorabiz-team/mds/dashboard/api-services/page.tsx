@@ -24,7 +24,7 @@ import {
 interface ApiServiceItem {
   serviceKey: string;
   title: string;
-  category: "NIN_VERIFICATION" | "PHONE_VERIFICATION" | "NIN_VALIDATION";
+  category: "NIN_VERIFICATION" | "PHONE_VERIFICATION" | "NIN_VALIDATION" | "NIMC_SPECIAL_SERVICES";
   categoryLabel: string;
   description: string;
   price: number;
@@ -36,7 +36,7 @@ interface ApiServiceItem {
 export default function AdminApiServicesPage() {
   const [services, setServices] = useState<ApiServiceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"ALL" | "NIN_VERIFICATION" | "PHONE_VERIFICATION" | "NIN_VALIDATION">("ALL");
+  const [activeTab, setActiveTab] = useState<"ALL" | "NIN_VERIFICATION" | "PHONE_VERIFICATION" | "NIN_VALIDATION" | "NIMC_SPECIAL_SERVICES">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [saveSuccessKey, setSaveSuccessKey] = useState<string | null>(null);
@@ -259,6 +259,16 @@ export default function AdminApiServicesPage() {
             }`}
           >
             NIN Validation Pipeline
+          </button>
+          <button
+            onClick={() => setActiveTab("NIMC_SPECIAL_SERVICES")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+              activeTab === "NIMC_SPECIAL_SERVICES"
+                ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900"
+            }`}
+          >
+            NIMC Special Operations
           </button>
         </div>
 
