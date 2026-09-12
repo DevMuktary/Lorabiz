@@ -26,14 +26,14 @@ jobs:
         run: |
           echo "=== Available Xcode versions ==="
           ls -d /Applications/Xcode* || true
-          if [ -d "/Applications/Xcode_16.4.app" ]; then
+          if [ -d "/Applications/Xcode_26.3.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode_26.3.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_26.2.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode_26.2.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_26.0.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode_26.0.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_16.4.app" ]; then
             sudo xcode-select -switch /Applications/Xcode_16.4.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_16.4.0.app" ]; then
-            sudo xcode-select -switch /Applications/Xcode_16.4.0.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_16.3.app" ]; then
-            sudo xcode-select -switch /Applications/Xcode_16.3.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_16.2.app" ]; then
-            sudo xcode-select -switch /Applications/Xcode_16.2.app/Contents/Developer
           fi
           xcodebuild -version
           swift --version
@@ -49,11 +49,18 @@ jobs:
         working-directory: ./mobile
         run: |
           npm ci --legacy-peer-deps
-          echo "=== Normalizing Swift tools versions for Xcode 16.4 compatibility ==="
-          find node_modules -name "Package.swift" -exec sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} + 2>/dev/null || true
-          find node_modules -name "Package.swift" -exec sed -i 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} + 2>/dev/null || true
-          echo "Verified Package.swift headers:"
-          head -n 2 node_modules/expo-modules-jsi/apple/Package.swift || true
+          echo "=== Applying Swift 6.2 Clang compatibility patch to RuntimeScheduler.h ==="
+          node -e "
+          const fs = require('fs');
+          const p = 'node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h';
+          if (fs.existsSync(p)) {
+            let c = fs.readFileSync(p, 'utf8');
+            c = c.replace('RuntimeScheduler(void *scheduler', '#if !defined(__swift__)\n  RuntimeScheduler(void *scheduler');
+            c = c.replace('RuntimeScheduler() {}', 'RuntimeScheduler() {}\n#endif');
+            fs.writeFileSync(p, c);
+            console.log('Patched RuntimeScheduler.h successfully');
+          }
+          "
 
       - name: Expo Prebuild (Generate Native iOS Project)
         working-directory: ./mobile
@@ -84,10 +91,6 @@ jobs:
         working-directory: ./mobile/ios
         run: |
           set -e -o pipefail
-          echo "=== Normalizing all Swift tools versions across workspace ==="
-          find .. -name "Package.swift" -exec sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} + 2>/dev/null || true
-          find .. -name "Package.swift" -exec sed -i 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} + 2>/dev/null || true
-
           echo "=== Configuring Git for Swift Package Manager ==="
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
