@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   refBadge: {
-    backgroundColor: "#0284C722",
+    backgroundColor: "#C82D7522",
     alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 3,

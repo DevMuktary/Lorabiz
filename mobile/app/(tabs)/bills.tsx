@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
 import { Zap, Phone, Wifi, Tv, Lightbulb, CheckCircle2, Wallet, AlertCircle } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
@@ -15,10 +16,10 @@ import { api } from "../../lib/api";
 import { colors } from "../../constants/theme";
 
 const NETWORKS = [
-  { id: "MTN", name: "MTN", color: "#FBBF24" },
-  { id: "AIRTEL", name: "Airtel", color: "#EF4444" },
-  { id: "GLO", name: "Glo", color: "#10B981" },
-  { id: "9MOBILE", name: "9mobile", color: "#84CC16" },
+  { id: "MTN", name: "MTN", color: "#FBBF24", logo: require("../../assets/mtn.png") },
+  { id: "AIRTEL", name: "Airtel", color: "#EF4444", logo: require("../../assets/airtel.png") },
+  { id: "GLO", name: "Glo", color: "#10B981", logo: require("../../assets/glo.png") },
+  { id: "9MOBILE", name: "9mobile", color: "#84CC16", logo: require("../../assets/9mobile.png") },
 ];
 
 const AIRTIME_AMOUNTS = [200, 500, 1000, 2000, 5000];
@@ -164,7 +165,7 @@ export default function BillsScreen() {
                   onPress={() => setSelectedNetwork(net.id)}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.netDot, { backgroundColor: net.color }]} />
+                  <Image source={net.logo} style={{ width: 26, height: 26, borderRadius: 13, marginRight: 8 }} resizeMode="contain" />
                   <Text style={[styles.netName, isSelected && styles.netNameActive]}>
                     {net.name}
                   </Text>
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
   },
   presetItemActive: {
     borderColor: colors.primary,
-    backgroundColor: "#0284C722",
+    backgroundColor: "#C82D7522",
   },
   presetText: {
     fontSize: 12,

@@ -54,12 +54,10 @@ public:
    `scheduleTask` dispatches through `fn`, which the host implements against
    the real react::RuntimeScheduler.
    */
-#if !defined(__swift__)
   RuntimeScheduler(void *scheduler, ScheduleFn fn) noexcept
       : nativeScheduler(scheduler), scheduleFn(fn) {}
 
   RuntimeScheduler() {}
-#endif
 
   RuntimeScheduler(const RuntimeScheduler &) = delete;
 

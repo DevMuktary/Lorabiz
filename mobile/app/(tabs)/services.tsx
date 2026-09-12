@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import {
   Briefcase,
@@ -82,7 +83,14 @@ export default function ServicesScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Corporate & Legal Services</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+          <Image
+            source={require("../../assets/cac.png")}
+            style={{ width: 36, height: 36, marginRight: 10 }}
+            resizeMode="contain"
+          />
+          <Text style={styles.headerTitle}>Corporate & Legal Services</Text>
+        </View>
         <Text style={styles.headerSubtitle}>
           Accredited company registrations, compliance certifications, and filings
         </Text>
@@ -303,9 +311,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   disclaimerBox: {
-    backgroundColor: "#0284C70D",
+    backgroundColor: "#C82D750D",
     borderWidth: 1,
-    borderColor: "#0284C733",
+    borderColor: "#C82D7533",
     borderRadius: 14,
     padding: 14,
   },

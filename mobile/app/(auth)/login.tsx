@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -103,10 +104,12 @@ export default function LoginScreen() {
       >
         {/* Brand Header */}
         <View style={styles.header}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>L</Text>
-          </View>
-          <Text style={styles.title}>Welcome to Lorabiz</Text>
+          <Image
+            source={require("../../assets/logo.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Welcome back</Text>
           <Text style={styles.subtitle}>
             Sign in to access your wallet, NIN/BVN slips, and business services.
           </Text>
@@ -268,24 +271,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 32,
   },
-  logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
+  logoImage: {
+    width: 170,
+    height: 56,
     marginBottom: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  logoText: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#FFFFFF",
   },
   title: {
     fontSize: 24,

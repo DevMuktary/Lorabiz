@@ -185,7 +185,7 @@ export default function SlipsScreen() {
             style={[styles.tabBtn, activeTab === "NIN" && styles.tabBtnActive]}
             onPress={() => setActiveTab("NIN")}
           >
-            <FileText size={16} color={activeTab === "NIN" ? "#FFFFFF" : colors.textSecondary} />
+            <Image source={require("../../assets/nimc.png")} style={{ width: 20, height: 20, marginRight: 6 }} resizeMode="contain" />
             <Text style={[styles.tabBtnText, activeTab === "NIN" && styles.tabBtnTextActive]}>
               NIN Slips
             </Text>
@@ -195,7 +195,7 @@ export default function SlipsScreen() {
             style={[styles.tabBtn, activeTab === "BVN" && styles.tabBtnActive]}
             onPress={() => setActiveTab("BVN")}
           >
-            <Shield size={16} color={activeTab === "BVN" ? "#FFFFFF" : colors.textSecondary} />
+            <Image source={require("../../assets/nibss.png")} style={{ width: 20, height: 20, marginRight: 6 }} resizeMode="contain" />
             <Text style={[styles.tabBtnText, activeTab === "BVN" && styles.tabBtnTextActive]}>
               BVN Slips
             </Text>
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   },
   slipCardActive: {
     borderColor: colors.primary,
-    backgroundColor: "#0284C70D",
+    backgroundColor: "#C82D750D",
   },
   slipCardHeader: {
     flexDirection: "row",
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   slipTag: {
-    backgroundColor: "#0284C722",
+    backgroundColor: "#C82D7522",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,

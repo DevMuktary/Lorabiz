@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -70,16 +71,13 @@ export default function HomeScreen() {
         />
       }
     >
-      {/* Top Header */}
+      {/* Top Header with Brand Logo */}
       <View style={styles.topHeader}>
-        <View>
-          <Text style={styles.greetingText}>
-            Hello, {user?.firstName || "Customer"} 👋
-          </Text>
-          <Text style={styles.subGreetingText}>
-            Welcome to your Lorabiz dashboard
-          </Text>
-        </View>
+        <Image
+          source={require("../../assets/logo.png")}
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
         <TouchableOpacity
           style={styles.bellBtn}
           onPress={() => router.push("/(tabs)/profile")}
@@ -90,6 +88,16 @@ export default function HomeScreen() {
             </Text>
           </View>
         </TouchableOpacity>
+      </View>
+
+      {/* Greeting Section */}
+      <View style={styles.greetingSection}>
+        <Text style={styles.greetingText}>
+          Hello, {user?.firstName || "Customer"} 👋
+        </Text>
+        <Text style={styles.subGreetingText}>
+          Welcome to your Lorabiz dashboard
+        </Text>
       </View>
 
       {/* Wallet Card */}
@@ -150,8 +158,8 @@ export default function HomeScreen() {
           onPress={() => router.push("/(tabs)/slips")}
           activeOpacity={0.8}
         >
-          <View style={[styles.iconWrapper, { backgroundColor: "#F59E0B22" }]}>
-            <FileText size={22} color={colors.gold} />
+          <View style={[styles.iconWrapper, { backgroundColor: "#F59E0B15" }]}>
+            <Image source={require("../../assets/nimc.png")} style={{ width: 26, height: 26 }} resizeMode="contain" />
           </View>
           <Text style={styles.serviceTitle}>NIN Slips</Text>
           <Text style={styles.serviceSubtitle}>₦400 - ₦1,000</Text>
@@ -159,12 +167,12 @@ export default function HomeScreen() {
 
         {/* BVN Slips */}
         <TouchableOpacity
-          style={[styles.serviceCard, { borderColor: "#0284C733" }]}
+          style={[styles.serviceCard, { borderColor: "#C82D7533" }]}
           onPress={() => router.push("/(tabs)/slips")}
           activeOpacity={0.8}
         >
-          <View style={[styles.iconWrapper, { backgroundColor: "#0284C722" }]}>
-            <Shield size={22} color={colors.primary} />
+          <View style={[styles.iconWrapper, { backgroundColor: "#C82D7515" }]}>
+            <Image source={require("../../assets/nibss.png")} style={{ width: 26, height: 26 }} resizeMode="contain" />
           </View>
           <Text style={styles.serviceTitle}>BVN Slips</Text>
           <Text style={styles.serviceSubtitle}>Instant lookup</Text>
@@ -176,7 +184,7 @@ export default function HomeScreen() {
           onPress={() => router.push("/(tabs)/bills")}
           activeOpacity={0.8}
         >
-          <View style={[styles.iconWrapper, { backgroundColor: "#10B98122" }]}>
+          <View style={[styles.iconWrapper, { backgroundColor: "#10B98115" }]}>
             <Zap size={22} color={colors.success} />
           </View>
           <Text style={styles.serviceTitle}>Airtime & Data</Text>
@@ -189,8 +197,8 @@ export default function HomeScreen() {
           onPress={() => router.push("/(tabs)/services")}
           activeOpacity={0.8}
         >
-          <View style={[styles.iconWrapper, { backgroundColor: "#8B5CF622" }]}>
-            <Briefcase size={22} color={colors.purple} />
+          <View style={[styles.iconWrapper, { backgroundColor: "#8B5CF615" }]}>
+            <Image source={require("../../assets/cac.png")} style={{ width: 26, height: 26 }} resizeMode="contain" />
           </View>
           <Text style={styles.serviceTitle}>CAC Filing</Text>
           <Text style={styles.serviceSubtitle}>Biz Name & LLC</Text>
@@ -269,6 +277,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 16,
+  },
+  headerLogo: {
+    width: 140,
+    height: 44,
+  },
+  greetingSection: {
     marginBottom: 20,
   },
   greetingText: {
@@ -320,7 +335,7 @@ const styles = StyleSheet.create({
   walletBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0284C71A",
+    backgroundColor: "#C82D751A",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,

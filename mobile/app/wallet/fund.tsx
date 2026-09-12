@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   },
   presetBtnActive: {
     borderColor: colors.primary,
-    backgroundColor: "#0284C71A",
+    backgroundColor: "#C82D751A",
   },
   presetBtnText: {
     fontSize: 13,

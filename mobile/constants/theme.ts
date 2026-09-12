@@ -1,22 +1,23 @@
 export const colors = {
-  // Brand
-  primary: "#0284C7", // Sky blue brand
-  primaryDark: "#0369A1",
-  primaryLight: "#38BDF8",
-  accent: "#2563EB",
+  // Brand - Exact Lorabiz Signature Pink/Magenta
+  primary: "#C82D75", // Iconic Lorabiz Pink
+  primaryDark: "#9D1755", // Deep luxury magenta
+  primaryLight: "#E54F98", // Vibrant glow pink
+  primarySoft: "rgba(200, 45, 117, 0.12)",
+  accent: "#8B5CF6", // Electric purple / violet accent
 
-  // Backgrounds
-  background: "#090D16", // Deep midnight navy
-  surface: "#111827", // Card container
-  surfaceElevated: "#1E293B", // Modal / elevated sheet
+  // Backgrounds - Ultra-clean dark glassmorphism
+  background: "#070B14", // Deep rich midnight pitch
+  surface: "#0F172A", // Elevated slate surface
+  surfaceElevated: "#182238", // Luxury card container
   surfaceBorder: "#1E293B",
-  surfaceBorderLight: "#334155",
+  surfaceBorderLight: "rgba(200, 45, 117, 0.25)", // Subtle pink border glow
 
   // Typography
-  text: "#F8FAFC",
+  text: "#FFFFFF",
   textSecondary: "#94A3B8",
   textMuted: "#64748B",
-  textInverse: "#090D16",
+  textInverse: "#FFFFFF",
 
   // Status & Feedback
   success: "#10B981",
@@ -29,8 +30,9 @@ export const colors = {
 
   // Service Specific Accents
   gold: "#F59E0B", // Slips & Premium
-  purple: "#8B5CF6", // CAC LLC
-  cyan: "#06B6D4", // Utilities
+  purple: "#8B5CF6", // CAC Services
+  cyan: "#06B6D4", // Utilities & Data
+  pink: "#C82D75", // Lorabiz Core
 };
 
 export const spacing = {
