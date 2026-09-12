@@ -50,7 +50,7 @@ public:
    `scheduleTask` dispatches through `fn`, which the host implements against
    the real react::RuntimeScheduler.
    */
-  SWIFT_RETURNS_RETAINED RuntimeScheduler(void *scheduler, ScheduleFn fn) noexcept
+  RuntimeScheduler(void *scheduler, ScheduleFn fn) noexcept
       : nativeScheduler(scheduler), scheduleFn(fn) {}
 
   /**
@@ -58,7 +58,7 @@ public:
    caller's thread — intended for standalone runtimes (e.g. tests) that have
    no React scheduler.
    */
-  SWIFT_RETURNS_RETAINED RuntimeScheduler() {}
+  RuntimeScheduler() {}
 
   RuntimeScheduler(const RuntimeScheduler &) = delete;
 
@@ -89,16 +89,28 @@ public:
   }
 } SWIFT_SHARED_REFERENCE(retainRuntimeScheduler, releaseRuntimeScheduler);
 
+SWIFT_RETURNS_RETAINED inline RuntimeScheduler *createRuntimeScheduler() {
+  return new RuntimeScheduler();
+}
+
+SWIFT_RETURNS_RETAINED inline RuntimeScheduler *createRuntimeScheduler(void *scheduler, RuntimeScheduler::ScheduleFn fn) {
+  return new RuntimeScheduler(scheduler, fn);
+}
+
 } // namespace expo
 
 /** Retains the RuntimeScheduler, called by Swift's ARC. */
 inline void retainRuntimeScheduler(expo::RuntimeScheduler *scheduler) {
-  scheduler->retain();
+  if (scheduler != nullptr) {
+    scheduler->retain();
+  }
 }
 
 /** Releases the RuntimeScheduler, called by Swift's ARC. Deallocates when the ref count reaches zero. */
 inline void releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler) {
-  scheduler->release();
+  if (scheduler != nullptr) {
+    scheduler->release();
+  }
 }
 
 #endif // __cplusplus

@@ -108,6 +108,9 @@ if (fs.existsSync(sourcesDir)) {
       'for propertyName in propertyNames {\n        expo.HostObjectCallbacks.appendPropNameId(&vector, iRuntime, propertyName)\n      }'
     );
 
+    c = c.replace(/expo\.RuntimeScheduler\(\)/g, 'expo.createRuntimeScheduler()');
+    c = c.replace(/expo\.RuntimeScheduler\(scheduler, fn\)/g, 'expo.createRuntimeScheduler(scheduler, fn)');
+
     c = c.replace(/\r\n/g, '\n');
 
     // Add JsiSendablePointer wrapper to eliminate Swift 6 raw pointer data-race errors across closures
