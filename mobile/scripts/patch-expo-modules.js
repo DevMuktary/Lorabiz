@@ -83,15 +83,30 @@ if (fs.existsSync(sourcesDir)) {
   const hfcPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/include/HostFunctionClosure.h');
   if (fs.existsSync(hfcPath)) {
     let c = fs.readFileSync(hfcPath, 'utf8');
-    c = c.replace('explicit HostFunctionClosure(Context context, Closure closure, Deallocator deallocator)', 'explicit HostFunctionClosure(Context context, Closure *closure, Deallocator deallocator)');
+    c = c.replace('explicit HostFunctionClosure(Context context, Closure closure, Deallocator deallocator)', 'explicit HostFunctionClosure(Context context, Closure *_Nonnull closure, Deallocator deallocator)');
+    c = c.replace('explicit HostFunctionClosure(Context context, Closure *closure, Deallocator deallocator)', 'explicit HostFunctionClosure(Context context, Closure *_Nonnull closure, Deallocator deallocator)');
     if (!c.includes('createHostFunctionClosure')) {
       c = c.replace(
         '} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure',
-        `} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure\n\ninline HostFunctionClosure *createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *closure, RetainedSwiftPointer::Deallocator deallocator) {\n  return new HostFunctionClosure(context, closure, deallocator);\n}`
+        `} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure\n\ninline HostFunctionClosure *_Nonnull createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *_Nonnull closure, RetainedSwiftPointer::Deallocator deallocator) {\n  return new HostFunctionClosure(context, closure, deallocator);\n}`
       );
     }
     fs.writeFileSync(hfcPath, c);
     console.log('[patch] Patched HostFunctionClosure.h for Swift 6.1 interop');
+  }
+
+  // 4b. Patch HostObjectCallbacks.h with appendPropNameId (native C++ move into vector)
+  const hocPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/include/HostObjectCallbacks.h');
+  if (fs.existsSync(hocPath)) {
+    let c = fs.readFileSync(hocPath, 'utf8');
+    if (!c.includes('appendPropNameId')) {
+      c = c.replace(
+        'using Deallocator = void(Context);',
+        'using Deallocator = void(Context);\n\n  inline static void appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const char *name) {\n    vector.push_back(facebook::jsi::PropNameID::forUtf8(runtime, std::string(name)));\n  }'
+      );
+      fs.writeFileSync(hocPath, c);
+      console.log('[patch] Patched HostObjectCallbacks.h with appendPropNameId');
+    }
   }
 
   // 5. Patch RuntimeScheduler.h for Swift 6.1 interop
@@ -102,12 +117,18 @@ if (fs.existsSync(sourcesDir)) {
     console.log('[patch] Copied patches/RuntimeScheduler.h into node_modules');
   }
 
-  // 6. Patch JavaScriptRuntime.swift (trailing comma, consuming label, and factory calls)
+  // 6. Patch JavaScriptRuntime.swift (trailing comma, appendPropNameId, and factory calls)
   const rt = path.join(sourcesDir, 'ExpoModulesJSI/Runtime/JavaScriptRuntime.swift');
   if (fs.existsSync(rt)) {
     let c = fs.readFileSync(rt, 'utf8');
     c = c.replace('_ arguments: consuming JavaScriptValuesBuffer,', '_ arguments: consuming JavaScriptValuesBuffer');
-    c = c.replace(/vector\.push_back\((?:consuming:\s*)?propNameId\)/g, 'vector.push_back(consume propNameId)');
+    
+    // Replace the manual push_back loop with native C++ appendPropNameId
+    c = c.replace(
+      /for propertyName in propertyNames \{[\s\S]*?vector\.push_back[\s\S]*?\}/,
+      'for propertyName in propertyNames {\n        expo.HostObjectCallbacks.appendPropNameId(&vector, iRuntime, propertyName)\n      }'
+    );
+
     c = c.replace(/expo\.RuntimeScheduler\(\)/g, 'expo.createRuntimeScheduler()');
     c = c.replace(/expo\.RuntimeScheduler\(scheduler, fn\)/g, 'expo.createRuntimeScheduler(scheduler, fn)');
     c = c.replace(/expo\.HostFunctionClosure\(context, call, deallocate\)/g, 'expo.createHostFunctionClosure(context, call, deallocate)');
