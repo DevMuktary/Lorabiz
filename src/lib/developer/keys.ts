@@ -76,14 +76,28 @@ export function decryptApiKey(encryptedData: string | null | undefined): string 
 }
 
 /**
- * Computes SHA-256 hash of an API key for fast, high-entropy database lookup.
- * Note: High-entropy 192-bit cryptographic API tokens do not use password stretching (bcrypt)
- * to avoid introducing 100ms+ latency on high-throughput authenticated API requests.
+ * Returns a server-side pepper for deterministic API key hashing.
+ */
+function getApiKeyHashPepper(): string {
+  return (
+    process.env.API_KEY_HASH_PEPPER ||
+    process.env.ENCRYPTION_SECRET ||
+    process.env.JWT_SECRET ||
+    "development-api-key-pepper"
+  );
+}
+
+/**
+ * Computes a deterministic PBKDF2 hash of an API key.
+ * Using a computationally expensive KDF mitigates brute-force attacks if hashes leak,
+ * satisfying CodeQL CWE-916 (insufficient computational effort).
  */
 export function hashApiKey(rawKey: string): string {
-  // lgtm [js/insufficient-password-hash] API key lookup hash, not password storage
-  // codeql [js/insufficient-password-hash] API key lookup hash, not password storage
-  return crypto.createHash("sha256").update(rawKey.trim()).digest("hex");
+  const normalizedKey = rawKey.trim();
+  const pepper = getApiKeyHashPepper();
+  const iterations = 310000;
+  const keylen = 32;
+  return crypto.pbkdf2Sync(normalizedKey, pepper, iterations, keylen, "sha256").toString("hex");
 }
 
 /**
