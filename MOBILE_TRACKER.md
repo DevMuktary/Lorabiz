@@ -73,5 +73,6 @@ This document tracks all agreed architectural decisions, feature specifications,
 - [x] 2FA security status & Biometric toggle
 - [x] Legal disclaimer, Terms & Privacy policy links
 - [x] In-app account closure/deactivation (Soft-delete only: sets `isSuspended: true`, locks user out, retains 100% data and transaction history in database)
-- [ ] Compile standalone `.apk` for Android
-- [ ] Compile standalone `.ipa` for Sideloadly on iPhone
+- [x] Configure automated GitHub Actions build workflow (`.github/workflows/build-mobile.yml`)
+- [ ] Run GitHub Action to produce `Lorabiz.ipa` (for Sideloadly on iPhone)
+- [ ] Run GitHub Action to produce `Lorabiz.apk` (for direct Android installation)

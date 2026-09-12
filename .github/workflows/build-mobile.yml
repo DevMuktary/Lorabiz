@@ -1,0 +1,100 @@
+name: Build Mobile Apps (iOS IPA & Android APK)
+
+on:
+  workflow_dispatch: # Allows manual 1-click trigger from GitHub Actions tab
+  push:
+    branches:
+      - Mobile-app
+    paths:
+      - "mobile/**"
+      - ".github/workflows/build-mobile.yml"
+
+jobs:
+  build-ios-ipa:
+    name: Build iOS IPA (Sideloadly Ready)
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./mobile
+        run: npm ci --legacy-peer-deps
+
+      - name: Expo Prebuild (Generate Native iOS Project)
+        working-directory: ./mobile
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Build Xcode Archive (Unsigned)
+        working-directory: ./mobile/ios
+        run: |
+          xcodebuild -workspace Lorabiz.xcworkspace \
+            -scheme Lorabiz \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -archivePath build/Lorabiz.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive
+
+      - name: Package IPA for Sideloadly / AltStore
+        working-directory: ./mobile/ios
+        run: |
+          mkdir -p Payload
+          cp -r build/Lorabiz.xcarchive/Products/Applications/Lorabiz.app Payload/
+          zip -r Lorabiz.ipa Payload/
+
+      - name: Upload iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lorabiz-iOS-Sideloadly-IPA
+          path: mobile/ios/Lorabiz.ipa
+          retention-days: 14
+
+  build-android-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+
+      - name: Install dependencies
+        working-directory: ./mobile
+        run: npm ci --legacy-peer-deps
+
+      - name: Expo Prebuild (Generate Native Android Project)
+        working-directory: ./mobile
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build Android Release APK
+        working-directory: ./mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lorabiz-Android-Direct-APK
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
