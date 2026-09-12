@@ -20,13 +20,6 @@ if (fs.existsSync(jsiFile)) {
   content = content.replace(/path: "Tests",/g, 'path: "Tests"');
   content = content.replace(/path: "Benchmarks",/g, 'path: "Benchmarks"');
 
-  // Remove comma after last argument in .target(...) call before closing parenthesis
-  content = content.replace(/dynamic_lookup"\s*\n\s*\]\)\s*\n\s*\],(\s*\n\s*\),)/g, 'dynamic_lookup"\n        ])\n      ]$1');
-  content = content.replace(/cxxIncludeFlags\)\s*\n\s*\],(\s*\n\s*\),)/g, 'cxxIncludeFlags)\n      ]$1');
-  content = content.replace(/Benchmarks"\s*\n\s*\),(\s*\n\s*\] \+ testFrameworks)/g, 'Benchmarks"\n    )$1');
-  content = content.replace(/DoubleConversion",(\s*\n\s*\])/g, 'DoubleConversion"$1');
-  content = content.replace(/swiftIncludeFlags\),(\s*\n\s*\],)/g, 'swiftIncludeFlags)$1');
-
   // Universal cleanup: Any line ending with comma followed by a line starting with )
   // Example: "      ]," followed by "    ),"
   const lines = content.split('\n');
@@ -45,18 +38,6 @@ if (fs.existsSync(jsiFile)) {
 
   fs.writeFileSync(jsiFile, content, 'utf8');
   console.log('Successfully patched ExpoModulesJSI Package.swift');
-
-  // Verification
-  const checkLines = content.split('\n');
-  let invalidCommas = 0;
-  for (let i = 0; i < checkLines.length - 1; i++) {
-    const next = checkLines[i + 1].trim();
-    if (next.startsWith(')') && checkLines[i].trim().endsWith(',')) {
-      console.log('WARNING: Still trailing comma before ) at line', (i + 1), checkLines[i]);
-      invalidCommas++;
-    }
-  }
-  console.log('Invalid trailing commas remaining before ):', invalidCommas);
 } else {
   console.log('expo-modules-jsi Package.swift not found at', jsiFile);
 }
@@ -71,6 +52,18 @@ if (fs.existsSync(macroFile)) {
   console.log('Successfully patched ExpoModulesMacros Package.swift');
 } else {
   console.log('ExpoModulesMacros Package.swift not found at', macroFile);
+}
+
+// 3. Patch RuntimeScheduler.h (fix SWIFT_RETURNS_RETAINED for Swift 6.0 in Xcode 16)
+const schedulerFile = path.join(__dirname, 'node_modules', 'expo-modules-jsi', 'apple', 'Sources', 'ExpoModulesJSI-Cxx', 'include', 'RuntimeScheduler.h');
+if (fs.existsSync(schedulerFile)) {
+  let content = fs.readFileSync(schedulerFile, 'utf8');
+  content = content.replace(/SWIFT_RETURNS_RETAINED\s+/g, '');
+  content = content.replace('#include <swift/bridging>', '#include <swift/bridging>\n\n#ifndef SWIFT_RETURNS_RETAINED\n#define SWIFT_RETURNS_RETAINED\n#endif');
+  fs.writeFileSync(schedulerFile, content, 'utf8');
+  console.log('Successfully patched RuntimeScheduler.h for Swift 6.0 compatibility');
+} else {
+  console.log('RuntimeScheduler.h not found at', schedulerFile);
 }
 
 console.log('=== Swift patching completed ===');
