@@ -48,15 +48,7 @@ jobs:
 
       - name: Patch Swift Tools Version for Xcode 16 Compatibility
         working-directory: ./mobile
-        run: |
-          echo "=== Patching Expo Swift 6.2 tools version down to Swift 6.0 for Xcode 16 ==="
-          find node_modules -name "Package.swift" -exec sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} +
-          find node_modules -name "Package.swift" -exec sed -i '' 's/602.0.0-latest/600.0.0/g' {} +
-          sed -i '' 's/\.enableUpcomingFeature("NonisolatedNonsendingByDefault"),//g' node_modules/expo-modules-jsi/apple/Package.swift || true
-          sed -i '' 's/\.enableUpcomingFeature("InferIsolatedConformances"),//g' node_modules/expo-modules-jsi/apple/Package.swift || true
-          echo "=== Verification of patched Package.swift files ==="
-          grep -Hn "swift-tools-version" node_modules/expo-modules-jsi/apple/Package.swift || true
-          grep -Hn "swift-tools-version" node_modules/@expo/expo-modules-macros-plugin/apple/Package.swift || true
+        run: node patch-swift.js
 
       - name: Expo Prebuild (Generate Native iOS Project)
         working-directory: ./mobile
