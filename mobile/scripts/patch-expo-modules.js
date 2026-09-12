@@ -26,8 +26,9 @@ if (fs.existsSync(pkgPath)) {
   console.log('[patch] Patched Package.swift to 6.0');
 }
 
-// 2. Patch Swift files for Swift 6.1 strict concurrency & syntax
 const sourcesDir = path.join(__dirname, '../node_modules/expo-modules-jsi/apple/Sources');
+
+// 2. Patch Swift files for Swift 6.1 strict concurrency & syntax
 if (fs.existsSync(sourcesDir)) {
   const files = walk(sourcesDir);
   let count = 0;
@@ -69,12 +70,48 @@ if (fs.existsSync(sourcesDir)) {
   });
   console.log(`[patch] Patched ${count} Swift files for Swift 6.1 Sendable concurrency`);
 
-  // 3. Patch trailing comma in JavaScriptRuntime.swift
+  // 3. Patch Task+immediate.swift for Swift 6.1 (removes OS 26 Task.immediate check)
+  const taskImmediate = path.join(sourcesDir, 'ExpoModulesJSI/Extensions/Task+immediate.swift');
+  if (fs.existsSync(taskImmediate)) {
+    let c = fs.readFileSync(taskImmediate, 'utf8');
+    c = c.replace(/if #available[\s\S]*?else \{[\s\S]*?\n    \}/, 'return Task(priority: priority ?? .high, operation: operation)');
+    fs.writeFileSync(taskImmediate, c);
+    console.log('[patch] Patched Task+immediate.swift for Swift 6.1');
+  }
+
+  // 4. Patch HostFunctionClosure.h for Swift 6.1 interop
+  const hfcPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/include/HostFunctionClosure.h');
+  if (fs.existsSync(hfcPath)) {
+    let c = fs.readFileSync(hfcPath, 'utf8');
+    c = c.replace('explicit HostFunctionClosure(Context context, Closure closure, Deallocator deallocator)', 'explicit HostFunctionClosure(Context context, Closure *closure, Deallocator deallocator)');
+    if (!c.includes('createHostFunctionClosure')) {
+      c = c.replace(
+        '} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure',
+        `} SWIFT_IMMORTAL_REFERENCE; // class HostFunctionClosure\n\ninline HostFunctionClosure *createHostFunctionClosure(RetainedSwiftPointer::Context context, HostFunctionClosure::Closure *closure, RetainedSwiftPointer::Deallocator deallocator) {\n  return new HostFunctionClosure(context, closure, deallocator);\n}`
+      );
+    }
+    fs.writeFileSync(hfcPath, c);
+    console.log('[patch] Patched HostFunctionClosure.h for Swift 6.1 interop');
+  }
+
+  // 5. Patch RuntimeScheduler.h for Swift 6.1 interop
+  const rsPath = path.join(sourcesDir, 'ExpoModulesJSI-Cxx/include/RuntimeScheduler.h');
+  const patchRs = path.join(__dirname, '../patches/RuntimeScheduler.h');
+  if (fs.existsSync(patchRs) && fs.existsSync(rsPath)) {
+    fs.copyFileSync(patchRs, rsPath);
+    console.log('[patch] Copied patches/RuntimeScheduler.h into node_modules');
+  }
+
+  // 6. Patch JavaScriptRuntime.swift (trailing comma, consuming label, and factory calls)
   const rt = path.join(sourcesDir, 'ExpoModulesJSI/Runtime/JavaScriptRuntime.swift');
   if (fs.existsSync(rt)) {
     let c = fs.readFileSync(rt, 'utf8');
     c = c.replace('_ arguments: consuming JavaScriptValuesBuffer,', '_ arguments: consuming JavaScriptValuesBuffer');
+    c = c.replace('vector.push_back(consuming: propNameId)', 'vector.push_back(propNameId)');
+    c = c.replace(/expo\.RuntimeScheduler\(\)/g, 'expo.createRuntimeScheduler()');
+    c = c.replace(/expo\.RuntimeScheduler\(scheduler, fn\)/g, 'expo.createRuntimeScheduler(scheduler, fn)');
+    c = c.replace(/expo\.HostFunctionClosure\(context, call, deallocate\)/g, 'expo.createHostFunctionClosure(context, call, deallocate)');
     fs.writeFileSync(rt, c);
-    console.log('[patch] Patched trailing comma in JavaScriptRuntime.swift');
+    console.log('[patch] Patched JavaScriptRuntime.swift syntax and factory calls');
   }
 }

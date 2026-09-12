@@ -88,6 +88,14 @@ public:
   }
 } SWIFT_SHARED_REFERENCE(retainRuntimeScheduler, releaseRuntimeScheduler);
 
+inline RuntimeScheduler *createRuntimeScheduler() {
+  return new RuntimeScheduler();
+}
+
+inline RuntimeScheduler *createRuntimeScheduler(void *scheduler, RuntimeScheduler::ScheduleFn fn) {
+  return new RuntimeScheduler(scheduler, fn);
+}
+
 } // namespace expo
 
 /** Retains the RuntimeScheduler, called by Swift's ARC. */
