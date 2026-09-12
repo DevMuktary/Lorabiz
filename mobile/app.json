@@ -7,8 +7,10 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android", "web"],
     "splash": {
-      "backgroundColor": "#090D16",
+      "image": "./assets/splash-icon.png",
+      "backgroundColor": "#E11D48",
       "resizeMode": "contain"
     },
     "ios": {
@@ -22,7 +24,7 @@
     "android": {
       "package": "com.lorabiz.app",
       "adaptiveIcon": {
-        "backgroundColor": "#090D16",
+        "backgroundColor": "#E11D48",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "permissions": [

@@ -1,17 +1,51 @@
-export const colors = {
-  // Brand - Exact Lorabiz Signature Pink/Magenta
+// Lorabiz Signature Color Palette
+export const brandColors = {
   primary: "#C82D75", // Iconic Lorabiz Pink
   primaryDark: "#9D1755", // Deep luxury magenta
   primaryLight: "#E54F98", // Vibrant glow pink
-  primarySoft: "rgba(200, 45, 117, 0.12)",
+  primarySoft: "rgba(200, 45, 117, 0.10)",
   accent: "#8B5CF6", // Electric purple / violet accent
+};
 
+export const lightColors = {
+  ...brandColors,
+  // Backgrounds - Crisp, clean, bank-grade light canvas
+  background: "#FFFFFF",
+  surface: "#F8FAFC",
+  surfaceElevated: "#FFFFFF",
+  surfaceBorder: "#E2E8F0",
+  surfaceBorderLight: "rgba(200, 45, 117, 0.15)",
+
+  // Typography
+  text: "#0F172A", // Deep charcoal slate
+  textSecondary: "#475569", // Medium slate
+  textMuted: "#94A3B8", // Subtle gray
+  textInverse: "#FFFFFF",
+
+  // Status & Feedback
+  success: "#10B981",
+  successSurface: "#ECFDF5",
+  warning: "#F59E0B",
+  warningSurface: "#FFFBEB",
+  error: "#EF4444",
+  errorSurface: "#FEF2F2",
+  info: "#0284C7",
+
+  // Service Specific Accents
+  gold: "#D97706",
+  purple: "#7C3AED",
+  cyan: "#0891B2",
+  pink: "#C82D75",
+};
+
+export const darkColors = {
+  ...brandColors,
   // Backgrounds - Ultra-clean dark glassmorphism
-  background: "#070B14", // Deep rich midnight pitch
-  surface: "#0F172A", // Elevated slate surface
-  surfaceElevated: "#182238", // Luxury card container
+  background: "#070B14",
+  surface: "#0F172A",
+  surfaceElevated: "#182238",
   surfaceBorder: "#1E293B",
-  surfaceBorderLight: "rgba(200, 45, 117, 0.25)", // Subtle pink border glow
+  surfaceBorderLight: "rgba(200, 45, 117, 0.25)",
 
   // Typography
   text: "#FFFFFF",
@@ -29,11 +63,14 @@ export const colors = {
   info: "#38BDF8",
 
   // Service Specific Accents
-  gold: "#F59E0B", // Slips & Premium
-  purple: "#8B5CF6", // CAC Services
-  cyan: "#06B6D4", // Utilities & Data
-  pink: "#C82D75", // Lorabiz Core
+  gold: "#F59E0B",
+  purple: "#8B5CF6",
+  cyan: "#06B6D4",
+  pink: "#C82D75",
 };
+
+// Default export uses Light Mode per user specification
+export const colors = lightColors;
 
 export const spacing = {
   xs: 4,

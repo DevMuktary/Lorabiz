@@ -13,7 +13,7 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Lock, Mail, Eye, EyeOff, Fingerprint, ShieldCheck, ArrowRight, X } from "lucide-react-native";
+import { Lock, Mail, Eye, EyeOff, Fingerprint, ShieldCheck, ArrowRight, ArrowLeft, X } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
 import { colors, spacing } from "../../constants/theme";
 
@@ -102,10 +102,19 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Back navigation button to Welcome */}
+        <TouchableOpacity
+          style={styles.navBackButton}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <ArrowLeft size={22} color={colors.text} />
+        </TouchableOpacity>
+
         {/* Brand Header */}
         <View style={styles.header}>
           <Image
-            source={require("../../assets/logo.png")}
+            source={require("../../assets/logo-pink.png")}
             style={styles.logoImage}
             resizeMode="contain"
           />
@@ -263,9 +272,20 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 50,
     paddingBottom: 40,
     justifyContent: "center",
+  },
+  navBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
   },
   header: {
     alignItems: "center",
