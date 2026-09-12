@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { 
   Settings, Save, RefreshCw, AlertTriangle, Fingerprint, Building2, ShieldCheck,
-  Server, Cpu, CheckCircle2, SlidersHorizontal, ArrowRight, Wifi, Gavel
+  Server, Cpu, CheckCircle2, SlidersHorizontal, ArrowRight, Wifi, Gavel, PhoneCall
 } from "lucide-react";
 import MobileDataPlansManager from "@/components/mds/settings/MobileDataPlansManager";
 
@@ -91,6 +91,10 @@ export default function SettingsDashboard() {
   // Visually group the Global Services (strictly retail portal services; API wholesale services belong in /api-services)
   const retailServices = allServices.filter((s) => !s.serviceKey.startsWith("API_"));
 
+  const utilityGroup = retailServices.filter(
+    (s) => s.serviceKey.startsWith("UTILITY") || s.serviceKey.includes("AIRTIME")
+  );
+
   const affidavitGroup = retailServices.filter(
     (s) =>
       s.serviceKey.startsWith("AFFIDAVIT") ||
@@ -103,7 +107,9 @@ export default function SettingsDashboard() {
       !s.serviceKey.startsWith("NIN") &&
       !s.serviceKey.startsWith("BVN") &&
       !s.serviceKey.startsWith("AFFIDAVIT") &&
-      !s.serviceKey.includes("COURT_AFFIDAVIT")
+      !s.serviceKey.includes("COURT_AFFIDAVIT") &&
+      !s.serviceKey.startsWith("UTILITY") &&
+      !s.serviceKey.includes("AIRTIME")
   );
   const bvnGroup = retailServices.filter((s) => s.serviceKey.startsWith("BVN"));
   const complianceGroup = retailServices.filter(
@@ -904,6 +910,24 @@ export default function SettingsDashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {ninModificationGroup.map((service) => (
+                  <ServiceConfigCard key={service.id} service={service} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* TELECOM & AIRTIME VENDING SECTION */}
+          {utilityGroup.length > 0 && (
+            <section>
+              <div className="flex items-center mb-4 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+                <PhoneCall size={20} className="text-emerald-500 mr-2" />
+                <div>
+                  <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Telecom Airtime Vending (Master Kill Switch)</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Instantly enable or disable public airtime vending across Lorabiz and set a custom downtime announcement.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                {utilityGroup.map((service) => (
                   <ServiceConfigCard key={service.id} service={service} />
                 ))}
               </div>

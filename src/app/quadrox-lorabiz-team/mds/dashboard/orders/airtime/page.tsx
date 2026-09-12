@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { 
-  ArrowLeft, Search, RefreshCw, Filter, ChevronLeft, ChevronRight, PhoneCall, CheckCircle, XCircle, RotateCcw
+  ArrowLeft, Search, RefreshCw, Filter, ChevronLeft, ChevronRight, PhoneCall, CheckCircle, XCircle, RotateCcw,
+  AlertTriangle, Power, ShieldAlert
 } from 'lucide-react';
 
 export default function AirtimePipelinePage() {
@@ -12,6 +13,15 @@ export default function AirtimePipelinePage() {
   const [isProcessing, setIsProcessing] = useState<string | null>(null); // Tracks which row is currently refunding
   const [pipeline, setPipeline] = useState<any[]>([]);
   
+  // Airtime Vending Master Kill Switch State
+  const [airtimeStatus, setAirtimeStatus] = useState<{ isActive: boolean; maintenanceMsg: string | null }>({
+    isActive: true,
+    maintenanceMsg: null,
+  });
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [showDowntimeModal, setShowDowntimeModal] = useState(false);
+  const [customDowntimeMsg, setCustomDowntimeMsg] = useState("");
+
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("ALL"); 
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,6 +34,10 @@ export default function AirtimePipelinePage() {
       if (!res.ok) throw new Error("Failed to fetch");
       const result = await res.json();
       setPipeline(result.pipeline || []);
+      if (result.airtimeStatus) {
+        setAirtimeStatus(result.airtimeStatus);
+        setCustomDowntimeMsg(result.airtimeStatus.maintenanceMsg || "");
+      }
     } catch (error) {
       console.error("Pipeline error:", error);
     } finally {
@@ -34,6 +48,34 @@ export default function AirtimePipelinePage() {
   useEffect(() => {
     fetchPipeline();
   }, []);
+
+  const handleToggleAirtimeStatus = async (nextActive: boolean, msg?: string) => {
+    setIsTogglingStatus(true);
+    try {
+      const response = await fetch("/api/mds/pipeline/airtime/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "TOGGLE_STATUS",
+          isActive: nextActive,
+          maintenanceMsg: msg !== undefined ? msg : airtimeStatus.maintenanceMsg,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to update airtime status");
+      }
+      setAirtimeStatus({
+        isActive: data.airtimeStatus.isActive,
+        maintenanceMsg: data.airtimeStatus.maintenanceMsg,
+      });
+      setShowDowntimeModal(false);
+    } catch (error: any) {
+      alert(error.message || "Failed to update airtime status");
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -107,6 +149,124 @@ export default function AirtimePipelinePage() {
           </button>
         </div>
       </div>
+
+      {/* AIRTIME MASTER KILL SWITCH STATUS BANNER */}
+      <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+        airtimeStatus.isActive
+          ? "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40"
+          : "bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/40"
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+              airtimeStatus.isActive
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+            }`}>
+              <Power size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Airtime Vending Gateway</h3>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide ${
+                  airtimeStatus.isActive
+                    ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                    : "bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300"
+                }`}>
+                  {airtimeStatus.isActive ? "● Active & Accepting Orders" : "● Offline / Maintenance (Disabled)"}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                {airtimeStatus.isActive
+                  ? "Public airtime vends are operational across MTN, Airtel, Glo, and 9mobile."
+                  : `Vending is blocked. User Notice: "${airtimeStatus.maintenanceMsg || 'Airtime vending is temporarily disabled for carrier maintenance.'}"`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {airtimeStatus.isActive ? (
+              <button
+                onClick={() => setShowDowntimeModal(true)}
+                disabled={isTogglingStatus}
+                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Power size={14} /> Disable Airtime
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowDowntimeModal(true)}
+                  className="px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700/60 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-colors"
+                >
+                  Edit Downtime Notice
+                </button>
+                <button
+                  onClick={() => handleToggleAirtimeStatus(true)}
+                  disabled={isTogglingStatus}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isTogglingStatus ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                  Re-Enable Airtime
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* DOWNTIME NOTICE MODAL */}
+      {showDowntimeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <AlertTriangle size={18} className="text-amber-500" />
+                {airtimeStatus.isActive ? "Disable Airtime Vending" : "Update Downtime Notice"}
+              </h3>
+              <button
+                onClick={() => setShowDowntimeModal(false)}
+                className="text-zinc-400 hover:text-zinc-200 text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              When disabled, clients attempting to purchase airtime will be prevented from submitting and shown this announcement banner.
+            </p>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Custom Maintenance Notice for Clients
+              </label>
+              <textarea
+                rows={3}
+                value={customDowntimeMsg}
+                onChange={(e) => setCustomDowntimeMsg(e.target.value)}
+                placeholder="e.g. Airtime vending is temporarily disabled due to scheduled upstream telecom maintenance. Please check back shortly."
+                className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                onClick={() => setShowDowntimeModal(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleToggleAirtimeStatus(false, customDowntimeMsg)}
+                disabled={isTogglingStatus}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white transition-colors flex items-center justify-center gap-2"
+              >
+                {isTogglingStatus ? <RefreshCw size={14} className="animate-spin" /> : "Disable Airtime Now"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
         <div className="flex overflow-x-auto border-b border-zinc-200 dark:border-zinc-800 scrollbar-hide">

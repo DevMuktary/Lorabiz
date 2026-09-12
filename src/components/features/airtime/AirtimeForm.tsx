@@ -19,6 +19,7 @@ const QUICK_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 interface AirtimeFormProps {
   onSubmit: (data: { network: string; phone: string; amount: number }) => void;
   disabled: boolean;
+  isMaintenance?: boolean;
   availableAirtimeDiscount?: number;
   useRewardDiscount?: boolean;
   onToggleRewardDiscount?: (use: boolean) => void;
@@ -27,6 +28,7 @@ interface AirtimeFormProps {
 export default function AirtimeForm({ 
   onSubmit, 
   disabled,
+  isMaintenance = false,
   availableAirtimeDiscount = 0,
   useRewardDiscount = true,
   onToggleRewardDiscount,
@@ -266,10 +268,16 @@ export default function AirtimeForm({
       <Button 
         type="submit" 
         disabled={disabled || !network || cleanPhone.length !== 11 || !amount}
-        className="w-full h-12 rounded-xl font-black text-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all"
+        className={`w-full h-12 rounded-xl font-black text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 transition-all ${
+          isMaintenance
+            ? "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20"
+            : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+        }`}
       >
         <Lightning size={18} weight="fill" />
-        {numAmount > 0 && currentDiscount > 0 ? (
+        {isMaintenance ? (
+          <span>Airtime Vending Paused (Maintenance)</span>
+        ) : numAmount > 0 && currentDiscount > 0 ? (
           currentPayable === 0 ? (
             <span>Recharge ₦{numAmount.toLocaleString()} Airtime (₦0.00 Free!)</span>
           ) : (
