@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../context/AuthContext";
 import { colors } from "../constants/theme";
@@ -20,10 +20,11 @@ export default function IndexScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.logoBadge}>
-        <Text style={styles.logoText}>L</Text>
-      </View>
-      <Text style={styles.brandTitle}>LORABIZ</Text>
+      <Image
+        source={require("../assets/logo.png")}
+        style={styles.logoImage}
+        resizeMode="contain"
+      />
       <Text style={styles.brandSubtitle}>Business & Identity Management</Text>
       <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 32 }} />
     </View>

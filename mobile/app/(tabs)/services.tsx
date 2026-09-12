@@ -8,15 +8,9 @@ import {
   Image,
 } from "react-native";
 import {
-  Briefcase,
-  Building2,
-  ShieldAlert,
-  FileCheck,
   Scale,
   ChevronRight,
   Clock,
-  CheckCircle,
-  AlertCircle,
 } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
@@ -27,33 +21,36 @@ const SERVICES_CATALOG = [
     id: "biz_name",
     title: "Business Name Registration",
     category: "CAC",
-    desc: "Sole proprietorships & partnerships with accredited CAC filing.",
-    icon: Building2,
-    color: colors.primary,
+    desc: "Sole proprietorships & partnerships with accredited CAC filing (30 Mins).",
+    logo: require("../../assets/cac.png"),
   },
   {
     id: "llc",
     title: "Company Registration (LLC)",
     category: "CAC",
-    desc: "Private Limited Company with MEMART and share capital.",
-    icon: Briefcase,
-    color: colors.purple,
+    desc: "Private Limited Company with MEMART and share capital (24-72 Hrs).",
+    logo: require("../../assets/cac.png"),
   },
   {
     id: "scuml",
     title: "SCUML Certificate",
     category: "Compliance",
-    desc: "Special Control Unit Against Money Laundering for corporate accounts.",
-    icon: ShieldAlert,
-    color: colors.gold,
+    desc: "Special Control Unit Against Money Laundering for corporate bank accounts.",
+    logo: require("../../assets/scuml.png"),
   },
   {
     id: "tax_id",
     title: "Tax Identification (TIN)",
     category: "Tax Services",
-    desc: "Joint Tax Board (JTB) TIN validation & registration for businesses.",
-    icon: FileCheck,
-    color: colors.success,
+    desc: "Joint Tax Board (JTB) / FIRS TIN processing and corporate validation.",
+    logo: require("../../assets/nrs.png"),
+  },
+  {
+    id: "smedan",
+    title: "SMEDAN Certification",
+    category: "MSME Development",
+    desc: "Official registration with Small & Medium Enterprises Development Agency.",
+    logo: require("../../assets/smedan.png"),
   },
   {
     id: "affidavit",
@@ -61,7 +58,6 @@ const SERVICES_CATALOG = [
     category: "Legal",
     desc: "Loss of document, change of name, age declaration affidavits.",
     icon: Scale,
-    color: "#EC4899",
   },
 ];
 
@@ -92,7 +88,7 @@ export default function ServicesScreen() {
           <Text style={styles.headerTitle}>Corporate & Legal Services</Text>
         </View>
         <Text style={styles.headerSubtitle}>
-          Accredited company registrations, compliance certifications, and filings
+          Accredited company registrations, compliance certifications, and statutory filings
         </Text>
       </View>
 
@@ -107,13 +103,15 @@ export default function ServicesScreen() {
               style={styles.serviceItem}
               activeOpacity={0.8}
             >
-              <View style={[styles.itemIconBox, { backgroundColor: `${item.color}22` }]}>
-                <IconComp size={22} color={item.color} />
+              <View style={styles.itemLogoBox}>
+                {item.logo ? (
+                  <Image source={item.logo} style={styles.agencyLogo} resizeMode="contain" />
+                ) : IconComp ? (
+                  <IconComp size={22} color={colors.primary} />
+                ) : null}
               </View>
               <View style={{ flex: 1, marginLeft: 14 }}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
-                </View>
+                <Text style={styles.itemTitle}>{item.title}</Text>
                 <Text style={styles.itemDesc}>{item.desc}</Text>
               </View>
               <ChevronRight size={18} color={colors.textMuted} />
@@ -197,29 +195,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 54,
-    paddingBottom: 36,
+    paddingHorizontal: 16,
+    paddingTop: 52,
+    paddingBottom: 40,
   },
   header: {
     marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "800",
     color: colors.text,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textSecondary,
     marginTop: 4,
+    lineHeight: 17,
   },
   sectionHeader: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "800",
     color: colors.text,
-    marginBottom: 12,
-    marginTop: 10,
+    marginBottom: 10,
+    marginTop: 6,
   },
   catalogList: {
     gap: 10,
@@ -231,26 +230,38 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 14,
   },
-  itemIconBox: {
+  itemLogoBox: {
     width: 44,
     height: 44,
     borderRadius: 12,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  agencyLogo: {
+    width: 28,
+    height: 28,
   },
   itemTitle: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
     color: colors.text,
   },
   itemDesc: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
-    lineHeight: 16,
+    lineHeight: 15,
   },
   applicationsList: {
     gap: 10,
@@ -269,23 +280,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   appName: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "800",
     color: colors.text,
     flex: 1,
     marginRight: 10,
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 8,
   },
   statusBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "800",
   },
   appId: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textMuted,
     marginTop: 4,
   },
@@ -293,14 +304,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 24,
     alignItems: "center",
     marginBottom: 24,
   },
   emptyCardTitle: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: colors.text,
     marginTop: 10,
   },
@@ -311,15 +322,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   disclaimerBox: {
-    backgroundColor: "#C82D750D",
+    backgroundColor: "rgba(200, 45, 117, 0.08)",
     borderWidth: 1,
-    borderColor: "#C82D7533",
+    borderColor: "rgba(200, 45, 117, 0.25)",
     borderRadius: 14,
     padding: 14,
   },
   disclaimerTitle: {
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
     color: colors.primaryLight,
     marginBottom: 4,
   },

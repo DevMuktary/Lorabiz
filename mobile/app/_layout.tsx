@@ -28,34 +28,14 @@ export default function RootLayout() {
               animation: "slide_from_right",
             }}
           >
+            <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen
-              name="slips"
+              name="wallet/fund"
               options={{
                 headerShown: false,
-                presentation: "card",
-              }}
-            />
-            <Stack.Screen
-              name="wallet"
-              options={{
-                headerShown: false,
-                presentation: "card",
-              }}
-            />
-            <Stack.Screen
-              name="utilities"
-              options={{
-                headerShown: false,
-                presentation: "card",
-              }}
-            />
-            <Stack.Screen
-              name="cac"
-              options={{
-                headerShown: false,
-                presentation: "card",
+                presentation: "modal",
               }}
             />
           </Stack>
