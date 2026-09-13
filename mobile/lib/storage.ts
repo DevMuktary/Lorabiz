@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 const TOKEN_KEY = "lorabiz_mobile_session_token";
 const USER_KEY = "lorabiz_mobile_user";
 const BIOMETRIC_KEY = "lorabiz_biometric_enabled";
+const SAVED_PROFILE_KEY = "lorabiz_saved_profile";
 
 // Web fallback if running on web preview
 const memoryStorage: Record<string, string> = {};
@@ -41,6 +42,34 @@ async function deleteItem(key: string): Promise<void> {
     return;
   }
   await SecureStore.deleteItemAsync(key);
+}
+
+export interface SavedProfile {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName?: string;
+  email: string;
+  maskedEmail: string;
+  image?: string | null;
+}
+
+export async function saveSavedProfile(profile: SavedProfile): Promise<void> {
+  await setItem(SAVED_PROFILE_KEY, JSON.stringify(profile));
+}
+
+export async function getSavedProfile(): Promise<SavedProfile | null> {
+  const data = await getItem(SAVED_PROFILE_KEY);
+  if (!data) return null;
+  try {
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+export async function removeSavedProfile(): Promise<void> {
+  await deleteItem(SAVED_PROFILE_KEY);
 }
 
 export async function saveAuthToken(token: string): Promise<void> {

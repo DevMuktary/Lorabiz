@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../context/AuthContext";
+import { getSavedProfile } from "../lib/storage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -38,14 +39,23 @@ export default function IndexScreen() {
   const animationFinished = useRef(false);
   const hasNavigated = useRef(false);
 
-  const triggerNavigation = () => {
+  const triggerNavigation = async () => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
 
     if (tokenRef.current) {
       router.replace("/(tabs)");
     } else {
-      router.replace("/(auth)/welcome");
+      try {
+        const saved = await getSavedProfile();
+        if (saved) {
+          router.replace("/(auth)/login");
+        } else {
+          router.replace("/(auth)/welcome");
+        }
+      } catch {
+        router.replace("/(auth)/welcome");
+      }
     }
   };
 
