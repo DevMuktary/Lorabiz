@@ -13,21 +13,18 @@ import {
   Animated,
   Easing,
   StatusBar,
-  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
-import Svg, { Path, Circle, Defs, RadialGradient, Stop } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import {
   Lock,
   Mail,
   Eye,
   EyeOff,
   ShieldCheck,
-  X,
 } from "lucide-react-native";
-import { WebView } from "react-native-webview";
 import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../constants/theme";
 import { BASE_URL } from "../../lib/api";
@@ -65,16 +62,6 @@ function ChevronLeftIcon({ size = 20, color = "#0F172A" }: { size?: number; colo
   );
 }
 
-// Right Arrow Icon for Primary Button (Screenshot 3)
-function ArrowRightIcon({ size = 18, color = "#FFFFFF" }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M5 12h14" />
-      <Path d="m12 5 7 7-7 7" />
-    </Svg>
-  );
-}
-
 // Edit Pencil Icon inside Masked Email Pill (Screenshot 1)
 function EditPencilIcon({ size = 14, color = "#475569" }: { size?: number; color?: string }) {
   return (
@@ -86,7 +73,7 @@ function EditPencilIcon({ size = 14, color = "#475569" }: { size?: number; color
 }
 
 // Bottom Biometric / Face ID Scanner Icon matching ALAT (Screenshot 1)
-function BiometricScanIcon({ size = 38, color = "#0F172A" }: { size?: number; color?: string }) {
+function BiometricScanIcon({ size = 42, color = "#0F172A" }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M7 3H5a2 2 0 0 0-2 2v2" />
@@ -100,7 +87,7 @@ function BiometricScanIcon({ size = 38, color = "#0F172A" }: { size?: number; co
   );
 }
 
-// Cinematic Shrunken Brand Loader Overlay ("Loading Tiers")
+// Cinematic Shrunken Brand Loader Overlay ("Loading Tiers") — Only shown on password verification
 function BrandLoader({ message = "Signing in..." }: { message?: string }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -194,9 +181,6 @@ export default function LoginScreen() {
   const [loaderMessage, setLoaderMessage] = useState("Signing in...");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // In-App Google Sign-In WebView Modal State
-  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
-
   // 2FA OTP state
   const [requireOtp, setRequireOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -210,7 +194,7 @@ export default function LoginScreen() {
     }
   }, [savedProfile]);
 
-  // Prompt Face ID / Biometrics on mount if returning user
+  // Prompt Face ID / Biometrics on mount if returning user (Clean native prompt, ZERO custom loader)
   useEffect(() => {
     if (isReturningUser && biometricAvailable && biometricEnabled) {
       handleBiometricUnlock();
@@ -218,18 +202,15 @@ export default function LoginScreen() {
   }, [isReturningUser, biometricAvailable, biometricEnabled]);
 
   async function handleBiometricUnlock() {
-    setLoaderMessage("Authenticating with Face ID...");
-    setIsLoading(true);
     setErrorMsg(null);
     try {
+      // Let iOS handle native Face ID prompt natively without any custom overlay
       const success = await promptBiometricUnlock();
       if (success) {
         router.replace("/(tabs)");
       }
     } catch {
-      // Canceled
-    } finally {
-      setIsLoading(false);
+      // User cancelled
     }
   }
 
@@ -303,7 +284,15 @@ export default function LoginScreen() {
     }
   }
 
-  // Calculate generous safe area top padding so back button is never jammed under status bar clock
+  async function handleGoogleSignIn() {
+    try {
+      await Linking.openURL(`${BASE_URL}/api/auth/signin/google`);
+    } catch {
+      setErrorMsg("Unable to open Google sign-in. Please use email and password.");
+    }
+  }
+
+  // Safe area top padding ensuring back button sits gracefully below Dynamic Island
   const topSafePadding = Math.max(insets.top, 44) + 12;
 
   return (
@@ -317,7 +306,7 @@ export default function LoginScreen() {
       <View style={styles.backgroundAuraTopRight} pointerEvents="none" />
       <View style={styles.backgroundAuraBottomLeft} pointerEvents="none" />
 
-      {/* Brand Loading Overlay ("Loading Tiers") */}
+      {/* Brand Loading Overlay — Only shown during actual API credential verification */}
       {(isLoading || isVerifyingOtp) && <BrandLoader message={loaderMessage} />}
 
       <ScrollView
@@ -331,7 +320,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Navigation Bar with ALAT-style Circular Back Button */}
+        {/* Top Navigation Bar: Clean Circular Back Button */}
         <View style={styles.navBar}>
           <TouchableOpacity
             style={styles.circularBackButton}
@@ -339,19 +328,9 @@ export default function LoginScreen() {
             activeOpacity={0.7}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <ChevronLeftIcon size={20} color="#0F172A" />
+            <ChevronLeftIcon size={22} color="#0F172A" />
           </TouchableOpacity>
-
-          {isReturningUser ? (
-            <View style={styles.topRightBadge}>
-              <View style={styles.topRightInnerDot} />
-            </View>
-          ) : (
-            <View style={styles.securityBadge}>
-              <ShieldCheck size={13} color="#10B981" />
-              <Text style={styles.securityBadgeText}>256-bit Encrypted</Text>
-            </View>
-          )}
+          <View style={{ width: 44 }} />
         </View>
 
         {/* Error Notification Pill */}
@@ -417,7 +396,7 @@ export default function LoginScreen() {
           /* SCREEN STATE B: Returning User Quick Unlock (Screenshot 1 - ALAT Style) */
           /* ---------------------------------------------------- */
           <View style={styles.returningContainer}>
-            {/* User Greeting Row (Avatar on Left, Welcome Back & Name on Right) */}
+            {/* User Greeting Row: Avatar on Left, Welcome Back & Bold Mukhtar on Right */}
             <View style={styles.returningProfileRow}>
               <Image
                 source={
@@ -489,7 +468,7 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Primary Action: Log in */}
+              {/* Primary Action: Log in (NO arrow icon) */}
               <TouchableOpacity
                 style={[styles.primaryButton, (!password || isLoading) && styles.btnDisabled]}
                 onPress={handleLogin}
@@ -508,23 +487,23 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Bottom Biometric Icon Trigger (Screenshot 1) */}
+            {/* Bottom Biometric Icon Trigger (Screenshot 1) — Natively prompts Apple Face ID */}
             <View style={styles.bottomBiometricWrapper}>
               <TouchableOpacity
                 style={styles.biometricIconTapTarget}
                 onPress={handleBiometricUnlock}
                 activeOpacity={0.65}
               >
-                <BiometricScanIcon size={40} color="#0F172A" />
+                <BiometricScanIcon size={44} color="#0F172A" />
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           /* ---------------------------------------------------- */
-          /* SCREEN STATE C: Standard 1-Step Login (Screenshot 3) */
+          /* SCREEN STATE C: Standard 1-Step Login (Moved UP & Enlarged) */
           /* ---------------------------------------------------- */
-          <View style={styles.contentSection}>
-            {/* LoraBiz Centered Brand Header (Exact Capitalization: LoraBiz) */}
+          <View style={styles.standardLoginContainer}>
+            {/* LoraBiz Centered Brand Header — Moved UP, Enlarged, Elevated */}
             <View style={styles.standardBrandHeader}>
               <View style={styles.logoRow}>
                 <Image
@@ -541,153 +520,105 @@ export default function LoginScreen() {
               <Text style={styles.standardSubtitle}>Log in to continue</Text>
             </View>
 
-            {/* Input 1: Email address or phone number */}
-            <View style={[styles.inputCard, emailFocused && styles.inputCardActive]}>
-              <Mail size={18} color={emailFocused ? colors.primary : "#94A3B8"} />
-              <TextInput
-                style={styles.textInputField}
-                placeholder="Email address or phone number"
-                placeholderTextColor="#94A3B8"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
-                returnKeyType="next"
-              />
-            </View>
+            {/* Form Section Sitting Up High */}
+            <View style={styles.formContent}>
+              {/* Input 1: Email address or phone number */}
+              <View style={[styles.inputCard, emailFocused && styles.inputCardActive]}>
+                <Mail size={19} color={emailFocused ? colors.primary : "#94A3B8"} />
+                <TextInput
+                  style={styles.textInputField}
+                  placeholder="Email address or phone number"
+                  placeholderTextColor="#94A3B8"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                  returnKeyType="next"
+                />
+              </View>
 
-            {/* Input 2: Password */}
-            <View style={[styles.inputCard, passwordFocused && styles.inputCardActive]}>
-              <Lock size={18} color={passwordFocused ? colors.primary : "#94A3B8"} />
-              <TextInput
-                style={styles.textInputField}
-                placeholder="Password"
-                placeholderTextColor="#94A3B8"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                onFocus={() => setPasswordFocused(true)}
-                onBlur={() => setPasswordFocused(false)}
-                onSubmitEditing={handleLogin}
-                returnKeyType="go"
-              />
+              {/* Input 2: Password */}
+              <View style={[styles.inputCard, passwordFocused && styles.inputCardActive]}>
+                <Lock size={19} color={passwordFocused ? colors.primary : "#94A3B8"} />
+                <TextInput
+                  style={styles.textInputField}
+                  placeholder="Password"
+                  placeholderTextColor="#94A3B8"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  onSubmitEditing={handleLogin}
+                  returnKeyType="go"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeToggleBtn}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={19} color="#94A3B8" />
+                  ) : (
+                    <Eye size={19} color="#94A3B8" />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Forgot Password Link */}
+              <View style={styles.forgotPasswordRow}>
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(`${BASE_URL}/auth/forgot-password`)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.forgotPasswordPinkText}>Forgot password?</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Primary CTA: Log In (NO arrow icon) */}
               <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeToggleBtn}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={[
+                  styles.primaryButton,
+                  (!email.trim() || !password || isLoading) && styles.btnDisabled,
+                ]}
+                onPress={handleLogin}
+                disabled={!email.trim() || !password || isLoading}
+                activeOpacity={0.88}
               >
-                {showPassword ? (
-                  <EyeOff size={18} color="#94A3B8" />
-                ) : (
-                  <Eye size={18} color="#94A3B8" />
-                )}
+                <Text style={styles.primaryButtonText}>Log In</Text>
               </TouchableOpacity>
-            </View>
 
-            {/* Forgot Password Link */}
-            <View style={styles.forgotPasswordRow}>
+              {/* Divider: "or" */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Prominent "Continue with Google" Button (Native Safari browser, NO screen tinting) */}
               <TouchableOpacity
-                onPress={() => Linking.openURL(`${BASE_URL}/auth/forgot-password`)}
+                style={styles.googleButton}
+                onPress={handleGoogleSignIn}
+                activeOpacity={0.85}
               >
-                <Text style={styles.forgotPasswordPinkText}>Forgot password?</Text>
+                <GoogleIcon size={20} />
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
               </TouchableOpacity>
-            </View>
 
-            {/* Primary CTA: Log In → */}
-            <TouchableOpacity
-              style={[
-                styles.primaryButtonWithArrow,
-                (!email.trim() || !password || isLoading) && styles.btnDisabled,
-              ]}
-              onPress={handleLogin}
-              disabled={!email.trim() || !password || isLoading}
-              activeOpacity={0.88}
-            >
-              <Text style={styles.primaryButtonText}>Log In</Text>
-              <ArrowRightIcon size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            {/* Divider: "or" */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Prominent "Continue with Google" In-App Button */}
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={() => setIsGoogleModalOpen(true)}
-              activeOpacity={0.85}
-            >
-              <GoogleIcon size={20} />
-              <Text style={styles.googleButtonText}>Continue with Google</Text>
-            </TouchableOpacity>
-
-            {/* Footer Sign Up Link */}
-            <View style={styles.footerRow}>
-              <Text style={styles.footerMuted}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-                <Text style={styles.footerLinkPink}>Sign Up →</Text>
-              </TouchableOpacity>
+              {/* Footer Sign Up Link */}
+              <View style={styles.footerRow}>
+                <Text style={styles.footerMuted}>Don't have an account? </Text>
+                <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+                  <Text style={styles.footerLinkPink}>Sign Up</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         )}
       </ScrollView>
-
-      {/* ---------------------------------------------------- */}
-      {/* IN-APP GOOGLE SIGN-IN WEBVIEW MODAL */}
-      {/* ---------------------------------------------------- */}
-      <Modal
-        visible={isGoogleModalOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setIsGoogleModalOpen(false)}
-      >
-        <View style={styles.modalContainer}>
-          {/* Modal Header Bar */}
-          <View style={styles.modalHeader}>
-            <View style={styles.modalHeaderTitleRow}>
-              <ShieldCheck size={16} color="#10B981" />
-              <Text style={styles.modalHeaderTitle}>Google Sign In</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setIsGoogleModalOpen(false)}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <X size={20} color="#0F172A" />
-            </TouchableOpacity>
-          </View>
-
-          {/* In-App Browser WebView */}
-          <WebView
-            source={{ uri: `${BASE_URL}/api/auth/signin/google` }}
-            style={styles.modalWebView}
-            startInLoadingState
-            renderLoading={() => (
-              <View style={styles.modalLoader}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.modalLoaderText}>Connecting to Google...</Text>
-              </View>
-            )}
-            onNavigationStateChange={(navState) => {
-              // Intercept return redirect back to app
-              if (
-                navState.url.includes("/dashboard") ||
-                navState.url.includes("/overview") ||
-                navState.url.includes("callback")
-              ) {
-                setIsGoogleModalOpen(false);
-                router.replace("/(tabs)");
-              }
-            }}
-          />
-        </View>
-      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -700,32 +631,31 @@ const styles = StyleSheet.create({
   },
   backgroundAuraTopRight: {
     position: "absolute",
-    top: -60,
-    right: -60,
+    top: -40,
+    right: -40,
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: "rgba(200, 45, 117, 0.07)",
+    backgroundColor: "rgba(200, 45, 117, 0.06)",
   },
   backgroundAuraBottomLeft: {
     position: "absolute",
-    bottom: -60,
-    left: -60,
+    bottom: -40,
+    left: -40,
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: "rgba(200, 45, 117, 0.05)",
+    backgroundColor: "rgba(200, 45, 117, 0.04)",
   },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    justifyContent: "space-between",
   },
   navBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 8,
   },
   circularBackButton: {
     width: 44,
@@ -742,39 +672,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  topRightBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(200, 45, 117, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  topRightInnerDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: colors.primary,
-  },
-  securityBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ECFDF5",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#A7F3D0",
-  },
-  securityBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#065F46",
-    marginLeft: 4,
-  },
   contentSection: {
     width: "100%",
-    paddingVertical: 10,
+    paddingTop: 8,
   },
   errorPill: {
     backgroundColor: "#FEF2F2",
@@ -783,7 +683,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   errorText: {
     color: "#B91C1C",
@@ -793,27 +693,31 @@ const styles = StyleSheet.create({
   },
 
   // ----------------------------------------------------
-  // Standard 1-Step Login Styles (Screenshot 3)
+  // Standard 1-Step Login Styles (Moved UP & Enlarged)
   // ----------------------------------------------------
+  standardLoginContainer: {
+    width: "100%",
+    paddingTop: 4,
+  },
   standardBrandHeader: {
     alignItems: "center",
-    marginBottom: 28,
+    marginBottom: 26,
   },
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 18,
+    marginBottom: 14,
   },
   standardBrandLogo: {
-    width: 44,
-    height: 44,
+    width: 52,
+    height: 52,
     marginRight: 10,
   },
   brandTitleText: {
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: "900",
-    letterSpacing: -0.6,
+    letterSpacing: -0.7,
   },
   brandTextDark: {
     color: "#0F172A",
@@ -822,16 +726,19 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   standardTitle: {
-    fontSize: 27,
+    fontSize: 28,
     fontWeight: "800",
     color: "#0F172A",
     letterSpacing: -0.5,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   standardSubtitle: {
     fontSize: 15,
     color: "#64748B",
     fontWeight: "500",
+  },
+  formContent: {
+    width: "100%",
   },
   inputCard: {
     flexDirection: "row",
@@ -865,15 +772,15 @@ const styles = StyleSheet.create({
   },
   forgotPasswordRow: {
     alignItems: "flex-end",
-    marginBottom: 20,
+    marginBottom: 18,
     marginTop: -4,
   },
   forgotPasswordPinkText: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
     color: colors.primary,
   },
-  primaryButtonWithArrow: {
+  primaryButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -885,12 +792,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.32,
     shadowRadius: 12,
     elevation: 5,
-    gap: 8,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+  btnDisabled: {
+    opacity: 0.45,
   },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 22,
+    marginVertical: 18,
   },
   dividerLine: {
     flex: 1,
@@ -914,10 +829,10 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
-    marginBottom: 22,
+    marginBottom: 20,
   },
   googleButtonText: {
     fontSize: 15,
@@ -930,7 +845,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 4,
+    paddingBottom: 8,
   },
   footerMuted: {
     fontSize: 14,
@@ -948,7 +864,7 @@ const styles = StyleSheet.create({
   // ----------------------------------------------------
   returningContainer: {
     width: "100%",
-    paddingTop: 12,
+    paddingTop: 8,
   },
   returningProfileRow: {
     flexDirection: "row",
@@ -956,9 +872,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   returningAvatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     borderWidth: 2,
     borderColor: "#E2E8F0",
     backgroundColor: "#F1F5F9",
@@ -974,7 +890,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   returningUserName: {
-    fontSize: 25,
+    fontSize: 26,
     fontWeight: "900",
     color: "#0F172A",
     letterSpacing: -0.5,
@@ -989,7 +905,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    marginBottom: 26,
+    marginBottom: 22,
   },
   maskedEmailText: {
     fontSize: 13,
@@ -1013,7 +929,7 @@ const styles = StyleSheet.create({
   },
   resetPasswordRow: {
     alignItems: "flex-end",
-    marginBottom: 24,
+    marginBottom: 22,
     marginTop: -4,
   },
   resetPasswordText: {
@@ -1021,33 +937,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.primary,
   },
-  primaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.32,
-    shadowRadius: 12,
-    elevation: 5,
-    marginBottom: 16,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: 0.2,
-  },
-  btnDisabled: {
-    opacity: 0.45,
-  },
   bottomBiometricWrapper: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 36,
+    paddingTop: 32,
     paddingBottom: 8,
   },
   biometricIconTapTarget: {
@@ -1056,7 +949,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 24,
     backgroundColor: "#F8FAFC",
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#E2E8F0",
   },
 
@@ -1160,56 +1053,5 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#0F172A",
     letterSpacing: 0.2,
-  },
-
-  // ----------------------------------------------------
-  // In-App Google Sign-In WebView Modal Styles
-  // ----------------------------------------------------
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
-  },
-  modalHeaderTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  modalHeaderTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-  modalCloseButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalWebView: {
-    flex: 1,
-  },
-  modalLoader: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  modalLoaderText: {
-    fontSize: 14,
-    color: "#64748B",
-    marginTop: 12,
-    fontWeight: "600",
   },
 });
