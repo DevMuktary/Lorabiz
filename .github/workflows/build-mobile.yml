@@ -85,20 +85,20 @@ jobs:
       - name: Configure Xcode Project for Sideloadly and Dynamic Symbols
         working-directory: ./mobile/ios
         run: |
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' Lorabiz.xcodeproj/project.pbxproj || true
-          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' Lorabiz.xcodeproj/project.pbxproj || true
-          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' Lorabiz.xcodeproj/project.pbxproj || true
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' *.xcodeproj/project.pbxproj || true
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' *.xcodeproj/project.pbxproj || true
+          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' *.xcodeproj/project.pbxproj || true
 
           # Export dynamic symbols from host app binary so dyld can resolve host-provided C++ / JSI / React symbols
-          sed -i '' 's/STRIP_STYLE = all;/STRIP_STYLE = "non-global";/g' Lorabiz.xcodeproj/project.pbxproj || true
-          sed -i '' 's/DEAD_CODE_STRIPPING = YES;/DEAD_CODE_STRIPPING = NO;/g' Lorabiz.xcodeproj/project.pbxproj || true
+          sed -i '' 's/STRIP_STYLE = all;/STRIP_STYLE = "non-global";/g' *.xcodeproj/project.pbxproj || true
+          sed -i '' 's/DEAD_CODE_STRIPPING = YES;/DEAD_CODE_STRIPPING = NO;/g' *.xcodeproj/project.pbxproj || true
 
           # Inject -Wl,-export_dynamic into Pods xcconfigs
-          if [ -d "Pods/Target Support Files/Pods-Lorabiz" ]; then
-            for xcconfig in Pods/Target\ Support\ Files/Pods-Lorabiz/*.xcconfig; do
+          for xcconfig in Pods/Target\ Support\ Files/Pods*/*.xcconfig; do
+            if [ -f "$xcconfig" ]; then
               echo 'OTHER_LDFLAGS = $(inherited) -Wl,-export_dynamic' >> "$xcconfig"
-            done
-          fi
+            fi
+          done
 
       - name: Build Xcode Release (Unsigned for Sideloadly)
         working-directory: ./mobile/ios
@@ -109,15 +109,19 @@ jobs:
           git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
           git config --global url."https://".insteadOf "git://"
 
+          WORKSPACE=$(ls -d *.xcworkspace 2>/dev/null | head -n 1)
+          SCHEME=$(echo "$WORKSPACE" | sed 's/\.xcworkspace$//')
+          echo "=== Using Workspace: $WORKSPACE | Scheme: $SCHEME ==="
+
           echo "=== Resolving Swift Package Dependencies ==="
-          xcodebuild -workspace Lorabiz.xcworkspace \
-            -scheme Lorabiz \
+          xcodebuild -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -resolvePackageDependencies \
             -scmProvider system || true
 
           echo "=== Compiling Release Build ==="
-          xcodebuild -workspace Lorabiz.xcworkspace \
-            -scheme Lorabiz \
+          xcodebuild -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -configuration Release \
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
