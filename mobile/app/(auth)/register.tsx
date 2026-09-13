@@ -9,14 +9,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { User, Mail, Phone, Lock, Eye, EyeOff, Tag, ArrowLeft } from "lucide-react-native";
 import { api } from "../../lib/api";
 import { colors } from "../../constants/theme";
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -79,7 +82,17 @@ export default function RegisterScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContainer,
+          {
+            paddingTop: Math.max(insets.top, 20) + 10,
+            paddingBottom: Math.max(insets.bottom, 20) + 24,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Back Button */}
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <ArrowLeft size={22} color={colors.text} />
@@ -240,8 +253,6 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   scrollContainer: {
     paddingHorizontal: 24,
-    paddingTop: 50,
-    paddingBottom: 40,
   },
   backBtn: {
     width: 40,

@@ -11,14 +11,17 @@ import {
   ScrollView,
   Image,
   Alert,
+  StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Lock, Mail, Eye, EyeOff, Fingerprint, ShieldCheck, ArrowRight, ArrowLeft, X } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
 import { colors, spacing } from "../../constants/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { login, biometricAvailable, biometricEnabled, promptBiometricUnlock } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -98,8 +101,15 @@ export default function LoginScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <ScrollView
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={[
+          styles.scrollContainer,
+          {
+            paddingTop: Math.max(insets.top, 20) + 10,
+            paddingBottom: Math.max(insets.bottom, 20) + 24,
+          },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         {/* Back navigation button to Welcome */}
@@ -272,8 +282,6 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 50,
-    paddingBottom: 40,
     justifyContent: "center",
   },
   navBackButton: {
