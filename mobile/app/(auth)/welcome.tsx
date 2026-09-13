@@ -25,10 +25,10 @@ export default function WelcomeScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Full-bleed 3D Designed Architectural Scene with Lorabiz Dashboard & Terrazzo Floor */}
+      {/* Full-bleed 3D Designed Architectural Scene strictly locked to screen bounds */}
       <Image
         source={require("../../assets/welcome-hero.jpg")}
-        style={StyleSheet.absoluteFillObject}
+        style={styles.backgroundImage}
         resizeMode="cover"
       />
 
@@ -92,11 +92,25 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    overflow: "hidden",
     backgroundColor: "#FAF8F5",
+    position: "relative",
+  },
+  backgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
   },
   contentOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     justifyContent: "space-between",
     paddingHorizontal: 24,
   },
@@ -178,6 +192,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
 
 
 
