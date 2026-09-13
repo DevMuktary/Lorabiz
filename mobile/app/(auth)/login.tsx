@@ -18,8 +18,6 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import Svg, { Path } from "react-native-svg";
 import {
-  Lock,
-  Mail,
   Eye,
   EyeOff,
   ShieldCheck,
@@ -52,7 +50,7 @@ function GoogleIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-// Sleek Circular Back Chevron Icon matching ALAT (Screenshot 1 & 2)
+// Sleek Circular Back Chevron Icon matching ALAT (Screenshots 1 & 2)
 function ChevronLeftIcon({ size = 20, color = "#0F172A" }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
@@ -61,7 +59,7 @@ function ChevronLeftIcon({ size = 20, color = "#0F172A" }: { size?: number; colo
   );
 }
 
-// Edit Pencil Icon inside Masked Email Pill (Screenshot 1)
+// Edit Pencil Icon inside Masked Email Pill (ALAT Screenshot 1)
 function EditPencilIcon({ size = 14, color = "#475569" }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -71,17 +69,22 @@ function EditPencilIcon({ size = 14, color = "#475569" }: { size?: number; color
   );
 }
 
-// Bottom Biometric / Face ID Scanner Icon matching ALAT (Screenshot 1)
-function BiometricScanIcon({ size = 42, color = "#0F172A" }: { size?: number; color?: string }) {
+// Official Apple Face ID Biometric Glyph matching ALAT
+function AppleFaceIdIcon({ size = 28, color = "#0F172A" }: { size?: number; color?: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M7 3H5a2 2 0 0 0-2 2v2" />
-      <Path d="M17 3h2a2 2 0 0 1 2 2v2" />
-      <Path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-      <Path d="M3 17v2a2 2 0 0 0 2 2h2" />
-      <Path d="M9 10a3 3 0 0 1 6 0v4a3 3 0 0 1-6 0v-4z" />
-      <Path d="M12 7.5v1.5" />
-      <Path d="M12 15v1.5" />
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      {/* 4 Corner Brackets */}
+      <Path d="M6 3H5a2 2 0 0 0-2 2v1" />
+      <Path d="M18 3h1a2 2 0 0 1 2 2v1" />
+      <Path d="M21 18v1a2 2 0 0 1-2 2h-1" />
+      <Path d="M3 18v1a2 2 0 0 0 2 2h1" />
+      {/* Eyes */}
+      <Path d="M9 9h.01" strokeWidth={3} />
+      <Path d="M15 9h.01" strokeWidth={3} />
+      {/* Nose */}
+      <Path d="M12 11v3h-1" />
+      {/* Smile curve */}
+      <Path d="M8.5 16.5c1.2 1 2.3 1.5 3.5 1.5s2.3-.5 3.5-1.5" />
     </Svg>
   );
 }
@@ -99,12 +102,7 @@ export default function LoginScreen() {
     refreshProfile,
   } = useAuth();
 
-  // Pre-warm CSRF token in background native cookie storage
-  useEffect(() => {
-    fetch(`${BASE_URL}/api/auth/csrf`, { credentials: "include" }).catch(() => {});
-  }, []);
-
-  // Mode: returning user quick-unlock (Screenshot 1) vs standard 1-step login (Screenshot 3)
+  // Mode: returning user quick-unlock (Screenshot 1) vs standard 1-step login (Screenshot 2)
   const [isReturningUser, setIsReturningUser] = useState<boolean>(Boolean(savedProfile));
 
   // Form inputs (Both Email and Password together in 1 step)
@@ -131,7 +129,12 @@ export default function LoginScreen() {
     }
   }, [savedProfile]);
 
-  // Prompt Face ID / Biometrics on mount if returning user (Clean native prompt, ZERO custom loader)
+  // Pre-warm CSRF token in background native cookie storage
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/auth/csrf`, { credentials: "include" }).catch(() => {});
+  }, []);
+
+  // Prompt Face ID / Biometrics on mount if returning user
   useEffect(() => {
     if (isReturningUser && biometricAvailable && biometricEnabled) {
       handleBiometricUnlock();
@@ -282,8 +285,8 @@ export default function LoginScreen() {
     }
   }
 
-  // Safe area top padding ensuring back button sits gracefully below Dynamic Island
-  const topSafePadding = Math.max(insets.top, 44) + 8;
+  // Safe area top padding ensuring back button and profile orb sit below status bar
+  const topSafePadding = Math.max(insets.top, 44) + 6;
 
   return (
     <KeyboardAvoidingView
@@ -292,28 +295,41 @@ export default function LoginScreen() {
     >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Subtle Background Corner Glow Waves */}
-      <View style={styles.backgroundAuraTopRight} pointerEvents="none" />
-      <View style={styles.backgroundAuraBottomLeft} pointerEvents="none" />
+      {/* Subtle Angled Background Brand Watermark (Matching ALAT) */}
+      <View style={styles.watermarkContainer} pointerEvents="none">
+        <Image
+          source={require("../../assets/logo-pink.png")}
+          style={styles.watermarkImage}
+          resizeMode="contain"
+        />
+      </View>
 
-      {/* Top Bar with Clean Circular Back Button */}
+      {/* Top Bar: Left Circular Back Button + Right Top Orb (Matching ALAT Screenshots 1 & 2) */}
       <View style={[styles.topBar, { top: topSafePadding }]}>
         <TouchableOpacity
           style={styles.circularBackButton}
           onPress={handleBackToWelcome}
           activeOpacity={0.7}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <ChevronLeftIcon size={22} color="#0F172A" />
+          <ChevronLeftIcon size={20} color="#0F172A" />
         </TouchableOpacity>
+
+        <View style={styles.topRightOrb}>
+          <Image
+            source={require("../../assets/icon.png")}
+            style={styles.topRightOrbImage}
+            resizeMode="cover"
+          />
+        </View>
       </View>
 
+      {/* Scrollable Form Area with Natural Top-to-Bottom Breathing Room */}
       <ScrollView
         contentContainerStyle={[
           styles.scrollContainer,
           {
-            paddingTop: topSafePadding + 54,
-            paddingBottom: Math.max(insets.bottom, 20) + 16,
+            paddingTop: topSafePadding + 62,
+            paddingBottom: Math.max(insets.bottom, 20) + 20,
           },
         ]}
         keyboardShouldPersistTaps="handled"
@@ -323,7 +339,7 @@ export default function LoginScreen() {
         {/* SCREEN STATE A: 2FA OTP Code Verification */}
         {/* ---------------------------------------------------- */}
         {requireOtp ? (
-          <View style={styles.centeredCard}>
+          <View style={styles.contentWrapper}>
             <View style={styles.brandHeader}>
               <View style={styles.iconCircle}>
                 <ShieldCheck size={32} color={colors.primary} />
@@ -334,7 +350,7 @@ export default function LoginScreen() {
               </Text>
             </View>
 
-            <View style={styles.inputCard}>
+            <View style={styles.alatInputCard}>
               <TextInput
                 style={styles.otpInput}
                 placeholder="123456"
@@ -378,11 +394,9 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         ) : isReturningUser && savedProfile ? (
-          /* ---------------------------------------------------- */
-          /* SCREEN STATE B: Returning User Quick Unlock (ALAT Style - Perfectly Centered) */
-          /* ---------------------------------------------------- */
-          <View style={styles.centeredCard}>
-            {/* User Greeting Row: Avatar on Left, Welcome Back & Bold Mukhtar on Right */}
+          /* SCREEN STATE B: Returning User Quick Unlock (ALAT Screenshot 1) */
+          <View style={styles.contentWrapper}>
+            {/* User Greeting Row: Left Avatar Circle, Right "Welcome Back" & bold Mukhtar */}
             <View style={styles.returningProfileRow}>
               <Image
                 source={
@@ -415,15 +429,15 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             {/* Password Section */}
-            <View style={styles.passwordFieldSection}>
+            <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Password</Text>
-              <View style={[styles.inputCard, passwordFocused && styles.inputCardActive]}>
+              <View style={[styles.alatInputCard, passwordFocused && styles.alatInputCardActive]}>
                 <TextInput
-                  style={styles.textInputField}
+                  style={styles.alatTextInput}
                   placeholder="Enter your password"
                   placeholderTextColor="#94A3B8"
                   value={password}
-                  onChangeText={(text) => {
+                  onChangeText={(text: string) => {
                     setPassword(text);
                     if (errorMsg) setErrorMsg(null);
                   }}
@@ -439,9 +453,9 @@ export default function LoginScreen() {
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   {showPassword ? (
-                    <EyeOff size={19} color="#94A3B8" />
+                    <EyeOff size={20} color="#0F172A" />
                   ) : (
-                    <Eye size={19} color="#94A3B8" />
+                    <Eye size={20} color="#0F172A" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -453,7 +467,7 @@ export default function LoginScreen() {
                 </View>
               ) : null}
 
-              {/* Reset Password Link */}
+              {/* Reset Password Link (Right-Aligned) */}
               <View style={styles.resetPasswordRow}>
                 <TouchableOpacity
                   onPress={() => Linking.openURL(`${BASE_URL}/auth/forgot-password`)}
@@ -463,7 +477,7 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Primary Action: Log in (Clean spinner right inside button) */}
+              {/* Primary Action: Log in */}
               <TouchableOpacity
                 style={[styles.primaryButton, (!password || isLoading) && styles.btnDisabled]}
                 onPress={handleLogin}
@@ -486,50 +500,48 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Bottom Biometric Icon Trigger — Natively prompts Apple Face ID */}
-            <View style={styles.bottomBiometricWrapper}>
-              <TouchableOpacity
-                style={styles.biometricIconTapTarget}
-                onPress={handleBiometricUnlock}
-                activeOpacity={0.65}
-              >
-                <BiometricScanIcon size={44} color="#0F172A" />
-              </TouchableOpacity>
-            </View>
+            {/* Circular Face ID Button positioned right in that lower spot */}
+            {biometricAvailable && biometricEnabled ? (
+              <View style={styles.faceIdSection}>
+                <TouchableOpacity
+                  style={styles.faceIdCircleButton}
+                  onPress={handleBiometricUnlock}
+                  activeOpacity={0.75}
+                >
+                  <AppleFaceIdIcon size={30} color="#0F172A" />
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         ) : (
-          /* ---------------------------------------------------- */
-          /* SCREEN STATE C: Standard 1-Step Login (Gracefully Centered) */
-          /* ---------------------------------------------------- */
-          <View style={styles.centeredCard}>
-            {/* LoraBiz Centered Brand Header */}
-            <View style={styles.standardBrandHeader}>
-              <View style={styles.logoRow}>
+          /* SCREEN STATE C: Standard 1-Step Login (ALAT Screenshot 2) */
+          <View style={styles.contentWrapper}>
+            {/* Header: Left Avatar Orb + Right "Glad to have you!" & bold "Log in to your account" */}
+            <View style={styles.standardHeaderRow}>
+              <View style={styles.headerOrbWrapper}>
                 <Image
                   source={require("../../assets/logo-pink.png")}
-                  style={styles.standardBrandLogo}
+                  style={styles.headerOrbImage}
                   resizeMode="contain"
                 />
-                <Text style={styles.brandTitleText}>
-                  <Text style={styles.brandTextDark}>Lora</Text>
-                  <Text style={styles.brandTextPink}>Biz</Text>
-                </Text>
               </View>
-              <Text style={styles.standardTitle}>Welcome back</Text>
-              <Text style={styles.standardSubtitle}>Log in to continue</Text>
+              <View style={styles.standardHeaderTexts}>
+                <Text style={styles.standardGreetingText}>Glad to have you!</Text>
+                <Text style={styles.standardMainTitle}>Log in to your account</Text>
+              </View>
             </View>
 
-            {/* Form Section */}
-            <View style={styles.formContent}>
-              {/* Input 1: Email address or phone number */}
-              <View style={[styles.inputCard, emailFocused && styles.inputCardActive]}>
-                <Mail size={19} color={emailFocused ? colors.primary : "#94A3B8"} />
+            {/* Inputs Section */}
+            <View style={styles.fieldGroup}>
+              {/* Field 1: Email */}
+              <Text style={styles.fieldLabel}>Email</Text>
+              <View style={[styles.alatInputCard, emailFocused && styles.alatInputCardActive]}>
                 <TextInput
-                  style={styles.textInputField}
-                  placeholder="Email address or phone number"
+                  style={styles.alatTextInput}
+                  placeholder="Enter your email"
                   placeholderTextColor="#94A3B8"
                   value={email}
-                  onChangeText={(text) => {
+                  onChangeText={(text: string) => {
                     setEmail(text);
                     if (errorMsg) setErrorMsg(null);
                   }}
@@ -542,15 +554,15 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Input 2: Password */}
-              <View style={[styles.inputCard, passwordFocused && styles.inputCardActive]}>
-                <Lock size={19} color={passwordFocused ? colors.primary : "#94A3B8"} />
+              {/* Field 2: Password */}
+              <Text style={styles.fieldLabel}>Password</Text>
+              <View style={[styles.alatInputCard, passwordFocused && styles.alatInputCardActive]}>
                 <TextInput
-                  style={styles.textInputField}
-                  placeholder="Password"
+                  style={styles.alatTextInput}
+                  placeholder="Enter your password"
                   placeholderTextColor="#94A3B8"
                   value={password}
-                  onChangeText={(text) => {
+                  onChangeText={(text: string) => {
                     setPassword(text);
                     if (errorMsg) setErrorMsg(null);
                   }}
@@ -566,9 +578,9 @@ export default function LoginScreen() {
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   {showPassword ? (
-                    <EyeOff size={19} color="#94A3B8" />
+                    <EyeOff size={20} color="#0F172A" />
                   ) : (
-                    <Eye size={19} color="#94A3B8" />
+                    <Eye size={20} color="#0F172A" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -580,17 +592,17 @@ export default function LoginScreen() {
                 </View>
               ) : null}
 
-              {/* Forgot Password Link */}
-              <View style={styles.forgotPasswordRow}>
+              {/* Reset Password Link (Right-Aligned) */}
+              <View style={styles.resetPasswordRow}>
                 <TouchableOpacity
                   onPress={() => Linking.openURL(`${BASE_URL}/auth/forgot-password`)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.forgotPasswordPinkText}>Forgot password?</Text>
+                  <Text style={styles.resetPasswordText}>Reset password</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Primary CTA: Log In (Spinner inside button when loading) */}
+              {/* Primary Action: Log in */}
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
@@ -603,9 +615,17 @@ export default function LoginScreen() {
                 {isLoading ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Log In</Text>
+                  <Text style={styles.primaryButtonText}>Log in</Text>
                 )}
               </TouchableOpacity>
+
+              {/* Footer: Don't have an account? Sign up */}
+              <View style={styles.footerRow}>
+                <Text style={styles.footerMuted}>Don't have an account? </Text>
+                <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+                  <Text style={styles.footerLinkPink}>Sign up</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Divider: "or" */}
               <View style={styles.dividerRow}>
@@ -618,20 +638,26 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={styles.googleButton}
                 onPress={handleGoogleSignIn}
+                disabled={isLoading}
                 activeOpacity={0.85}
               >
                 <GoogleIcon size={20} />
                 <Text style={styles.googleButtonText}>Continue with Google</Text>
               </TouchableOpacity>
+            </View>
 
-              {/* Footer Sign Up Link */}
-              <View style={styles.footerRow}>
-                <Text style={styles.footerMuted}>Don't have an account? </Text>
-                <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-                  <Text style={styles.footerLinkPink}>Sign Up</Text>
+            {/* Circular Face ID Button positioned in that lower spot */}
+            {biometricAvailable && biometricEnabled ? (
+              <View style={styles.faceIdSection}>
+                <TouchableOpacity
+                  style={styles.faceIdCircleButton}
+                  onPress={handleBiometricUnlock}
+                  activeOpacity={0.75}
+                >
+                  <AppleFaceIdIcon size={30} color="#0F172A" />
                 </TouchableOpacity>
               </View>
-            </View>
+            ) : null}
           </View>
         )}
       </ScrollView>
@@ -645,27 +671,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     position: "relative",
   },
-  backgroundAuraTopRight: {
+  watermarkContainer: {
     position: "absolute",
-    top: -40,
-    right: -40,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "rgba(200, 45, 117, 0.06)",
+    right: -80,
+    top: "30%",
+    width: 360,
+    height: 360,
+    opacity: 0.038,
+    transform: [{ rotate: "-15deg" }],
   },
-  backgroundAuraBottomLeft: {
-    position: "absolute",
-    bottom: -40,
-    left: -40,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: "rgba(200, 45, 117, 0.04)",
+  watermarkImage: {
+    width: "100%",
+    height: "100%",
   },
   topBar: {
     position: "absolute",
-    left: 24,
+    left: 20,
+    right: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     zIndex: 20,
   },
   circularBackButton: {
@@ -683,14 +708,180 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
+  topRightOrb: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(200, 45, 117, 0.18)",
+    backgroundColor: "#F8FAFC",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  topRightOrbImage: {
+    width: "100%",
+    height: "100%",
+  },
   scrollContainer: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    justifyContent: "center", // Gracefully, mathematically centered between top and bottom!
+    paddingHorizontal: 22,
   },
-  centeredCard: {
+  contentWrapper: {
     width: "100%",
+  },
+
+  // ----------------------------------------------------
+  // Returning User Styles (ALAT Screenshot 1)
+  // ----------------------------------------------------
+  returningProfileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  returningAvatarImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 2,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#DCEBFB",
+    marginRight: 16,
+  },
+  returningNameColumn: {
     justifyContent: "center",
+  },
+  returningWelcomeText: {
+    fontSize: 16,
+    color: "#475569",
+    fontWeight: "400",
+    marginBottom: 2,
+  },
+  returningUserName: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: "#0F172A",
+    letterSpacing: -0.4,
+  },
+  maskedEmailPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    marginBottom: 24,
+  },
+  maskedEmailText: {
+    fontSize: 14,
+    color: "#0F172A",
+    fontWeight: "600",
+  },
+  pillDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: "#CBD5E1",
+    marginHorizontal: 10,
+  },
+
+  // ----------------------------------------------------
+  // Standard 1-Step Login Header (ALAT Screenshot 2)
+  // ----------------------------------------------------
+  standardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 26,
+  },
+  headerOrbWrapper: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "rgba(200, 45, 117, 0.08)",
+    borderWidth: 1.5,
+    borderColor: "rgba(200, 45, 117, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  headerOrbImage: {
+    width: 42,
+    height: 42,
+  },
+  standardHeaderTexts: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  standardGreetingText: {
+    fontSize: 16,
+    color: "#475569",
+    fontWeight: "400",
+    marginBottom: 2,
+  },
+  standardMainTitle: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#0F172A",
+    letterSpacing: -0.4,
+  },
+
+  // ----------------------------------------------------
+  // Common Form Fields & ALAT Input Styling
+  // ----------------------------------------------------
+  fieldGroup: {
+    width: "100%",
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 8,
+    marginTop: 2,
+  },
+  alatInputCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F4F5F7",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 54,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+  },
+  alatInputCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: "#FFFFFF",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  alatTextInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#0F172A",
+    fontWeight: "500",
+    height: "100%",
+  },
+  eyeToggleBtn: {
+    padding: 6,
+  },
+  resetPasswordRow: {
+    alignItems: "flex-end",
+    marginBottom: 20,
+    marginTop: -4,
+  },
+  resetPasswordText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
   },
   errorInline: {
     backgroundColor: "#FEF2F2",
@@ -708,103 +899,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
-
-  // ----------------------------------------------------
-  // Standard 1-Step Login Styles
-  // ----------------------------------------------------
-  standardBrandHeader: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  standardBrandLogo: {
-    width: 48,
-    height: 48,
-    marginRight: 10,
-  },
-  brandTitleText: {
-    fontSize: 32,
-    fontWeight: "900",
-    letterSpacing: -0.6,
-  },
-  brandTextDark: {
-    color: "#0F172A",
-  },
-  brandTextPink: {
-    color: colors.primary,
-  },
-  standardTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#0F172A",
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  standardSubtitle: {
-    fontSize: 15,
-    color: "#64748B",
-    fontWeight: "500",
-  },
-  formContent: {
-    width: "100%",
-  },
-  inputCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    marginBottom: 14,
-  },
-  inputCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: "#FFFFFF",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  textInputField: {
-    flex: 1,
-    fontSize: 15,
-    color: "#0F172A",
-    paddingVertical: 16,
-    paddingHorizontal: 10,
-    fontWeight: "500",
-  },
-  eyeToggleBtn: {
-    padding: 6,
-  },
-  forgotPasswordRow: {
-    alignItems: "flex-end",
-    marginBottom: 18,
-    marginTop: -4,
-  },
-  forgotPasswordPinkText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.primary,
-  },
   primaryButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 14,
+    height: 54,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.32,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 4,
   },
   primaryButtonText: {
     fontSize: 16,
@@ -815,10 +921,26 @@ const styles = StyleSheet.create({
   btnDisabled: {
     opacity: 0.45,
   },
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 16,
+  },
+  footerMuted: {
+    fontSize: 14,
+    color: "#64748B",
+    fontWeight: "500",
+  },
+  footerLinkPink: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.primary,
+  },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 16,
+    marginVertical: 18,
   },
   dividerLine: {
     flex: 1,
@@ -836,16 +958,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    paddingVertical: 15,
+    borderRadius: 14,
+    height: 52,
     borderWidth: 1.5,
     borderColor: "#E2E8F0",
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 18,
+    shadowRadius: 6,
+    elevation: 1,
   },
   googleButtonText: {
     fontSize: 15,
@@ -854,112 +975,30 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     letterSpacing: 0.1,
   },
-  footerRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 4,
-    paddingBottom: 4,
-  },
-  footerMuted: {
-    fontSize: 14,
-    color: "#64748B",
-    fontWeight: "500",
-  },
-  footerLinkPink: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: colors.primary,
-  },
 
   // ----------------------------------------------------
-  // Returning User Styles (ALAT Style)
+  // Face ID Button (Sitting right where ALAT had the notepad)
   // ----------------------------------------------------
-  returningProfileRow: {
-    flexDirection: "row",
+  faceIdSection: {
     alignItems: "center",
-    marginBottom: 18,
-  },
-  returningAvatarImage: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 2,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#F1F5F9",
-    marginRight: 16,
-  },
-  returningNameColumn: {
     justifyContent: "center",
-  },
-  returningWelcomeText: {
-    fontSize: 15,
-    color: "#475569",
-    fontWeight: "500",
-    marginBottom: 2,
-  },
-  returningUserName: {
-    fontSize: 26,
-    fontWeight: "900",
-    color: "#0F172A",
-    letterSpacing: -0.5,
-  },
-  maskedEmailPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginBottom: 20,
-  },
-  maskedEmailText: {
-    fontSize: 13,
-    color: "#0F172A",
-    fontWeight: "600",
-  },
-  pillDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: "#CBD5E1",
-    marginHorizontal: 8,
-  },
-  passwordFieldSection: {
-    width: "100%",
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0F172A",
+    marginTop: 28,
     marginBottom: 8,
   },
-  resetPasswordRow: {
-    alignItems: "flex-end",
-    marginBottom: 20,
-    marginTop: -4,
-  },
-  resetPasswordText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  bottomBiometricWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 26,
-    paddingBottom: 4,
-  },
-  biometricIconTapTarget: {
-    padding: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 24,
+  faceIdCircleButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.5,
     borderColor: "#E2E8F0",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   // ----------------------------------------------------
