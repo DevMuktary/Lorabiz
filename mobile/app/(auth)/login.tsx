@@ -96,7 +96,13 @@ export default function LoginScreen() {
     biometricAvailable,
     biometricEnabled,
     promptBiometricUnlock,
+    refreshProfile,
   } = useAuth();
+
+  // Pre-warm CSRF token in background native cookie storage
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/auth/csrf`, { credentials: "include" }).catch(() => {});
+  }, []);
 
   // Mode: returning user quick-unlock (Screenshot 1) vs standard 1-step login (Screenshot 3)
   const [isReturningUser, setIsReturningUser] = useState<boolean>(Boolean(savedProfile));
@@ -214,12 +220,65 @@ export default function LoginScreen() {
   }
 
   async function handleGoogleSignIn() {
+    setIsLoading(true);
+    setErrorMsg(null);
     try {
-      // Open in-app browser sheet (SFSafariViewController on iOS)
-      await WebBrowser.openBrowserAsync(`${BASE_URL}/api/auth/signin/google`);
-    } catch {
-      // Fallback
-      Linking.openURL(`${BASE_URL}/api/auth/signin/google`);
+      // 1. Fetch CSRF token with credentials: "include"
+      const csrfRes = await fetch(`${BASE_URL}/api/auth/csrf`, {
+        credentials: "include",
+      });
+      const csrfData = await csrfRes.json();
+      const rawCookie = csrfRes.headers.get("set-cookie");
+      const cleanCookie = rawCookie
+        ? rawCookie
+            .split(/,(?=[^;]+;)/g)
+            .map((c) => c.split(";")[0].trim())
+            .filter(Boolean)
+            .join("; ")
+        : "";
+
+      // 2. Request Google OAuth authorization URL from NextAuth via POST
+      const signinRes = await fetch(`${BASE_URL}/api/auth/signin/google`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          ...(cleanCookie ? { Cookie: cleanCookie } : {}),
+        },
+        body: new URLSearchParams({
+          csrfToken: csrfData?.csrfToken || "",
+          callbackUrl: `${BASE_URL}/dashboard`,
+          json: "true",
+        }),
+      });
+
+      const signinData = await signinRes.json();
+
+      if (signinData?.url) {
+        // 3. Open directly to Google's Account Chooser screen (accounts.google.com)
+        await WebBrowser.openBrowserAsync(signinData.url);
+
+        // 4. When browser is dismissed / completed, refresh user profile & session
+        try {
+          const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
+            credentials: "include",
+          });
+          const sessionData = await sessionRes.json();
+          if (sessionData?.user) {
+            await refreshProfile();
+            router.replace("/(tabs)");
+          }
+        } catch {
+          // In-app browser session sync fallback
+        }
+      } else {
+        setErrorMsg("Unable to initialize Google sign-in. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("Google sign-in error:", err);
+      setErrorMsg("Google sign-in could not be opened. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   }
 

@@ -69,6 +69,15 @@ function maskEmail(email: string): string {
   return `${maskedName}@${parts[1]}`;
 }
 
+function extractCleanCookies(rawCookieHeader: string | null): string {
+  if (!rawCookieHeader) return "";
+  return rawCookieHeader
+    .split(/,(?=[^;]+;)/g)
+    .map((chunk) => chunk.split(";")[0].trim())
+    .filter(Boolean)
+    .join("; ");
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -96,7 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSavedProfile(profile);
       }
 
-      // 3. Load stored token and user
+      // 3. Pre-warm CSRF cookie in background native cookie storage
+      fetch(`${BASE_URL}/api/auth/csrf`, { credentials: "include" }).catch(() => {});
+
+      // 4. Load stored token and user
       const storedToken = await getAuthToken();
       const storedUser = await getAuthUser();
 
@@ -106,7 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Quiet background session validation
         fetch(`${BASE_URL}/api/auth/session`, {
+          credentials: "include",
           headers: {
+            Authorization: `Bearer ${storedToken}`,
             Cookie: `next-auth.session-token=${storedToken}; __Secure-next-auth.session-token=${storedToken}`,
           },
         })
@@ -140,65 +154,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<LoginResult> {
     const trimmedEmail = email.trim().toLowerCase();
 
-    // Strategy 1: Universal NextAuth Credentials Flow (Live Production Server)
-    try {
-      const csrfRes = await fetch(`${BASE_URL}/api/auth/csrf`);
-      const csrfData = await csrfRes.json();
-      const csrfCookie = csrfRes.headers.get("set-cookie") || "";
-
-      const postRes = await fetch(`${BASE_URL}/api/auth/callback/credentials`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json",
-          ...(csrfCookie ? { Cookie: csrfCookie } : {}),
-        },
-        body: new URLSearchParams({
-          csrfToken: csrfData.csrfToken || "",
-          email: trimmedEmail,
-          password,
-          ...(otpCode ? { otpCode: otpCode.trim() } : {}),
-          json: "true",
-        }),
-      });
-
-      const setCookies = postRes.headers.get("set-cookie") || "";
-      const text = await postRes.text();
-      let data: any;
+    async function executeNextAuthLogin(attempt = 1): Promise<LoginResult> {
       try {
-        data = JSON.parse(text);
-      } catch {
-        data = { url: text };
-      }
-
-      // Handle Authentication Error Redirect
-      if (data?.url && data.url.includes("error=")) {
-        try {
-          const urlObj = new URL(data.url);
-          const rawErr = urlObj.searchParams.get("error") || "Invalid email or password.";
-          return { success: false, message: decodeURIComponent(rawErr) };
-        } catch {
-          return { success: false, message: "Invalid email or password." };
+        // Fetch CSRF token and prime native cookie jar
+        const csrfRes = await fetch(`${BASE_URL}/api/auth/csrf`, {
+          credentials: "include",
+        });
+        const csrfData = await csrfRes.json();
+        const rawSetCookie = csrfRes.headers.get("set-cookie");
+        let cleanCookie = extractCleanCookies(rawSetCookie);
+        const hostCsrf = cleanCookie.match(/__Host-next-auth\.csrf-token=([^;]+)/)?.[1];
+        if (hostCsrf && !cleanCookie.includes("next-auth.csrf-token=")) {
+          cleanCookie += `; next-auth.csrf-token=${hostCsrf}`;
         }
-      }
 
-      // Handle 2FA Challenge Redirect
-      if (data?.url && (data.url.includes("verify-2fa") || data.url.includes("otp"))) {
-        return {
-          success: false,
-          requireOtp: true,
-          message: "Please enter the 6-digit verification code to complete sign in.",
-        };
-      }
+        const postRes = await fetch(`${BASE_URL}/api/auth/callback/credentials`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+            ...(cleanCookie ? { Cookie: cleanCookie } : {}),
+          },
+          body: new URLSearchParams({
+            csrfToken: csrfData.csrfToken || "",
+            email: trimmedEmail,
+            password,
+            ...(otpCode ? { otpCode: otpCode.trim() } : {}),
+            json: "true",
+          }),
+        });
 
-      // Extract Session Token from Set-Cookie header
-      const tokenMatch = setCookies.match(/(?:__Secure-)?next-auth\.session-token=([^;]+)/);
-      const sessionToken = tokenMatch ? tokenMatch[1] : "";
+        const setCookies = postRes.headers.get("set-cookie") || "";
+        const text = await postRes.text();
+        let data: any;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { url: text };
+        }
 
-      if (sessionToken || postRes.ok) {
-        const activeToken = sessionToken || `session_${Date.now()}`;
+        // Check if CSRF token failed and needs a 1-time retry
+        if (data?.url && data.url.includes("csrf=true")) {
+          if (attempt === 1) {
+            // Wait 150ms for native cookie jar to settle and retry cleanly
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            return await executeNextAuthLogin(2);
+          }
+          return {
+            success: false,
+            message: "Authentication verification failed. Please try again.",
+          };
+        }
 
-        // Retrieve full authenticated user profile
+        // Handle Authentication Error Redirect (e.g. Invalid password)
+        if (data?.url && data.url.includes("error=")) {
+          try {
+            const urlObj = new URL(data.url);
+            const rawErr = urlObj.searchParams.get("error") || "Invalid email or password.";
+            return { success: false, message: decodeURIComponent(rawErr) };
+          } catch {
+            return { success: false, message: "Invalid email or password." };
+          }
+        }
+
+        // Handle 2FA Challenge Redirect
+        if (data?.url && (data.url.includes("verify-2fa") || data.url.includes("otp"))) {
+          return {
+            success: false,
+            requireOtp: true,
+            message: "Please enter the 6-digit verification code to complete sign in.",
+          };
+        }
+
+        // Extract Session Token from Set-Cookie header
+        const tokenMatch = setCookies.match(/(?:__Secure-)?next-auth\.session-token=([^;]+)/);
+        let sessionToken = tokenMatch ? tokenMatch[1] : "";
+
+        // Also query session endpoint to verify and fetch profile
         let userProfile: UserProfile = {
           id: `user_${Date.now()}`,
           email: trimmedEmail,
@@ -208,10 +241,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         try {
+          const sessionHeaders: Record<string, string> = {};
+          if (sessionToken) {
+            sessionHeaders["Cookie"] = `next-auth.session-token=${sessionToken}; __Secure-next-auth.session-token=${sessionToken}`;
+          }
           const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
-            headers: {
-              Cookie: `next-auth.session-token=${activeToken}; __Secure-next-auth.session-token=${activeToken}`,
-            },
+            credentials: "include",
+            headers: sessionHeaders,
           });
           const sessionData = await sessionRes.json();
           if (sessionData?.user) {
@@ -223,11 +259,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               role: sessionData.user.role || "USER",
               image: sessionData.user.image || null,
             };
+            if (!sessionToken && sessionData.user.id) {
+              sessionToken = `session_${sessionData.user.id}`;
+            }
           }
         } catch {
           // Keep base profile
         }
 
+        // If neither session token nor profile was obtained, authentication did not succeed
+        if (!sessionToken && (!data?.url || data.url.includes("signin"))) {
+          if (attempt === 1) {
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            return await executeNextAuthLogin(2);
+          }
+          return { success: false, message: "Invalid email or password." };
+        }
+
+        const activeToken = sessionToken || `session_${Date.now()}`;
         await saveAuthToken(activeToken);
         await saveAuthUser(userProfile);
         setToken(activeToken);
@@ -246,64 +295,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSavedProfile(profileToSave);
 
         return { success: true };
-      }
-    } catch (nextAuthErr) {
-      console.warn("NextAuth callback failed, trying mobile endpoint fallback:", nextAuthErr);
-    }
-
-    // Strategy 2: Mobile Dedicated API Route Fallback (When deployed)
-    try {
-      const res = await api.post(
-        "/api/auth/mobile/login",
-        {
-          email: trimmedEmail,
-          password,
-          otpCode,
-          isBackupCode,
-        },
-        { requiresAuth: false }
-      );
-
-      if (res?.requireOtp) {
+      } catch (err: any) {
+        console.error("Login attempt error:", err);
+        if (attempt === 1) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          return await executeNextAuthLogin(2);
+        }
         return {
           success: false,
-          requireOtp: true,
-          twoFactorMethod: res.twoFactorMethod,
-          message: res.message,
+          message: err?.message || "Connection error. Please check your internet connection.",
         };
       }
-
-      if (res?.success && res.token && res.user) {
-        await saveAuthToken(res.token);
-        await saveAuthUser(res.user);
-        setToken(res.token);
-        setUser(res.user);
-
-        const profileToSave: SavedProfile = {
-          id: res.user.id,
-          name: res.user.name,
-          firstName: res.user.firstName || res.user.name.split(" ")[0] || "User",
-          lastName: res.user.lastName,
-          email: res.user.email,
-          maskedEmail: maskEmail(res.user.email),
-          image: res.user.image,
-        };
-        await saveSavedProfile(profileToSave);
-        setSavedProfile(profileToSave);
-
-        return { success: true };
-      }
-
-      return {
-        success: false,
-        message: res?.message || "Invalid credentials.",
-      };
-    } catch (err: any) {
-      return {
-        success: false,
-        message: err?.message || "Invalid email or password. Please verify your credentials.",
-      };
     }
+
+    return await executeNextAuthLogin(1);
   }
 
   async function logout() {
@@ -328,10 +333,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function refreshProfile() {
     try {
-      const res = await api.get("/api/auth/mobile/session");
-      if (res?.success && res.user) {
-        setUser(res.user);
-        await saveAuthUser(res.user);
+      const activeToken = token || (await getAuthToken());
+      const headers: Record<string, string> = {};
+      if (activeToken) {
+        headers["Authorization"] = `Bearer ${activeToken}`;
+        headers["Cookie"] = `next-auth.session-token=${activeToken}; __Secure-next-auth.session-token=${activeToken}`;
+      }
+
+      const res = await fetch(`${BASE_URL}/api/auth/session`, {
+        credentials: "include",
+        headers,
+      });
+      const data = await res.json();
+      if (data?.user) {
+        const updatedUser: UserProfile = {
+          id: data.user.id || user?.id || `user_${Date.now()}`,
+          email: data.user.email || user?.email || "",
+          name: data.user.name || user?.name || "",
+          firstName: data.user.name?.split(" ")[0] || user?.firstName || "User",
+          role: data.user.role || user?.role || "USER",
+          image: data.user.image || user?.image || null,
+        };
+        setUser(updatedUser);
+        await saveAuthUser(updatedUser);
       }
     } catch (err) {
       console.error("Failed to refresh profile:", err);
