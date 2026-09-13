@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Lorabiz",
+    "name": "LoraBiz",
     "slug": "lorabiz",
     "scheme": "lorabiz",
     "version": "1.0.0",
@@ -17,8 +17,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.lorabiz.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "Lorabiz requires camera access to capture registration documents and passport photographs.",
-        "NSFaceIDUsageDescription": "Lorabiz uses Face ID for fast and secure authentication into your wallet and account."
+        "NSCameraUsageDescription": "LoraBiz requires camera access to capture registration documents and passport photographs.",
+        "NSFaceIDUsageDescription": "LoraBiz uses Face ID for fast and secure authentication into your wallet and account."
       }
     },
     "android": {
@@ -43,13 +43,13 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Lorabiz to use Face ID for fast and secure authentication."
+          "faceIDPermission": "Allow LoraBiz to use Face ID for fast and secure authentication."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Lorabiz needs access to your gallery to upload document slips and certificates."
+          "photosPermission": "LoraBiz needs access to your gallery to upload document slips and certificates."
         }
       ]
     ]
