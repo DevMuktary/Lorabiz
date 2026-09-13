@@ -38,8 +38,8 @@ The splash reveal and onboarding experience have been refined to eliminate all f
 
 | Item | Details |
 | :--- | :--- |
-| **Workflow Run** | [Build Mobile Apps (iOS IPA) #34730761367](https://github.com/DevMuktary/Lorabiz/actions/runs/34730761367) |
-| **Commit** | [`38200c4b`](https://github.com/DevMuktary/Lorabiz/commit/38200c4b) — *feat(mobile): eliminate splash freeze and white flash with continuous 3.6s circle expansion and seamless welcome dissolve* |
+| **Workflow Run** | [Build Mobile Apps (iOS IPA) #34731487971](https://github.com/DevMuktary/Lorabiz/actions/runs/34731487971) |
+| **Commit** | [`f7621860`](https://github.com/DevMuktary/Lorabiz/commit/f7621860) — *fix(mobile): isolate splash screen, restore centered circle and logo with continuous 3.4s reveal and fade transition* |
 | **Build Status** | **Completed & Succeeded** (All steps green) |
-| **Artifact** | **`Lorabiz-iOS-Sideloadly-IPA`** (ID: `10309960099`, Size: ~12.1 MB) |
-| **Download Page** | [GitHub Actions Run #34730761367 Artifacts](https://github.com/DevMuktary/Lorabiz/actions/runs/34730761367) |
+| **Artifact** | **`Lorabiz-iOS-Sideloadly-IPA`** (ID: `10309451988`, Size: ~12.1 MB) |
+| **Download Page** | [GitHub Actions Run #34731487971 Artifacts](https://github.com/DevMuktary/Lorabiz/actions/runs/34731487971) |
