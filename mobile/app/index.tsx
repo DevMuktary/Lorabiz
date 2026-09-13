@@ -51,12 +51,17 @@ export default function IndexScreen() {
   };
 
   useEffect(() => {
-    // Single continuous, fluid zoom reveal (no stops, no pauses)
-    // Starts small in center ("slow to open a little bit") and smoothly accelerates outward at a gentle, luxurious pace
+    // 1. Initial smooth entrance of the white circle and logo (0 to 450ms)
     Animated.parallel([
       Animated.timing(circleOpacity, {
         toValue: 1,
-        duration: 350,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(circleScale, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(logoOpacity, {
@@ -64,39 +69,47 @@ export default function IndexScreen() {
         duration: 450,
         useNativeDriver: true,
       }),
-      Animated.timing(circleScale, {
-        toValue: 22, // Sweeps well beyond any screen diagonal (340 * 22 = 7,480px)
-        duration: 3400, // Gently slowed down as requested by the user
-        easing: Easing.bezier(0.3, 0.05, 0.25, 1),
+      Animated.timing(logoScale, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-      Animated.sequence([
-        // Logo stays clearly visible while circle opens
-        Animated.timing(logoScale, {
-          toValue: 1.15,
-          duration: 2500,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        // Gently dissolves into pure white canvas as circle envelops screen
-        Animated.timing(logoOpacity, {
-          toValue: 0,
-          duration: 700,
-          easing: Easing.ease,
-          useNativeDriver: true,
-        }),
-      ]),
     ]).start(() => {
-      animationFinished.current = true;
-      if (!isLoadingRef.current) {
-        triggerNavigation();
-      }
+      // 2. Brand Presentation: The circle and logo STAY on screen clearly for ~1800ms with subtle micro-breathing (no rushing)
+      Animated.timing(logoScale, {
+        toValue: 1.06,
+        duration: 1800,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }).start(() => {
+        // 3. Circular Zoom Reveal: White circle expands outward gracefully over 1100ms to envelop the entire screen
+        Animated.parallel([
+          Animated.timing(circleScale, {
+            toValue: 24, // 340 * 24 = 8,160px, fully envelops screen
+            duration: 1100,
+            easing: Easing.bezier(0.35, 0, 0.15, 1),
+            useNativeDriver: true,
+          }),
+          Animated.timing(logoOpacity, {
+            toValue: 0,
+            duration: 500,
+            easing: Easing.ease,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          animationFinished.current = true;
+          if (!isLoadingRef.current) {
+            triggerNavigation();
+          }
+        });
+      });
     });
 
     // Failsafe timer: Ensure app never hangs on splash under any circumstance
     const failsafeTimeout = setTimeout(() => {
       triggerNavigation();
-    }, 4200);
+    }, 4500);
 
     return () => {
       clearTimeout(failsafeTimeout);
