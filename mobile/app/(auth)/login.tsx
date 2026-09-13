@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,13 +10,12 @@ import {
   Platform,
   ScrollView,
   Image,
-  Animated,
-  Easing,
   StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import Svg, { Path } from "react-native-svg";
 import {
   Lock,
@@ -87,73 +86,6 @@ function BiometricScanIcon({ size = 42, color = "#0F172A" }: { size?: number; co
   );
 }
 
-// Cinematic Shrunken Brand Loader Overlay ("Loading Tiers") — Only shown on password verification
-function BrandLoader({ message = "Signing in..." }: { message?: string }) {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const spinAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.12,
-          duration: 650,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 650,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.timing(spinAnim, {
-        toValue: 1,
-        duration: 1100,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, []);
-
-  const spin = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-
-  return (
-    <View style={styles.loaderBackdrop}>
-      <View style={styles.loaderCard}>
-        <View style={styles.loaderRingWrapper}>
-          <Animated.View
-            style={[
-              styles.loaderSpinnerRing,
-              {
-                transform: [{ rotate: spin }],
-              },
-            ]}
-          />
-          <Animated.Image
-            source={require("../../assets/logo-pink.png")}
-            style={[
-              styles.loaderLogo,
-              {
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
-            resizeMode="contain"
-          />
-        </View>
-        <Text style={styles.loaderText}>{message}</Text>
-      </View>
-    </View>
-  );
-}
-
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -178,7 +110,6 @@ export default function LoginScreen() {
 
   // States
   const [isLoading, setIsLoading] = useState(false);
-  const [loaderMessage, setLoaderMessage] = useState("Signing in...");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // 2FA OTP state
@@ -204,7 +135,6 @@ export default function LoginScreen() {
   async function handleBiometricUnlock() {
     setErrorMsg(null);
     try {
-      // Let iOS handle native Face ID prompt natively without any custom overlay
       const success = await promptBiometricUnlock();
       if (success) {
         router.replace("/(tabs)");
@@ -227,7 +157,6 @@ export default function LoginScreen() {
       return;
     }
 
-    setLoaderMessage("Verifying credentials...");
     setIsLoading(true);
     try {
       const result = await login(targetEmail, password);
@@ -286,14 +215,16 @@ export default function LoginScreen() {
 
   async function handleGoogleSignIn() {
     try {
-      await Linking.openURL(`${BASE_URL}/api/auth/signin/google`);
+      // Open in-app browser sheet (SFSafariViewController on iOS)
+      await WebBrowser.openBrowserAsync(`${BASE_URL}/api/auth/signin/google`);
     } catch {
-      setErrorMsg("Unable to open Google sign-in. Please use email and password.");
+      // Fallback
+      Linking.openURL(`${BASE_URL}/api/auth/signin/google`);
     }
   }
 
   // Safe area top padding ensuring back button sits gracefully below Dynamic Island
-  const topSafePadding = Math.max(insets.top, 44) + 12;
+  const topSafePadding = Math.max(insets.top, 44) + 8;
 
   return (
     <KeyboardAvoidingView
@@ -302,49 +233,38 @@ export default function LoginScreen() {
     >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Subtle Background Corner Glow Waves (Screenshot 3) */}
+      {/* Subtle Background Corner Glow Waves */}
       <View style={styles.backgroundAuraTopRight} pointerEvents="none" />
       <View style={styles.backgroundAuraBottomLeft} pointerEvents="none" />
 
-      {/* Brand Loading Overlay — Only shown during actual API credential verification */}
-      {(isLoading || isVerifyingOtp) && <BrandLoader message={loaderMessage} />}
+      {/* Top Bar with Clean Circular Back Button */}
+      <View style={[styles.topBar, { top: topSafePadding }]}>
+        <TouchableOpacity
+          style={styles.circularBackButton}
+          onPress={handleBackToWelcome}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <ChevronLeftIcon size={22} color="#0F172A" />
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         contentContainerStyle={[
           styles.scrollContainer,
           {
-            paddingTop: topSafePadding,
-            paddingBottom: Math.max(insets.bottom, 20) + 24,
+            paddingTop: topSafePadding + 54,
+            paddingBottom: Math.max(insets.bottom, 20) + 16,
           },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Navigation Bar: Clean Circular Back Button */}
-        <View style={styles.navBar}>
-          <TouchableOpacity
-            style={styles.circularBackButton}
-            onPress={handleBackToWelcome}
-            activeOpacity={0.7}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <ChevronLeftIcon size={22} color="#0F172A" />
-          </TouchableOpacity>
-          <View style={{ width: 44 }} />
-        </View>
-
-        {/* Error Notification Pill */}
-        {errorMsg ? (
-          <View style={styles.errorPill}>
-            <Text style={styles.errorText}>{errorMsg}</Text>
-          </View>
-        ) : null}
-
         {/* ---------------------------------------------------- */}
         {/* SCREEN STATE A: 2FA OTP Code Verification */}
         {/* ---------------------------------------------------- */}
         {requireOtp ? (
-          <View style={styles.contentSection}>
+          <View style={styles.centeredCard}>
             <View style={styles.brandHeader}>
               <View style={styles.iconCircle}>
                 <ShieldCheck size={32} color={colors.primary} />
@@ -368,6 +288,13 @@ export default function LoginScreen() {
               />
             </View>
 
+            {/* Error Message Directly Below Input */}
+            {errorMsg ? (
+              <View style={styles.errorInline}>
+                <Text style={styles.errorText}>{errorMsg}</Text>
+              </View>
+            ) : null}
+
             <TouchableOpacity
               style={[styles.primaryButton, isVerifyingOtp && styles.btnDisabled]}
               onPress={handleVerifyOtp}
@@ -375,7 +302,7 @@ export default function LoginScreen() {
               activeOpacity={0.88}
             >
               {isVerifyingOtp ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <Text style={styles.primaryButtonText}>Verify & Sign In</Text>
               )}
@@ -393,9 +320,9 @@ export default function LoginScreen() {
           </View>
         ) : isReturningUser && savedProfile ? (
           /* ---------------------------------------------------- */
-          /* SCREEN STATE B: Returning User Quick Unlock (Screenshot 1 - ALAT Style) */
+          /* SCREEN STATE B: Returning User Quick Unlock (ALAT Style - Perfectly Centered) */
           /* ---------------------------------------------------- */
-          <View style={styles.returningContainer}>
+          <View style={styles.centeredCard}>
             {/* User Greeting Row: Avatar on Left, Welcome Back & Bold Mukhtar on Right */}
             <View style={styles.returningProfileRow}>
               <Image
@@ -415,7 +342,7 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Masked Email Pill with Edit Pencil (Screenshot 1) */}
+            {/* Masked Email Pill with Edit Pencil */}
             <TouchableOpacity
               style={styles.maskedEmailPill}
               onPress={handleSwitchAccount}
@@ -437,13 +364,15 @@ export default function LoginScreen() {
                   placeholder="Enter your password"
                   placeholderTextColor="#94A3B8"
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
                   secureTextEntry={!showPassword}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
                   onSubmitEditing={handleLogin}
                   returnKeyType="go"
-                  autoFocus={false}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -458,6 +387,13 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
+              {/* Error Message Directly Below Password Input Box */}
+              {errorMsg ? (
+                <View style={styles.errorInline}>
+                  <Text style={styles.errorText}>{errorMsg}</Text>
+                </View>
+              ) : null}
+
               {/* Reset Password Link */}
               <View style={styles.resetPasswordRow}>
                 <TouchableOpacity
@@ -468,14 +404,18 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Primary Action: Log in (NO arrow icon) */}
+              {/* Primary Action: Log in (Clean spinner right inside button) */}
               <TouchableOpacity
                 style={[styles.primaryButton, (!password || isLoading) && styles.btnDisabled]}
                 onPress={handleLogin}
                 disabled={!password || isLoading}
                 activeOpacity={0.88}
               >
-                <Text style={styles.primaryButtonText}>Log in</Text>
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Log in</Text>
+                )}
               </TouchableOpacity>
 
               {/* Footer: Don't have an account? Sign up */}
@@ -487,7 +427,7 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Bottom Biometric Icon Trigger (Screenshot 1) — Natively prompts Apple Face ID */}
+            {/* Bottom Biometric Icon Trigger — Natively prompts Apple Face ID */}
             <View style={styles.bottomBiometricWrapper}>
               <TouchableOpacity
                 style={styles.biometricIconTapTarget}
@@ -500,10 +440,10 @@ export default function LoginScreen() {
           </View>
         ) : (
           /* ---------------------------------------------------- */
-          /* SCREEN STATE C: Standard 1-Step Login (Moved UP & Enlarged) */
+          /* SCREEN STATE C: Standard 1-Step Login (Gracefully Centered) */
           /* ---------------------------------------------------- */
-          <View style={styles.standardLoginContainer}>
-            {/* LoraBiz Centered Brand Header — Moved UP, Enlarged, Elevated */}
+          <View style={styles.centeredCard}>
+            {/* LoraBiz Centered Brand Header */}
             <View style={styles.standardBrandHeader}>
               <View style={styles.logoRow}>
                 <Image
@@ -520,7 +460,7 @@ export default function LoginScreen() {
               <Text style={styles.standardSubtitle}>Log in to continue</Text>
             </View>
 
-            {/* Form Section Sitting Up High */}
+            {/* Form Section */}
             <View style={styles.formContent}>
               {/* Input 1: Email address or phone number */}
               <View style={[styles.inputCard, emailFocused && styles.inputCardActive]}>
@@ -530,7 +470,10 @@ export default function LoginScreen() {
                   placeholder="Email address or phone number"
                   placeholderTextColor="#94A3B8"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -548,7 +491,10 @@ export default function LoginScreen() {
                   placeholder="Password"
                   placeholderTextColor="#94A3B8"
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
                   secureTextEntry={!showPassword}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
@@ -568,6 +514,13 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
+              {/* Error Message Directly Below Password Input Box */}
+              {errorMsg ? (
+                <View style={styles.errorInline}>
+                  <Text style={styles.errorText}>{errorMsg}</Text>
+                </View>
+              ) : null}
+
               {/* Forgot Password Link */}
               <View style={styles.forgotPasswordRow}>
                 <TouchableOpacity
@@ -578,7 +531,7 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Primary CTA: Log In (NO arrow icon) */}
+              {/* Primary CTA: Log In (Spinner inside button when loading) */}
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
@@ -588,7 +541,11 @@ export default function LoginScreen() {
                 disabled={!email.trim() || !password || isLoading}
                 activeOpacity={0.88}
               >
-                <Text style={styles.primaryButtonText}>Log In</Text>
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Log In</Text>
+                )}
               </TouchableOpacity>
 
               {/* Divider: "or" */}
@@ -598,7 +555,7 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Prominent "Continue with Google" Button (Native Safari browser, NO screen tinting) */}
+              {/* Prominent "Continue with Google" In-App Browser Sheet */}
               <TouchableOpacity
                 style={styles.googleButton}
                 onPress={handleGoogleSignIn}
@@ -647,15 +604,10 @@ const styles = StyleSheet.create({
     borderRadius: 120,
     backgroundColor: "rgba(200, 45, 117, 0.04)",
   },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-  },
-  navBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
+  topBar: {
+    position: "absolute",
+    left: 24,
+    zIndex: 20,
   },
   circularBackButton: {
     width: 44,
@@ -672,18 +624,24 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  contentSection: {
-    width: "100%",
-    paddingTop: 8,
+  scrollContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    justifyContent: "center", // Gracefully, mathematically centered between top and bottom!
   },
-  errorPill: {
+  centeredCard: {
+    width: "100%",
+    justifyContent: "center",
+  },
+  errorInline: {
     backgroundColor: "#FEF2F2",
     borderWidth: 1,
     borderColor: "#FCA5A5",
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginBottom: 14,
+    borderRadius: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    marginTop: -4,
   },
   errorText: {
     color: "#B91C1C",
@@ -693,31 +651,27 @@ const styles = StyleSheet.create({
   },
 
   // ----------------------------------------------------
-  // Standard 1-Step Login Styles (Moved UP & Enlarged)
+  // Standard 1-Step Login Styles
   // ----------------------------------------------------
-  standardLoginContainer: {
-    width: "100%",
-    paddingTop: 4,
-  },
   standardBrandHeader: {
     alignItems: "center",
-    marginBottom: 26,
+    marginBottom: 24,
   },
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+    marginBottom: 12,
   },
   standardBrandLogo: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 48,
     marginRight: 10,
   },
   brandTitleText: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: "900",
-    letterSpacing: -0.7,
+    letterSpacing: -0.6,
   },
   brandTextDark: {
     color: "#0F172A",
@@ -726,7 +680,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   standardTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "800",
     color: "#0F172A",
     letterSpacing: -0.5,
@@ -805,7 +759,7 @@ const styles = StyleSheet.create({
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 18,
+    marginVertical: 16,
   },
   dividerLine: {
     flex: 1,
@@ -832,7 +786,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   googleButtonText: {
     fontSize: 15,
@@ -846,7 +800,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 4,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   footerMuted: {
     fontSize: 14,
@@ -860,16 +814,12 @@ const styles = StyleSheet.create({
   },
 
   // ----------------------------------------------------
-  // Returning User Styles (Screenshot 1 - ALAT Style)
+  // Returning User Styles (ALAT Style)
   // ----------------------------------------------------
-  returningContainer: {
-    width: "100%",
-    paddingTop: 8,
-  },
   returningProfileRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 18,
   },
   returningAvatarImage: {
     width: 68,
@@ -905,7 +855,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    marginBottom: 22,
+    marginBottom: 20,
   },
   maskedEmailText: {
     fontSize: 13,
@@ -929,7 +879,7 @@ const styles = StyleSheet.create({
   },
   resetPasswordRow: {
     alignItems: "flex-end",
-    marginBottom: 22,
+    marginBottom: 20,
     marginTop: -4,
   },
   resetPasswordText: {
@@ -940,8 +890,8 @@ const styles = StyleSheet.create({
   bottomBiometricWrapper: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 32,
-    paddingBottom: 8,
+    paddingTop: 26,
+    paddingBottom: 4,
   },
   biometricIconTapTarget: {
     padding: 16,
@@ -958,7 +908,7 @@ const styles = StyleSheet.create({
   // ----------------------------------------------------
   brandHeader: {
     alignItems: "center",
-    marginBottom: 26,
+    marginBottom: 24,
   },
   title: {
     fontSize: 26,
@@ -1000,58 +950,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#64748B",
-  },
-
-  // ----------------------------------------------------
-  // Shrunken Brand Loader Overlay ("Loading Tiers")
-  // ----------------------------------------------------
-  loaderBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255, 255, 255, 0.94)",
-    zIndex: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loaderCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    paddingVertical: 28,
-    paddingHorizontal: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  loaderRingWrapper: {
-    width: 80,
-    height: 80,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    marginBottom: 16,
-  },
-  loaderSpinnerRing: {
-    position: "absolute",
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: "rgba(200, 45, 117, 0.15)",
-    borderTopColor: colors.primary,
-  },
-  loaderLogo: {
-    width: 48,
-    height: 48,
-  },
-  loaderText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0F172A",
-    letterSpacing: 0.2,
   },
 });
