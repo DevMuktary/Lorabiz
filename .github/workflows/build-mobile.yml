@@ -18,6 +18,7 @@ jobs:
       EXPO_NON_INTERACTIVE: 1
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
+      EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://lora.quadrox.dev' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

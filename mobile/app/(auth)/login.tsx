@@ -101,6 +101,7 @@ export default function LoginScreen() {
     biometricEnabled,
     promptBiometricUnlock,
     refreshProfile,
+    completeSocialLogin,
   } = useAuth();
 
   // Mode: returning user quick-unlock (Screenshot 1) vs standard 1-step login (Screenshot 2)
@@ -269,103 +270,41 @@ export default function LoginScreen() {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      // 1. Fetch CSRF token with credentials: "include"
-      const csrfRes = await fetch(`${BASE_URL}/api/auth/csrf`, {
-        credentials: "include",
-      });
-      const csrfData = await csrfRes.json();
-      const rawCookie = csrfRes.headers.get("set-cookie");
-      const cleanCookie = rawCookie
-        ? rawCookie
-            .split(/,(?=[^;]+;)/g)
-            .map((c) => c.split(";")[0].trim())
-            .filter(Boolean)
-            .join("; ")
-        : "";
+      const authUrl = `${BASE_URL}/auth/mobile-google`;
+      const redirectUrl = "lorabiz://auth/google-success";
 
-      // 2. Request Google OAuth authorization URL from NextAuth via POST
-      const signinRes = await fetch(`${BASE_URL}/api/auth/signin/google`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          ...(cleanCookie ? { Cookie: cleanCookie } : {}),
-        },
-        body: new URLSearchParams({
-          csrfToken: csrfData?.csrfToken || "",
-          callbackUrl: "lorabiz://auth/google-success",
-          json: "true",
-        }),
-      });
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        redirectUrl,
+        { preferEphemeralSession: false }
+      );
 
-      const signinData = await signinRes.json();
+      // User cancelled or dismissed the in-app browser
+      if (result.type === "cancel" || result.type === "dismiss") {
+        setIsLoading(false);
+        return;
+      }
 
-      if (signinData?.url) {
-        // 3. Open native ASWebAuthenticationSession with active session polling fallback
-        const redirectUrl = "lorabiz://auth/google-success";
-
-        let pollInterval: ReturnType<typeof setInterval> | null = null;
-        let authenticated = false;
-
-        // Start background polling to auto-dismiss browser once session is active
-        pollInterval = setInterval(async () => {
+      if (result.type === "success") {
+        let sessionToken = "";
+        if (result.url) {
           try {
-            const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
-              credentials: "include",
-            });
-            const sessionData = await sessionRes.json();
-            if (sessionData?.user && !authenticated) {
-              authenticated = true;
-              if (pollInterval) clearInterval(pollInterval);
-              try {
-                WebBrowser.dismissAuthSession();
-              } catch {}
-              try {
-                WebBrowser.dismissBrowser();
-              } catch {}
-              await refreshProfile();
-              router.replace("/(tabs)");
-            }
-          } catch {}
-        }, 1200);
-
-        const result = await WebBrowser.openAuthSessionAsync(
-          signinData.url,
-          redirectUrl,
-          { preferEphemeralSession: false }
-        );
-
-        if (pollInterval) clearInterval(pollInterval);
-
-        if (authenticated) {
-          return;
-        }
-
-        // 4. CRITICAL: If user cancelled or dismissed the modal, DO NOT PROCEED TO DASHBOARD!
-        if (result.type === "cancel" || result.type === "dismiss") {
-          setIsLoading(false);
-          return;
-        }
-
-        // 5. When authentication completes successfully, refresh user profile & session
-        if (result.type === "success") {
-          try {
-            const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
-              credentials: "include",
-            });
-            const sessionData = await sessionRes.json();
-            if (sessionData?.user) {
-              await refreshProfile();
-              router.replace("/(tabs)");
-            } else {
-              setErrorMsg("Unable to retrieve session. Please try again.");
-            }
+            const parsed = new URL(result.url);
+            sessionToken = parsed.searchParams.get("token") || "";
           } catch {
-            setErrorMsg("Authentication connection error. Please try again.");
+            const match = result.url.match(/token=([^&]+)/);
+            if (match) sessionToken = decodeURIComponent(match[1]);
           }
         }
-      } else {
-        setErrorMsg("Unable to initialize Google sign-in. Please try again.");
+
+        const success = await completeSocialLogin(sessionToken);
+        if (success) {
+          router.replace("/(tabs)");
+        } else {
+          // Fallback session verification
+          await refreshProfile();
+          router.replace("/(tabs)");
+        }
       }
     } catch (err: any) {
       console.error("Google sign-in error:", err);

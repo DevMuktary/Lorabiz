@@ -92,7 +92,7 @@ function ChevronLeftIcon({
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { login, refreshProfile } = useAuth();
+  const { login, refreshProfile, completeSocialLogin } = useAuth();
 
   // Navigation mode: "gateway" (Choice screen) or "wizard" (4-stage form)
   const [viewMode, setViewMode] = useState<"gateway" | "wizard">("gateway");
@@ -277,94 +277,41 @@ export default function RegisterScreen() {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const csrfRes = await fetch(`${BASE_URL}/api/auth/csrf`, {
-        credentials: "include",
-      });
-      const csrfData = await csrfRes.json();
-      const rawCookie = csrfRes.headers.get("set-cookie");
-      const cleanCookie = rawCookie
-        ? rawCookie
-            .split(/,(?=[^;]+;)/g)
-            .map((c) => c.split(";")[0].trim())
-            .filter(Boolean)
-            .join("; ")
-        : "";
+      const authUrl = `${BASE_URL}/auth/mobile-google`;
+      const redirectUrl = "lorabiz://auth/google-success";
 
-      const signinRes = await fetch(`${BASE_URL}/api/auth/signin/google`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          ...(cleanCookie ? { Cookie: cleanCookie } : {}),
-        },
-        body: new URLSearchParams({
-          csrfToken: csrfData?.csrfToken || "",
-          callbackUrl: "lorabiz://auth/google-success",
-          json: "true",
-        }),
-      });
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        redirectUrl,
+        { preferEphemeralSession: false }
+      );
 
-      const signinData = await signinRes.json();
+      // User cancelled or dismissed the in-app browser
+      if (result.type === "cancel" || result.type === "dismiss") {
+        setIsLoading(false);
+        return;
+      }
 
-      if (signinData?.url) {
-        const redirectUrl = "lorabiz://auth/google-success";
-
-        let pollInterval: ReturnType<typeof setInterval> | null = null;
-        let authenticated = false;
-
-        // Background polling to immediately auto-close browser once user authenticates
-        pollInterval = setInterval(async () => {
+      if (result.type === "success") {
+        let sessionToken = "";
+        if (result.url) {
           try {
-            const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
-              credentials: "include",
-            });
-            const sessionData = await sessionRes.json();
-            if (sessionData?.user && !authenticated) {
-              authenticated = true;
-              if (pollInterval) clearInterval(pollInterval);
-              try {
-                WebBrowser.dismissAuthSession();
-              } catch {}
-              try {
-                WebBrowser.dismissBrowser();
-              } catch {}
-              await refreshProfile();
-              router.replace("/(tabs)");
-            }
-          } catch {}
-        }, 1200);
-
-        const result = await WebBrowser.openAuthSessionAsync(
-          signinData.url,
-          redirectUrl,
-          { preferEphemeralSession: false }
-        );
-
-        if (pollInterval) clearInterval(pollInterval);
-
-        if (authenticated) {
-          return;
-        }
-
-        if (result.type === "cancel" || result.type === "dismiss") {
-          setIsLoading(false);
-          return;
-        }
-
-        if (result.type === "success") {
-          const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
-            credentials: "include",
-          });
-          const sessionData = await sessionRes.json();
-          if (sessionData?.user) {
-            await refreshProfile();
-            router.replace("/(tabs)");
-          } else {
-            setErrorMsg("Unable to retrieve session. Please try again.");
+            const parsed = new URL(result.url);
+            sessionToken = parsed.searchParams.get("token") || "";
+          } catch {
+            const match = result.url.match(/token=([^&]+)/);
+            if (match) sessionToken = decodeURIComponent(match[1]);
           }
         }
-      } else {
-        setErrorMsg("Unable to initialize Google registration.");
+
+        const success = await completeSocialLogin(sessionToken);
+        if (success) {
+          router.replace("/(tabs)");
+        } else {
+          // Fallback session verification
+          await refreshProfile();
+          router.replace("/(tabs)");
+        }
       }
     } catch (err: any) {
       console.error("Google sign up error:", err);

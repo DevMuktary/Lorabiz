@@ -17,3 +17,9 @@ trigger: always_on
 
 4. **Transparent Field Validation**:
    - When inputs (such as password and confirm password) fail validation, always show a clear text explanation (e.g. "Passwords do not match") rather than simply coloring a box red without explanation.
+
+5. **NEVER Hardcode Configs, Secrets, or Dynamic URLs**:
+   - Strictly avoid hardcoding URLs, endpoints, credentials, or environment-specific values in source code.
+   - Always read configuration from environment variables (e.g., `process.env.EXPO_PUBLIC_API_URL`, `process.env.NEXTAUTH_URL`) or appropriate database / secret stores.
+   - Ensure environment variables are cleanly consumed across development, staging, and production environments without needing manual code edits.
+

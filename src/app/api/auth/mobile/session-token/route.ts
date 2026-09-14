@@ -1,9 +1,9 @@
 import { cookies } from "next/headers";
-import ClientCallback from "./ClientCallback";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function MobileCallbackPage() {
+export async function GET() {
   const cookieStore = await cookies();
 
   let token =
@@ -27,9 +27,5 @@ export default async function MobileCallbackPage() {
     }
   }
 
-  const deepLink = token
-    ? `lorabiz://auth/google-success?token=${encodeURIComponent(token)}`
-    : "lorabiz://auth/google-success";
-
-  return <ClientCallback deepLink={deepLink} hasToken={Boolean(token)} />;
+  return NextResponse.json({ token: token || null });
 }

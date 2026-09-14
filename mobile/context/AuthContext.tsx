@@ -52,6 +52,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   clearSavedProfile: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  completeSocialLogin: (sessionToken?: string) => Promise<boolean>;
   toggleBiometrics: (enabled: boolean) => Promise<boolean>;
   promptBiometricUnlock: () => Promise<boolean>;
 }
@@ -379,6 +380,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function completeSocialLogin(sessionToken?: string): Promise<boolean> {
+    try {
+      if (sessionToken) {
+        await saveAuthToken(sessionToken);
+        setToken(sessionToken);
+      }
+      const activeToken = sessionToken || token || (await getAuthToken());
+      const headers: Record<string, string> = {};
+      if (activeToken) {
+        headers["Authorization"] = `Bearer ${activeToken}`;
+        headers["Cookie"] = `next-auth.session-token=${activeToken}; __Secure-next-auth.session-token=${activeToken}`;
+      }
+
+      const res = await fetch(`${BASE_URL}/api/auth/session`, {
+        credentials: "include",
+        headers,
+      });
+      const data = await res.json();
+      if (data?.user) {
+        const updatedUser: UserProfile = {
+          id: data.user.id || user?.id || `user_${Date.now()}`,
+          email: data.user.email || user?.email || "",
+          name: data.user.name || user?.name || "",
+          firstName: data.user.name?.split(" ")[0] || user?.firstName || "User",
+          role: data.user.role || user?.role || "USER",
+          image: data.user.image || user?.image || null,
+          isProfileComplete: data.user.isProfileComplete ?? false,
+        };
+        setUser(updatedUser);
+        await saveAuthUser(updatedUser);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("completeSocialLogin error:", err);
+      return false;
+    }
+  }
+
   async function toggleBiometrics(enable: boolean): Promise<boolean> {
     if (enable) {
       const success = await promptBiometricAuth("Confirm your biometrics to enable instant unlock");
@@ -413,6 +453,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         clearSavedProfile,
         refreshProfile,
+        completeSocialLogin,
         toggleBiometrics,
         promptBiometricUnlock,
       }}

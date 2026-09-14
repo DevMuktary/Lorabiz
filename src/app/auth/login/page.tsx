@@ -43,6 +43,17 @@ function LoginContent() {
   const [otpError, setOtpError] = useState("");
   
   const [resendTimer, setResendTimer] = useState(0);
+
+  // Mobile In-App Browser Fail-safe: If redirected here with an OAuth error from mobile flow, auto-dismiss browser
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    const callbackParam = searchParams.get("callbackUrl");
+    if (callbackParam?.includes("mobile") || callbackParam?.startsWith("lorabiz://")) {
+      if (errorParam) {
+        window.location.replace(`lorabiz://auth/google-error?error=${encodeURIComponent(errorParam)}`);
+      }
+    }
+  }, [searchParams]);
   const [isLocked, setIsLocked] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isSyncingTimer, setIsSyncingTimer] = useState(false);
