@@ -141,7 +141,7 @@ export default function LoginScreen() {
 
   // Auto-prompt Face ID on mount when returning user arrives on the page (matching ALAT & top banking apps)
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (isReturningUser && savedProfile && biometricAvailable && biometricEnabled) {
       timer = setTimeout(() => {
         handleBiometricUnlock();
@@ -306,7 +306,7 @@ export default function LoginScreen() {
         const result = await WebBrowser.openAuthSessionAsync(
           signinData.url,
           redirectUrl,
-          { prefersEphemeralSession: false }
+          { preferEphemeralSession: false }
         );
 
         // 4. CRITICAL: If user cancelled or dismissed the modal, DO NOT PROCEED TO DASHBOARD!
