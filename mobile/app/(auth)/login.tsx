@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -112,6 +113,10 @@ export default function LoginScreen() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
+  // Input Focus References for Instant Tap Response
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
+
   // States
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -134,12 +139,37 @@ export default function LoginScreen() {
     fetch(`${BASE_URL}/api/auth/csrf`, { credentials: "include" }).catch(() => {});
   }, []);
 
-  // Prompt Face ID / Biometrics on mount if returning user
+  // Listen for deep-link returns from Google OAuth (lorabiz://auth/google-success)
   useEffect(() => {
-    if (isReturningUser && biometricAvailable && biometricEnabled) {
-      handleBiometricUnlock();
-    }
-  }, [isReturningUser, biometricAvailable, biometricEnabled]);
+    const handleDeepLink = async (event: { url: string }) => {
+      if (event.url.includes("google-success") || event.url.includes("auth/callback")) {
+        try {
+          WebBrowser.dismissAuthSession();
+        } catch {}
+        try {
+          WebBrowser.dismissBrowser();
+        } catch {}
+        setIsLoading(true);
+        try {
+          const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
+            credentials: "include",
+          });
+          const sessionData = await sessionRes.json();
+          if (sessionData?.user) {
+            await refreshProfile();
+            router.replace("/(tabs)");
+          }
+        } catch (e) {
+          console.error("Deep link session sync error:", e);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const sub = Linking.addEventListener("url", handleDeepLink);
+    return () => sub.remove();
+  }, []);
 
   async function handleBiometricUnlock() {
     setErrorMsg(null);
@@ -250,7 +280,7 @@ export default function LoginScreen() {
         },
         body: new URLSearchParams({
           csrfToken: csrfData?.csrfToken || "",
-          callbackUrl: `${BASE_URL}/dashboard`,
+          callbackUrl: `${BASE_URL}/auth/mobile-callback`,
           json: "true",
         }),
       });
@@ -258,21 +288,36 @@ export default function LoginScreen() {
       const signinData = await signinRes.json();
 
       if (signinData?.url) {
-        // 3. Open directly to Google's Account Chooser screen (accounts.google.com)
-        await WebBrowser.openBrowserAsync(signinData.url);
+        // 3. Open native ASWebAuthenticationSession with deep link intercept
+        const redirectUrl = "lorabiz://auth/google-success";
+        const result = await WebBrowser.openAuthSessionAsync(
+          signinData.url,
+          redirectUrl,
+          { prefersEphemeralSession: false }
+        );
 
-        // 4. When browser is dismissed / completed, refresh user profile & session
-        try {
-          const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
-            credentials: "include",
-          });
-          const sessionData = await sessionRes.json();
-          if (sessionData?.user) {
-            await refreshProfile();
-            router.replace("/(tabs)");
+        // 4. CRITICAL: If user cancelled or dismissed the modal, DO NOT PROCEED TO DASHBOARD!
+        if (result.type === "cancel" || result.type === "dismiss") {
+          setIsLoading(false);
+          return;
+        }
+
+        // 5. When authentication completes successfully, refresh user profile & session
+        if (result.type === "success") {
+          try {
+            const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
+              credentials: "include",
+            });
+            const sessionData = await sessionRes.json();
+            if (sessionData?.user) {
+              await refreshProfile();
+              router.replace("/(tabs)");
+            } else {
+              setErrorMsg("Unable to retrieve session. Please try again.");
+            }
+          } catch {
+            setErrorMsg("Authentication connection error. Please try again.");
           }
-        } catch {
-          // In-app browser session sync fallback
         }
       } else {
         setErrorMsg("Unable to initialize Google sign-in. Please try again.");
@@ -291,7 +336,7 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? undefined : "height"}
     >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
@@ -333,6 +378,8 @@ export default function LoginScreen() {
           },
         ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         showsVerticalScrollIndicator={false}
       >
         {/* ---------------------------------------------------- */}
@@ -431,8 +478,12 @@ export default function LoginScreen() {
             {/* Password Section */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Password</Text>
-              <View style={[styles.alatInputCard, passwordFocused && styles.alatInputCardActive]}>
+              <Pressable
+                style={[styles.alatInputCard, passwordFocused && styles.alatInputCardActive]}
+                onPress={() => passwordInputRef.current?.focus()}
+              >
                 <TextInput
+                  ref={passwordInputRef}
                   style={styles.alatTextInput}
                   placeholder="Enter your password"
                   placeholderTextColor="#94A3B8"
@@ -446,11 +497,12 @@ export default function LoginScreen() {
                   onBlur={() => setPasswordFocused(false)}
                   onSubmitEditing={handleLogin}
                   returnKeyType="go"
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeToggleBtn}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                   {showPassword ? (
                     <EyeOff size={20} color="#0F172A" />
@@ -458,7 +510,7 @@ export default function LoginScreen() {
                     <Eye size={20} color="#0F172A" />
                   )}
                 </TouchableOpacity>
-              </View>
+              </Pressable>
 
               {/* Error Message Directly Below Password Input Box */}
               {errorMsg ? (
@@ -535,8 +587,12 @@ export default function LoginScreen() {
             <View style={styles.fieldGroup}>
               {/* Field 1: Email */}
               <Text style={styles.fieldLabel}>Email</Text>
-              <View style={[styles.alatInputCard, emailFocused && styles.alatInputCardActive]}>
+              <Pressable
+                style={[styles.alatInputCard, emailFocused && styles.alatInputCardActive]}
+                onPress={() => emailInputRef.current?.focus()}
+              >
                 <TextInput
+                  ref={emailInputRef}
                   style={styles.alatTextInput}
                   placeholder="Enter your email"
                   placeholderTextColor="#94A3B8"
@@ -550,14 +606,20 @@ export default function LoginScreen() {
                   autoCorrect={false}
                   onFocus={() => setEmailFocused(true)}
                   onBlur={() => setEmailFocused(false)}
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
                   returnKeyType="next"
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 />
-              </View>
+              </Pressable>
 
               {/* Field 2: Password */}
               <Text style={styles.fieldLabel}>Password</Text>
-              <View style={[styles.alatInputCard, passwordFocused && styles.alatInputCardActive]}>
+              <Pressable
+                style={[styles.alatInputCard, passwordFocused && styles.alatInputCardActive]}
+                onPress={() => passwordInputRef.current?.focus()}
+              >
                 <TextInput
+                  ref={passwordInputRef}
                   style={styles.alatTextInput}
                   placeholder="Enter your password"
                   placeholderTextColor="#94A3B8"
@@ -571,11 +633,12 @@ export default function LoginScreen() {
                   onBlur={() => setPasswordFocused(false)}
                   onSubmitEditing={handleLogin}
                   returnKeyType="go"
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeToggleBtn}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                   {showPassword ? (
                     <EyeOff size={20} color="#0F172A" />
@@ -583,7 +646,7 @@ export default function LoginScreen() {
                     <Eye size={20} color="#0F172A" />
                   )}
                 </TouchableOpacity>
-              </View>
+              </Pressable>
 
               {/* Error Message Directly Below Password Input Box */}
               {errorMsg ? (
@@ -857,11 +920,6 @@ const styles = StyleSheet.create({
   alatInputCardActive: {
     borderColor: colors.primary,
     backgroundColor: "#FFFFFF",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 2,
   },
   alatTextInput: {
     flex: 1,

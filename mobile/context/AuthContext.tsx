@@ -313,6 +313,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function logout() {
     try {
+      // 1. Tell NextAuth to sign out and clear native cookies
+      try {
+        const csrfRes = await fetch(`${BASE_URL}/api/auth/csrf`, { credentials: "include" });
+        const csrfData = await csrfRes.json().catch(() => ({}));
+        await fetch(`${BASE_URL}/api/auth/signout`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            csrfToken: csrfData?.csrfToken || "",
+            json: "true",
+          }),
+        }).catch(() => {});
+      } catch {
+        // Continue clearing local storage regardless of network
+      }
+
       await removeAuthToken();
       await removeAuthUser();
       setToken(null);
