@@ -131,9 +131,68 @@ export async function getMobileAuthUser(req: Request) {
       return null;
     }
 
+    if (!user.wallet) {
+      user.wallet = await prisma.wallet.create({
+        data: {
+          userId: user.id,
+          balance: 0.0,
+        },
+      });
+    }
+
     return user;
   } catch (err) {
     console.error("Failed to query user for mobile auth:", err);
     return null;
   }
 }
+
+/**
+ * Unified auth helper that supports both:
+ * 1. Mobile clients sending Authorization: Bearer <token> or mobile session cookies.
+ * 2. Web browser sessions authenticated via NextAuth cookies.
+ *
+ * Always returns an active User record with their `wallet` provisioned and attached.
+ */
+export async function getAuthUser(req?: Request) {
+  // 1. Try mobile Bearer token / cookies from request
+  if (req) {
+    try {
+      const mobileUser = await getMobileAuthUser(req);
+      if (mobileUser) return mobileUser;
+    } catch (err) {
+      console.error("getMobileAuthUser error in getAuthUser:", err);
+    }
+  }
+
+  // 2. Fall back to NextAuth getServerSession for web sessions
+  try {
+    const { getServerSession } = await import("next-auth/next");
+    const { authOptions } = await import("@/app/api/auth/[...nextauth]/route");
+    const session = await getServerSession(authOptions);
+
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        include: { wallet: true },
+      });
+
+      if (user && !user.isSuspended) {
+        if (!user.wallet) {
+          user.wallet = await prisma.wallet.create({
+            data: {
+              userId: user.id,
+              balance: 0.0,
+            },
+          });
+        }
+        return user;
+      }
+    }
+  } catch (err) {
+    console.error("getServerSession error in getAuthUser:", err);
+  }
+
+  return null;
+}
+

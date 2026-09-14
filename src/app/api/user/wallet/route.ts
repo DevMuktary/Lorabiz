@@ -1,24 +1,13 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; 
+import { getAuthUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthUser(req);
     
-    if (!session?.user?.email) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-    }
-
-    // Fetch user and include their connected wallet
-    let user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { wallet: true }
-    });
-
     if (!user) {
-      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
     if (!user.wallet) {
@@ -39,6 +28,7 @@ export async function GET() {
       success: true, 
       balance: currentBalance,
       wallet: {
+        id: user.wallet.id,
         balance: currentBalance 
       }
     });

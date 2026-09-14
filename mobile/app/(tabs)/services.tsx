@@ -8,7 +8,6 @@ import {
   Image,
 } from "react-native";
 import {
-  Scale,
   ChevronRight,
   Clock,
 } from "lucide-react-native";
@@ -57,7 +56,7 @@ const SERVICES_CATALOG = [
     title: "Court Affidavits",
     category: "Legal",
     desc: "Loss of document, change of name, age declaration affidavits.",
-    icon: Scale,
+    logo: require("../../assets/court.png"),
   },
 ];
 
@@ -73,7 +72,7 @@ export default function ServicesScreen() {
     },
   });
 
-  const applications = dashboardData?.registrations || [];
+  const applications = dashboardData?.tableData || dashboardData?.registrations || [];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -95,29 +94,22 @@ export default function ServicesScreen() {
       {/* Services Grid */}
       <Text style={styles.sectionHeader}>Available Registrations</Text>
       <View style={styles.catalogList}>
-        {SERVICES_CATALOG.map((item) => {
-          const IconComp = item.icon;
-          return (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.serviceItem}
-              activeOpacity={0.8}
-            >
-              <View style={styles.itemLogoBox}>
-                {item.logo ? (
-                  <Image source={item.logo} style={styles.agencyLogo} resizeMode="contain" />
-                ) : IconComp ? (
-                  <IconComp size={22} color={colors.primary} />
-                ) : null}
-              </View>
-              <View style={{ flex: 1, marginLeft: 14 }}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.itemDesc}>{item.desc}</Text>
-              </View>
-              <ChevronRight size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          );
-        })}
+        {SERVICES_CATALOG.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.serviceItem}
+            activeOpacity={0.8}
+          >
+            <View style={styles.itemLogoBox}>
+              <Image source={item.logo} style={styles.agencyLogo} resizeMode="contain" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 14 }}>
+              <Text style={styles.itemTitle}>{item.title}</Text>
+              <Text style={styles.itemDesc}>{item.desc}</Text>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Active Filings & Tracking Section */}

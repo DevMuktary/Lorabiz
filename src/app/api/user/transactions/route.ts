@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; 
+import { getAuthUser } from "@/lib/mobile-auth"; 
 import { prisma } from "@/lib/prisma";
 
-// Note: We use NextRequest here to easily read URL query parameters
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthUser(req);
     
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
@@ -16,30 +14,33 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const typeFilter = searchParams.get("type");
     const statusFilter = searchParams.get("status");
+    const limit = parseInt(searchParams.get("limit") || "20");
 
     // 2. Build a dynamic Prisma "where" object
     const txWhere: any = {};
-    if (typeFilter) txWhere.type = typeFilter;
-    if (statusFilter) txWhere.status = statusFilter;
+    if (typeFilter && typeFilter !== "ALL") txWhere.type = typeFilter;
+    if (statusFilter && statusFilter !== "ALL") txWhere.status = statusFilter;
 
-    // 3. Fetch the user's wallet with the dynamically filtered transactions
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: {
-        wallet: {
-          include: {
-            transactions: {
-              where: txWhere, // This applies our filters right inside the database!
-              orderBy: { createdAt: "desc" }
-            }
-          }
-        }
-      }
+    if (!user.wallet) {
+      return NextResponse.json({ 
+        success: true, 
+        transactions: [] 
+      });
+    }
+
+    // 3. Fetch the user's wallet transactions
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        walletId: user.wallet.id,
+        ...txWhere,
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
     });
 
     return NextResponse.json({ 
       success: true, 
-      transactions: user?.wallet?.transactions || [] 
+      transactions 
     });
 
   } catch (error) {
