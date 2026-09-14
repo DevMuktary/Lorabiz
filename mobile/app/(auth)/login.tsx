@@ -139,6 +139,19 @@ export default function LoginScreen() {
     fetch(`${BASE_URL}/api/auth/csrf`, { credentials: "include" }).catch(() => {});
   }, []);
 
+  // Auto-prompt Face ID on mount when returning user arrives on the page (matching ALAT & top banking apps)
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isReturningUser && savedProfile && biometricAvailable && biometricEnabled) {
+      timer = setTimeout(() => {
+        handleBiometricUnlock();
+      }, 350);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isReturningUser, savedProfile, biometricAvailable, biometricEnabled]);
+
   // Listen for deep-link returns from Google OAuth (lorabiz://auth/google-success)
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
@@ -708,19 +721,6 @@ export default function LoginScreen() {
                 <Text style={styles.googleButtonText}>Continue with Google</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Circular Face ID Button positioned in that lower spot */}
-            {biometricAvailable && biometricEnabled ? (
-              <View style={styles.faceIdSection}>
-                <TouchableOpacity
-                  style={styles.faceIdCircleButton}
-                  onPress={handleBiometricUnlock}
-                  activeOpacity={0.75}
-                >
-                  <AppleFaceIdIcon size={30} color="#0F172A" />
-                </TouchableOpacity>
-              </View>
-            ) : null}
           </View>
         )}
       </ScrollView>
