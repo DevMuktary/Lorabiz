@@ -80,13 +80,18 @@ export default function FundWalletScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Modal Grabber */}
+      <View style={styles.grabberWrap}>
+        <View style={styles.modalGrabber} />
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <ArrowLeft size={22} color={colors.text} />
+        <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()} activeOpacity={0.7}>
+          <X size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Fund Wallet</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
       </View>
 
       <View style={styles.content}>
@@ -217,45 +222,55 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  grabberWrap: {
+    alignItems: "center",
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: colors.surface,
+  },
+  modalGrabber: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.surfaceBorder,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 54,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 12,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceBorder,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.background,
+  closeBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.surfaceBorder,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
     color: colors.text,
   },
   content: {
-    padding: 20,
+    padding: 16,
   },
   balanceBox: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 20,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
   },
   balanceLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textSecondary,
   },
   balanceValue: {

@@ -9,6 +9,7 @@ import {
   Image,
   StatusBar,
   Linking,
+  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -18,18 +19,24 @@ import {
   EyeOff,
   PlusCircle,
   Clock,
-  ArrowUpRight,
-  ArrowDownLeft,
+  ArrowRight,
   ChevronRight,
   Sparkles,
   LayoutGrid,
   Bell,
   Headphones,
+  Search,
+  CheckCircle2,
+  FileText,
+  Shield,
+  HelpCircle,
 } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../constants/theme";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -37,6 +44,7 @@ export default function HomeScreen() {
   const { user, refreshProfile } = useAuth();
   const [hideBalance, setHideBalance] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [activePromoIndex, setActivePromoIndex] = useState(0);
 
   // Failsafe: Redirect incomplete profile users to finish registration details
   useEffect(() => {
@@ -89,19 +97,7 @@ export default function HomeScreen() {
     },
   });
 
-  // 4. Transactions Query
-  const { data: txData, refetch: refetchTx } = useQuery({
-    queryKey: ["mobileRecentTransactions"],
-    queryFn: async () => {
-      try {
-        return await api.get("/api/user/transactions?limit=6");
-      } catch {
-        return null;
-      }
-    },
-  });
-
-  // 5. Loyalty Profile Query
+  // 4. Loyalty Profile Query
   const { data: loyaltyData, refetch: refetchLoyalty } = useQuery({
     queryKey: ["mobileLoyaltyProfile"],
     queryFn: async () => {
@@ -121,11 +117,10 @@ export default function HomeScreen() {
       refetchProfile(),
       refetchWallet(),
       refetchDashboard(),
-      refetchTx(),
       refetchLoyalty(),
     ]).catch(() => {});
     setRefreshing(false);
-  }, [refreshProfile, refetchProfile, refetchWallet, refetchDashboard, refetchTx, refetchLoyalty]);
+  }, [refreshProfile, refetchProfile, refetchWallet, refetchDashboard, refetchLoyalty]);
 
   // Derived Values
   const balance =
@@ -135,13 +130,10 @@ export default function HomeScreen() {
     user?.wallet?.balance ??
     0;
 
-  const rawTxList = txData?.transactions || dashboardData?.transactions || [];
-  const recentTransactions = Array.isArray(rawTxList) ? rawTxList.slice(0, 5) : [];
-
   const rawApps = dashboardData?.tableData || dashboardData?.registrations || [];
-  const applications = Array.isArray(rawApps) ? rawApps.slice(0, 2) : [];
+  const applications = Array.isArray(rawApps) ? rawApps.slice(0, 3) : [];
 
-  // Accurate First Name extraction (priority: profile API > AuthContext user > email prefix)
+  // Accurate First Name extraction
   const rawName =
     profileData?.user?.firstName ||
     user?.firstName ||
@@ -155,26 +147,8 @@ export default function HomeScreen() {
   const userInitial = (displayName?.[0] || user?.name?.[0] || "U").toUpperCase();
   const loyaltyTier = loyaltyData?.profile?.tier || "Standard";
 
-  const formatTxDate = (dateString?: string) => {
-    if (!dateString) return "Recent";
-    try {
-      const d = new Date(dateString);
-      if (isNaN(d.getTime())) return "Recent";
-      const now = new Date();
-      const isToday =
-        d.getDate() === now.getDate() &&
-        d.getMonth() === now.getMonth() &&
-        d.getFullYear() === now.getFullYear();
-      if (isToday) {
-        return `Today, ${d.toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}`;
-      }
-      return d.toLocaleDateString("en-NG", { month: "short", day: "numeric" });
-    } catch {
-      return "Recent";
-    }
-  };
-
-  // Quick Services Grid: Exactly 8 items (4 per row, 2 rows). Item 8 is "More"
+  // Quick Services Grid: Strictly 4 items per row, 2 rows (8 items total)
+  // Replaced duplicate "NIN Verify" with SMEDAN Certificate. Item 8 is "More"
   const QUICK_SERVICES = [
     {
       id: "cac_reg",
@@ -195,10 +169,10 @@ export default function HomeScreen() {
       route: "/(tabs)/slips",
     },
     {
-      id: "nin_verify",
-      title: "NIN Verify",
-      logo: require("../../assets/nimc.png"),
-      route: "/(tabs)/slips",
+      id: "tax_id",
+      title: "Tax ID",
+      logo: require("../../assets/nrs.png"),
+      route: "/(tabs)/services",
     },
     {
       id: "scuml",
@@ -207,15 +181,15 @@ export default function HomeScreen() {
       route: "/(tabs)/services",
     },
     {
-      id: "tax_id",
-      title: "Tax ID",
-      logo: require("../../assets/nrs.png"),
-      route: "/(tabs)/services",
-    },
-    {
       id: "affidavit",
       title: "Affidavit",
       logo: require("../../assets/court.png"),
+      route: "/(tabs)/services",
+    },
+    {
+      id: "smedan",
+      title: "SMEDAN",
+      logo: require("../../assets/smedan.png"),
       route: "/(tabs)/services",
     },
     {
@@ -226,23 +200,69 @@ export default function HomeScreen() {
     },
   ];
 
+  // Promotional Announcements & Ads Carousel Data
+  const PROMO_ADS = [
+    {
+      id: "cac_promo",
+      tag: "⚡ FAST-TRACK",
+      title: "Register Your Business in 24h",
+      desc: "Get your official CAC Certificate & Tax ID delivered seamlessly.",
+      cta: "Register Now",
+      route: "/(tabs)/services",
+      color: "#831843",
+      accent: "#F472B6",
+    },
+    {
+      id: "scuml_promo",
+      tag: "🛡️ COMPLIANCE READY",
+      title: "Instant SCUML Processing",
+      desc: "Open corporate bank accounts fast with certified AML compliance.",
+      cta: "Apply for SCUML",
+      route: "/(tabs)/services",
+      color: "#1E1B4B",
+      accent: "#818CF8",
+    },
+    {
+      id: "affidavit_promo",
+      tag: "📄 LEGAL SEAL",
+      title: "Certified Court Affidavits",
+      desc: "Declaration of age, name change & loss of document sworn online.",
+      cta: "Get Affidavit",
+      route: "/(tabs)/services",
+      color: "#064E3B",
+      accent: "#34D399",
+    },
+  ];
+
+  const currentAd = PROMO_ADS[activePromoIndex];
+
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* =================================================================== */}
-      {/* 1. TOP APP BAR: Left Greeting + Right Actions (Support, Notifications, Profile) */}
+      {/* 1. TOP APP BAR: Left Avatar + Greeting | Right Support & Bell */}
       {/* =================================================================== */}
-      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 20) + 4 }]}>
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 16) + 4 }]}>
         <View style={styles.topBarLeft}>
-          <Text style={styles.greetingTitle}>
-            Hi, {displayName ? `${displayName}` : "there"} 👋
-          </Text>
+          <TouchableOpacity
+            style={styles.avatarOrb}
+            onPress={() => router.push("/(tabs)/profile")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.avatarText}>{userInitial}</Text>
+          </TouchableOpacity>
+          <View style={styles.greetingWrap}>
+            <Text style={styles.greetingSub}>Welcome back,</Text>
+            <Text style={styles.greetingTitle}>
+              Hi, {displayName ? `${displayName}` : "there"} 👋
+            </Text>
+          </View>
         </View>
 
         <View style={styles.topBarRight}>
           <TouchableOpacity
-            style={styles.headerIconButton}
+            style={styles.headerIconBtn}
             onPress={() => Linking.openURL("mailto:support@lorabiz.com")}
             activeOpacity={0.75}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -251,23 +271,13 @@ export default function HomeScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.headerIconButton}
+            style={styles.headerIconBtn}
             onPress={() => router.push("/(tabs)/profile")}
             activeOpacity={0.75}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Bell size={20} color={colors.text} />
             <View style={styles.notificationDot} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.profileAvatarBtn}
-            onPress={() => router.push("/(tabs)/profile")}
-            activeOpacity={0.8}
-          >
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{userInitial}</Text>
-            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -286,35 +296,41 @@ export default function HomeScreen() {
         }
       >
         {/* =================================================================== */}
-        {/* 2. THE WALLET CARD (Clean Elevated Light Card with 3D Artwork) */}
+        {/* 2. LUXURY FINTECH WALLET CARD */}
         {/* =================================================================== */}
-        <View style={styles.walletCard}>
-          <View style={styles.walletTopRow}>
-            <View style={styles.walletBadge}>
-              <Wallet size={14} color={colors.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.walletBadgeText}>Wallet Balance</Text>
+        <View style={styles.fintechCard}>
+          {/* Card Top Row */}
+          <View style={styles.cardHeaderRow}>
+            <View style={styles.balanceLabelRow}>
+              <View style={styles.walletIconCircle}>
+                <Wallet size={14} color="#F472B6" />
+              </View>
+              <Text style={styles.balanceLabelText}>Total Balance</Text>
             </View>
 
-            <View style={styles.tierPill}>
-              <Sparkles size={11} color="#B45309" style={{ marginRight: 4 }} />
-              <Text style={styles.tierPillText}>{loyaltyTier} Member</Text>
-            </View>
+            <View style={styles.cardHeaderRight}>
+              <View style={styles.tierPillDark}>
+                <Sparkles size={11} color="#FBBF24" style={{ marginRight: 4 }} />
+                <Text style={styles.tierPillDarkText}>{loyaltyTier}</Text>
+              </View>
 
-            <TouchableOpacity
-              onPress={() => setHideBalance(!hideBalance)}
-              style={styles.eyeBtn}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              {hideBalance ? (
-                <EyeOff size={18} color={colors.textSecondary} />
-              ) : (
-                <Eye size={18} color={colors.textSecondary} />
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setHideBalance(!hideBalance)}
+                style={styles.eyeBtnDark}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                {hideBalance ? (
+                  <EyeOff size={18} color="#9CA3AF" />
+                ) : (
+                  <Eye size={18} color="#9CA3AF" />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={styles.balanceRow}>
-            <Text style={styles.balanceAmount}>
+          {/* Balance Display */}
+          <View style={styles.mainBalanceRow}>
+            <Text style={styles.mainBalanceText}>
               {hideBalance
                 ? "₦ ••••••••"
                 : `₦${Number(balance).toLocaleString("en-NG", {
@@ -322,42 +338,80 @@ export default function HomeScreen() {
                     maximumFractionDigits: 2,
                   })}`}
             </Text>
-            <View style={styles.walletArtWrap}>
-              <Image
-                source={require("../../assets/wallet.png")}
-                style={styles.walletArtImage}
-                resizeMode="contain"
-              />
-            </View>
           </View>
 
-          {/* Quick Actions: Exactly Fund Wallet & History */}
-          <View style={styles.walletActionRow}>
+          {/* Action Buttons Row: Fund Wallet & History */}
+          <View style={styles.cardActionRow}>
             <TouchableOpacity
-              style={styles.fundBtn}
+              style={styles.fundWalletBtn}
               onPress={() => router.push("/wallet/fund" as any)}
-              activeOpacity={0.85}
+              activeOpacity={0.88}
             >
-              <PlusCircle size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.fundBtnText}>Fund Wallet</Text>
+              <PlusCircle size={17} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.fundWalletBtnText}>Fund Wallet</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.historyBtn}
+              style={styles.historyBtnDark}
               onPress={() => router.push("/(tabs)/profile")}
               activeOpacity={0.8}
             >
-              <Clock size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
-              <Text style={styles.historyBtnText}>History</Text>
+              <Clock size={16} color="#E5E7EB" style={{ marginRight: 6 }} />
+              <Text style={styles.historyBtnDarkText}>History</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* =================================================================== */}
-        {/* 3. QUICK SERVICES (Exactly 4 per row, 8 total. Item 8 = More) */}
+        {/* 3. PROMOTIONAL / ANNOUNCEMENT / AD CAROUSEL SLOT */}
+        {/* =================================================================== */}
+        <View style={styles.adSection}>
+          <TouchableOpacity
+            style={[styles.adCard, { backgroundColor: currentAd.color }]}
+            onPress={() => router.push(currentAd.route as any)}
+            activeOpacity={0.9}
+          >
+            <View style={styles.adContent}>
+              <View style={[styles.adTagPill, { borderColor: currentAd.accent }]}>
+                <Text style={[styles.adTagText, { color: currentAd.accent }]}>
+                  {currentAd.tag}
+                </Text>
+              </View>
+
+              <Text style={styles.adTitle}>{currentAd.title}</Text>
+              <Text style={styles.adDesc} numberOfLines={2}>
+                {currentAd.desc}
+              </Text>
+
+              <View style={styles.adCtaRow}>
+                <Text style={[styles.adCtaText, { color: currentAd.accent }]}>
+                  {currentAd.cta}
+                </Text>
+                <ArrowRight size={14} color={currentAd.accent} style={{ marginLeft: 4 }} />
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* Carousel Pagination Dots */}
+          <View style={styles.dotsRow}>
+            {PROMO_ADS.map((_, idx) => (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => setActivePromoIndex(idx)}
+                style={[
+                  styles.dot,
+                  activePromoIndex === idx && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* =================================================================== */}
+        {/* 4. QUICK SERVICES GRID (Strictly 4x2 = 8 Total Items) */}
         {/* =================================================================== */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick Services</Text>
+          <Text style={styles.sectionTitle}>Services</Text>
         </View>
 
         <View style={styles.quickServicesGrid}>
@@ -386,79 +440,35 @@ export default function HomeScreen() {
         </View>
 
         {/* =================================================================== */}
-        {/* 4. TELECOM & UTILITIES STRIP */}
-        {/* =================================================================== */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Telecom & Utilities</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.vtuBanner}
-          onPress={() => router.push("/(tabs)/bills")}
-          activeOpacity={0.85}
-        >
-          <View style={styles.vtuIconWrap}>
-            <Image
-              source={require("../../assets/airtime.png")}
-              style={{ width: 24, height: 24 }}
-              resizeMode="contain"
-            />
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.vtuTitle}>Airtime & Cheap Data</Text>
-            <Text style={styles.vtuSub}>
-              Instant delivery across MTN, Airtel, Glo & 9mobile
-            </Text>
-          </View>
-          <ChevronRight size={17} color={colors.textSecondary} />
-        </TouchableOpacity>
-
-        {/* =================================================================== */}
         {/* 5. ACTIVE APPLICATIONS TRACKER */}
         {/* =================================================================== */}
-        {applications.length > 0 ? (
-          <View style={styles.applicationsSection}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text style={styles.sectionTitle}>Active Applications</Text>
-                <View style={styles.countBadge}>
-                  <Text style={styles.countBadgeText}>{applications.length}</Text>
-                </View>
-              </View>
-            </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Track Applications</Text>
+        </View>
 
+        {applications.length > 0 ? (
+          <View style={styles.applicationsList}>
             {applications.map((app: any, idx: number) => {
-              const displayId = app.trackingId || app.id?.substring(0, 8)?.toUpperCase();
+              const displayId = app.trackingId || app.id?.substring(0, 8)?.toUpperCase() || `LB-${idx + 101}`;
               const isApproved = app.status === "APPROVED";
               const isQueried = app.status === "QUERIED";
 
               return (
                 <TouchableOpacity
                   key={app.id || idx}
-                  style={styles.applicationCard}
+                  style={styles.appCard}
                   onPress={() => router.push("/(tabs)/services")}
                   activeOpacity={0.8}
                 >
                   <View style={styles.appCardLeft}>
-                    <View
-                      style={[
-                        styles.appStatusDot,
-                        {
-                          backgroundColor: isApproved
-                            ? colors.success
-                            : isQueried
-                            ? colors.error
-                            : colors.warning,
-                        },
-                      ]}
-                    />
+                    <View style={styles.appIconCircle}>
+                      <FileText size={18} color={colors.primary} />
+                    </View>
                     <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={styles.appTitle} numberOfLines={1}>
-                        {app.proposedName || `Application ${displayId}`}
+                        {app.serviceName || app.businessName || "Corporate Registration"}
                       </Text>
-                      <Text style={styles.appSub}>
-                        {app._appType === "LLC" ? "Company LLC" : "Business Name"} • ID: {displayId}
-                      </Text>
+                      <Text style={styles.appSub}>ID: {displayId}</Text>
                     </View>
                   </View>
 
@@ -467,10 +477,10 @@ export default function HomeScreen() {
                       styles.statusPill,
                       {
                         backgroundColor: isApproved
-                          ? "#ECFDF5"
+                          ? "rgba(16, 185, 129, 0.12)"
                           : isQueried
-                          ? "#FEF2F2"
-                          : "#FFFBEB",
+                          ? "rgba(239, 68, 68, 0.12)"
+                          : "rgba(245, 158, 11, 0.12)",
                       },
                     ]}
                   >
@@ -482,81 +492,59 @@ export default function HomeScreen() {
                             ? colors.success
                             : isQueried
                             ? colors.error
-                            : "#D97706",
+                            : "#B45309",
                         },
                       ]}
                     >
-                      {app.status || "PENDING"}
+                      {app.status || "PROCESSING"}
                     </Text>
                   </View>
                 </TouchableOpacity>
               );
             })}
           </View>
-        ) : null}
-
-        {/* =================================================================== */}
-        {/* 6. RECENT ACTIVITY */}
-        {/* =================================================================== */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-        </View>
-
-        {recentTransactions.length > 0 ? (
-          <View style={styles.transactionsList}>
-            {recentTransactions.map((tx: any, idx: number) => {
-              const isCredit = tx.type === "CREDIT";
-              const isLast = idx === recentTransactions.length - 1;
-              return (
-                <View
-                  key={tx.id || idx}
-                  style={[styles.transactionItem, isLast && { borderBottomWidth: 0 }]}
-                >
-                  <View
-                    style={[
-                      styles.txIcon,
-                      {
-                        backgroundColor: isCredit ? "#ECFDF5" : "#F1F5F9",
-                      },
-                    ]}
-                  >
-                    {isCredit ? (
-                      <ArrowDownLeft size={16} color={colors.success} />
-                    ) : (
-                      <ArrowUpRight size={16} color="#64748B" />
-                    )}
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.txDesc} numberOfLines={1}>
-                      {tx.description || (isCredit ? "Wallet Deposit" : "Service Payment")}
-                    </Text>
-                    <Text style={styles.txDate}>{formatTxDate(tx.createdAt)}</Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.txAmount,
-                      { color: isCredit ? colors.success : colors.text },
-                    ]}
-                  >
-                    {isCredit ? "+" : "-"}₦
-                    {Number(tx.amount || 0).toLocaleString("en-NG", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
         ) : (
-          <View style={styles.emptyCard}>
-            <Clock size={22} color={colors.textMuted} />
-            <Text style={styles.emptyCardText}>No recent activity yet</Text>
-            <Text style={styles.emptyCardSub}>
-              Fund your wallet or process a service to get started.
-            </Text>
-          </View>
+          <TouchableOpacity
+            style={styles.emptyTrackingCard}
+            onPress={() => router.push("/(tabs)/services")}
+            activeOpacity={0.85}
+          >
+            <View style={styles.emptyTrackingLeft}>
+              <View style={styles.trackIconWrap}>
+                <Search size={20} color={colors.primary} />
+              </View>
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={styles.emptyTrackingTitle}>Real-time Filing Status</Text>
+                <Text style={styles.emptyTrackingSub}>
+                  Track your CAC, SCUML or Legal Affidavits in real-time
+                </Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
         )}
+
+        {/* =================================================================== */}
+        {/* 6. DEDICATED SUPPORT STRIP */}
+        {/* =================================================================== */}
+        <TouchableOpacity
+          style={styles.supportStrip}
+          onPress={() => Linking.openURL("mailto:support@lorabiz.com")}
+          activeOpacity={0.85}
+        >
+          <View style={styles.supportStripLeft}>
+            <View style={styles.supportIconWrap}>
+              <Shield size={18} color={colors.primary} />
+            </View>
+            <View style={{ marginLeft: 12, flex: 1 }}>
+              <Text style={styles.supportTitle}>Certified Compliance Support</Text>
+              <Text style={styles.supportSub}>
+                Questions about your filing? Speak with an accredited officer.
+              </Text>
+            </View>
+          </View>
+          <ChevronRight size={17} color={colors.textSecondary} />
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -565,37 +553,74 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#F8FAFC",
   },
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 40,
+  },
+
+  /* Top App Bar */
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingBottom: 10,
-    backgroundColor: colors.background,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
   },
   topBarLeft: {
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
+  avatarOrb: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  avatarText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  greetingWrap: {
+    marginLeft: 10,
+  },
+  greetingSub: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: colors.textSecondary,
+  },
   greetingTitle: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: "800",
     color: colors.text,
-    letterSpacing: -0.3,
   },
   topBarRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
-  headerIconButton: {
+  headerIconBtn: {
     width: 38,
     height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -608,150 +633,186 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
     backgroundColor: colors.primary,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
   },
-  profileAvatarBtn: {
-    padding: 1,
+
+  /* Luxury Fintech Card */
+  fintechCard: {
+    backgroundColor: "#111827", // Luxury Slate-900
+    borderRadius: 20,
+    padding: 18,
+    marginTop: 6,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: "rgba(200, 45, 117, 0.25)",
   },
-  avatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.primary,
+  cardHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  balanceLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  walletIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(200, 45, 117, 0.25)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(200, 45, 117, 0.4)",
+    marginRight: 8,
   },
-  avatarText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-    fontSize: 15,
-  },
-
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 40,
-  },
-
-  /* Wallet Card */
-  walletCard: {
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: "rgba(200, 45, 117, 0.22)",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  walletTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  walletBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(200, 45, 117, 0.12)",
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  walletBadgeText: {
-    color: colors.primary,
+  balanceLabelText: {
+    color: "#9CA3AF",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
-  tierPill: {
+  cardHeaderRight: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFBEB",
+    gap: 8,
+  },
+  tierPillDark: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: "rgba(245, 158, 11, 0.3)",
   },
-  tierPillText: {
-    color: "#B45309",
-    fontSize: 11,
+  tierPillDarkText: {
+    color: "#FBBF24",
+    fontSize: 10,
     fontWeight: "700",
   },
-  eyeBtn: {
+  eyeBtnDark: {
     padding: 4,
   },
-  balanceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginVertical: 8,
+  mainBalanceRow: {
+    marginVertical: 12,
   },
-  balanceAmount: {
-    fontSize: 27,
+  mainBalanceText: {
+    fontSize: 28,
     fontWeight: "900",
-    color: colors.text,
+    color: "#FFFFFF",
     letterSpacing: -0.5,
-    flex: 1,
   },
-  walletArtWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(200, 45, 117, 0.10)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  walletArtImage: {
-    width: 36,
-    height: 36,
-  },
-  walletActionRow: {
+  cardActionRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
     marginTop: 4,
   },
-  fundBtn: {
+  fundWalletBtn: {
     flex: 1.2,
     backgroundColor: colors.primary,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 12,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  fundBtnText: {
+  fundWalletBtnText: {
     color: "#FFFFFF",
     fontWeight: "800",
     fontSize: 13,
   },
-  historyBtn: {
+  historyBtnDark: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(255, 255, 255, 0.10)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: "rgba(255, 255, 255, 0.12)",
   },
-  historyBtnText: {
-    color: colors.textSecondary,
+  historyBtnDarkText: {
+    color: "#E5E7EB",
     fontWeight: "700",
     fontSize: 13,
+  },
+
+  /* Promotional / Ad Section */
+  adSection: {
+    marginBottom: 18,
+  },
+  adCard: {
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  adContent: {
+    gap: 4,
+  },
+  adTagPill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  adTagText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  adTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+  adDesc: {
+    fontSize: 12,
+    color: "#D1D5DB",
+    lineHeight: 16,
+  },
+  adCtaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+  },
+  adCtaText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#CBD5E1",
+  },
+  activeDot: {
+    width: 18,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
   },
 
   /* Section Header */
@@ -768,40 +829,40 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
 
-  /* 4x2 Quick Services Grid (8 Total) */
+  /* Quick Services Grid: Strictly 4x2 = 8 Total Items */
   quickServicesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
     rowGap: 14,
-    marginBottom: 18,
+    marginBottom: 20,
   },
   gridItem: {
     width: "23%",
     alignItems: "center",
   },
   gridIconBox: {
-    width: 52,
-    height: 52,
+    width: 54,
+    height: 54,
     borderRadius: 16,
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: "rgba(0, 0, 0, 0.06)",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   moreIconBox: {
     backgroundColor: "rgba(200, 45, 117, 0.10)",
     borderColor: "rgba(200, 45, 117, 0.25)",
   },
   gridAgencyLogo: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
   },
   gridLabel: {
     fontSize: 11,
@@ -815,64 +876,25 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  /* VTU Banner */
-  vtuBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    borderRadius: 14,
-    padding: 12,
+  /* Active Applications */
+  applicationsList: {
     marginBottom: 16,
+    gap: 8,
   },
-  vtuIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  vtuTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  vtuSub: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
-
-  /* Applications Section */
-  applicationsSection: {
-    marginBottom: 16,
-  },
-  countBadge: {
-    backgroundColor: "rgba(200, 45, 117, 0.12)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: 6,
-  },
-  countBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: colors.primary,
-  },
-  applicationCard: {
+  appCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
     padding: 12,
-    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.05)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   appCardLeft: {
     flexDirection: "row",
@@ -880,10 +902,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 8,
   },
-  appStatusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  appIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(200, 45, 117, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   appTitle: {
     fontSize: 13,
@@ -891,13 +916,13 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   appSub: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textSecondary,
-    marginTop: 1,
+    marginTop: 2,
   },
   statusPill: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
   },
   statusPillText: {
@@ -905,61 +930,77 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  /* Transactions */
-  transactionsList: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 2,
-  },
-  transactionItem: {
+  /* Empty State Tracker */
+  emptyTrackingCard: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceBorder,
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.06)",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
   },
-  txIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+  emptyTrackingLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    paddingRight: 8,
+  },
+  trackIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(200, 45, 117, 0.10)",
     alignItems: "center",
     justifyContent: "center",
   },
-  txDesc: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  txDate: {
-    fontSize: 10,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
-  txAmount: {
+  emptyTrackingTitle: {
     fontSize: 13,
     fontWeight: "800",
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    borderRadius: 14,
-    padding: 20,
-    alignItems: "center",
-  },
-  emptyCardText: {
-    fontSize: 13,
-    fontWeight: "700",
     color: colors.text,
-    marginTop: 6,
   },
-  emptyCardSub: {
+  emptyTrackingSub: {
     fontSize: 11,
     color: colors.textSecondary,
-    textAlign: "center",
+    marginTop: 2,
+  },
+
+  /* Support Strip */
+  supportStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "rgba(200, 45, 117, 0.2)",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
+  },
+  supportStripLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    paddingRight: 8,
+  },
+  supportIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: "rgba(200, 45, 117, 0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  supportTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  supportSub: {
+    fontSize: 10,
+    color: colors.textSecondary,
     marginTop: 2,
   },
 });

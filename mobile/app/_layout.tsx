@@ -25,17 +25,18 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: colors.background },
-              animation: "slide_from_right",
+              animation: "none",
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false, animation: "none" }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "fade" }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "none" }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
             <Stack.Screen
               name="wallet/fund"
               options={{
                 headerShown: false,
                 presentation: "modal",
+                animation: "slide_from_bottom",
               }}
             />
           </Stack>
