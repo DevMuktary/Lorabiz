@@ -81,9 +81,9 @@ export const KNOWN_API_SERVICES: ApiServiceDefinition[] = [
     description: "Search national registry by 11-digit phone number (Premium ID Card layout).",
   },
 
-  // NIN Validation Pipeline
+  // NIN Validation Pipeline (Dedicated API Keys to prevent collision with Retail Portal)
   {
-    serviceKey: "NIN_VALIDATION_NO_RECORD",
+    serviceKey: "API_NIN_VALIDATION_NO_RECORD",
     title: "NIN Validation (No Record Found)",
     category: "NIN_VALIDATION",
     categoryLabel: "NIN Validation Pipeline",
@@ -91,28 +91,28 @@ export const KNOWN_API_SERVICES: ApiServiceDefinition[] = [
     description: "Validation pipeline resolving non-appearing or unindexed records on NIMC/telco portals.",
   },
   {
-    serviceKey: "NIN_VALIDATION_VNIN",
+    serviceKey: "API_NIN_VALIDATION_VNIN",
     title: "NIN Validation (SIM/Bank & VNIN)",
     category: "NIN_VALIDATION",
     categoryLabel: "NIN Validation Pipeline",
-    defaultPrice: 2500.0,
+    defaultPrice: 700.0,
     description: "Validation for SIM registration, banking restrictions, and Virtual NIN linkage.",
   },
   {
-    serviceKey: "NIN_VALIDATION_MOD",
-    title: "NIN Validation (Modification)",
+    serviceKey: "API_NIN_VALIDATION_MOD",
+    title: "NIN Validation (Update Record Mod)",
     category: "NIN_VALIDATION",
     categoryLabel: "NIN Validation Pipeline",
-    defaultPrice: 3000.0,
-    description: "Validation pipeline for legal name, date of birth, or demographic corrections.",
+    defaultPrice: 1500.0,
+    description: "Validation pipeline updating demographic modification records across NIMC databases.",
   },
   {
-    serviceKey: "NIN_VALIDATION_PHOTO_ERROR",
+    serviceKey: "API_NIN_VALIDATION_PHOTO_ERROR",
     title: "NIN Validation (Photographic Error)",
     category: "NIN_VALIDATION",
     categoryLabel: "NIN Validation Pipeline",
-    defaultPrice: 1600.0,
-    description: "Validation correcting corrupted biometric images or photo capture mismatches.",
+    defaultPrice: 1500.0,
+    description: "Validation resolving biometric photo errors, blurry facial captures, and mismatched images.",
   },
 
   // NIMC Special Operations
@@ -120,23 +120,23 @@ export const KNOWN_API_SERVICES: ApiServiceDefinition[] = [
     serviceKey: "API_NIN_IPE_CLEARANCE",
     title: "NIMC IPE Clearance",
     category: "NIMC_SPECIAL_SERVICES",
-    categoryLabel: "NIMC Special Operations",
+    categoryLabel: "Special Operations",
     defaultPrice: 2500.0,
-    description: "Submits tracking ID to resolve In-Processing Error and release cleared NIN.",
+    description: "Resolution and clearance of In-Processing Error (IPE) statuses directly with NIMC.",
   },
   {
     serviceKey: "API_NIN_PERSONALIZATION",
-    title: "NIMC NIN Personalization",
+    title: "NIN Personalization",
     category: "NIMC_SPECIAL_SERVICES",
-    categoryLabel: "NIMC Special Operations",
+    categoryLabel: "Special Operations",
     defaultPrice: 1500.0,
-    description: "Submits tracking ID to retrieve personalized NIN profile and official digital slip.",
+    description: "Specialized generation of verified and personalized NIN demographic identification documents.",
   },
 ];
 
 /**
  * GET /api/mds/api-services
- * Returns all API services, prices, live uptime status, and maintenance outage notices.
+ * Returns all recognized API services, their operational status, pricing, and maintenance messages.
  */
 export async function GET() {
   try {
@@ -150,6 +150,31 @@ export async function GET() {
     });
     if (!admin) {
       return NextResponse.json({ success: false, error: "Admin access required." }, { status: 403 });
+    }
+
+    // Bootstrap missing API services in ServicePricing so they exist independently
+    for (const def of KNOWN_API_SERVICES) {
+      const existingKey = await prisma.servicePricing.findUnique({
+        where: { serviceKey: def.serviceKey },
+      });
+      if (!existingKey) {
+        // If there was an old key (without API_ prefix) with wholesale price, carry it over
+        const legacyKey = def.serviceKey.replace("API_", "");
+        const legacyRec = await prisma.servicePricing.findUnique({
+          where: { serviceKey: legacyKey },
+        }).catch(() => null);
+
+        const initialPrice = legacyRec && Number(legacyRec.price) <= 1500 ? Number(legacyRec.price) : def.defaultPrice;
+
+        await prisma.servicePricing.create({
+          data: {
+            serviceKey: def.serviceKey,
+            title: def.title,
+            price: initialPrice,
+            isActive: true,
+          },
+        }).catch(() => null);
+      }
     }
 
     // Fetch existing records from ServicePricing

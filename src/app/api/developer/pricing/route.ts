@@ -120,7 +120,7 @@ export const CANONICAL_DEVELOPER_SERVICES: DeveloperApiServiceInfo[] = [
 
   // 3. NIN Validation Pipeline (POST /api/v1/nin/validation)
   {
-    serviceKey: "NIN_VALIDATION_NO_RECORD",
+    serviceKey: "API_NIN_VALIDATION_NO_RECORD",
     name: "No Record Found",
     endpoint: "/api/v1/nin/validation",
     method: "POST",
@@ -132,7 +132,7 @@ export const CANONICAL_DEVELOPER_SERVICES: DeveloperApiServiceInfo[] = [
     description: "Validates non-appearing records.",
   },
   {
-    serviceKey: "NIN_VALIDATION_VNIN",
+    serviceKey: "API_NIN_VALIDATION_VNIN",
     name: "VNIN Validation",
     endpoint: "/api/v1/nin/validation",
     method: "POST",
@@ -140,11 +140,11 @@ export const CANONICAL_DEVELOPER_SERVICES: DeveloperApiServiceInfo[] = [
     categoryLabel: "NIN Validation Pipeline",
     validationType: "vnin_validation",
     mode: "Asynchronous (Webhook + Polling)",
-    defaultPrice: 2500.0,
+    defaultPrice: 700.0,
     description: "Resolves banking and telecom restrictions.",
   },
   {
-    serviceKey: "NIN_VALIDATION_MOD",
+    serviceKey: "API_NIN_VALIDATION_MOD",
     name: "Modification",
     endpoint: "/api/v1/nin/validation",
     method: "POST",
@@ -152,11 +152,11 @@ export const CANONICAL_DEVELOPER_SERVICES: DeveloperApiServiceInfo[] = [
     categoryLabel: "NIN Validation Pipeline",
     validationType: "modification",
     mode: "Asynchronous (Webhook + Polling)",
-    defaultPrice: 3000.0,
+    defaultPrice: 1500.0,
     description: "Processes demographic modifications.",
   },
   {
-    serviceKey: "NIN_VALIDATION_PHOTO_ERROR",
+    serviceKey: "API_NIN_VALIDATION_PHOTO_ERROR",
     name: "Photo Error",
     endpoint: "/api/v1/nin/validation",
     method: "POST",
@@ -164,7 +164,7 @@ export const CANONICAL_DEVELOPER_SERVICES: DeveloperApiServiceInfo[] = [
     categoryLabel: "NIN Validation Pipeline",
     validationType: "photo_error",
     mode: "Asynchronous (Webhook + Polling)",
-    defaultPrice: 1600.0,
+    defaultPrice: 1500.0,
     description: "Fixes biometric image mismatches.",
   },
 
@@ -214,6 +214,9 @@ export async function GET() {
 
     const services = CANONICAL_DEVELOPER_SERVICES.map((def) => {
       let record = priceMap.get(def.serviceKey);
+      if (!record && def.serviceKey.startsWith("API_")) {
+        record = priceMap.get(def.serviceKey.replace("API_", ""));
+      }
       if (!record && def.serviceKey === "API_NIN_PERSONALIZATION") {
         record = priceMap.get("NIN_PERSONALIZATION");
       }
