@@ -293,7 +293,7 @@ export default function LoginScreen() {
         },
         body: new URLSearchParams({
           csrfToken: csrfData?.csrfToken || "",
-          callbackUrl: `${BASE_URL}/auth/mobile-callback`,
+          callbackUrl: "lorabiz://auth/google-success",
           json: "true",
         }),
       });
@@ -301,13 +301,45 @@ export default function LoginScreen() {
       const signinData = await signinRes.json();
 
       if (signinData?.url) {
-        // 3. Open native ASWebAuthenticationSession with deep link intercept
+        // 3. Open native ASWebAuthenticationSession with active session polling fallback
         const redirectUrl = "lorabiz://auth/google-success";
+
+        let pollInterval: ReturnType<typeof setInterval> | null = null;
+        let authenticated = false;
+
+        // Start background polling to auto-dismiss browser once session is active
+        pollInterval = setInterval(async () => {
+          try {
+            const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
+              credentials: "include",
+            });
+            const sessionData = await sessionRes.json();
+            if (sessionData?.user && !authenticated) {
+              authenticated = true;
+              if (pollInterval) clearInterval(pollInterval);
+              try {
+                WebBrowser.dismissAuthSession();
+              } catch {}
+              try {
+                WebBrowser.dismissBrowser();
+              } catch {}
+              await refreshProfile();
+              router.replace("/(tabs)");
+            }
+          } catch {}
+        }, 1200);
+
         const result = await WebBrowser.openAuthSessionAsync(
           signinData.url,
           redirectUrl,
           { preferEphemeralSession: false }
         );
+
+        if (pollInterval) clearInterval(pollInterval);
+
+        if (authenticated) {
+          return;
+        }
 
         // 4. CRITICAL: If user cancelled or dismissed the modal, DO NOT PROCEED TO DASHBOARD!
         if (result.type === "cancel" || result.type === "dismiss") {
@@ -456,7 +488,7 @@ export default function LoginScreen() {
         ) : isReturningUser && savedProfile ? (
           /* SCREEN STATE B: Returning User Quick Unlock (ALAT Screenshot 1) */
           <View style={styles.contentWrapper}>
-            {/* User Greeting Row: Left Avatar Circle, Right "Welcome Back" & bold Mukhtar */}
+            {/* User Greeting Row: Left Avatar Circle, Right "Welcome Back" & User Name */}
             <View style={styles.returningProfileRow}>
               <Image
                 source={
@@ -470,7 +502,7 @@ export default function LoginScreen() {
               <View style={styles.returningNameColumn}>
                 <Text style={styles.returningWelcomeText}>Welcome Back</Text>
                 <Text style={styles.returningUserName} numberOfLines={1}>
-                  {savedProfile.firstName || savedProfile.name || "Mukhtar"}
+                  {savedProfile.firstName || savedProfile.name || "User"}
                 </Text>
               </View>
             </View>

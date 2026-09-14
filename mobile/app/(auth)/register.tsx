@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -21,12 +21,10 @@ import Svg, { Path } from "react-native-svg";
 import {
   Eye,
   EyeOff,
-  ShieldCheck,
   Check,
   ChevronDown,
   CheckCircle2,
   MapPin,
-  Phone,
   Mail,
   User,
   Lock,
@@ -41,7 +39,6 @@ import SearchablePickerModal from "../../components/SearchablePickerModal";
 import {
   NIGERIAN_STATES,
   getLgasForState,
-  normalizeStateKey,
 } from "../../constants/nigeria-states";
 
 // Official Multi-Color Google G Icon
@@ -275,7 +272,7 @@ export default function RegisterScreen() {
     }
   }
 
-  // Google OAuth Trigger
+  // Google OAuth Trigger with active background polling to auto-close browser
   async function handleGoogleSignUp() {
     setIsLoading(true);
     setErrorMsg(null);
@@ -302,7 +299,7 @@ export default function RegisterScreen() {
         },
         body: new URLSearchParams({
           csrfToken: csrfData?.csrfToken || "",
-          callbackUrl: `${BASE_URL}/auth/mobile-callback`,
+          callbackUrl: "lorabiz://auth/google-success",
           json: "true",
         }),
       });
@@ -311,11 +308,43 @@ export default function RegisterScreen() {
 
       if (signinData?.url) {
         const redirectUrl = "lorabiz://auth/google-success";
+
+        let pollInterval: ReturnType<typeof setInterval> | null = null;
+        let authenticated = false;
+
+        // Background polling to immediately auto-close browser once user authenticates
+        pollInterval = setInterval(async () => {
+          try {
+            const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
+              credentials: "include",
+            });
+            const sessionData = await sessionRes.json();
+            if (sessionData?.user && !authenticated) {
+              authenticated = true;
+              if (pollInterval) clearInterval(pollInterval);
+              try {
+                WebBrowser.dismissAuthSession();
+              } catch {}
+              try {
+                WebBrowser.dismissBrowser();
+              } catch {}
+              await refreshProfile();
+              router.replace("/(tabs)");
+            }
+          } catch {}
+        }, 1200);
+
         const result = await WebBrowser.openAuthSessionAsync(
           signinData.url,
           redirectUrl,
           { preferEphemeralSession: false }
         );
+
+        if (pollInterval) clearInterval(pollInterval);
+
+        if (authenticated) {
+          return;
+        }
 
         if (result.type === "cancel" || result.type === "dismiss") {
           setIsLoading(false);
@@ -413,7 +442,6 @@ export default function RegisterScreen() {
       if (res.ok) {
         setOtpStep("verified");
         setErrorMsg(null);
-        // Automatically advance to Stage 3 for seamless UX
         setStage(3);
       } else {
         setErrorMsg(data.message || "Invalid or expired verification code.");
@@ -526,7 +554,6 @@ export default function RegisterScreen() {
 
       if (res.ok) {
         setSuccessMsg("Account created successfully! Signing you in...");
-        // Auto-login user for premier banking UX
         try {
           const loginRes = await login(email.trim(), password);
           if (loginRes.success) {
@@ -534,7 +561,6 @@ export default function RegisterScreen() {
             return;
           }
         } catch {}
-        // Fallback to login screen
         setTimeout(() => {
           router.replace("/(auth)/login");
         }, 1500);
@@ -548,7 +574,7 @@ export default function RegisterScreen() {
     }
   }
 
-  // Safe area top padding ensuring back button and profile orb sit below status bar
+  // Safe area top padding
   const topSafePadding = Math.max(insets.top, 44) + 6;
 
   return (
@@ -605,15 +631,10 @@ export default function RegisterScreen() {
         {/* ==================================================== */}
         {viewMode === "gateway" ? (
           <View style={styles.contentWrapper}>
-            {/* Header: Brand orb + Welcoming Hero */}
             <View style={styles.gatewayHero}>
-              <View style={styles.heroBadge}>
-                <Text style={styles.heroBadgeText}>Fast & Secure Onboarding</Text>
-              </View>
               <Text style={styles.gatewayTitle}>Create an Account</Text>
               <Text style={styles.gatewaySubtitle}>
-                Join thousands of businesses managing business registrations,
-                identity slips, and utility bills seamlessly.
+                Choose how you would like to get started.
               </Text>
             </View>
 
@@ -662,22 +683,6 @@ export default function RegisterScreen() {
               <Text style={styles.primaryButtonText}>Sign up with Email</Text>
             </TouchableOpacity>
 
-            {/* Trust Highlights */}
-            <View style={styles.trustGrid}>
-              <View style={styles.trustItem}>
-                <View style={styles.trustIconWrap}>
-                  <ShieldCheck size={18} color={colors.primary} />
-                </View>
-                <Text style={styles.trustText}>Bank-Grade Security</Text>
-              </View>
-              <View style={styles.trustItem}>
-                <View style={styles.trustIconWrap}>
-                  <CheckCircle2 size={18} color="#059669" />
-                </View>
-                <Text style={styles.trustText}>Instant Verification</Text>
-              </View>
-            </View>
-
             {/* Footer: Already have an account? Sign in */}
             <View style={styles.footerRow}>
               <Text style={styles.footerMuted}>Already have an account? </Text>
@@ -691,7 +696,7 @@ export default function RegisterScreen() {
           /* VIEW B: 4-STAGE STEPPED REGISTRATION WIZARD           */
           /* ==================================================== */
           <View style={styles.contentWrapper}>
-            {/* Minimal Visual Progress Indicator Line (NO text labels like "Step 1 of 4") */}
+            {/* Minimal Visual Progress Line (No Step Text Labels!) */}
             <View style={styles.progressTrack}>
               <View
                 style={[
@@ -742,8 +747,7 @@ export default function RegisterScreen() {
                 <View style={styles.stageHeader}>
                   <Text style={styles.stageTitle}>What is your name?</Text>
                   <Text style={styles.stageSubtitle}>
-                    Enter your legal name as it appears on your official identity
-                    documents.
+                    Enter your legal name as on official documents.
                   </Text>
                 </View>
 
@@ -758,7 +762,7 @@ export default function RegisterScreen() {
                   <User size={18} color="#94A3B8" style={{ marginRight: 10 }} />
                   <TextInput
                     style={styles.alatTextInput}
-                    placeholder="e.g. Mukhtar"
+                    placeholder="e.g. John"
                     placeholderTextColor="#94A3B8"
                     value={firstName}
                     onChangeText={(text) => {
@@ -783,7 +787,7 @@ export default function RegisterScreen() {
                 >
                   <TextInput
                     style={styles.alatTextInput}
-                    placeholder="e.g. Alabi"
+                    placeholder="e.g. David"
                     placeholderTextColor="#94A3B8"
                     value={middleName}
                     onChangeText={(text) => {
@@ -807,7 +811,7 @@ export default function RegisterScreen() {
                   <User size={18} color="#94A3B8" style={{ marginRight: 10 }} />
                   <TextInput
                     style={styles.alatTextInput}
-                    placeholder="e.g. Olawale"
+                    placeholder="e.g. Doe"
                     placeholderTextColor="#94A3B8"
                     value={lastName}
                     onChangeText={(text) => {
@@ -872,7 +876,7 @@ export default function RegisterScreen() {
                   <Text style={styles.stageTitle}>Verify your email</Text>
                   <Text style={styles.stageSubtitle}>
                     {otpStep === "idle"
-                      ? "We'll send a 6-digit confirmation code to verify your account."
+                      ? "We will send a 6-digit code to verify your email."
                       : `Enter the code sent to your email address.`}
                   </Text>
                 </View>
@@ -889,7 +893,7 @@ export default function RegisterScreen() {
                       <Mail size={18} color="#94A3B8" style={{ marginRight: 10 }} />
                       <TextInput
                         style={styles.alatTextInput}
-                        placeholder="you@example.com"
+                        placeholder="name@example.com"
                         placeholderTextColor="#94A3B8"
                         value={email}
                         onChangeText={(text) => {
@@ -1032,17 +1036,7 @@ export default function RegisterScreen() {
                 <View style={styles.stageHeader}>
                   <Text style={styles.stageTitle}>Contact & Security</Text>
                   <Text style={styles.stageSubtitle}>
-                    Protect your account and enable instant SMS & transaction
-                    alerts.
-                  </Text>
-                </View>
-
-                {/* Security Anti-Fraud Notice */}
-                <View style={styles.securityNoticeCard}>
-                  <ShieldCheck size={18} color="#0284C7" />
-                  <Text style={styles.securityNoticeText}>
-                    Phone numbers are verified to protect your wallet and prevent
-                    unauthorized account takeovers.
+                    For account updates and customer support.
                   </Text>
                 </View>
 
@@ -1072,6 +1066,9 @@ export default function RegisterScreen() {
                     onBlur={() => setActiveInput(null)}
                   />
                 </Pressable>
+                <Text style={styles.phoneHelperText}>
+                  Please enter an active phone number so our team can reach you if needed.
+                </Text>
 
                 {/* WhatsApp Number & Toggle */}
                 <View style={styles.whatsappHeaderRow}>
@@ -1229,15 +1226,31 @@ export default function RegisterScreen() {
                   </TouchableOpacity>
                 </Pressable>
 
+                {/* Inline Confirm Password Feedback Text */}
+                {confirmPassword.length > 0 && (
+                  <Text
+                    style={[
+                      styles.confirmMatchText,
+                      password === confirmPassword
+                        ? styles.matchSuccess
+                        : styles.matchError,
+                    ]}
+                  >
+                    {password === confirmPassword
+                      ? "✓ Passwords match"
+                      : "Passwords do not match"}
+                  </Text>
+                )}
+
                 {/* Continue Button */}
                 <TouchableOpacity
                   style={[
                     styles.primaryButton,
-                    (!phone.trim() || !password || passScore < 3) &&
+                    (!phone.trim() || !password || passScore < 3 || password !== confirmPassword) &&
                       styles.btnDisabled,
                   ]}
                   onPress={handleStage3Continue}
-                  disabled={!phone.trim() || !password || passScore < 3}
+                  disabled={!phone.trim() || !password || passScore < 3 || password !== confirmPassword}
                   activeOpacity={0.88}
                 >
                   <Text style={styles.primaryButtonText}>Continue</Text>
@@ -1253,8 +1266,7 @@ export default function RegisterScreen() {
                 <View style={styles.stageHeader}>
                   <Text style={styles.stageTitle}>Address & Final Setup</Text>
                   <Text style={styles.stageSubtitle}>
-                    Provide your residential or office location for regulatory
-                    compliance.
+                    Enter your location to complete registration.
                   </Text>
                 </View>
 
@@ -1475,7 +1487,6 @@ export default function RegisterScreen() {
         selectedValue={state}
         onSelect={(selectedState) => {
           setState(selectedState);
-          // If state changed, clear previous LGA
           setLga("");
           if (errorMsg) setErrorMsg(null);
         }}
@@ -1569,60 +1580,24 @@ const styles = StyleSheet.create({
   },
 
   // ----------------------------------------------------
-  // Gateway Choice Screen Styles
+  // Gateway Choice Screen Styles (Clean, no badges)
   // ----------------------------------------------------
   gatewayHero: {
     marginBottom: 26,
     alignItems: "flex-start",
-  },
-  heroBadge: {
-    backgroundColor: "rgba(200, 45, 117, 0.08)",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    marginBottom: 12,
-  },
-  heroBadgeText: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.3,
   },
   gatewayTitle: {
     fontSize: 28,
     fontWeight: "900",
     color: "#0F172A",
     letterSpacing: -0.5,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   gatewaySubtitle: {
     fontSize: 14,
     color: "#64748B",
-    lineHeight: 21,
+    lineHeight: 20,
     fontWeight: "400",
-  },
-  trustGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 26,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  trustItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  trustIconWrap: {
-    marginRight: 8,
-  },
-  trustText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#334155",
   },
 
   // ----------------------------------------------------
@@ -1661,7 +1636,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "#0F172A",
     letterSpacing: -0.4,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   stageSubtitle: {
     fontSize: 14,
@@ -1708,6 +1683,30 @@ const styles = StyleSheet.create({
   },
   eyeBtn: {
     padding: 6,
+  },
+
+  // Phone Helper Text
+  phoneHelperText: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: -8,
+    marginBottom: 14,
+    lineHeight: 16,
+  },
+
+  // Confirm Password Match Text
+  confirmMatchText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: -8,
+    marginBottom: 14,
+    marginLeft: 4,
+  },
+  matchSuccess: {
+    color: "#059669",
+  },
+  matchError: {
+    color: "#DC2626",
   },
 
   // Gender Pills
@@ -1847,26 +1846,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Stage 3 Security Notice
-  securityNoticeCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F0F9FF",
-    borderWidth: 1,
-    borderColor: "#BAE6FD",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-  securityNoticeText: {
-    fontSize: 12,
-    color: "#0369A1",
-    fontWeight: "500",
-    lineHeight: 17,
-    marginLeft: 10,
-    flex: 1,
-  },
   countryBadge: {
     flexDirection: "row",
     alignItems: "center",
