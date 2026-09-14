@@ -10,44 +10,44 @@ import crypto from "crypto";
 const VALIDATION_TYPE_MAP: Record<string, { category: NinValidationCategory; serviceKey: string; defaultPrice: number; label: string }> = {
   no_record_found: {
     category: NinValidationCategory.NO_RECORD_FOUND,
-    serviceKey: "NIN_VALIDATION_NO_RECORD",
+    serviceKey: "API_NIN_VALIDATION_NO_RECORD",
     defaultPrice: 700.0,
     label: "No Record Found",
   },
   no_record: {
     category: NinValidationCategory.NO_RECORD_FOUND,
-    serviceKey: "NIN_VALIDATION_NO_RECORD",
+    serviceKey: "API_NIN_VALIDATION_NO_RECORD",
     defaultPrice: 700.0,
     label: "No Record Found",
   },
   vnin_validation: {
     category: NinValidationCategory.VNIN_VALIDATION,
-    serviceKey: "NIN_VALIDATION_VNIN",
-    defaultPrice: 2500.0,
+    serviceKey: "API_NIN_VALIDATION_VNIN",
+    defaultPrice: 700.0,
     label: "SIM/Bank & VNIN Validation",
   },
   vnin: {
     category: NinValidationCategory.VNIN_VALIDATION,
-    serviceKey: "NIN_VALIDATION_VNIN",
-    defaultPrice: 2500.0,
+    serviceKey: "API_NIN_VALIDATION_VNIN",
+    defaultPrice: 700.0,
     label: "SIM/Bank & VNIN Validation",
   },
   modification: {
     category: NinValidationCategory.UPDATE_RECORD_MOD,
-    serviceKey: "NIN_VALIDATION_MOD",
-    defaultPrice: 3000.0,
+    serviceKey: "API_NIN_VALIDATION_MOD",
+    defaultPrice: 1500.0,
     label: "Modification Validation",
   },
   update_record_mod: {
     category: NinValidationCategory.UPDATE_RECORD_MOD,
-    serviceKey: "NIN_VALIDATION_MOD",
-    defaultPrice: 3000.0,
+    serviceKey: "API_NIN_VALIDATION_MOD",
+    defaultPrice: 1500.0,
     label: "Modification Validation",
   },
   photo_error: {
     category: NinValidationCategory.PHOTO_ERROR,
-    serviceKey: "NIN_VALIDATION_PHOTO_ERROR",
-    defaultPrice: 1600.0,
+    serviceKey: "API_NIN_VALIDATION_PHOTO_ERROR",
+    defaultPrice: 1500.0,
     label: "Photographic Error",
   },
 };
@@ -101,25 +101,30 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Validate validation_type
-  const normalizedTypeKey = String(validation_type || "no_record_found").toLowerCase().trim();
+  // Validate validation_type parameter
+  const normalizedTypeKey = typeof validation_type === "string" ? validation_type.trim().toLowerCase() : "";
   const typeConfig = VALIDATION_TYPE_MAP[normalizedTypeKey];
-
   if (!typeConfig) {
+    const validTypes = ["no_record_found", "vnin_validation", "modification", "photo_error"];
     return NextResponse.json(
       {
         status: "error",
-        code: "INVALID_INPUT",
-        message: `Invalid validation_type '${validation_type}'. Must be one of: 'no_record_found', 'vnin_validation', 'modification', 'photo_error'.`,
+        code: "INVALID_VALIDATION_TYPE",
+        message: `Invalid validation_type '${validation_type}'. Valid types are: ${validTypes.join(", ")}.`,
       },
       { status: 400 }
     );
   }
 
   // 4. Fetch Dynamic Pricing & Availability from ServicePricing
-  const pricingRecord = await prisma.servicePricing.findUnique({
+  let pricingRecord = await prisma.servicePricing.findUnique({
     where: { serviceKey: typeConfig.serviceKey },
   });
+  if (!pricingRecord && typeConfig.serviceKey.startsWith("API_")) {
+    pricingRecord = await prisma.servicePricing.findUnique({
+      where: { serviceKey: typeConfig.serviceKey.replace("API_", "") },
+    });
+  }
 
   const price = pricingRecord ? Number(pricingRecord.price) : typeConfig.defaultPrice;
   const isOnline = pricingRecord ? pricingRecord.isActive : true;
