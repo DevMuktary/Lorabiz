@@ -13,7 +13,7 @@ import {
   Image,
   StatusBar,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
@@ -35,6 +35,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../constants/theme";
 import { BASE_URL } from "../../lib/api";
+import { getAuthToken } from "../../lib/storage";
 import SearchablePickerModal from "../../components/SearchablePickerModal";
 import {
   NIGERIAN_STATES,
@@ -94,9 +95,32 @@ export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const { login, refreshProfile, completeSocialLogin } = useAuth();
 
+  const params = useLocalSearchParams<{
+    fromGoogle?: string;
+    googleFirstName?: string;
+    googleLastName?: string;
+    googleEmail?: string;
+  }>();
+
+  // Social registration flag (Google sign-up)
+  const [isSocialRegistration, setIsSocialRegistration] = useState(false);
+
   // Navigation mode: "gateway" (Choice screen) or "wizard" (4-stage form)
   const [viewMode, setViewMode] = useState<"gateway" | "wizard">("gateway");
   const [stage, setStage] = useState<1 | 2 | 3 | 4>(1);
+
+  // Handle incoming redirect from Google login screen
+  useEffect(() => {
+    if (params.fromGoogle === "true") {
+      setIsSocialRegistration(true);
+      if (params.googleFirstName) setFirstName(params.googleFirstName);
+      if (params.googleLastName) setLastName(params.googleLastName);
+      if (params.googleEmail) setEmail(params.googleEmail);
+      setOtpStep("verified");
+      setViewMode("wizard");
+      setStage(1);
+    }
+  }, [params.fromGoogle, params.googleFirstName, params.googleLastName, params.googleEmail]);
 
   // Form State
   const [firstName, setFirstName] = useState("");
@@ -223,13 +247,28 @@ export default function RegisterScreen() {
         } catch {}
         setIsLoading(true);
         try {
-          const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
-            credentials: "include",
-          });
-          const sessionData = await sessionRes.json();
-          if (sessionData?.user) {
-            await refreshProfile();
-            router.replace("/(tabs)");
+          let token = "";
+          try {
+            const parsed = new URL(event.url);
+            token = parsed.searchParams.get("token") || "";
+          } catch {
+            const match = event.url.match(/token=([^&]+)/);
+            if (match) token = decodeURIComponent(match[1]);
+          }
+
+          const loggedInUser = await completeSocialLogin(token);
+          if (loggedInUser) {
+            if (loggedInUser.isProfileComplete) {
+              router.replace("/(tabs)");
+            } else {
+              setIsSocialRegistration(true);
+              if (loggedInUser.firstName) setFirstName(loggedInUser.firstName);
+              if (loggedInUser.lastName) setLastName(loggedInUser.lastName);
+              if (loggedInUser.email) setEmail(loggedInUser.email);
+              setOtpStep("verified");
+              setViewMode("wizard");
+              setStage(1);
+            }
           }
         } catch (e) {
           console.error("Deep link session sync error:", e);
@@ -264,6 +303,9 @@ export default function RegisterScreen() {
     if (viewMode === "wizard") {
       if (stage === 1) {
         setViewMode("gateway");
+      } else if (stage === 3 && isSocialRegistration) {
+        // For Google registration, going back from contact info returns to name/gender (stage 1)
+        setStage(1);
       } else {
         setStage((prev) => (prev - 1) as 1 | 2 | 3);
       }
@@ -272,7 +314,7 @@ export default function RegisterScreen() {
     }
   }
 
-  // Google OAuth Trigger with active background polling to auto-close browser
+  // Google OAuth Trigger
   async function handleGoogleSignUp() {
     setIsLoading(true);
     setErrorMsg(null);
@@ -304,13 +346,23 @@ export default function RegisterScreen() {
           }
         }
 
-        const success = await completeSocialLogin(sessionToken);
-        if (success) {
-          router.replace("/(tabs)");
+        const loggedInUser = await completeSocialLogin(sessionToken);
+        if (loggedInUser) {
+          if (loggedInUser.isProfileComplete) {
+            // Already complete profile: go directly to dashboard
+            router.replace("/(tabs)");
+          } else {
+            // Profile incomplete: populate Google details and open registration wizard
+            setIsSocialRegistration(true);
+            if (loggedInUser.firstName) setFirstName(loggedInUser.firstName);
+            if (loggedInUser.lastName) setLastName(loggedInUser.lastName);
+            if (loggedInUser.email) setEmail(loggedInUser.email);
+            setOtpStep("verified");
+            setViewMode("wizard");
+            setStage(1);
+          }
         } else {
-          // Fallback session verification
-          await refreshProfile();
-          router.replace("/(tabs)");
+          setErrorMsg("Could not verify Google session. Please try again.");
         }
       }
     } catch (err: any) {
@@ -332,7 +384,12 @@ export default function RegisterScreen() {
       setErrorMsg("Please enter your last name.");
       return;
     }
-    setStage(2);
+    // If social registration, email is already verified by Google, so skip Stage 2 (Email OTP) and go directly to Stage 3!
+    if (isSocialRegistration) {
+      setStage(3);
+    } else {
+      setStage(2);
+    }
   }
 
   // Stage 2: Send OTP
@@ -433,14 +490,17 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (passScore < 3) {
-      setErrorMsg("Password is too weak. Must contain uppercase, numbers or symbols.");
-      return;
-    }
+    // Passwords are only required for manual email registrations
+    if (!isSocialRegistration) {
+      if (passScore < 3) {
+        setErrorMsg("Password is too weak. Must contain uppercase, numbers or symbols.");
+        return;
+      }
 
-    if (password !== confirmPassword) {
-      setErrorMsg("Passwords do not match.");
-      return;
+      if (password !== confirmPassword) {
+        setErrorMsg("Passwords do not match.");
+        return;
+      }
     }
 
     setStage(4);
@@ -466,53 +526,99 @@ export default function RegisterScreen() {
       setErrorMsg("You must accept the Terms and Conditions to create an account.");
       return;
     }
-    if (otpStep !== "verified" || !otpCode) {
-      setErrorMsg("Email verification is required before creating account.");
-      return;
-    }
 
     setIsLoading(true);
 
     try {
-      const payload = {
-        firstName: firstName.trim(),
-        middleName: middleName.trim() || undefined,
-        lastName: lastName.trim(),
-        gender: gender.toUpperCase(),
-        email: email.trim(),
-        phone: phone.trim(),
-        whatsapp: (sameAsPhone ? phone : whatsapp).trim(),
-        password,
-        state: state.trim(),
-        lga: lga.trim(),
-        street: street.trim(),
-        buildingNo: buildingNo.trim() || undefined,
-        referralCode: referralCode.trim() || undefined,
-        otpCode: otpCode.trim(),
-      };
+      if (isSocialRegistration) {
+        // Complete registration for Google authenticated user
+        const token = await getAuthToken();
+        const res = await fetch(`${BASE_URL}/api/auth/complete-profile`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token
+              ? {
+                  Authorization: `Bearer ${token}`,
+                  Cookie: `next-auth.session-token=${token}; __Secure-next-auth.session-token=${token}`,
+                }
+              : {}),
+          },
+          body: JSON.stringify({
+            firstName: firstName.trim(),
+            middleName: middleName.trim() || undefined,
+            lastName: lastName.trim(),
+            phone: phone.trim(),
+            whatsapp: (sameAsPhone ? phone : whatsapp).trim(),
+            gender: gender.toUpperCase(),
+            state: state.trim(),
+            lga: lga.trim(),
+            street: street.trim(),
+            buildingNo: buildingNo.trim() || undefined,
+            referralCode: referralCode.trim() || undefined,
+            termsAccepted: true,
+          }),
+        });
 
-      const res = await fetch(`${BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+        const data = await res.json();
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setSuccessMsg("Account created successfully! Signing you in...");
-        try {
-          const loginRes = await login(email.trim(), password);
-          if (loginRes.success) {
+        if (res.ok && data.success !== false) {
+          setSuccessMsg("Profile completed successfully! Welcome to LoraBiz.");
+          await refreshProfile();
+          setTimeout(() => {
             router.replace("/(tabs)");
-            return;
-          }
-        } catch {}
-        setTimeout(() => {
-          router.replace("/(auth)/login");
-        }, 1500);
+          }, 800);
+        } else {
+          setErrorMsg(data.message || "Failed to complete registration. Please verify details.");
+        }
       } else {
-        setErrorMsg(data.message || "Failed to create account. Please verify details.");
+        // Standard Email Registration
+        if (otpStep !== "verified" || !otpCode) {
+          setErrorMsg("Email verification is required before creating account.");
+          setIsLoading(false);
+          return;
+        }
+
+        const payload = {
+          firstName: firstName.trim(),
+          middleName: middleName.trim() || undefined,
+          lastName: lastName.trim(),
+          gender: gender.toUpperCase(),
+          email: email.trim(),
+          phone: phone.trim(),
+          whatsapp: (sameAsPhone ? phone : whatsapp).trim(),
+          password,
+          state: state.trim(),
+          lga: lga.trim(),
+          street: street.trim(),
+          buildingNo: buildingNo.trim() || undefined,
+          referralCode: referralCode.trim() || undefined,
+          otpCode: otpCode.trim(),
+        };
+
+        const res = await fetch(`${BASE_URL}/api/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          setSuccessMsg("Account created successfully! Signing you in...");
+          try {
+            const loginRes = await login(email.trim(), password);
+            if (loginRes.success) {
+              router.replace("/(tabs)");
+              return;
+            }
+          } catch {}
+          setTimeout(() => {
+            router.replace("/(auth)/login");
+          }, 1500);
+        } else {
+          setErrorMsg(data.message || "Failed to create account. Please verify details.");
+        }
       }
     } catch {
       setErrorMsg("Network error during registration. Please try again.");
@@ -645,30 +751,55 @@ export default function RegisterScreen() {
           <View style={styles.contentWrapper}>
             {/* Minimal Visual Progress Line (No Step Text Labels!) */}
             <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressSegment,
-                  stage >= 1 && styles.progressSegmentActive,
-                ]}
-              />
-              <View
-                style={[
-                  styles.progressSegment,
-                  stage >= 2 && styles.progressSegmentActive,
-                ]}
-              />
-              <View
-                style={[
-                  styles.progressSegment,
-                  stage >= 3 && styles.progressSegmentActive,
-                ]}
-              />
-              <View
-                style={[
-                  styles.progressSegment,
-                  stage >= 4 && styles.progressSegmentActive,
-                ]}
-              />
+              {isSocialRegistration ? (
+                <>
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      stage >= 1 && styles.progressSegmentActive,
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      stage >= 3 && styles.progressSegmentActive,
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      stage >= 4 && styles.progressSegmentActive,
+                    ]}
+                  />
+                </>
+              ) : (
+                <>
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      stage >= 1 && styles.progressSegmentActive,
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      stage >= 2 && styles.progressSegmentActive,
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      stage >= 3 && styles.progressSegmentActive,
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      stage >= 4 && styles.progressSegmentActive,
+                    ]}
+                  />
+                </>
+              )}
             </View>
 
             {/* Feedback Notifications */}
@@ -691,10 +822,26 @@ export default function RegisterScreen() {
             {/* ---------------------------------------------------- */}
             {stage === 1 && (
               <View style={styles.stageSection}>
+                {/* Verified Google Account Badge */}
+                {isSocialRegistration && (
+                  <View style={styles.socialVerifiedCard}>
+                    <View style={styles.socialVerifiedBadgeIcon}>
+                      <GoogleIcon size={18} />
+                    </View>
+                    <View style={styles.socialVerifiedContent}>
+                      <Text style={styles.socialVerifiedTitle}>Google Account Verified</Text>
+                      <Text style={styles.socialVerifiedEmail} numberOfLines={1}>{email}</Text>
+                    </View>
+                    <CheckCircle2 size={18} color="#059669" />
+                  </View>
+                )}
+
                 <View style={styles.stageHeader}>
                   <Text style={styles.stageTitle}>What is your name?</Text>
                   <Text style={styles.stageSubtitle}>
-                    Enter your legal name as on official documents.
+                    {isSocialRegistration
+                      ? "Confirm your legal name and gender to continue."
+                      : "Enter your legal name as on official documents."}
                   </Text>
                 </View>
 
@@ -981,9 +1128,13 @@ export default function RegisterScreen() {
             {stage === 3 && (
               <View style={styles.stageSection}>
                 <View style={styles.stageHeader}>
-                  <Text style={styles.stageTitle}>Contact & Security</Text>
+                  <Text style={styles.stageTitle}>
+                    {isSocialRegistration ? "Contact Information" : "Contact & Security"}
+                  </Text>
                   <Text style={styles.stageSubtitle}>
-                    For account updates and customer support.
+                    {isSocialRegistration
+                      ? "Enter your phone number so we can reach you for account updates."
+                      : "For account updates and customer support."}
                   </Text>
                 </View>
 
@@ -1064,140 +1215,151 @@ export default function RegisterScreen() {
                   </Pressable>
                 )}
 
-                {/* Password Input */}
-                <Text style={styles.fieldLabel}>Create Password</Text>
-                <Pressable
-                  style={[
-                    styles.alatInputCard,
-                    activeInput === "password" && styles.alatInputCardActive,
-                  ]}
-                >
-                  <Lock size={18} color="#94A3B8" style={{ marginRight: 10 }} />
-                  <TextInput
-                    style={styles.alatTextInput}
-                    placeholder="Minimum 8 characters"
-                    placeholderTextColor="#94A3B8"
-                    value={password}
-                    onChangeText={(text) => {
-                      setPassword(text);
-                      if (errorMsg) setErrorMsg(null);
-                    }}
-                    secureTextEntry={!showPassword}
-                    onFocus={() => setActiveInput("password")}
-                    onBlur={() => setActiveInput(null)}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeBtn}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={18} color="#64748B" />
-                    ) : (
-                      <Eye size={18} color="#64748B" />
-                    )}
-                  </TouchableOpacity>
-                </Pressable>
-
-                {/* Password Strength Meter (4 Segments) */}
-                {password.length > 0 && (
-                  <View style={styles.strengthContainer}>
-                    <View style={styles.strengthTrack}>
-                      <View
-                        style={[
-                          styles.strengthSegment,
-                          passScore >= 1 && styles.segmentWeak,
-                        ]}
-                      />
-                      <View
-                        style={[
-                          styles.strengthSegment,
-                          passScore >= 2 && styles.segmentFair,
-                        ]}
-                      />
-                      <View
-                        style={[
-                          styles.strengthSegment,
-                          passScore >= 3 && styles.segmentGood,
-                        ]}
-                      />
-                      <View
-                        style={[
-                          styles.strengthSegment,
-                          passScore >= 4 && styles.segmentStrong,
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.strengthLabel}>
-                      {passScore <= 1
-                        ? "Weak"
-                        : passScore === 2
-                        ? "Fair"
-                        : passScore === 3
-                        ? "Good"
-                        : "Strong"}
+                {isSocialRegistration ? (
+                  <View style={styles.socialPasswordBypassCard}>
+                    <CheckCircle2 size={18} color="#059669" style={{ marginRight: 8 }} />
+                    <Text style={styles.socialPasswordBypassText}>
+                      Signed in with Google. No password is required.
                     </Text>
                   </View>
-                )}
+                ) : (
+                  <>
+                    {/* Password Input */}
+                    <Text style={styles.fieldLabel}>Create Password</Text>
+                    <Pressable
+                      style={[
+                        styles.alatInputCard,
+                        activeInput === "password" && styles.alatInputCardActive,
+                      ]}
+                    >
+                      <Lock size={18} color="#94A3B8" style={{ marginRight: 10 }} />
+                      <TextInput
+                        style={styles.alatTextInput}
+                        placeholder="Minimum 8 characters"
+                        placeholderTextColor="#94A3B8"
+                        value={password}
+                        onChangeText={(text) => {
+                          setPassword(text);
+                          if (errorMsg) setErrorMsg(null);
+                        }}
+                        secureTextEntry={!showPassword}
+                        onFocus={() => setActiveInput("password")}
+                        onBlur={() => setActiveInput(null)}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeBtn}
+                      >
+                        {showPassword ? (
+                          <EyeOff size={18} color="#64748B" />
+                        ) : (
+                          <Eye size={18} color="#64748B" />
+                        )}
+                      </TouchableOpacity>
+                    </Pressable>
 
-                {/* Confirm Password */}
-                <Text style={styles.fieldLabel}>Confirm Password</Text>
-                <Pressable
-                  style={[
-                    styles.alatInputCard,
-                    activeInput === "confirmPassword" && styles.alatInputCardActive,
-                  ]}
-                >
-                  <Lock size={18} color="#94A3B8" style={{ marginRight: 10 }} />
-                  <TextInput
-                    style={styles.alatTextInput}
-                    placeholder="Re-enter password"
-                    placeholderTextColor="#94A3B8"
-                    value={confirmPassword}
-                    onChangeText={(text) => {
-                      setConfirmPassword(text);
-                      if (errorMsg) setErrorMsg(null);
-                    }}
-                    secureTextEntry={!showConfirmPassword}
-                    onFocus={() => setActiveInput("confirmPassword")}
-                    onBlur={() => setActiveInput(null)}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={styles.eyeBtn}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={18} color="#64748B" />
-                    ) : (
-                      <Eye size={18} color="#64748B" />
+                    {/* Password Strength Meter (4 Segments) */}
+                    {password.length > 0 && (
+                      <View style={styles.strengthContainer}>
+                        <View style={styles.strengthTrack}>
+                          <View
+                            style={[
+                              styles.strengthSegment,
+                              passScore >= 1 && styles.segmentWeak,
+                            ]}
+                          />
+                          <View
+                            style={[
+                              styles.strengthSegment,
+                              passScore >= 2 && styles.segmentFair,
+                            ]}
+                          />
+                          <View
+                            style={[
+                              styles.strengthSegment,
+                              passScore >= 3 && styles.segmentGood,
+                            ]}
+                          />
+                          <View
+                            style={[
+                              styles.strengthSegment,
+                              passScore >= 4 && styles.segmentStrong,
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.strengthLabel}>
+                          {passScore <= 1
+                            ? "Weak"
+                            : passScore === 2
+                            ? "Fair"
+                            : passScore === 3
+                            ? "Good"
+                            : "Strong"}
+                        </Text>
+                      </View>
                     )}
-                  </TouchableOpacity>
-                </Pressable>
 
-                {/* Inline Confirm Password Feedback Text */}
-                {confirmPassword.length > 0 && (
-                  <Text
-                    style={[
-                      styles.confirmMatchText,
-                      password === confirmPassword
-                        ? styles.matchSuccess
-                        : styles.matchError,
-                    ]}
-                  >
-                    {password === confirmPassword
-                      ? "✓ Passwords match"
-                      : "Passwords do not match"}
-                  </Text>
+                    {/* Confirm Password */}
+                    <Text style={styles.fieldLabel}>Confirm Password</Text>
+                    <Pressable
+                      style={[
+                        styles.alatInputCard,
+                        activeInput === "confirmPassword" && styles.alatInputCardActive,
+                      ]}
+                    >
+                      <Lock size={18} color="#94A3B8" style={{ marginRight: 10 }} />
+                      <TextInput
+                        style={styles.alatTextInput}
+                        placeholder="Re-enter password"
+                        placeholderTextColor="#94A3B8"
+                        value={confirmPassword}
+                        onChangeText={(text) => {
+                          setConfirmPassword(text);
+                          if (errorMsg) setErrorMsg(null);
+                        }}
+                        secureTextEntry={!showConfirmPassword}
+                        onFocus={() => setActiveInput("confirmPassword")}
+                        onBlur={() => setActiveInput(null)}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={styles.eyeBtn}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff size={18} color="#64748B" />
+                        ) : (
+                          <Eye size={18} color="#64748B" />
+                        )}
+                      </TouchableOpacity>
+                    </Pressable>
+
+                    {/* Inline Confirm Password Feedback Text */}
+                    {confirmPassword.length > 0 && (
+                      <Text
+                        style={[
+                          styles.confirmMatchText,
+                          password === confirmPassword
+                            ? styles.matchSuccess
+                            : styles.matchError,
+                        ]}
+                      >
+                        {password === confirmPassword
+                          ? "✓ Passwords match"
+                          : "Passwords do not match"}
+                      </Text>
+                    )}
+                  </>
                 )}
 
                 {/* Continue Button */}
                 <TouchableOpacity
                   style={[
                     styles.primaryButton,
-                    (!phone.trim() || !password || passScore < 3 || password !== confirmPassword) &&
+                    (!phone.trim() || (!isSocialRegistration && (!password || passScore < 3 || password !== confirmPassword))) &&
                       styles.btnDisabled,
                   ]}
                   onPress={handleStage3Continue}
-                  disabled={!phone.trim() || !password || passScore < 3 || password !== confirmPassword}
+                  disabled={!phone.trim() || (!isSocialRegistration && (!password || passScore < 3 || password !== confirmPassword))}
                   activeOpacity={0.88}
                 >
                   <Text style={styles.primaryButtonText}>Continue</Text>
@@ -1408,7 +1570,9 @@ export default function RegisterScreen() {
                   {isLoading ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
-                    <Text style={styles.primaryButtonText}>Create Account</Text>
+                    <Text style={styles.primaryButtonText}>
+                      {isSocialRegistration ? "Complete Registration" : "Create Account"}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -2078,5 +2242,63 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     color: colors.primary,
+  },
+
+  // Google Verified Badge in Stage 1
+  socialVerifiedCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDF4",
+    borderWidth: 1.5,
+    borderColor: "#BBF7D0",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 18,
+  },
+  socialVerifiedBadgeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: "#DCFCE7",
+  },
+  socialVerifiedContent: {
+    flex: 1,
+  },
+  socialVerifiedTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#166534",
+    marginBottom: 2,
+  },
+  socialVerifiedEmail: {
+    fontSize: 12,
+    color: "#15803D",
+    fontWeight: "600",
+  },
+
+  // Social Password Bypass Card in Stage 3
+  socialPasswordBypassCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginVertical: 10,
+  },
+  socialPasswordBypassText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#475569",
+    fontWeight: "600",
+    lineHeight: 18,
   },
 });

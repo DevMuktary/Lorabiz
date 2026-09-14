@@ -343,14 +343,16 @@ export const authOptions: NextAuthOptions = {
         token.mfaVerified = (user as any).mfaVerified ?? false; 
         token.twoFactorEnabled = (user as any).twoFactorEnabled ?? false;
         token.twoFactorMethod = (user as any).twoFactorMethod ?? null;
-        token.isProfileComplete = (user as any).isProfileComplete ?? true;
+        token.isProfileComplete = (user as any).isProfileComplete ?? false;
+        token.firstName = (user as any).firstName || (user.name ? user.name.split(" ")[0] : "");
+        token.lastName = (user as any).lastName || (user.name ? user.name.split(" ").slice(1).join(" ") : "");
       }
 
       if (token?.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true, twoFactorMethod: true, phone: true, firstName: true, lastName: true }
+            select: { id: true, role: true, isSuspended: true, image: true, twoFactorEnabled: true, twoFactorMethod: true, phone: true, firstName: true, lastName: true, isProfileComplete: true }
           });
 
           if (!dbUser || dbUser.isSuspended) {
@@ -359,6 +361,8 @@ export const authOptions: NextAuthOptions = {
 
           if (dbUser.firstName || dbUser.lastName) {
             token.name = `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim();
+            token.firstName = dbUser.firstName;
+            token.lastName = dbUser.lastName;
           }
 
           if (dbUser.role !== token.role) {
@@ -371,7 +375,7 @@ export const authOptions: NextAuthOptions = {
           
           token.twoFactorEnabled = dbUser.twoFactorEnabled;
           token.twoFactorMethod = dbUser.twoFactorMethod;
-          token.isProfileComplete = Boolean(dbUser.phone && dbUser.phone.trim().length > 0);
+          token.isProfileComplete = Boolean(dbUser.isProfileComplete && dbUser.phone && dbUser.phone.trim().length > 0);
 
         } catch (error) {
           console.error("Database session verification failed:", error);
@@ -403,7 +407,9 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).mfaVerified = token.mfaVerified as boolean;
         (session.user as any).twoFactorEnabled = token.twoFactorEnabled as boolean;
         (session.user as any).twoFactorMethod = token.twoFactorMethod as string | null | undefined;
-        (session.user as any).isProfileComplete = token.isProfileComplete as boolean ?? true;
+        (session.user as any).isProfileComplete = token.isProfileComplete as boolean ?? false;
+        (session.user as any).firstName = token.firstName as string | undefined;
+        (session.user as any).lastName = token.lastName as string | undefined;
         session.user.image = token.picture as string | null | undefined; 
         if (token.name) {
           session.user.name = token.name as string;

@@ -42,14 +42,38 @@ export async function createMobileSessionToken(payload: MobileUserPayload): Prom
 
 /**
  * Decodes and verifies a mobile session token.
+ * Tries default, secure-cookie, and plain-cookie salts to ensure reliable decryption.
  */
 export async function verifyMobileSessionToken(token: string): Promise<any | null> {
   try {
     if (!token) return null;
-    return await decode({
+
+    // 1. Try default salt ""
+    let decoded = await decode({
       token,
       secret: DEFAULT_SECRET,
-    });
+      salt: "",
+    }).catch(() => null);
+
+    if (decoded?.id) return decoded;
+
+    // 2. Try secure cookie salt
+    decoded = await decode({
+      token,
+      secret: DEFAULT_SECRET,
+      salt: "__Secure-next-auth.session-token",
+    }).catch(() => null);
+
+    if (decoded?.id) return decoded;
+
+    // 3. Try standard cookie salt
+    decoded = await decode({
+      token,
+      secret: DEFAULT_SECRET,
+      salt: "next-auth.session-token",
+    }).catch(() => null);
+
+    return decoded;
   } catch (error) {
     console.error("Failed to decode mobile session token:", error);
     return null;

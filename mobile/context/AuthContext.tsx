@@ -52,7 +52,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   clearSavedProfile: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  completeSocialLogin: (sessionToken?: string) => Promise<boolean>;
+  completeSocialLogin: (sessionToken?: string) => Promise<UserProfile | null>;
   toggleBiometrics: (enabled: boolean) => Promise<boolean>;
   promptBiometricUnlock: () => Promise<boolean>;
 }
@@ -368,9 +368,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: data.user.id || user?.id || `user_${Date.now()}`,
           email: data.user.email || user?.email || "",
           name: data.user.name || user?.name || "",
-          firstName: data.user.name?.split(" ")[0] || user?.firstName || "User",
+          firstName: data.user.firstName || data.user.name?.split(" ")[0] || user?.firstName || "User",
+          lastName: data.user.lastName || data.user.name?.split(" ").slice(1).join(" ") || user?.lastName || "",
           role: data.user.role || user?.role || "USER",
           image: data.user.image || user?.image || null,
+          isProfileComplete: data.user.isProfileComplete ?? false,
         };
         setUser(updatedUser);
         await saveAuthUser(updatedUser);
@@ -380,7 +382,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function completeSocialLogin(sessionToken?: string): Promise<boolean> {
+  async function completeSocialLogin(sessionToken?: string): Promise<UserProfile | null> {
     try {
       if (sessionToken) {
         await saveAuthToken(sessionToken);
@@ -403,19 +405,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: data.user.id || user?.id || `user_${Date.now()}`,
           email: data.user.email || user?.email || "",
           name: data.user.name || user?.name || "",
-          firstName: data.user.name?.split(" ")[0] || user?.firstName || "User",
+          firstName: data.user.firstName || data.user.name?.split(" ")[0] || user?.firstName || "User",
+          lastName: data.user.lastName || data.user.name?.split(" ").slice(1).join(" ") || user?.lastName || "",
           role: data.user.role || user?.role || "USER",
           image: data.user.image || user?.image || null,
           isProfileComplete: data.user.isProfileComplete ?? false,
         };
         setUser(updatedUser);
         await saveAuthUser(updatedUser);
-        return true;
+        return updatedUser;
       }
-      return false;
+      return null;
     } catch (err) {
       console.error("completeSocialLogin error:", err);
-      return false;
+      return null;
     }
   }
 

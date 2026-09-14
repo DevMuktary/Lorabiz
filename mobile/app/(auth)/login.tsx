@@ -165,13 +165,30 @@ export default function LoginScreen() {
         } catch {}
         setIsLoading(true);
         try {
-          const sessionRes = await fetch(`${BASE_URL}/api/auth/session`, {
-            credentials: "include",
-          });
-          const sessionData = await sessionRes.json();
-          if (sessionData?.user) {
-            await refreshProfile();
-            router.replace("/(tabs)");
+          let token = "";
+          try {
+            const parsed = new URL(event.url);
+            token = parsed.searchParams.get("token") || "";
+          } catch {
+            const match = event.url.match(/token=([^&]+)/);
+            if (match) token = decodeURIComponent(match[1]);
+          }
+
+          const loggedInUser = await completeSocialLogin(token);
+          if (loggedInUser) {
+            if (loggedInUser.isProfileComplete) {
+              router.replace("/(tabs)");
+            } else {
+              router.replace({
+                pathname: "/(auth)/register",
+                params: {
+                  fromGoogle: "true",
+                  googleFirstName: loggedInUser.firstName || "",
+                  googleLastName: loggedInUser.lastName || "",
+                  googleEmail: loggedInUser.email || "",
+                },
+              });
+            }
           }
         } catch (e) {
           console.error("Deep link session sync error:", e);
@@ -297,13 +314,24 @@ export default function LoginScreen() {
           }
         }
 
-        const success = await completeSocialLogin(sessionToken);
-        if (success) {
-          router.replace("/(tabs)");
+        const loggedInUser = await completeSocialLogin(sessionToken);
+        if (loggedInUser) {
+          if (loggedInUser.isProfileComplete) {
+            router.replace("/(tabs)");
+          } else {
+            // Profile incomplete: redirect to register wizard to complete phone & address details
+            router.replace({
+              pathname: "/(auth)/register",
+              params: {
+                fromGoogle: "true",
+                googleFirstName: loggedInUser.firstName || "",
+                googleLastName: loggedInUser.lastName || "",
+                googleEmail: loggedInUser.email || "",
+              },
+            });
+          }
         } else {
-          // Fallback session verification
-          await refreshProfile();
-          router.replace("/(tabs)");
+          setErrorMsg("Could not verify session. Please try logging in again.");
         }
       }
     } catch (err: any) {

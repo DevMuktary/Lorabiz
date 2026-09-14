@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -31,6 +31,21 @@ export default function HomeScreen() {
   const { user, refreshProfile } = useAuth();
   const [hideBalance, setHideBalance] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Failsafe: Redirect incomplete profile users to finish registration details
+  useEffect(() => {
+    if (user && user.isProfileComplete === false) {
+      router.replace({
+        pathname: "/(auth)/register",
+        params: {
+          fromGoogle: "true",
+          googleFirstName: user.firstName || "",
+          googleLastName: user.lastName || "",
+          googleEmail: user.email || "",
+        },
+      });
+    }
+  }, [user]);
 
   // Time-aware greeting
   const greeting = useMemo(() => {

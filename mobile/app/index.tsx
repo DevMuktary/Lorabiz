@@ -20,7 +20,7 @@ const LOGO_WIDTH = 170;
 const LOGO_HEIGHT = 154;
 
 export default function IndexScreen() {
-  const { token, isLoading } = useAuth();
+  const { token, user, isLoading } = useAuth();
   const router = useRouter();
 
   // Animation values (all running on GPU native driver for 60/120fps)
@@ -33,6 +33,8 @@ export default function IndexScreen() {
   // State refs to prevent stale closure bugs
   const tokenRef = useRef(token);
   tokenRef.current = token;
+  const userRef = useRef(user);
+  userRef.current = user;
   const isLoadingRef = useRef(isLoading);
   isLoadingRef.current = isLoading;
 
@@ -44,7 +46,19 @@ export default function IndexScreen() {
     hasNavigated.current = true;
 
     if (tokenRef.current) {
-      router.replace("/(tabs)");
+      if (userRef.current && userRef.current.isProfileComplete === false) {
+        router.replace({
+          pathname: "/(auth)/register",
+          params: {
+            fromGoogle: "true",
+            googleFirstName: userRef.current.firstName || "",
+            googleLastName: userRef.current.lastName || "",
+            googleEmail: userRef.current.email || "",
+          },
+        });
+      } else {
+        router.replace("/(tabs)");
+      }
     } else {
       try {
         const saved = await getSavedProfile();

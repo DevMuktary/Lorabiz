@@ -4,21 +4,32 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { Gender } from "@prisma/client";
+import { getMobileAuthUser } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
+    let userId = (session?.user as any)?.id as string | undefined;
 
-    if (!session || !session.user || !(session.user as any).id) {
+    if (!userId) {
+      const mobileUser = await getMobileAuthUser(req);
+      if (mobileUser) {
+        userId = mobileUser.id;
+      }
+    }
+
+    if (!userId) {
       return NextResponse.json({ message: "Unauthorized. Please sign in again." }, { status: 401 });
     }
 
-    const userId = (session.user as any).id as string;
     const body = await req.json();
 
     const {
+      firstName,
+      middleName,
+      lastName,
       phone,
       whatsapp,
       gender,
@@ -55,7 +66,7 @@ export async function POST(req: Request) {
       select: { phone: true, isProfileComplete: true },
     });
 
-    if (currentUser?.phone) {
+    if (currentUser?.phone && currentUser?.isProfileComplete) {
       return NextResponse.json({
         success: true,
         message: "Profile is already completed.",
@@ -102,6 +113,9 @@ export async function POST(req: Request) {
       await tx.user.update({
         where: { id: userId },
         data: {
+          ...(firstName?.trim() ? { firstName: firstName.trim() } : {}),
+          ...(middleName?.trim() ? { middleName: middleName.trim() } : {}),
+          ...(lastName?.trim() ? { lastName: lastName.trim() } : {}),
           phone: cleanPhone,
           whatsapp: cleanWhatsapp,
           gender: gender ? (gender as Gender) : undefined,
