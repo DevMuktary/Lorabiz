@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
-  ActivityIndicator,
+  StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -20,14 +20,9 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ChevronRight,
-  Zap,
   Sparkles,
-  FileText,
-  CheckCircle2,
-  AlertCircle,
+  LayoutGrid,
   Bell,
-  Award,
-  ArrowRight,
 } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../constants/theme";
@@ -64,12 +59,20 @@ export default function HomeScreen() {
     return "Good evening";
   }, []);
 
-  // 1. Dedicated Wallet Query
-  const {
-    data: walletData,
-    refetch: refetchWallet,
-    isLoading: isWalletLoading,
-  } = useQuery({
+  // 1. User Profile Query for accurate first name
+  const { data: profileData, refetch: refetchProfile } = useQuery({
+    queryKey: ["userProfile"],
+    queryFn: async () => {
+      try {
+        return await api.get("/api/user/profile");
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  // 2. Dedicated Wallet Query
+  const { data: walletData, refetch: refetchWallet } = useQuery({
     queryKey: ["mobileWallet"],
     queryFn: async () => {
       try {
@@ -80,12 +83,8 @@ export default function HomeScreen() {
     },
   });
 
-  // 2. Dashboard Query (Applications & Stats)
-  const {
-    data: dashboardData,
-    refetch: refetchDashboard,
-    isLoading: isDashboardLoading,
-  } = useQuery({
+  // 3. Dashboard Query (Applications & Stats)
+  const { data: dashboardData, refetch: refetchDashboard } = useQuery({
     queryKey: ["mobileDashboard"],
     queryFn: async () => {
       try {
@@ -96,12 +95,8 @@ export default function HomeScreen() {
     },
   });
 
-  // 3. Transactions Query
-  const {
-    data: txData,
-    refetch: refetchTx,
-    isLoading: isTxLoading,
-  } = useQuery({
+  // 4. Transactions Query
+  const { data: txData, refetch: refetchTx } = useQuery({
     queryKey: ["mobileRecentTransactions"],
     queryFn: async () => {
       try {
@@ -112,7 +107,7 @@ export default function HomeScreen() {
     },
   });
 
-  // 4. Loyalty Profile Query
+  // 5. Loyalty Profile Query
   const { data: loyaltyData, refetch: refetchLoyalty } = useQuery({
     queryKey: ["mobileLoyaltyProfile"],
     queryFn: async () => {
@@ -129,13 +124,14 @@ export default function HomeScreen() {
     setRefreshing(true);
     await Promise.all([
       refreshProfile(),
+      refetchProfile(),
       refetchWallet(),
       refetchDashboard(),
       refetchTx(),
       refetchLoyalty(),
     ]).catch(() => {});
     setRefreshing(false);
-  }, [refreshProfile, refetchWallet, refetchDashboard, refetchTx, refetchLoyalty]);
+  }, [refreshProfile, refetchProfile, refetchWallet, refetchDashboard, refetchTx, refetchLoyalty]);
 
   // Derived Values
   const balance =
@@ -146,17 +142,25 @@ export default function HomeScreen() {
     0;
 
   const rawTxList = txData?.transactions || dashboardData?.transactions || [];
-  const recentTransactions = Array.isArray(rawTxList) ? rawTxList.slice(0, 6) : [];
+  const recentTransactions = Array.isArray(rawTxList) ? rawTxList.slice(0, 5) : [];
 
   const rawApps = dashboardData?.tableData || dashboardData?.registrations || [];
-  const applications = Array.isArray(rawApps) ? rawApps.slice(0, 3) : [];
+  const applications = Array.isArray(rawApps) ? rawApps.slice(0, 2) : [];
 
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "there";
-  const userInitial = (firstName?.[0] || "U").toUpperCase();
+  // Accurate First Name extraction (priority: profile API > AuthContext user > email prefix)
+  const rawName =
+    profileData?.user?.firstName ||
+    user?.firstName ||
+    profileData?.user?.name ||
+    user?.name ||
+    profileData?.user?.email?.split("@")[0] ||
+    user?.email?.split("@")[0] ||
+    "";
+  const firstName = rawName.split(" ")[0].trim();
+  const displayName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : "";
+  const userInitial = (displayName?.[0] || user?.name?.[0] || "U").toUpperCase();
   const loyaltyTier = loyaltyData?.profile?.tier || "Standard";
-  const spinTokens = loyaltyData?.profile?.spinTokens ?? 0;
 
-  // Format Transaction Timestamp
   const formatTxDate = (dateString?: string) => {
     if (!dateString) return "Recent";
     try {
@@ -176,81 +180,67 @@ export default function HomeScreen() {
     }
   };
 
-  // Service Grid Configuration (4x2)
-  const GOVERNMENT_SERVICES = [
+  // Compact Quick Services Bar Configuration
+  const QUICK_SERVICES = [
     {
-      id: "cac_biz",
-      title: "CAC Biz",
-      sub: "Business Name",
-      badge: "30 Mins",
+      id: "cac",
+      title: "CAC",
       logo: require("../../assets/cac.png"),
       route: "/(tabs)/services",
     },
     {
-      id: "cac_llc",
-      title: "CAC Ltd",
-      sub: "Company LLC",
-      badge: "24-72h",
-      logo: require("../../assets/cac.png"),
-      route: "/(tabs)/services",
-    },
-    {
-      id: "nin_slips",
-      title: "NIN Slip",
-      sub: "Instant NIMC",
-      badge: "Instant",
+      id: "nin",
+      title: "NIN",
       logo: require("../../assets/nimc.png"),
       route: "/(tabs)/slips",
     },
     {
-      id: "bvn_slips",
-      title: "BVN Slip",
-      sub: "NIBSS Verified",
-      badge: "Instant",
+      id: "bvn",
+      title: "BVN",
       logo: require("../../assets/nibss.png"),
       route: "/(tabs)/slips",
     },
     {
-      id: "scuml_cert",
+      id: "scuml",
       title: "SCUML",
-      sub: "Certificate",
-      badge: "EFCC",
       logo: require("../../assets/scuml.png"),
       route: "/(tabs)/services",
     },
     {
       id: "tax_id",
       title: "Tax ID",
-      sub: "TIN / JTB",
-      badge: "FIRS",
       logo: require("../../assets/nrs.png"),
       route: "/(tabs)/services",
     },
     {
       id: "affidavit",
       title: "Affidavit",
-      sub: "Court Sworn",
-      badge: "Legal",
       logo: require("../../assets/court.png"),
       route: "/(tabs)/services",
     },
     {
-      id: "airtime_data",
-      title: "Bills & Data",
-      sub: "VTU Gateway",
-      badge: "Instant",
+      id: "bills",
+      title: "Bills",
       logo: require("../../assets/airtime.png"),
       route: "/(tabs)/bills",
+    },
+    {
+      id: "more",
+      title: "More",
+      isMore: true,
+      route: "/(tabs)/services",
     },
   ];
 
   return (
     <View style={styles.screen}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingTop: Math.max(insets.top, 16) + 4 },
+          { paddingTop: Math.max(insets.top, 20) + 4 },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -265,22 +255,21 @@ export default function HomeScreen() {
         {/* =================================================================== */}
         {/* 1. TOP APP BAR */}
         {/* =================================================================== */}
-        <View style={styles.topAppBar}>
+        <View style={styles.topHeader}>
           <Image
             source={require("../../assets/logo.png")}
             style={styles.headerLogo}
             resizeMode="contain"
           />
 
-          <View style={styles.topActionsRow}>
+          <View style={styles.headerRightActions}>
             <TouchableOpacity
               style={styles.actionIconButton}
               onPress={() => router.push("/(tabs)/profile")}
               activeOpacity={0.75}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Bell size={20} color={colors.text} />
-              <View style={styles.notificationDot} />
+              <Bell size={18} color={colors.text} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -288,7 +277,7 @@ export default function HomeScreen() {
               onPress={() => router.push("/(tabs)/profile")}
               activeOpacity={0.8}
             >
-              <View style={styles.avatarOrb}>
+              <View style={styles.avatarMini}>
                 <Text style={styles.avatarText}>{userInitial}</Text>
               </View>
             </TouchableOpacity>
@@ -296,29 +285,28 @@ export default function HomeScreen() {
         </View>
 
         {/* =================================================================== */}
-        {/* 2. USER GREETING & TIER BADGE */}
+        {/* 2. GREETING */}
         {/* =================================================================== */}
-        <View style={styles.greetingRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greetingSub}>{greeting},</Text>
-            <Text style={styles.greetingName}>{firstName} 👋</Text>
-          </View>
-
-          <View style={styles.tierPill}>
-            <Sparkles size={13} color="#D97706" style={{ marginRight: 4 }} />
-            <Text style={styles.tierPillText}>{loyaltyTier} Tier</Text>
-          </View>
+        <View style={styles.greetingBox}>
+          <Text style={styles.greetingSub}>{greeting},</Text>
+          <Text style={styles.greetingName}>
+            {displayName ? `${displayName} 👋` : "Welcome 👋"}
+          </Text>
         </View>
 
         {/* =================================================================== */}
-        {/* 3. LUXURY CROWN WALLET CARD */}
+        {/* 3. CLEAN ELEVATED WALLET CARD */}
         {/* =================================================================== */}
         <View style={styles.walletCard}>
-          {/* Card Top Row: Label & Eye Toggle */}
-          <View style={styles.walletHeaderRow}>
-            <View style={styles.walletLabelBox}>
-              <Wallet size={15} color="#F472B6" style={{ marginRight: 6 }} />
-              <Text style={styles.walletLabelText}>Available Balance</Text>
+          <View style={styles.walletTopRow}>
+            <View style={styles.walletBadge}>
+              <Wallet size={14} color={colors.primary} style={{ marginRight: 6 }} />
+              <Text style={styles.walletBadgeText}>Wallet Balance</Text>
+            </View>
+
+            <View style={styles.tierPill}>
+              <Sparkles size={11} color="#B45309" style={{ marginRight: 4 }} />
+              <Text style={styles.tierPillText}>{loyaltyTier} Tier</Text>
             </View>
 
             <TouchableOpacity
@@ -327,111 +315,110 @@ export default function HomeScreen() {
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               {hideBalance ? (
-                <EyeOff size={18} color="#94A3B8" />
+                <EyeOff size={18} color={colors.textSecondary} />
               ) : (
-                <Eye size={18} color="#94A3B8" />
+                <Eye size={18} color={colors.textSecondary} />
               )}
             </TouchableOpacity>
           </View>
 
-          {/* Card Balance Amount */}
-          <View style={styles.balanceContainer}>
-            {isWalletLoading && !walletData && !dashboardData ? (
-              <ActivityIndicator size="small" color="#FFFFFF" style={{ marginVertical: 8 }} />
-            ) : (
-              <Text style={styles.balanceAmount} numberOfLines={1} adjustsFontSizeToFit>
-                {hideBalance
-                  ? "₦ ••••••••"
-                  : `₦${Number(balance).toLocaleString("en-NG", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`}
-              </Text>
-            )}
-          </View>
+          <Text style={styles.balanceAmount}>
+            {hideBalance
+              ? "₦ ••••••••"
+              : `₦${Number(balance).toLocaleString("en-NG", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`}
+          </Text>
 
-          {/* Quick Actions (4-item row) */}
-          <View style={styles.quickActionRow}>
-            {/* Action 1: Fund Wallet (Primary CTA) */}
+          {/* Quick Actions: Exactly Fund Wallet & History */}
+          <View style={styles.walletActionRow}>
             <TouchableOpacity
-              style={styles.fundActionBtn}
+              style={styles.fundBtn}
               onPress={() => router.push("/wallet/fund" as any)}
               activeOpacity={0.85}
             >
               <PlusCircle size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.fundActionText}>Fund Wallet</Text>
+              <Text style={styles.fundBtnText}>Fund Wallet</Text>
             </TouchableOpacity>
 
-            {/* Action 2: Pay Bills */}
             <TouchableOpacity
-              style={styles.secondaryActionBtn}
-              onPress={() => router.push("/(tabs)/bills")}
-              activeOpacity={0.8}
-            >
-              <Zap size={15} color="#E2E8F0" style={{ marginRight: 5 }} />
-              <Text style={styles.secondaryActionText}>Pay Bills</Text>
-            </TouchableOpacity>
-
-            {/* Action 3: Get Slips */}
-            <TouchableOpacity
-              style={styles.secondaryActionBtn}
-              onPress={() => router.push("/(tabs)/slips")}
-              activeOpacity={0.8}
-            >
-              <FileText size={15} color="#E2E8F0" style={{ marginRight: 5 }} />
-              <Text style={styles.secondaryActionText}>Slips</Text>
-            </TouchableOpacity>
-
-            {/* Action 4: History */}
-            <TouchableOpacity
-              style={styles.secondaryActionBtn}
+              style={styles.historyBtn}
               onPress={() => router.push("/(tabs)/profile")}
               activeOpacity={0.8}
             >
-              <Clock size={15} color="#E2E8F0" style={{ marginRight: 5 }} />
-              <Text style={styles.secondaryActionText}>History</Text>
+              <Clock size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
+              <Text style={styles.historyBtnText}>History</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* =================================================================== */}
-        {/* 4. OFFICIAL GOVERNMENT SERVICES (4x2 GRID) */}
+        {/* 4. COMPACT QUICK SERVICES BAR */}
         {/* =================================================================== */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Government & Utility Services</Text>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/services")}>
-            <Text style={styles.seeAllText}>View all</Text>
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Quick Services</Text>
         </View>
 
-        <View style={styles.servicesGrid}>
-          {GOVERNMENT_SERVICES.map((svc) => (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickBarContainer}
+        >
+          {QUICK_SERVICES.map((svc) => (
             <TouchableOpacity
               key={svc.id}
-              style={styles.serviceGridCard}
+              style={styles.quickBarItem}
               onPress={() => router.push(svc.route as any)}
               activeOpacity={0.75}
             >
-              <View style={styles.serviceBadgeRow}>
-                <View style={styles.serviceLogoWrap}>
-                  <Image source={svc.logo} style={styles.serviceAgencyLogo} resizeMode="contain" />
-                </View>
-                <View style={styles.miniTag}>
-                  <Text style={styles.miniTagText}>{svc.badge}</Text>
-                </View>
+              <View style={[styles.quickBarBadge, svc.isMore && styles.moreBadge]}>
+                {svc.isMore ? (
+                  <LayoutGrid size={20} color={colors.primary} />
+                ) : (
+                  <Image source={svc.logo} style={styles.agencyLogo} resizeMode="contain" />
+                )}
               </View>
-              <Text style={styles.serviceTitle} numberOfLines={1}>
+              <Text
+                style={[styles.quickBarLabel, svc.isMore && styles.moreLabel]}
+                numberOfLines={1}
+              >
                 {svc.title}
-              </Text>
-              <Text style={styles.serviceSub} numberOfLines={1}>
-                {svc.sub}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         {/* =================================================================== */}
-        {/* 5. ACTIVE APPLICATION TRACKER / ONBOARDING BANNER */}
+        {/* 5. TELECOM & UTILITIES STRIP */}
+        {/* =================================================================== */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Telecom & Utilities</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.vtuBanner}
+          onPress={() => router.push("/(tabs)/bills")}
+          activeOpacity={0.85}
+        >
+          <View style={styles.vtuIconWrap}>
+            <Image
+              source={require("../../assets/airtime.png")}
+              style={{ width: 24, height: 24 }}
+              resizeMode="contain"
+            />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.vtuTitle}>Airtime & Cheap Data</Text>
+            <Text style={styles.vtuSub}>
+              Instant delivery across MTN, Airtel, Glo & 9mobile
+            </Text>
+          </View>
+          <ChevronRight size={17} color={colors.textSecondary} />
+        </TouchableOpacity>
+
+        {/* =================================================================== */}
+        {/* 6. ACTIVE APPLICATIONS TRACKER */}
         {/* =================================================================== */}
         {applications.length > 0 ? (
           <View style={styles.applicationsSection}>
@@ -442,16 +429,12 @@ export default function HomeScreen() {
                   <Text style={styles.countBadgeText}>{applications.length}</Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => router.push("/(tabs)/services")}>
-                <Text style={styles.seeAllText}>Manage</Text>
-              </TouchableOpacity>
             </View>
 
             {applications.map((app: any, idx: number) => {
               const displayId = app.trackingId || app.id?.substring(0, 8)?.toUpperCase();
               const isApproved = app.status === "APPROVED";
               const isQueried = app.status === "QUERIED";
-              const isPending = app.status === "PENDING" || !app.status;
 
               return (
                 <TouchableOpacity
@@ -473,7 +456,7 @@ export default function HomeScreen() {
                         },
                       ]}
                     />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={styles.appTitle} numberOfLines={1}>
                         {app.proposedName || `Application ${displayId}`}
                       </Text>
@@ -495,13 +478,6 @@ export default function HomeScreen() {
                       },
                     ]}
                   >
-                    {isApproved ? (
-                      <CheckCircle2 size={12} color={colors.success} style={{ marginRight: 4 }} />
-                    ) : isQueried ? (
-                      <AlertCircle size={12} color={colors.error} style={{ marginRight: 4 }} />
-                    ) : (
-                      <Clock size={12} color={colors.warning} style={{ marginRight: 4 }} />
-                    )}
                     <Text
                       style={[
                         styles.statusPillText,
@@ -521,136 +497,68 @@ export default function HomeScreen() {
               );
             })}
           </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.onboardingBanner}
-            onPress={() => router.push("/(tabs)/services")}
-            activeOpacity={0.85}
-          >
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <View style={styles.promoTag}>
-                <Sparkles size={12} color={colors.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.promoTagText}>Accredited Filing</Text>
-              </View>
-              <Text style={styles.onboardingTitle}>Register Your Business or LLC</Text>
-              <Text style={styles.onboardingSub}>
-                Get your official CAC Certificate & Tax ID with accredited filing in 30 minutes.
-              </Text>
-            </View>
-            <View style={styles.onboardingArrow}>
-              <ArrowRight size={18} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-        )}
+        ) : null}
 
         {/* =================================================================== */}
-        {/* 6. REWARDS & SPIN BANNER */}
-        {/* =================================================================== */}
-        <TouchableOpacity
-          style={styles.rewardsBanner}
-          onPress={() => router.push("/(tabs)/profile")}
-          activeOpacity={0.85}
-        >
-          <View style={styles.rewardsIconWrap}>
-            <Award size={22} color="#D97706" />
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.rewardsTitle}>Daily Rewards & Cashback</Text>
-            <Text style={styles.rewardsSub}>
-              {spinTokens > 0
-                ? `You have ${spinTokens} spin token${spinTokens > 1 ? "s" : ""} available`
-                : "Earn cashback and fee discounts on every transaction"}
-            </Text>
-          </View>
-          <ChevronRight size={18} color={colors.textSecondary} />
-        </TouchableOpacity>
-
-        {/* =================================================================== */}
-        {/* 7. RECENT ACTIVITY LEDGER */}
+        {/* 7. RECENT ACTIVITY */}
         {/* =================================================================== */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/profile")}>
-            <Text style={styles.seeAllText}>View all</Text>
-          </TouchableOpacity>
         </View>
 
-        {isTxLoading && recentTransactions.length === 0 ? (
-          <View style={styles.transactionsLoadingCard}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading ledger records...</Text>
-          </View>
-        ) : recentTransactions.length > 0 ? (
-          <View style={styles.transactionsCard}>
+        {recentTransactions.length > 0 ? (
+          <View style={styles.transactionsList}>
             {recentTransactions.map((tx: any, idx: number) => {
               const isCredit = tx.type === "CREDIT";
               const isLast = idx === recentTransactions.length - 1;
-
               return (
                 <View
                   key={tx.id || idx}
-                  style={[styles.transactionRow, isLast && { borderBottomWidth: 0 }]}
+                  style={[styles.transactionItem, isLast && { borderBottomWidth: 0 }]}
                 >
                   <View
                     style={[
-                      styles.txIconOrb,
+                      styles.txIcon,
                       {
                         backgroundColor: isCredit ? "#ECFDF5" : "#F1F5F9",
                       },
                     ]}
                   >
                     {isCredit ? (
-                      <ArrowDownLeft size={17} color={colors.success} />
+                      <ArrowDownLeft size={16} color={colors.success} />
                     ) : (
-                      <ArrowUpRight size={17} color="#64748B" />
+                      <ArrowUpRight size={16} color="#64748B" />
                     )}
                   </View>
-
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.txDescription} numberOfLines={1}>
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.txDesc} numberOfLines={1}>
                       {tx.description || (isCredit ? "Wallet Deposit" : "Service Payment")}
                     </Text>
-                    <Text style={styles.txTimestamp}>{formatTxDate(tx.createdAt)}</Text>
+                    <Text style={styles.txDate}>{formatTxDate(tx.createdAt)}</Text>
                   </View>
-
-                  <View style={{ alignItems: "flex-end" }}>
-                    <Text
-                      style={[
-                        styles.txAmountText,
-                        { color: isCredit ? colors.success : colors.text },
-                      ]}
-                    >
-                      {isCredit ? "+" : "-"}₦
-                      {Number(tx.amount || 0).toLocaleString("en-NG", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </Text>
-                    {tx.status && tx.status !== "SUCCESS" && (
-                      <Text style={styles.txStatusMuted}>{tx.status}</Text>
-                    )}
-                  </View>
+                  <Text
+                    style={[
+                      styles.txAmount,
+                      { color: isCredit ? colors.success : colors.text },
+                    ]}
+                  >
+                    {isCredit ? "+" : "-"}₦
+                    {Number(tx.amount || 0).toLocaleString("en-NG", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </Text>
                 </View>
               );
             })}
           </View>
         ) : (
-          <View style={styles.emptyLedgerCard}>
-            <View style={styles.emptyIconCircle}>
-              <Clock size={24} color={colors.textMuted} />
-            </View>
-            <Text style={styles.emptyLedgerTitle}>No recent activity</Text>
-            <Text style={styles.emptyLedgerSub}>
-              Fund your wallet or process a service to start building your ledger.
+          <View style={styles.emptyCard}>
+            <Clock size={22} color={colors.textMuted} />
+            <Text style={styles.emptyCardText}>No recent activity yet</Text>
+            <Text style={styles.emptyCardSub}>
+              Fund your wallet or process a service to get started.
             </Text>
-            <TouchableOpacity
-              style={styles.emptyFundBtn}
-              onPress={() => router.push("/wallet/fund" as any)}
-              activeOpacity={0.85}
-            >
-              <PlusCircle size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.emptyFundBtnText}>Fund Wallet</Text>
-            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -669,70 +577,57 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 48,
+    paddingBottom: 40,
   },
 
-  /* Top App Bar */
-  topAppBar: {
+  /* Top Header */
+  topHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 10,
   },
   headerLogo: {
-    width: 135,
-    height: 38,
+    width: 125,
+    height: 36,
   },
-  topActionsRow: {
+  headerRightActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
   actionIconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
-  },
-  notificationDot: {
-    position: "absolute",
-    top: 9,
-    right: 9,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: colors.primary,
   },
   avatarBtn: {
     padding: 1,
   },
-  avatarOrb: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  avatarMini: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: "rgba(200, 45, 117, 0.4)",
   },
   avatarText: {
     color: "#FFFFFF",
     fontWeight: "800",
-    fontSize: 15,
+    fontSize: 14,
   },
 
-  /* Greeting & Tier */
-  greetingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
+  /* Greeting */
+  greetingBox: {
+    marginBottom: 12,
   },
   greetingSub: {
     fontSize: 13,
@@ -740,19 +635,52 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   greetingName: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: "800",
     color: colors.text,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
     marginTop: 1,
+  },
+
+  /* Wallet Card */
+  walletCard: {
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: "rgba(200, 45, 117, 0.22)",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  walletTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  walletBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(200, 45, 117, 0.12)",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  walletBadgeText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "700",
   },
   tierPill: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFBEB",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#FDE68A",
   },
@@ -761,92 +689,54 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
   },
-
-  /* Luxury Crown Wallet Card */
-  walletCard: {
-    backgroundColor: "#0F172A", // Deep Obsidian Black Card
-    borderRadius: 22,
-    padding: 20,
-    marginBottom: 22,
-    borderWidth: 1.5,
-    borderColor: "rgba(200, 45, 117, 0.35)", // Signature Lorabiz Glow
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-  walletHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  walletLabelBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(200, 45, 117, 0.16)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  walletLabelText: {
-    color: "#F472B6",
-    fontSize: 12,
-    fontWeight: "700",
-  },
   eyeBtn: {
     padding: 4,
   },
-  balanceContainer: {
-    marginVertical: 14,
-    minHeight: 40,
-    justifyContent: "center",
-  },
   balanceAmount: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "900",
-    color: "#FFFFFF",
+    color: colors.text,
+    marginVertical: 10,
     letterSpacing: -0.5,
   },
-  quickActionRow: {
+  walletActionRow: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 8,
   },
-  fundActionBtn: {
-    flex: 1.3,
+  fundBtn: {
+    flex: 1.2,
     backgroundColor: colors.primary,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 11,
+    paddingVertical: 10,
     borderRadius: 12,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  fundActionText: {
+  fundBtnText: {
     color: "#FFFFFF",
     fontWeight: "800",
     fontSize: 13,
   },
-  secondaryActionBtn: {
+  historyBtn: {
     flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 11,
+    paddingVertical: 10,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
   },
-  secondaryActionText: {
-    color: "#F1F5F9",
+  historyBtnText: {
+    color: colors.textSecondary,
     fontWeight: "700",
-    fontSize: 12,
+    fontSize: 13,
   },
 
   /* Section Header */
@@ -854,45 +744,75 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
     marginTop: 2,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
     color: colors.text,
-    letterSpacing: -0.2,
-  },
-  seeAllText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.primary,
   },
 
-  /* 4x2 Government Services Grid */
-  servicesGrid: {
+  /* Compact Quick Services Bar */
+  quickBarContainer: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    paddingVertical: 2,
     gap: 10,
-    marginBottom: 22,
+    marginBottom: 16,
   },
-  serviceGridCard: {
-    width: "48.4%",
+  quickBarItem: {
+    width: 60,
+    alignItems: "center",
+  },
+  quickBarBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 5,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  moreBadge: {
+    backgroundColor: "rgba(200, 45, 117, 0.10)",
+    borderColor: "rgba(200, 45, 117, 0.25)",
+  },
+  agencyLogo: {
+    width: 24,
+    height: 24,
+  },
+  quickBarLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.text,
+    textAlign: "center",
+  },
+  moreLabel: {
+    color: colors.primary,
+    fontWeight: "800",
+  },
+
+  /* VTU Banner */
+  vtuBanner: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    borderRadius: 16,
+    borderRadius: 14,
     padding: 12,
+    marginBottom: 16,
   },
-  serviceBadgeRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  serviceLogoWrap: {
-    width: 36,
-    height: 36,
+  vtuIconWrap: {
+    width: 38,
+    height: 38,
     borderRadius: 10,
     backgroundColor: "#FFFFFF",
     alignItems: "center",
@@ -900,45 +820,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
   },
-  serviceAgencyLogo: {
-    width: 22,
-    height: 22,
-  },
-  miniTag: {
-    backgroundColor: "rgba(200, 45, 117, 0.10)",
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  miniTagText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: colors.primary,
-  },
-  serviceTitle: {
-    fontSize: 14,
+  vtuTitle: {
+    fontSize: 13,
     fontWeight: "800",
     color: colors.text,
   },
-  serviceSub: {
+  vtuSub: {
     fontSize: 11,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
 
   /* Applications Section */
   applicationsSection: {
-    marginBottom: 22,
+    marginBottom: 16,
   },
   countBadge: {
     backgroundColor: "rgba(200, 45, 117, 0.12)",
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 8,
+    borderRadius: 8,
+    marginLeft: 6,
   },
   countBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "800",
     color: colors.primary,
   },
@@ -949,218 +854,96 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 8,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 6,
   },
   appCardLeft: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    paddingRight: 10,
+    paddingRight: 8,
   },
   appStatusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   appTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "800",
     color: colors.text,
   },
   appSub: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
   statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: "800",
-  },
-
-  /* Onboarding Promotion Banner */
-  onboardingBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: "rgba(200, 45, 117, 0.22)",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 22,
-  },
-  promoTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(200, 45, 117, 0.10)",
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 8,
-    marginBottom: 6,
   },
-  promoTagText: {
-    fontSize: 11,
+  statusPillText: {
+    fontSize: 10,
     fontWeight: "800",
-    color: colors.primary,
-  },
-  onboardingTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  onboardingSub: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 3,
-    lineHeight: 16,
-  },
-  onboardingArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
   },
 
-  /* Rewards Ribbon */
-  rewardsBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFBEB",
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 22,
-  },
-  rewardsIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#FEF3C7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rewardsTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#92400E",
-  },
-  rewardsSub: {
-    fontSize: 11,
-    color: "#B45309",
-    marginTop: 2,
-  },
-
-  /* Recent Activity Card */
-  transactionsCard: {
+  /* Transactions */
+  transactionsList: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 2,
   },
-  transactionRow: {
+  transactionItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceBorder,
   },
-  txIconOrb: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+  txIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  txDescription: {
-    fontSize: 13,
+  txDesc: {
+    fontSize: 12,
     fontWeight: "700",
     color: colors.text,
   },
-  txTimestamp: {
-    fontSize: 11,
+  txDate: {
+    fontSize: 10,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
-  txAmountText: {
-    fontSize: 14,
+  txAmount: {
+    fontSize: 13,
     fontWeight: "800",
   },
-  txStatusMuted: {
-    fontSize: 10,
-    color: colors.textMuted,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  transactionsLoadingCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 8,
-  },
-
-  /* Empty Ledger State */
-  emptyLedgerCard: {
+  emptyCard: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 14,
+    padding: 20,
     alignItems: "center",
   },
-  emptyIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  emptyLedgerTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  emptyLedgerSub: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: 4,
-    lineHeight: 17,
-    maxWidth: 260,
-  },
-  emptyFundBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginTop: 14,
-  },
-  emptyFundBtnText: {
-    color: "#FFFFFF",
+  emptyCardText: {
     fontSize: 13,
     fontWeight: "700",
+    color: colors.text,
+    marginTop: 6,
+  },
+  emptyCardSub: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: 2,
   },
 });

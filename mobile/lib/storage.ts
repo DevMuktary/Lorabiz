@@ -52,6 +52,7 @@ export interface SavedProfile {
   email: string;
   maskedEmail: string;
   image?: string | null;
+  authProvider?: "credentials" | "google";
 }
 
 export async function saveSavedProfile(profile: SavedProfile): Promise<void> {

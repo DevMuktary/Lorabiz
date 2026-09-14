@@ -138,7 +138,7 @@ export default function FundWalletScreen() {
         <View style={styles.securityBadge}>
           <ShieldCheck size={18} color={colors.success} style={{ marginRight: 8 }} />
           <Text style={styles.securityText}>
-            Secured with bank-grade 256-bit encryption via KoraPay.
+            Processed securely via KoraPay.
           </Text>
         </View>
 

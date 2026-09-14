@@ -291,6 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: userProfile.email,
           maskedEmail: maskEmail(userProfile.email),
           image: userProfile.image,
+          authProvider: "credentials",
         };
         await saveSavedProfile(profileToSave);
         setSavedProfile(profileToSave);
@@ -413,6 +414,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setUser(updatedUser);
         await saveAuthUser(updatedUser);
+
+        // Update saved profile for returning Google user
+        const profileToSave: SavedProfile = {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          firstName: updatedUser.firstName || updatedUser.name.split(" ")[0] || "User",
+          email: updatedUser.email,
+          maskedEmail: maskEmail(updatedUser.email),
+          image: updatedUser.image,
+          authProvider: "google",
+        };
+        await saveSavedProfile(profileToSave);
+        setSavedProfile(profileToSave);
+
         return updatedUser;
       }
       return null;

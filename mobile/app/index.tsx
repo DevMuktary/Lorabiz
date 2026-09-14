@@ -13,24 +13,18 @@ import { useAuth } from "../context/AuthContext";
 import { getSavedProfile } from "../lib/storage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-// Prominent circle matching ALAT by Wema (~82% of screen width)
-const CIRCLE_SIZE = Math.min(Math.round(SCREEN_WIDTH * 0.82), 340);
-const LOGO_WIDTH = 170;
-const LOGO_HEIGHT = 154;
+const LOGO_WIDTH = Math.min(Math.round(SCREEN_WIDTH * 0.48), 190);
+const LOGO_HEIGHT = Math.round(LOGO_WIDTH * 0.65);
 
 export default function IndexScreen() {
   const { token, user, isLoading } = useAuth();
   const router = useRouter();
 
-  // Animation values (all running on GPU native driver for 60/120fps)
-  // Starts compact in the center ("the circle will not start that big")
-  const circleScale = useRef(new Animated.Value(0.2)).current;
-  const circleOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.2)).current;
+  // Smooth entrance animation values
+  const logoScale = useRef(new Animated.Value(0.85)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
+  const containerOpacity = useRef(new Animated.Value(1)).current;
 
-  // State refs to prevent stale closure bugs
   const tokenRef = useRef(token);
   tokenRef.current = token;
   const userRef = useRef(user);
@@ -38,132 +32,96 @@ export default function IndexScreen() {
   const isLoadingRef = useRef(isLoading);
   isLoadingRef.current = isLoading;
 
-  const animationFinished = useRef(false);
+  const minTimerFinished = useRef(false);
   const hasNavigated = useRef(false);
 
   const triggerNavigation = async () => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
 
-    if (tokenRef.current) {
-      if (userRef.current && userRef.current.isProfileComplete === false) {
-        router.replace({
-          pathname: "/(auth)/register",
-          params: {
-            fromGoogle: "true",
-            googleFirstName: userRef.current.firstName || "",
-            googleLastName: userRef.current.lastName || "",
-            googleEmail: userRef.current.email || "",
-          },
-        });
-      } else {
-        router.replace("/(tabs)");
-      }
-    } else {
-      try {
-        const saved = await getSavedProfile();
-        if (saved) {
-          router.replace("/(auth)/login");
+    // Smooth subtle fade out before screen handoff
+    Animated.timing(containerOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(async () => {
+      if (tokenRef.current) {
+        if (userRef.current && userRef.current.isProfileComplete === false) {
+          router.replace({
+            pathname: "/(auth)/register",
+            params: {
+              fromGoogle: "true",
+              googleFirstName: userRef.current.firstName || "",
+              googleLastName: userRef.current.lastName || "",
+              googleEmail: userRef.current.email || "",
+            },
+          });
         } else {
+          router.replace("/(tabs)");
+        }
+      } else {
+        try {
+          const saved = await getSavedProfile();
+          if (saved) {
+            router.replace("/(auth)/login");
+          } else {
+            router.replace("/(auth)/welcome");
+          }
+        } catch {
           router.replace("/(auth)/welcome");
         }
-      } catch {
-        router.replace("/(auth)/welcome");
       }
-    }
+    });
   };
 
   useEffect(() => {
-    // Single continuous, fluid zoom reveal over 3.4 seconds (ZERO FREEZE, ZERO PAUSES)
-    // Starts small in center and continuously, smoothly expands ("it will be revealing till it's finished, maybe 3 to 4 seconds")
+    // Elegant, crisp brand logo reveal (0 to 600ms)
     Animated.parallel([
-      // Quick smooth entrance of the white circle and logo (0 to 250ms)
-      Animated.timing(circleOpacity, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }),
       Animated.timing(logoOpacity, {
         toValue: 1,
-        duration: 250,
+        duration: 500,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-
-      // Continuous circle expansion over 3400ms (NO intermediate stop or freeze)
-      Animated.timing(circleScale, {
-        toValue: 7, // 340 * 7 = 2,380px, fully envelops screen diagonal with no texture clipping
-        duration: 3400,
-        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-        useNativeDriver: true,
-      }),
-
-      // Logo tracks smoothly with the circle expansion
       Animated.timing(logoScale, {
-        toValue: 1.15,
-        duration: 2600,
-        easing: Easing.out(Easing.cubic),
+        toValue: 1,
+        duration: 650,
+        easing: Easing.out(Easing.back(1.2)),
         useNativeDriver: true,
       }),
+    ]).start();
 
-      // Logo dissolves as circle sweeps past screen edges
-      Animated.sequence([
-        Animated.delay(2200),
-        Animated.timing(logoOpacity, {
-          toValue: 0,
-          duration: 500,
-          easing: Easing.ease,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
-      animationFinished.current = true;
+    // Minimum brand presentation time: 700ms (fast & responsive, zero white flash)
+    const timer = setTimeout(() => {
+      minTimerFinished.current = true;
       if (!isLoadingRef.current) {
         triggerNavigation();
       }
-    });
+    }, 700);
 
-    // Seamless navigation handoff at t = 2800ms while circle is at full expansion
-    // Mounts the Welcome screen with ZERO blank white screen delay
-    const handoffTimer = setTimeout(() => {
-      if (!isLoadingRef.current) {
-        triggerNavigation();
-      }
-    }, 2800);
-
-    // Failsafe timer: Ensure app never hangs on splash under any circumstance
-    const failsafeTimeout = setTimeout(() => {
+    // Failsafe timer: Never hold the user longer than 2.2s
+    const failsafe = setTimeout(() => {
       triggerNavigation();
-    }, 4500);
+    }, 2200);
 
     return () => {
-      clearTimeout(handoffTimer);
-      clearTimeout(failsafeTimeout);
+      clearTimeout(timer);
+      clearTimeout(failsafe);
     };
   }, []);
 
-  // When auth state finishes initializing after animation has completed
+  // Check navigation once loading finishes
   useEffect(() => {
-    if (!isLoading && (animationFinished.current || hasNavigated.current)) {
+    if (!isLoading && minTimerFinished.current) {
       triggerNavigation();
     }
   }, [isLoading]);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#C82D75" />
+    <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#C82D75" translucent />
 
-      {/* The Expanding White Circle Mask (ALAT by Wema Style) */}
-      <Animated.View
-        style={[
-          styles.whiteCircle,
-          {
-            opacity: circleOpacity,
-            transform: [{ scale: circleScale }],
-          },
-        ]}
-      />
-
-      {/* Centered Brand Mark inside the circle */}
+      {/* Centered Brand Mark on Signature Pink */}
       <Animated.View
         style={[
           styles.logoContainer,
@@ -174,12 +132,12 @@ export default function IndexScreen() {
         ]}
       >
         <Image
-          source={require("../assets/logo-pink.png")}
+          source={require("../assets/logo-white.png")}
           style={styles.logoImage}
           resizeMode="contain"
         />
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -190,24 +148,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  whiteCircle: {
-    position: "absolute",
-    width: CIRCLE_SIZE,
-    height: CIRCLE_SIZE,
-    borderRadius: CIRCLE_SIZE / 2,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    elevation: 10,
-  },
   logoContainer: {
-    width: CIRCLE_SIZE,
-    height: CIRCLE_SIZE,
+    width: LOGO_WIDTH + 40,
+    height: LOGO_HEIGHT + 40,
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 10,
   },
   logoImage: {
     width: LOGO_WIDTH,

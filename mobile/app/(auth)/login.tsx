@@ -268,9 +268,13 @@ export default function LoginScreen() {
     }
   }
 
-  function handleSwitchAccount() {
+  async function handleSwitchAccount() {
+    try {
+      await clearSavedProfile();
+    } catch {}
     setIsReturningUser(false);
     setPassword("");
+    setEmail("");
     setErrorMsg(null);
   }
 
@@ -487,82 +491,103 @@ export default function LoginScreen() {
               <EditPencilIcon size={14} color="#475569" />
             </TouchableOpacity>
 
-            {/* Password Section */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Password</Text>
-              <Pressable
-                style={[styles.alatInputCard, passwordFocused && styles.alatInputCardActive]}
-                onPress={() => passwordInputRef.current?.focus()}
-              >
-                <TextInput
-                  ref={passwordInputRef}
-                  style={styles.alatTextInput}
-                  placeholder="Enter your password"
-                  placeholderTextColor="#94A3B8"
-                  value={password}
-                  onChangeText={(text: string) => {
-                    setPassword(text);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  secureTextEntry={!showPassword}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  onSubmitEditing={handleLogin}
-                  returnKeyType="go"
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                />
+            {/* Auth Section based on provider */}
+            {savedProfile.authProvider === "google" ? (
+              <View style={styles.fieldGroup}>
                 <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeToggleBtn}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={[styles.googleButton, { marginTop: 16 }]}
+                  onPress={handleGoogleSignIn}
+                  disabled={isLoading}
+                  activeOpacity={0.85}
                 >
-                  {showPassword ? (
-                    <EyeOff size={20} color="#0F172A" />
+                  <GoogleIcon size={20} />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </TouchableOpacity>
+
+                <View style={{ marginTop: 24, alignItems: "center" }}>
+                  <TouchableOpacity onPress={handleSwitchAccount} activeOpacity={0.7}>
+                    <Text style={styles.resetPasswordText}>Use a different account</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              /* Password Section for credentials users */
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Password</Text>
+                <Pressable
+                  style={[styles.alatInputCard, passwordFocused && styles.alatInputCardActive]}
+                  onPress={() => passwordInputRef.current?.focus()}
+                >
+                  <TextInput
+                    ref={passwordInputRef}
+                    style={styles.alatTextInput}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#94A3B8"
+                    value={password}
+                    onChangeText={(text: string) => {
+                      setPassword(text);
+                      if (errorMsg) setErrorMsg(null);
+                    }}
+                    secureTextEntry={!showPassword}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
+                    onSubmitEditing={handleLogin}
+                    returnKeyType="go"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeToggleBtn}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color="#0F172A" />
+                    ) : (
+                      <Eye size={20} color="#0F172A" />
+                    )}
+                  </TouchableOpacity>
+                </Pressable>
+
+                {/* Error Message Directly Below Password Input Box */}
+                {errorMsg ? (
+                  <View style={styles.errorInline}>
+                    <Text style={styles.errorText}>{errorMsg}</Text>
+                  </View>
+                ) : null}
+
+                {/* Reset Password Link (Right-Aligned) */}
+                <View style={styles.resetPasswordRow}>
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(`${BASE_URL}/auth/forgot-password`)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.resetPasswordText}>Reset password</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Primary Action: Log in */}
+                <TouchableOpacity
+                  style={[styles.primaryButton, (!password || isLoading) && styles.btnDisabled]}
+                  onPress={handleLogin}
+                  disabled={!password || isLoading}
+                  activeOpacity={0.88}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
-                    <Eye size={20} color="#0F172A" />
+                    <Text style={styles.primaryButtonText}>Log in</Text>
                   )}
                 </TouchableOpacity>
-              </Pressable>
 
-              {/* Error Message Directly Below Password Input Box */}
-              {errorMsg ? (
-                <View style={styles.errorInline}>
-                  <Text style={styles.errorText}>{errorMsg}</Text>
+                {/* Footer: Don't have an account? Sign up */}
+                <View style={styles.footerRow}>
+                  <Text style={styles.footerMuted}>Don't have an account? </Text>
+                  <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+                    <Text style={styles.footerLinkPink}>Sign up</Text>
+                  </TouchableOpacity>
                 </View>
-              ) : null}
-
-              {/* Reset Password Link (Right-Aligned) */}
-              <View style={styles.resetPasswordRow}>
-                <TouchableOpacity
-                  onPress={() => Linking.openURL(`${BASE_URL}/auth/forgot-password`)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.resetPasswordText}>Reset password</Text>
-                </TouchableOpacity>
               </View>
-
-              {/* Primary Action: Log in */}
-              <TouchableOpacity
-                style={[styles.primaryButton, (!password || isLoading) && styles.btnDisabled]}
-                onPress={handleLogin}
-                disabled={!password || isLoading}
-                activeOpacity={0.88}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Log in</Text>
-                )}
-              </TouchableOpacity>
-
-              {/* Footer: Don't have an account? Sign up */}
-              <View style={styles.footerRow}>
-                <Text style={styles.footerMuted}>Don't have an account? </Text>
-                <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-                  <Text style={styles.footerLinkPink}>Sign up</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            )}
 
             {/* Circular Face ID Button positioned right in that lower spot */}
             {biometricAvailable && biometricEnabled ? (

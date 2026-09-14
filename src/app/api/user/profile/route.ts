@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getAuthUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const authUser = await getAuthUser(req);
+    if (!authUser) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { id: authUser.id },
       select: {
+        id: true,
         firstName: true,
         lastName: true,
         email: true,
@@ -26,10 +26,13 @@ export async function GET() {
     });
 
     if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
+    const computedName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+
     return NextResponse.json({ 
       success: true, 
       user: {
         ...user,
+        name: computedName || user.email.split("@")[0],
         backupCodesCount: user.twoFactorBackupCodes?.length || 0,
       } 
     });
@@ -41,8 +44,8 @@ export async function GET() {
 // Update settings / preferences (e.g. emailLoginAlerts)
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const authUser = await getAuthUser(req);
+    if (!authUser) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const dataToUpdate: any = {};
@@ -56,7 +59,7 @@ export async function PUT(req: Request) {
     }
 
     await prisma.user.update({
-      where: { email: session.user.email },
+      where: { id: authUser.id },
       data: dataToUpdate,
     });
 
@@ -69,8 +72,8 @@ export async function PUT(req: Request) {
 // Dedicated endpoint to update profile picture
 export async function PATCH(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const authUser = await getAuthUser(req);
+    if (!authUser) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const { imageUrl } = await req.json();
     if (!imageUrl) {
@@ -78,7 +81,7 @@ export async function PATCH(req: Request) {
     }
 
     await prisma.user.update({
-      where: { email: session.user.email },
+      where: { id: authUser.id },
       data: { image: imageUrl }
     });
 
