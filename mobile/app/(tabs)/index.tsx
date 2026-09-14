@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Image,
   StatusBar,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -23,6 +24,7 @@ import {
   Sparkles,
   LayoutGrid,
   Bell,
+  Headphones,
 } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../constants/theme";
@@ -50,14 +52,6 @@ export default function HomeScreen() {
       });
     }
   }, [user]);
-
-  // Time-aware greeting
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
-  }, []);
 
   // 1. User Profile Query for accurate first name
   const { data: profileData, refetch: refetchProfile } = useQuery({
@@ -180,24 +174,30 @@ export default function HomeScreen() {
     }
   };
 
-  // Compact Quick Services Bar Configuration
+  // Quick Services Grid: Exactly 8 items (4 per row, 2 rows). Item 8 is "More"
   const QUICK_SERVICES = [
     {
-      id: "cac",
-      title: "CAC",
+      id: "cac_reg",
+      title: "CAC Reg",
       logo: require("../../assets/cac.png"),
       route: "/(tabs)/services",
     },
     {
-      id: "nin",
-      title: "NIN",
+      id: "nin_slip",
+      title: "NIN Slip",
       logo: require("../../assets/nimc.png"),
       route: "/(tabs)/slips",
     },
     {
-      id: "bvn",
-      title: "BVN",
+      id: "bvn_slip",
+      title: "BVN Slip",
       logo: require("../../assets/nibss.png"),
+      route: "/(tabs)/slips",
+    },
+    {
+      id: "nin_verify",
+      title: "NIN Verify",
+      logo: require("../../assets/nimc.png"),
       route: "/(tabs)/slips",
     },
     {
@@ -219,12 +219,6 @@ export default function HomeScreen() {
       route: "/(tabs)/services",
     },
     {
-      id: "bills",
-      title: "Bills",
-      logo: require("../../assets/airtime.png"),
-      route: "/(tabs)/bills",
-    },
-    {
       id: "more",
       title: "More",
       isMore: true,
@@ -236,12 +230,51 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
+      {/* =================================================================== */}
+      {/* 1. TOP APP BAR: Left Greeting + Right Actions (Support, Notifications, Profile) */}
+      {/* =================================================================== */}
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 20) + 4 }]}>
+        <View style={styles.topBarLeft}>
+          <Text style={styles.greetingTitle}>
+            Hi, {displayName ? `${displayName}` : "there"} 👋
+          </Text>
+        </View>
+
+        <View style={styles.topBarRight}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => Linking.openURL("mailto:support@lorabiz.com")}
+            activeOpacity={0.75}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Headphones size={20} color={colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push("/(tabs)/profile")}
+            activeOpacity={0.75}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Bell size={20} color={colors.text} />
+            <View style={styles.notificationDot} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.profileAvatarBtn}
+            onPress={() => router.push("/(tabs)/profile")}
+            activeOpacity={0.8}
+          >
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{userInitial}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
         style={styles.container}
-        contentContainerStyle={[
-          styles.contentContainer,
-          { paddingTop: Math.max(insets.top, 20) + 4 },
-        ]}
+        contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -253,49 +286,7 @@ export default function HomeScreen() {
         }
       >
         {/* =================================================================== */}
-        {/* 1. TOP APP BAR */}
-        {/* =================================================================== */}
-        <View style={styles.topHeader}>
-          <Image
-            source={require("../../assets/logo.png")}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-
-          <View style={styles.headerRightActions}>
-            <TouchableOpacity
-              style={styles.actionIconButton}
-              onPress={() => router.push("/(tabs)/profile")}
-              activeOpacity={0.75}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Bell size={18} color={colors.text} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.avatarBtn}
-              onPress={() => router.push("/(tabs)/profile")}
-              activeOpacity={0.8}
-            >
-              <View style={styles.avatarMini}>
-                <Text style={styles.avatarText}>{userInitial}</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* =================================================================== */}
-        {/* 2. GREETING */}
-        {/* =================================================================== */}
-        <View style={styles.greetingBox}>
-          <Text style={styles.greetingSub}>{greeting},</Text>
-          <Text style={styles.greetingName}>
-            {displayName ? `${displayName} 👋` : "Welcome 👋"}
-          </Text>
-        </View>
-
-        {/* =================================================================== */}
-        {/* 3. CLEAN ELEVATED WALLET CARD */}
+        {/* 2. THE WALLET CARD (Clean Elevated Light Card with 3D Artwork) */}
         {/* =================================================================== */}
         <View style={styles.walletCard}>
           <View style={styles.walletTopRow}>
@@ -306,7 +297,7 @@ export default function HomeScreen() {
 
             <View style={styles.tierPill}>
               <Sparkles size={11} color="#B45309" style={{ marginRight: 4 }} />
-              <Text style={styles.tierPillText}>{loyaltyTier} Tier</Text>
+              <Text style={styles.tierPillText}>{loyaltyTier} Member</Text>
             </View>
 
             <TouchableOpacity
@@ -322,14 +313,23 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.balanceAmount}>
-            {hideBalance
-              ? "₦ ••••••••"
-              : `₦${Number(balance).toLocaleString("en-NG", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}`}
-          </Text>
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceAmount}>
+              {hideBalance
+                ? "₦ ••••••••"
+                : `₦${Number(balance).toLocaleString("en-NG", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`}
+            </Text>
+            <View style={styles.walletArtWrap}>
+              <Image
+                source={require("../../assets/wallet.png")}
+                style={styles.walletArtImage}
+                resizeMode="contain"
+              />
+            </View>
+          </View>
 
           {/* Quick Actions: Exactly Fund Wallet & History */}
           <View style={styles.walletActionRow}>
@@ -354,43 +354,39 @@ export default function HomeScreen() {
         </View>
 
         {/* =================================================================== */}
-        {/* 4. COMPACT QUICK SERVICES BAR */}
+        {/* 3. QUICK SERVICES (Exactly 4 per row, 8 total. Item 8 = More) */}
         {/* =================================================================== */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Quick Services</Text>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.quickBarContainer}
-        >
+        <View style={styles.quickServicesGrid}>
           {QUICK_SERVICES.map((svc) => (
             <TouchableOpacity
               key={svc.id}
-              style={styles.quickBarItem}
+              style={styles.gridItem}
               onPress={() => router.push(svc.route as any)}
               activeOpacity={0.75}
             >
-              <View style={[styles.quickBarBadge, svc.isMore && styles.moreBadge]}>
+              <View style={[styles.gridIconBox, svc.isMore && styles.moreIconBox]}>
                 {svc.isMore ? (
-                  <LayoutGrid size={20} color={colors.primary} />
+                  <LayoutGrid size={22} color={colors.primary} />
                 ) : (
-                  <Image source={svc.logo} style={styles.agencyLogo} resizeMode="contain" />
+                  <Image source={svc.logo} style={styles.gridAgencyLogo} resizeMode="contain" />
                 )}
               </View>
               <Text
-                style={[styles.quickBarLabel, svc.isMore && styles.moreLabel]}
+                style={[styles.gridLabel, svc.isMore && styles.moreGridLabel]}
                 numberOfLines={1}
               >
                 {svc.title}
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
         {/* =================================================================== */}
-        {/* 5. TELECOM & UTILITIES STRIP */}
+        {/* 4. TELECOM & UTILITIES STRIP */}
         {/* =================================================================== */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Telecom & Utilities</Text>
@@ -418,7 +414,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* =================================================================== */}
-        {/* 6. ACTIVE APPLICATIONS TRACKER */}
+        {/* 5. ACTIVE APPLICATIONS TRACKER */}
         {/* =================================================================== */}
         {applications.length > 0 ? (
           <View style={styles.applicationsSection}>
@@ -500,7 +496,7 @@ export default function HomeScreen() {
         ) : null}
 
         {/* =================================================================== */}
-        {/* 7. RECENT ACTIVITY */}
+        {/* 6. RECENT ACTIVITY */}
         {/* =================================================================== */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -571,48 +567,55 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-
-  /* Top Header */
-  topHeader: {
+  topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    backgroundColor: colors.background,
   },
-  headerLogo: {
-    width: 125,
-    height: 36,
+  topBarLeft: {
+    flex: 1,
   },
-  headerRightActions: {
+  greetingTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: colors.text,
+    letterSpacing: -0.3,
+  },
+  topBarRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
-  actionIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  headerIconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
   },
-  avatarBtn: {
+  notificationDot: {
+    position: "absolute",
+    top: 9,
+    right: 9,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: colors.primary,
+  },
+  profileAvatarBtn: {
     padding: 1,
   },
-  avatarMini: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  avatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -622,24 +625,17 @@ const styles = StyleSheet.create({
   avatarText: {
     color: "#FFFFFF",
     fontWeight: "800",
-    fontSize: 14,
+    fontSize: 15,
   },
 
-  /* Greeting */
-  greetingBox: {
-    marginBottom: 12,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  greetingSub: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-  greetingName: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: colors.text,
-    letterSpacing: -0.2,
-    marginTop: 1,
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 40,
   },
 
   /* Wallet Card */
@@ -692,16 +688,35 @@ const styles = StyleSheet.create({
   eyeBtn: {
     padding: 4,
   },
+  balanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginVertical: 8,
+  },
   balanceAmount: {
-    fontSize: 28,
+    fontSize: 27,
     fontWeight: "900",
     color: colors.text,
-    marginVertical: 10,
     letterSpacing: -0.5,
+    flex: 1,
+  },
+  walletArtWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(200, 45, 117, 0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  walletArtImage: {
+    width: 36,
+    height: 36,
   },
   walletActionRow: {
     flexDirection: "row",
     gap: 8,
+    marginTop: 4,
   },
   fundBtn: {
     flex: 1.2,
@@ -744,34 +759,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
     marginTop: 2,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "800",
     color: colors.text,
   },
 
-  /* Compact Quick Services Bar */
-  quickBarContainer: {
+  /* 4x2 Quick Services Grid (8 Total) */
+  quickServicesGrid: {
     flexDirection: "row",
-    paddingVertical: 2,
-    gap: 10,
-    marginBottom: 16,
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 14,
+    marginBottom: 18,
   },
-  quickBarItem: {
-    width: 60,
+  gridItem: {
+    width: "23%",
     alignItems: "center",
   },
-  quickBarBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  gridIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 5,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     shadowColor: "#000",
@@ -780,21 +795,22 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
-  moreBadge: {
+  moreIconBox: {
     backgroundColor: "rgba(200, 45, 117, 0.10)",
     borderColor: "rgba(200, 45, 117, 0.25)",
   },
-  agencyLogo: {
-    width: 24,
-    height: 24,
+  gridAgencyLogo: {
+    width: 26,
+    height: 26,
   },
-  quickBarLabel: {
+  gridLabel: {
     fontSize: 11,
     fontWeight: "700",
     color: colors.text,
     textAlign: "center",
+    marginTop: 6,
   },
-  moreLabel: {
+  moreGridLabel: {
     color: colors.primary,
     fontWeight: "800",
   },
