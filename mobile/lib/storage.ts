@@ -112,6 +112,15 @@ export async function isBiometricsEnabled(): Promise<boolean> {
   return val === "true";
 }
 
+export async function setHideBalancePref(hidden: boolean): Promise<void> {
+  await setItem("lorabiz_hide_balance", hidden ? "true" : "false");
+}
+
+export async function getHideBalancePref(): Promise<boolean> {
+  const val = await getItem("lorabiz_hide_balance");
+  return val === "true";
+}
+
 export async function clearAllAuth(): Promise<void> {
   await removeAuthToken();
   await removeAuthUser();

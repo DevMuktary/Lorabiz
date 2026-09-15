@@ -34,13 +34,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="slips"
-        options={{
-          title: "Slips",
-          tabBarIcon: ({ color, size }) => <FileText size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="services"
         options={{
           title: "Services",
@@ -48,10 +41,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="bills"
+        name="activity"
         options={{
-          title: "Bills",
-          tabBarIcon: ({ color, size }) => <Zap size={size} color={color} />,
+          title: "Activity",
+          tabBarIcon: ({ color, size }) => <Clock size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -59,6 +52,18 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="slips"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="bills"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
