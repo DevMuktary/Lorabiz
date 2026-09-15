@@ -156,7 +156,17 @@ export default function HomeScreen() {
   const firstName = rawName.split(" ")[0].trim();
   const displayName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : "";
   const userInitial = (displayName?.[0] || user?.name?.[0] || "U").toUpperCase();
-  const loyaltyTier = loyaltyData?.profile?.tier || "Standard";
+  const currentTierObj = loyaltyData?.profile?.currentTier || loyaltyData?.currentTier;
+  const tierName = currentTierObj?.name || loyaltyData?.profile?.tier || "Gold";
+  const tierColor =
+    currentTierObj?.colorHex ||
+    (tierName.toLowerCase().includes("silver")
+      ? "#64748B"
+      : tierName.toLowerCase().includes("platinum")
+      ? "#0284C7"
+      : tierName.toLowerCase().includes("bronze")
+      ? "#B45309"
+      : "#D97706");
 
   // Quick Services Grid: Strictly 4 items per row, 2 rows (8 items total)
   // Item 7 is Airtime, Item 8 is More
@@ -248,26 +258,64 @@ export default function HomeScreen() {
     },
   ];
 
-  // Auto-sliding interval for the promotional carousel (every 4 seconds)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActivePromoIndex((prev) => {
-        const nextIndex = (prev + 1) % PROMO_ADS.length;
-        bannerScrollRef.current?.scrollTo({ x: nextIndex * BANNER_WIDTH, animated: true });
-        return nextIndex;
-      });
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [PROMO_ADS.length]);
+  const isInteractingRef = useRef(false);
+  const autoSlideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Touch drag scroll handler
-  const handleScrollEnd = (e: any) => {
+  // Real-time drag handler for instant indicator dot tracking
+  const handleBannerScroll = (e: any) => {
+    const contentOffsetX = e.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffsetX / BANNER_WIDTH);
+    if (index >= 0 && index < PROMO_ADS.length && index !== activePromoIndex) {
+      setActivePromoIndex(index);
+    }
+  };
+
+  const handleMomentumScrollEnd = (e: any) => {
     const contentOffsetX = e.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffsetX / BANNER_WIDTH);
     if (index >= 0 && index < PROMO_ADS.length) {
       setActivePromoIndex(index);
     }
+    setTimeout(() => {
+      isInteractingRef.current = false;
+    }, 1000);
   };
+
+  const handleScrollBeginDrag = () => {
+    isInteractingRef.current = true;
+  };
+
+  const handleScrollEndDrag = () => {
+    setTimeout(() => {
+      isInteractingRef.current = false;
+    }, 1500);
+  };
+
+  const handleTouchStart = () => {
+    isInteractingRef.current = true;
+  };
+
+  const handleTouchEnd = () => {
+    setTimeout(() => {
+      isInteractingRef.current = false;
+    }, 2000);
+  };
+
+  // Auto-sliding interval: strictly paused whenever user touches, holds, or drags
+  useEffect(() => {
+    autoSlideTimerRef.current = setInterval(() => {
+      if (isInteractingRef.current) return;
+      setActivePromoIndex((prev) => {
+        const nextIndex = (prev + 1) % PROMO_ADS.length;
+        bannerScrollRef.current?.scrollTo({ x: nextIndex * BANNER_WIDTH, animated: true });
+        return nextIndex;
+      });
+    }, 5000);
+
+    return () => {
+      if (autoSlideTimerRef.current) clearInterval(autoSlideTimerRef.current);
+    };
+  }, [PROMO_ADS.length]);
 
   return (
     <View style={styles.screen}>
@@ -279,21 +327,20 @@ export default function HomeScreen() {
       <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 16) + 4 }]}>
         <View style={styles.topBarLeft}>
           <TouchableOpacity
-            style={styles.avatarOrb}
+            style={styles.avatarWrap}
             onPress={() => router.push("/(tabs)/profile")}
             activeOpacity={0.8}
           >
-            <Text style={styles.avatarText}>{userInitial}</Text>
+            <View style={styles.avatarOrb}>
+              <Text style={styles.avatarText}>{userInitial}</Text>
+            </View>
+            <View style={[styles.avatarTierBadge, { backgroundColor: tierColor }]}>
+              <Sparkles size={9} color="#FFFFFF" />
+            </View>
           </TouchableOpacity>
 
           <View style={styles.greetingWrap}>
-            <View style={styles.greetingTopRow}>
-              <Text style={styles.greetingSub}>Welcome back,</Text>
-              <View style={styles.tierPill}>
-                <Sparkles size={10} color="#D97706" style={{ marginRight: 3 }} />
-                <Text style={styles.tierPillText}>{loyaltyTier}</Text>
-              </View>
-            </View>
+            <Text style={styles.greetingSub}>Welcome back,</Text>
             <Text style={styles.greetingTitle}>
               Hi, {displayName ? `${displayName}` : "there"}
             </Text>
@@ -395,13 +442,22 @@ export default function HomeScreen() {
         {/* =================================================================== */}
         {/* 3. TOUCH-DRAGGABLE PROMOTIONAL BANNER WITH NATIVE BUTTONS */}
         {/* =================================================================== */}
-        <View style={styles.adSection}>
+        <View
+          style={styles.adSection}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+        >
           <ScrollView
             ref={bannerScrollRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleScrollEnd}
+            onScroll={handleBannerScroll}
+            scrollEventThrottle={16}
+            onScrollBeginDrag={handleScrollBeginDrag}
+            onScrollEndDrag={handleScrollEndDrag}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
             decelerationRate="fast"
             snapToInterval={BANNER_WIDTH}
             snapToAlignment="center"
@@ -445,8 +501,12 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={idx}
                 onPress={() => {
+                  isInteractingRef.current = true;
                   setActivePromoIndex(idx);
                   bannerScrollRef.current?.scrollTo({ x: idx * BANNER_WIDTH, animated: true });
+                  setTimeout(() => {
+                    isInteractingRef.current = false;
+                  }, 3000);
                 }}
                 style={[
                   styles.dot,
@@ -490,16 +550,16 @@ export default function HomeScreen() {
         </View>
 
         {/* =================================================================== */}
-        {/* 5. RECENT ACTIVITY (CLEAN, COMPACT TRANSACTIONS CARD) */}
+        {/* 5. RECENT TRANSACTIONS (STREAMLINED CARD WITH VIEW ALL BUTTON) */}
         {/* =================================================================== */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <Text style={styles.sectionTitle}>Recent Transactions</Text>
           <TouchableOpacity
             onPress={() => router.push("/(tabs)/activity" as any)}
             activeOpacity={0.75}
             style={styles.activityPillBtn}
           >
-            <Text style={styles.activityPillText}>All Activity</Text>
+            <Text style={styles.activityPillText}>View All</Text>
             <ChevronRight size={13} color={colors.primary} style={{ marginLeft: 2 }} />
           </TouchableOpacity>
         </View>
@@ -597,6 +657,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
+  avatarWrap: {
+    position: "relative",
+  },
   avatarOrb: {
     width: 42,
     height: 42,
@@ -615,31 +678,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
   },
-  greetingWrap: {
-    marginLeft: 10,
-  },
-  greetingTopRow: {
-    flexDirection: "row",
+  avatarTierBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  greetingWrap: {
+    marginLeft: 12,
   },
   greetingSub: {
     fontSize: 11,
     fontWeight: "500",
     color: colors.textSecondary,
-  },
-  tierPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEF3C7",
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-  },
-  tierPillText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#D97706",
   },
   greetingTitle: {
     fontSize: 16,

@@ -43,7 +43,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="activity"
         options={{
-          title: "Activity",
+          title: "Transactions",
           tabBarIcon: ({ color, size }) => <Clock size={size} color={color} />,
         }}
       />

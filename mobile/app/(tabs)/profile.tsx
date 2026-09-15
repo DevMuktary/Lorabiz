@@ -22,10 +22,12 @@ import {
   ChevronRight,
   ExternalLink,
   Info,
+  Sparkles,
 } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { colors } from "../../constants/theme";
+import { useQuery } from "@tanstack/react-query";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -38,6 +40,29 @@ export default function ProfileScreen() {
   } = useAuth();
 
   const [isDeactivating, setIsDeactivating] = useState(false);
+
+  const { data: loyaltyData } = useQuery({
+    queryKey: ["mobileLoyaltyProfile"],
+    queryFn: async () => {
+      try {
+        return await api.get("/api/user/loyalty");
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  const currentTierObj = loyaltyData?.profile?.currentTier || loyaltyData?.currentTier;
+  const tierName = currentTierObj?.name || loyaltyData?.profile?.tier || "Gold";
+  const tierColor =
+    currentTierObj?.colorHex ||
+    (tierName.toLowerCase().includes("silver")
+      ? "#64748B"
+      : tierName.toLowerCase().includes("platinum")
+      ? "#0284C7"
+      : tierName.toLowerCase().includes("bronze")
+      ? "#B45309"
+      : "#D97706");
 
   async function handleToggleBiometrics(val: boolean) {
     const success = await toggleBiometrics(val);
@@ -103,13 +128,22 @@ export default function ProfileScreen() {
 
       {/* User Info Card */}
       <View style={styles.userCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {(user?.firstName?.[0] || "U").toUpperCase()}
-          </Text>
+        <View style={{ position: "relative" }}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {(user?.firstName?.[0] || "U").toUpperCase()}
+            </Text>
+          </View>
+          <View style={[styles.avatarTierBadge, { backgroundColor: tierColor }]}>
+            <Sparkles size={11} color="#FFFFFF" />
+          </View>
         </View>
         <View style={{ flex: 1, marginLeft: 16 }}>
           <Text style={styles.userName}>{user?.name || "Lorabiz Customer"}</Text>
+          <View style={[styles.tierPill, { backgroundColor: tierColor + "18", borderColor: tierColor + "40" }]}>
+            <Sparkles size={10} color={tierColor} style={{ marginRight: 4 }} />
+            <Text style={[styles.tierPillText, { color: tierColor }]}>{tierName} Member</Text>
+          </View>
           <Text style={styles.userEmail}>{user?.email}</Text>
           {user?.phone ? (
             <Text style={styles.userPhone}>{user.phone}</Text>
@@ -307,6 +341,38 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     color: "#FFFFFF",
+  },
+  avatarTierBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  tierPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+    marginBottom: 4,
+    alignSelf: "flex-start",
+  },
+  tierPillText: {
+    fontSize: 10,
+    fontWeight: "800",
   },
   userName: {
     fontSize: 17,

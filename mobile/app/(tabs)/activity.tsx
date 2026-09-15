@@ -68,7 +68,7 @@ export default function ActivityScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) + 4 }]}>
-        <Text style={styles.headerTitle}>Activity</Text>
+        <Text style={styles.headerTitle}>Transactions</Text>
 
         {/* Search Bar */}
         <View style={styles.searchBar}>
