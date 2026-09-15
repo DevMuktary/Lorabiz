@@ -1,6 +1,6 @@
 import React from "react";
 import { Tabs } from "expo-router";
-import { LayoutDashboard, FileText, Briefcase, Zap, User } from "lucide-react-native";
+import { LayoutDashboard, Briefcase, Clock, User } from "lucide-react-native";
 import { Platform } from "react-native";
 import { colors } from "../../constants/theme";
 
