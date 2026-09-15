@@ -15,20 +15,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-  Shield,
-  Search,
+  ArrowLeft,
   CheckCircle2,
   AlertCircle,
   Download,
-  Share2,
   X,
-  Wallet,
   Check,
   Eye,
-  Clock,
-  ArrowLeft,
-  IdentificationCard,
-  Phone,
   FileText,
 } from "lucide-react-native";
 import * as FileSystem from "expo-file-system";
@@ -39,94 +32,44 @@ import { api } from "../../lib/api";
 import { colors } from "../../constants/theme";
 import BrandLoader from "../../components/BrandLoader";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-interface SlipFormatConfig {
-  id: "nin_basic" | "nin_regular" | "nin_standard" | "nin_premium" | "nin_vnin";
+interface BvnSlipFormat {
+  id: "bvn_standard" | "bvn_premium";
   label: string;
+  badge: string;
   defaultPrice: number;
   imageSource: any;
   serviceKey: string;
 }
 
-const NIN_QUERY_SLIPS: SlipFormatConfig[] = [
+const BVN_FORMATS: BvnSlipFormat[] = [
   {
-    id: "nin_basic",
-    label: "Basic Slip",
-    defaultPrice: 400,
-    imageSource: require("../../assets/examples/nin_basic.png"),
-    serviceKey: "NIN_BASIC",
-  },
-  {
-    id: "nin_regular",
-    label: "Regular Slip",
-    defaultPrice: 500,
-    imageSource: require("../../assets/examples/nin_regular_example.png"),
-    serviceKey: "NIN_REGULAR",
-  },
-  {
-    id: "nin_standard",
-    label: "Standard Slip",
+    id: "bvn_standard",
+    label: "Standard BVN Slip",
+    badge: "Official Layout",
     defaultPrice: 700,
-    imageSource: require("../../assets/examples/nin_standard_example.png"),
-    serviceKey: "NIN_STANDARD",
+    imageSource: require("../../assets/examples/bvn_regular.png"),
+    serviceKey: "NIBSS_BVN_STANDARD",
   },
   {
-    id: "nin_premium",
-    label: "Premium Slip",
+    id: "bvn_premium",
+    label: "Premium BVN Card Slip",
+    badge: "Card / Lamination Ready",
     defaultPrice: 1000,
-    imageSource: require("../../assets/examples/nin_premium_example.png"),
-    serviceKey: "NIN_PREMIUM",
-  },
-  {
-    id: "nin_vnin",
-    label: "VNIN Slip",
-    defaultPrice: 500,
-    imageSource: require("../../assets/examples/nin_vnin.png"),
-    serviceKey: "NIN_VNIN",
+    imageSource: require("../../assets/examples/bvn_premium.png"),
+    serviceKey: "NIBSS_BVN_PREMIUM",
   },
 ];
 
-const PHONE_QUERY_SLIPS: SlipFormatConfig[] = [
-  {
-    id: "nin_regular",
-    label: "Regular Slip",
-    defaultPrice: 500,
-    imageSource: require("../../assets/examples/nin_regular_example.png"),
-    serviceKey: "NIN_PHONE_REGULAR",
-  },
-  {
-    id: "nin_standard",
-    label: "Standard Slip",
-    defaultPrice: 700,
-    imageSource: require("../../assets/examples/nin_standard_example.png"),
-    serviceKey: "NIN_PHONE_STANDARD",
-  },
-  {
-    id: "nin_premium",
-    label: "Premium Slip",
-    defaultPrice: 1000,
-    imageSource: require("../../assets/examples/nin_premium_example.png"),
-    serviceKey: "NIN_PHONE_PREMIUM",
-  },
-];
-
-export default function NinSlipsScreen() {
+export default function BvnSlipScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, refreshProfile } = useAuth();
 
-  // Search Mode: Query by NIN Number vs Query by Phone Number
-  const [searchMode, setSearchMode] = useState<"NIN" | "PHONE">("NIN");
-  const [identifierInput, setIdentifierInput] = useState("");
-  const [selectedFormatId, setSelectedFormatId] = useState<
-    "nin_basic" | "nin_regular" | "nin_standard" | "nin_premium" | "nin_vnin"
-  >("nin_premium");
-
-  // Statutory NDPA consent only (fee authorization checkbox is no longer needed)
+  const [bvnInput, setBvnInput] = useState("");
+  const [selectedFormatId, setSelectedFormatId] = useState<"bvn_standard" | "bvn_premium">("bvn_standard");
   const [ndpaConsent, setNdpaConsent] = useState(false);
-
-  // States for Modals and Loading
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -141,7 +84,7 @@ export default function NinSlipsScreen() {
     label: "",
   });
 
-  // Result Modal State
+  // Result Modal
   const [resultModal, setResultModal] = useState<{
     visible: boolean;
     pdfBase64?: string;
@@ -151,90 +94,48 @@ export default function NinSlipsScreen() {
     identifier?: string;
   }>({ visible: false });
 
-  // Fetch Live Pricing & Gateway Availability
-  const { data: statusData, isLoading: isStatusLoading, refetch: refetchStatus } = useQuery({
-    queryKey: ["ninSlipsProviderStatus"],
+  // Fetch Live BVN Status & Pricing
+  const { data: statusData, isLoading: isStatusLoading } = useQuery({
+    queryKey: ["bvnSlipStatus"],
     queryFn: async () => {
       try {
-        return await api.get("/api/nin/slips/status");
+        return await api.get("/api/bvn/status");
       } catch {
         return null;
       }
     },
   });
 
-  // Fetch Past Slips History
+  // Fetch Past BVN Slips History
   const { data: historyData, refetch: refetchHistory } = useQuery({
-    queryKey: ["ninSlipsHistory", searchMode],
+    queryKey: ["bvnSlipsHistory"],
     queryFn: async () => {
       try {
-        return await api.get(`/api/nin/slips/history?searchType=${searchMode}`);
+        return await api.get("/api/bvn/history");
       } catch {
         return null;
       }
     },
   });
 
-  // Available Slips & Live Pricing Maps
   const pricingMap = statusData?.pricing || {};
-  const availableNINSlips = statusData?.status?.availableNINSlips || [
-    "nin_basic",
-    "nin_regular",
-    "nin_standard",
-    "nin_premium",
-    "nin_vnin",
-  ];
-  const availablePhoneSlips = statusData?.status?.availablePhoneSlips || [
-    "nin_regular",
-    "nin_standard",
-    "nin_premium",
-  ];
-
-  const currentOptions = searchMode === "NIN" ? NIN_QUERY_SLIPS : PHONE_QUERY_SLIPS;
-  const currentAvailableList = searchMode === "NIN" ? availableNINSlips : availablePhoneSlips;
-
-  // Compute availability map for each format
-  const activeMap: Record<string, boolean> = {};
-  currentOptions.forEach((opt) => {
-    const pInfo = pricingMap[opt.serviceKey];
-    const isServiceActive = pInfo ? pInfo.isActive !== false : true;
-    const isGatewayAvailable = currentAvailableList.includes(opt.id);
-    activeMap[opt.id] = isServiceActive && isGatewayAvailable;
-  });
-
-  // Get current active price
   const selectedOption =
-    currentOptions.find((o) => o.id === selectedFormatId) || currentOptions[0];
+    BVN_FORMATS.find((o) => o.id === selectedFormatId) || BVN_FORMATS[0];
   const pInfo = pricingMap[selectedOption?.serviceKey];
-  const currentPrice = pInfo?.price ?? selectedOption?.defaultPrice ?? 500;
+  const currentPrice = pInfo?.price ?? selectedOption?.defaultPrice ?? 700;
 
   const walletBalance = user?.wallet?.balance ?? 0;
-  const isSelectedFormatAvailable = activeMap[selectedFormatId] !== false;
+  const isAvailable = pInfo ? pInfo.isActive !== false : true;
 
-  // Clean identifier input
-  const cleanIdentifier = identifierInput.trim();
-  const isInputValid =
-    searchMode === "NIN"
-      ? cleanIdentifier.length === 11 && /^\d{11}$/.test(cleanIdentifier)
-      : cleanIdentifier.length >= 10 && cleanIdentifier.length <= 14 && /^\d+$/.test(cleanIdentifier);
+  const cleanBvn = bvnInput.trim();
+  const isInputValid = cleanBvn.length === 11 && /^\d{11}$/.test(cleanBvn);
+  const canSubmit = isInputValid && ndpaConsent && isAvailable && !isGenerating && !isStatusLoading;
 
-  const canSubmit =
-    isInputValid &&
-    ndpaConsent &&
-    isSelectedFormatAvailable &&
-    !isGenerating &&
-    !isStatusLoading;
-
-  // Handle Generation
   const handleGenerate = async () => {
     setErrorMessage(null);
 
     if (!isInputValid) {
-      setErrorMessage(
-        searchMode === "NIN"
-          ? "Please enter a valid 11-digit National Identity Number."
-          : "Please enter a valid 11-digit Nigerian phone number."
-      );
+      setErrorMessage("Please enter a valid 11-digit Bank Verification Number (BVN).");
       return;
     }
 
@@ -243,15 +144,10 @@ export default function NinSlipsScreen() {
       return;
     }
 
-    if (!isSelectedFormatAvailable) {
-      setErrorMessage("The selected slip format is currently unavailable. Please choose another format.");
-      return;
-    }
-
     if (walletBalance < currentPrice) {
       Alert.alert(
         "Insufficient Balance",
-        `This slip requires ₦${currentPrice.toLocaleString()}, but your balance is ₦${walletBalance.toLocaleString()}. Would you like to fund your wallet?`,
+        `This BVN slip requires ₦${currentPrice.toLocaleString()}, but your balance is ₦${walletBalance.toLocaleString()}. Would you like to fund your wallet?`,
         [
           { text: "Cancel", style: "cancel" },
           { text: "Fund Wallet", onPress: () => router.push("/wallet/fund" as any) },
@@ -263,31 +159,28 @@ export default function NinSlipsScreen() {
     setIsGenerating(true);
 
     try {
-      const res = await api.post("/api/nin/slips", {
-        identifier: cleanIdentifier,
-        searchType: searchMode,
+      const res = await api.post("/api/bvn/verify", {
+        bvn: cleanBvn,
         slipType: selectedFormatId,
-        attestationsAccepted: true,
+        attestationAccepted: true,
       });
 
       setIsGenerating(false);
 
-      if (!res?.success || !res?.pdfBase64) {
-        setErrorMessage(res?.message || "Failed to generate NIN slip. Please check the details and try again.");
+      if (!res?.success || (!res?.pdfBase64 && !res?.pdfUrl)) {
+        setErrorMessage(res?.message || "Failed to generate BVN slip. Please verify the BVN and try again.");
         return;
       }
 
-      // Success: Open Result Modal
       setResultModal({
         visible: true,
         pdfBase64: res.pdfBase64,
         pdfUrl: res.pdfUrl,
         userData: res.userData,
         slipLabel: selectedOption.label,
-        identifier: cleanIdentifier,
+        identifier: cleanBvn,
       });
 
-      // Refresh wallet & history
       refreshProfile();
       refetchHistory();
     } catch (err: any) {
@@ -296,7 +189,6 @@ export default function NinSlipsScreen() {
     }
   };
 
-  // Download Slip PDF
   const handleDownloadPdf = async () => {
     if (!resultModal.pdfBase64) {
       Alert.alert("Notice", "No document available for download.");
@@ -304,7 +196,7 @@ export default function NinSlipsScreen() {
     }
 
     try {
-      const filename = `NIN_Slip_${resultModal.identifier || "document"}_${Date.now()}.pdf`;
+      const filename = `BVN_Slip_${resultModal.identifier || "document"}_${Date.now()}.pdf`;
       const fileUri = `${FileSystem.cacheDirectory}${filename}`;
 
       await FileSystem.writeAsStringAsync(fileUri, resultModal.pdfBase64, {
@@ -314,11 +206,11 @@ export default function NinSlipsScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
           mimeType: "application/pdf",
-          dialogTitle: "Download Official NIMC Slip",
+          dialogTitle: "Download Official BVN Slip",
           UTI: "com.adobe.pdf",
         });
       } else {
-        Alert.alert("Success", `Slip PDF saved successfully to ${filename}`);
+        Alert.alert("Success", `BVN slip PDF saved to ${filename}`);
       }
     } catch (err: any) {
       Alert.alert("Error", "Could not save PDF. Please try again.");
@@ -329,7 +221,6 @@ export default function NinSlipsScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* App Header */}
       <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 16) + 4 }]}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -338,7 +229,7 @@ export default function NinSlipsScreen() {
         >
           <ArrowLeft size={20} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>NIN Verification Slips</Text>
+        <Text style={styles.headerTitle}>BVN Verification Slips</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -347,66 +238,6 @@ export default function NinSlipsScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Verification Method Segmented Control */}
-        <View style={styles.segmentContainer}>
-          <TouchableOpacity
-            style={[
-              styles.segmentBtn,
-              searchMode === "NIN" && styles.segmentBtnActive,
-            ]}
-            onPress={() => {
-              setSearchMode("NIN");
-              setErrorMessage(null);
-            }}
-            activeOpacity={0.8}
-          >
-            <IdentificationCard
-              size={16}
-              color={searchMode === "NIN" ? colors.primary : colors.textSecondary}
-              style={{ marginRight: 6 }}
-            />
-            <Text
-              style={[
-                styles.segmentBtnText,
-                searchMode === "NIN" && styles.segmentBtnTextActive,
-              ]}
-            >
-              Query by NIN
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.segmentBtn,
-              searchMode === "PHONE" && styles.segmentBtnActive,
-            ]}
-            onPress={() => {
-              setSearchMode("PHONE");
-              setErrorMessage(null);
-              // Switch to a format valid for phone search if needed
-              if (selectedFormatId === "nin_basic" || selectedFormatId === "nin_vnin") {
-                setSelectedFormatId("nin_premium");
-              }
-            }}
-            activeOpacity={0.8}
-          >
-            <Phone
-              size={16}
-              color={searchMode === "PHONE" ? colors.primary : colors.textSecondary}
-              style={{ marginRight: 6 }}
-            />
-            <Text
-              style={[
-                styles.segmentBtnText,
-                searchMode === "PHONE" && styles.segmentBtnTextActive,
-              ]}
-            >
-              Query by Phone
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Error Alert Box */}
         {errorMessage ? (
           <View style={styles.errorBox}>
             <AlertCircle size={18} color={colors.error} style={{ marginRight: 8 }} />
@@ -414,34 +245,24 @@ export default function NinSlipsScreen() {
           </View>
         ) : null}
 
-        {/* Identifier Input Field */}
+        {/* Input Card */}
         <View style={styles.inputCard}>
           <View style={styles.inputLabelRow}>
-            <Text style={styles.inputLabel}>
-              {searchMode === "NIN"
-                ? "11-Digit National Identity Number (NIN)"
-                : "Registered Phone Number"}
-            </Text>
-            <Text style={styles.inputCounter}>
-              {identifierInput.length}/{searchMode === "NIN" ? 11 : 11}
-            </Text>
+            <Text style={styles.inputLabel}>11-Digit Bank Verification Number (BVN)</Text>
+            <Text style={styles.inputCounter}>{bvnInput.length}/11</Text>
           </View>
 
           <View style={styles.inputWrap}>
             <TextInput
               style={styles.textInput}
               keyboardType="number-pad"
-              maxLength={searchMode === "NIN" ? 11 : 14}
-              value={identifierInput}
+              maxLength={11}
+              value={bvnInput}
               onChangeText={(val) => {
-                setIdentifierInput(val.replace(/\D/g, ""));
+                setBvnInput(val.replace(/\D/g, ""));
                 if (errorMessage) setErrorMessage(null);
               }}
-              placeholder={
-                searchMode === "NIN"
-                  ? "Enter 11-digit NIN"
-                  : "Enter phone number (e.g. 080...)"
-              }
+              placeholder="Enter 11-digit BVN"
               placeholderTextColor={colors.textMuted}
             />
             {isInputValid ? (
@@ -450,15 +271,15 @@ export default function NinSlipsScreen() {
           </View>
         </View>
 
-        {/* Slip Format Selection */}
+        {/* Format Selection */}
         <View style={styles.formatSection}>
-          <Text style={styles.sectionLabel}>Select Slip Format</Text>
+          <Text style={styles.sectionLabel}>Select BVN Slip Format</Text>
 
           <View style={styles.formatsList}>
-            {currentOptions.map((opt) => {
+            {BVN_FORMATS.map((opt) => {
               const isSelected = selectedFormatId === opt.id;
-              const isAvailable = activeMap[opt.id] !== false;
               const formatPrice = pricingMap[opt.serviceKey]?.price ?? opt.defaultPrice;
+              const formatAvailable = pricingMap[opt.serviceKey]?.isActive !== false;
 
               return (
                 <TouchableOpacity
@@ -466,20 +287,19 @@ export default function NinSlipsScreen() {
                   style={[
                     styles.formatCard,
                     isSelected && styles.formatCardSelected,
-                    !isAvailable && styles.formatCardDisabled,
+                    !formatAvailable && styles.formatCardDisabled,
                   ]}
                   onPress={() => {
-                    if (isAvailable) setSelectedFormatId(opt.id);
+                    if (formatAvailable) setSelectedFormatId(opt.id);
                   }}
-                  activeOpacity={isAvailable ? 0.75 : 1}
+                  activeOpacity={formatAvailable ? 0.75 : 1}
                 >
                   <View style={styles.formatCardLeft}>
-                    {/* Radio circle */}
                     <View
                       style={[
                         styles.radioCircle,
                         isSelected && styles.radioCircleSelected,
-                        !isAvailable && styles.radioCircleDisabled,
+                        !formatAvailable && styles.radioCircleDisabled,
                       ]}
                     >
                       {isSelected ? <View style={styles.radioDot} /> : null}
@@ -490,13 +310,12 @@ export default function NinSlipsScreen() {
                         <Text
                           style={[
                             styles.formatTitle,
-                            !isAvailable && { color: colors.textMuted },
+                            !formatAvailable && { color: colors.textMuted },
                           ]}
                         >
                           {opt.label}
                         </Text>
 
-                        {/* View Example Specimen Button */}
                         <TouchableOpacity
                           style={styles.viewExampleBtn}
                           onPress={() =>
@@ -507,13 +326,12 @@ export default function NinSlipsScreen() {
                             })
                           }
                           activeOpacity={0.7}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
                           <Eye size={12} color={colors.primary} style={{ marginRight: 4 }} />
                           <Text style={styles.viewExampleText}>View Example</Text>
                         </TouchableOpacity>
 
-                        {!isAvailable ? (
+                        {!formatAvailable ? (
                           <View style={styles.unavailableBadge}>
                             <Text style={styles.unavailableBadgeText}>Unavailable</Text>
                           </View>
@@ -522,12 +340,11 @@ export default function NinSlipsScreen() {
                     </View>
                   </View>
 
-                  {/* Price on right */}
                   <View style={styles.formatPriceWrap}>
                     <Text
                       style={[
                         styles.formatPrice,
-                        !isAvailable && styles.formatPriceDisabled,
+                        !formatAvailable && styles.formatPriceDisabled,
                       ]}
                     >
                       ₦{Number(formatPrice).toLocaleString()}
@@ -539,7 +356,7 @@ export default function NinSlipsScreen() {
           </View>
         </View>
 
-        {/* Statutory NDPA Consent (Single Checkbox, No Fee Checkbox) */}
+        {/* Single Statutory NDPA Consent */}
         <TouchableOpacity
           style={styles.consentRow}
           onPress={() => setNdpaConsent(!ndpaConsent)}
@@ -554,7 +371,7 @@ export default function NinSlipsScreen() {
             {ndpaConsent ? <Check size={14} color="#FFFFFF" strokeWidth={3} /> : null}
           </View>
           <Text style={styles.consentText}>
-            I confirm that I am the owner of this NIN or have lawful authorization to retrieve this record in accordance with the{" "}
+            I confirm that I am the owner of this BVN or have lawful authorization to retrieve this financial record in accordance with the{" "}
             <Text style={{ fontWeight: "800", color: colors.text }}>
               Nigeria Data Protection Act (NDPA) 2023
             </Text>{" "}
@@ -574,10 +391,10 @@ export default function NinSlipsScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Recent NIN Slips History */}
+        {/* History */}
         {historyList.length > 0 ? (
           <View style={styles.historySection}>
-            <Text style={styles.sectionLabel}>Recent Slips Generated</Text>
+            <Text style={styles.sectionLabel}>Recent BVN Slips</Text>
             <View style={styles.historyCard}>
               {historyList.slice(0, 5).map((item, idx) => (
                 <View
@@ -592,7 +409,7 @@ export default function NinSlipsScreen() {
                   </View>
                   <View style={{ flex: 1, marginLeft: 10 }}>
                     <Text style={styles.historyTitle} numberOfLines={1}>
-                      {item.fullName || item.identifier || "NIN Slip"}
+                      {item.fullName || item.bvn || "BVN Slip"}
                     </Text>
                     <Text style={styles.historySub}>
                       {item.slipType || "Standard"} •{" "}
@@ -611,13 +428,13 @@ export default function NinSlipsScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Reusable Shrunken Logo BrandLoader (Blocks touch inputs while generating) */}
+      {/* BrandLoader */}
       <BrandLoader
         visible={isGenerating}
-        message="Retrieving official NIMC record..."
+        message="Retrieving official NIBSS BVN record..."
       />
 
-      {/* SPECIMEN PREVIEW LIGHTBOX MODAL */}
+      {/* Specimen Lightbox */}
       <Modal
         visible={lightbox.visible}
         transparent
@@ -631,12 +448,10 @@ export default function NinSlipsScreen() {
               <TouchableOpacity
                 onPress={() => setLightbox({ visible: false, imageSource: null, label: "" })}
                 style={styles.lightboxCloseBtn}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <X size={18} color={colors.text} />
               </TouchableOpacity>
             </View>
-
             <View style={styles.lightboxImageWrap}>
               {lightbox.imageSource ? (
                 <Image
@@ -650,7 +465,7 @@ export default function NinSlipsScreen() {
         </View>
       </Modal>
 
-      {/* RESULT MODAL WITH DEMOGRAPHICS & PDF DOWNLOAD */}
+      {/* Result Modal */}
       <Modal
         visible={resultModal.visible}
         transparent
@@ -662,7 +477,7 @@ export default function NinSlipsScreen() {
             <View style={styles.resultHeader}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <CheckCircle2 size={20} color={colors.success} style={{ marginRight: 8 }} />
-                <Text style={styles.resultTitle}>NIN Record Verified</Text>
+                <Text style={styles.resultTitle}>BVN Record Verified</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setResultModal({ visible: false })}
@@ -676,38 +491,30 @@ export default function NinSlipsScreen() {
               style={{ maxHeight: SCREEN_HEIGHT * 0.55 }}
               showsVerticalScrollIndicator={false}
             >
-              {/* Demographics Summary */}
               {resultModal.userData ? (
                 <View style={styles.demoCard}>
                   {resultModal.userData.photo ? (
                     <Image
-                      source={{
-                        uri: `data:image/jpeg;base64,${resultModal.userData.photo}`,
-                      }}
+                      source={{ uri: `data:image/jpeg;base64,${resultModal.userData.photo}` }}
                       style={styles.demoPhoto}
                     />
                   ) : null}
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={styles.demoName}>
                       {[
-                        resultModal.userData.firstname,
-                        resultModal.userData.middlename,
-                        resultModal.userData.surname,
+                        resultModal.userData.firstName,
+                        resultModal.userData.middleName,
+                        resultModal.userData.lastName,
                       ]
                         .filter(Boolean)
-                        .join(" ") || "Verified Identity"}
+                        .join(" ") || "Verified BVN Identity"}
                     </Text>
                     <Text style={styles.demoDetail}>
-                      NIN: {resultModal.userData.nin || resultModal.identifier}
+                      BVN: {resultModal.userData.bvn || resultModal.identifier}
                     </Text>
-                    {resultModal.userData.birthdate ? (
+                    {resultModal.userData.dateOfBirth ? (
                       <Text style={styles.demoDetail}>
-                        DOB: {resultModal.userData.birthdate}
-                      </Text>
-                    ) : null}
-                    {resultModal.userData.gender ? (
-                      <Text style={styles.demoDetail}>
-                        Gender: {resultModal.userData.gender}
+                        DOB: {resultModal.userData.dateOfBirth}
                       </Text>
                     ) : null}
                   </View>
@@ -716,7 +523,7 @@ export default function NinSlipsScreen() {
 
               <View style={styles.successBanner}>
                 <Text style={styles.successBannerText}>
-                  Your official {resultModal.slipLabel || "NIN Slip"} PDF has been generated and is ready to download.
+                  Your official {resultModal.slipLabel || "BVN Slip"} PDF has been generated and is ready to download.
                 </Text>
               </View>
             </ScrollView>
@@ -782,42 +589,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 40,
   },
-
-  /* Segmented Control */
-  segmentContainer: {
-    flexDirection: "row",
-    backgroundColor: "#E2E8F0",
-    borderRadius: 14,
-    padding: 3,
-    marginBottom: 16,
-  },
-  segmentBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 11,
-  },
-  segmentBtnActive: {
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  segmentBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.textSecondary,
-  },
-  segmentBtnTextActive: {
-    color: colors.text,
-    fontWeight: "800",
-  },
-
-  /* Error Box */
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -834,8 +605,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.error,
   },
-
-  /* Input Card */
   inputCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -843,11 +612,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: "rgba(0, 0, 0, 0.06)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
   },
   inputLabelRow: {
     flexDirection: "row",
@@ -885,8 +649,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
-
-  /* Formats List */
   formatSection: {
     marginBottom: 16,
   },
@@ -996,8 +758,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textDecorationLine: "line-through",
   },
-
-  /* Statutory NDPA Consent */
   consentRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -1029,8 +789,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
-
-  /* Submit Button */
   submitBtn: {
     backgroundColor: colors.primary,
     borderRadius: 14,
@@ -1053,10 +811,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "800",
-    letterSpacing: 0.3,
   },
-
-  /* History */
   historySection: {
     marginTop: 4,
   },
@@ -1104,8 +859,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: colors.success,
   },
-
-  /* Lightbox Modal */
   lightboxBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.85)",
@@ -1119,11 +872,6 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 420,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
   },
   lightboxHeader: {
     flexDirection: "row",
@@ -1159,8 +907,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-
-  /* Result Modal */
   resultBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.6)",

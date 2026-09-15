@@ -21,6 +21,7 @@ import {
   Clock,
   ChevronRight,
   Sparkles,
+  Crown,
   LayoutGrid,
   Bell,
   Headphones,
@@ -187,7 +188,7 @@ export default function HomeScreen() {
       id: "bvn_slip",
       title: "BVN Slip",
       logo: require("../../assets/nibss.png"),
-      route: "/(tabs)/slips",
+      route: "/services/bvn-slip",
     },
     {
       id: "tax_id",
@@ -331,16 +332,15 @@ export default function HomeScreen() {
             onPress={() => router.push("/(tabs)/profile")}
             activeOpacity={0.8}
           >
-            <View style={styles.avatarOrb}>
+            <View style={[styles.avatarOrb, { borderColor: tierColor, borderWidth: 2 }]}>
               <Text style={styles.avatarText}>{userInitial}</Text>
             </View>
             <View style={[styles.avatarTierBadge, { backgroundColor: tierColor }]}>
-              <Sparkles size={9} color="#FFFFFF" />
+              <Crown size={9} color="#FFFFFF" />
             </View>
           </TouchableOpacity>
 
           <View style={styles.greetingWrap}>
-            <Text style={styles.greetingSub}>Welcome back,</Text>
             <Text style={styles.greetingTitle}>
               Hi, {displayName ? `${displayName}` : "there"}
             </Text>

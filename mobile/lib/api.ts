@@ -40,10 +40,26 @@ export async function apiClient<T = any>(
     }
   }
 
-  const response = await fetch(url, {
-    ...fetchOpts,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...fetchOpts,
+      headers,
+    });
+  } catch (err: any) {
+    const isOffline =
+      !err ||
+      err.message?.includes("Network request failed") ||
+      err.message?.includes("fetch failed") ||
+      err.message?.includes("Failed to fetch") ||
+      err.message?.includes("NetworkError") ||
+      err.name === "AbortError";
+
+    const msg = isOffline
+      ? "Unable to connect to server. Please check your internet connection and try again."
+      : err.message || "Network request failed";
+    throw new ApiError(msg, 0);
+  }
 
   const contentType = response.headers.get("content-type") || "";
   let data: any = null;
