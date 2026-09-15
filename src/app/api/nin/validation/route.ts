@@ -64,16 +64,7 @@ export async function GET(req: NextRequest) {
 
     for (const [cat, config] of Object.entries(CATEGORY_PRICE_KEYS)) {
       const found = pricingRecords.find((r) => r.serviceKey === config.key);
-      let base = found ? Number(found.price) : config.defaultPrice;
-
-      // Safety guard & self-healing: if retail key was corrupted by wholesale rate (<=1500), restore to default retail price
-      if (base < config.defaultPrice && base <= 1500) {
-        base = config.defaultPrice;
-        prisma.servicePricing.update({
-          where: { serviceKey: config.key },
-          data: { price: config.defaultPrice },
-        }).catch(() => null);
-      }
+      const base = found ? Number(found.price) : config.defaultPrice;
 
       const discountInfo = await getEffectiveServicePrice(prisma, config.key, base, user.id);
 
@@ -188,10 +179,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let nominalPrice = servicePricing ? Number(servicePricing.price) : categoryConfig.defaultPrice;
-    if (nominalPrice < categoryConfig.defaultPrice && nominalPrice <= 1500) {
-      nominalPrice = categoryConfig.defaultPrice;
-    }
+    const nominalPrice = servicePricing ? Number(servicePricing.price) : categoryConfig.defaultPrice;
     const discountInfo = await getEffectiveServicePrice(prisma, categoryConfig.key, nominalPrice, user.id);
     const requiredAmount = isUsingCredit ? 0 : discountInfo.finalPrice;
     const currentBalance = Number(user.wallet.balance);

@@ -74,16 +74,6 @@ export async function GET() {
             isActive: true,
           },
         });
-      } else if (
-        svc.serviceKey.startsWith("NIN_VALIDATION_") &&
-        Number(existing.price) < svc.price &&
-        Number(existing.price) <= 1500
-      ) {
-        // Auto-heal: retail key was previously corrupted by wholesale API rates
-        await prisma.servicePricing.update({
-          where: { serviceKey: svc.serviceKey },
-          data: { price: svc.price },
-        }).catch(() => null);
       }
     }
 

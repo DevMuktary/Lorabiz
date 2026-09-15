@@ -31,17 +31,10 @@ export async function GET() {
       return acc;
     }, {});
 
-    const rawNoRecord = pricingMap.NIN_VALIDATION_NO_RECORD ?? pricingMap.NIN_VAL_NO_RECORD ?? 2000;
-    const validationNoRecord = rawNoRecord <= 1000 ? 2000 : rawNoRecord;
-
-    const rawVnin = pricingMap.NIN_VALIDATION_VNIN ?? pricingMap.NIN_VAL_VNIN ?? 2500;
-    const validationVnin = rawVnin <= 1000 ? 2500 : rawVnin;
-
-    const rawMod = pricingMap.NIN_VALIDATION_MOD ?? pricingMap.NIN_VAL_MOD_RECORD ?? 3000;
-    const validationMod = rawMod <= 1500 ? 3000 : rawMod;
-
-    const rawPhoto = pricingMap.NIN_VALIDATION_PHOTO_ERROR ?? pricingMap.NIN_VAL_PHOTO_ERROR ?? 1600;
-    const validationPhotoError = rawPhoto <= 1000 ? 1600 : rawPhoto;
+    const validationNoRecord = pricingMap.NIN_VALIDATION_NO_RECORD ?? pricingMap.NIN_VAL_NO_RECORD ?? 2000;
+    const validationVnin = pricingMap.NIN_VALIDATION_VNIN ?? pricingMap.NIN_VAL_VNIN ?? 2500;
+    const validationMod = pricingMap.NIN_VALIDATION_MOD ?? pricingMap.NIN_VAL_MOD_RECORD ?? 3000;
+    const validationPhotoError = pricingMap.NIN_VALIDATION_PHOTO_ERROR ?? pricingMap.NIN_VAL_PHOTO_ERROR ?? 1600;
 
     const modName = pricingMap.NIN_MOD_NAME ?? 2500;
     const modPhone = pricingMap.NIN_MOD_PHONE ?? 2000;
