@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -21,14 +21,12 @@ import {
   Clock,
   ArrowRight,
   ChevronRight,
-  Sparkles,
   LayoutGrid,
   Bell,
   Headphones,
-  Zap,
   ArrowUpRight,
   ArrowDownLeft,
-  ShieldCheck,
+  Zap,
 } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../constants/theme";
@@ -36,6 +34,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const BANNER_WIDTH = SCREEN_WIDTH - 32;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -44,6 +43,7 @@ export default function HomeScreen() {
   const [hideBalance, setHideBalance] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activePromoIndex, setActivePromoIndex] = useState(0);
+  const bannerScrollRef = useRef<ScrollView>(null);
 
   // Failsafe: Redirect incomplete profile users to finish registration details
   useEffect(() => {
@@ -89,19 +89,7 @@ export default function HomeScreen() {
     queryKey: ["mobileRecentTransactions"],
     queryFn: async () => {
       try {
-        return await api.get("/api/user/transactions?limit=3");
-      } catch {
-        return null;
-      }
-    },
-  });
-
-  // 4. Loyalty Profile Query
-  const { data: loyaltyData, refetch: refetchLoyalty } = useQuery({
-    queryKey: ["mobileLoyaltyProfile"],
-    queryFn: async () => {
-      try {
-        return await api.get("/api/user/loyalty");
+        return await api.get("/api/user/transactions?limit=4");
       } catch {
         return null;
       }
@@ -116,10 +104,9 @@ export default function HomeScreen() {
       refetchProfile(),
       refetchWallet(),
       refetchTx(),
-      refetchLoyalty(),
     ]).catch(() => {});
     setRefreshing(false);
-  }, [refreshProfile, refetchProfile, refetchWallet, refetchTx, refetchLoyalty]);
+  }, [refreshProfile, refetchProfile, refetchWallet, refetchTx]);
 
   // Derived Values
   const balance =
@@ -129,9 +116,9 @@ export default function HomeScreen() {
     0;
 
   const rawTxList = txData?.transactions || [];
-  const recentTransactions = Array.isArray(rawTxList) ? rawTxList.slice(0, 3) : [];
+  const recentTransactions = Array.isArray(rawTxList) ? rawTxList.slice(0, 4) : [];
 
-  // Accurate First Name extraction
+  // Accurate First Name extraction (Strictly no emojis)
   const rawName =
     profileData?.user?.firstName ||
     user?.firstName ||
@@ -145,7 +132,7 @@ export default function HomeScreen() {
   const userInitial = (displayName?.[0] || user?.name?.[0] || "U").toUpperCase();
 
   // Quick Services Grid: Strictly 4 items per row, 2 rows (8 items total)
-  // Item 8 is "More"
+  // Replaced SMEDAN with NIN Validation. Item 8 is "More"
   const QUICK_SERVICES = [
     {
       id: "cac_reg",
@@ -184,10 +171,10 @@ export default function HomeScreen() {
       route: "/(tabs)/services",
     },
     {
-      id: "smedan",
-      title: "SMEDAN",
-      logo: require("../../assets/smedan.png"),
-      route: "/(tabs)/services",
+      id: "nin_validation",
+      title: "NIN Verify",
+      logo: require("../../assets/nimc.png"),
+      route: "/(tabs)/slips",
     },
     {
       id: "more",
@@ -197,13 +184,13 @@ export default function HomeScreen() {
     },
   ];
 
-  // Promotional Announcements & Ads Carousel Data
+  // Promotional Announcements & Ads Carousel Data (Strictly NO emojis)
   const PROMO_ADS = [
     {
       id: "cac_promo",
-      tag: "⚡ FAST-TRACK",
+      tag: "FAST-TRACK",
       title: "Register Your Business in 24h",
-      desc: "Official CAC Certificate, Status Report & Tax ID delivered seamlessly.",
+      desc: "Official CAC Certificate, Status Report and Tax ID delivered seamlessly.",
       cta: "Register Now",
       route: "/(tabs)/services",
       color: "#831843",
@@ -211,7 +198,7 @@ export default function HomeScreen() {
     },
     {
       id: "scuml_promo",
-      tag: "🛡️ COMPLIANCE READY",
+      tag: "COMPLIANCE",
       title: "Instant SCUML Processing",
       desc: "Open corporate bank accounts fast with certified AML compliance.",
       cta: "Apply for SCUML",
@@ -221,9 +208,9 @@ export default function HomeScreen() {
     },
     {
       id: "affidavit_promo",
-      tag: "📄 LEGAL SEAL",
+      tag: "LEGAL SEAL",
       title: "Certified Court Affidavits",
-      desc: "Declaration of age, name change & loss of document sworn online.",
+      desc: "Declaration of age, name change and loss of document sworn online.",
       cta: "Get Affidavit",
       route: "/(tabs)/services",
       color: "#064E3B",
@@ -234,19 +221,30 @@ export default function HomeScreen() {
   // Auto-sliding interval for the promotional carousel (every 4 seconds)
   useEffect(() => {
     const timer = setInterval(() => {
-      setActivePromoIndex((prev) => (prev + 1) % PROMO_ADS.length);
+      setActivePromoIndex((prev) => {
+        const nextIndex = (prev + 1) % PROMO_ADS.length;
+        bannerScrollRef.current?.scrollTo({ x: nextIndex * BANNER_WIDTH, animated: true });
+        return nextIndex;
+      });
     }, 4000);
     return () => clearInterval(timer);
   }, [PROMO_ADS.length]);
 
-  const currentAd = PROMO_ADS[activePromoIndex];
+  // Touch drag scroll handler
+  const handleScrollEnd = (e: any) => {
+    const contentOffsetX = e.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffsetX / BANNER_WIDTH);
+    if (index >= 0 && index < PROMO_ADS.length) {
+      setActivePromoIndex(index);
+    }
+  };
 
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* =================================================================== */}
-      {/* 1. TOP APP BAR: Left Avatar + Tier Badge + Greeting | Right Support & Bell */}
+      {/* 1. TOP APP BAR: Left Avatar + Level Badge + Greeting (NO EMOJIS) */}
       {/* =================================================================== */}
       <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 16) + 4 }]}>
         <View style={styles.topBarLeft}>
@@ -267,7 +265,7 @@ export default function HomeScreen() {
           <View style={styles.greetingWrap}>
             <Text style={styles.greetingSub}>Welcome back,</Text>
             <Text style={styles.greetingTitle}>
-              Hi, {displayName ? `${displayName}` : "there"} 👋
+              Hi, {displayName ? `${displayName}` : "there"}
             </Text>
           </View>
         </View>
@@ -308,7 +306,7 @@ export default function HomeScreen() {
         }
       >
         {/* =================================================================== */}
-        {/* 2. REDESIGNED LUXURY WALLET CARD */}
+        {/* 2. REDESIGNED LUXURY WALLET CARD (NO LORABIZ TEXT, NO BADGE CLUTTER) */}
         {/* =================================================================== */}
         <View style={styles.walletCard}>
           {/* Card Top Row: Available Balance + Eye Toggle */}
@@ -328,8 +326,6 @@ export default function HomeScreen() {
                 )}
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.walletBrandText}>Lorabiz</Text>
           </View>
 
           {/* Large Bold Balance Display */}
@@ -367,41 +363,59 @@ export default function HomeScreen() {
         </View>
 
         {/* =================================================================== */}
-        {/* 3. AUTO-SLIDING PROMOTIONAL / AD BANNER */}
+        {/* 3. TOUCH-DRAGGABLE AUTO-SLIDING PROMOTIONAL BANNER */}
         {/* =================================================================== */}
         <View style={styles.adSection}>
-          <TouchableOpacity
-            style={[styles.adCard, { backgroundColor: currentAd.color }]}
-            onPress={() => router.push(currentAd.route as any)}
-            activeOpacity={0.9}
+          <ScrollView
+            ref={bannerScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleScrollEnd}
+            decelerationRate="fast"
+            snapToInterval={BANNER_WIDTH}
+            snapToAlignment="center"
+            style={{ width: BANNER_WIDTH }}
           >
-            <View style={styles.adContent}>
-              <View style={[styles.adTagPill, { borderColor: currentAd.accent }]}>
-                <Text style={[styles.adTagText, { color: currentAd.accent }]}>
-                  {currentAd.tag}
-                </Text>
-              </View>
+            {PROMO_ADS.map((ad) => (
+              <TouchableOpacity
+                key={ad.id}
+                style={[styles.adCard, { width: BANNER_WIDTH, backgroundColor: ad.color }]}
+                onPress={() => router.push(ad.route as any)}
+                activeOpacity={0.92}
+              >
+                <View style={styles.adContent}>
+                  <View style={[styles.adTagPill, { borderColor: ad.accent }]}>
+                    <Text style={[styles.adTagText, { color: ad.accent }]}>
+                      {ad.tag}
+                    </Text>
+                  </View>
 
-              <Text style={styles.adTitle}>{currentAd.title}</Text>
-              <Text style={styles.adDesc} numberOfLines={2}>
-                {currentAd.desc}
-              </Text>
+                  <Text style={styles.adTitle}>{ad.title}</Text>
+                  <Text style={styles.adDesc} numberOfLines={2}>
+                    {ad.desc}
+                  </Text>
 
-              <View style={styles.adCtaRow}>
-                <Text style={[styles.adCtaText, { color: currentAd.accent }]}>
-                  {currentAd.cta}
-                </Text>
-                <ArrowRight size={14} color={currentAd.accent} style={{ marginLeft: 4 }} />
-              </View>
-            </View>
-          </TouchableOpacity>
+                  <View style={styles.adCtaRow}>
+                    <Text style={[styles.adCtaText, { color: ad.accent }]}>
+                      {ad.cta}
+                    </Text>
+                    <ArrowRight size={14} color={ad.accent} style={{ marginLeft: 4 }} />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
           {/* Carousel Pagination Dots */}
           <View style={styles.dotsRow}>
             {PROMO_ADS.map((_, idx) => (
               <TouchableOpacity
                 key={idx}
-                onPress={() => setActivePromoIndex(idx)}
+                onPress={() => {
+                  setActivePromoIndex(idx);
+                  bannerScrollRef.current?.scrollTo({ x: idx * BANNER_WIDTH, animated: true });
+                }}
                 style={[
                   styles.dot,
                   activePromoIndex === idx && styles.activeDot,
@@ -412,7 +426,7 @@ export default function HomeScreen() {
         </View>
 
         {/* =================================================================== */}
-        {/* 4. QUICK SERVICES (Strictly 4x2 = 8 Total Items) */}
+        {/* 4. QUICK SERVICES GRID (Strictly 4x2 = 8 Total Items) */}
         {/* =================================================================== */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Quick Services</Text>
@@ -444,48 +458,7 @@ export default function HomeScreen() {
         </View>
 
         {/* =================================================================== */}
-        {/* 5. MORE FOR YOU: FEATURE HUBS (Data & History Cards) */}
-        {/* =================================================================== */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>More For You</Text>
-        </View>
-
-        <View style={styles.hubContainer}>
-          {/* Card 1: Airtime & Data Bundle */}
-          <TouchableOpacity
-            style={styles.hubCard}
-            onPress={() => router.push("/(tabs)/bills")}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.hubIconWrap, { backgroundColor: "rgba(2, 132, 199, 0.10)" }]}>
-              <Zap size={20} color="#0284C7" />
-            </View>
-            <View style={styles.hubBody}>
-              <Text style={styles.hubTitle}>Buy Data & Airtime</Text>
-              <Text style={styles.hubSub}>Instant recharge across MTN, Airtel, Glo & 9mobile</Text>
-            </View>
-            <ChevronRight size={17} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          {/* Card 2: Transaction Statement */}
-          <TouchableOpacity
-            style={styles.hubCard}
-            onPress={() => router.push("/(tabs)/profile")}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.hubIconWrap, { backgroundColor: "rgba(5, 150, 105, 0.10)" }]}>
-              <Clock size={20} color="#059669" />
-            </View>
-            <View style={styles.hubBody}>
-              <Text style={styles.hubTitle}>Transaction Statement</Text>
-              <Text style={styles.hubSub}>Review deposits, orders & billing receipts</Text>
-            </View>
-            <ChevronRight size={17} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* =================================================================== */}
-        {/* 6. RECENT ACTIVITY PREVIEW */}
+        {/* 5. RECENT ACTIVITY (CLEAN, COMPACT TRANSACTIONS CARD) */}
         {/* =================================================================== */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -549,30 +522,26 @@ export default function HomeScreen() {
           <View style={styles.emptyTxCard}>
             <Clock size={20} color={colors.textSecondary} />
             <Text style={styles.emptyTxTitle}>No Recent Transactions</Text>
-            <Text style={styles.emptyTxSub}>Fund your wallet to make your first order</Text>
+            <Text style={styles.emptyTxSub}>Your recent wallet orders and deposits will appear here</Text>
           </View>
         )}
 
         {/* =================================================================== */}
-        {/* 7. CERTIFIED SUPPORT STRIP */}
+        {/* 6. INSTANT AIRTIME & DATA QUICK ACCESS */}
         {/* =================================================================== */}
         <TouchableOpacity
-          style={styles.supportStrip}
-          onPress={() => Linking.openURL("mailto:support@lorabiz.com")}
+          style={styles.vtuQuickBar}
+          onPress={() => router.push("/(tabs)/bills")}
           activeOpacity={0.85}
         >
-          <View style={styles.supportStripLeft}>
-            <View style={styles.supportIconWrap}>
-              <ShieldCheck size={18} color={colors.primary} />
-            </View>
-            <View style={{ marginLeft: 12, flex: 1 }}>
-              <Text style={styles.supportTitle}>Accredited Compliance Support</Text>
-              <Text style={styles.supportSub}>
-                Questions about your filing? Speak with a certified officer.
-              </Text>
-            </View>
+          <View style={styles.vtuIconCircle}>
+            <Zap size={16} color="#0284C7" />
           </View>
-          <ChevronRight size={17} color={colors.textSecondary} />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={styles.vtuBarTitle}>Need Airtime or Data?</Text>
+            <Text style={styles.vtuBarSub}>Instant top-up across MTN, Airtel, Glo & 9mobile</Text>
+          </View>
+          <ChevronRight size={16} color={colors.textSecondary} />
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -721,12 +690,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     padding: 4,
   },
-  walletBrandText: {
-    color: "#F472B6",
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-  },
   balanceRow: {
     marginVertical: 14,
   },
@@ -777,7 +740,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  /* Promotional / Ad Section */
+  /* Touch-Draggable Promotional Banner */
   adSection: {
     marginBottom: 18,
   },
@@ -910,56 +873,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  /* Hub Cards (More For You) */
-  hubContainer: {
-    gap: 8,
-    marginBottom: 20,
-  },
-  hubCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.05)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  hubIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  hubBody: {
-    flex: 1,
-    marginLeft: 12,
-    paddingRight: 8,
-  },
-  hubTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  hubSub: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-
   /* Transactions List Preview */
   txListContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 4,
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "rgba(0, 0, 0, 0.05)",
     shadowColor: "#000",
@@ -1002,7 +922,7 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "rgba(0, 0, 0, 0.05)",
   },
@@ -1018,40 +938,34 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  /* Support Strip */
-  supportStrip: {
+  /* VTU Quick Bar */
+  vtuQuickBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "rgba(200, 45, 117, 0.2)",
     borderRadius: 14,
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.05)",
   },
-  supportStripLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    paddingRight: 8,
-  },
-  supportIconWrap: {
-    width: 34,
-    height: 34,
+  vtuIconCircle: {
+    width: 30,
+    height: 30,
     borderRadius: 10,
-    backgroundColor: "rgba(200, 45, 117, 0.10)",
+    backgroundColor: "rgba(2, 132, 199, 0.10)",
     alignItems: "center",
     justifyContent: "center",
   },
-  supportTitle: {
+  vtuBarTitle: {
     fontSize: 12,
     fontWeight: "800",
     color: colors.text,
   },
-  supportSub: {
+  vtuBarSub: {
     fontSize: 10,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
 });
