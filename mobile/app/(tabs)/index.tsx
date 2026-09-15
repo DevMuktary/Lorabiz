@@ -10,6 +10,7 @@ import {
   StatusBar,
   Linking,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -27,12 +28,19 @@ import {
   Headphones,
   ArrowUpRight,
   ArrowDownLeft,
+  WifiOff,
 } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../constants/theme";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
-import { getHideBalancePref, setHideBalancePref } from "../../lib/storage";
+import {
+  getHideBalancePref,
+  setHideBalancePref,
+  getCachedWallet,
+  saveCachedWallet,
+  CachedWalletData,
+} from "../../lib/storage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
@@ -44,12 +52,17 @@ export default function HomeScreen() {
   const [hideBalance, setHideBalance] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activePromoIndex, setActivePromoIndex] = useState(0);
+  const [cachedWallet, setCachedWallet] = useState<CachedWalletData | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   const bannerScrollRef = useRef<ScrollView>(null);
 
-  // Load persisted balance privacy preference on mount
+  // Load persisted balance privacy preference and cached wallet on mount
   useEffect(() => {
     getHideBalancePref().then((savedPref) => {
       setHideBalance(savedPref);
+    });
+    getCachedWallet().then((cached) => {
+      if (cached) setCachedWallet(cached);
     });
   }, []);
 
@@ -79,32 +92,61 @@ export default function HomeScreen() {
     queryKey: ["userProfile"],
     queryFn: async () => {
       try {
-        return await api.get("/api/user/profile");
-      } catch {
+        const res = await api.get("/api/user/profile");
+        setIsOffline(false);
+        return res;
+      } catch (err: any) {
+        if (err?.message?.includes("internet connection") || err?.status === 0) {
+          setIsOffline(true);
+        }
         return null;
       }
     },
   });
 
   // 2. Dedicated Wallet Query
-  const { data: walletData, refetch: refetchWallet } = useQuery({
+  const {
+    data: walletData,
+    refetch: refetchWallet,
+    isFetching: isWalletFetching,
+  } = useQuery({
     queryKey: ["mobileWallet"],
     queryFn: async () => {
       try {
-        return await api.get("/api/user/wallet");
-      } catch {
+        const res = await api.get("/api/user/wallet");
+        setIsOffline(false);
+        return res;
+      } catch (err: any) {
+        if (err?.message?.includes("internet connection") || err?.status === 0) {
+          setIsOffline(true);
+        }
         return null;
       }
     },
   });
+
+  // Automatically update cache whenever live balance is fetched
+  useEffect(() => {
+    const liveBal = walletData?.balance ?? walletData?.wallet?.balance;
+    if (typeof liveBal === "number") {
+      saveCachedWallet(liveBal);
+      setCachedWallet({ balance: liveBal, lastUpdated: Date.now() });
+      setIsOffline(false);
+    }
+  }, [walletData]);
 
   // 3. Transactions Query
   const { data: txData, refetch: refetchTx } = useQuery({
     queryKey: ["mobileRecentTransactions"],
     queryFn: async () => {
       try {
-        return await api.get("/api/user/transactions?limit=4");
-      } catch {
+        const res = await api.get("/api/user/transactions?limit=4");
+        setIsOffline(false);
+        return res;
+      } catch (err: any) {
+        if (err?.message?.includes("internet connection") || err?.status === 0) {
+          setIsOffline(true);
+        }
         return null;
       }
     },
@@ -115,8 +157,13 @@ export default function HomeScreen() {
     queryKey: ["mobileLoyaltyProfile"],
     queryFn: async () => {
       try {
-        return await api.get("/api/user/loyalty");
-      } catch {
+        const res = await api.get("/api/user/loyalty");
+        setIsOffline(false);
+        return res;
+      } catch (err: any) {
+        if (err?.message?.includes("internet connection") || err?.status === 0) {
+          setIsOffline(true);
+        }
         return null;
       }
     },
@@ -125,22 +172,38 @@ export default function HomeScreen() {
   // Unified Refresh Handler
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([
-      refreshProfile(),
-      refetchProfile(),
-      refetchWallet(),
-      refetchTx(),
-      refetchLoyalty(),
-    ]).catch(() => {});
-    setRefreshing(false);
+    try {
+      await Promise.all([
+        refreshProfile(),
+        refetchProfile(),
+        refetchWallet(),
+        refetchTx(),
+        refetchLoyalty(),
+      ]);
+      setIsOffline(false);
+    } catch {
+      // Keep previous cached state on network failure
+    } finally {
+      setRefreshing(false);
+    }
   }, [refreshProfile, refetchProfile, refetchWallet, refetchTx, refetchLoyalty]);
 
-  // Derived Values
+  // Derived Values - resilient to offline by falling back to cached balance
+  const liveBalance = walletData?.balance ?? walletData?.wallet?.balance;
   const balance =
-    walletData?.balance ??
-    walletData?.wallet?.balance ??
-    user?.wallet?.balance ??
-    0;
+    typeof liveBalance === "number"
+      ? liveBalance
+      : (cachedWallet?.balance ?? user?.wallet?.balance ?? 0);
+
+  const formatLastUpdated = (timestamp?: number) => {
+    if (!timestamp) return "Live";
+    const diffSec = Math.round((Date.now() - timestamp) / 1000);
+    if (diffSec < 60) return "Updated just now";
+    const diffMins = Math.round(diffSec / 60);
+    if (diffMins < 60) return `Updated ${diffMins}m ago`;
+    const d = new Date(timestamp);
+    return `Updated today at ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  };
 
   const rawTxList = txData?.transactions || [];
   const recentTransactions = Array.isArray(rawTxList) ? rawTxList.slice(0, 4) : [];
@@ -383,6 +446,30 @@ export default function HomeScreen() {
         }
       >
         {/* =================================================================== */}
+        {/* PROMINENT HIGH-CONTRAST OFFLINE BANNER */}
+        {/* =================================================================== */}
+        {isOffline && (
+          <View style={styles.offlineBanner}>
+            <View style={styles.offlineIconWrap}>
+              <WifiOff size={18} color="#DC2626" />
+            </View>
+            <View style={styles.offlineTextWrap}>
+              <Text style={styles.offlineTitle}>No internet connection</Text>
+              <Text style={styles.offlineSubtitle}>
+                Please check your internet connection and try again.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.offlineRetryBtn}
+              onPress={onRefresh}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.offlineRetryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* =================================================================== */}
         {/* 2. REDESIGNED LUXURY WALLET CARD (PERSISTED EYE TOGGLE, NO WATERMARK) */}
         {/* =================================================================== */}
         <View style={styles.walletCard}>
@@ -415,6 +502,23 @@ export default function HomeScreen() {
                     maximumFractionDigits: 2,
                   })}`}
             </Text>
+          </View>
+
+          {/* Last Updated caption & live sync spinner */}
+          <View style={styles.lastUpdatedRow}>
+            <Clock size={11} color="#94A3B8" style={{ marginRight: 4 }} />
+            <Text style={styles.lastUpdatedText}>
+              {cachedWallet?.lastUpdated
+                ? formatLastUpdated(cachedWallet.lastUpdated)
+                : "Live"}
+            </Text>
+            {isWalletFetching && (
+              <ActivityIndicator
+                size="small"
+                color="#F472B6"
+                style={{ marginLeft: 6, transform: [{ scale: 0.65 }] }}
+              />
+            )}
           </View>
 
           {/* Action Buttons: Fund Wallet & History */}
@@ -1027,5 +1131,69 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  offlineBanner: {
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1.5,
+    borderColor: "#FCA5A5",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#DC2626",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  offlineIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  offlineTextWrap: {
+    flex: 1,
+    marginRight: 8,
+  },
+  offlineTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#991B1B",
+  },
+  offlineSubtitle: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#B91C1C",
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  offlineRetryBtn: {
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  offlineRetryText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  lastUpdatedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: -6,
+    marginBottom: 14,
+  },
+  lastUpdatedText: {
+    color: "#94A3B8",
+    fontSize: 11,
+    fontWeight: "600",
   },
 });

@@ -129,7 +129,37 @@ export async function getHideBalancePref(): Promise<boolean> {
   }
 }
 
+export interface CachedWalletData {
+  balance: number;
+  lastUpdated: number; // timestamp in ms
+}
+
+export async function saveCachedWallet(balance: number): Promise<void> {
+  try {
+    await setItem(
+      "lorabiz_cached_wallet",
+      JSON.stringify({
+        balance,
+        lastUpdated: Date.now(),
+      })
+    );
+  } catch {
+    // Ignore storage write error
+  }
+}
+
+export async function getCachedWallet(): Promise<CachedWalletData | null> {
+  try {
+    const raw = await getItem("lorabiz_cached_wallet");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export async function clearAllAuth(): Promise<void> {
   await removeAuthToken();
   await removeAuthUser();
 }
+

@@ -27,7 +27,6 @@ import {
   Eye,
   Clock,
   ArrowLeft,
-  IdentificationCard,
   Phone,
   FileText,
 } from "lucide-react-native";
@@ -360,7 +359,7 @@ export default function NinSlipsScreen() {
             }}
             activeOpacity={0.8}
           >
-            <IdentificationCard
+            <FileText
               size={16}
               color={searchMode === "NIN" ? colors.primary : colors.textSecondary}
               style={{ marginRight: 6 }}
